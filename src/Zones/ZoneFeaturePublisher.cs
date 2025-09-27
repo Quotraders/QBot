@@ -49,27 +49,52 @@ public sealed class ZoneFeaturePublisher : BackgroundService
                 k++;
                 if (k % _emitEvery != 0) continue;
                 
-                foreach (var symbol in _tracked)
-                {
-                    var (dmd, sup, breakout, press) = _zones.GetFeatures(symbol);
-                    var now = DateTime.UtcNow;
-                    _bus.Publish(symbol, now, "zone.dist_to_demand_atr", dmd);
-                    _bus.Publish(symbol, now, "zone.dist_to_supply_atr", sup);
-                    _bus.Publish(symbol, now, "zone.breakout_score", breakout);
-                    _bus.Publish(symbol, now, "zone.pressure", press);
-                }
+                await PublishZoneFeaturesAsync().ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
                 // Expected when cancellation is requested
                 break;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
                 LogPublishError(_log, ex);
-                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken).ConfigureAwait(false);
+                await HandleRecoverableErrorAsync(stoppingToken).ConfigureAwait(false);
+            }
+            catch (ArgumentException ex)
+            {
+                LogPublishError(_log, ex);
+                await HandleRecoverableErrorAsync(stoppingToken).ConfigureAwait(false);
+            }
+            catch (TimeoutException ex)
+            {
+                LogPublishError(_log, ex);
+                await HandleRecoverableErrorAsync(stoppingToken).ConfigureAwait(false);
             }
         }
+    }
+
+    private async Task PublishZoneFeaturesAsync()
+    {
+        if (_bus == null) return;
+        
+        foreach (var symbol in _tracked)
+        {
+            var (dmd, sup, breakout, press) = _zones.GetFeatures(symbol);
+            var now = DateTime.UtcNow;
+            _bus.Publish(symbol, now, "zone.dist_to_demand_atr", dmd);
+            _bus.Publish(symbol, now, "zone.dist_to_supply_atr", sup);
+            _bus.Publish(symbol, now, "zone.breakout_score", breakout);
+            _bus.Publish(symbol, now, "zone.pressure", press);
+        }
+        
+        await Task.CompletedTask.ConfigureAwait(false);
+    }
+
+    private static Task HandleRecoverableErrorAsync(CancellationToken stoppingToken)
+    {
+        const int ErrorRecoveryDelayMinutes = 1;
+        return Task.Delay(TimeSpan.FromMinutes(ErrorRecoveryDelayMinutes), stoppingToken);
     }
 
     private readonly string[] _tracked = new[] { "ES", "NQ" };

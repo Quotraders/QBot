@@ -12,7 +12,9 @@ public sealed record Zone(
     DateTime LastTouchedUtc,
     ZoneState State)
 {
-    public decimal Mid => (PriceLow + PriceHigh) / 2m;
+    private const int MidpointDivisor = 2;
+    
+    public decimal Mid => (PriceLow + PriceHigh) / MidpointDivisor;
     public decimal Thickness => PriceHigh - PriceLow;
     public bool Contains(decimal price) => price >= PriceLow && price <= PriceHigh;
 }

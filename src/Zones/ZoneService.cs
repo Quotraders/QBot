@@ -35,7 +35,7 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
 {
     internal sealed record Bar(decimal O, decimal H, decimal L, decimal C, long V, DateTime Utc);
 
-    // Constants to avoid magic numbers
+    // Constants to avoid magic numbers  
     private const int DefaultPivotSize = 3;
     private const int DefaultAtrPeriod = 14;
     private const double DefaultMergeAtr = 0.6;
@@ -46,6 +46,11 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
     private const int MinHistoryBars = 2;
     private const double InitialZonePressure = 0.5;
     private const int RingBufferSize = 3000;
+    private const int MidpointDivisor = 2;
+    private const double MinTouchDecay = 0.01;
+    private const double ZoneMergingPressureFactor = 0.6;
+    private const double ZoneMergingPressureOffset = 0.4;
+    private const int MinTouchThreshold = 1;
 
     private readonly ConcurrentDictionary<string, SymbolState> _bySym = new(StringComparer.OrdinalIgnoreCase);
     private readonly int _pivotL, _pivotR, _decayHalfLife;
@@ -82,7 +87,7 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
         if (!_bySym.TryGetValue(symbol, out var s)) return;
         lock (s.Lock)
         {
-            s.LastPrice = (bid + ask) / 2m;
+            s.LastPrice = (bid + ask) / MidpointDivisor;
             s.LastUtc = utc;
         }
     }
@@ -90,21 +95,49 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
     public ZoneSnapshot GetSnapshot(string symbol)
     {
         if (!_bySym.TryGetValue(symbol, out var s))
-            return new ZoneSnapshot(null,null,double.PositiveInfinity,double.PositiveInfinity,0,0,DateTime.UtcNow);
+            return CreateEmptySnapshot();
+            
         lock (s.Lock)
         {
-            var atr = (double) (s.Atr.Value == 0 ? 1m : s.Atr.Value);
-            var px = s.LastPrice;
-            // nearest demand below
-            Zone? demand = s.Zones.Where(z => z.Side == ZoneSide.Demand && z.PriceHigh <= px).OrderByDescending(z => z.PriceHigh).FirstOrDefault();
-            Zone? supply = s.Zones.Where(z => z.Side == ZoneSide.Supply && z.PriceLow >= px).OrderBy(z => z.PriceLow).FirstOrDefault();
-            double distDemand = demand is null ? double.PositiveInfinity : (double)((px - demand.PriceHigh) / (decimal)atr);
-            double distSupply = supply is null ? double.PositiveInfinity : (double)((supply.PriceLow - px) / (decimal)atr);
-            var opp = supply ?? demand; // opposing nearest
-            double breakoutScore = opp is null ? 0 : EstimateBreakoutScore(s, px, opp, atr);
-            double pressure = opp?.Pressure ?? 0.0;
-            return new ZoneSnapshot(demand, supply, Math.Max(0,distDemand), Math.Max(0,distSupply), breakoutScore, pressure, s.LastUtc);
+            return CreateZoneSnapshot(s);
         }
+    }
+
+    private static ZoneSnapshot CreateEmptySnapshot()
+    {
+        return new ZoneSnapshot(null, null, double.PositiveInfinity, double.PositiveInfinity, 0, 0, DateTime.UtcNow);
+    }
+
+    private static ZoneSnapshot CreateZoneSnapshot(SymbolState s)
+    {
+        var atr = GetSnapshotAtr(s);
+        var px = s.LastPrice;
+        var (demand, supply) = FindNearestZones(s, px);
+        var distances = CalculateZoneDistances(demand, supply, px, atr);
+        var opposingZone = supply ?? demand;
+        var breakoutScore = opposingZone is null ? 0 : EstimateBreakoutScore(s, px, opposingZone, atr);
+        var pressure = opposingZone?.Pressure ?? 0.0;
+        
+        return new ZoneSnapshot(demand, supply, distances.demandDist, distances.supplyDist, breakoutScore, pressure, s.LastUtc);
+    }
+
+    private static double GetSnapshotAtr(SymbolState s)
+    {
+        return (double)(s.Atr.Value == 0 ? 1m : s.Atr.Value);
+    }
+
+    private static (Zone? demand, Zone? supply) FindNearestZones(SymbolState s, decimal px)
+    {
+        var demand = s.Zones.Where(z => z.Side == ZoneSide.Demand && z.PriceHigh <= px).OrderByDescending(z => z.PriceHigh).FirstOrDefault();
+        var supply = s.Zones.Where(z => z.Side == ZoneSide.Supply && z.PriceLow >= px).OrderBy(z => z.PriceLow).FirstOrDefault();
+        return (demand, supply);
+    }
+
+    private static (double demandDist, double supplyDist) CalculateZoneDistances(Zone? demand, Zone? supply, decimal px, double atr)
+    {
+        double distDemand = demand is null ? double.PositiveInfinity : (double)((px - demand.PriceHigh) / (decimal)atr);
+        double distSupply = supply is null ? double.PositiveInfinity : (double)((supply.PriceLow - px) / (decimal)atr);
+        return (Math.Max(0, distDemand), Math.Max(0, distSupply));
     }
 
     (double distToDemandAtr, double distToSupplyAtr, double breakoutScore, double zonePressure) IZoneFeatureSource.GetFeatures(string symbol)
@@ -131,85 +164,230 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
         var n = s.Bars.Count; 
         if (n < _pivotL + _pivotR + 1) return;
         
-        // check pivot at the last completed bar index = n - 1 - _pivotR
-        var idx = n - 1 - _pivotR; 
-        var center = s.Bars[idx];
-        bool isHigh = true, isLow = true;
-        
-        for(int i = idx - _pivotL; i < idx + _pivotR + 1; i++)
-        {
-            var b = s.Bars[i];
-            if (i == idx) continue;
-            if (b.H >= center.H) isHigh = isHigh && (i < idx ? b.H < center.H : b.H <= center.H);
-            if (b.L <= center.L) isLow = isLow && (i < idx ? b.L > center.L : b.L >= center.L);
-        }
-        
-        var atr = s.Atr.Value; 
-        if (atr <= 0) atr = Math.Max(1, center.H - center.L);
-        var thickness = atr * (decimal)_mergeAtr; // zone thickness baseline
-        
-        if (isHigh)
-            AddOrMergeZone(s, new Zone(ZoneSide.Supply, center.H - thickness / (decimal)HalfDivisor, center.H + thickness / (decimal)HalfDivisor, InitialZonePressure, 1, center.Utc, ZoneState.Test));
-        if (isLow)
-            AddOrMergeZone(s, new Zone(ZoneSide.Demand, center.L - thickness / (decimal)HalfDivisor, center.L + thickness / (decimal)HalfDivisor, InitialZonePressure, 1, center.Utc, ZoneState.Test));
+        ProcessPivotDetection(s, n);
     }
 
-    private static void AddOrMergeZone(SymbolState s, Zone z)
+    private void ProcessPivotDetection(SymbolState s, int barCount)
     {
-        // merge if overlap or within merge distance (ATR * _mergeAtr)
-        var mergeDist = z.Thickness; // already proportional to ATR
-        for(int i=0;i<s.Zones.Count;i++)
+        var idx = GetPivotIndex(barCount);
+        var center = s.Bars[idx];
+        var (isHigh, isLow) = AnalyzePivotPattern(s, idx, center);
+        
+        if (isHigh || isLow)
         {
-            var o = s.Zones[i]; if (o.Side != z.Side) continue;
-            bool overlaps = !(z.PriceHigh < o.PriceLow - mergeDist || z.PriceLow > o.PriceHigh + mergeDist);
-            if (overlaps)
+            CreateZonesFromPivot(s, center, isHigh, isLow);
+        }
+    }
+
+    private int GetPivotIndex(int barCount)
+    {
+        return barCount - 1 - _pivotR;
+    }
+
+    private (bool isHigh, bool isLow) AnalyzePivotPattern(SymbolState s, int centerIdx, Bar center)
+    {
+        bool isHigh = true, isLow = true;
+        
+        for(int i = centerIdx - _pivotL; i < centerIdx + _pivotR + 1; i++)
+        {
+            if (i == centerIdx) continue;
+            
+            var b = s.Bars[i];
+            if (b.H >= center.H) 
+                isHigh = isHigh && (i < centerIdx ? b.H < center.H : b.H <= center.H);
+            if (b.L <= center.L) 
+                isLow = isLow && (i < centerIdx ? b.L > center.L : b.L >= center.L);
+        }
+        
+        return (isHigh, isLow);
+    }
+
+    private void CreateZonesFromPivot(SymbolState s, Bar center, bool isHigh, bool isLow)
+    {
+        var atr = GetEffectiveAtr(s, center);
+        var thickness = atr * (decimal)_mergeAtr;
+        
+        if (isHigh)
+        {
+            var supplyZone = CreateSupplyZone(center, thickness);
+            AddOrMergeZone(s, supplyZone);
+        }
+        
+        if (isLow)
+        {
+            var demandZone = CreateDemandZone(center, thickness);
+            AddOrMergeZone(s, demandZone);
+        }
+    }
+
+    private static decimal GetEffectiveAtr(SymbolState s, Bar center)
+    {
+        var atr = s.Atr.Value;
+        return atr <= 0 ? Math.Max(1, center.H - center.L) : atr;
+    }
+
+    private static Zone CreateSupplyZone(Bar center, decimal thickness)
+    {
+        return new Zone(
+            ZoneSide.Supply, 
+            center.H - thickness / MidpointDivisor, 
+            center.H + thickness / MidpointDivisor, 
+            InitialZonePressure, 
+            1, 
+            center.Utc, 
+            ZoneState.Test);
+    }
+
+    private static Zone CreateDemandZone(Bar center, decimal thickness)
+    {
+        return new Zone(
+            ZoneSide.Demand, 
+            center.L - thickness / MidpointDivisor, 
+            center.L + thickness / MidpointDivisor, 
+            InitialZonePressure, 
+            1, 
+            center.Utc, 
+            ZoneState.Test);
+    }
+
+    private static void AddOrMergeZone(SymbolState s, Zone newZone)
+    {
+        var existingZoneIndex = FindMergableZone(s, newZone);
+        
+        if (existingZoneIndex >= 0)
+        {
+            MergeZones(s, existingZoneIndex, newZone);
+        }
+        else
+        {
+            s.Zones.Add(newZone);
+        }
+    }
+
+    private static int FindMergableZone(SymbolState s, Zone newZone)
+    {
+        var mergeDist = newZone.Thickness;
+        
+        for(int i = 0; i < s.Zones.Count; i++)
+        {
+            var existing = s.Zones[i];
+            if (existing.Side != newZone.Side) continue;
+            
+            if (ShouldMergeZones(existing, newZone, mergeDist))
             {
-                var low = Math.Min(o.PriceLow, z.PriceLow);
-                var high = Math.Max(o.PriceHigh, z.PriceHigh);
-                var touch = o.TouchCount + z.TouchCount;
-                var pressure = Math.Min(1.0, (o.Pressure + z.Pressure) * 0.6 + 0.4);
-                s.Zones[i] = new Zone(o.Side, low, high, pressure, touch, DateTime.UtcNow, ZoneState.Test);
-                return;
+                return i;
             }
         }
-        s.Zones.Add(z);
+        
+        return -1;
+    }
+
+    private static bool ShouldMergeZones(Zone existing, Zone newZone, decimal mergeDist)
+    {
+        return !(newZone.PriceHigh < existing.PriceLow - mergeDist || 
+                 newZone.PriceLow > existing.PriceHigh + mergeDist);
+    }
+
+    private static void MergeZones(SymbolState s, int existingIndex, Zone newZone)
+    {
+        var existing = s.Zones[existingIndex];
+        var mergedZone = CreateMergedZone(existing, newZone);
+        s.Zones[existingIndex] = mergedZone;
+    }
+
+    private static Zone CreateMergedZone(Zone existing, Zone newZone)
+    {
+        var low = Math.Min(existing.PriceLow, newZone.PriceLow);
+        var high = Math.Max(existing.PriceHigh, newZone.PriceHigh);
+        var touchCount = existing.TouchCount + newZone.TouchCount;
+        var pressure = Math.Min(1.0, (existing.Pressure + newZone.Pressure) * ZoneMergingPressureFactor + ZoneMergingPressureOffset);
+        
+        return new Zone(existing.Side, low, high, pressure, touchCount, DateTime.UtcNow, ZoneState.Test);
     }
 
     private void UpdateZoneStatesAndPressure(SymbolState s, decimal close, DateTime utc)
     {
         if (s.Zones.Count == 0) return;
-        var atr = s.Atr.Value; 
-        if (atr <= 0) atr = 1;
-        var decay = Math.Exp(-Math.Log(HalfDivisor) / Math.Max(1, _decayHalfLife));
         
-        for(int i = 0; i < s.Zones.Count; i++)
-        {
-            var z = s.Zones[i];
-            double newPressure = Math.Clamp(z.Pressure * decay + 0.01 * z.TouchCount, 0, 1);
-            var state = z.State;
-            
-            if (z.Contains(close))
-            {
-                // inside zone → it's being tested
-                state = ZoneState.Test;
-                z = z with { TouchCount = z.TouchCount + 1, LastTouchedUtc = utc };
-            }
-            else if (close > z.PriceHigh + atr * (decimal)BreakoutThresholdAtr)
-            {
-                state = z.Side == ZoneSide.Supply ? ZoneState.Breakout : ZoneState.Retest; // supply broken from below → breakout
-            }
-            else if (close < z.PriceLow - atr * (decimal)BreakoutThresholdAtr)
-            {
-                state = z.Side == ZoneSide.Demand ? ZoneState.Breakout : ZoneState.Retest;
-            }
-            s.Zones[i] = z with { Pressure = newPressure, State = state };
-        }
+        var atr = GetValidAtr(s);
+        var decay = CalculateDecayFactor();
+        
+        UpdateAllZones(s, close, utc, atr, decay);
+        PruneInvalidZones(s);
+        
         s.LastPrice = close; 
         s.LastUtc = utc;
+    }
+
+    private static decimal GetValidAtr(SymbolState s)
+    {
+        var atr = s.Atr.Value;
+        return atr <= 0 ? 1 : atr;
+    }
+
+    private double CalculateDecayFactor()
+    {
+        return Math.Exp(-Math.Log(HalfDivisor) / Math.Max(1, _decayHalfLife));
+    }
+
+    private static void UpdateAllZones(SymbolState s, decimal close, DateTime utc, decimal atr, double decay)
+    {
+        for(int i = 0; i < s.Zones.Count; i++)
+        {
+            var zone = s.Zones[i];
+            var updatedZone = UpdateSingleZone(zone, close, utc, atr, decay);
+            s.Zones[i] = updatedZone;
+        }
+    }
+
+    private static Zone UpdateSingleZone(Zone zone, decimal close, DateTime utc, decimal atr, double decay)
+    {
+        var newPressure = CalculateNewPressure(zone, decay);
+        var newState = DetermineZoneState(zone, close, atr);
+        var touchUpdate = zone.Contains(close) ? (zone.TouchCount + 1, utc) : (zone.TouchCount, zone.LastTouchedUtc);
         
-        // prune invalidated / too wide zones if needed (keep list modest)
+        return zone with 
+        { 
+            Pressure = newPressure, 
+            State = newState,
+            TouchCount = touchUpdate.Item1,
+            LastTouchedUtc = touchUpdate.Item2
+        };
+    }
+
+    private static double CalculateNewPressure(Zone zone, double decay)
+    {
+        return Math.Clamp(zone.Pressure * decay + MinTouchDecay * zone.TouchCount, 0, 1);
+    }
+
+    private static ZoneState DetermineZoneState(Zone zone, decimal close, decimal atr)
+    {
+        if (zone.Contains(close))
+        {
+            return ZoneState.Test;
+        }
+        
+        var breakoutThreshold = atr * (decimal)BreakoutThresholdAtr;
+        
+        if (close > zone.PriceHigh + breakoutThreshold)
+        {
+            return zone.Side == ZoneSide.Supply ? ZoneState.Breakout : ZoneState.Retest;
+        }
+        
+        if (close < zone.PriceLow - breakoutThreshold)
+        {
+            return zone.Side == ZoneSide.Demand ? ZoneState.Breakout : ZoneState.Retest;
+        }
+        
+        return zone.State;
+    }
+
+    private static void PruneInvalidZones(SymbolState s)
+    {
         if (s.Zones.Count > MaxZonesPerSymbol)
-            s.Zones.RemoveAll(z => z.State == ZoneState.Invalidated || z.TouchCount <= 1);
+        {
+            s.Zones.RemoveAll(z => z.State == ZoneState.Invalidated || z.TouchCount <= MinTouchThreshold);
+        }
     }
 
     private static double EstimateBreakoutScore(SymbolState s, decimal px, Zone opp, double atr)
@@ -218,26 +396,46 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
         const double defaultVdc = 1.0;
         const double maxDistanceAtr = 3.0;
         const double maxTestsForScore = 5.0;
-        const double logisticMultipliers = 1.5;
+        const double momentumWeight = 1.5;
+        const double vdcWeight = 0.8;
+        const double testsWeight = 0.5;
+        const double distanceWeight = 1.0;
         const double logisticBias = 0.5;
         
-        // lightweight heuristic → replace with small logistic if desired
-        // features: momentum over last k bars, volatility contraction ratio, dist/ATR, prior tests
-        int k = Math.Min(lookbackBars, s.Bars.Count-1);
+        int k = Math.Min(lookbackBars, s.Bars.Count - 1);
         if (k <= MinHistoryBars) return InitialZonePressure;
         
-        var last = s.Bars[s.Bars.Count-1];
-        var prev = s.Bars[s.Bars.Count-1-k];
-        double mom = (double)((last.C - prev.C) / (decimal)atr);
+        var momentum = CalculateMomentum(s, k, atr);
+        var volatilityRatio = defaultVdc; // Placeholder for actual VDC calculation
+        var distance = CalculateNormalizedDistance(px, opp, atr, maxDistanceAtr);
+        var testsFactor = CalculateTestsFactor(opp, maxTestsForScore);
         
-        // vdc: recent ATR / long-range ATR approximation
-        double vdc = defaultVdc; // if you have long ATR, plug it; else assume 1
-        double dist = (double)((opp.Side == ZoneSide.Supply ? opp.PriceLow - px : px - opp.PriceHigh) / (decimal)atr);
-        dist = Math.Clamp(dist, 0, maxDistanceAtr);
-        double tests = Math.Min(maxTestsForScore, opp.TouchCount) / maxTestsForScore; // more tests → weaker zone
-        
-        // logistic-ish clamp
-        double score = 1/(1+Math.Exp(-(logisticMultipliers*mom + 0.8*(1/vdc) + logisticBias*tests - 1.0*dist - logisticBias)));
+        return CalculateLogisticScore(momentum, volatilityRatio, testsFactor, distance, 
+            momentumWeight, vdcWeight, testsWeight, distanceWeight, logisticBias);
+    }
+
+    private static double CalculateMomentum(SymbolState s, int lookback, double atr)
+    {
+        var last = s.Bars[s.Bars.Count - 1];
+        var prev = s.Bars[s.Bars.Count - 1 - lookback];
+        return (double)((last.C - prev.C) / (decimal)atr);
+    }
+
+    private static double CalculateNormalizedDistance(decimal price, Zone zone, double atr, double maxDistance)
+    {
+        double distance = (double)((zone.Side == ZoneSide.Supply ? zone.PriceLow - price : price - zone.PriceHigh) / (decimal)atr);
+        return Math.Clamp(distance, 0, maxDistance);
+    }
+
+    private static double CalculateTestsFactor(Zone zone, double maxTests)
+    {
+        return Math.Min(maxTests, zone.TouchCount) / maxTests;
+    }
+
+    private static double CalculateLogisticScore(double momentum, double vdc, double tests, double distance,
+        double momWeight, double vdcWeight, double testsWeight, double distWeight, double bias)
+    {
+        var score = 1 / (1 + Math.Exp(-(momWeight * momentum + vdcWeight * (1 / vdc) + testsWeight * tests - distWeight * distance - bias)));
         return Math.Clamp(score, 0.0, 1.0);
     }
 }

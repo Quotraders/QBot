@@ -120,90 +120,120 @@ public class SafeHoldDecisionPolicy
             double allowBreak = zoneSection.GetValue("allow_breakout_threshold:default", 0.7);
             double sizeTiltFactor = zoneSection.GetValue("size_tilt_near_zone:default", 0.7);
 
-            if (decision.Action == TradingAction.Buy)
-            {
-                // Check if we're too close to supply without breakout potential
-                if (snap.DistToSupplyAtr <= blockAtr && snap.BreakoutScore < allowBreak)
-                {
-                    _logger.LogInformation("[ZONE-GATE] {Symbol}: Blocked LONG entry - near supply zone (dist={DistAtr:F2}, breakout={Score:F2})",
-                        symbol, snap.DistToSupplyAtr, snap.BreakoutScore);
-                    return (true, $"Blocked by supply zone (dist={snap.DistToSupplyAtr:F2} ATR, breakout={snap.BreakoutScore:F2})", decision);
-                }
-
-                // Apply size tilt if near supply
-                if (snap.DistToSupplyAtr < 1.0)
-                {
-                    var proximity = snap.DistToSupplyAtr;
-                    var tiltFactor = Math.Max(0.25, 1.0 - (1.0 - 0.25) * (1.0 - proximity));
-                    var adjustedConfidence = decision.Confidence * tiltFactor * sizeTiltFactor;
-                    
-                    var amended = new TradingDecision
-                    {
-                        Action = decision.Action,
-                        Confidence = adjustedConfidence,
-                        Reason = decision.Reason + $" (zone-tilted: {tiltFactor:F2})",
-                        Symbol = decision.Symbol,
-                        StrategyId = decision.StrategyId,
-                        Timestamp = decision.Timestamp,
-                        Metadata = decision.Metadata
-                    };
-                    
-                    if (amended.Metadata != null)
-                    {
-                        amended.Metadata["zone_tilt_applied"] = true;
-                        amended.Metadata["zone_tilt_factor"] = tiltFactor;
-                        amended.Metadata["original_confidence"] = decision.Confidence;
-                    }
-                    
-                    return (false, string.Empty, amended);
-                }
-            }
-            else if (decision.Action == TradingAction.Sell)
-            {
-                // Check if we're too close to demand without breakout potential
-                if (snap.DistToDemandAtr <= blockAtr && snap.BreakoutScore < allowBreak)
-                {
-                    _logger.LogInformation("[ZONE-GATE] {Symbol}: Blocked SHORT entry - near demand zone (dist={DistAtr:F2}, breakout={Score:F2})",
-                        symbol, snap.DistToDemandAtr, snap.BreakoutScore);
-                    return (true, $"Blocked by demand zone (dist={snap.DistToDemandAtr:F2} ATR, breakout={snap.BreakoutScore:F2})", decision);
-                }
-
-                // Apply size tilt if near demand
-                if (snap.DistToDemandAtr < 1.0)
-                {
-                    var proximity = snap.DistToDemandAtr;
-                    var tiltFactor = Math.Max(0.25, 1.0 - (1.0 - 0.25) * (1.0 - proximity));
-                    var adjustedConfidence = decision.Confidence * tiltFactor * sizeTiltFactor;
-                    
-                    var amended = new TradingDecision
-                    {
-                        Action = decision.Action,
-                        Confidence = adjustedConfidence,
-                        Reason = decision.Reason + $" (zone-tilted: {tiltFactor:F2})",
-                        Symbol = decision.Symbol,
-                        StrategyId = decision.StrategyId,
-                        Timestamp = decision.Timestamp,
-                        Metadata = decision.Metadata
-                    };
-                    
-                    if (amended.Metadata != null)
-                    {
-                        amended.Metadata["zone_tilt_applied"] = true;
-                        amended.Metadata["zone_tilt_factor"] = tiltFactor;
-                        amended.Metadata["original_confidence"] = decision.Confidence;
-                    }
-                    
-                    return (false, string.Empty, amended);
-                }
-            }
+            return EvaluateZoneConstraints(decision, symbol, snap, blockAtr, allowBreak, sizeTiltFactor);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "[ZONE-GATE] Error evaluating zone gate for {Symbol}", symbol);
-            // On error, allow trade to proceed without zone gate
+            _logger.LogError(ex, "[ZONE-GATE] Invalid operation while evaluating zone gate for {Symbol}", symbol);
+            return (false, string.Empty, decision);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "[ZONE-GATE] Invalid argument while evaluating zone gate for {Symbol}", symbol);
+            return (false, string.Empty, decision);
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogError(ex, "[ZONE-GATE] Timeout while evaluating zone gate for {Symbol}", symbol);
+            return (false, string.Empty, decision);
         }
 
         return (false, string.Empty, decision);
+    }
+
+    private (bool Held, string Reason, TradingDecision MaybeAmended) EvaluateZoneConstraints(
+        TradingDecision decision, string symbol, ZoneSnapshot snap, 
+        double blockAtr, double allowBreak, double sizeTiltFactor)
+    {
+        if (decision.Action == TradingAction.Buy)
+        {
+            return EvaluateLongEntryConstraints(decision, symbol, snap, blockAtr, allowBreak, sizeTiltFactor);
+        }
+        
+        if (decision.Action == TradingAction.Sell)
+        {
+            return EvaluateShortEntryConstraints(decision, symbol, snap, blockAtr, allowBreak, sizeTiltFactor);
+        }
+
+        return (false, string.Empty, decision);
+    }
+
+    private (bool Held, string Reason, TradingDecision MaybeAmended) EvaluateLongEntryConstraints(
+        TradingDecision decision, string symbol, ZoneSnapshot snap, 
+        double blockAtr, double allowBreak, double sizeTiltFactor)
+    {
+        // Check if we're too close to supply without breakout potential
+        if (snap.DistToSupplyAtr <= blockAtr && snap.BreakoutScore < allowBreak)
+        {
+            _logger.LogInformation("[ZONE-GATE] {Symbol}: Blocked LONG entry - near supply zone (dist={DistAtr:F2}, breakout={Score:F2})",
+                symbol, snap.DistToSupplyAtr, snap.BreakoutScore);
+            return (true, $"Blocked by supply zone (dist={snap.DistToSupplyAtr:F2} ATR, breakout={snap.BreakoutScore:F2})", decision);
+        }
+
+        // Apply size tilt if near supply
+        if (snap.DistToSupplyAtr < 1.0)
+        {
+            return ApplyZoneSizeTilt(decision, snap.DistToSupplyAtr, sizeTiltFactor);
+        }
+
+        return (false, string.Empty, decision);
+    }
+
+    private (bool Held, string Reason, TradingDecision MaybeAmended) EvaluateShortEntryConstraints(
+        TradingDecision decision, string symbol, ZoneSnapshot snap, 
+        double blockAtr, double allowBreak, double sizeTiltFactor)
+    {
+        // Check if we're too close to demand without breakout potential
+        if (snap.DistToDemandAtr <= blockAtr && snap.BreakoutScore < allowBreak)
+        {
+            _logger.LogInformation("[ZONE-GATE] {Symbol}: Blocked SHORT entry - near demand zone (dist={DistAtr:F2}, breakout={Score:F2})",
+                symbol, snap.DistToDemandAtr, snap.BreakoutScore);
+            return (true, $"Blocked by demand zone (dist={snap.DistToDemandAtr:F2} ATR, breakout={snap.BreakoutScore:F2})", decision);
+        }
+
+        // Apply size tilt if near demand
+        if (snap.DistToDemandAtr < 1.0)
+        {
+            return ApplyZoneSizeTilt(decision, snap.DistToDemandAtr, sizeTiltFactor);
+        }
+
+        return (false, string.Empty, decision);
+    }
+
+    private static (bool Held, string Reason, TradingDecision MaybeAmended) ApplyZoneSizeTilt(
+        TradingDecision decision, double proximity, double sizeTiltFactor)
+    {
+        const double MinTiltFactor = 0.25;
+        const double ProximityScaleMin = 0.25;
+        
+        var tiltFactor = Math.Max(MinTiltFactor, 1.0 - (1.0 - ProximityScaleMin) * (1.0 - proximity));
+        var adjustedConfidence = decision.Confidence * tiltFactor * sizeTiltFactor;
+        
+        var amended = CreateAmendedDecision(decision, adjustedConfidence, tiltFactor);
+        return (false, string.Empty, amended);
+    }
+
+    private static TradingDecision CreateAmendedDecision(TradingDecision original, double adjustedConfidence, double tiltFactor)
+    {
+        var amended = new TradingDecision
+        {
+            Action = original.Action,
+            Confidence = adjustedConfidence,
+            Reason = original.Reason + $" (zone-tilted: {tiltFactor:F2})",
+            Symbol = original.Symbol,
+            StrategyId = original.StrategyId,
+            Timestamp = original.Timestamp,
+            Metadata = original.Metadata
+        };
+        
+        if (amended.Metadata != null)
+        {
+            amended.Metadata["zone_tilt_applied"] = true;
+            amended.Metadata["zone_tilt_factor"] = tiltFactor;
+            amended.Metadata["original_confidence"] = original.Confidence;
+        }
+        
+        return amended;
     }
 
     /// <summary>

@@ -4,8 +4,6 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <WarningsNotAsErrors>S109;S1541;CA1031;CA1848;S1172;S2325;CA1822;S4487</WarningsNotAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
