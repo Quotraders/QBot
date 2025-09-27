@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 using Zones;
 
@@ -34,19 +35,33 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
 {
     internal sealed record Bar(decimal O, decimal H, decimal L, decimal C, long V, DateTime Utc);
 
+    // Constants to avoid magic numbers
+    private const int DefaultPivotSize = 3;
+    private const int DefaultAtrPeriod = 14;
+    private const double DefaultMergeAtr = 0.6;
+    private const int DefaultDecayHalfLife = 600;
+    private const double HalfDivisor = 2.0;
+    private const double BreakoutThresholdAtr = 0.2;
+    private const int MaxZonesPerSymbol = 200;
+    private const int MinHistoryBars = 2;
+    private const double InitialZonePressure = 0.5;
+    private const int RingBufferSize = 3000;
+
     private readonly ConcurrentDictionary<string, SymbolState> _bySym = new(StringComparer.OrdinalIgnoreCase);
     private readonly int _pivotL, _pivotR, _decayHalfLife;
     private readonly int _atrPeriod;
     private readonly double _mergeAtr;
 
-    public ZoneServiceProduction(IConfiguration cfg)
+    public ZoneServiceProduction([NotNull] IConfiguration cfg)
     {
+        ArgumentNullException.ThrowIfNull(cfg);
+        
         var section = cfg.GetSection("zone");
-        _pivotL = (int) Math.Round(section.GetValue("pivot_left:default", 3.0));
-        _pivotR = (int) Math.Round(section.GetValue("pivot_right:default", 3.0));
-        _atrPeriod = (int) Math.Round(section.GetValue("atr_period:default", 14.0));
-        _mergeAtr = section.GetValue("merge_atr:default", 0.6);
-        _decayHalfLife = (int) Math.Round(section.GetValue("decay_halflife_bars:default", 600.0));
+        _pivotL = (int) Math.Round(section.GetValue("pivot_left:default", (double)DefaultPivotSize));
+        _pivotR = (int) Math.Round(section.GetValue("pivot_right:default", (double)DefaultPivotSize));
+        _atrPeriod = (int) Math.Round(section.GetValue("atr_period:default", (double)DefaultAtrPeriod));
+        _mergeAtr = section.GetValue("merge_atr:default", DefaultMergeAtr);
+        _decayHalfLife = (int) Math.Round(section.GetValue("decay_halflife_bars:default", (double)DefaultDecayHalfLife));
     }
 
     public void OnBar(string symbol, DateTime utc, decimal o, decimal h, decimal l, decimal c, long v)
@@ -57,7 +72,7 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
         {
             s.Atr.Update(h,l,c);
             s.Bars.Push(bar);
-            DetectPivotsAndUpdateZones(s, symbol);
+            DetectPivotsAndUpdateZones(s);
             UpdateZoneStatesAndPressure(s, c, utc);
         }
     }
@@ -103,7 +118,7 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
     private sealed class SymbolState
     {
         public readonly object Lock = new();
-        public readonly Ring<Bar> Bars = new(3000);
+        public readonly Ring<Bar> Bars = new(RingBufferSize);
         public readonly AtrWilder Atr;
         public readonly List<Zone> Zones = new();
         public decimal LastPrice;
@@ -111,28 +126,35 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
         public SymbolState(int atrPeriod){ Atr = new AtrWilder(atrPeriod); }
     }
 
-    private void DetectPivotsAndUpdateZones(SymbolState s, string symbol)
+    private void DetectPivotsAndUpdateZones(SymbolState s)
     {
-        var n = s.Bars.Count; if (n < _pivotL + _pivotR + 1) return;
+        var n = s.Bars.Count; 
+        if (n < _pivotL + _pivotR + 1) return;
+        
         // check pivot at the last completed bar index = n - 1 - _pivotR
-        var idx = n - 1 - _pivotR; var center = s.Bars[idx];
+        var idx = n - 1 - _pivotR; 
+        var center = s.Bars[idx];
         bool isHigh = true, isLow = true;
-        for(int i=idx - _pivotL; i<idx + _pivotR + 1; i++)
+        
+        for(int i = idx - _pivotL; i < idx + _pivotR + 1; i++)
         {
             var b = s.Bars[i];
             if (i == idx) continue;
-            if (b.H >= center.H) isHigh = isHigh && (i<idx ? b.H < center.H : b.H <= center.H);
-            if (b.L <= center.L) isLow = isLow && (i<idx ? b.L > center.L : b.L >= center.L);
+            if (b.H >= center.H) isHigh = isHigh && (i < idx ? b.H < center.H : b.H <= center.H);
+            if (b.L <= center.L) isLow = isLow && (i < idx ? b.L > center.L : b.L >= center.L);
         }
-        var atr = s.Atr.Value; if (atr <= 0) atr = Math.Max(1, center.H - center.L);
+        
+        var atr = s.Atr.Value; 
+        if (atr <= 0) atr = Math.Max(1, center.H - center.L);
         var thickness = atr * (decimal)_mergeAtr; // zone thickness baseline
+        
         if (isHigh)
-            AddOrMergeZone(s, new Zone(ZoneSide.Supply, center.H - thickness/2m, center.H + thickness/2m, 0.5, 1, center.Utc, ZoneState.Test));
+            AddOrMergeZone(s, new Zone(ZoneSide.Supply, center.H - thickness / (decimal)HalfDivisor, center.H + thickness / (decimal)HalfDivisor, InitialZonePressure, 1, center.Utc, ZoneState.Test));
         if (isLow)
-            AddOrMergeZone(s, new Zone(ZoneSide.Demand, center.L - thickness/2m, center.L + thickness/2m, 0.5, 1, center.Utc, ZoneState.Test));
+            AddOrMergeZone(s, new Zone(ZoneSide.Demand, center.L - thickness / (decimal)HalfDivisor, center.L + thickness / (decimal)HalfDivisor, InitialZonePressure, 1, center.Utc, ZoneState.Test));
     }
 
-    private void AddOrMergeZone(SymbolState s, Zone z)
+    private static void AddOrMergeZone(SymbolState s, Zone z)
     {
         // merge if overlap or within merge distance (ATR * _mergeAtr)
         var mergeDist = z.Thickness; // already proportional to ATR
@@ -156,51 +178,66 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
     private void UpdateZoneStatesAndPressure(SymbolState s, decimal close, DateTime utc)
     {
         if (s.Zones.Count == 0) return;
-        var atr = s.Atr.Value; if (atr <= 0) atr = 1;
-        var decay = Math.Exp(-Math.Log(2) / Math.Max(1, _decayHalfLife));
-        for(int i=0;i<s.Zones.Count;i++)
+        var atr = s.Atr.Value; 
+        if (atr <= 0) atr = 1;
+        var decay = Math.Exp(-Math.Log(HalfDivisor) / Math.Max(1, _decayHalfLife));
+        
+        for(int i = 0; i < s.Zones.Count; i++)
         {
             var z = s.Zones[i];
             double newPressure = Math.Clamp(z.Pressure * decay + 0.01 * z.TouchCount, 0, 1);
             var state = z.State;
+            
             if (z.Contains(close))
             {
                 // inside zone → it's being tested
                 state = ZoneState.Test;
                 z = z with { TouchCount = z.TouchCount + 1, LastTouchedUtc = utc };
             }
-            else if (close > z.PriceHigh + atr*0.2m)
+            else if (close > z.PriceHigh + atr * (decimal)BreakoutThresholdAtr)
             {
                 state = z.Side == ZoneSide.Supply ? ZoneState.Breakout : ZoneState.Retest; // supply broken from below → breakout
             }
-            else if (close < z.PriceLow - atr*0.2m)
+            else if (close < z.PriceLow - atr * (decimal)BreakoutThresholdAtr)
             {
                 state = z.Side == ZoneSide.Demand ? ZoneState.Breakout : ZoneState.Retest;
             }
             s.Zones[i] = z with { Pressure = newPressure, State = state };
         }
-        s.LastPrice = close; s.LastUtc = utc;
+        s.LastPrice = close; 
+        s.LastUtc = utc;
+        
         // prune invalidated / too wide zones if needed (keep list modest)
-        if (s.Zones.Count > 200)
+        if (s.Zones.Count > MaxZonesPerSymbol)
             s.Zones.RemoveAll(z => z.State == ZoneState.Invalidated || z.TouchCount <= 1);
     }
 
     private static double EstimateBreakoutScore(SymbolState s, decimal px, Zone opp, double atr)
     {
+        const int lookbackBars = 20;
+        const double defaultVdc = 1.0;
+        const double maxDistanceAtr = 3.0;
+        const double maxTestsForScore = 5.0;
+        const double logisticMultipliers = 1.5;
+        const double logisticBias = 0.5;
+        
         // lightweight heuristic → replace with small logistic if desired
         // features: momentum over last k bars, volatility contraction ratio, dist/ATR, prior tests
-        int k = Math.Min(20, s.Bars.Count-1);
-        if (k <= 2) return 0.5;
+        int k = Math.Min(lookbackBars, s.Bars.Count-1);
+        if (k <= MinHistoryBars) return InitialZonePressure;
+        
         var last = s.Bars[s.Bars.Count-1];
         var prev = s.Bars[s.Bars.Count-1-k];
         double mom = (double)((last.C - prev.C) / (decimal)atr);
+        
         // vdc: recent ATR / long-range ATR approximation
-        double vdc = 1.0; // if you have long ATR, plug it; else assume 1
+        double vdc = defaultVdc; // if you have long ATR, plug it; else assume 1
         double dist = (double)((opp.Side == ZoneSide.Supply ? opp.PriceLow - px : px - opp.PriceHigh) / (decimal)atr);
-        dist = Math.Clamp(dist, 0, 3);
-        double tests = Math.Min(5, opp.TouchCount) / 5.0; // more tests → weaker zone
+        dist = Math.Clamp(dist, 0, maxDistanceAtr);
+        double tests = Math.Min(maxTestsForScore, opp.TouchCount) / maxTestsForScore; // more tests → weaker zone
+        
         // logistic-ish clamp
-        double score = 1/(1+Math.Exp(-(1.5*mom + 0.8*(1/vdc) + 0.5*tests - 1.0*dist - 0.5)));
+        double score = 1/(1+Math.Exp(-(logisticMultipliers*mom + 0.8*(1/vdc) + logisticBias*tests - 1.0*dist - logisticBias)));
         return Math.Clamp(score, 0.0, 1.0);
     }
 }

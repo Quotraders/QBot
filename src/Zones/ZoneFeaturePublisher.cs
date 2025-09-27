@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics.CodeAnalysis;
 using Zones;
 
 namespace Zones;
@@ -12,18 +13,22 @@ public interface IFeatureBus
 
 public sealed class ZoneFeaturePublisher : BackgroundService
 {
+    private const int DefaultBarTimeframeMinutes = 5;
+    
     private readonly IZoneFeatureSource _zones; 
     private readonly IFeatureBus? _bus; 
     private readonly ILogger<ZoneFeaturePublisher> _log; 
     private readonly TimeSpan _tf; 
     private readonly int _emitEvery;
     
-    public ZoneFeaturePublisher(IZoneFeatureSource zones, IFeatureBus? bus, ILogger<ZoneFeaturePublisher> log, IConfiguration cfg)
+    public ZoneFeaturePublisher(IZoneFeatureSource zones, IFeatureBus? bus, ILogger<ZoneFeaturePublisher> log, [NotNull] IConfiguration cfg)
     { 
+        ArgumentNullException.ThrowIfNull(cfg);
+        
         _zones = zones; 
         _bus = bus; 
         _log = log; 
-        _tf = TimeSpan.FromMinutes(cfg.GetValue("Zone:BarTimeframeMinutes", 5)); 
+        _tf = TimeSpan.FromMinutes(cfg.GetValue("Zone:BarTimeframeMinutes", DefaultBarTimeframeMinutes)); 
         _emitEvery = cfg.GetValue("Zone:EmitFeatureEveryBars", 1); 
     }
 
@@ -31,7 +36,7 @@ public sealed class ZoneFeaturePublisher : BackgroundService
     {
         if (_bus == null)
         {
-            _log.LogInformation("[ZONE-FEATURES] No feature bus configured, zone features not published");
+            LogNoBusConfigured(_log, null);
             return;
         }
 
@@ -54,13 +59,25 @@ public sealed class ZoneFeaturePublisher : BackgroundService
                     _bus.Publish(symbol, now, "zone.pressure", press);
                 }
             }
+            catch (OperationCanceledException)
+            {
+                // Expected when cancellation is requested
+                break;
+            }
             catch (Exception ex)
             {
-                _log.LogError(ex, "[ZONE-FEATURES] Error publishing zone features");
+                LogPublishError(_log, ex);
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken).ConfigureAwait(false);
             }
         }
     }
 
     private readonly string[] _tracked = new[] { "ES", "NQ" };
+    
+    // Logger message delegates for performance
+    private static readonly Action<ILogger, Exception?> LogNoBusConfigured = 
+        LoggerMessage.Define(LogLevel.Information, new EventId(1), "[ZONE-FEATURES] No feature bus configured, zone features not published");
+    
+    private static readonly Action<ILogger, Exception?> LogPublishError = 
+        LoggerMessage.Define(LogLevel.Error, new EventId(2), "[ZONE-FEATURES] Error publishing zone features");
 }
