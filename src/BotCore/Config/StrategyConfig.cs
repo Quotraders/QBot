@@ -13,7 +13,7 @@ public sealed class TradingProfileConfig
     [JsonPropertyName("global_filters")] public GlobalFilters GlobalFilters { get; set; } = new();
     [JsonPropertyName("concurrency")] public Concurrency Concurrency { get; set; } = new();
     [JsonPropertyName("hysteresis")] public Hysteresis Hysteresis { get; set; } = new();
-    [JsonPropertyName("attempt_caps")] public Dictionary<string, int> AttemptCaps { get; set; } = [];
+    [JsonPropertyName("attempt_caps")] public Dictionary<string, int> AttemptCaps { get; } = [];
     [JsonPropertyName("buffers")] public BufferConfig Buffers { get; set; } = new();
     [JsonPropertyName("strategies")] public IReadOnlyList<StrategyDef> Strategies { get; init; } = [];
 
@@ -103,7 +103,7 @@ public sealed class StrategyDef
     [JsonPropertyName("session_window_et")] public string? SessionWindowEt { get; set; }
     [JsonPropertyName("on_range_window_et")] public string? OnRangeWindowEt { get; set; }
     [JsonPropertyName("flat_by_et")] public string? FlatByEt { get; set; }
-    [JsonPropertyName("regimes")] public string[]? Regimes { get; set; }
-    [JsonPropertyName("levels")] public string[]? Levels { get; set; }
-    [JsonExtensionData] public Dictionary<string, JsonElement> Extra { get; set; } = [];
+    [JsonPropertyName("regimes")] public IReadOnlyList<string>? Regimes { get; set; }
+    [JsonPropertyName("levels")] public IReadOnlyList<string>? Levels { get; set; }
+    [JsonExtensionData] public Dictionary<string, JsonElement> Extra { get; } = [];
 }

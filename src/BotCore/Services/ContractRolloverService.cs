@@ -48,6 +48,8 @@ namespace BotCore.Services
         /// </summary>
         public Task<string> GetCurrentFrontMonthContractAsync(string baseSymbol)
         {
+            ArgumentException.ThrowIfNullOrEmpty(baseSymbol);
+
             try
             {
                 _logger.LogDebug("[CONTRACT-ROLLOVER] Getting front month contract for {BaseSymbol}", baseSymbol);
@@ -90,6 +92,8 @@ namespace BotCore.Services
         /// </summary>
         public async Task<ContractInfo> GetContractInfoAsync(string contractSymbol)
         {
+            ArgumentException.ThrowIfNullOrEmpty(contractSymbol);
+
             try
             {
                 var baseSymbol = ExtractBaseSymbol(contractSymbol);
@@ -160,6 +164,8 @@ namespace BotCore.Services
         /// </summary>
         public Task<string> GetNextContractAsync(string currentContract)
         {
+            ArgumentException.ThrowIfNullOrEmpty(currentContract);
+
             try
             {
                 var baseSymbol = ExtractBaseSymbol(currentContract);
@@ -214,6 +220,7 @@ namespace BotCore.Services
         /// </summary>
         public async Task<List<ContractInfo>> GetActiveContractsAsync(string baseSymbol)
         {
+            ArgumentException.ThrowIfNullOrEmpty(baseSymbol);
             try
             {
                 var activeContracts = new List<ContractInfo>();
@@ -260,6 +267,7 @@ namespace BotCore.Services
         /// </summary>
         public DateTime GetContractExpirationDate(string contractSymbol)
         {
+            ArgumentException.ThrowIfNullOrEmpty(contractSymbol);
             var baseSymbol = ExtractBaseSymbol(contractSymbol);
             var monthCode = ExtractMonthCode(contractSymbol);
             var year = ExtractYear(contractSymbol);

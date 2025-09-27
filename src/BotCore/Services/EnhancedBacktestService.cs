@@ -47,6 +47,8 @@ namespace BotCore.Services
         /// </summary>
         public async Task<BacktestResult> RunEnhancedBacktestAsync(BacktestRequest request, CancellationToken cancellationToken = default)
         {
+            ArgumentNullException.ThrowIfNull(request);
+
             _logger.LogInformation("[ENHANCED-BACKTEST] Starting enhanced backtest for {Strategy} from {StartDate} to {EndDate}",
                 request.StrategyName, request.StartDate, request.EndDate);
 
@@ -159,6 +161,8 @@ namespace BotCore.Services
         /// </summary>
         public decimal CalculateSlippage(string symbol, decimal price, int quantity, MarketConditions conditions)
         {
+            ArgumentNullException.ThrowIfNull(conditions);
+
             if (!_config.EnableMarketFriction)
                 return 0m;
 
@@ -190,6 +194,9 @@ namespace BotCore.Services
         /// </summary>
         public int CalculateExecutionLatency(OrderRequest order, MarketConditions conditions)
         {
+            ArgumentNullException.ThrowIfNull(order);
+            ArgumentNullException.ThrowIfNull(conditions);
+
             if (!_config.EnableMarketFriction)
                 return 0;
 

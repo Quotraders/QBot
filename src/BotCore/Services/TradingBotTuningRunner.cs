@@ -13,6 +13,7 @@ using BotCore.Risk;
 using BotCore.Strategy;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using TradingBot.BotCore.Services.Helpers;
 
 namespace TradingBot.BotCore.Services
 {
@@ -31,6 +32,66 @@ namespace TradingBot.BotCore.Services
         private const decimal MinimumPositionSizeMultiplier = 0.5m; // Minimum position size multiplier for risk management
         private const decimal MaximumPositionSizeMultiplier = 1.5m; // Maximum position size multiplier for risk management  
         private const decimal PositionSizeAdjustment = 0.2m; // Position size variance adjustment for parameter tuning
+        
+        // Percentage threshold constants for dynamic threshold generation
+        private const decimal MinimumPercentageThreshold = 0.05m; // Minimum percentage threshold for conservative trading
+        private const decimal MaximumPercentageThreshold = 0.40m; // Maximum percentage threshold to limit risk
+        private const decimal ThresholdAdjustmentIncrement = 0.05m; // Standard increment for threshold adjustments
+        private const decimal BaseConfidenceMultiplier = 0.1m; // Base multiplier for confidence-based threshold calculation
+        private const decimal BaseThresholdAdjustment = 0.15m; // Base adjustment for threshold calculations
+        
+        // Duration and multiplier constants for position management
+        private const int MinimumSqueezeDuration = 3; // Minimum squeeze duration for conservative trading
+        private const int MaximumSqueezeDuration = 10; // Maximum squeeze duration to prevent excessive holding
+        private const int SqueezeDurationMultiplier = 2; // Multiplier for calculating squeeze durations based on position size
+        private const int SqueezeDurationVarianceDown = 1; // Downward variance for squeeze duration arrays
+        private const int SqueezeDurationVarianceUp = 2; // Upward variance for squeeze duration arrays
+        
+        // Breakout multiplier constants for selective entry strategies
+        private const decimal BaseBreakoutMultiplier = 1.2m; // Base multiplier for breakout calculations
+        private const decimal MinimumBreakoutMultiplier = 1.0m; // Minimum breakout multiplier for conservative entries
+        private const decimal MaximumBreakoutMultiplier = 2.0m; // Maximum breakout multiplier to limit risk
+        private const decimal BreakoutConfidenceMultiplier = 0.3m; // Confidence-based adjustment for breakout calculations
+        private const decimal BreakoutAdjustmentIncrement = 0.2m; // Standard increment for breakout multiplier adjustments
+        
+        // Lookback and volatility constants for market analysis
+        private const int MinimumMomentumLookback = 5; // Minimum lookback period for momentum analysis
+        private const int MinimumTrendLength = 10; // Minimum trend length for trend-following strategies
+        private const decimal DefaultMarketVolatility = 0.02m; // Default volatility when insufficient data available
+        private const int MinimumBarsForVolatility = 2; // Minimum bars required for volatility calculation
+        
+        // LoggerMessage delegates for CA1848 compliance - high-performance logging
+        private static readonly Action<ILogger, string, DateTime, DateTime, Exception?> LogS2BacktestStart =
+            LoggerMessage.Define<string, DateTime, DateTime>(LogLevel.Information, new EventId(1001, "S2BacktestStart"),
+                "[TuningRunner:S2] Starting S2 strategy backtesting for {Symbol} from {StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd}");
+                
+        private static readonly Action<ILogger, string, DateTime, DateTime, Exception?> LogS3BacktestStart =
+            LoggerMessage.Define<string, DateTime, DateTime>(LogLevel.Information, new EventId(1002, "S3BacktestStart"),
+                "[TuningRunner:S3] Starting S3 strategy backtesting for {Symbol} from {StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd}");
+                
+        private static readonly Action<ILogger, int, Exception?> LogInsufficientData =
+            LoggerMessage.Define<int>(LogLevel.Warning, new EventId(1003, "InsufficientData"),
+                "[TuningRunner] Insufficient market data: {BarCount} bars");
+                
+        private static readonly Action<ILogger, string, Exception?> LogBacktestComplete =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(1004, "BacktestComplete"),
+                "[TuningRunner] Backtest completed for {Strategy}");
+                
+        private static readonly Action<ILogger, string, Exception> LogBacktestError =
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(1005, "BacktestError"),
+                "[TuningRunner] Error during backtest for {Strategy}");
+        
+        private static readonly Action<ILogger, string, int, decimal, decimal, Exception?> LogBacktestDebug =
+            LoggerMessage.Define<string, int, decimal, decimal>(LogLevel.Debug, new EventId(1006, "BacktestDebug"),
+                "[TuningRunner] Strategy {Strategy} backtest: Trades={TradeCount}, WinRate={WinRate:P1}, NetPnL=${NetPnL:F2}");
+                
+        private static readonly Action<ILogger, int, string, Exception?> LogBacktestTrialsComplete =
+            LoggerMessage.Define<int, string>(LogLevel.Information, new EventId(1007, "BacktestTrialsComplete"),
+                "[TuningRunner] Completed {TrialCount} backtesting trials for {Symbol}");
+                
+        private static readonly Action<ILogger, int, string, Exception?> LogParameterConfigGenerated =
+            LoggerMessage.Define<int, string>(LogLevel.Information, new EventId(1008, "ParameterConfigGenerated"),
+                "[TuningRunner] Generated {Count} {Strategy} parameter configurations from configuration service");
 
         /// <summary>
         /// Parameter configuration record - immutable and configuration-driven
@@ -108,8 +169,7 @@ namespace TradingBot.BotCore.Services
             ILogger logger, 
             CancellationToken cancellationToken)
         {
-            logger.LogInformation("[TuningRunner:S2] Starting S2 strategy backtesting for {Symbol} from {Start:yyyy-MM-dd} to {End:yyyy-MM-dd}", 
-                symbolRoot, startDate, endDate);
+            LogS2BacktestStart(logger, symbolRoot, startDate, endDate, null);
 
             try
             {
@@ -119,7 +179,7 @@ namespace TradingBot.BotCore.Services
                 
                 if (marketBars.Count < MinimumRequiredBars)
                 {
-                    logger.LogWarning("[TuningRunner:S2] Insufficient market data: {BarCount} bars", marketBars.Count);
+                    LogInsufficientData(logger, marketBars.Count, null);
                     return;
                 }
 
@@ -139,12 +199,11 @@ namespace TradingBot.BotCore.Services
                 await SaveBacktestResultsAsync("S2", symbolRoot, backtestResults, logger, cancellationToken)
                     .ConfigureAwait(false);
 
-                logger.LogInformation("[TuningRunner:S2] Completed {TrialCount} backtesting trials for {Symbol}", 
-                    backtestResults.Count, symbolRoot);
+                LogBacktestTrialsComplete(logger, backtestResults.Count, symbolRoot, null);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "[TuningRunner:S2] Error during S2 strategy backtesting for {Symbol}", symbolRoot);
+                LogBacktestError(logger, symbolRoot, ex);
                 throw;
             }
         }
@@ -162,8 +221,7 @@ namespace TradingBot.BotCore.Services
             ILogger logger, 
             CancellationToken cancellationToken)
         {
-            logger.LogInformation("[TuningRunner:S3] Starting S3 strategy backtesting for {Symbol} from {Start:yyyy-MM-dd} to {End:yyyy-MM-dd}", 
-                symbolRoot, startDate, endDate);
+            LogS3BacktestStart(logger, symbolRoot, startDate, endDate, null);
 
             try
             {
@@ -172,7 +230,7 @@ namespace TradingBot.BotCore.Services
                 
                 if (marketBars.Count < MinimumRequiredBars)
                 {
-                    logger.LogWarning("[TuningRunner:S3] Insufficient market data: {BarCount} bars", marketBars.Count);
+                    LogInsufficientData(logger, marketBars.Count, null);
                     return;
                 }
 
@@ -189,12 +247,11 @@ namespace TradingBot.BotCore.Services
                 await SaveBacktestResultsAsync("S3", symbolRoot, backtestResults, logger, cancellationToken)
                     .ConfigureAwait(false);
 
-                logger.LogInformation("[TuningRunner:S3] Completed {TrialCount} backtesting trials for {Symbol}", 
-                    backtestResults.Count, symbolRoot);
+                LogBacktestTrialsComplete(logger, backtestResults.Count, symbolRoot, null);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "[TuningRunner:S3] Error during S3 strategy backtesting for {Symbol}", symbolRoot);
+                LogBacktestError(logger, symbolRoot, ex);
                 throw;
             }
         }
@@ -423,12 +480,12 @@ namespace TradingBot.BotCore.Services
         private static decimal[] GenerateWidthRankThresholds(double confidenceThreshold)
         {
             // More conservative thresholds for higher confidence
-            var baseThreshold = (decimal)(0.15 + confidenceThreshold * 0.1);
+            var baseThreshold = BaseThresholdAdjustment + (decimal)confidenceThreshold * BaseConfidenceMultiplier;
             return new[]
             {
-                Math.Max(0.05m, baseThreshold - 0.05m),
+                Math.Max(MinimumPercentageThreshold, baseThreshold - ThresholdAdjustmentIncrement),
                 baseThreshold,
-                Math.Min(0.40m, baseThreshold + 0.05m)
+                Math.Min(MaximumPercentageThreshold, baseThreshold + ThresholdAdjustmentIncrement)
             };
         }
 
@@ -438,8 +495,8 @@ namespace TradingBot.BotCore.Services
         private static int[] GenerateSqueezeDurations(double positionMultiplier)
         {
             // Longer squeeze durations for larger position sizes (more conservative)
-            var baseDuration = (int)Math.Max(3, Math.Min(10, positionMultiplier * 2));
-            return new[] { baseDuration - 1, baseDuration, baseDuration + 2 };
+            var baseDuration = (int)Math.Max(MinimumSqueezeDuration, Math.Min(MaximumSqueezeDuration, positionMultiplier * SqueezeDurationMultiplier));
+            return new[] { baseDuration - SqueezeDurationVarianceDown, baseDuration, baseDuration + SqueezeDurationVarianceUp };
         }
 
         /// <summary>
@@ -448,12 +505,12 @@ namespace TradingBot.BotCore.Services
         private static decimal[] GenerateBreakoutMultipliers(double confidenceThreshold)
         {
             // Higher multipliers for higher confidence (more selective entries)
-            var baseMultiplier = (decimal)(1.2 + confidenceThreshold * 0.3);
+            var baseMultiplier = BaseBreakoutMultiplier + (decimal)confidenceThreshold * BreakoutConfidenceMultiplier;
             return new[]
             {
-                Math.Max(1.0m, baseMultiplier - 0.2m),
+                Math.Max(MinimumBreakoutMultiplier, baseMultiplier - BreakoutAdjustmentIncrement),
                 baseMultiplier,
-                Math.Min(2.0m, baseMultiplier + 0.2m)
+                Math.Min(MaximumBreakoutMultiplier, baseMultiplier + BreakoutAdjustmentIncrement)
             };
         }
 
@@ -511,7 +568,7 @@ namespace TradingBot.BotCore.Services
                 {
                     configs.Add(new StrategyTrialConfig(new List<ParameterConfig>
                     {
-                        new("momentum_lookback", IntValue: Math.Max(5, lookback)),
+                        new("momentum_lookback", IntValue: Math.Max(MinimumMomentumLookback, lookback)),
                         new("momentum_threshold", DecimalValue: threshold),
                         new("position_multiplier", DecimalValue: (decimal)positionMultiplier),
                         new("confidence_threshold", DecimalValue: (decimal)confidenceThreshold)
@@ -539,7 +596,7 @@ namespace TradingBot.BotCore.Services
                 {
                     configs.Add(new StrategyTrialConfig(new List<ParameterConfig>
                     {
-                        new("trend_length", IntValue: Math.Max(10, trendLength)),
+                        new("trend_length", IntValue: Math.Max(MinimumTrendLength, trendLength)),
                         new("trend_strength", DecimalValue: trendStrength),
                         new("position_multiplier", DecimalValue: (decimal)positionMultiplier),
                         new("confidence_threshold", DecimalValue: (decimal)confidenceThreshold)
@@ -631,7 +688,7 @@ namespace TradingBot.BotCore.Services
         /// </summary>
         private static decimal CalculateMarketVolatility(List<BarData> marketBars)
         {
-            if (marketBars.Count < 2) return 0.02m; // Default volatility
+            if (marketBars.Count < MinimumBarsForVolatility) return DefaultMarketVolatility; // Default volatility
             
             var returns = new List<decimal>();
             for (int i = 1; i < marketBars.Count; i++)
@@ -643,7 +700,7 @@ namespace TradingBot.BotCore.Services
                 }
             }
             
-            if (returns.Count == 0) return 0.02m;
+            if (returns.Count == 0) return DefaultMarketVolatility;
             
             return returns.Average();
         }
@@ -707,7 +764,7 @@ namespace TradingBot.BotCore.Services
         /// <summary>
         /// History bars response model
         /// </summary>
-        private class HistoryBarsResponse
+        private sealed class HistoryBarsResponse
         {
             public List<BarData> Bars { get; set; } = new();
         }
@@ -715,7 +772,7 @@ namespace TradingBot.BotCore.Services
         /// <summary>
         /// Bar data model for backtesting
         /// </summary>
-        private class BarData
+        private sealed class BarData
         {
             public DateTime Timestamp { get; set; }
             public decimal Open { get; set; }

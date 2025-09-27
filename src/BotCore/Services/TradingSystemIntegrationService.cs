@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Security;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -1572,9 +1573,15 @@ namespace TopstepX.Bot.Core.Services
                 // Log strategy for contract selection
                 _logger.LogInformation("🎯 Trading Strategy: Bot will dynamically select between ES and NQ based on market conditions, liquidity, and ML/RL signals");
             }
-            catch (Exception ex)
+            catch (OutOfMemoryException ex)
             {
-                _logger.LogError(ex, "❌ Failed to initialize contracts, using minimal ES/NQ selection");
+                _logger.LogError(ex, "❌ Out of memory initializing contracts, using minimal ES/NQ selection");
+                // Even in error cases, provide standard market contracts for stability
+                _chosenContracts = new[] { "ES", "NQ" };
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "❌ Invalid operation initializing contracts, using minimal ES/NQ selection");
                 // Even in error cases, provide standard market contracts for stability
                 _chosenContracts = new[] { "ES", "NQ" };
             }
@@ -1602,8 +1609,14 @@ namespace TopstepX.Bot.Core.Services
                 // This ensures smaller accounts or evaluation accounts can trade micro contracts
                 return true; // Conservative approach - always include micro futures
             }
-            catch
+            catch (SecurityException)
             {
+                // Cannot access environment variables, assume evaluation account for safety
+                return true; // Default to including micro futures for safety
+            }
+            catch (ArgumentNullException)
+            {
+                // Null argument in environment access, assume evaluation account for safety
                 return true; // Default to including micro futures for safety
             }
         }
@@ -1651,9 +1664,19 @@ namespace TopstepX.Bot.Core.Services
 
                 return optimalContract;
             }
-            catch (Exception ex)
+            catch (DivideByZeroException ex)
             {
-                _logger.LogWarning(ex, "Error determining optimal contract, defaulting to ES");
+                _logger.LogWarning(ex, "Division by zero error calculating spreads, defaulting to ES");
+                return "ES";
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Invalid operation determining optimal contract, defaulting to ES");
+                return "ES";
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Argument error in contract selection, defaulting to ES");
                 return "ES";
             }
         }
@@ -1673,9 +1696,24 @@ namespace TopstepX.Bot.Core.Services
                 var healthScore = await _topstepXAdapter.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
                 _logger.LogInformation("📊 TopstepX adapter health: {HealthScore}%", healthScore);
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "❌ Exception during TopstepX adapter setup");
+                _logger.LogError(ex, "❌ HTTP error during TopstepX adapter setup");
+                throw;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ Task cancelled during TopstepX adapter setup");
+                throw;
+            }
+            catch (OperationCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ Operation cancelled during TopstepX adapter setup");
+                throw;
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "❌ Invalid operation during TopstepX adapter setup");
                 throw;
             }
         }
@@ -1790,9 +1828,19 @@ namespace TopstepX.Bot.Core.Services
 
                 _logger.LogInformation("[PROD-READY] Production readiness initialization complete - State: {State}", _currentReadinessState);
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "[PROD-READY] Failed to initialize production readiness components");
+                _logger.LogError(ex, "[PROD-READY] HTTP error during production readiness initialization");
+                _currentReadinessState = TradingReadinessState.Emergency;
+            }
+            catch (OperationCanceledException ex)
+            {
+                _logger.LogError(ex, "[PROD-READY] Operation cancelled during production readiness initialization");
+                _currentReadinessState = TradingReadinessState.Emergency;
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[PROD-READY] Invalid operation during production readiness initialization");
                 _currentReadinessState = TradingReadinessState.Emergency;
             }
         }
