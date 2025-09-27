@@ -274,17 +274,13 @@ public class AutonomousPerformanceTracker
             };
             
             // Add insights to the collection property
-            foreach (var insight in tradingInsights)
-            {
-                report.TradingInsights.Add(insight);
-            }
+            // Add trading insights
+            report.ReplaceTradingInsights(tradingInsights);
             
             // Add recommendations to the collection property
             var recommendations = GenerateOptimizationRecommendations();
-            foreach (var recommendation in recommendations)
-            {
-                report.OptimizationRecommendations.Add(recommendation);
-            }
+            // Add optimization recommendations
+            report.ReplaceOptimizationRecommendations(recommendations);
             
             return report;
         }
@@ -293,7 +289,7 @@ public class AutonomousPerformanceTracker
     /// <summary>
     /// Get learning insights for strategy optimization
     /// </summary>
-    public List<LearningInsight> GetLearningInsights(string strategy = "")
+    public IReadOnlyList<LearningInsight> GetLearningInsights(string strategy = "")
     {
         lock (_trackingLock)
         {
@@ -319,7 +315,7 @@ public class AutonomousPerformanceTracker
     /// <summary>
     /// Get performance-based recommendations for parameter optimization
     /// </summary>
-    public List<OptimizationRecommendation> GetOptimizationRecommendations()
+    public IReadOnlyList<OptimizationRecommendation> GetOptimizationRecommendations()
     {
         lock (_trackingLock)
         {
@@ -791,8 +787,23 @@ public class DailyPerformanceReport
     public decimal LargestLoss { get; set; }
     public string BestStrategy { get; set; } = "";
     public string WorstStrategy { get; set; } = "";
-    public List<string> TradingInsights { get; } = new();
-    public List<OptimizationRecommendation> OptimizationRecommendations { get; } = new();
+    public IReadOnlyList<string> TradingInsights => _tradingInsights;
+    public IReadOnlyList<OptimizationRecommendation> OptimizationRecommendations => _optimizationRecommendations;
+    
+    private readonly List<string> _tradingInsights = new();
+    private readonly List<OptimizationRecommendation> _optimizationRecommendations = new();
+    
+    public void ReplaceTradingInsights(IEnumerable<string> items)
+    {
+        _tradingInsights.Clear();
+        if (items != null) _tradingInsights.AddRange(items);
+    }
+    
+    public void ReplaceOptimizationRecommendations(IEnumerable<OptimizationRecommendation> items)
+    {
+        _optimizationRecommendations.Clear();
+        if (items != null) _optimizationRecommendations.AddRange(items);
+    }
 }
 
 /// <summary>

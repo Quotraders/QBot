@@ -136,7 +136,7 @@ public class ProductionGuardrailOrchestrator : IHostedService
         if (ProductionKillSwitchService.IsKillSwitchActive())
         {
             result.IsValid = false;
-            result.ValidationErrors.Add("Kill switch is active - all execution disabled");
+            result.AddValidationError("Kill switch is active - all execution disabled");
             _logger.LogCritical("🔴 [GUARDRAILS] Trade rejected: Kill switch active");
             return result;
         }
@@ -155,7 +155,7 @@ public class ProductionGuardrailOrchestrator : IHostedService
         if (!priceValidation.IsValid)
         {
             result.IsValid = false;
-            result.ValidationErrors.Add($"Price validation failed: {priceValidation.ValidationError}");
+            result.AddValidationError($"Price validation failed: {priceValidation.ValidationError}");
             _logger.LogCritical("🔴 [GUARDRAILS] Trade rejected: {Error}", priceValidation.ValidationError);
             return result;
         }
@@ -181,7 +181,23 @@ public class TradeValidationResult
     public string CustomTag { get; set; } = string.Empty;
     public bool IsValid { get; set; }
     public bool IsDryRun { get; set; }
-    public List<string> ValidationErrors { get; } = new();
+    public IReadOnlyList<string> ValidationErrors => _validationErrors;
+    
+    private readonly List<string> _validationErrors = new();
+    
+    public void ReplaceValidationErrors(IEnumerable<string> items)
+    {
+        _validationErrors.Clear();
+        if (items != null) _validationErrors.AddRange(items);
+    }
+    
+    public void AddValidationError(string error)
+    {
+        if (!string.IsNullOrEmpty(error))
+        {
+            _validationErrors.Add(error);
+        }
+    }
     
     // Validated and rounded prices
     public decimal RoundedEntry { get; set; }
