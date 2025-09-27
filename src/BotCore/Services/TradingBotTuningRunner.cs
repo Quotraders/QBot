@@ -764,7 +764,7 @@ namespace TradingBot.BotCore.Services
         /// <summary>
         /// History bars response model
         /// </summary>
-        private class HistoryBarsResponse
+        private sealed class HistoryBarsResponse
         {
             public List<BarData> Bars { get; set; } = new();
         }
@@ -772,7 +772,7 @@ namespace TradingBot.BotCore.Services
         /// <summary>
         /// Bar data model for backtesting
         /// </summary>
-        private class BarData
+        private sealed class BarData
         {
             public DateTime Timestamp { get; set; }
             public decimal Open { get; set; }
