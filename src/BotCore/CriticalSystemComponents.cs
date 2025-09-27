@@ -1627,9 +1627,33 @@ namespace TradingBot.Critical
                 
                 await Task.Delay(ProcessingDelayMs).ConfigureAwait(false); // Brief processing delay
             }
-            catch (Exception ex)
+            catch (FileNotFoundException ex)
             {
-                _logger?.LogError(ex, "[Correlation] Failed to load historical correlations");
+                _logger?.LogWarning(ex, "[Correlation] Correlation file not found, using defaults");
+                
+                // Fallback to defaults
+                _correlationMatrix["ES"] = new Dictionary<string, double> { ["NQ"] = ES_NQ_CORRELATION };
+                _correlationMatrix["NQ"] = new Dictionary<string, double> { ["ES"] = ES_NQ_CORRELATION };
+            }
+            catch (JsonException ex)
+            {
+                _logger?.LogError(ex, "[Correlation] Failed to deserialize correlation data, using defaults");
+                
+                // Fallback to defaults
+                _correlationMatrix["ES"] = new Dictionary<string, double> { ["NQ"] = ES_NQ_CORRELATION };
+                _correlationMatrix["NQ"] = new Dictionary<string, double> { ["ES"] = ES_NQ_CORRELATION };
+            }
+            catch (IOException ex)
+            {
+                _logger?.LogError(ex, "[Correlation] I/O error reading correlation file, using defaults");
+                
+                // Fallback to defaults
+                _correlationMatrix["ES"] = new Dictionary<string, double> { ["NQ"] = ES_NQ_CORRELATION };
+                _correlationMatrix["NQ"] = new Dictionary<string, double> { ["ES"] = ES_NQ_CORRELATION };
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger?.LogError(ex, "[Correlation] Access denied reading correlation file, using defaults");
                 
                 // Fallback to defaults
                 _correlationMatrix["ES"] = new Dictionary<string, double> { ["NQ"] = ES_NQ_CORRELATION };
