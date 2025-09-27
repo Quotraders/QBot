@@ -541,6 +541,20 @@ Please check the configuration and ensure all required services are registered.
         Console.WriteLine("💰 [AUTONOMOUS-ENGINE] Features: Auto strategy switching, dynamic position sizing, TopStep compliance, continuous learning");
         
         // ================================================================================
+        // ZONE AWARENESS SERVICES - PRODUCTION-READY SUPPLY/DEMAND INTEGRATION
+        // ================================================================================
+        
+        // Register ZoneService with production implementation
+        services.AddSingleton<Zones.IZoneService, Zones.ZoneServiceProduction>();
+        services.AddSingleton<Zones.IZoneFeatureSource>(provider => 
+            (Zones.IZoneFeatureSource)provider.GetRequiredService<Zones.IZoneService>());
+        
+        // Register ZoneFeaturePublisher if feature bus is available
+        services.AddHostedService<Zones.ZoneFeaturePublisher>();
+        
+        Console.WriteLine("🎯 [ZONE-AWARENESS] Zone awareness services registered - Supply/demand integration active!");
+        
+        // ================================================================================
 
         // Register trading activity logger for comprehensive trading event logging
         services.AddSingleton<TradingActivityLogger>();
