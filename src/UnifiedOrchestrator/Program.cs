@@ -518,6 +518,12 @@ Please check the configuration and ensure all required services are registered.
         // Register Safe-Hold Decision Policy with neutral band logic
         services.AddSingleton<SafeHoldDecisionPolicy>();
         
+        // Register bracket configuration service
+        services.AddSingleton<IBracketConfig, BotCore.Services.BracketConfigService>();
+        
+        // Register zone-aware bracket manager
+        services.AddSingleton<BotCore.Services.IZoneAwareBracketManager, BotCore.Services.ZoneAwareBracketManager>();
+        
         // Register Per-Symbol Session Lattices with neutral band integration
         services.AddSingleton<TradingBot.BotCore.Services.TradingBotSymbolSessionManager>(provider =>
         {
@@ -544,13 +550,19 @@ Please check the configuration and ensure all required services are registered.
         // ZONE AWARENESS SERVICES - PRODUCTION-READY SUPPLY/DEMAND INTEGRATION
         // ================================================================================
         
+        // Register ProductionFeatureBus for zone telemetry
+        services.AddSingleton<Zones.IFeatureBus, BotCore.Services.ProductionFeatureBus>();
+        
         // Register ZoneService with production implementation
         services.AddSingleton<Zones.IZoneService, Zones.ZoneServiceProduction>();
         services.AddSingleton<Zones.IZoneFeatureSource>(provider => 
             (Zones.IZoneFeatureSource)provider.GetRequiredService<Zones.IZoneService>());
         
-        // Register ZoneFeaturePublisher if feature bus is available
+        // Register ZoneFeaturePublisher for telemetry emission
         services.AddHostedService<Zones.ZoneFeaturePublisher>();
+        
+        // Register market data to zone service bridge
+        services.AddHostedService<BotCore.Services.ZoneMarketDataBridge>();
         
         Console.WriteLine("🎯 [ZONE-AWARENESS] Zone awareness services registered - Supply/demand integration active!");
         
