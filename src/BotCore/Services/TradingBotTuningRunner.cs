@@ -59,6 +59,39 @@ namespace TradingBot.BotCore.Services
         private const int MinimumTrendLength = 10; // Minimum trend length for trend-following strategies
         private const decimal DefaultMarketVolatility = 0.02m; // Default volatility when insufficient data available
         private const int MinimumBarsForVolatility = 2; // Minimum bars required for volatility calculation
+        
+        // LoggerMessage delegates for CA1848 compliance - high-performance logging
+        private static readonly Action<ILogger, string, DateTime, DateTime, Exception?> LogS2BacktestStart =
+            LoggerMessage.Define<string, DateTime, DateTime>(LogLevel.Information, new EventId(1001, "S2BacktestStart"),
+                "[TuningRunner:S2] Starting S2 strategy backtesting for {Symbol} from {StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd}");
+                
+        private static readonly Action<ILogger, string, DateTime, DateTime, Exception?> LogS3BacktestStart =
+            LoggerMessage.Define<string, DateTime, DateTime>(LogLevel.Information, new EventId(1002, "S3BacktestStart"),
+                "[TuningRunner:S3] Starting S3 strategy backtesting for {Symbol} from {StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd}");
+                
+        private static readonly Action<ILogger, int, Exception?> LogInsufficientData =
+            LoggerMessage.Define<int>(LogLevel.Warning, new EventId(1003, "InsufficientData"),
+                "[TuningRunner] Insufficient market data: {BarCount} bars");
+                
+        private static readonly Action<ILogger, string, Exception?> LogBacktestComplete =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(1004, "BacktestComplete"),
+                "[TuningRunner] Backtest completed for {Strategy}");
+                
+        private static readonly Action<ILogger, string, Exception> LogBacktestError =
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(1005, "BacktestError"),
+                "[TuningRunner] Error during backtest for {Strategy}");
+        
+        private static readonly Action<ILogger, string, int, decimal, decimal, Exception?> LogBacktestDebug =
+            LoggerMessage.Define<string, int, decimal, decimal>(LogLevel.Debug, new EventId(1006, "BacktestDebug"),
+                "[TuningRunner] Strategy {Strategy} backtest: Trades={TradeCount}, WinRate={WinRate:P1}, NetPnL=${NetPnL:F2}");
+                
+        private static readonly Action<ILogger, int, string, Exception?> LogBacktestTrialsComplete =
+            LoggerMessage.Define<int, string>(LogLevel.Information, new EventId(1007, "BacktestTrialsComplete"),
+                "[TuningRunner] Completed {TrialCount} backtesting trials for {Symbol}");
+                
+        private static readonly Action<ILogger, int, string, Exception?> LogParameterConfigGenerated =
+            LoggerMessage.Define<int, string>(LogLevel.Information, new EventId(1008, "ParameterConfigGenerated"),
+                "[TuningRunner] Generated {Count} {Strategy} parameter configurations from configuration service");
 
         /// <summary>
         /// Parameter configuration record - immutable and configuration-driven
@@ -136,8 +169,7 @@ namespace TradingBot.BotCore.Services
             ILogger logger, 
             CancellationToken cancellationToken)
         {
-            logger.LogInformation("[TuningRunner:S2] Starting S2 strategy backtesting for {Symbol} from {Start:yyyy-MM-dd} to {End:yyyy-MM-dd}", 
-                symbolRoot, startDate, endDate);
+            LogS2BacktestStart(logger, symbolRoot, startDate, endDate, null);
 
             try
             {
@@ -147,7 +179,7 @@ namespace TradingBot.BotCore.Services
                 
                 if (marketBars.Count < MinimumRequiredBars)
                 {
-                    logger.LogWarning("[TuningRunner:S2] Insufficient market data: {BarCount} bars", marketBars.Count);
+                    LogInsufficientData(logger, marketBars.Count, null);
                     return;
                 }
 
@@ -167,12 +199,11 @@ namespace TradingBot.BotCore.Services
                 await SaveBacktestResultsAsync("S2", symbolRoot, backtestResults, logger, cancellationToken)
                     .ConfigureAwait(false);
 
-                logger.LogInformation("[TuningRunner:S2] Completed {TrialCount} backtesting trials for {Symbol}", 
-                    backtestResults.Count, symbolRoot);
+                LogBacktestTrialsComplete(logger, backtestResults.Count, symbolRoot, null);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "[TuningRunner:S2] Error during S2 strategy backtesting for {Symbol}", symbolRoot);
+                LogBacktestError(logger, symbolRoot, ex);
                 throw;
             }
         }
@@ -190,8 +221,7 @@ namespace TradingBot.BotCore.Services
             ILogger logger, 
             CancellationToken cancellationToken)
         {
-            logger.LogInformation("[TuningRunner:S3] Starting S3 strategy backtesting for {Symbol} from {Start:yyyy-MM-dd} to {End:yyyy-MM-dd}", 
-                symbolRoot, startDate, endDate);
+            LogS3BacktestStart(logger, symbolRoot, startDate, endDate, null);
 
             try
             {
@@ -200,7 +230,7 @@ namespace TradingBot.BotCore.Services
                 
                 if (marketBars.Count < MinimumRequiredBars)
                 {
-                    logger.LogWarning("[TuningRunner:S3] Insufficient market data: {BarCount} bars", marketBars.Count);
+                    LogInsufficientData(logger, marketBars.Count, null);
                     return;
                 }
 
@@ -217,12 +247,11 @@ namespace TradingBot.BotCore.Services
                 await SaveBacktestResultsAsync("S3", symbolRoot, backtestResults, logger, cancellationToken)
                     .ConfigureAwait(false);
 
-                logger.LogInformation("[TuningRunner:S3] Completed {TrialCount} backtesting trials for {Symbol}", 
-                    backtestResults.Count, symbolRoot);
+                LogBacktestTrialsComplete(logger, backtestResults.Count, symbolRoot, null);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "[TuningRunner:S3] Error during S3 strategy backtesting for {Symbol}", symbolRoot);
+                LogBacktestError(logger, symbolRoot, ex);
                 throw;
             }
         }
@@ -451,7 +480,7 @@ namespace TradingBot.BotCore.Services
         private static decimal[] GenerateWidthRankThresholds(double confidenceThreshold)
         {
             // More conservative thresholds for higher confidence
-            var baseThreshold = (decimal)(BaseThresholdAdjustment + confidenceThreshold * BaseConfidenceMultiplier);
+            var baseThreshold = BaseThresholdAdjustment + (decimal)confidenceThreshold * BaseConfidenceMultiplier;
             return new[]
             {
                 Math.Max(MinimumPercentageThreshold, baseThreshold - ThresholdAdjustmentIncrement),
@@ -476,7 +505,7 @@ namespace TradingBot.BotCore.Services
         private static decimal[] GenerateBreakoutMultipliers(double confidenceThreshold)
         {
             // Higher multipliers for higher confidence (more selective entries)
-            var baseMultiplier = (decimal)(BaseBreakoutMultiplier + confidenceThreshold * BreakoutConfidenceMultiplier);
+            var baseMultiplier = BaseBreakoutMultiplier + (decimal)confidenceThreshold * BreakoutConfidenceMultiplier;
             return new[]
             {
                 Math.Max(MinimumBreakoutMultiplier, baseMultiplier - BreakoutAdjustmentIncrement),
