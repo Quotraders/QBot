@@ -1435,7 +1435,7 @@ namespace TradingBot.Critical
             public DateTime LastUpdated { get; set; }
         }
         
-        internal class CorrelationAlert
+        internal sealed class CorrelationAlert
         {
             private readonly List<string> _affectedSymbols = new();
             

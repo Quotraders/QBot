@@ -931,15 +931,12 @@ public class MasterDecisionOrchestrator : BackgroundService
     }
     
     /// <summary>
-    /// Dispose method to clean up resources
+    /// Dispose method to clean up resources during service shutdown
     /// </summary>
-    protected override void Dispose(bool disposing)
+    public override Task StopAsync(CancellationToken cancellationToken)
     {
-        if (disposing)
-        {
-            _neuralUcbExtended?.Dispose();
-        }
-        base.Dispose(disposing);
+        _neuralUcbExtended?.Dispose();
+        return base.StopAsync(cancellationToken);
     }
     
     #endregion
