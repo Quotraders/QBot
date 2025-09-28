@@ -4,10 +4,13 @@ using BotCore.Brain;
 using BotCore.Services;
 using BotCore.Risk;
 using BotCore.Models;
+using BotCore.Fusion;
+using BotCore.Strategy;
 using TradingBot.Abstractions;
 using TradingBot.IntelligenceStack;
 using TradingBot.RLAgent;
 using System.Text.Json;
+using System.Linq;
 using static BotCore.Brain.UnifiedTradingBrain;
 
 // Explicit type alias to resolve Bar ambiguity  
@@ -49,7 +52,8 @@ public class UnifiedDecisionRouter
     private readonly ILogger<UnifiedDecisionRouter> _logger;
     private readonly IServiceProvider _serviceProvider;
     
-    // AI Brain components in priority order
+    // AI Brain components in priority order - Strategy Knowledge Graph & Decision Fusion is highest priority
+    private readonly DecisionFusionCoordinator? _decisionFusion;
     private readonly EnhancedTradingBrainIntegration _enhancedBrain;
     private readonly UnifiedTradingBrain _unifiedBrain;
     private readonly TradingBot.IntelligenceStack.IntelligenceOrchestrator _intelligenceOrchestrator;
@@ -75,11 +79,27 @@ public class UnifiedDecisionRouter
         _enhancedBrain = enhancedBrain;
         _intelligenceOrchestrator = intelligenceOrchestrator;
         
+        // Try to get Decision Fusion Coordinator (optional, may not be registered in all environments)
+        try
+        {
+            _decisionFusion = serviceProvider.GetService<DecisionFusionCoordinator>();
+            if (_decisionFusion != null)
+            {
+                _logger.LogInformation("🧠 [DECISION-FUSION] Strategy Knowledge Graph & Decision Fusion system available");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Decision Fusion Coordinator not available, continuing without it");
+            _decisionFusion = null;
+        }
+        
         // Initialize strategy configurations
         _strategyConfigs = InitializeStrategyConfigs();
         
         _logger.LogInformation("🎯 [DECISION-ROUTER] Unified Decision Router initialized");
-        _logger.LogInformation("📊 [DECISION-ROUTER] All services wired: Enhanced=True, Unified=True, Intelligence=True");
+        _logger.LogInformation("📊 [DECISION-ROUTER] Services wired: Fusion={FusionAvailable}, Enhanced=True, Unified=True, Intelligence=True", 
+            _decisionFusion != null);
     }
     
     /// <summary>
@@ -97,21 +117,38 @@ public class UnifiedDecisionRouter
         {
             _logger.LogDebug("🎯 [DECISION-ROUTER] Routing decision for {Symbol}", symbol);
             
-            // Step 1: Try Enhanced Brain Integration (Primary)
-            var decision = await TryEnhancedBrainAsync(symbol, marketContext, cancellationToken).ConfigureAwait(false);
-            if (decision != null && decision.Action != TradingAction.Hold)
+            // Step 0: Try Strategy Knowledge Graph & Decision Fusion (Highest Priority)
+            if (_decisionFusion != null)
             {
-                decision.DecisionId = decisionId;
-                decision.DecisionSource = "EnhancedBrain";
-                decision.ProcessingTimeMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
-                
-                await TrackDecisionAsync(decision, "enhanced_brain").ConfigureAwait(false);
-                _logger.LogInformation("🧠 [ENHANCED-BRAIN] Decision: {Action} {Symbol} confidence={Confidence:P1}",
-                    decision.Action, symbol, decision.Confidence);
-                return decision;
+                var decision = await TryDecisionFusionAsync(symbol, marketContext, cancellationToken).ConfigureAwait(false);
+                if (decision != null && decision.Action != TradingAction.Hold)
+                {
+                    decision.DecisionId = decisionId;
+                    decision.DecisionSource = "StrategyFusion";
+                    decision.ProcessingTimeMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                    
+                    await TrackDecisionAsync(decision, "strategy_fusion").ConfigureAwait(false);
+                    _logger.LogInformation("🧠 [STRATEGY-FUSION] Decision: {Action} {Symbol} strategy={Strategy} confidence={Confidence:P1}",
+                        decision.Action, symbol, decision.StrategyName ?? "Unknown", decision.Confidence);
+                    return decision;
+                }
             }
             
-            // Step 2: Try Unified Trading Brain (Secondary)
+            // Step 1: Try Enhanced Brain Integration (Secondary)
+            var decision2 = await TryEnhancedBrainAsync(symbol, marketContext, cancellationToken).ConfigureAwait(false);
+            if (decision2 != null && decision2.Action != TradingAction.Hold)
+            {
+                decision2.DecisionId = decisionId;
+                decision2.DecisionSource = "EnhancedBrain";
+                decision2.ProcessingTimeMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                
+                await TrackDecisionAsync(decision2, "enhanced_brain").ConfigureAwait(false);
+                _logger.LogInformation("🧠 [ENHANCED-BRAIN] Decision: {Action} {Symbol} confidence={Confidence:P1}",
+                    decision2.Action, symbol, decision2.Confidence);
+                return decision2;
+            }
+            
+            // Step 2: Try Unified Trading Brain (Tertiary)
             decision = await TryUnifiedBrainAsync(symbol, marketContext, cancellationToken).ConfigureAwait(false);
             if (decision != null && decision.Action != TradingAction.Hold)
             {
@@ -166,6 +203,57 @@ public class UnifiedDecisionRouter
     
     /// <summary>
     /// Try Enhanced Brain Integration - Multi-model ensemble with cloud learning
+    /// </summary>
+    /// <summary>
+    /// Try Strategy Knowledge Graph & Decision Fusion - Highest priority ML-enhanced decision making
+    /// </summary>
+    private async Task<UnifiedTradingDecision?> TryDecisionFusionAsync(
+        string symbol,
+        TradingBot.Abstractions.MarketContext marketContext,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Get fusion recommendation
+            var fusionRecommendation = _decisionFusion!.Decide(symbol);
+            
+            if (fusionRecommendation != null)
+            {
+                // Convert Strategy Recommendation to UnifiedTradingDecision
+                var tradingAction = fusionRecommendation.Intent == BotCore.Strategy.StrategyIntent.Long 
+                    ? TradingAction.Buy 
+                    : TradingAction.Sell;
+                
+                var decision = new UnifiedTradingDecision
+                {
+                    Symbol = symbol,
+                    Action = tradingAction,
+                    Confidence = fusionRecommendation.Confidence,
+                    StrategyName = fusionRecommendation.StrategyName,
+                    Timestamp = DateTime.UtcNow,
+                    Reason = $"Strategy: {fusionRecommendation.StrategyName}, Evidence: {fusionRecommendation.Evidence.Count} factors",
+                    EvidenceFactors = fusionRecommendation.Evidence.Select(e => e.Name).ToList(),
+                    TelemetryTags = fusionRecommendation.TelemetryTags.ToList()
+                };
+
+                _logger.LogDebug("🧠 [STRATEGY-FUSION] Fusion recommendation: {Strategy} {Intent} confidence={Confidence:F2}",
+                    fusionRecommendation.StrategyName, fusionRecommendation.Intent, fusionRecommendation.Confidence);
+                
+                return decision;
+            }
+            
+            _logger.LogTrace("🧠 [STRATEGY-FUSION] No fusion recommendation for {Symbol}", symbol);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "⚠️ [STRATEGY-FUSION] Failed to get fusion decision for {Symbol}", symbol);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Try Enhanced Brain Integration - Multi-model ensemble
     /// </summary>
     private async Task<UnifiedTradingDecision?> TryEnhancedBrainAsync(
         string symbol,

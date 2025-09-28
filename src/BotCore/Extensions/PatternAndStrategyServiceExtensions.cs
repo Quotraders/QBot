@@ -6,6 +6,9 @@ using BotCore.StrategyDsl;
 using BotCore.Strategy;
 using BotCore.Fusion;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace BotCore.Extensions;
 
@@ -107,29 +110,37 @@ public static class PatternAndStrategyServiceExtensions
     {
         if (configuration is null) throw new ArgumentNullException(nameof(configuration));
 
+        // Register required dependencies for production implementations
+        services.AddSingleton<FeatureBusAdapter>();
+        services.AddSingleton<IFeatureBusWithProbe>(provider => provider.GetRequiredService<FeatureBusAdapter>());
+        
+        // Register mock services for now (to be replaced with real implementations later)
+        services.AddSingleton<IRiskManager, MockRiskManager>();
+        services.AddSingleton<IMLRLMetricsService, MockMLRLMetricsService>();
+
         // Load Strategy DSL cards from YAML files
         var strategyFolder = configuration["StrategyCatalog:Folder"] ?? "config/strategies";
         var strategyCards = SimpleDslLoader.LoadAll(strategyFolder);
         services.AddSingleton(strategyCards);
 
-        // Register feature probe for real-time feature access
-        services.AddSingleton<IFeatureProbe, SimpleFeatureProbe>();
+        // Register production feature probe for real-time feature access
+        services.AddSingleton<IFeatureProbe, ProductionFeatureProbe>();
 
-        // Register mock regime service (replace with real implementation)
-        services.AddSingleton<IRegimeService, MockRegimeService>();
+        // Register production regime service with real regime detection
+        services.AddSingleton<IRegimeService, ProductionRegimeService>();
 
         // Register Strategy Knowledge Graph with new implementation
         services.AddSingleton<IStrategyKnowledgeGraph, StrategyKnowledgeGraphNew>();
 
-        // Register mock UCB and PPO services (replace with real implementations)
-        services.AddSingleton<IUcbStrategyChooser, MockUcbStrategyChooser>();
-        services.AddSingleton<IPpoSizer, MockPpoSizer>();
+        // Register production UCB and PPO services with real ML integration
+        services.AddSingleton<IUcbStrategyChooser, ProductionUcbStrategyChooser>();
+        services.AddSingleton<IPpoSizer, ProductionPpoSizer>();
 
-        // Register mock ML configuration service (replace with real implementation)
-        services.AddSingleton<IMLConfigurationService, MockMLConfigurationService>();
+        // Register production ML configuration service with real config loading
+        services.AddSingleton<IMLConfigurationService, ProductionMLConfigurationService>();
 
-        // Register mock metrics service (replace with real implementation)
-        services.AddSingleton<IMetrics, MockMetrics>();
+        // Register production metrics service with real telemetry
+        services.AddSingleton<IMetrics, ProductionMetrics>();
 
         // Register Decision Fusion Coordinator
         services.AddSingleton<DecisionFusionCoordinator>();
