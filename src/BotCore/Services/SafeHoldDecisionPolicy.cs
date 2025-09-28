@@ -18,14 +18,17 @@ public class SafeHoldDecisionPolicy
     private readonly ILogger<SafeHoldDecisionPolicy> _logger;
     private readonly IConfiguration _configuration;
     private readonly NeutralBandConfiguration _config;
-    private readonly IZoneService? _zoneService;
+    private readonly IZoneProvider? _zoneProvider;
+    private readonly IZoneTelemetryService? _zoneTelemetryService;
 
-    public SafeHoldDecisionPolicy(ILogger<SafeHoldDecisionPolicy> logger, IConfiguration configuration, IZoneService? zoneService = null)
+    public SafeHoldDecisionPolicy(ILogger<SafeHoldDecisionPolicy> logger, IConfiguration configuration, 
+        IZoneProvider? zoneProvider = null, IZoneTelemetryService? zoneTelemetryService = null)
     {
         _logger = logger;
         _configuration = configuration;
         _config = LoadNeutralBandConfiguration();
-        _zoneService = zoneService;
+        _zoneProvider = zoneProvider;
+        _zoneTelemetryService = zoneTelemetryService;
     }
 
     /// <summary>
@@ -106,21 +109,50 @@ public class SafeHoldDecisionPolicy
     /// </summary>
     public (bool Held, string Reason, TradingDecision MaybeAmended) ZoneGate(TradingDecision decision, string symbol)
     {
-        if (_zoneService == null)
+        if (_zoneProvider == null)
         {
-            // Zone service not available, allow trade to proceed
+            // Zone provider not available, allow trade to proceed
             return (false, string.Empty, decision);
         }
 
         try
         {
-            var snap = _zoneService.GetSnapshot(symbol);
+            // Get zone snapshot from hybrid provider
+            var zoneResultTask = _zoneProvider.GetZoneSnapshotAsync(symbol);
+            zoneResultTask.Wait(TimeSpan.FromSeconds(2)); // Timeout to prevent blocking
+            var zoneResult = zoneResultTask.Result;
+
+            // Emit telemetry for zone source and freshness
+            _zoneTelemetryService?.EmitZoneMetrics(symbol, zoneResult);
+            _zoneTelemetryService?.EmitFreshnessMetrics(symbol, zoneResult.Source, 
+                (DateTime.UtcNow - zoneResult.Timestamp).TotalSeconds);
+
+            // Handle zone disagreement case - this is the key new behavior
+            if (zoneResult.Source == ZoneSource.Disagree)
+            {
+                var reason = "zone_disagree";
+                _logger.LogWarning("🚫 [ZONE-GATE] Trade blocked due to zone disagreement: {Symbol}", symbol);
+                
+                // Emit legacy metric name for supervisors
+                _zoneTelemetryService?.EmitRejectedEntry(symbol, reason);
+                
+                return (true, "Blocked by zone disagreement", decision);
+            }
+
+            // Handle unavailable zones
+            if (!zoneResult.IsSuccess || zoneResult.Snapshot == null)
+            {
+                _logger.LogDebug("[ZONE-GATE] Zone data unavailable for {Symbol}, allowing trade to proceed", symbol);
+                return (false, string.Empty, decision);
+            }
+
+            var snap = zoneResult.Snapshot;
             var zoneSection = _configuration.GetSection("zone");
             double blockAtr = zoneSection.GetValue("entry_block_atr:default", 0.8);
             double allowBreak = zoneSection.GetValue("allow_breakout_threshold:default", 0.7);
             double sizeTiltFactor = zoneSection.GetValue("size_tilt_near_zone:default", 0.7);
 
-            return EvaluateZoneConstraints(decision, symbol, snap, blockAtr, allowBreak, sizeTiltFactor);
+            return EvaluateZoneConstraints(decision, symbol, snap, blockAtr, allowBreak, sizeTiltFactor, zoneResult.Source);
         }
         catch (InvalidOperationException ex)
         {
@@ -143,16 +175,16 @@ public class SafeHoldDecisionPolicy
 
     private (bool Held, string Reason, TradingDecision MaybeAmended) EvaluateZoneConstraints(
         TradingDecision decision, string symbol, ZoneSnapshot snap, 
-        double blockAtr, double allowBreak, double sizeTiltFactor)
+        double blockAtr, double allowBreak, double sizeTiltFactor, ZoneSource source)
     {
         if (decision.Action == TradingAction.Buy)
         {
-            return EvaluateLongEntryConstraints(decision, symbol, snap, blockAtr, allowBreak, sizeTiltFactor);
+            return EvaluateLongEntryConstraints(decision, symbol, snap, blockAtr, allowBreak, sizeTiltFactor, source);
         }
         
         if (decision.Action == TradingAction.Sell)
         {
-            return EvaluateShortEntryConstraints(decision, symbol, snap, blockAtr, allowBreak, sizeTiltFactor);
+            return EvaluateShortEntryConstraints(decision, symbol, snap, blockAtr, allowBreak, sizeTiltFactor, source);
         }
 
         return (false, string.Empty, decision);
@@ -160,13 +192,18 @@ public class SafeHoldDecisionPolicy
 
     private (bool Held, string Reason, TradingDecision MaybeAmended) EvaluateLongEntryConstraints(
         TradingDecision decision, string symbol, ZoneSnapshot snap, 
-        double blockAtr, double allowBreak, double sizeTiltFactor)
+        double blockAtr, double allowBreak, double sizeTiltFactor, ZoneSource source)
     {
         // Check if we're too close to supply without breakout potential
         if (snap.DistToSupplyAtr <= blockAtr && snap.BreakoutScore < allowBreak)
         {
-            _logger.LogInformation("[ZONE-GATE] {Symbol}: Blocked LONG entry - near supply zone (dist={DistAtr:F2}, breakout={Score:F2})",
-                symbol, snap.DistToSupplyAtr, snap.BreakoutScore);
+            var reason = "supply_block";
+            _logger.LogInformation("[ZONE-GATE] {Symbol}: Blocked LONG entry - near supply zone (dist={DistAtr:F2}, breakout={Score:F2}) from {Source}",
+                symbol, snap.DistToSupplyAtr, snap.BreakoutScore, source);
+            
+            // Emit legacy metric name for supervisors
+            _zoneTelemetryService?.EmitRejectedEntry(symbol, reason);
+            
             return (true, $"Blocked by supply zone (dist={snap.DistToSupplyAtr:F2} ATR, breakout={snap.BreakoutScore:F2})", decision);
         }
 
@@ -181,13 +218,18 @@ public class SafeHoldDecisionPolicy
 
     private (bool Held, string Reason, TradingDecision MaybeAmended) EvaluateShortEntryConstraints(
         TradingDecision decision, string symbol, ZoneSnapshot snap, 
-        double blockAtr, double allowBreak, double sizeTiltFactor)
+        double blockAtr, double allowBreak, double sizeTiltFactor, ZoneSource source)
     {
         // Check if we're too close to demand without breakout potential
         if (snap.DistToDemandAtr <= blockAtr && snap.BreakoutScore < allowBreak)
         {
-            _logger.LogInformation("[ZONE-GATE] {Symbol}: Blocked SHORT entry - near demand zone (dist={DistAtr:F2}, breakout={Score:F2})",
-                symbol, snap.DistToDemandAtr, snap.BreakoutScore);
+            var reason = "demand_block";
+            _logger.LogInformation("[ZONE-GATE] {Symbol}: Blocked SHORT entry - near demand zone (dist={DistAtr:F2}, breakout={Score:F2}) from {Source}",
+                symbol, snap.DistToDemandAtr, snap.BreakoutScore, source);
+            
+            // Emit legacy metric name for supervisors
+            _zoneTelemetryService?.EmitRejectedEntry(symbol, reason);
+            
             return (true, $"Blocked by demand zone (dist={snap.DistToDemandAtr:F2} ATR, breakout={snap.BreakoutScore:F2})", decision);
         }
 

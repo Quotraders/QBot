@@ -553,10 +553,23 @@ Please check the configuration and ensure all required services are registered.
         // Register ProductionFeatureBus for zone telemetry
         services.AddSingleton<Zones.IFeatureBus, BotCore.Services.ProductionFeatureBus>();
         
-        // Register ZoneService with production implementation
+        // Register ZoneService with production implementation (Modern provider)
         services.AddSingleton<Zones.IZoneService, Zones.ZoneServiceProduction>();
         services.AddSingleton<Zones.IZoneFeatureSource>(provider => 
             (Zones.IZoneFeatureSource)provider.GetRequiredService<Zones.IZoneService>());
+        
+        // Register Legacy ZoneService (the existing IZoneService from BotCore)
+        services.AddSingleton<BotCore.Services.IZoneService, BotCore.Services.ZoneService>();
+        
+        // Register zone telemetry service
+        services.AddSingleton<BotCore.Services.IZoneTelemetryService, BotCore.Services.ZoneTelemetryService>();
+        
+        // Register zone providers
+        services.AddSingleton<BotCore.Services.LegacyZoneProvider>();
+        services.AddSingleton<BotCore.Services.ModernZoneProvider>();
+        services.AddSingleton<BotCore.Services.HybridZoneProvider>();
+        services.AddSingleton<BotCore.Services.IZoneProvider>(provider => 
+            provider.GetRequiredService<BotCore.Services.HybridZoneProvider>());
         
         // Register ZoneFeaturePublisher for telemetry emission
         services.AddHostedService<Zones.ZoneFeaturePublisher>();
@@ -564,7 +577,7 @@ Please check the configuration and ensure all required services are registered.
         // Register market data to zone service bridge
         services.AddHostedService<BotCore.Services.ZoneMarketDataBridge>();
         
-        Console.WriteLine("🎯 [ZONE-AWARENESS] Zone awareness services registered - Supply/demand integration active!");
+        Console.WriteLine("🎯 [ZONE-AWARENESS] Hybrid zone awareness services registered - Legacy/Modern/Hybrid providers active!");
         
         // ================================================================================
 
