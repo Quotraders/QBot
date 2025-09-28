@@ -33,11 +33,15 @@ namespace BotCore.Services
     {
         private readonly ILogger<ES_NQ_PortfolioHeatManager> _logger;
         private readonly decimal _accountBalance;
+        private readonly TopstepX.Bot.Core.Services.PositionTrackingSystem? _positionTracker;
 
-        public ES_NQ_PortfolioHeatManager(ILogger<ES_NQ_PortfolioHeatManager> logger)
+        public ES_NQ_PortfolioHeatManager(
+            ILogger<ES_NQ_PortfolioHeatManager> logger, 
+            TopstepX.Bot.Core.Services.PositionTrackingSystem? positionTracker = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _accountBalance = 100000m; // Default account balance, should be injected
+            _positionTracker = positionTracker;
         }
 
         public async Task<PortfolioHeat> CalculateHeatAsync(List<Position> positions)
@@ -271,8 +275,29 @@ namespace BotCore.Services
         {
             try
             {
-                // This would normally interface with your position service
-                // For now, return mock data
+                // Try to get positions from the real position tracking system first
+                if (_positionTracker != null)
+                {
+                    var realPositions = _positionTracker.GetAllPositions();
+                    var positionList = new List<Position>();
+                    
+                    foreach (var kvp in realPositions)
+                    {
+                        var pos = kvp.Value;
+                        positionList.Add(new Position
+                        {
+                            Symbol = pos.Symbol,
+                            Size = (int)pos.NetQuantity, // Convert decimal to int
+                            CurrentPrice = pos.AveragePrice // Use average price as current price
+                        });
+                    }
+                    
+                    _logger.LogDebug("Retrieved {Count} positions from position tracker", positionList.Count);
+                    return positionList;
+                }
+                
+                // Fallback to mock data only if no real position tracker available
+                _logger.LogWarning("No position tracker available, using mock positions");
                 await Task.Delay(1).ConfigureAwait(false);
 
                 return new List<Position>
