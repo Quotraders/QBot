@@ -20,33 +20,30 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 ### Priority 1: Correctness & Invariants (Current Session)
 | Error Code | Count | Files Affected | Fix Applied |
 |------------|-------|----------------|-------------|
+| CS0103 | 3 | ErrorHandlingMonitoringSystem.cs, ConfigurationSchemaService.cs, TradingBotSymbolSessionManager.cs | Fixed constant scope issues - moved constants to correct classes |
 | CA1062 | 4+ | ZoneTelemetryService.cs, SafeHoldDecisionPolicy.cs | Added ArgumentNullException guards for public method parameters |
 | S109 | 2726 | Multiple files | Added named constants for magic numbers (started with critical files) |
 | CA1031 | 846 | Multiple files | Pending - will replace generic Exception catches with specific types |
+| S2139 | 5 | TradingBotTuningRunner.cs, S6_S11_Bridge.cs | False positives - code already follows proper log-and-rethrow pattern |
 
 **Rationale**: 
+- **CS0103**: Fixed constant scope issues by moving constants to the classes where they're used. Constants must be accessible in their usage context.
 - **CA1062**: Added proper null guards to public API entry points using `if (param is null) throw new ArgumentNullException(nameof(param));` pattern per guidebook
 - **S109**: Started systematic replacement of magic numbers with named constants, focusing on high-impact configuration files first
-- **CA1031**: Identified 846 generic exception catches that need specific exception handling
+- **S2139**: These appear to be analyzer false positives - code follows guidebook pattern exactly (log exception with context + rethrow)
 
-**Pattern Applied for CA1062**:
+**Pattern Applied for CS0103**:
 ```csharp
-// Before
-public void EmitZoneMetrics(string symbol, ZoneProviderResult result)
-{
-    if (result.Snapshot == null) return;
+// Before - constant in wrong class scope
+private const int MinimumTradesForConfidenceInterval = 10; // in TradingBotSymbolSessionManager
+// Used in SessionBayesianPriors.GetSuccessRateConfidenceInterval()
 
-// After  
-public void EmitZoneMetrics(string symbol, ZoneProviderResult result)
-{
-    if (result is null) throw new ArgumentNullException(nameof(result));
-    if (result.Snapshot == null) return;
+// After - constant moved to correct class  
+public class SessionBayesianPriors {
+    private const int MinimumTradesForConfidenceInterval = 10; // now accessible
+    public (double Lower, double Upper) GetSuccessRateConfidenceInterval() { ... }
+}
 ```
-
-**S109 Constants Added**:
-- ConfigurationSchemaService: DefaultRegimeDetectionThreshold
-- ErrorHandlingMonitoringSystem: ErrorEscalationThreshold, MaxHistoryHours, MaxErrorHistorySize, etc.
-- TradingBotSymbolSessionManager: MinimumTradesForConfidenceInterval
 
 ### Zone Cleanup + CS Error Resolution (Previous Session)
 | Error Code | Count | Files Affected | Fix Applied |

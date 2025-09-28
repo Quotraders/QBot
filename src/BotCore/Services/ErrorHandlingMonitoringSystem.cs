@@ -57,6 +57,9 @@ namespace TopstepX.Bot.Core.Services
     /// </summary>
     public class ComponentHealth
     {
+        // Health score constants
+        private const double MaxSuccessRate = 100.0;
+        
         public string ComponentName { get; set; } = string.Empty;
         public HealthStatus Status { get; set; } = HealthStatus.Unknown;
         public DateTime LastCheck { get; set; }

@@ -190,6 +190,9 @@ namespace TradingBot.BotCore.Services
     public class MLConfigurationMigrator : IConfigurationMigrator
     {
         private readonly ILogger _logger;
+        
+        // Configuration migration constants
+        private const double DefaultRegimeDetectionThreshold = 0.8;
 
         public MLConfigurationMigrator(ILogger logger)
         {
