@@ -224,7 +224,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
                 {
                     list.Add(new BotCore.Strategy.StrategyRecommendation(
                         card.Name, 
-                        BotCore.Strategy.StrategyIntent.Long, 
+                        BotCore.Strategy.StrategyIntent.Buy, 
                         confidence, 
                         confluenceEvidence, 
                         card.TelemetryTags.ToArray()));
@@ -234,7 +234,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
                 {
                     list.Add(new BotCore.Strategy.StrategyRecommendation(
                         card.Name, 
-                        BotCore.Strategy.StrategyIntent.Short, 
+                        BotCore.Strategy.StrategyIntent.Sell, 
                         confidence, 
                         confluenceEvidence, 
                         card.TelemetryTags.ToArray()));

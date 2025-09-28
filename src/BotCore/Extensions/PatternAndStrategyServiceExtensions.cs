@@ -80,22 +80,18 @@ public static class PatternAndStrategyServiceExtensions
     {
         if (configuration is null) throw new ArgumentNullException(nameof(configuration));
         
-        // Register DSL loader configuration
-        services.Configure<DslLoaderOptions>(
-            configuration.GetSection("StrategyCatalog"));
+        // Register DSL configuration - configurations handled per service
+        // No centralized DSL loader options needed with SimpleDslLoader
 
-        // Register knowledge graph configuration
-        services.Configure<StrategyKnowledgeGraphOptions>(
-            configuration.GetSection("StrategyKnowledgeGraph"));
+        // Register knowledge graph configuration - remove reference to missing options
+        // Configuration handled directly in production services
 
-        // Register core DSL services
-        services.AddSingleton<DslLoader>();
+        // Register core DSL services - DslLoader replaced by SimpleDslLoader in production services
         services.AddSingleton<ExpressionEvaluator>();
         services.AddSingleton<FeatureBusMapper>();
 
-        // Register Phase 5 services - Knowledge Graph Implementation
-        services.AddSingleton<FeatureProbe>();
-        services.AddSingleton<StrategyKnowledgeGraph>();
+        // Legacy registration removed - consolidated to AddStrategyKnowledgeGraphServices
+        // Old StrategyKnowledgeGraph replaced by new production implementation
 
         return services;
     }
@@ -116,7 +112,7 @@ public static class PatternAndStrategyServiceExtensions
         
         // Register REAL production services with EnhancedRiskManager and RealTradingMetricsService
         services.AddSingleton<IRiskManagerForFusion, ProductionRiskManager>();
-        services.AddSingleton<IMLRLMetricsServiceForFusion, ProductionMLRLMetricsService>();
+        services.AddSingleton<IMlrlMetricsServiceForFusion, ProductionMlrlMetricsService>();
 
         // Load Strategy DSL cards from YAML files
         var strategyFolder = configuration["StrategyCatalog:Folder"] ?? "config/strategies";

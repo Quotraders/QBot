@@ -8,7 +8,7 @@ namespace BotCore.Strategy;
 /// <summary>
 /// Strategy intent enumeration for trading direction
 /// </summary>
-public enum StrategyIntent { Long, Short }
+public enum StrategyIntent { Buy, Sell }
 
 /// <summary>
 /// Evidence supporting a strategy recommendation
@@ -25,7 +25,7 @@ public sealed record StrategyRecommendation(
     StrategyIntent Intent,
     double Confidence,              // 0..1
     IReadOnlyList<StrategyEvidence> Evidence,
-    string[] TelemetryTags);
+    IReadOnlyList<string> TelemetryTags);
 
 /// <summary>
 /// Interface for strategy knowledge graph evaluation with async support
