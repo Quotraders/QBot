@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace BotCore.Strategy;
 
@@ -26,13 +28,22 @@ public sealed record StrategyRecommendation(
     string[] TelemetryTags);
 
 /// <summary>
-/// Interface for strategy knowledge graph evaluation
+/// Interface for strategy knowledge graph evaluation with async support
 /// Evaluates available strategies against current market conditions
 /// </summary>
 public interface IStrategyKnowledgeGraph
 {
     /// <summary>
-    /// Evaluate all strategies for the given symbol and return ranked recommendations
+    /// Asynchronously evaluate all strategies for the given symbol and return ranked recommendations
+    /// </summary>
+    /// <param name="symbol">Trading symbol to evaluate</param>
+    /// <param name="utc">Current UTC time for evaluation</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of strategy recommendations ranked by confidence</returns>
+    Task<IReadOnlyList<StrategyRecommendation>> EvaluateAsync(string symbol, DateTime utc, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Synchronously evaluate all strategies for backward compatibility
     /// </summary>
     /// <param name="symbol">Trading symbol to evaluate</param>
     /// <param name="utc">Current UTC time for evaluation</param>

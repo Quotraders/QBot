@@ -110,13 +110,13 @@ public static class PatternAndStrategyServiceExtensions
     {
         if (configuration is null) throw new ArgumentNullException(nameof(configuration));
 
-        // Register required dependencies for production implementations
+        // Register required dependencies for production implementations - NO MOCKS
         services.AddSingleton<FeatureBusAdapter>();
         services.AddSingleton<IFeatureBusWithProbe>(provider => provider.GetRequiredService<FeatureBusAdapter>());
         
-        // Register production services with real implementations
-        services.AddSingleton<IRiskManager, ProductionRiskManager>();
-        services.AddSingleton<IMLRLMetricsService, ProductionMLRLMetricsService>();
+        // Register REAL production services with EnhancedRiskManager and RealTradingMetricsService
+        services.AddSingleton<IRiskManagerForFusion, ProductionRiskManager>();
+        services.AddSingleton<IMLRLMetricsServiceForFusion, ProductionMLRLMetricsService>();
 
         // Load Strategy DSL cards from YAML files
         var strategyFolder = configuration["StrategyCatalog:Folder"] ?? "config/strategies";

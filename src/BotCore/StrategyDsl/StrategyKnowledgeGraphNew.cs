@@ -168,10 +168,13 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public IReadOnlyList<BotCore.Strategy.StrategyRecommendation> Evaluate(string symbol, DateTime utc)
+    public async Task<IReadOnlyList<BotCore.Strategy.StrategyRecommendation>> EvaluateAsync(string symbol, DateTime utc, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(symbol))
             throw new ArgumentException("Symbol cannot be null or empty", nameof(symbol));
+
+        // For now, this is primarily synchronous evaluation, but async support is ready for future enhancements
+        await Task.CompletedTask.ConfigureAwait(false);
 
         var regime = _regimes.GetRegime(symbol);
         var list = new List<BotCore.Strategy.StrategyRecommendation>();
@@ -253,6 +256,11 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
             ranked.Count, _cards.Count);
 
         return ranked;
+    }
+
+    public IReadOnlyList<BotCore.Strategy.StrategyRecommendation> Evaluate(string symbol, DateTime utc)
+    {
+        return EvaluateAsync(symbol, utc, CancellationToken.None).GetAwaiter().GetResult();
     }
 
     private bool EvaluateRegimeFilter(DslStrategy card, RegimeType regime)
