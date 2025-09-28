@@ -393,7 +393,7 @@ public enum StructuralType
 /// <summary>
 /// Price point for pattern analysis
 /// </summary>
-internal class PricePoint
+internal sealed class PricePoint
 {
     public int Index { get; set; }
     public decimal Value { get; set; }

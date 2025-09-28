@@ -432,7 +432,7 @@ public enum ReversalType
 /// <summary>
 /// Gap information for pattern analysis
 /// </summary>
-internal class GapInfo
+internal sealed class GapInfo
 {
     public int Index { get; set; }
     public int Direction { get; set; } // 1 for up gap, -1 for down gap

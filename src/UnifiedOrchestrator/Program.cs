@@ -873,6 +873,9 @@ Please check the configuration and ensure all required services are registered.
         services.AddProductionReadinessServices(configuration);
         services.AddDefaultTradingReadinessConfiguration();
         
+        // Register pattern recognition and strategy DSL services - production ready pattern analysis and strategy reasoning
+        services.AddPatternAndStrategyServices(configuration);
+        
         Console.WriteLine("✅ [PHASE-4] Production readiness services registered - Historical data bridge and enhanced market data flow services ready");
         
         // Register TradingSystemIntegrationService (533 lines) from BotCore as HOSTED SERVICE for live TopstepX connection

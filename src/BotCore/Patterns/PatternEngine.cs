@@ -1,6 +1,7 @@
 using BotCore.Models;
 using BotCore.Services;
 using Microsoft.Extensions.Logging;
+using Zones;
 
 namespace BotCore.Patterns;
 
@@ -135,7 +136,7 @@ public class PatternScores
 /// <summary>
 /// Internal pattern detection result
 /// </summary>
-internal class PatternDetectionResult
+internal sealed class PatternDetectionResult
 {
     public string PatternName { get; set; } = string.Empty;
     public PatternFamily Family { get; set; }
