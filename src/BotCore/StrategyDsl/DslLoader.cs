@@ -10,7 +10,7 @@ namespace BotCore.StrategyDsl;
 /// </summary>
 public class DslLoaderOptions
 {
-    public string StrategyFolder { get; set; } = "./strategies/yaml";
+    public string StrategyFolder { get; set; } = "config/strategies";
     public bool AutoReload { get; set; } = true;
     public int ReloadIntervalMinutes { get; set; } = 60;
 }

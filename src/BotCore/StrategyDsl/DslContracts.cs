@@ -6,7 +6,9 @@ namespace BotCore.StrategyDsl;
 public class DslStrategy
 {
     public string Name { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
     public string Family { get; set; } = string.Empty;
+    public string Bias { get; set; } = "both";
     public string Priority { get; set; } = string.Empty;
     public bool Enabled { get; set; } = true;
     public string Description { get; set; } = string.Empty;
@@ -18,6 +20,8 @@ public class DslStrategy
     public DslConditions PatternConditions { get; set; } = new();
     public DslConditions MicroConditions { get; set; } = new();
     public DslWhen? When { get; set; } // Added for knowledge graph compatibility
+    public List<string>? Contra { get; set; } // Direct contraindications from YAML
+    public List<string> Confluence { get; set; } = new(); // Direct confluence from YAML
     public DslPlaybook? Playbook { get; set; } // Added for knowledge graph compatibility
     
     public DslRiskManagement RiskManagement { get; set; } = new();
@@ -52,6 +56,7 @@ public class DslWhen
     
     // Knowledge graph compatibility properties
     public List<string> Regime { get; set; } = new();
+    public List<string> Micro { get; set; } = new();
     public List<string> MicroConditions { get; set; } = new();
     public List<string> ContraIndications { get; set; } = new();
 }
