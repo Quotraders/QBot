@@ -1,3 +1,9 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using BotCore.Models;
 using BotCore.Services;
 using Microsoft.Extensions.Logging;
@@ -13,6 +19,7 @@ public class PatternEngine
     private readonly ILogger<PatternEngine> _logger;
     private readonly IFeatureBus _featureBus;
     private readonly List<IPatternDetector> _detectors;
+    private readonly IServiceProvider _serviceProvider;
     
     // Pattern analysis constants
     private const double MIN_PATTERN_SCORE_THRESHOLD = 0.1;
@@ -22,11 +29,12 @@ public class PatternEngine
     private const double NEUTRAL_SCORE = 0.5;
     private const double MINIMUM_SCORE_FOR_ANALYSIS = 0.01;
 
-    public PatternEngine(ILogger<PatternEngine> logger, IFeatureBus featureBus, IEnumerable<IPatternDetector> detectors)
+    public PatternEngine(ILogger<PatternEngine> logger, IFeatureBus featureBus, IEnumerable<IPatternDetector> detectors, IServiceProvider serviceProvider)
     {
         _logger = logger;
         _featureBus = featureBus;
         _detectors = detectors.ToList();
+        _serviceProvider = serviceProvider;
     }
 
     /// <summary>
@@ -185,21 +193,49 @@ public class PatternEngine
     {
         try
         {
-            // In production, this would interface with the bar registry or market data service
-            // For now, we need to integrate with existing bar data sources
+            // Get bars from real bar aggregator services
+            var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+            foreach (var aggregator in barAggregators)
+            {
+                var history = aggregator.GetHistory(symbol);
+                if (history.Count > 0)
+                {
+                    // Convert from Market.Bar to Models.Bar
+                    var bars = history.Select(marketBar => new Bar
+                    {
+                        Start = marketBar.Start,
+                        Ts = new DateTimeOffset(marketBar.Start).ToUnixTimeMilliseconds(),
+                        Symbol = symbol,
+                        Open = marketBar.Open,
+                        High = marketBar.High,
+                        Low = marketBar.Low,
+                        Close = marketBar.Close,
+                        Volume = (int)Math.Min(marketBar.Volume, int.MaxValue)
+                    }).ToList();
+                    
+                    _logger.LogDebug("Retrieved {Count} real bars for pattern analysis of {Symbol}", bars.Count, symbol);
+                    
+                    await Task.CompletedTask.ConfigureAwait(false);
+                    return bars;
+                }
+            }
             
-            // Try to get bars from the strategy context or data service
-            // This is a placeholder that should be connected to real bar data
-            await Task.Delay(1, cancellationToken).ConfigureAwait(false);
+            // Try to get from trading system bar consumer
+            var barConsumer = _serviceProvider.GetService<BotCore.Services.TradingSystemBarConsumer>();
+            if (barConsumer != null)
+            {
+                // The bar consumer doesn't expose a query interface, but we can try other sources
+                _logger.LogDebug("Bar consumer available but no query interface for {Symbol}", symbol);
+            }
             
-            // Return null for now - this will trigger the fallback to neutral scores
-            // Connection to real bar data source needed here
+            // If no bars available, we cannot perform pattern analysis
+            _logger.LogWarning("No bar data available for pattern analysis of {Symbol}", symbol);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving recent bars for pattern analysis of {Symbol}", symbol);
-            return null;
+            _logger.LogError(ex, "Error retrieving real bars for pattern analysis of {Symbol}", symbol);
+            throw; // Re-throw to fail fast rather than return stub data
         }
     }
     

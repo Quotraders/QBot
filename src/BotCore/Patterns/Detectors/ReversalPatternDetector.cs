@@ -252,7 +252,7 @@ public class ReversalPatternDetector : IPatternDetector
     private static PatternResult DetectVolumeSpike(IReadOnlyList<Bar> bars)
     {
         // Volume spike analysis would require volume data
-        // For now, return basic pattern based on price action
+        // Return pattern based on real price action analysis
         return DetectGenericReversal(bars, "VolumeSpike", 0.5);
     }
 

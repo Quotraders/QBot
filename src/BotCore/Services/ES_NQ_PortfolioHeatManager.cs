@@ -275,15 +275,20 @@ namespace BotCore.Services
         {
             try
             {
-                // Try to get positions from the real position tracking system first
-                if (_positionTracker != null)
+                // Use real position tracking system - no fallback to mock data
+                if (_positionTracker == null)
                 {
-                    var realPositions = _positionTracker.GetAllPositions();
-                    var positionList = new List<Position>();
-                    
-                    foreach (var kvp in realPositions)
+                    throw new InvalidOperationException("Position tracker not available - cannot operate without real position data");
+                }
+
+                var realPositions = _positionTracker.GetAllPositions();
+                var positionList = new List<Position>();
+                
+                foreach (var kvp in realPositions)
+                {
+                    var pos = kvp.Value;
+                    if (pos.NetQuantity != 0) // Only include active positions
                     {
-                        var pos = kvp.Value;
                         positionList.Add(new Position
                         {
                             Symbol = pos.Symbol,
@@ -291,25 +296,17 @@ namespace BotCore.Services
                             CurrentPrice = pos.AveragePrice // Use average price as current price
                         });
                     }
-                    
-                    _logger.LogDebug("Retrieved {Count} positions from position tracker", positionList.Count);
-                    return positionList;
                 }
                 
-                // Fallback to mock data only if no real position tracker available
-                _logger.LogWarning("No position tracker available, using mock positions");
-                await Task.Delay(1).ConfigureAwait(false);
-
-                return new List<Position>
-                {
-                    new Position { Symbol = "ES", Size = 1, CurrentPrice = 4500m },
-                    new Position { Symbol = "NQ", Size = 1, CurrentPrice = 15000m }
-                };
+                _logger.LogDebug("Retrieved {Count} real positions from position tracker", positionList.Count);
+                
+                await Task.CompletedTask.ConfigureAwait(false);
+                return positionList;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting current positions");
-                return new List<Position>();
+                _logger.LogError(ex, "Error getting real position data - system cannot operate without positions");
+                throw; // Fail fast - no mock data allowed
             }
         }
 

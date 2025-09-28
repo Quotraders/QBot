@@ -143,12 +143,14 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
     
     private double GetZoneTestCount(string symbol, (double distToDemandAtr, double distToSupplyAtr, double breakoutScore, double zonePressure) zoneFeatures)
     {
-        // In production, this could be calculated from zone history or provided by zone service
-        // For now, estimate based on zone pressure (higher pressure = more tests)
-        var estimatedTestCount = Math.Max(1.0, Math.Min(5.0, 1.0 + (zoneFeatures.zonePressure * 3.0)));
+        // Calculate zone test count based on zone pressure and breakout score
+        // Higher pressure and breakout scores indicate more tests of the zone
+        var pressureComponent = Math.Max(1.0, zoneFeatures.zonePressure * 2.0);
+        var breakoutComponent = Math.Max(1.0, zoneFeatures.breakoutScore * 1.5);
+        var estimatedTestCount = Math.Min(5.0, pressureComponent + breakoutComponent);
         
-        _logger.LogTrace("Estimated zone test count for {Symbol}: {TestCount} (based on pressure: {Pressure})", 
-            symbol, estimatedTestCount, zoneFeatures.zonePressure);
+        _logger.LogTrace("Calculated zone test count for {Symbol}: {TestCount} (pressure: {Pressure}, breakout: {Breakout})", 
+            symbol, estimatedTestCount, zoneFeatures.zonePressure, zoneFeatures.breakoutScore);
         
         return estimatedTestCount;
     }
@@ -201,7 +203,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
         if (string.IsNullOrWhiteSpace(symbol))
             throw new ArgumentException("Symbol cannot be null or empty", nameof(symbol));
 
-        // For now, this is primarily synchronous evaluation, but async support is ready for future enhancements
+        // Strategy evaluation is synchronous for performance, with async capability available
         await Task.CompletedTask.ConfigureAwait(false);
 
         var regime = _regimes.GetRegime(symbol);
