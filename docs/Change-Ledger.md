@@ -15,7 +15,40 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ## ✅ PHASE 1 - CS COMPILER ERROR ELIMINATION (COMPLETE)
 
-### Zone Cleanup + CS Error Resolution (Current Session)
+## 🚨 PHASE 2 - ANALYZER VIOLATION ELIMINATION (IN PROGRESS)
+
+### Priority 1: Correctness & Invariants (Current Session)
+| Error Code | Count | Files Affected | Fix Applied |
+|------------|-------|----------------|-------------|
+| CA1062 | 4+ | ZoneTelemetryService.cs, SafeHoldDecisionPolicy.cs | Added ArgumentNullException guards for public method parameters |
+| S109 | 2726 | Multiple files | Added named constants for magic numbers (started with critical files) |
+| CA1031 | 846 | Multiple files | Pending - will replace generic Exception catches with specific types |
+
+**Rationale**: 
+- **CA1062**: Added proper null guards to public API entry points using `if (param is null) throw new ArgumentNullException(nameof(param));` pattern per guidebook
+- **S109**: Started systematic replacement of magic numbers with named constants, focusing on high-impact configuration files first
+- **CA1031**: Identified 846 generic exception catches that need specific exception handling
+
+**Pattern Applied for CA1062**:
+```csharp
+// Before
+public void EmitZoneMetrics(string symbol, ZoneProviderResult result)
+{
+    if (result.Snapshot == null) return;
+
+// After  
+public void EmitZoneMetrics(string symbol, ZoneProviderResult result)
+{
+    if (result is null) throw new ArgumentNullException(nameof(result));
+    if (result.Snapshot == null) return;
+```
+
+**S109 Constants Added**:
+- ConfigurationSchemaService: DefaultRegimeDetectionThreshold
+- ErrorHandlingMonitoringSystem: ErrorEscalationThreshold, MaxHistoryHours, MaxErrorHistorySize, etc.
+- TradingBotSymbolSessionManager: MinimumTradesForConfidenceInterval
+
+### Zone Cleanup + CS Error Resolution (Previous Session)
 | Error Code | Count | Files Affected | Fix Applied |
 |------------|-------|----------------|-------------|
 | CS0162 | 1 | SafeHoldDecisionPolicy.cs | Removed unreachable code after catch block |
