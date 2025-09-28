@@ -257,7 +257,7 @@ public sealed class YamlSchemaValidator
             return "pattern";
         }
         
-        return null;
+        throw new InvalidOperationException($"Unable to determine YAML schema type for file: {fileName}. File must be a strategy (s2, s3, s6, s11) or pattern file.");
     }
     
     /// <summary>

@@ -159,19 +159,10 @@ public sealed class UnifiedBarPipeline
         
         try
         {
-            var zoneService = _zoneService.Value;
-            if (zoneService != null)
-            {
-                zoneService.OnBar(symbol, bar.Start, bar.Open, bar.High, bar.Low, bar.Close, bar.Volume);
-                stepResult.Success = true;
-                _logger.LogTrace("ZoneService.OnBar completed for {Symbol}", symbol);
-            }
-            else
-            {
-                stepResult.Success = false;
-                stepResult.Error = "ZoneService not available";
-                _logger.LogWarning("ZoneService not registered in DI container");
-            }
+            var zoneService = _zoneService.Value ?? throw new InvalidOperationException("ZoneService must be registered in DI container for production operation");
+            zoneService.OnBar(symbol, bar.Start, bar.Open, bar.High, bar.Low, bar.Close, bar.Volume);
+            stepResult.Success = true;
+            _logger.LogTrace("ZoneService.OnBar completed for {Symbol}", symbol);
         }
         catch (Exception ex)
         {
@@ -201,22 +192,13 @@ public sealed class UnifiedBarPipeline
         
         try
         {
-            var patternEngine = _patternEngine.Value;
-            if (patternEngine != null)
-            {
-                // Get current pattern scores for this bar
-                var patternScores = await patternEngine.GetCurrentScoresAsync(symbol, cancellationToken);
-                stepResult.Success = true;
-                stepResult.Data = new { BullScore = patternScores.BullScore, BearScore = patternScores.BearScore };
-                _logger.LogTrace("PatternEngine.OnBar completed for {Symbol} - Bull: {BullScore}, Bear: {BearScore}", 
-                    symbol, patternScores.BullScore, patternScores.BearScore);
-            }
-            else
-            {
-                stepResult.Success = false;
-                stepResult.Error = "PatternEngine not available";
-                _logger.LogWarning("PatternEngine not registered in DI container");
-            }
+            var patternEngine = _patternEngine.Value ?? throw new InvalidOperationException("PatternEngine must be registered in DI container for production operation");
+            // Get current pattern scores for this bar
+            var patternScores = await patternEngine.GetCurrentScoresAsync(symbol, cancellationToken).ConfigureAwait(false);
+            stepResult.Success = true;
+            stepResult.Data = new { BullScore = patternScores.BullScore, BearScore = patternScores.BearScore };
+            _logger.LogTrace("PatternEngine.OnBar completed for {Symbol} - Bull: {BullScore}, Bear: {BearScore}", 
+                symbol, patternScores.BullScore, patternScores.BearScore);
         }
         catch (Exception ex)
         {
@@ -246,21 +228,12 @@ public sealed class UnifiedBarPipeline
         
         try
         {
-            var dslEngine = _dslEngine.Value;
-            if (dslEngine != null)
-            {
-                var recommendations = await dslEngine.EvaluateAsync(symbol, bar.Start, cancellationToken);
-                stepResult.Success = true;
-                stepResult.Data = new { RecommendationCount = recommendations.Count };
-                _logger.LogTrace("DslEngine.Evaluate completed for {Symbol} - {RecommendationCount} recommendations", 
-                    symbol, recommendations.Count);
-            }
-            else
-            {
-                stepResult.Success = false;
-                stepResult.Error = "DslEngine not available";
-                _logger.LogWarning("DslEngine not registered in DI container");
-            }
+            var dslEngine = _dslEngine.Value ?? throw new InvalidOperationException("DslEngine must be registered in DI container for production operation");
+            var recommendations = await dslEngine.EvaluateAsync(symbol, bar.Start, cancellationToken).ConfigureAwait(false);
+            stepResult.Success = true;
+            stepResult.Data = new { RecommendationCount = recommendations.Count };
+            _logger.LogTrace("DslEngine.Evaluate completed for {Symbol} - {RecommendationCount} recommendations", 
+                symbol, recommendations.Count);
         }
         catch (Exception ex)
         {
@@ -290,31 +263,35 @@ public sealed class UnifiedBarPipeline
         
         try
         {
-            var featureBus = _featureBus.Value;
-            if (featureBus != null && patternEngineResult.Success && patternEngineResult.Data != null)
+            var featureBus = _featureBus.Value ?? throw new InvalidOperationException("FeatureBus must be registered in DI container for production operation");
+            
+            if (!patternEngineResult.Success)
             {
-                // Publish pattern signals to feature bus
-                var patternData = patternEngineResult.Data as dynamic;
-                if (patternData != null)
-                {
-                    featureBus.Publish(symbol, bar.Start, "pattern.bull_score", patternData.BullScore);
-                    featureBus.Publish(symbol, bar.Start, "pattern.bear_score", patternData.BearScore);
-                }
-                
-                // Publish bar completion signal
-                featureBus.Publish(symbol, bar.Start, "bar.processed", 1.0);
-                
-                stepResult.Success = true;
-                _logger.LogTrace("FeatureBus.Publish completed for {Symbol}", symbol);
-            }
-            else
-            {
-                stepResult.Success = false;
-                stepResult.Error = "FeatureBus not available or pattern data missing";
-                _logger.LogWarning("FeatureBus not registered or pattern engine data unavailable");
+                throw new InvalidOperationException("Pattern engine result must be successful for feature bus publishing");
             }
             
-            await Task.CompletedTask; // Satisfy async signature
+            if (patternEngineResult.Data == null)
+            {
+                throw new InvalidOperationException("Pattern engine data must be available for feature bus publishing");
+            }
+            
+            // Publish pattern signals to feature bus
+            var patternData = patternEngineResult.Data as dynamic;
+            if (patternData == null)
+            {
+                throw new InvalidOperationException("Pattern engine data must be valid for feature bus publishing");
+            }
+            
+            featureBus.Publish(symbol, bar.Start, "pattern.bull_score", patternData.BullScore);
+            featureBus.Publish(symbol, bar.Start, "pattern.bear_score", patternData.BearScore);
+            
+            // Publish bar completion signal
+            featureBus.Publish(symbol, bar.Start, "bar.processed", 1.0);
+            
+            stepResult.Success = true;
+            _logger.LogTrace("FeatureBus.Publish completed for {Symbol}", symbol);
+            
+            await Task.CompletedTask.ConfigureAwait(false); // Satisfy async signature
         }
         catch (Exception ex)
         {
@@ -338,30 +315,29 @@ public sealed class UnifiedBarPipeline
     {
         try
         {
-            var metricsService = _metricsService.Value;
-            if (metricsService != null)
+            // Note: Using structured logging instead of metrics service for observability
+            // RealTradingMetricsService integration would be done here in full production setup
+            
+            var tags = new Dictionary<string, string>
             {
-                var tags = new Dictionary<string, string>
-                {
-                    ["symbol"] = result.Symbol,
-                    ["success"] = result.Success.ToString().ToLowerInvariant()
-                };
-                
-                // Emit pipeline metrics via logging for now
-                _logger.LogInformation("Unified pipeline metrics: Symbol={Symbol}, ProcessingTime={ProcessingTimeMs}ms, Success={Success}, BarsProcessed={BarsProcessed}", 
-                    result.Symbol, result.ProcessingTimeMs, result.Success, _barsProcessed);
-                
-                // Emit step-level metrics
-                foreach (var step in result.PipelineSteps)
-                {
-                    _logger.LogTrace("Pipeline step metrics: Step={StepName}, Duration={DurationMs}ms, Success={Success}", 
-                        step.StepName, step.DurationMs, step.Success);
-                }
-                
-                // Log cumulative metrics
-                _logger.LogDebug("Pipeline cumulative metrics: TotalBarsProcessed={BarsProcessed}, TotalErrors={Errors}", 
-                    _barsProcessed, _pipelineErrors);
+                ["symbol"] = result.Symbol,
+                ["success"] = result.Success.ToString().ToLowerInvariant()
+            };
+            
+            // Emit pipeline metrics via logging for observability
+            _logger.LogInformation("Unified pipeline metrics: Symbol={Symbol}, ProcessingTime={ProcessingTimeMs}ms, Success={Success}, BarsProcessed={BarsProcessed}", 
+                result.Symbol, result.ProcessingTimeMs, result.Success, _barsProcessed);
+            
+            // Emit step-level metrics
+            foreach (var step in result.PipelineSteps)
+            {
+                _logger.LogTrace("Pipeline step metrics: Step={StepName}, Duration={DurationMs}ms, Success={Success}", 
+                    step.StepName, step.DurationMs, step.Success);
             }
+            
+            // Log cumulative metrics
+            _logger.LogDebug("Pipeline cumulative metrics: TotalBarsProcessed={BarsProcessed}, TotalErrors={Errors}", 
+                _barsProcessed, _pipelineErrors);
         }
         catch (Exception ex)
         {

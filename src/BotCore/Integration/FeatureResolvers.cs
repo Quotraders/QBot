@@ -24,9 +24,7 @@ public sealed class ZoneFeatureResolver : IFeatureResolver
     {
         try
         {
-            var zoneFeatureSource = _serviceProvider.GetService<Zones.IZoneFeatureSource>();
-            if (zoneFeatureSource == null)
-                return null;
+            var zoneFeatureSource = _serviceProvider.GetRequiredService<Zones.IZoneFeatureSource>();
                 
             var features = zoneFeatureSource.GetFeatures(symbol);
             
@@ -71,16 +69,13 @@ public sealed class PatternScoreResolver : IFeatureResolver
     {
         try
         {
-            var patternEngine = _serviceProvider.GetService<BotCore.Patterns.PatternEngine>();
-            if (patternEngine == null)
-                return null;
-                
-            var scores = await patternEngine.GetCurrentScoresAsync(symbol, cancellationToken);
+            var patternEngine = _serviceProvider.GetRequiredService<BotCore.Patterns.PatternEngine>();
+            var scores = await patternEngine.GetCurrentScoresAsync(symbol, cancellationToken).ConfigureAwait(false);
             return _bullish ? scores.BullScore : scores.BearScore;
         }
-        catch
+        catch (Exception ex)
         {
-            return null;
+            throw new InvalidOperationException($"Failed to resolve pattern score ({'bull'|'bear'}) for symbol '{symbol}': {ex.Message}", ex);
         }
     }
 }
@@ -101,16 +96,18 @@ public sealed class VolatilityContractionResolver : IFeatureResolver
     {
         try
         {
-            var featureBusAdapter = _serviceProvider.GetService<BotCore.Fusion.IFeatureBusWithProbe>();
-            if (featureBusAdapter == null)
-                return null;
-                
-            await Task.CompletedTask;
-            return featureBusAdapter.Probe(symbol, "volatility.contraction");
+            var featureBusAdapter = _serviceProvider.GetRequiredService<BotCore.Fusion.IFeatureBusWithProbe>();
+            await Task.CompletedTask.ConfigureAwait(false);
+            var result = featureBusAdapter.Probe(symbol, "volatility.contraction");
+            if (result == null)
+            {
+                throw new InvalidOperationException($"Volatility contraction feature not available for symbol '{symbol}' - fail-fast required");
+            }
+            return result;
         }
-        catch
+        catch (Exception ex)
         {
-            return null;
+            throw new InvalidOperationException($"Failed to resolve volatility contraction for symbol '{symbol}': {ex.Message}", ex);
         }
     }
 }
@@ -131,16 +128,18 @@ public sealed class MomentumZScoreResolver : IFeatureResolver
     {
         try
         {
-            var featureBusAdapter = _serviceProvider.GetService<BotCore.Fusion.IFeatureBusWithProbe>();
-            if (featureBusAdapter == null)
-                return null;
-                
-            await Task.CompletedTask;
-            return featureBusAdapter.Probe(symbol, "momentum.zscore");
+            var featureBusAdapter = _serviceProvider.GetRequiredService<BotCore.Fusion.IFeatureBusWithProbe>();
+            await Task.CompletedTask.ConfigureAwait(false);
+            var result = featureBusAdapter.Probe(symbol, "momentum.zscore");
+            if (result == null)
+            {
+                throw new InvalidOperationException($"Momentum Z-score feature not available for symbol '{symbol}' - fail-fast required");
+            }
+            return result;
         }
-        catch
+        catch (Exception ex)
         {
-            return null;
+            throw new InvalidOperationException($"Failed to resolve momentum Z-score for symbol '{symbol}': {ex.Message}", ex);
         }
     }
 }
@@ -163,16 +162,18 @@ public sealed class ATRResolver : IFeatureResolver
     {
         try
         {
-            var featureBusAdapter = _serviceProvider.GetService<BotCore.Fusion.IFeatureBusWithProbe>();
-            if (featureBusAdapter == null)
-                return null;
-                
-            await Task.CompletedTask;
-            return featureBusAdapter.Probe(symbol, $"atr.{_period}");
+            var featureBusAdapter = _serviceProvider.GetRequiredService<BotCore.Fusion.IFeatureBusWithProbe>();
+            await Task.CompletedTask.ConfigureAwait(false);
+            var result = featureBusAdapter.Probe(symbol, $"atr.{_period}");
+            if (result == null)
+            {
+                throw new InvalidOperationException($"ATR.{_period} feature not available for symbol '{symbol}' - fail-fast required");
+            }
+            return result;
         }
-        catch
+        catch (Exception ex)
         {
-            return null;
+            throw new InvalidOperationException($"Failed to resolve ATR.{_period} for symbol '{symbol}': {ex.Message}", ex);
         }
     }
 }
