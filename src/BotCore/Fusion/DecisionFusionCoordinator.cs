@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Generic;
 using TradingBot.IntelligenceStack;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace BotCore.Fusion;
 
@@ -40,77 +41,689 @@ public interface IMlrlMetricsServiceForFusion
 }
 
 /// <summary>
-/// Production feature bus adapter that implements both interfaces
+/// Production feature bus adapter that implements both interfaces with real data integration
 /// </summary>
 public sealed class FeatureBusAdapter : IFeatureBusWithProbe
 {
-    // Default feature values - production constants 
-    private const double DEFAULT_ES_PRICE = 4500.0;
-    private const double DEFAULT_NQ_PRICE = 15000.0;
-    private const double DEFAULT_VOLUME = 1000000.0;
-    private const double DEFAULT_ATR = 15.0;
-    private const double DEFAULT_REALIZED_VOL = 0.15;
-    private const double DEFAULT_REGIME_RANGE = 1.0;
-    private const double DEFAULT_VDC = 0.6;
-    private const double DEFAULT_MOM_ZSCORE = 0.2;
-    private const double DEFAULT_PULLBACK_RISK = 0.4;
-    private const double DEFAULT_VOL_THRUST = 1.2;
-    private const double DEFAULT_INSIDE_BARS = 2.0;
-    private const double DEFAULT_VWAP_DISTANCE = 0.3;
-    private const double DEFAULT_BAND_TOUCH = 0.0;
-    private const double DEFAULT_PATTERN_BULL = 0.4;
-    private const double DEFAULT_PATTERN_BEAR = 0.3;
-    private const double DEFAULT_RECENT_BARS = 100.0;
-
     private readonly Zones.IFeatureBus _featureBus;
     private readonly ILogger<FeatureBusAdapter> _logger;
+    private readonly IServiceProvider _serviceProvider;
     private readonly Dictionary<string, (double Value, DateTime Timestamp)> _cache = new();
     private readonly object _lock = new();
     private readonly TimeSpan _cacheExpiry = TimeSpan.FromSeconds(30);
+    
+    // Production feature resolvers - no defaults, all calculated from real data
+    private readonly Dictionary<string, Func<string, double?>> _featureResolvers;
 
-    public FeatureBusAdapter(Zones.IFeatureBus featureBus, ILogger<FeatureBusAdapter> logger)
+    public FeatureBusAdapter(Zones.IFeatureBus featureBus, ILogger<FeatureBusAdapter> logger, IServiceProvider serviceProvider)
     {
         _featureBus = featureBus ?? throw new ArgumentNullException(nameof(featureBus));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        
+        // Initialize production feature resolvers with real data sources
+        _featureResolvers = InitializeFeatureResolvers();
+    }
+    
+    /// <summary>
+    /// Initialize production feature resolvers that connect to real services
+    /// </summary>
+    private Dictionary<string, Func<string, double?>> InitializeFeatureResolvers()
+    {
+        return new Dictionary<string, Func<string, double?>>
+        {
+            // Price features from real market data
+            ["price.current"] = GetCurrentPriceFromMarketData,
+            ["price.es"] = symbol => GetCurrentPriceFromMarketData("ES"),
+            ["price.nq"] = symbol => GetCurrentPriceFromMarketData("NQ"),
+            
+            // Volume features from bar aggregator
+            ["volume.current"] = GetCurrentVolumeFromBars,
+            
+            // Technical indicators calculated from real bars
+            ["atr.14"] = symbol => CalculateATRFromBars(symbol, 14),
+            ["volatility.realized"] = CalculateRealizedVolatilityFromBars,
+            
+            // Market microstructure from enhanced market data service
+            ["volatility.contraction"] = CalculateVolatilityContraction,
+            ["momentum.zscore"] = CalculateMomentumZScore,
+            ["pullback.risk"] = CalculatePullbackRisk,
+            ["volume.thrust"] = CalculateVolumeThrust,
+            ["inside_bars"] = CountInsideBars,
+            ["vwap.distance_atr"] = CalculateVWAPDistance,
+            ["keltner.touch"] = CalculateKeltnerTouch,
+            ["bollinger.touch"] = CalculateBollingerTouch,
+            
+            // Pattern scores from real pattern engine
+            ["pattern.bull_score"] = symbol => GetPatternScoreFromEngine(symbol, true),
+            ["pattern.bear_score"] = symbol => GetPatternScoreFromEngine(symbol, false),
+            
+            // Regime features from real regime detection
+            ["regime.type"] = GetRegimeFromService,
+            
+            // Bar count from real bar history
+            ["bars.recent"] = GetRecentBarCountFromHistory
+        };
     }
 
     public double? Probe(string symbol, string feature)
     {
+        if (string.IsNullOrWhiteSpace(symbol) || string.IsNullOrWhiteSpace(feature))
+        {
+            throw new ArgumentException("Symbol and feature must be provided");
+        }
+
         lock (_lock)
         {
             var key = $"{symbol}:{feature}";
+            
+            // Check cache first
             if (_cache.TryGetValue(key, out var cached) && DateTime.UtcNow - cached.Timestamp < _cacheExpiry)
             {
                 _logger.LogTrace("Feature cache hit for {Symbol}:{Feature} = {Value}", symbol, feature, cached.Value);
                 return cached.Value;
             }
             
-            // For now, return default values based on feature name
-            // In a full production implementation, this would query real data sources
-            var defaultValue = feature switch
+            // Use production feature resolver
+            if (_featureResolvers.TryGetValue(feature, out var resolver))
             {
-                "price.current" => DEFAULT_ES_PRICE,
-                "price.nq" => DEFAULT_NQ_PRICE,
-                "volume.current" => DEFAULT_VOLUME,
-                "atr.14" => DEFAULT_ATR,
-                "volatility.realized" => DEFAULT_REALIZED_VOL,
-                "regime.type" => DEFAULT_REGIME_RANGE,
-                "volatility.contraction" => DEFAULT_VDC,
-                "momentum.zscore" => DEFAULT_MOM_ZSCORE,
-                "pullback.risk" => DEFAULT_PULLBACK_RISK,
-                "volume.thrust" => DEFAULT_VOL_THRUST,
-                "inside_bars" => DEFAULT_INSIDE_BARS,
-                "vwap.distance_atr" => DEFAULT_VWAP_DISTANCE,
-                "keltner.touch" => DEFAULT_BAND_TOUCH,
-                "bollinger.touch" => DEFAULT_BAND_TOUCH,
-                "pattern.bull_score" => DEFAULT_PATTERN_BULL,
-                "pattern.bear_score" => DEFAULT_PATTERN_BEAR,
-                "bars.recent" => DEFAULT_RECENT_BARS,
-                _ => 0.0
-            };
+                try
+                {
+                    var value = resolver(symbol);
+                    if (value.HasValue)
+                    {
+                        _cache[key] = (value.Value, DateTime.UtcNow);
+                        _logger.LogDebug("Feature resolved for {Symbol}:{Feature} = {Value}", symbol, feature, value.Value);
+                        return value.Value;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error resolving feature {Feature} for {Symbol}", feature, symbol);
+                }
+            }
             
-            _logger.LogDebug("Feature default value for {Symbol}:{Feature} = {Value}", symbol, feature, defaultValue);
-            return defaultValue;
+            // Check if feature was recently published to the bus
+            var busValue = QueryFeatureBusForValue(symbol, feature);
+            if (busValue.HasValue)
+            {
+                _cache[key] = (busValue.Value, DateTime.UtcNow);
+                _logger.LogDebug("Feature from bus for {Symbol}:{Feature} = {Value}", symbol, feature, busValue.Value);
+                return busValue.Value;
+            }
+            
+            // Feature not available - this should not happen in production
+            _logger.LogWarning("Feature {Feature} not available for {Symbol} - no resolver or bus value found", feature, symbol);
+            return null;
+        }
+    }
+    /// <summary>
+    /// Query the feature bus for recently published values
+    /// </summary>
+    private double? QueryFeatureBusForValue(string symbol, string feature)
+    {
+        // The Zones.IFeatureBus only has Publish method, no query interface
+        // Values would need to be published first by other services
+        return null;
+    }
+    
+    /// <summary>
+    /// Get current price from real market data services
+    /// </summary>
+    private double? GetCurrentPriceFromMarketData(string symbol)
+    {
+        try
+        {
+            // Try to get from TopstepX adapter service
+            var topstepAdapter = _serviceProvider.GetService<TradingBot.Abstractions.ITopstepXAdapterService>();
+            if (topstepAdapter?.IsConnected == true)
+            {
+                // For production, this would call topstepAdapter.GetCurrentPriceAsync(symbol)
+                // Since the interface doesn't expose price methods, we need to implement through other means
+                
+                // Try to get from enhanced market data flow service
+                var marketDataService = _serviceProvider.GetService<IEnhancedMarketDataFlowService>();
+                if (marketDataService != null)
+                {
+                    // Get latest price from market data flow - this would be implemented
+                    // For now we need to connect to the bar aggregator
+                    return GetLatestPriceFromBarAggregator(symbol);
+                }
+            }
+            
+            // Try to get from bar history as last resort
+            return GetLatestPriceFromBarAggregator(symbol);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting current price for {Symbol}", symbol);
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// Get latest price from bar aggregator
+    /// </summary>
+    private double? GetLatestPriceFromBarAggregator(string symbol)
+    {
+        try
+        {
+            // Get bar aggregator from service provider
+            var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+            foreach (var aggregator in barAggregators)
+            {
+                var history = aggregator.GetHistory(symbol);
+                if (history.Count > 0)
+                {
+                    var latestBar = history[^1];
+                    return (double)latestBar.Close;
+                }
+            }
+            
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting price from bar aggregator for {Symbol}", symbol);
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// Get current volume from real bar data
+    /// </summary>
+    private double? GetCurrentVolumeFromBars(string symbol)
+    {
+        try
+        {
+            var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+            foreach (var aggregator in barAggregators)
+            {
+                var history = aggregator.GetHistory(symbol);
+                if (history.Count > 0)
+                {
+                    var latestBar = history[^1];
+                    return latestBar.Volume;
+                }
+            }
+            
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting volume from bars for {Symbol}", symbol);
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// Calculate ATR from real bar data
+    /// </summary>
+    private double? CalculateATRFromBars(string symbol, int period)
+    {
+        try
+        {
+            var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+            foreach (var aggregator in barAggregators)
+            {
+                var history = aggregator.GetHistory(symbol);
+                if (history.Count >= period)
+                {
+                    return CalculateATR(history.TakeLast(period).ToList());
+                }
+            }
+            
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating ATR for {Symbol}", symbol);
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// Calculate ATR from bar data
+    /// </summary>
+    private static double CalculateATR(IReadOnlyList<BotCore.Market.Bar> bars)
+    {
+        if (bars.Count < 2) return 0.0;
+        
+        double sum = 0.0;
+        for (int i = 1; i < bars.Count; i++)
+        {
+            var current = bars[i];
+            var previous = bars[i - 1];
+            
+            var highLow = (double)(current.High - current.Low);
+            var highClose = Math.Abs((double)(current.High - previous.Close));
+            var lowClose = Math.Abs((double)(current.Low - previous.Close));
+            
+            var trueRange = Math.Max(highLow, Math.Max(highClose, lowClose));
+            sum += trueRange;
+        }
+        
+        return sum / (bars.Count - 1);
+    }
+    
+    /// <summary>
+    /// Calculate realized volatility from bar data
+    /// </summary>
+    private double? CalculateRealizedVolatilityFromBars(string symbol)
+    {
+        try
+        {
+            var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+            foreach (var aggregator in barAggregators)
+            {
+                var history = aggregator.GetHistory(symbol);
+                if (history.Count >= 20) // Need sufficient data for volatility calculation
+                {
+                    return CalculateRealizedVolatility(history.TakeLast(20).ToList());
+                }
+            }
+            
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating realized volatility for {Symbol}", symbol);
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// Calculate realized volatility from returns
+    /// </summary>
+    private static double CalculateRealizedVolatility(IReadOnlyList<BotCore.Market.Bar> bars)
+    {
+        if (bars.Count < 2) return 0.0;
+        
+        var returns = new List<double>();
+        for (int i = 1; i < bars.Count; i++)
+        {
+            var ret = Math.Log((double)bars[i].Close / (double)bars[i - 1].Close);
+            returns.Add(ret);
+        }
+        
+        var mean = returns.Average();
+        var variance = returns.Select(r => Math.Pow(r - mean, 2)).Average();
+        return Math.Sqrt(variance * 252); // Annualized
+    }
+    
+    /// <summary>
+    /// Calculate volatility contraction from recent bars
+    /// </summary>
+    private double? CalculateVolatilityContraction(string symbol)
+    {
+        try
+        {
+            var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+            foreach (var aggregator in barAggregators)
+            {
+                var history = aggregator.GetHistory(symbol);
+                if (history.Count >= 20)
+                {
+                    var recentBars = history.TakeLast(10).ToList();
+                    var olderBars = history.Skip(history.Count - 20).Take(10).ToList();
+                    
+                    var recentVol = CalculateRealizedVolatility(recentBars);
+                    var olderVol = CalculateRealizedVolatility(olderBars);
+                    
+                    if (recentVol.HasValue && olderVol.HasValue && olderVol > 0)
+                    {
+                        return recentVol.Value / olderVol.Value; // Contraction ratio
+                    }
+                }
+            }
+            
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating volatility contraction for {Symbol}", symbol);
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// Calculate momentum Z-score from price changes
+    /// </summary>
+    private double? CalculateMomentumZScore(string symbol)
+    {
+        try
+        {
+            var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+            foreach (var aggregator in barAggregators)
+            {
+                var history = aggregator.GetHistory(symbol);
+                if (history.Count >= 20)
+                {
+                    var returns = new List<double>();
+                    for (int i = 1; i < history.Count; i++)
+                    {
+                        var ret = (double)(history[i].Close - history[i - 1].Close);
+                        returns.Add(ret);
+                    }
+                    
+                    var mean = returns.Average();
+                    var stdDev = Math.Sqrt(returns.Select(r => Math.Pow(r - mean, 2)).Average());
+                    
+                    if (stdDev > 0 && returns.Count > 0)
+                    {
+                        return (returns[^1] - mean) / stdDev; // Z-score of latest return
+                    }
+                }
+            }
+            
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating momentum Z-score for {Symbol}", symbol);
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// Calculate pullback risk from recent price action
+    /// </summary>
+    private double? CalculatePullbackRisk(string symbol)
+    {
+        try
+        {
+            var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+            foreach (var aggregator in barAggregators)
+            {
+                var history = aggregator.GetHistory(symbol);
+                if (history.Count >= 10)
+                {
+                    var recentBars = history.TakeLast(10).ToList();
+                    var highestHigh = recentBars.Max(b => b.High);
+                    var lowestLow = recentBars.Min(b => b.Low);
+                    var currentPrice = recentBars[^1].Close;
+                    
+                    // Calculate where current price sits in recent range
+                    if (highestHigh != lowestLow)
+                    {
+                        return (double)((highestHigh - currentPrice) / (highestHigh - lowestLow));
+                    }
+                }
+            }
+            
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating pullback risk for {Symbol}", symbol);
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// Calculate volume thrust from recent volume patterns
+    /// </summary>
+    private double? CalculateVolumeThrust(string symbol)
+    {
+        try
+        {
+            var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+            foreach (var aggregator in barAggregators)
+            {
+                var history = aggregator.GetHistory(symbol);
+                if (history.Count >= 20)
+                {
+                    var recentVolume = history.TakeLast(5).Average(b => b.Volume);
+                    var averageVolume = history.TakeLast(20).Average(b => b.Volume);
+                    
+                    if (averageVolume > 0)
+                    {
+                        return recentVolume / averageVolume; // Volume thrust ratio
+                    }
+                }
+            }
+            
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating volume thrust for {Symbol}", symbol);
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// Count inside bars in recent history
+    /// </summary>
+    private double? CountInsideBars(string symbol)
+    {
+        try
+        {
+            var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+            foreach (var aggregator in barAggregators)
+            {
+                var history = aggregator.GetHistory(symbol);
+                if (history.Count >= 10)
+                {
+                    var recentBars = history.TakeLast(10).ToList();
+                    double insideBarCount = 0;
+                    
+                    for (int i = 1; i < recentBars.Count; i++)
+                    {
+                        var current = recentBars[i];
+                        var previous = recentBars[i - 1];
+                        
+                        if (current.High <= previous.High && current.Low >= previous.Low)
+                        {
+                            insideBarCount++;
+                        }
+                    }
+                    
+                    return insideBarCount;
+                }
+            }
+            
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error counting inside bars for {Symbol}", symbol);
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// Calculate VWAP distance in ATR units
+    /// </summary>
+    private double? CalculateVWAPDistance(string symbol)
+    {
+        try
+        {
+            var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+            foreach (var aggregator in barAggregators)
+            {
+                var history = aggregator.GetHistory(symbol);
+                if (history.Count >= 20)
+                {
+                    var recentBars = history.TakeLast(20).ToList();
+                    
+                    // Calculate VWAP
+                    var totalValue = 0.0;
+                    var totalVolume = 0L;
+                    
+                    foreach (var bar in recentBars)
+                    {
+                        var typicalPrice = (double)(bar.High + bar.Low + bar.Close) / 3.0;
+                        totalValue += typicalPrice * bar.Volume;
+                        totalVolume += bar.Volume;
+                    }
+                    
+                    if (totalVolume > 0)
+                    {
+                        var vwap = totalValue / totalVolume;
+                        var currentPrice = (double)recentBars[^1].Close;
+                        var atr = CalculateATR(recentBars);
+                        
+                        if (atr > 0)
+                        {
+                            return Math.Abs(currentPrice - vwap) / atr;
+                        }
+                    }
+                }
+            }
+            
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating VWAP distance for {Symbol}", symbol);
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// Calculate Keltner channel touch
+    /// </summary>
+    private double? CalculateKeltnerTouch(string symbol)
+    {
+        try
+        {
+            var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+            foreach (var aggregator in barAggregators)
+            {
+                var history = aggregator.GetHistory(symbol);
+                if (history.Count >= 20)
+                {
+                    var recentBars = history.TakeLast(20).ToList();
+                    var sma = recentBars.Average(b => (double)b.Close);
+                    var atr = CalculateATR(recentBars);
+                    var currentPrice = (double)recentBars[^1].Close;
+                    
+                    var upperBand = sma + (2.0 * atr);
+                    var lowerBand = sma - (2.0 * atr);
+                    
+                    if (currentPrice >= upperBand) return 1.0; // Upper touch
+                    if (currentPrice <= lowerBand) return -1.0; // Lower touch
+                    return 0.0; // No touch
+                }
+            }
+            
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating Keltner touch for {Symbol}", symbol);
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// Calculate Bollinger band touch
+    /// </summary>
+    private double? CalculateBollingerTouch(string symbol)
+    {
+        try
+        {
+            var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+            foreach (var aggregator in barAggregators)
+            {
+                var history = aggregator.GetHistory(symbol);
+                if (history.Count >= 20)
+                {
+                    var recentBars = history.TakeLast(20).ToList();
+                    var prices = recentBars.Select(b => (double)b.Close).ToList();
+                    var sma = prices.Average();
+                    var stdDev = Math.Sqrt(prices.Select(p => Math.Pow(p - sma, 2)).Average());
+                    var currentPrice = prices[^1];
+                    
+                    var upperBand = sma + (2.0 * stdDev);
+                    var lowerBand = sma - (2.0 * stdDev);
+                    
+                    if (currentPrice >= upperBand) return 1.0; // Upper touch
+                    if (currentPrice <= lowerBand) return -1.0; // Lower touch
+                    return 0.0; // No touch
+                }
+            }
+            
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating Bollinger touch for {Symbol}", symbol);
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// Get pattern score from real pattern engine
+    /// </summary>
+    private double? GetPatternScoreFromEngine(string symbol, bool bullish)
+    {
+        try
+        {
+            var patternEngine = _serviceProvider.GetService<BotCore.Patterns.PatternEngine>();
+            if (patternEngine != null)
+            {
+                var scoresTask = patternEngine.GetCurrentScoresAsync(symbol);
+                if (scoresTask.Wait(TimeSpan.FromSeconds(2))) // Short timeout
+                {
+                    var scores = scoresTask.Result;
+                    return bullish ? scores.BullScore : scores.BearScore;
+                }
+            }
+            
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting pattern score from engine for {Symbol}", symbol);
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// Get regime from real regime service
+    /// </summary>
+    private double? GetRegimeFromService(string symbol)
+    {
+        try
+        {
+            var regimeService = _serviceProvider.GetService<BotCore.StrategyDsl.IRegimeService>();
+            if (regimeService != null)
+            {
+                var regime = regimeService.GetRegime(symbol);
+                return (double)regime; // Convert enum to double
+            }
+            
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting regime for {Symbol}", symbol);
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// Get recent bar count from real bar history
+    /// </summary>
+    private double? GetRecentBarCountFromHistory(string symbol)
+    {
+        try
+        {
+            var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+            foreach (var aggregator in barAggregators)
+            {
+                var history = aggregator.GetHistory(symbol);
+                return history.Count;
+            }
+            
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting bar count for {Symbol}", symbol);
+            return null;
         }
     }
 

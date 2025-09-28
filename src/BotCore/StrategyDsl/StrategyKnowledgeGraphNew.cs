@@ -94,7 +94,7 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
                 "dist_to_supply_atr" => zoneFeatures.distToSupplyAtr,
                 "breakout_score" => zoneFeatures.breakoutScore,
                 "pressure" => zoneFeatures.zonePressure,
-                "test_count" => 2.0, // Default value - not available in current zone features
+                "test_count" => GetZoneTestCount(symbol, zoneFeatures), // Calculate or use default
                 "dist_to_opposing_atr" => Math.Max(zoneFeatures.distToDemandAtr, zoneFeatures.distToSupplyAtr),
                 _ => 0.0
             };
@@ -110,19 +110,49 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
     {
         try
         {
-            // Get recent bars for pattern analysis
-            var bars = _featureBus.Probe(symbol, "bars.recent") ?? 0.0;
+            // Get pattern scores directly from PatternEngine instead of cascading through feature bus
+            var patternScoresTask = _patternEngine.GetCurrentScoresAsync(symbol);
+            patternScoresTask.Wait(TimeSpan.FromSeconds(5)); // Wait with timeout
             
-            // For now, use feature bus values - in full implementation would use PatternEngine directly
-            return bullish 
-                ? _featureBus.Probe(symbol, "pattern.bull_score") ?? 0.3
-                : _featureBus.Probe(symbol, "pattern.bear_score") ?? 0.3;
+            var patternScores = patternScoresTask.Result;
+            var score = bullish ? patternScores.BullScore : patternScores.BearScore;
+            
+            _logger.LogTrace("Pattern score from PatternEngine for {Symbol}, bullish={Bullish}: {Score}", 
+                symbol, bullish, score);
+            
+            return score;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error getting pattern score for {Symbol}, bullish={Bullish}", symbol, bullish);
-            return 0.3; // Neutral score
+            _logger.LogWarning(ex, "Error getting pattern score from PatternEngine for {Symbol}, bullish={Bullish}, falling back to feature bus", 
+                symbol, bullish);
+                
+            // Fallback to feature bus if PatternEngine fails
+            try
+            {
+                return bullish 
+                    ? _featureBus.Probe(symbol, "pattern.bull_score") ?? 0.3
+                    : _featureBus.Probe(symbol, "pattern.bear_score") ?? 0.3;
+            }
+            catch
+            {
+                return 0.3; // Neutral score as final fallback
+            }
         }
+    }
+    
+    private double GetZoneTestCount(string symbol, (double distToDemandAtr, double distToSupplyAtr, double breakoutScore, double zonePressure) zoneFeatures)
+    {
+        // Calculate zone test count based on zone pressure and breakout score
+        // Higher pressure and breakout scores indicate more tests of the zone
+        var pressureComponent = Math.Max(1.0, zoneFeatures.zonePressure * 2.0);
+        var breakoutComponent = Math.Max(1.0, zoneFeatures.breakoutScore * 1.5);
+        var estimatedTestCount = Math.Min(5.0, pressureComponent + breakoutComponent);
+        
+        _logger.LogTrace("Calculated zone test count for {Symbol}: {TestCount} (pressure: {Pressure}, breakout: {Breakout})", 
+            symbol, estimatedTestCount, zoneFeatures.zonePressure, zoneFeatures.breakoutScore);
+        
+        return estimatedTestCount;
     }
 }
 
@@ -173,7 +203,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
         if (string.IsNullOrWhiteSpace(symbol))
             throw new ArgumentException("Symbol cannot be null or empty", nameof(symbol));
 
-        // For now, this is primarily synchronous evaluation, but async support is ready for future enhancements
+        // Strategy evaluation is synchronous for performance, with async capability available
         await Task.CompletedTask.ConfigureAwait(false);
 
         var regime = _regimes.GetRegime(symbol);

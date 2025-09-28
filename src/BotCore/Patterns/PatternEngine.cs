@@ -1,3 +1,9 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using BotCore.Models;
 using BotCore.Services;
 using Microsoft.Extensions.Logging;
@@ -13,12 +19,22 @@ public class PatternEngine
     private readonly ILogger<PatternEngine> _logger;
     private readonly IFeatureBus _featureBus;
     private readonly List<IPatternDetector> _detectors;
+    private readonly IServiceProvider _serviceProvider;
+    
+    // Pattern analysis constants
+    private const double MIN_PATTERN_SCORE_THRESHOLD = 0.1;
+    private const double ACTIVE_PATTERN_THRESHOLD = 0.3;
+    private const double NEUTRAL_PATTERN_DIRECTION = 0.5;
+    private const double CONFIDENCE_BOOST = 0.1;
+    private const double NEUTRAL_SCORE = 0.5;
+    private const double MINIMUM_SCORE_FOR_ANALYSIS = 0.01;
 
-    public PatternEngine(ILogger<PatternEngine> logger, IFeatureBus featureBus, IEnumerable<IPatternDetector> detectors)
+    public PatternEngine(ILogger<PatternEngine> logger, IFeatureBus featureBus, IEnumerable<IPatternDetector> detectors, IServiceProvider serviceProvider)
     {
         _logger = logger;
         _featureBus = featureBus;
         _detectors = detectors.ToList();
+        _serviceProvider = serviceProvider;
     }
 
     /// <summary>
@@ -26,6 +42,8 @@ public class PatternEngine
     /// </summary>
     public PatternScores GetScores(string symbol, IReadOnlyList<Bar> bars)
     {
+        ArgumentNullException.ThrowIfNull(bars);
+        
         if (bars.Count == 0)
         {
             return new PatternScores();
@@ -45,7 +63,7 @@ public class PatternEngine
                 }
 
                 var result = detector.Detect(bars);
-                if (result.Score > 0.01) // Only include meaningful detections
+                if (result.Score > MINIMUM_SCORE_FOR_ANALYSIS) // Only include meaningful detections
                 {
                     results.Add(new PatternDetectionResult
                     {
@@ -85,55 +103,42 @@ public class PatternEngine
     /// </summary>
     public async Task<PatternScoresWithDetails> GetCurrentScoresAsync(string symbol, CancellationToken cancellationToken = default)
     {
-        // In production, this would get recent bars from the bar registry or market data service
-        // For now, simulate with basic pattern detection
         try
         {
-            var patternScores = new PatternScoresWithDetails
-            {
-                BullScore = 0.5,
-                BearScore = 0.5,
-                OverallConfidence = 0.7,
-                DetectedPatterns = new List<PatternDetail>()
-            };
-
-            // Simulate pattern detection results
-            var random = new Random();
-            var patternNames = new[] { "Doji", "Hammer", "DoubleTop", "BullFlag", "KeyReversal" };
+            // Get recent bars from real market data
+            var recentBars = await GetRecentBarsForAnalysisAsync(symbol, cancellationToken).ConfigureAwait(false);
             
-            foreach (var patternName in patternNames)
+            if (recentBars == null || recentBars.Count == 0)
             {
-                if (random.NextDouble() > 0.6) // 40% chance each pattern is detected
+                _logger.LogWarning("No recent bars available for pattern analysis of {Symbol}, using neutral scores", symbol);
+                return new PatternScoresWithDetails
                 {
-                    var score = Math.Max(0.1, random.NextDouble());
-                    var direction = random.NextDouble() > 0.5 ? 1 : -1;
-                    
-                    patternScores.DetectedPatterns.Add(new PatternDetail
-                    {
-                        Name = patternName,
-                        Score = score,
-                        IsActive = score > 0.3,
-                        Direction = direction,
-                        Confidence = Math.Min(1.0, score + 0.2)
-                    });
-
-                    // Update aggregate scores
-                    if (direction > 0)
-                        patternScores.BullScore += score * 0.2;
-                    else
-                        patternScores.BearScore += score * 0.2;
-                }
+                    BullScore = NEUTRAL_SCORE,
+                    BearScore = NEUTRAL_SCORE,
+                    OverallConfidence = 0.0,
+                    DetectedPatterns = new List<PatternDetail>()
+                };
             }
 
-            // Normalize scores
-            var maxScore = Math.Max(patternScores.BullScore, patternScores.BearScore);
-            if (maxScore > 1.0)
+            // Use the existing synchronous GetScores method with real bar data
+            var patternScores = GetScores(symbol, recentBars);
+            
+            // Convert to detailed format for async interface
+            var detailsResult = new PatternScoresWithDetails
             {
-                patternScores.BullScore /= maxScore;
-                patternScores.BearScore /= maxScore;
-            }
+                BullScore = patternScores.BullScore,
+                BearScore = patternScores.BearScore,
+                OverallConfidence = CalculateOverallConfidence(patternScores),
+                DetectedPatterns = ConvertPatternFlagsToDetails(patternScores.PatternFlags)
+            };
+            
+            // Publish pattern scores to feature bus
+            var timestamp = DateTime.UtcNow;
+            _featureBus.Publish(symbol, timestamp, "pattern.bull_score", detailsResult.BullScore);
+            _featureBus.Publish(symbol, timestamp, "pattern.bear_score", detailsResult.BearScore);
+            _featureBus.Publish(symbol, timestamp, "pattern.confidence", detailsResult.OverallConfidence);
 
-            return await Task.FromResult(patternScores);
+            return detailsResult;
         }
         catch (Exception ex)
         {
@@ -142,8 +147,8 @@ public class PatternEngine
             // Return neutral scores on error
             return new PatternScoresWithDetails
             {
-                BullScore = 0.5,
-                BearScore = 0.5,
+                BullScore = NEUTRAL_SCORE,
+                BearScore = NEUTRAL_SCORE,
                 OverallConfidence = 0.0,
                 DetectedPatterns = new List<PatternDetail>()
             };
@@ -179,6 +184,100 @@ public class PatternEngine
         }
 
         return scores;
+    }
+    
+    /// <summary>
+    /// Get recent bars for pattern analysis from real market data
+    /// </summary>
+    private async Task<IReadOnlyList<Bar>?> GetRecentBarsForAnalysisAsync(string symbol, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Get bars from real bar aggregator services
+            var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+            foreach (var aggregator in barAggregators)
+            {
+                var history = aggregator.GetHistory(symbol);
+                if (history.Count > 0)
+                {
+                    // Convert from Market.Bar to Models.Bar
+                    var bars = history.Select(marketBar => new Bar
+                    {
+                        Start = marketBar.Start,
+                        Ts = new DateTimeOffset(marketBar.Start).ToUnixTimeMilliseconds(),
+                        Symbol = symbol,
+                        Open = marketBar.Open,
+                        High = marketBar.High,
+                        Low = marketBar.Low,
+                        Close = marketBar.Close,
+                        Volume = (int)Math.Min(marketBar.Volume, int.MaxValue)
+                    }).ToList();
+                    
+                    _logger.LogDebug("Retrieved {Count} real bars for pattern analysis of {Symbol}", bars.Count, symbol);
+                    
+                    await Task.CompletedTask.ConfigureAwait(false);
+                    return bars;
+                }
+            }
+            
+            // Try to get from trading system bar consumer
+            var barConsumer = _serviceProvider.GetService<BotCore.Services.TradingSystemBarConsumer>();
+            if (barConsumer != null)
+            {
+                // The bar consumer doesn't expose a query interface, but we can try other sources
+                _logger.LogDebug("Bar consumer available but no query interface for {Symbol}", symbol);
+            }
+            
+            // If no bars available, we cannot perform pattern analysis
+            _logger.LogWarning("No bar data available for pattern analysis of {Symbol}", symbol);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving real bars for pattern analysis of {Symbol}", symbol);
+            throw; // Re-throw to fail fast rather than return stub data
+        }
+    }
+    
+    /// <summary>
+    /// Calculate overall confidence from pattern scores
+    /// </summary>
+    private static double CalculateOverallConfidence(PatternScores scores)
+    {
+        if (scores.PatternFlags.Count == 0)
+            return 0.0;
+            
+        var averageScore = scores.PatternFlags.Values.Average();
+        var scoreVariance = scores.PatternFlags.Values.Select(s => Math.Pow(s - averageScore, 2)).Average();
+        var confidence = Math.Max(0.0, Math.Min(1.0, averageScore * (1.0 - Math.Sqrt(scoreVariance))));
+        
+        return confidence;
+    }
+    
+    /// <summary>
+    /// Convert pattern flags dictionary to detailed pattern list
+    /// </summary>
+    private static List<PatternDetail> ConvertPatternFlagsToDetails(Dictionary<string, double> patternFlags)
+    {
+        var details = new List<PatternDetail>();
+        
+        foreach (var kvp in patternFlags)
+        {
+            var score = kvp.Value;
+            if (score > MIN_PATTERN_SCORE_THRESHOLD) // Only include meaningful patterns
+            {
+                details.Add(new PatternDetail
+                {
+                    Name = kvp.Key,
+                    Score = score,
+                    IsActive = score > ACTIVE_PATTERN_THRESHOLD,
+                    Direction = score > NEUTRAL_PATTERN_DIRECTION ? 1 : -1, // Simplified direction mapping
+                    Confidence = Math.Min(1.0, score + CONFIDENCE_BOOST)
+                });
+            }
+        }
+        
+        return details;
     }
 }
 

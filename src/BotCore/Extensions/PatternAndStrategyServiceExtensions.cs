@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Zones;
 
 namespace BotCore.Extensions;
 
@@ -65,7 +66,12 @@ public static class PatternAndStrategyServiceExtensions
         });
 
         // Register pattern engine
-        services.AddSingleton<PatternEngine>();
+        services.AddSingleton<PatternEngine>(provider =>
+            new PatternEngine(
+                provider.GetRequiredService<ILogger<PatternEngine>>(),
+                provider.GetRequiredService<IFeatureBus>(),
+                provider.GetRequiredService<IEnumerable<IPatternDetector>>(),
+                provider));
 
         return services;
     }
@@ -107,7 +113,11 @@ public static class PatternAndStrategyServiceExtensions
         if (configuration is null) throw new ArgumentNullException(nameof(configuration));
 
         // Register required dependencies for production implementations - NO MOCKS
-        services.AddSingleton<FeatureBusAdapter>();
+        services.AddSingleton<FeatureBusAdapter>(provider =>
+            new FeatureBusAdapter(
+                provider.GetRequiredService<Zones.IFeatureBus>(),
+                provider.GetRequiredService<ILogger<FeatureBusAdapter>>(),
+                provider));
         services.AddSingleton<IFeatureBusWithProbe>(provider => provider.GetRequiredService<FeatureBusAdapter>());
         
         // Register REAL production services with EnhancedRiskManager and RealTradingMetricsService
