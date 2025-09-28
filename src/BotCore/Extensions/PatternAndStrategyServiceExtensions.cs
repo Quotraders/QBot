@@ -189,10 +189,16 @@ public class PatternEngineOptions
 /// </summary>
 public class PatternFamilyOptions
 {
-    public PatternFamilyConfig Candlestick { get; set; } = new() { Enabled = true, Weight = 1.0 };
-    public PatternFamilyConfig Structural { get; set; } = new() { Enabled = true, Weight = 0.9 };
-    public PatternFamilyConfig Continuation { get; set; } = new() { Enabled = true, Weight = 0.8 };
-    public PatternFamilyConfig Reversal { get; set; } = new() { Enabled = true, Weight = 0.8 };
+    // S109 Pattern weight constants
+    private const double CandlestickPatternWeight = 1.0;
+    private const double StructuralPatternWeight = 0.9;
+    private const double ContinuationPatternWeight = 0.8;
+    private const double ReversalPatternWeight = 0.8;
+    
+    public PatternFamilyConfig Candlestick { get; set; } = new() { Enabled = true, Weight = CandlestickPatternWeight };
+    public PatternFamilyConfig Structural { get; set; } = new() { Enabled = true, Weight = StructuralPatternWeight };
+    public PatternFamilyConfig Continuation { get; set; } = new() { Enabled = true, Weight = ContinuationPatternWeight };
+    public PatternFamilyConfig Reversal { get; set; } = new() { Enabled = true, Weight = ReversalPatternWeight };
 }
 
 /// <summary>
