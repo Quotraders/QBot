@@ -7,6 +7,12 @@ namespace BotCore.Patterns.Detectors;
 /// </summary>
 public class CandlestickPatternDetector : IPatternDetector
 {
+    // S109 Magic Number Constants - Candlestick Pattern Thresholds
+    private const double MinSpinningTopBodyRatio = 0.1;
+    private const double MaxSpinningTopBodyRatio = 0.3;
+    private const double SpinningTopConfidence = 0.6;
+    private const double StrongTrendConfidence = 0.8;
+    
     public string PatternName { get; }
     public PatternFamily Family => PatternFamily.Candlestick;
     public int RequiredBars { get; }
@@ -296,7 +302,7 @@ public class CandlestickPatternDetector : IPatternDetector
         if (range == 0) return 0.0;
         
         var bodyRatio = bodySize / range;
-        return bodyRatio > 0.1 && bodyRatio < 0.3 ? 0.6 : 0.0;
+        return bodyRatio > MinSpinningTopBodyRatio && bodyRatio < MaxSpinningTopBodyRatio ? SpinningTopConfidence : 0.0;
     }
 
     private static double DetectThreeConsecutive(IReadOnlyList<Bar> bars, bool bullish)
@@ -308,12 +314,12 @@ public class CandlestickPatternDetector : IPatternDetector
         if (bullish)
         {
             return (b1.Close > b1.Open && b2.Close > b2.Open && b3.Close > b3.Open &&
-                   b2.Close > b1.Close && b3.Close > b2.Close) ? 0.8 : 0.0;
+                   b2.Close > b1.Close && b3.Close > b2.Close) ? StrongTrendConfidence : 0.0;
         }
         else
         {
             return (b1.Close < b1.Open && b2.Close < b2.Open && b3.Close < b3.Open &&
-                   b2.Close < b1.Close && b3.Close < b2.Close) ? 0.8 : 0.0;
+                   b2.Close < b1.Close && b3.Close < b2.Close) ? StrongTrendConfidence : 0.0;
         }
     }
 }

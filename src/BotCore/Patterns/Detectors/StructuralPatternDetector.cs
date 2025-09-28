@@ -26,7 +26,7 @@ public class StructuralPatternDetector : IPatternDetector
             StructuralType.TripleBottom => ("TripleBottom", 30),
             StructuralType.CupAndHandle => ("CupAndHandle", 40),
             StructuralType.Rectangle => ("Rectangle", 15),
-            StructuralType.Ascending Triangle => ("AscendingTriangle", 20),
+            StructuralType.AscendingTriangle => ("AscendingTriangle", 20),
             StructuralType.DescendingTriangle => ("DescendingTriangle", 20),
             StructuralType.SymmetricalTriangle => ("SymmetricalTriangle", 20),
             StructuralType.RoundingBottom => ("RoundingBottom", 30),
@@ -82,7 +82,7 @@ public class StructuralPatternDetector : IPatternDetector
             var shoulderRatio = Math.Min(leftShoulder.Value, rightShoulder.Value) / 
                                Math.Max(leftShoulder.Value, rightShoulder.Value);
             
-            if (shoulderRatio < 0.97) continue;
+            if (shoulderRatio < 0.97m) continue;
 
             // Calculate neckline and score
             var necklineLevel = Math.Min(leftShoulder.Value, rightShoulder.Value) * 0.98m;
@@ -129,7 +129,7 @@ public class StructuralPatternDetector : IPatternDetector
             var shoulderRatio = Math.Min(leftShoulder.Value, rightShoulder.Value) / 
                                Math.Max(leftShoulder.Value, rightShoulder.Value);
             
-            if (shoulderRatio < 0.97) continue;
+            if (shoulderRatio < 0.97m) continue;
 
             var score = 0.7; // Simplified scoring
 
@@ -160,7 +160,7 @@ public class StructuralPatternDetector : IPatternDetector
 
             // Tops should be at similar levels (within 2%)
             var ratio = Math.Min(firstTop.Value, secondTop.Value) / Math.Max(firstTop.Value, secondTop.Value);
-            if (ratio < 0.98) continue;
+            if (ratio < 0.98m) continue;
 
             // Should have reasonable separation (at least 8 bars)
             if (secondTop.Index - firstTop.Index < 8) continue;
@@ -195,7 +195,7 @@ public class StructuralPatternDetector : IPatternDetector
             var secondBottom = valleys[i + 1];
 
             var ratio = Math.Min(firstBottom.Value, secondBottom.Value) / Math.Max(firstBottom.Value, secondBottom.Value);
-            if (ratio < 0.98) continue;
+            if (ratio < 0.98m) continue;
 
             if (secondBottom.Index - firstBottom.Index < 8) continue;
 
@@ -273,7 +273,7 @@ public class StructuralPatternDetector : IPatternDetector
         var recentRange = bars.TakeLast(5).Select(b => b.High - b.Low).Average();
         var avgRange = (double)range;
         
-        var score = recentRange < avgRange * 0.5 ? 0.6 : 0.0;
+        var score = recentRange < avgRange * 0.5m ? 0.6 : 0.0;
         
         return new PatternResult
         {
@@ -284,7 +284,7 @@ public class StructuralPatternDetector : IPatternDetector
             { 
                 ["type"] = type,
                 ["range"] = (double)range,
-                ["consolidation_ratio"] = recentRange / avgRange
+                ["consolidation_ratio"] = (double)(recentRange / avgRange)
             }
         };
     }

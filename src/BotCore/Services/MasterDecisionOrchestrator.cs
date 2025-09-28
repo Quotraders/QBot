@@ -438,7 +438,7 @@ public class MasterDecisionOrchestrator : BackgroundService
     /// Apply bundle parameters to market context
     /// This replaces hardcoded values with learned parameter selections
     /// </summary>
-    private MarketContext ApplyBundleParameters(MarketContext marketContext, BundleSelection? bundleSelection)
+    private static MarketContext ApplyBundleParameters(MarketContext marketContext, BundleSelection? bundleSelection)
     {
         if (bundleSelection == null)
         {
@@ -484,7 +484,7 @@ public class MasterDecisionOrchestrator : BackgroundService
     /// Apply bundle configuration to trading decision
     /// This ensures the decision uses learned parameters instead of hardcoded values
     /// </summary>
-    private UnifiedTradingDecision ApplyBundleToDecision(UnifiedTradingDecision decision, BundleSelection bundleSelection)
+    private static UnifiedTradingDecision ApplyBundleToDecision(UnifiedTradingDecision decision, BundleSelection bundleSelection)
     {
         // Apply bundle multiplier to position size
         var enhancedQuantity = decision.Quantity * bundleSelection.Bundle.Mult;
@@ -781,7 +781,7 @@ public class MasterDecisionOrchestrator : BackgroundService
         return _rolloverManager.CheckRolloverNeedsAsync(cancellationToken);
     }
     
-    private UnifiedTradingDecision CreateEmergencyDecision(
+    private static UnifiedTradingDecision CreateEmergencyDecision(
         string symbol,
                 string decisionId, 
         DateTime startTime)
@@ -911,15 +911,32 @@ public class MasterDecisionOrchestrator : BackgroundService
             
             _logger.LogInformation("📊 [PERFORMANCE-REPORT] Generated detailed report: {ReportPath}", reportPath);
         }
-        catch (Exception ex)
+        catch (JsonException ex)
         {
-            _logger.LogError(ex, "❌ [PERFORMANCE-REPORT] Failed to generate performance report");
+            _logger.LogError(ex, "❌ [PERFORMANCE-REPORT] Failed to serialize performance report to JSON");
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "❌ [PERFORMANCE-REPORT] Failed to write performance report to file");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "❌ [PERFORMANCE-REPORT] Access denied writing performance report");
         }
     }
     
-    private string GenerateDecisionId()
+    private static string GenerateDecisionId()
     {
         return $"MD{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}_{Random.Shared.Next(DecisionIdRandomMin, DecisionIdRandomMax)}";
+    }
+    
+    /// <summary>
+    /// Dispose method to clean up resources during service shutdown
+    /// </summary>
+    public override Task StopAsync(CancellationToken cancellationToken)
+    {
+        _neuralUcbExtended?.Dispose();
+        return base.StopAsync(cancellationToken);
     }
     
     #endregion

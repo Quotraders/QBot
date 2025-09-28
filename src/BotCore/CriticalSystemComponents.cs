@@ -648,13 +648,13 @@ namespace TradingBot.Critical
             public decimal DailyPnL { get; set; }
         }
 
-        internal class MarketState
+        internal sealed class MarketState
         {
             public bool IsMarketOpen { get; set; }
             public DateTime LastUpdate { get; set; }
         }
 
-        internal class Order
+        internal sealed class Order
         {
             public string OrderId { get; set; } = string.Empty;
             public string Symbol { get; set; } = string.Empty;
@@ -1425,7 +1425,7 @@ namespace TradingBot.Critical
         
         private readonly ILogger<CorrelationProtectionSystem> _logger;
         
-        internal class PositionExposure
+        internal sealed class PositionExposure
         {
             public string Symbol { get; set; } = string.Empty;
             public decimal DirectionalExposure { get; set; }
@@ -1435,7 +1435,7 @@ namespace TradingBot.Critical
             public DateTime LastUpdated { get; set; }
         }
         
-        internal class CorrelationAlert
+        internal sealed class CorrelationAlert
         {
             private readonly List<string> _affectedSymbols = new();
             
