@@ -41,7 +41,7 @@ public sealed class ZoneFeatureResolver : IFeatureResolver
             };
             
             _logger.LogTrace("Zone feature {Feature} for {Symbol}: {Value}", _featureName, symbol, value);
-            return Task.FromResult(value);
+            return Task.FromResult<double?>(value);
         }
         catch (Exception ex)
         {
@@ -103,7 +103,7 @@ public sealed class ZoneCountResolver : IFeatureResolver
             _logger.LogTrace("Zone count for {Symbol}: {Count} (demand: {Demand}ATR, supply: {Supply}ATR)", 
                 symbol, activeZoneCount, demandProximity, supplyProximity);
             
-            return Task.FromResult(activeZoneCount);
+            return Task.FromResult<double?>(activeZoneCount);
         }
         catch (Exception ex)
         {
@@ -140,7 +140,7 @@ public sealed class ZoneTestsResolver : IFeatureResolver
             _logger.LogTrace("Zone tests for {Symbol}: {Tests} (breakout: {Breakout}, pressure: {Pressure})", 
                 symbol, testFrequency, features.breakoutScore, features.zonePressure);
             
-            return Task.FromResult(testFrequency);
+            return Task.FromResult<double?>(testFrequency);
         }
         catch (Exception ex)
         {
