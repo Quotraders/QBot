@@ -1443,25 +1443,97 @@ public sealed class MarketOpenMinutesResolver : IFeatureResolver
     {
         try
         {
-            // Simple market open minutes calculation
-            var now = DateTime.UtcNow;
-            var marketOpen = new DateTime(now.Year, now.Month, now.Day, 14, 30, 0); // 9:30 AM ET = 14:30 UTC
+            // Emit telemetry for resolution attempt
+            await EmitResolutionTelemetryAsync("market.open_minutes", symbol, cancellationToken);
             
-            if (now.Date != marketOpen.Date)
-            {
-                // Different day, return 0
-                return 0.0;
-            }
+            // PRODUCTION REQUIREMENT: MarketTimeService must exist - fail closed if not available
+            var marketTimeService = _serviceProvider.GetRequiredService<BotCore.Services.MarketTimeService>();
+            var minutesFromOpen = await marketTimeService.GetMinutesSinceOpenAsync(symbol, cancellationToken).ConfigureAwait(false);
             
-            var minutesFromOpen = now > marketOpen ? (now - marketOpen).TotalMinutes : -1.0;
             _logger.LogTrace("Minutes since open for {Symbol}: {Minutes}", symbol, minutesFromOpen);
-            // Completed synchronously
-            return Math.Max(0.0, minutesFromOpen);
+            await EmitSuccessTelemetryAsync("market.open_minutes", symbol, minutesFromOpen, cancellationToken);
+            return minutesFromOpen;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to resolve minutes since open for symbol {Symbol}", symbol);
-            throw new InvalidOperationException($"Production market open minutes resolution failed for '{symbol}': {ex.Message}", ex);
+            _logger.LogError(ex, "FAIL-CLOSED: Minutes since open resolution failed for {Symbol}", symbol);
+            await EmitFailureTelemetryAsync("market.open_minutes", symbol, ex.Message, cancellationToken);
+            throw new InvalidOperationException($"PRODUCTION FAIL-CLOSED: Market open minutes resolution failed for '{symbol}': {ex.Message}", ex);
+        }
+    }
+    
+    private async Task EmitResolutionTelemetryAsync(string featureKey, string symbol, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var metricsService = _serviceProvider.GetService(typeof(TradingBot.IntelligenceStack.RealTradingMetricsService));
+            if (metricsService != null)
+            {
+                var tags = new Dictionary<string, string> { ["feature"] = featureKey, ["symbol"] = symbol };
+                var method = metricsService.GetType().GetMethod("RecordCounterAsync");
+                if (method != null)
+                {
+                    var task = method.Invoke(metricsService, new object[] { "feature.resolution.attempt", 1, tags, cancellationToken });
+                    if (task is Task taskResult)
+                    {
+                        await taskResult.ConfigureAwait(false);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to emit resolution telemetry for {Feature}", featureKey);
+        }
+    }
+    
+    private async Task EmitSuccessTelemetryAsync(string featureKey, string symbol, double value, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var metricsService = _serviceProvider.GetService(typeof(TradingBot.IntelligenceStack.RealTradingMetricsService));
+            if (metricsService != null)
+            {
+                var tags = new Dictionary<string, string> { ["feature"] = featureKey, ["symbol"] = symbol, ["value"] = value.ToString("F0") };
+                var method = metricsService.GetType().GetMethod("RecordCounterAsync");
+                if (method != null)
+                {
+                    var task = method.Invoke(metricsService, new object[] { "feature.resolution.success", 1, tags, cancellationToken });
+                    if (task is Task taskResult)
+                    {
+                        await taskResult.ConfigureAwait(false);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to emit success telemetry for {Feature}", featureKey);
+        }
+    }
+    
+    private async Task EmitFailureTelemetryAsync(string featureKey, string symbol, string error, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var metricsService = _serviceProvider.GetService(typeof(TradingBot.IntelligenceStack.RealTradingMetricsService));
+            if (metricsService != null)
+            {
+                var tags = new Dictionary<string, string> { ["feature"] = featureKey, ["symbol"] = symbol, ["error"] = error };
+                var method = metricsService.GetType().GetMethod("RecordCounterAsync");
+                if (method != null)
+                {
+                    var task = method.Invoke(metricsService, new object[] { "feature.resolution.failure", 1, tags, cancellationToken });
+                    if (task is Task taskResult)
+                    {
+                        await taskResult.ConfigureAwait(false);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to emit failure telemetry for {Feature}", featureKey);
         }
     }
 }
@@ -1484,25 +1556,97 @@ public sealed class MarketCloseMinutesResolver : IFeatureResolver
     {
         try
         {
-            // Simple market close minutes calculation  
-            var now = DateTime.UtcNow;
-            var marketClose = new DateTime(now.Year, now.Month, now.Day, 21, 0, 0); // 4:00 PM ET = 21:00 UTC
+            // Emit telemetry for resolution attempt
+            await EmitResolutionTelemetryAsync("market.close_minutes", symbol, cancellationToken);
             
-            if (now.Date != marketClose.Date)
-            {
-                // Different day, return 0
-                return 0.0;
-            }
+            // PRODUCTION REQUIREMENT: MarketTimeService must exist - fail closed if not available
+            var marketTimeService = _serviceProvider.GetRequiredService<BotCore.Services.MarketTimeService>();
+            var minutesToClose = await marketTimeService.GetMinutesUntilCloseAsync(symbol, cancellationToken).ConfigureAwait(false);
             
-            var minutesToClose = marketClose > now ? (marketClose - now).TotalMinutes : 0.0;
             _logger.LogTrace("Minutes until close for {Symbol}: {Minutes}", symbol, minutesToClose);
-            // Completed synchronously
-            return Math.Max(0.0, minutesToClose);
+            await EmitSuccessTelemetryAsync("market.close_minutes", symbol, minutesToClose, cancellationToken);
+            return minutesToClose;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to resolve minutes until close for symbol {Symbol}", symbol);
-            throw new InvalidOperationException($"Production market close minutes resolution failed for '{symbol}': {ex.Message}", ex);
+            _logger.LogError(ex, "FAIL-CLOSED: Minutes until close resolution failed for {Symbol}", symbol);
+            await EmitFailureTelemetryAsync("market.close_minutes", symbol, ex.Message, cancellationToken);
+            throw new InvalidOperationException($"PRODUCTION FAIL-CLOSED: Market close minutes resolution failed for '{symbol}': {ex.Message}", ex);
+        }
+    }
+    
+    private async Task EmitResolutionTelemetryAsync(string featureKey, string symbol, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var metricsService = _serviceProvider.GetService(typeof(TradingBot.IntelligenceStack.RealTradingMetricsService));
+            if (metricsService != null)
+            {
+                var tags = new Dictionary<string, string> { ["feature"] = featureKey, ["symbol"] = symbol };
+                var method = metricsService.GetType().GetMethod("RecordCounterAsync");
+                if (method != null)
+                {
+                    var task = method.Invoke(metricsService, new object[] { "feature.resolution.attempt", 1, tags, cancellationToken });
+                    if (task is Task taskResult)
+                    {
+                        await taskResult.ConfigureAwait(false);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to emit resolution telemetry for {Feature}", featureKey);
+        }
+    }
+    
+    private async Task EmitSuccessTelemetryAsync(string featureKey, string symbol, double value, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var metricsService = _serviceProvider.GetService(typeof(TradingBot.IntelligenceStack.RealTradingMetricsService));
+            if (metricsService != null)
+            {
+                var tags = new Dictionary<string, string> { ["feature"] = featureKey, ["symbol"] = symbol, ["value"] = value.ToString("F0") };
+                var method = metricsService.GetType().GetMethod("RecordCounterAsync");
+                if (method != null)
+                {
+                    var task = method.Invoke(metricsService, new object[] { "feature.resolution.success", 1, tags, cancellationToken });
+                    if (task is Task taskResult)
+                    {
+                        await taskResult.ConfigureAwait(false);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to emit success telemetry for {Feature}", featureKey);
+        }
+    }
+    
+    private async Task EmitFailureTelemetryAsync(string featureKey, string symbol, string error, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var metricsService = _serviceProvider.GetService(typeof(TradingBot.IntelligenceStack.RealTradingMetricsService));
+            if (metricsService != null)
+            {
+                var tags = new Dictionary<string, string> { ["feature"] = featureKey, ["symbol"] = symbol, ["error"] = error };
+                var method = metricsService.GetType().GetMethod("RecordCounterAsync");
+                if (method != null)
+                {
+                    var task = method.Invoke(metricsService, new object[] { "feature.resolution.failure", 1, tags, cancellationToken });
+                    if (task is Task taskResult)
+                    {
+                        await taskResult.ConfigureAwait(false);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to emit failure telemetry for {Feature}", featureKey);
         }
     }
 }
