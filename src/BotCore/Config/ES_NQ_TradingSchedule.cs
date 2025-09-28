@@ -351,24 +351,18 @@ namespace BotCore.Config
 
     /// <summary>
     /// Represents a trading session with instrument-specific configuration
+    /// Using init-only setters for immutable-after-construction pattern
     /// </summary>
     public class TradingSession
     {
-        public TimeSpan Start { get; set; }
-        public TimeSpan End { get; set; }
-        public IReadOnlyList<string> Instruments => _instruments;
-        private readonly List<string> _instruments = new();
-        
-        public void ReplaceInstruments(IEnumerable<string> items)
-        {
-            _instruments.Clear();
-            if (items != null) _instruments.AddRange(items);
-        }
-        public string PrimaryInstrument { get; set; } = "";
-        public Dictionary<string, string[]> Strategies { get; } = new();
-        public Dictionary<string, double> PositionSizeMultiplier { get; } = new();
-        public string Description { get; set; } = "";
-        public bool IsActive { get; set; } = true;
-        public TradingBot.Abstractions.SessionType SessionType { get; set; } = TradingBot.Abstractions.SessionType.Regular;
+        public TimeSpan Start { get; init; }
+        public TimeSpan End { get; init; }
+        public string[] Instruments { get; init; } = Array.Empty<string>();
+        public string PrimaryInstrument { get; init; } = "";
+        public Dictionary<string, string[]> Strategies { get; init; } = new();
+        public Dictionary<string, double> PositionSizeMultiplier { get; init; } = new();
+        public string Description { get; init; } = "";
+        public bool IsActive { get; init; } = true;
+        public TradingBot.Abstractions.SessionType SessionType { get; init; } = TradingBot.Abstractions.SessionType.Regular;
     }
 }

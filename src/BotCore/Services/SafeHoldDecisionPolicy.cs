@@ -169,8 +169,6 @@ public class SafeHoldDecisionPolicy
             _logger.LogError(ex, "[ZONE-GATE] Timeout while evaluating zone gate for {Symbol}", symbol);
             return (false, string.Empty, decision);
         }
-
-        return (false, string.Empty, decision);
     }
 
     private (bool Held, string Reason, TradingDecision MaybeAmended) EvaluateZoneConstraints(
