@@ -36,6 +36,9 @@ internal class TradingOrchestratorService : BackgroundService, ITradingOrchestra
     // NEW: Master Decision Orchestrator - The ONE decision source
     private readonly BotCore.Services.MasterDecisionOrchestrator? _masterOrchestrator;
     
+    // Zone awareness integration
+    private readonly SafeHoldDecisionPolicy? _safeHoldPolicy;
+    
     // Legacy components for fallback compatibility
     private readonly UnifiedTradingBrain _tradingBrain;
     private readonly IIntelligenceOrchestrator _intelligenceOrchestrator;
@@ -67,6 +70,9 @@ internal class TradingOrchestratorService : BackgroundService, ITradingOrchestra
         
         // Try to get the new master orchestrator (priority)
         _masterOrchestrator = serviceProvider.GetService<BotCore.Services.MasterDecisionOrchestrator>();
+        
+        // Get safe hold decision policy for zone gate integration
+        _safeHoldPolicy = serviceProvider.GetService<SafeHoldDecisionPolicy>();
         
         // Get enhanced brain integration (optional)
         _enhancedBrain = serviceProvider.GetService<BotCore.Services.EnhancedTradingBrainIntegration>();
@@ -708,8 +714,32 @@ internal class TradingOrchestratorService : BackgroundService, ITradingOrchestra
     {
         try
         {
-            _logger.LogInformation("⚡ [LEGACY-EXECUTION] Executing trade: {DecisionId} {Action} Confidence={Confidence}", 
+            _logger.LogInformation("⚡ [EXECUTION] Executing trade: {DecisionId} {Action} Confidence={Confidence}", 
                 decision.DecisionId, decision.Action, decision.Confidence);
+            
+            // Apply zone gate check before execution
+            if (_safeHoldPolicy != null && !string.IsNullOrEmpty(decision.Symbol))
+            {
+                var zoneResult = _safeHoldPolicy.ZoneGate(decision, decision.Symbol);
+                if (zoneResult.Held)
+                {
+                    _logger.LogInformation("🚫 [ZONE-GATE] Trade blocked: {Reason}", zoneResult.Reason);
+                    
+                    // Push blocked trade telemetry
+                    await PushTradeTelemetryAsync(decision, success: false, cancellationToken, 
+                        blockReason: zoneResult.Reason).ConfigureAwait(false);
+                    
+                    return false;
+                }
+                
+                // Use amended decision if zone tilt was applied
+                if (zoneResult.MaybeAmended != decision)
+                {
+                    decision = zoneResult.MaybeAmended;
+                    _logger.LogInformation("📊 [ZONE-GATE] Decision amended by zone proximity - new confidence: {Confidence:F2}", 
+                        decision.Confidence);
+                }
+            }
             
             // Legacy implementation for backwards compatibility
             await Task.Delay(100, cancellationToken).ConfigureAwait(false);
@@ -721,7 +751,7 @@ internal class TradingOrchestratorService : BackgroundService, ITradingOrchestra
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ [LEGACY-EXECUTION] Failed to execute trade");
+            _logger.LogError(ex, "❌ [EXECUTION] Failed to execute trade");
             
             // Push failure telemetry
             await PushTradeTelemetryAsync(decision, success: false, cancellationToken).ConfigureAwait(false);
@@ -730,7 +760,8 @@ internal class TradingOrchestratorService : BackgroundService, ITradingOrchestra
         }
     }
 
-    private async Task PushTradeTelemetryAsync(TradingBot.Abstractions.TradingDecision decision, bool success, CancellationToken cancellationToken)
+    private async Task PushTradeTelemetryAsync(TradingBot.Abstractions.TradingDecision decision, bool success, 
+        CancellationToken cancellationToken, string? blockReason = null)
     {
         try
         {
@@ -742,7 +773,7 @@ internal class TradingOrchestratorService : BackgroundService, ITradingOrchestra
                 SessionId = Environment.MachineName,
                 Metrics = new Dictionary<string, object>
                 {
-                    ["event_type"] = "trade_execution",
+                    ["event_type"] = success ? "trade_execution" : (blockReason != null ? "trade_blocked" : "trade_failure"),
                     ["decision_id"] = decision.DecisionId,
                     ["action"] = decision.Action.ToString(),
                     ["confidence"] = decision.Confidence,
@@ -750,7 +781,8 @@ internal class TradingOrchestratorService : BackgroundService, ITradingOrchestra
                     ["success"] = success,
                     ["timestamp"] = decision.Timestamp,
                     ["reasoning"] = decision.Reasoning,
-                    ["execution_latency_ms"] = 100 // Real latency measurement would go here
+                    ["execution_latency_ms"] = 100, // Real latency measurement would go here
+                    ["block_reason"] = blockReason
                 }
             };
 

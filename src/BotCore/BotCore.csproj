@@ -31,6 +31,7 @@
     <ProjectReference Include="..\\Abstractions\\Abstractions.csproj" />
     <ProjectReference Include="..\\IntelligenceStack\\IntelligenceStack.csproj" />
     <ProjectReference Include="..\\RLAgent\\RLAgent.csproj" />
+    <ProjectReference Include="..\\Zones\\Zones.csproj" />
   </ItemGroup>
 
   <ItemGroup>

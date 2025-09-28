@@ -67,6 +67,19 @@
       "description": "Weight for exploration vs exploitation"
     }
   },
+  "zone": {
+    "entry_block_atr": { "min": 0.4, "max": 1.2, "default": 0.8 },
+    "allow_breakout_threshold": { "min": 0.55, "max": 0.9, "default": 0.7 },
+    "zone_hysteresis_atr": { "min": 0.1, "max": 0.5, "default": 0.2 },
+    "size_tilt_near_zone": { "min": 0.25, "max": 1.0, "default": 0.7 },
+    "buffer_ticks": { "min": 2, "max": 16, "default": 6 },
+    "pivot_left": { "min": 2, "max": 10, "default": 3 },
+    "pivot_right": { "min": 2, "max": 10, "default": 3 },
+    "atr_period": { "min": 7, "max": 50, "default": 14 },
+    "merge_atr": { "min": 0.2, "max": 2.0, "default": 0.6 },
+    "decay_halflife_bars": { "min": 200, "max": 2000, "default": 600 },
+    "breakout_weights": { "mom": 1.5, "vdc": 0.8, "cd": 1.2, "tests": 0.5, "dist": -1.0, "bias": 0.5 }
+  },
   "validationRules": {
     "globalConstraints": {
       "maxConcurrentPositions": 5,

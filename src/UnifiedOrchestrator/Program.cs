@@ -518,6 +518,12 @@ Please check the configuration and ensure all required services are registered.
         // Register Safe-Hold Decision Policy with neutral band logic
         services.AddSingleton<SafeHoldDecisionPolicy>();
         
+        // Register bracket configuration service
+        services.AddSingleton<IBracketConfig, BotCore.Services.BracketConfigService>();
+        
+        // Register zone-aware bracket manager
+        services.AddSingleton<BotCore.Services.IZoneAwareBracketManager, BotCore.Services.ZoneAwareBracketManager>();
+        
         // Register Per-Symbol Session Lattices with neutral band integration
         services.AddSingleton<TradingBot.BotCore.Services.TradingBotSymbolSessionManager>(provider =>
         {
@@ -539,6 +545,39 @@ Please check the configuration and ensure all required services are registered.
         
         Console.WriteLine("🚀 [AUTONOMOUS-ENGINE] Registered autonomous trading engine - Profit-maximizing TopStep bot ready!");
         Console.WriteLine("💰 [AUTONOMOUS-ENGINE] Features: Auto strategy switching, dynamic position sizing, TopStep compliance, continuous learning");
+        
+        // ================================================================================
+        // ZONE AWARENESS SERVICES - PRODUCTION-READY SUPPLY/DEMAND INTEGRATION
+        // ================================================================================
+        
+        // Register ProductionFeatureBus for zone telemetry
+        services.AddSingleton<Zones.IFeatureBus, BotCore.Services.ProductionFeatureBus>();
+        
+        // Register ZoneService with production implementation (Modern provider)
+        services.AddSingleton<Zones.IZoneService, Zones.ZoneServiceProduction>();
+        services.AddSingleton<Zones.IZoneFeatureSource>(provider => 
+            (Zones.IZoneFeatureSource)provider.GetRequiredService<Zones.IZoneService>());
+        
+        // Register Legacy ZoneService (the existing IZoneService from BotCore)
+        services.AddSingleton<BotCore.Services.IZoneService, BotCore.Services.ZoneService>();
+        
+        // Register zone telemetry service
+        services.AddSingleton<BotCore.Services.IZoneTelemetryService, BotCore.Services.ZoneTelemetryService>();
+        
+        // Register zone providers
+        services.AddSingleton<BotCore.Services.LegacyZoneProvider>();
+        services.AddSingleton<BotCore.Services.ModernZoneProvider>();
+        services.AddSingleton<BotCore.Services.HybridZoneProvider>();
+        services.AddSingleton<BotCore.Services.IZoneProvider>(provider => 
+            provider.GetRequiredService<BotCore.Services.HybridZoneProvider>());
+        
+        // Register ZoneFeaturePublisher for telemetry emission
+        services.AddHostedService<Zones.ZoneFeaturePublisher>();
+        
+        // Register market data to zone service bridge
+        services.AddHostedService<BotCore.Services.ZoneMarketDataBridge>();
+        
+        Console.WriteLine("🎯 [ZONE-AWARENESS] Hybrid zone awareness services registered - Legacy/Modern/Hybrid providers active!");
         
         // ================================================================================
 
