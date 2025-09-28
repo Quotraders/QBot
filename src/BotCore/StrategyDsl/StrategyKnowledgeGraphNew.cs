@@ -16,15 +16,15 @@ public interface IFeatureProbe
 }
 
 /// <summary>
-/// Simple feature probe implementation
+/// Simple feature probe implementation  
 /// Maps strategy DSL feature keys to actual feature values from the trading system
 /// </summary>
-public sealed class FeatureProbe : IFeatureProbe
+public sealed class SimpleFeatureProbe : IFeatureProbe
 {
     private readonly ILogger<FeatureProbe> _logger;
     private readonly Dictionary<string, double> _featureCache = new();
 
-    public FeatureProbe(ILogger<FeatureProbe> logger)
+    public SimpleFeatureProbe(ILogger<SimpleFeatureProbe> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -98,13 +98,13 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public IReadOnlyList<StrategyRecommendation> Evaluate(string symbol, DateTime utc)
+    public IReadOnlyList<BotCore.Strategy.StrategyRecommendation> Evaluate(string symbol, DateTime utc)
     {
         if (string.IsNullOrWhiteSpace(symbol))
             throw new ArgumentException("Symbol cannot be null or empty", nameof(symbol));
 
         var regime = _regimes.GetRegime(symbol);
-        var list = new List<StrategyRecommendation>();
+        var list = new List<BotCore.Strategy.StrategyRecommendation>();
 
         _logger.LogDebug("Evaluating {StrategyCount} strategies for {Symbol} in regime {Regime}", 
             _cards.Count, symbol, regime);
@@ -143,27 +143,27 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
                 }
 
                 // Step 5: Calculate confidence from evidence strength
-                var evidence = CreateEvidence(card, symbol, confluenceResults);
-                double confidence = CalculateConfidence(evidence, card);
+                var confluenceEvidence = CreateEvidence(card, symbol, confluenceResults);
+                double confidence = CalculateConfidence(confluenceEvidence, card);
 
                 // Create recommendations for both directions unless bias restricts it
                 if (!string.Equals(card.Bias, "bearish", StringComparison.OrdinalIgnoreCase))
                 {
-                    list.Add(new StrategyRecommendation(
+                    list.Add(new BotCore.Strategy.StrategyRecommendation(
                         card.Name, 
-                        StrategyIntent.Long, 
+                        BotCore.Strategy.StrategyIntent.Long, 
                         confidence, 
-                        evidence, 
+                        confluenceEvidence, 
                         card.TelemetryTags.ToArray()));
                 }
 
                 if (!string.Equals(card.Bias, "bullish", StringComparison.OrdinalIgnoreCase))
                 {
-                    list.Add(new StrategyRecommendation(
+                    list.Add(new BotCore.Strategy.StrategyRecommendation(
                         card.Name, 
-                        StrategyIntent.Short, 
+                        BotCore.Strategy.StrategyIntent.Short, 
                         confidence, 
-                        evidence, 
+                        confluenceEvidence, 
                         card.TelemetryTags.ToArray()));
                 }
 
@@ -291,9 +291,9 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
         }
     }
 
-    private IReadOnlyList<StrategyEvidence> CreateEvidence(DslStrategy card, string symbol, List<string> confluenceResults)
+    private IReadOnlyList<BotCore.Strategy.StrategyEvidence> CreateEvidence(DslStrategy card, string symbol, List<string> confluenceResults)
     {
-        var evidence = new List<StrategyEvidence>();
+        var evidence = new List<BotCore.Strategy.StrategyEvidence>();
 
         // Add micro condition evidence
         var microConditions = card.When?.Micro ?? new List<string>();
@@ -301,20 +301,20 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
         {
             if (EvaluateExpression(condition, symbol))
             {
-                evidence.Add(new StrategyEvidence(condition, 1.0, "Micro condition met"));
+                evidence.Add(new BotCore.Strategy.StrategyEvidence(condition, 1.0, "Micro condition met"));
             }
         }
 
         // Add confluence evidence
         foreach (var confluence in confluenceResults)
         {
-            evidence.Add(new StrategyEvidence(confluence, 1.0, "Confluence condition met"));
+            evidence.Add(new BotCore.Strategy.StrategyEvidence(confluence, 1.0, "Confluence condition met"));
         }
 
         return evidence;
     }
 
-    private double CalculateConfidence(IReadOnlyList<StrategyEvidence> evidence, DslStrategy card)
+    private double CalculateConfidence(IReadOnlyList<BotCore.Strategy.StrategyEvidence> evidence, DslStrategy card)
     {
         if (!evidence.Any())
             return 0.0;

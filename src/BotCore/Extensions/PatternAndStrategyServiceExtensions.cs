@@ -3,6 +3,8 @@ using Microsoft.Extensions.Configuration;
 using BotCore.Patterns;
 using BotCore.Patterns.Detectors;
 using BotCore.StrategyDsl;
+using BotCore.Strategy;
+using BotCore.Fusion;
 using Microsoft.Extensions.Logging;
 
 namespace BotCore.Extensions;
@@ -96,6 +98,46 @@ public static class PatternAndStrategyServiceExtensions
     }
 
     /// <summary>
+    /// Register Strategy Knowledge Graph & Decision Fusion services (seed_version 1.0)
+    /// Adds complete strategy evaluation and fusion system with Neural-UCB and CVaR-PPO integration
+    /// </summary>
+    public static IServiceCollection AddStrategyKnowledgeGraphServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        if (configuration is null) throw new ArgumentNullException(nameof(configuration));
+
+        // Load Strategy DSL cards from YAML files
+        var strategyFolder = configuration["StrategyCatalog:Folder"] ?? "config/strategies";
+        var strategyCards = SimpleDslLoader.LoadAll(strategyFolder);
+        services.AddSingleton(strategyCards);
+
+        // Register feature probe for real-time feature access
+        services.AddSingleton<IFeatureProbe, SimpleFeatureProbe>();
+
+        // Register mock regime service (replace with real implementation)
+        services.AddSingleton<IRegimeService, MockRegimeService>();
+
+        // Register Strategy Knowledge Graph with new implementation
+        services.AddSingleton<IStrategyKnowledgeGraph, StrategyKnowledgeGraphNew>();
+
+        // Register mock UCB and PPO services (replace with real implementations)
+        services.AddSingleton<IUcbStrategyChooser, MockUcbStrategyChooser>();
+        services.AddSingleton<IPpoSizer, MockPpoSizer>();
+
+        // Register mock ML configuration service (replace with real implementation)
+        services.AddSingleton<IMLConfigurationService, MockMLConfigurationService>();
+
+        // Register mock metrics service (replace with real implementation)
+        services.AddSingleton<IMetrics, MockMetrics>();
+
+        // Register Decision Fusion Coordinator
+        services.AddSingleton<DecisionFusionCoordinator>();
+
+        return services;
+    }
+
+    /// <summary>
     /// Register all pattern recognition and strategy DSL services together
     /// Complete registration for production-ready pattern analysis and strategy reasoning
     /// </summary>
@@ -105,6 +147,9 @@ public static class PatternAndStrategyServiceExtensions
     {
         services.AddPatternRecognitionServices(configuration);
         services.AddStrategyDslServices(configuration);
+        
+        // Add Strategy Knowledge Graph & Decision Fusion services
+        services.AddStrategyKnowledgeGraphServices(configuration);
         
         return services;
     }

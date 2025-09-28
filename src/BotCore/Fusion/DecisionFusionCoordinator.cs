@@ -10,7 +10,7 @@ namespace BotCore.Fusion;
 /// </summary>
 public interface IUcbStrategyChooser 
 { 
-    (string Strategy, StrategyIntent Intent, double Score) Predict(string symbol); 
+    (string Strategy, BotCore.Strategy.StrategyIntent Intent, double Score) Predict(string symbol); 
 }
 
 /// <summary>
@@ -83,7 +83,7 @@ public sealed class DecisionFusionCoordinator
     /// Core decision fusion logic - blends Knowledge Graph with UCB and applies confidence thresholds
     /// Returns null for hold decisions when confidence is too low or systems disagree
     /// </summary>
-    public StrategyRecommendation? Decide(string symbol)
+    public BotCore.Strategy.StrategyRecommendation? Decide(string symbol)
     {
         if (string.IsNullOrWhiteSpace(symbol))
             throw new ArgumentException("Symbol cannot be null or empty", nameof(symbol));
@@ -140,11 +140,11 @@ public sealed class DecisionFusionCoordinator
             }
 
             // Choose the best recommendation (prefer knowledge graph if available)
-            var finalRecommendation = knowledgeRec ?? new StrategyRecommendation(
+            var finalRecommendation = knowledgeRec ?? new BotCore.Strategy.StrategyRecommendation(
                 ucbStrategy, 
                 ucbIntent, 
                 ucbScore, 
-                Array.Empty<StrategyEvidence>(), 
+                Array.Empty<BotCore.Strategy.StrategyEvidence>(), 
                 Array.Empty<string>());
 
             _logger.LogInformation("Fusion decision for {Symbol}: Strategy={Strategy}, Intent={Intent}, Confidence={Confidence:F2}",
@@ -165,10 +165,10 @@ public sealed class DecisionFusionCoordinator
 /// </summary>
 public sealed class MockUcbStrategyChooser : IUcbStrategyChooser
 {
-    public (string Strategy, StrategyIntent Intent, double Score) Predict(string symbol)
+    public (string Strategy, BotCore.Strategy.StrategyIntent Intent, double Score) Predict(string symbol)
     {
         // Mock UCB predictions for testing
-        return ("S6", StrategyIntent.Long, 0.7);
+        return ("S6", BotCore.Strategy.StrategyIntent.Long, 0.7);
     }
 }
 
