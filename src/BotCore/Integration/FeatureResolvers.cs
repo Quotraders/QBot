@@ -1,23 +1,26 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace BotCore.Integration;
 
 /// <summary>
-/// Zone feature resolver - resolves zone-based features from real zone service
+/// Zone feature resolver - PRODUCTION ONLY - connects to real zone service
 /// </summary>
 public sealed class ZoneFeatureResolver : IFeatureResolver
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly string _featureName;
+    private readonly ILogger<ZoneFeatureResolver> _logger;
     
     public ZoneFeatureResolver(IServiceProvider serviceProvider, string featureName)
     {
-        _serviceProvider = serviceProvider;
-        _featureName = featureName;
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _featureName = featureName ?? throw new ArgumentNullException(nameof(featureName));
+        _logger = serviceProvider.GetRequiredService<ILogger<ZoneFeatureResolver>>();
     }
     
     public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
@@ -25,7 +28,6 @@ public sealed class ZoneFeatureResolver : IFeatureResolver
         try
         {
             var zoneFeatureSource = _serviceProvider.GetRequiredService<Zones.IZoneFeatureSource>();
-                
             var features = zoneFeatureSource.GetFeatures(symbol);
             
             var value = _featureName switch
@@ -34,35 +36,46 @@ public sealed class ZoneFeatureResolver : IFeatureResolver
                 "dist_to_supply_atr" => features.distToSupplyAtr,
                 "breakout_score" => features.breakoutScore,
                 "pressure" => features.zonePressure,
-                "test_count" => Math.Max(1.0, features.zonePressure * 2.0), // Calculated
+                "test_count" => CalculateZoneTestCount(features),
                 "dist_to_opposing_atr" => Math.Max(features.distToDemandAtr, features.distToSupplyAtr),
-                "proximity_atr_demand" => features.distToDemandAtr,
-                "proximity_atr_supply" => features.distToSupplyAtr,
-                _ => 0.0
+                _ => throw new InvalidOperationException($"Unknown zone feature: {_featureName}")
             };
             
-            await Task.CompletedTask;
+            _logger.LogTrace("Zone feature {Feature} for {Symbol}: {Value}", _featureName, symbol, value);
+            await Task.CompletedTask.ConfigureAwait(false);
             return value;
         }
-        catch
+        catch (Exception ex)
         {
-            return null;
+            _logger.LogError(ex, "Failed to resolve zone feature {Feature} for symbol {Symbol}", _featureName, symbol);
+            throw new InvalidOperationException($"Production zone feature resolution failed for '{_featureName}' on '{symbol}': {ex.Message}", ex);
         }
+    }
+    
+    private static double CalculateZoneTestCount((double distToDemandAtr, double distToSupplyAtr, double breakoutScore, double zonePressure) features)
+    {
+        // Production calculation based on zone pressure and breakout score
+        // Higher pressure + higher breakout score = more zone tests
+        var baseTestCount = Math.Max(1.0, features.zonePressure * 2.0);
+        var breakoutAdjustment = features.breakoutScore * 0.5;
+        return Math.Round(baseTestCount + breakoutAdjustment, 1);
     }
 }
 
 /// <summary>
-/// Pattern score resolver - resolves pattern scores from real pattern engine
+/// Pattern feature resolver - PRODUCTION ONLY - connects to real pattern engine
 /// </summary>
-public sealed class PatternScoreResolver : IFeatureResolver
+public sealed class PatternFeatureResolver : IFeatureResolver
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly bool _bullish;
+    private readonly string _featureName;
+    private readonly ILogger<PatternFeatureResolver> _logger;
     
-    public PatternScoreResolver(IServiceProvider serviceProvider, bool bullish)
+    public PatternFeatureResolver(IServiceProvider serviceProvider, string featureName)
     {
-        _serviceProvider = serviceProvider;
-        _bullish = bullish;
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _featureName = featureName ?? throw new ArgumentNullException(nameof(featureName));
+        _logger = serviceProvider.GetRequiredService<ILogger<PatternFeatureResolver>>();
     }
     
     public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
@@ -70,395 +83,174 @@ public sealed class PatternScoreResolver : IFeatureResolver
         try
         {
             var patternEngine = _serviceProvider.GetRequiredService<BotCore.Patterns.PatternEngine>();
-            var scores = await patternEngine.GetCurrentScoresAsync(symbol, cancellationToken).ConfigureAwait(false);
-            return _bullish ? scores.BullScore : scores.BearScore;
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException($"Failed to resolve pattern score ({'bull'|'bear'}) for symbol '{symbol}': {ex.Message}", ex);
-        }
-    }
-}
-
-/// <summary>
-/// Volatility contraction resolver - calculates VDC from real market data
-/// </summary>
-public sealed class VolatilityContractionResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    
-    public VolatilityContractionResolver(IServiceProvider serviceProvider)
-    {
-        _serviceProvider = serviceProvider;
-    }
-    
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var featureBusAdapter = _serviceProvider.GetRequiredService<BotCore.Fusion.IFeatureBusWithProbe>();
-            await Task.CompletedTask.ConfigureAwait(false);
-            var result = featureBusAdapter.Probe(symbol, "volatility.contraction");
-            if (result == null)
+            var patternScores = await patternEngine.GetCurrentScoresAsync(symbol, cancellationToken).ConfigureAwait(false);
+            
+            var value = _featureName switch
             {
-                throw new InvalidOperationException($"Volatility contraction feature not available for symbol '{symbol}' - fail-fast required");
-            }
-            return result;
+                "bull_score" => patternScores.BullScore,
+                "bear_score" => patternScores.BearScore,
+                "confidence" => patternScores.OverallConfidence,
+                _ => throw new InvalidOperationException($"Unknown pattern feature: {_featureName}")
+            };
+            
+            _logger.LogTrace("Pattern feature {Feature} for {Symbol}: {Value}", _featureName, symbol, value);
+            return value;
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Failed to resolve volatility contraction for symbol '{symbol}': {ex.Message}", ex);
+            _logger.LogError(ex, "Failed to resolve pattern feature {Feature} for symbol {Symbol}", _featureName, symbol);
+            throw new InvalidOperationException($"Production pattern feature resolution failed for '{_featureName}' on '{symbol}': {ex.Message}", ex);
         }
     }
 }
 
 /// <summary>
-/// Momentum Z-score resolver - calculates momentum Z-score from real market data
+/// Technical indicator resolver - PRODUCTION ONLY - calculates from real bar data
 /// </summary>
-public sealed class MomentumZScoreResolver : IFeatureResolver
+public sealed class TechnicalIndicatorResolver : IFeatureResolver
 {
     private readonly IServiceProvider _serviceProvider;
-    
-    public MomentumZScoreResolver(IServiceProvider serviceProvider)
-    {
-        _serviceProvider = serviceProvider;
-    }
-    
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var featureBusAdapter = _serviceProvider.GetRequiredService<BotCore.Fusion.IFeatureBusWithProbe>();
-            await Task.CompletedTask.ConfigureAwait(false);
-            var result = featureBusAdapter.Probe(symbol, "momentum.zscore");
-            if (result == null)
-            {
-                throw new InvalidOperationException($"Momentum Z-score feature not available for symbol '{symbol}' - fail-fast required");
-            }
-            return result;
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException($"Failed to resolve momentum Z-score for symbol '{symbol}': {ex.Message}", ex);
-        }
-    }
-}
-
-/// <summary>
-/// ATR resolver - calculates ATR from real bar data
-/// </summary>
-public sealed class ATRResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
+    private readonly string _indicatorType;
     private readonly int _period;
+    private readonly ILogger<TechnicalIndicatorResolver> _logger;
     
-    public ATRResolver(IServiceProvider serviceProvider, int period)
+    public TechnicalIndicatorResolver(IServiceProvider serviceProvider, string indicatorType, int period = 14)
     {
-        _serviceProvider = serviceProvider;
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _indicatorType = indicatorType ?? throw new ArgumentNullException(nameof(indicatorType));
         _period = period;
+        _logger = serviceProvider.GetRequiredService<ILogger<TechnicalIndicatorResolver>>();
     }
     
     public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
-            var featureBusAdapter = _serviceProvider.GetRequiredService<BotCore.Fusion.IFeatureBusWithProbe>();
-            await Task.CompletedTask.ConfigureAwait(false);
-            var result = featureBusAdapter.Probe(symbol, $"atr.{_period}");
-            if (result == null)
+            // Connect to real feature bus for technical indicators
+            var featureBus = _serviceProvider.GetRequiredService<BotCore.Fusion.IFeatureBusWithProbe>();
+            
+            var featureKey = _indicatorType switch
             {
-                throw new InvalidOperationException($"ATR.{_period} feature not available for symbol '{symbol}' - fail-fast required");
+                "atr" => $"atr.{_period}",
+                "volatility" => "volatility.realized",
+                "momentum" => "momentum.zscore",
+                "vdc" => "volatility.contraction",
+                "rsi" => $"rsi.{_period}",
+                "ema" => $"ema.{_period}",
+                "sma" => $"sma.{_period}",
+                _ => throw new InvalidOperationException($"Unknown technical indicator: {_indicatorType}")
+            };
+            
+            await Task.CompletedTask.ConfigureAwait(false);
+            var result = featureBus.Probe(symbol, featureKey);
+            
+            if (!result.HasValue)
+            {
+                throw new InvalidOperationException($"Technical indicator '{_indicatorType}' not available for symbol '{symbol}' - real data required");
             }
+            
+            _logger.LogTrace("Technical indicator {Indicator} for {Symbol}: {Value}", _indicatorType, symbol, result);
             return result;
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Failed to resolve ATR.{_period} for symbol '{symbol}': {ex.Message}", ex);
+            _logger.LogError(ex, "Failed to resolve technical indicator {Indicator} for symbol {Symbol}", _indicatorType, symbol);
+            throw new InvalidOperationException($"Production technical indicator resolution failed for '{_indicatorType}' on '{symbol}': {ex.Message}", ex);
         }
     }
 }
 
-// Additional resolvers would be implemented here for comprehensive coverage
-// Each resolver connects to real services and provides actual calculated values
-
 /// <summary>
-/// Zone count resolver
+/// Market data resolver - PRODUCTION ONLY - gets real market data
 /// </summary>
-public sealed class ZoneCountResolver : IFeatureResolver
+public sealed class MarketDataResolver : IFeatureResolver
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly string _dataType;
+    private readonly ILogger<MarketDataResolver> _logger;
     
-    public ZoneCountResolver(IServiceProvider serviceProvider)
+    public MarketDataResolver(IServiceProvider serviceProvider, string dataType)
     {
-        _serviceProvider = serviceProvider;
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _dataType = dataType ?? throw new ArgumentNullException(nameof(dataType));
+        _logger = serviceProvider.GetRequiredService<ILogger<MarketDataResolver>>();
     }
     
     public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
-        await Task.CompletedTask;
-        return 5.0; // Mock implementation - would count actual zones
+        try
+        {
+            var featureBus = _serviceProvider.GetRequiredService<BotCore.Fusion.IFeatureBusWithProbe>();
+            
+            var featureKey = _dataType switch
+            {
+                "price" => "price.current",
+                "volume" => "volume.current",
+                "spread" => "market.spread",
+                "liquidity" => "market.liquidity_score",
+                _ => throw new InvalidOperationException($"Unknown market data type: {_dataType}")
+            };
+            
+            await Task.CompletedTask.ConfigureAwait(false);
+            var result = featureBus.Probe(symbol, featureKey);
+            
+            if (!result.HasValue)
+            {
+                throw new InvalidOperationException($"Market data '{_dataType}' not available for symbol '{symbol}' - real data required");
+            }
+            
+            _logger.LogTrace("Market data {DataType} for {Symbol}: {Value}", _dataType, symbol, result);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to resolve market data {DataType} for symbol {Symbol}", _dataType, symbol);
+            throw new InvalidOperationException($"Production market data resolution failed for '{_dataType}' on '{symbol}': {ex.Message}", ex);
+        }
     }
 }
 
 /// <summary>
-/// Zone tests resolver
+/// Position data resolver - PRODUCTION ONLY - gets real position information
 /// </summary>
-public sealed class ZoneTestsResolver : IFeatureResolver
+public sealed class PositionDataResolver : IFeatureResolver
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly string _positionMetric;
+    private readonly ILogger<PositionDataResolver> _logger;
     
-    public ZoneTestsResolver(IServiceProvider serviceProvider)
+    public PositionDataResolver(IServiceProvider serviceProvider, string positionMetric)
     {
-        _serviceProvider = serviceProvider;
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _positionMetric = positionMetric ?? throw new ArgumentNullException(nameof(positionMetric));
+        _logger = serviceProvider.GetRequiredService<ILogger<PositionDataResolver>>();
     }
     
     public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
-        await Task.CompletedTask;
-        return 3.0; // Mock implementation - would count actual zone tests
+        try
+        {
+            var positionTracker = _serviceProvider.GetRequiredService<BotCore.Services.PositionTrackingSystem>();
+            var positions = await positionTracker.GetCurrentPositionsAsync().ConfigureAwait(false);
+            
+            var symbolPositions = positions.Where(p => p.Symbol == symbol).ToList();
+            
+            var value = _positionMetric switch
+            {
+                "size" => symbolPositions.Sum(p => (double)p.Size),
+                "pnl" => symbolPositions.Sum(p => (double)p.UnrealizedPnL),
+                "count" => symbolPositions.Count,
+                _ => throw new InvalidOperationException($"Unknown position metric: {_positionMetric}")
+            };
+            
+            _logger.LogTrace("Position metric {Metric} for {Symbol}: {Value}", _positionMetric, symbol, value);
+            await Task.CompletedTask.ConfigureAwait(false);
+            return value;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to resolve position metric {Metric} for symbol {Symbol}", _positionMetric, symbol);
+            throw new InvalidOperationException($"Production position data resolution failed for '{_positionMetric}' on '{symbol}': {ex.Message}", ex);
+        }
     }
-}
-
-/// <summary>
-/// Pattern signal resolver
-/// </summary>
-public sealed class PatternSignalResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    private readonly string _patternName;
-    
-    public PatternSignalResolver(IServiceProvider serviceProvider, string patternName)
-    {
-        _serviceProvider = serviceProvider;
-        _patternName = patternName;
-    }
-    
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
-    {
-        await Task.CompletedTask;
-        return 0.0; // Mock implementation - would check for specific pattern signals
-    }
-}
-
-/// <summary>
-/// Pattern confirmation resolver
-/// </summary>
-public sealed class PatternConfirmationResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    
-    public PatternConfirmationResolver(IServiceProvider serviceProvider)
-    {
-        _serviceProvider = serviceProvider;
-    }
-    
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
-    {
-        await Task.CompletedTask;
-        return 0.0; // Mock implementation - would check pattern confirmation
-    }
-}
-
-/// <summary>
-/// Pattern reliability resolver
-/// </summary>
-public sealed class PatternReliabilityResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    private readonly string _patternName;
-    
-    public PatternReliabilityResolver(IServiceProvider serviceProvider, string patternName)
-    {
-        _serviceProvider = serviceProvider;
-        _patternName = patternName;
-    }
-    
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
-    {
-        await Task.CompletedTask;
-        return 0.75; // Mock implementation - would calculate actual pattern reliability
-    }
-}
-
-// Additional mock resolvers for completeness - in production these would have full implementations
-
-public sealed class PullbackRiskResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    public PullbackRiskResolver(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 0.4; }
-}
-
-public sealed class VolumeMarketResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    private readonly string _type;
-    public VolumeMarketResolver(IServiceProvider serviceProvider, string type) { _serviceProvider = serviceProvider; _type = type; }
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 1.2; }
-}
-
-public sealed class InsideBarsResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    public InsideBarsResolver(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 2.0; }
-}
-
-public sealed class VWAPDistanceResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    public VWAPDistanceResolver(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 0.3; }
-}
-
-public sealed class BandTouchResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    private readonly string _bandType;
-    public BandTouchResolver(IServiceProvider serviceProvider, string bandType) { _serviceProvider = serviceProvider; _bandType = bandType; }
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 0.0; }
-}
-
-public sealed class RealizedVolatilityResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    public RealizedVolatilityResolver(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 0.15; }
-}
-
-public sealed class RSIResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    private readonly int _period;
-    public RSIResolver(IServiceProvider serviceProvider, int period) { _serviceProvider = serviceProvider; _period = period; }
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 50.0; }
-}
-
-public sealed class EMAResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    private readonly int _period;
-    public EMAResolver(IServiceProvider serviceProvider, int period) { _serviceProvider = serviceProvider; _period = period; }
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 4500.0; }
-}
-
-public sealed class SMAResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    private readonly int _period;
-    public SMAResolver(IServiceProvider serviceProvider, int period) { _serviceProvider = serviceProvider; _period = period; }
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 4500.0; }
-}
-
-public sealed class RiskRejectResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    private readonly string _reason;
-    public RiskRejectResolver(IServiceProvider serviceProvider, string reason) { _serviceProvider = serviceProvider; _reason = reason; }
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 0.0; }
-}
-
-public sealed class PositionSizeResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    public PositionSizeResolver(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 1.0; }
-}
-
-public sealed class PositionPnLResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    public PositionPnLResolver(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 0.0; }
-}
-
-public sealed class UnrealizedPnLResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    public UnrealizedPnLResolver(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 0.0; }
-}
-
-public sealed class RegimeTypeResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    public RegimeTypeResolver(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 1.0; }
-}
-
-public sealed class MarketSessionResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    public MarketSessionResolver(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 1.0; }
-}
-
-public sealed class MarketOpenMinutesResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    public MarketOpenMinutesResolver(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 120.0; }
-}
-
-public sealed class MarketCloseMinutesResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    public MarketCloseMinutesResolver(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 30.0; }
-}
-
-public sealed class SpreadResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    public SpreadResolver(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 1.0; }
-}
-
-public sealed class LiquidityScoreResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    public LiquidityScoreResolver(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 0.8; }
-}
-
-public sealed class ExecutionSlippageResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    public ExecutionSlippageResolver(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 0.25; }
-}
-
-public sealed class ExecutionFillRateResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    public ExecutionFillRateResolver(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 0.95; }
-}
-
-public sealed class DecisionLatencyResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    public DecisionLatencyResolver(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 50.0; }
-}
-
-public sealed class OrderLatencyResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    public OrderLatencyResolver(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 100.0; }
-}
-
-public sealed class RecentBarCountResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    public RecentBarCountResolver(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 200.0; }
-}
-
-public sealed class ProcessedBarCountResolver : IFeatureResolver
-{
-    private readonly IServiceProvider _serviceProvider;
-    public ProcessedBarCountResolver(IServiceProvider serviceProvider) => _serviceProvider = serviceProvider;
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default) { await Task.CompletedTask; return 1000.0; }
 }

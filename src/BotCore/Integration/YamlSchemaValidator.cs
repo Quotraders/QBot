@@ -411,13 +411,22 @@ public sealed class YamlSchemaValidator
     /// </summary>
     private bool IsValidDslFeatureKey(string key)
     {
-        // This would integrate with FeatureMapAuthority to check if key is registered
-        // For now, basic validation of key format
+        // Production validation of DSL key format - must match feature map authority patterns
         if (string.IsNullOrWhiteSpace(key))
+        {
             return false;
-            
-        // Valid keys should have category.property format or be single words
-        return key.Contains('.') || key.All(c => char.IsLetterOrDigit(c) || c == '_');
+        }
+        
+        // DSL keys must follow pattern: category.subcategory or category.value
+        var parts = key.Split('.');
+        if (parts.Length < 2)
+        {
+            return false;
+        }
+        
+        // Valid categories from feature map authority
+        var validCategories = new[] { "zone", "pattern", "vdc", "mom", "atr", "price", "volume", "rsi", "ema", "sma", "market", "position", "risk" };
+        return validCategories.Contains(parts[0], StringComparer.OrdinalIgnoreCase);
     }
     
     /// <summary>

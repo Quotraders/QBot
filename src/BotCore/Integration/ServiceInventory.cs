@@ -109,8 +109,24 @@ public sealed class ServiceInventory
     /// </summary>
     private bool IsServiceRegistered(string serviceTypeName)
     {
-        // For now, return true for inventory purposes - actual registration will be checked at runtime
-        return true;
+        try
+        {
+            // Attempt to resolve the service type by name
+            var serviceType = Type.GetType(serviceTypeName);
+            if (serviceType == null)
+            {
+                return false;
+            }
+            
+            // Check if service is registered in DI container
+            var service = _serviceProvider.GetService(serviceType);
+            return service != null;
+        }
+        catch
+        {
+            // Service not registered or type not found
+            return false;
+        }
     }
     
     /// <summary>
