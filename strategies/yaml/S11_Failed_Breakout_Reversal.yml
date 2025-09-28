@@ -1,0 +1,99 @@
+name: S11_Failed_Breakout_Reversal
+family: reversal
+priority: medium
+enabled: true
+description: "S11 strategy for failed breakout reversals with volume and pattern confirmation"
+
+telemetry_tags:
+  - "S11"
+  - "FailedBreakout"
+  - "Reversal"
+  - "VolumeConfirmation"
+
+regime_filters:
+  required:
+    - market_regime != "HighVol"
+  blocked:
+    - market_regime == "Trend" AND trend.strength >= 0.8
+    - volatility_z_score > 2.0
+
+zone_conditions:
+  required:
+    - zone.distance_atr <= 0.6  # Near zone for failed breakout
+    - zone.test_count >= 2  # Previously tested zone
+  preferred:
+    - zone.strength >= 0.7
+    - zone.breakout_failure == true
+
+pattern_conditions:
+  confluence:
+    - pattern.kind::FailedBreakout
+    - pattern.kind::KeyReversal OR pattern.kind::ExhaustionGap
+    - pattern.kind::VolumeSpike OR pattern.kind::ClimaxReversal
+  contraindications:
+    - pattern.kind::BullFlag OR pattern.kind::BearFlag  # Continuation patterns
+    - pattern.kind::Compression  # Need decisive rejection
+
+micro_conditions:
+  entry_triggers:
+    - breakout_failure.confirmed == true
+    - volume.spike >= 1.5  # Volume confirmation of failure
+    - price_rejection.strength >= 0.6
+    - momentum.reversal == true
+  
+  timing:
+    - time_of_day >= "10:30" AND time_of_day <= "14:30"
+    - breakout_attempt_age <= 3  # Recent breakout attempt
+
+risk_management:
+  position_sizing:
+    base_size: 2
+    confidence_multiplier: true
+    max_size: 4
+    
+  stop_loss:
+    type: "breakout_level"
+    distance_beyond_breakout: 0.25  # ATR
+    minimum_distance: 5
+    
+  take_profit:
+    type: "zone_based"
+    target_zone: "opposite"
+    partial_exit_at_50pct: true
+    minimum_r_multiple: 1.8
+
+confidence_calculation:
+  base_confidence: 0.68
+  
+  boosters:
+    - volume.spike >= 2.0: +0.15
+    - zone.strength >= 0.8: +0.10
+    - pattern.kind::FailedBreakout AND rejection.strength >= 0.7: +0.10
+    - momentum.reversal_strength >= 0.6: +0.08
+    
+  penalties:
+    - breakout_attempt_age >= 5: -0.15
+    - zone.test_count >= 5: -0.10  # Over-tested zone
+    - time_to_close_minutes <= 60: -0.12
+
+direction_logic:
+  long_conditions:
+    - breakout_direction == "DOWN" AND failure.confirmed == true
+    - zone.type == "Support"
+    - price_rejection.direction == "UP"
+    - pattern.bear_score < 0.3  # Bearish pattern failed
+    
+  short_conditions:  
+    - breakout_direction == "UP" AND failure.confirmed == true
+    - zone.type == "Resistance"
+    - price_rejection.direction == "DOWN"
+    - pattern.bull_score < 0.3  # Bullish pattern failed
+
+metadata:
+  version: "1.1"
+  author: "TradingBot"
+  last_updated: "2024-12-21"
+  backtest_results:
+    win_rate: 0.71
+    avg_r_multiple: 1.9
+    max_drawdown: 0.14

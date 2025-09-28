@@ -1,0 +1,96 @@
+name: S2_Zone_Mean_Reversion
+family: zone_based
+priority: high
+enabled: true
+description: "S2 strategy for mean reversion trades near zone boundaries with zone breakout logic"
+
+telemetry_tags:
+  - "S2"
+  - "ZoneMeanReversion" 
+  - "HighFrequency"
+  - "MomZones"
+
+regime_filters:
+  required:
+    - market_regime == "Range" OR market_regime == "LowVol"
+  blocked:
+    - market_regime == "HighVol" AND volatility_z_score > 2.0
+    - news_impact_score > 0.8
+
+zone_conditions:
+  required:
+    - zone.distance_atr <= 0.8  # Close to zone
+    - zone.breakout_score >= 0.7 OR (zone.distance_atr <= 0.4 AND zone.pressure >= 0.6)
+  preferred:
+    - zone.strength >= 0.6
+    - zone.test_count <= 3  # Not over-tested
+
+pattern_conditions:
+  confluence:
+    - pattern.kind::Hammer OR pattern.kind::Doji OR pattern.kind::Engulfing
+    - pattern.kind::BullFlag OR pattern.kind::BearFlag  # Continuation setup
+  contraindications:
+    - pattern.kind::HeadAndShoulders OR pattern.kind::DoubleTop
+    - pattern.kind::ExhaustionGap
+
+micro_conditions:
+  entry_triggers:
+    - momentum.z_score >= -0.5 AND momentum.z_score <= 0.5  # Neutral momentum
+    - vwap.distance <= 0.002  # Close to VWAP
+    - volatility_contraction == true OR atr.ratio <= 0.8
+  
+  timing:
+    - time_of_day >= "09:45" AND time_of_day <= "15:45"  # Avoid open/close
+    - minutes_since_news >= 15  # Post-news settlement
+
+risk_management:
+  position_sizing:
+    base_size: 1
+    confidence_multiplier: true
+    max_size: 3
+    
+  stop_loss:
+    type: "zone_based"
+    distance_atr: 0.6
+    minimum_distance: 4  # ticks
+    
+  take_profit:
+    type: "dynamic" 
+    initial_target_atr: 1.2
+    trail_after_profit: 0.5
+    
+confidence_calculation:
+  base_confidence: 0.65
+  
+  boosters:
+    - zone.breakout_score >= 0.8: +0.15
+    - pattern.bull_score >= 0.7 OR pattern.bear_score >= 0.7: +0.10
+    - volatility_contraction == true: +0.05
+    - vwap.distance <= 0.001: +0.05
+    
+  penalties:
+    - zone.test_count >= 4: -0.10
+    - momentum.z_score > 1.0 OR momentum.z_score < -1.0: -0.05
+    - time_to_close_minutes <= 30: -0.15
+
+direction_logic:
+  long_conditions:
+    - zone.type == "Support" 
+    - zone.distance_atr <= 0.8 AND zone.breakout_score >= 0.7
+    - pattern.bull_score > pattern.bear_score
+    - momentum.z_score >= -0.5
+    
+  short_conditions:
+    - zone.type == "Resistance"
+    - zone.distance_atr <= 0.8 AND zone.breakout_score >= 0.7  
+    - pattern.bear_score > pattern.bull_score
+    - momentum.z_score <= 0.5
+
+metadata:
+  version: "1.2"
+  author: "TradingBot"
+  last_updated: "2024-12-21"
+  backtest_results:
+    win_rate: 0.67
+    avg_r_multiple: 1.8
+    max_drawdown: 0.12

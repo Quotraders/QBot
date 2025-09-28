@@ -143,5 +143,25 @@
         }
       }
     }
+  },
+  "fusionRails": {
+    "knowledge_weight": { "min": 0.0, "max": 1.0, "default": 0.4 },
+    "ucb_weight": { "min": 0.0, "max": 1.0, "default": 0.6 },
+    "min_confidence": { "min": 0.5, "max": 0.9, "default": 0.65 },
+    "hold_on_disagree": { "default": true },
+    "replay_explore": { "default": false },
+    "confidence_blend_method": { "default": "weighted_average", "options": ["weighted_average", "geometric_mean", "max"] }
+  },
+  "patternDetection": {
+    "pattern_score_threshold": { "min": 0.01, "max": 0.5, "default": 0.1 },
+    "bull_bear_balance_threshold": { "min": 0.05, "max": 0.3, "default": 0.15 },
+    "max_patterns_per_analysis": { "min": 10, "max": 50, "default": 25 },
+    "pattern_confidence_decay": { "min": 0.8, "max": 0.99, "default": 0.95 }
+  },
+  "knowledgeGraph": {
+    "max_recommendations": { "min": 1, "max": 10, "default": 5 },
+    "min_confluence_conditions": { "min": 1, "max": 5, "default": 2 },
+    "strategy_confidence_floor": { "min": 0.3, "max": 0.8, "default": 0.5 },
+    "evidence_weight_threshold": { "min": 0.05, "max": 0.25, "default": 0.1 }
   }
 }
