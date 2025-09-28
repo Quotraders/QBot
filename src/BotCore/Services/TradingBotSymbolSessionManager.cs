@@ -24,6 +24,9 @@ namespace TradingBot.BotCore.Services
         private readonly SafeHoldDecisionPolicy? _neutralBandService;
         private readonly ILogger<TradingBotSymbolSessionManager> _logger;
 
+        // Statistical analysis constants
+        private const int MinimumTradesForConfidenceInterval = 10;
+
         public TradingBotSymbolSessionManager(
             SafeHoldDecisionPolicy? neutralBandService, 
             ILogger<TradingBotSymbolSessionManager> logger)
@@ -415,6 +418,9 @@ namespace TradingBot.BotCore.Services
     /// </summary>
     public class SessionBayesianPriors
     {
+        // Statistical analysis constants
+        private const int MinimumTradesForConfidenceInterval = 10;
+        
         public double SuccessRate { get; private set; } = 0.5;
         public double AverageReturn { get; private set; } = 0.0;
         public int TotalTrades { get; private set; } = 0;
@@ -447,7 +453,7 @@ namespace TradingBot.BotCore.Services
         /// </summary>
         public (double Lower, double Upper) GetSuccessRateConfidenceInterval(double confidenceLevel = 0.95)
         {
-            if (TotalTrades < 10)
+            if (TotalTrades < MinimumTradesForConfidenceInterval)
             {
                 // Not enough data for reliable confidence interval
                 return (0.0, 1.0);

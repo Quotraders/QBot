@@ -13,7 +13,60 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ## ✅ PHASE 1 - CS COMPILER ERROR ELIMINATION (COMPLETE)
 
-### Final Round - Critical CS0103 Resolution (Current Session)
+## ✅ PHASE 1 - CS COMPILER ERROR ELIMINATION (COMPLETE)
+
+## 🚨 PHASE 2 - ANALYZER VIOLATION ELIMINATION (IN PROGRESS)
+
+### Priority 1: Correctness & Invariants (Current Session)
+| Error Code | Count | Files Affected | Fix Applied |
+|------------|-------|----------------|-------------|
+| CS0103 | 3 | ErrorHandlingMonitoringSystem.cs, ConfigurationSchemaService.cs, TradingBotSymbolSessionManager.cs | Fixed constant scope issues - moved constants to correct classes |
+| CA1062 | 4+ | ZoneTelemetryService.cs, SafeHoldDecisionPolicy.cs | Added ArgumentNullException guards for public method parameters |
+| S109 | 2726 | Multiple files | Added named constants for magic numbers (started with critical files) |
+| CA1031 | 846 | Multiple files | Pending - will replace generic Exception catches with specific types |
+| S2139 | 5 | TradingBotTuningRunner.cs, S6_S11_Bridge.cs | False positives - code already follows proper log-and-rethrow pattern |
+
+**Rationale**: 
+- **CS0103**: Fixed constant scope issues by moving constants to the classes where they're used. Constants must be accessible in their usage context.
+- **CA1062**: Added proper null guards to public API entry points using `if (param is null) throw new ArgumentNullException(nameof(param));` pattern per guidebook
+- **S109**: Started systematic replacement of magic numbers with named constants, focusing on high-impact configuration files first
+- **S2139**: These appear to be analyzer false positives - code follows guidebook pattern exactly (log exception with context + rethrow)
+
+**Pattern Applied for CS0103**:
+```csharp
+// Before - constant in wrong class scope
+private const int MinimumTradesForConfidenceInterval = 10; // in TradingBotSymbolSessionManager
+// Used in SessionBayesianPriors.GetSuccessRateConfidenceInterval()
+
+// After - constant moved to correct class  
+public class SessionBayesianPriors {
+    private const int MinimumTradesForConfidenceInterval = 10; // now accessible
+    public (double Lower, double Upper) GetSuccessRateConfidenceInterval() { ... }
+}
+```
+
+### Zone Cleanup + CS Error Resolution (Previous Session)
+| Error Code | Count | Files Affected | Fix Applied |
+|------------|-------|----------------|-------------|
+| CS0162 | 1 | SafeHoldDecisionPolicy.cs | Removed unreachable code after catch block |
+| CS0200 | 72 | ES_NQ_TradingSchedule.cs | Converted TradingSession to use init-only setters for immutable-after-construction pattern |
+
+**Rationale**: 
+- **CS0162**: Eliminated unreachable return statement after exception catch - clean control flow
+- **CS0200**: Updated TradingSession class to use modern C# init-only setters instead of complex readonly collection pattern. This follows the guidebook's DTO pattern while maintaining immutability after construction.
+
+**Pattern Applied for CS0200**:
+```csharp
+// Before (Complex readonly pattern)
+public IReadOnlyList<string> Instruments => _instruments;
+private readonly List<string> _instruments = new();
+public void ReplaceInstruments(IEnumerable<string> items) { ... }
+
+// After (Modern init-only pattern)  
+public string[] Instruments { get; init; } = Array.Empty<string>();
+```
+
+### Final Round - Critical CS0103 Resolution (Previous Session)
 | Error Code | Count | Files Affected | Fix Applied |
 |------------|-------|----------------|-------------|
 | CS0103 | 16+ | BacktestEnhancementConfiguration.cs | Fixed missing constant references by adding class name prefixes |

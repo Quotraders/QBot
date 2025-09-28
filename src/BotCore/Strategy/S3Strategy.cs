@@ -63,7 +63,16 @@ namespace BotCore.Strategy
                         : (b.Start.Kind == DateTimeKind.Utc ? b.Start : DateTime.SpecifyKind(b.Start, DateTimeKind.Utc));
                     return TimeZoneInfo.ConvertTimeFromUtc(utc, Et);
                 }
-                catch { return b.Start; }
+                catch (TimeZoneNotFoundException ex)
+                {
+                    _logger?.LogWarning(ex, "[S3-STRATEGY] TimeZone conversion failed for {DateTime}, using original", b.Start);
+                    return b.Start; 
+                }
+                catch (ArgumentException ex)
+                {
+                    _logger?.LogWarning(ex, "[S3-STRATEGY] Invalid DateTime argument for conversion: {DateTime}", b.Start);
+                    return b.Start;
+                }
             }
             var barsEt = new List<Bar>(bars.Count);
             foreach (var b in bars)

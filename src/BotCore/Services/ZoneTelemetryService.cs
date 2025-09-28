@@ -48,6 +48,7 @@ namespace BotCore.Services
 
         public void EmitZoneMetrics(string symbol, ZoneProviderResult result)
         {
+            if (result is null) throw new ArgumentNullException(nameof(result));
             if (result.Snapshot == null) return;
 
             try
@@ -198,10 +199,7 @@ namespace BotCore.Services
         {
             return source switch
             {
-                ZoneSource.Legacy => "legacy",
                 ZoneSource.Modern => "modern", 
-                ZoneSource.Hybrid => "hybrid",
-                ZoneSource.Disagree => "disagree",
                 ZoneSource.Unavailable => "unavailable",
                 _ => "unknown"
             };

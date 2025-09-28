@@ -108,27 +108,27 @@ namespace BotCore.Services
             if (_zoneService == null) return;
 
             // If this is OHLCV bar data, feed to zone service
-            if (marketData.Open.HasValue && marketData.High.HasValue && 
-                marketData.Low.HasValue && marketData.Close.HasValue)
+            if (marketData.Open != 0 && marketData.High != 0 && 
+                marketData.Low != 0 && marketData.Close != 0)
             {
                 _zoneService.OnBar(
                     marketData.Symbol, 
                     marketData.Timestamp, 
-                    marketData.Open.Value, 
-                    marketData.High.Value, 
-                    marketData.Low.Value, 
-                    marketData.Close.Value, 
-                    (long)(marketData.Volume ?? 0));
+                    (decimal)marketData.Open, 
+                    (decimal)marketData.High, 
+                    (decimal)marketData.Low, 
+                    (decimal)marketData.Close, 
+                    (long)(marketData.Volume));
 
                 _logger.LogTrace("[ZONE-BRIDGE] Fed bar data to zone service: {Symbol} OHLCV", marketData.Symbol);
             }
             // If this is tick data with bid/ask, feed as tick
-            else if (marketData.Bid.HasValue && marketData.Ask.HasValue)
+            else if (marketData.Bid != 0 && marketData.Ask != 0)
             {
                 _zoneService.OnTick(
                     marketData.Symbol,
-                    marketData.Bid.Value,
-                    marketData.Ask.Value,
+                    (decimal)marketData.Bid,
+                    (decimal)marketData.Ask,
                     marketData.Timestamp);
 
                 _logger.LogTrace("[ZONE-BRIDGE] Fed tick data to zone service: {Symbol} bid/ask", marketData.Symbol);

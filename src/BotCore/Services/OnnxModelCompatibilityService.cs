@@ -114,9 +114,24 @@ namespace TradingBot.BotCore.Services
                 _logger.LogInformation("✅ [ONNX-COMPAT] Model {ModelId} validated and compatible", modelId);
                 return true;
             }
-            catch (Exception ex)
+            catch (FileNotFoundException ex)
             {
-                _logger.LogError(ex, "🚨 [ONNX-COMPAT] Error validating model compatibility: {ModelPath}", modelPath);
+                _logger.LogError(ex, "🚨 [ONNX-COMPAT] Model file not found: {ModelPath}", modelPath);
+                return false;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogError(ex, "🚨 [ONNX-COMPAT] Access denied to model file: {ModelPath}", modelPath);
+                return false;
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "🚨 [ONNX-COMPAT] Invalid JSON in model metadata: {ModelPath}", modelPath);
+                return false;
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "🚨 [ONNX-COMPAT] Model validation operation failed: {ModelPath}", modelPath);
                 return false;
             }
         }
