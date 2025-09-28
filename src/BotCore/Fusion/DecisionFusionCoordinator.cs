@@ -370,9 +370,9 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     var recentVol = CalculateRealizedVolatility(recentBars);
                     var olderVol = CalculateRealizedVolatility(olderBars);
                     
-                    if (recentVol.HasValue && olderVol.HasValue && olderVol > 0)
+                    if (olderVol > 0)
                     {
-                        return recentVol.Value / olderVol.Value; // Contraction ratio
+                        return recentVol / olderVol; // Contraction ratio
                     }
                 }
             }

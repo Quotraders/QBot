@@ -1665,7 +1665,7 @@ public sealed class SpreadResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<SpreadResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -1679,7 +1679,7 @@ public sealed class SpreadResolver : IFeatureResolver
             
             _logger.LogTrace("Spread for {Symbol}: {Spread}", symbol, spread);
             // Completed synchronously
-            return spread;
+            return Task.FromResult(spread);
         }
         catch (Exception ex)
         {
@@ -1703,7 +1703,7 @@ public sealed class LiquidityScoreResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<LiquidityScoreResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -1717,7 +1717,7 @@ public sealed class LiquidityScoreResolver : IFeatureResolver
             
             _logger.LogTrace("Liquidity score for {Symbol}: {Score}", symbol, liquidityScore);
             // Completed synchronously
-            return liquidityScore;
+            return Task.FromResult(liquidityScore);
         }
         catch (Exception ex)
         {

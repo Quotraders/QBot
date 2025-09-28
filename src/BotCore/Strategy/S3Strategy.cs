@@ -6,11 +6,14 @@ using System.Linq;
 using System.Text.Json;
 using BotCore.Models;
 using BotCore.Risk;
+using Microsoft.Extensions.Logging;
 
 namespace BotCore.Strategy
 {
     public static class S3Strategy
     {
+        private static readonly ILogger? _logger = null; // Logger field for S3Strategy - initialized externally
+        
         private static bool BtBypass(string gate)
         {
             string k = gate switch { "news" => "BT_IGNORE_NEWS", "spread" => "BT_IGNORE_SPREAD", _ => string.Empty };

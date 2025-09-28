@@ -1425,7 +1425,7 @@ namespace TradingBot.Critical
         
         private readonly ILogger<CorrelationProtectionSystem> _logger;
         
-        internal class PositionExposure
+        internal sealed class PositionExposure
         {
             public string Symbol { get; set; } = string.Empty;
             public decimal DirectionalExposure { get; set; }
