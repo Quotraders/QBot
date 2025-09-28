@@ -365,9 +365,19 @@ namespace BotCore.Strategy
 
                 return Task.FromResult(true);
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "[S6S11_BRIDGE] Risk validation error");
+                _logger.LogError(ex, "[S6S11_BRIDGE] Invalid risk validation arguments");
+                return Task.FromResult(false);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[S6S11_BRIDGE] Risk validation operation failed");
+                return Task.FromResult(false);
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogError(ex, "[S6S11_BRIDGE] Risk validation timeout");
                 return Task.FromResult(false);
             }
         }
