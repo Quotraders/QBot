@@ -25,9 +25,9 @@ public sealed class FeatureMapAuthority
     private readonly object _reportingLock = new();
     
     // Performance counters
-    private long _resolverCalls = 0;
-    private long _missingFeatureCalls = 0;
-    private long _resolverErrors = 0;
+    private long _resolverCalls;
+    private long _missingFeatureCalls;
+    private long _resolverErrors;
     
     public FeatureMapAuthority(ILogger<FeatureMapAuthority> logger, IServiceProvider serviceProvider)
     {
@@ -279,11 +279,20 @@ public sealed class FeatureMapAuthority
         {
             try
             {
-                var metricsService = _serviceProvider.GetService<TradingBot.IntelligenceStack.RealTradingMetricsService>();
+                var metricsService = _serviceProvider.GetService(typeof(TradingBot.IntelligenceStack.RealTradingMetricsService));
                 if (metricsService != null)
                 {
                     var tags = new Dictionary<string, string> { ["key"] = featureKey };
-                    await metricsService.RecordCounterAsync("fusion.feature_missing", 1, tags, cancellationToken);
+                    // Use reflection to call RecordCounterAsync since we can't strongly type it
+                    var method = metricsService.GetType().GetMethod("RecordCounterAsync");
+                    if (method != null)
+                    {
+                        var task = method.Invoke(metricsService, new object[] { "fusion.feature_missing", 1, tags, cancellationToken });
+                        if (task is Task taskResult)
+                        {
+                            await taskResult.ConfigureAwait(false);
+                        }
+                    }
                 }
                 
                 _logger.LogError("🚨 FUSION FEATURE MISSING: {FeatureKey} - emitted telemetry", featureKey);
