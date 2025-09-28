@@ -217,7 +217,7 @@ namespace TradingBot.BotCore.Services
                     // Migration from 1.0 to 2.0: add RegimeDetectionThreshold if missing
                     if (!migrated.ContainsKey("RegimeDetectionThreshold"))
                     {
-                        migrated["RegimeDetectionThreshold"] = 0.8;
+                        migrated["RegimeDetectionThreshold"] = DefaultRegimeDetectionThreshold;
                         _logger.LogInformation("✅ [ML-MIGRATOR] Added RegimeDetectionThreshold default");
                     }
                     break;

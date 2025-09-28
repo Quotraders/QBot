@@ -62,7 +62,7 @@ namespace TopstepX.Bot.Core.Services
         public DateTime LastCheck { get; set; }
         public string? LastError { get; set; }
         public int ErrorCount { get; set; }
-        public double SuccessRate { get; set; } = 100.0;
+        public double SuccessRate { get; set; } = MaxSuccessRate;
         public long ResponseTimeMs { get; set; }
         public Dictionary<string, object> Metrics { get; } = new();
     }
@@ -81,6 +81,16 @@ namespace TopstepX.Bot.Core.Services
         private readonly string _errorLogPath;
         private readonly object _lockObject = new();
         private volatile bool _isSystemHealthy = true;
+        
+        // Error handling constants
+        private const int ErrorEscalationThreshold = 5;
+        private const int MaxHistoryHours = 12;
+        private const int MaxErrorHistorySize = 100;
+        private const int SessionTimeoutMinutes = 10;
+        private const int ErrorIdLength = 12;
+        private const double MaxSuccessRate = 100.0;
+        private const double WarningHealthScore = 70.0;
+        private const double CriticalHealthScore = 20.0;
         
         public event EventHandler<CriticalErrorEventArgs>? CriticalErrorDetected;
         public event EventHandler<HealthStatusEventArgs>? HealthStatusChanged;
@@ -120,7 +130,7 @@ namespace TopstepX.Bot.Core.Services
                     existingError.Timestamp = timestamp;
                     
                     // Escalate severity if error is recurring frequently
-                    if (existingError.OccurrenceCount > 5 && severity < ErrorSeverity.Critical)
+                    if (existingError.OccurrenceCount > ErrorEscalationThreshold && severity < ErrorSeverity.Critical)
                     {
                         severity = ErrorSeverity.High;
                     }
@@ -175,7 +185,7 @@ namespace TopstepX.Bot.Core.Services
         private static string GenerateErrorId(string component, Exception exception)
         {
             var baseString = $"{component}_{exception.GetType().Name}_{exception.Message?.GetHashCode()}";
-            return Convert.ToHexString(System.Text.Encoding.UTF8.GetBytes(baseString))[..12];
+            return Convert.ToHexString(System.Text.Encoding.UTF8.GetBytes(baseString))[..ErrorIdLength];
         }
         
         private async Task WriteErrorToFileAsync(string component, Exception exception, ErrorSeverity severity, string errorId, Dictionary<string, object>? additionalData)
@@ -301,7 +311,7 @@ namespace TopstepX.Bot.Core.Services
                 
                 // Calculate success rate
                 var totalChecks = health.ErrorCount + (health.Metrics.TryGetValue("SuccessCount", out var successCountValue) ? Convert.ToInt32(successCountValue) : 1);
-                health.SuccessRate = Math.Max(0, 100.0 - (health.ErrorCount * 100.0 / totalChecks));
+                health.SuccessRate = Math.Max(0, MaxSuccessRate - (health.ErrorCount * MaxSuccessRate / totalChecks));
                 
                 _logger.LogDebug("📊 Component health updated: {Component} - {Status} (Success Rate: {SuccessRate:F1}%)", 
                     componentName, status, health.SuccessRate);
@@ -382,7 +392,7 @@ namespace TopstepX.Bot.Core.Services
         
         private double CalculateOverallHealth()
         {
-            if (_componentHealth.Count == 0) return 100.0;
+            if (_componentHealth.Count == 0) return MaxSuccessRate;
             
             var totalScore = 0.0;
             var componentCount = _componentHealth.Count;
@@ -391,15 +401,15 @@ namespace TopstepX.Bot.Core.Services
             {
                 var componentScore = health.Status switch
                 {
-                    HealthStatus.Healthy => 100.0,
-                    HealthStatus.Warning => 70.0,
-                    HealthStatus.Critical => 20.0,
+                    HealthStatus.Healthy => MaxSuccessRate,
+                    HealthStatus.Warning => WarningHealthScore,
+                    HealthStatus.Critical => CriticalHealthScore,
                     HealthStatus.Unknown => 50.0,
                     _ => 0.0
                 };
                 
                 // Factor in success rate
-                componentScore = componentScore * (health.SuccessRate / 100.0);
+                componentScore = componentScore * (health.SuccessRate / MaxSuccessRate);
                 totalScore += componentScore;
             }
             

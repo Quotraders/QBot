@@ -109,6 +109,7 @@ public class SafeHoldDecisionPolicy
     /// </summary>
     public (bool Held, string Reason, TradingDecision MaybeAmended) ZoneGate(TradingDecision decision, string symbol)
     {
+        if (decision is null) throw new ArgumentNullException(nameof(decision));
         if (_zoneProvider == null)
         {
             // Zone provider not available, allow trade to proceed
