@@ -558,14 +558,10 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<Zones.IZoneFeatureSource>(provider => 
             (Zones.IZoneFeatureSource)provider.GetRequiredService<Zones.IZoneService>());
         
-        // Register Legacy ZoneService (the existing IZoneService from BotCore)
-        services.AddSingleton<BotCore.Services.IZoneService, BotCore.Services.ZoneService>();
-        
         // Register zone telemetry service
         services.AddSingleton<BotCore.Services.IZoneTelemetryService, BotCore.Services.ZoneTelemetryService>();
         
-        // Register zone providers
-        services.AddSingleton<BotCore.Services.LegacyZoneProvider>();
+        // Register zone providers (modern-only)
         services.AddSingleton<BotCore.Services.ModernZoneProvider>();
         services.AddSingleton<BotCore.Services.HybridZoneProvider>();
         services.AddSingleton<BotCore.Services.IZoneProvider>(provider => 
@@ -577,7 +573,7 @@ Please check the configuration and ensure all required services are registered.
         // Register market data to zone service bridge
         services.AddHostedService<BotCore.Services.ZoneMarketDataBridge>();
         
-        Console.WriteLine("🎯 [ZONE-AWARENESS] Hybrid zone awareness services registered - Legacy/Modern/Hybrid providers active!");
+        Console.WriteLine("🎯 [ZONE-AWARENESS] Modern zone awareness services registered - Modern-only provider active!");
         
         // ================================================================================
 

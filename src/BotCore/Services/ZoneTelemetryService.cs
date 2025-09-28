@@ -198,10 +198,7 @@ namespace BotCore.Services
         {
             return source switch
             {
-                ZoneSource.Legacy => "legacy",
                 ZoneSource.Modern => "modern", 
-                ZoneSource.Hybrid => "hybrid",
-                ZoneSource.Disagree => "disagree",
                 ZoneSource.Unavailable => "unavailable",
                 _ => "unknown"
             };

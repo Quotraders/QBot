@@ -127,16 +127,16 @@ public class SafeHoldDecisionPolicy
             _zoneTelemetryService?.EmitFreshnessMetrics(symbol, zoneResult.Source, 
                 (DateTime.UtcNow - zoneResult.Timestamp).TotalSeconds);
 
-            // Handle zone disagreement case - this is the key new behavior
-            if (zoneResult.Source == ZoneSource.Disagree)
+            // Handle zone unavailable case - simplified from disagreement handling
+            if (zoneResult.Source == ZoneSource.Unavailable)
             {
-                var reason = "zone_disagree";
-                _logger.LogWarning("🚫 [ZONE-GATE] Trade blocked due to zone disagreement: {Symbol}", symbol);
+                var reason = "zone_unavailable";
+                _logger.LogWarning("🚫 [ZONE-GATE] Trade blocked due to zone unavailable: {Symbol}", symbol);
                 
                 // Emit legacy metric name for supervisors
                 _zoneTelemetryService?.EmitRejectedEntry(symbol, reason);
                 
-                return (true, "Blocked by zone disagreement", decision);
+                return (true, "Blocked by zone unavailable", decision);
             }
 
             // Handle unavailable zones

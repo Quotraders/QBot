@@ -169,45 +169,6 @@ jobs:
           
           EOF
 
-      - name: "📈 Support and Resistance Zone Identification"
-        run: |
-          echo "📈 Identifying support and resistance zones..."
-          python << 'EOF'
-          import pandas as pd
-          import numpy as np
-          import json
-          import os
-          from datetime import datetime
-          
-          print("[ZONES] 📈 Support and Resistance Zone Identification")
-          
-          # Simulated zone identification (in production would use actual price data)
-          zones_data = {
-              'timestamp': datetime.utcnow().isoformat(),
-              'ES_zones': {
-                  'support_levels': [4450, 4425, 4400, 4375],
-                  'resistance_levels': [4525, 4550, 4575, 4600],
-                  'current_zone': 'between_support_resistance',
-                  'zone_strength': 'medium'
-              },
-              'NQ_zones': {
-                  'support_levels': [15200, 15100, 15000, 14900],
-                  'resistance_levels': [15400, 15500, 15600, 15700],
-                  'current_zone': 'near_resistance',
-                  'zone_strength': 'strong'
-              },
-              'calculation_method': 'pivot_points_and_volume_profile',
-              'lookback_period': '20_days'
-          }
-          
-          # Save as DataFrame for parquet storage
-          df = pd.DataFrame([zones_data])
-          df.to_parquet('datasets/features/support_resistance_zones.parquet', index=False)
-          
-          print("[ZONES] ✅ Support/resistance zones identified")
-          
-          EOF
-
       - name: "📅 Economic Calendar Integration"
         run: |
           echo "📅 Integrating economic calendar events..."
@@ -273,7 +234,6 @@ jobs:
           echo "✅ Data Feature Build Pipeline Complete"
           echo "📊 Market features: SPX, NDX, VIX term structure"
           echo "🏦 Fed balance sheet structure created"
-          echo "📈 Support/resistance zones identified"
           echo "📅 Economic calendar integrated"
           echo "💾 All outputs saved as parquet files"
           echo "⏱️ Runtime: Under 3 minutes budget"
