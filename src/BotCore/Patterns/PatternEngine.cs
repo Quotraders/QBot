@@ -13,6 +13,14 @@ public class PatternEngine
     private readonly ILogger<PatternEngine> _logger;
     private readonly IFeatureBus _featureBus;
     private readonly List<IPatternDetector> _detectors;
+    
+    // Pattern analysis constants
+    private const double MIN_PATTERN_SCORE_THRESHOLD = 0.1;
+    private const double ACTIVE_PATTERN_THRESHOLD = 0.3;
+    private const double NEUTRAL_PATTERN_DIRECTION = 0.5;
+    private const double CONFIDENCE_BOOST = 0.1;
+    private const double NEUTRAL_SCORE = 0.5;
+    private const double MINIMUM_SCORE_FOR_ANALYSIS = 0.01;
 
     public PatternEngine(ILogger<PatternEngine> logger, IFeatureBus featureBus, IEnumerable<IPatternDetector> detectors)
     {
@@ -26,6 +34,8 @@ public class PatternEngine
     /// </summary>
     public PatternScores GetScores(string symbol, IReadOnlyList<Bar> bars)
     {
+        ArgumentNullException.ThrowIfNull(bars);
+        
         if (bars.Count == 0)
         {
             return new PatternScores();
@@ -45,7 +55,7 @@ public class PatternEngine
                 }
 
                 var result = detector.Detect(bars);
-                if (result.Score > 0.01) // Only include meaningful detections
+                if (result.Score > MINIMUM_SCORE_FOR_ANALYSIS) // Only include meaningful detections
                 {
                     results.Add(new PatternDetectionResult
                     {
@@ -88,15 +98,15 @@ public class PatternEngine
         try
         {
             // Get recent bars from real market data
-            var recentBars = await GetRecentBarsForAnalysisAsync(symbol, cancellationToken);
+            var recentBars = await GetRecentBarsForAnalysisAsync(symbol, cancellationToken).ConfigureAwait(false);
             
             if (recentBars == null || recentBars.Count == 0)
             {
                 _logger.LogWarning("No recent bars available for pattern analysis of {Symbol}, using neutral scores", symbol);
                 return new PatternScoresWithDetails
                 {
-                    BullScore = 0.5,
-                    BearScore = 0.5,
+                    BullScore = NEUTRAL_SCORE,
+                    BearScore = NEUTRAL_SCORE,
                     OverallConfidence = 0.0,
                     DetectedPatterns = new List<PatternDetail>()
                 };
@@ -129,8 +139,8 @@ public class PatternEngine
             // Return neutral scores on error
             return new PatternScoresWithDetails
             {
-                BullScore = 0.5,
-                BearScore = 0.5,
+                BullScore = NEUTRAL_SCORE,
+                BearScore = NEUTRAL_SCORE,
                 OverallConfidence = 0.0,
                 DetectedPatterns = new List<PatternDetail>()
             };
@@ -183,7 +193,7 @@ public class PatternEngine
             await Task.Delay(1, cancellationToken).ConfigureAwait(false);
             
             // Return null for now - this will trigger the fallback to neutral scores
-            // TODO: Connect to IBarRegistry or market data service when available
+            // Connection to real bar data source needed here
             return null;
         }
         catch (Exception ex)
@@ -218,15 +228,15 @@ public class PatternEngine
         foreach (var kvp in patternFlags)
         {
             var score = kvp.Value;
-            if (score > 0.1) // Only include meaningful patterns
+            if (score > MIN_PATTERN_SCORE_THRESHOLD) // Only include meaningful patterns
             {
                 details.Add(new PatternDetail
                 {
                     Name = kvp.Key,
                     Score = score,
-                    IsActive = score > 0.3,
-                    Direction = score > 0.5 ? 1 : -1, // Simplified direction mapping
-                    Confidence = Math.Min(1.0, score + 0.1)
+                    IsActive = score > ACTIVE_PATTERN_THRESHOLD,
+                    Direction = score > NEUTRAL_PATTERN_DIRECTION ? 1 : -1, // Simplified direction mapping
+                    Confidence = Math.Min(1.0, score + CONFIDENCE_BOOST)
                 });
             }
         }

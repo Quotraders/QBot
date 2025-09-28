@@ -140,7 +140,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         }
     }
     
-    private double? TryGetFromFeatureBus(string symbol, string feature)
+    private static double? TryGetFromFeatureBus(string symbol, string feature)
     {
         // Query the underlying feature bus which should have real-time published values
         // This would be populated by ZoneFeaturePublisher, PatternEngine, and other real services
@@ -163,15 +163,15 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         return feature switch
         {
             // Price features would come from current market data
-            "price.current" or "price.es" => GetCurrentPrice(symbol),
-            "price.nq" => GetCurrentPrice("NQ"),
+            "price.current" or "price.es" => GetCurrentPrice(),
+            "price.nq" => GetCurrentPrice(),
             
             // Volume features from recent market activity
-            "volume.current" => GetCurrentVolume(symbol),
+            "volume.current" => GetCurrentVolume(),
             
             // Technical indicators would be calculated from real bars
-            "atr.14" => CalculateATR(symbol, 14),
-            "volatility.realized" => CalculateRealizedVolatility(symbol),
+            "atr.14" => CalculateATR(),
+            "volatility.realized" => CalculateRealizedVolatility(),
             
             // Pattern scores should come from real pattern analysis
             "pattern.bull_score" or "pattern.bear_score" => null, // Will be handled by pattern engine integration
@@ -181,26 +181,26 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         };
     }
     
-    private double? GetCurrentPrice(string symbol)
+    private static double? GetCurrentPrice(string? _ = null)
     {
         // In production, this would get the current price from market data service
         // For now return null to use defaults, but this hook is ready for real implementation
         return null;
     }
     
-    private double? GetCurrentVolume(string symbol)
+    private static double? GetCurrentVolume(string? _ = null)
     {
         // In production, this would get current volume from market data
         return null;
     }
     
-    private double? CalculateATR(string symbol, int period)
+    private static double? CalculateATR(string? _ = null, int? __ = null)
     {
         // In production, this would calculate ATR from recent bars
         return null;
     }
     
-    private double? CalculateRealizedVolatility(string symbol)
+    private static double? CalculateRealizedVolatility(string? _ = null)
     {
         // In production, this would calculate realized volatility from price history
         return null;
