@@ -114,9 +114,9 @@ public static class PatternAndStrategyServiceExtensions
         services.AddSingleton<FeatureBusAdapter>();
         services.AddSingleton<IFeatureBusWithProbe>(provider => provider.GetRequiredService<FeatureBusAdapter>());
         
-        // Register mock services for now (to be replaced with real implementations later)
-        services.AddSingleton<IRiskManager, MockRiskManager>();
-        services.AddSingleton<IMLRLMetricsService, MockMLRLMetricsService>();
+        // Register production services with real implementations
+        services.AddSingleton<IRiskManager, ProductionRiskManager>();
+        services.AddSingleton<IMLRLMetricsService, ProductionMLRLMetricsService>();
 
         // Load Strategy DSL cards from YAML files
         var strategyFolder = configuration["StrategyCatalog:Folder"] ?? "config/strategies";

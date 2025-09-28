@@ -129,7 +129,7 @@ public class UnifiedDecisionRouter
                     
                     await TrackDecisionAsync(decision, "strategy_fusion").ConfigureAwait(false);
                     _logger.LogInformation("🧠 [STRATEGY-FUSION] Decision: {Action} {Symbol} strategy={Strategy} confidence={Confidence:P1}",
-                        decision.Action, symbol, decision.StrategyName ?? "Unknown", decision.Confidence);
+                        decision.Action, symbol, decision.Strategy ?? "Unknown", decision.Confidence);
                     return decision;
                 }
             }
@@ -149,43 +149,43 @@ public class UnifiedDecisionRouter
             }
             
             // Step 2: Try Unified Trading Brain (Tertiary)
-            decision = await TryUnifiedBrainAsync(symbol, marketContext, cancellationToken).ConfigureAwait(false);
-            if (decision != null && decision.Action != TradingAction.Hold)
+            var decision3 = await TryUnifiedBrainAsync(symbol, marketContext, cancellationToken).ConfigureAwait(false);
+            if (decision3 != null && decision3.Action != TradingAction.Hold)
             {
-                decision.DecisionId = decisionId;
-                decision.DecisionSource = "UnifiedBrain";
-                decision.ProcessingTimeMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                decision3.DecisionId = decisionId;
+                decision3.DecisionSource = "UnifiedBrain";
+                decision3.ProcessingTimeMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
                 
-                await TrackDecisionAsync(decision, "unified_brain").ConfigureAwait(false);
+                await TrackDecisionAsync(decision3, "unified_brain").ConfigureAwait(false);
                 _logger.LogInformation("🎯 [UNIFIED-BRAIN] Decision: {Action} {Symbol} confidence={Confidence:P1}",
-                    decision.Action, symbol, decision.Confidence);
-                return decision;
+                    decision3.Action, symbol, decision3.Confidence);
+                return decision3;
             }
             
             // Step 3: Try Intelligence Orchestrator (Fallback)
-            decision = await TryIntelligenceOrchestratorAsync(marketContext, cancellationToken).ConfigureAwait(false);
-            if (decision != null && decision.Action != TradingAction.Hold)
+            var decision4 = await TryIntelligenceOrchestratorAsync(marketContext, cancellationToken).ConfigureAwait(false);
+            if (decision4 != null && decision4.Action != TradingAction.Hold)
             {
-                decision.DecisionId = decisionId;
-                decision.DecisionSource = "IntelligenceOrchestrator";
-                decision.ProcessingTimeMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                decision4.DecisionId = decisionId;
+                decision4.DecisionSource = "IntelligenceOrchestrator";
+                decision4.ProcessingTimeMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
                 
-                await TrackDecisionAsync(decision, "intelligence_orchestrator").ConfigureAwait(false);
+                await TrackDecisionAsync(decision4, "intelligence_orchestrator").ConfigureAwait(false);
                 _logger.LogInformation("🤖 [INTELLIGENCE-ORCHESTRATOR] Decision: {Action} {Symbol} confidence={Confidence:P1}",
-                    decision.Action, symbol, decision.Confidence);
-                return decision;
+                    decision4.Action, symbol, decision4.Confidence);
+                return decision4;
             }
             
             // Step 4: ULTIMATE FALLBACK - Force BUY/SELL based on market conditions
-            decision = CreateForceDecision(symbol, marketContext);
-            decision.DecisionId = decisionId;
-            decision.DecisionSource = "ForcedDecision";
-            decision.ProcessingTimeMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            var forcedDecision = CreateForceDecision(symbol, marketContext);
+            forcedDecision.DecisionId = decisionId;
+            forcedDecision.DecisionSource = "ForcedDecision";
+            forcedDecision.ProcessingTimeMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
             
-            await TrackDecisionAsync(decision, "forced_decision").ConfigureAwait(false);
+            await TrackDecisionAsync(forcedDecision, "forced_decision").ConfigureAwait(false);
             _logger.LogWarning("⚠️ [FORCED-DECISION] All brains returned HOLD, forcing: {Action} {Symbol}",
-                decision.Action, symbol);
-            return decision;
+                forcedDecision.Action, symbol);
+            return forcedDecision;
         }
         catch (Exception ex)
         {
@@ -228,12 +228,16 @@ public class UnifiedDecisionRouter
                 {
                     Symbol = symbol,
                     Action = tradingAction,
-                    Confidence = fusionRecommendation.Confidence,
-                    StrategyName = fusionRecommendation.StrategyName,
+                    Confidence = (decimal)fusionRecommendation.Confidence,
+                    Strategy = fusionRecommendation.StrategyName,
                     Timestamp = DateTime.UtcNow,
-                    Reason = $"Strategy: {fusionRecommendation.StrategyName}, Evidence: {fusionRecommendation.Evidence.Count} factors",
-                    EvidenceFactors = fusionRecommendation.Evidence.Select(e => e.Name).ToList(),
-                    TelemetryTags = fusionRecommendation.TelemetryTags.ToList()
+                    Reasoning = new Dictionary<string, object>
+                    {
+                        ["evidence_count"] = fusionRecommendation.Evidence.Count,
+                        ["evidence_factors"] = fusionRecommendation.Evidence.Select(e => e.Name).ToList(),
+                        ["telemetry_tags"] = fusionRecommendation.TelemetryTags.ToList(),
+                        ["strategy_intent"] = fusionRecommendation.Intent.ToString()
+                    }
                 };
 
                 _logger.LogDebug("🧠 [STRATEGY-FUSION] Fusion recommendation: {Strategy} {Intent} confidence={Confidence:F2}",
