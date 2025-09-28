@@ -3,14 +3,18 @@ label: Compression
 family: Breakout
 bias: both
 when:
-  regime: [Range, LowVol]
+  regime:
+    - Range
+    - LowVol
   micro:
-    - vdc <= 0.6   # volatility contraction ratio
-    - inside_bars_lookback >= 2
+    - "vdc <= 0.6"
+    - "inside_bars_lookback >= 2"
 confluence:
-  - pattern.kind: [InsideBarBreakoutBull, InsideBarBreakoutBear, SymTriangle]
-  - zone.breakout_score >= 0.65
+  - "pattern.kind: [InsideBarBreakoutBull, InsideBarBreakoutBear, SymTriangle]"
+  - "zone.breakout_score >= 0.65"
 playbook:
-  entry: stop_breakout confirm_atr: 0.25
-  bracket: measured_move_or_next_zone buffer_ticks: 6
-telemetry_tags: ["S3", "Compression"]
+  entry: "stop_breakout confirm_atr: 0.25"
+  bracket: "measured_move_or_next_zone buffer_ticks: 6"
+telemetryTags:
+  - S3
+  - Compression

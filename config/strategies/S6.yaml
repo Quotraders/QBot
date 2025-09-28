@@ -3,14 +3,17 @@ label: Momentum
 family: TrendFollowing
 bias: both
 when:
-  regime: [Trend]
+  regime:
+    - Trend
   micro:
-    - mom.zscore >= 1.0
-    - pullback.at_risk <= 0.6  # shallow pullback
+    - "mom.zscore >= 1.0"
+    - "pullback.at_risk <= 0.6"
 confluence:
-  - pattern.kind: [BullFlag, BearFlag, AscendingTriangle, DescendingTriangle]
-  - zone.dist_to_opposing_atr >= 0.8 or zone.breakout_score >= 0.75
+  - "pattern.kind: [BullFlag, BearFlag, AscendingTriangle, DescendingTriangle]"
+  - "zone.dist_to_opposing_atr >= 0.8 or zone.breakout_score >= 0.75"
 playbook:
-  entry: stop_continuation above_pullback_high
-  bracket: trail_by_atr multiple: 1.5 cap_at_next_zone: true
-telemetry_tags: ["S6", "Momentum"]
+  entry: "stop_continuation above_pullback_high"
+  bracket: "trail_by_atr multiple: 1.5 cap_at_next_zone: true"
+telemetryTags:
+  - S6
+  - Momentum
