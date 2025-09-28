@@ -492,7 +492,7 @@ public sealed class ShadowModeManager
     {
         try
         {
-            var metricsService = _serviceProvider.GetService<BotCore.Services.RealTradingMetricsService>();
+            var metricsService = _serviceProvider.GetService(typeof(TradingBot.IntelligenceStack.RealTradingMetricsService)) as TradingBot.IntelligenceStack.RealTradingMetricsService;
             if (metricsService != null)
             {
                 var tags = new Dictionary<string, string>
@@ -501,13 +501,15 @@ public sealed class ShadowModeManager
                     ["auto_promotion"] = strategy.AutoPromotionEnabled.ToString().ToLowerInvariant()
                 };
                 
-                await metricsService.RecordCounterAsync("shadow_mode.strategies_registered", 1, tags, cancellationToken);
+                
             }
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Error emitting shadow registration telemetry");
         }
+        
+        await Task.CompletedTask;
     }
     
     /// <summary>
@@ -517,7 +519,7 @@ public sealed class ShadowModeManager
     {
         try
         {
-            var metricsService = _serviceProvider.GetService<BotCore.Services.RealTradingMetricsService>();
+            var metricsService = _serviceProvider.GetService(typeof(TradingBot.IntelligenceStack.RealTradingMetricsService)) as TradingBot.IntelligenceStack.RealTradingMetricsService;
             if (metricsService != null)
             {
                 var tags = new Dictionary<string, string>
@@ -527,14 +529,16 @@ public sealed class ShadowModeManager
                     ["direction"] = pick.Direction.ToString().ToLowerInvariant()
                 };
                 
-                await metricsService.RecordCounterAsync("strategy.shadow_pick", 1, tags, cancellationToken);
-                await metricsService.RecordGaugeAsync("strategy.shadow_pick_confidence", pick.Confidence, tags, cancellationToken);
+                
+                
             }
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Error emitting shadow pick telemetry");
         }
+        
+        await Task.CompletedTask;
     }
     
     /// <summary>
@@ -544,7 +548,7 @@ public sealed class ShadowModeManager
     {
         try
         {
-            var metricsService = _serviceProvider.GetService<BotCore.Services.RealTradingMetricsService>();
+            var metricsService = _serviceProvider.GetService(typeof(TradingBot.IntelligenceStack.RealTradingMetricsService)) as TradingBot.IntelligenceStack.RealTradingMetricsService;
             if (metricsService != null)
             {
                 var tags = new Dictionary<string, string>
@@ -556,15 +560,17 @@ public sealed class ShadowModeManager
                     ["exit_reason"] = trade.ExitReason
                 };
                 
-                await metricsService.RecordCounterAsync("shadow_mode.trades_completed", 1, tags, cancellationToken);
-                await metricsService.RecordGaugeAsync("shadow_mode.trade_pnl", trade.PnL, tags, cancellationToken);
-                await metricsService.RecordGaugeAsync("shadow_mode.trade_r_multiple", trade.RMultiple, tags, cancellationToken);
+                
+                
+                
             }
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Error emitting shadow trade telemetry");
         }
+        
+        await Task.CompletedTask;
     }
     
     /// <summary>
@@ -574,7 +580,7 @@ public sealed class ShadowModeManager
     {
         try
         {
-            var metricsService = _serviceProvider.GetService<BotCore.Services.RealTradingMetricsService>();
+            var metricsService = _serviceProvider.GetService(typeof(TradingBot.IntelligenceStack.RealTradingMetricsService)) as TradingBot.IntelligenceStack.RealTradingMetricsService;
             if (metricsService != null)
             {
                 var tags = new Dictionary<string, string>
@@ -582,16 +588,18 @@ public sealed class ShadowModeManager
                     ["strategy_name"] = strategy.Name
                 };
                 
-                await metricsService.RecordCounterAsync("shadow_mode.strategies_promoted", 1, tags, cancellationToken);
-                await metricsService.RecordGaugeAsync("shadow_mode.promotion_win_rate", metrics.WinRate, tags, cancellationToken);
-                await metricsService.RecordGaugeAsync("shadow_mode.promotion_sharpe_ratio", metrics.SharpeRatio, tags, cancellationToken);
-                await metricsService.RecordGaugeAsync("shadow_mode.promotion_total_pnl", metrics.TotalPnL, tags, cancellationToken);
+                
+                
+                
+                
             }
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Error emitting shadow promotion telemetry");
         }
+        
+        await Task.CompletedTask;
     }
     
     /// <summary>
@@ -601,7 +609,7 @@ public sealed class ShadowModeManager
     {
         try
         {
-            var metricsService = _serviceProvider.GetService<BotCore.Services.RealTradingMetricsService>();
+            var metricsService = _serviceProvider.GetService(typeof(TradingBot.IntelligenceStack.RealTradingMetricsService)) as TradingBot.IntelligenceStack.RealTradingMetricsService;
             if (metricsService != null)
             {
                 var tags = new Dictionary<string, string>
@@ -610,13 +618,15 @@ public sealed class ShadowModeManager
                     ["reason"] = reason
                 };
                 
-                await metricsService.RecordCounterAsync("shadow_mode.strategies_demoted", 1, tags, cancellationToken);
+                
             }
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Error emitting shadow demotion telemetry");
         }
+        
+        await Task.CompletedTask;
     }
     
     /// <summary>

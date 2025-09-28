@@ -138,10 +138,15 @@ public sealed class YamlSchemaValidator
             }
             
             // Parse YAML content
-            object yamlObject;
+            object? yamlObject;
             try
             {
                 yamlObject = _yamlDeserializer.Deserialize(yamlContent);
+                if (yamlObject == null)
+                {
+                    result.Errors.Add("YAML parsing error: Deserializer returned null");
+                    return result;
+                }
             }
             catch (Exception ex)
             {

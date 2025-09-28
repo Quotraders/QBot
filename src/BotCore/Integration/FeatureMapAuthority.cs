@@ -279,7 +279,7 @@ public sealed class FeatureMapAuthority
         {
             try
             {
-                var metricsService = _serviceProvider.GetService<BotCore.Services.RealTradingMetricsService>();
+                var metricsService = _serviceProvider.GetService<TradingBot.IntelligenceStack.RealTradingMetricsService>();
                 if (metricsService != null)
                 {
                     var tags = new Dictionary<string, string> { ["key"] = featureKey };

@@ -5,12 +5,14 @@ using System.Threading.Tasks;
 using BotCore.Models;
 using BotCore.Services;
 using System.Threading;
+using System.Collections.Generic;
+using Zones;
 
 namespace BotCore.Integration;
 
 /// <summary>
 /// Unified bar pipeline - single orchestrator for all bar processing
-/// Ensures consistent data flow: MarketStructureCore → ZoneService → PatternEngine → DslEngine → FeatureBus
+/// Ensures consistent data flow: ZoneService → PatternEngine → DslEngine → FeatureBus
 /// NO alternate paths - both live feed and backtest harness must use this single pipeline
 /// </summary>
 public sealed class UnifiedBarPipeline
@@ -19,12 +21,11 @@ public sealed class UnifiedBarPipeline
     private readonly IServiceProvider _serviceProvider;
     
     // Pipeline components - injected via service provider to ensure consistent DI graph
-    private readonly Lazy<BotCore.Services.MarketStructureCore?> _marketStructureCore;
-    private readonly Lazy<Zones.IZoneService?> _zoneService;
+    private readonly Lazy<IZoneService?> _zoneService;
     private readonly Lazy<BotCore.Patterns.PatternEngine?> _patternEngine;
-    private readonly Lazy<BotCore.StrategyDsl.IStrategyKnowledgeGraph?> _dslEngine;
+    private readonly Lazy<BotCore.Strategy.IStrategyKnowledgeGraph?> _dslEngine;
     private readonly Lazy<Zones.IFeatureBus?> _featureBus;
-    private readonly Lazy<BotCore.Services.RealTradingMetricsService?> _metricsService;
+    private readonly Lazy<TradingBot.IntelligenceStack.RealTradingMetricsService?> _metricsService;
     
     // Telemetry counters
     private long _barsProcessed = 0;
@@ -37,23 +38,21 @@ public sealed class UnifiedBarPipeline
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         
         // Lazy initialization to ensure services are resolved at runtime, not construction
-        _marketStructureCore = new Lazy<BotCore.Services.MarketStructureCore?>(() => 
-            _serviceProvider.GetService<BotCore.Services.MarketStructureCore>());
-        _zoneService = new Lazy<Zones.IZoneService?>(() => 
-            _serviceProvider.GetService<Zones.IZoneService>());
+        _zoneService = new Lazy<IZoneService?>(() => 
+            _serviceProvider.GetService<IZoneService>());
         _patternEngine = new Lazy<BotCore.Patterns.PatternEngine?>(() => 
             _serviceProvider.GetService<BotCore.Patterns.PatternEngine>());
-        _dslEngine = new Lazy<BotCore.StrategyDsl.IStrategyKnowledgeGraph?>(() => 
-            _serviceProvider.GetService<BotCore.StrategyDsl.IStrategyKnowledgeGraph>());
+        _dslEngine = new Lazy<BotCore.Strategy.IStrategyKnowledgeGraph?>(() => 
+            _serviceProvider.GetService<BotCore.Strategy.IStrategyKnowledgeGraph>());
         _featureBus = new Lazy<Zones.IFeatureBus?>(() => 
             _serviceProvider.GetService<Zones.IFeatureBus>());
-        _metricsService = new Lazy<BotCore.Services.RealTradingMetricsService?>(() => 
-            _serviceProvider.GetService<BotCore.Services.RealTradingMetricsService>());
+        _metricsService = new Lazy<TradingBot.IntelligenceStack.RealTradingMetricsService?>(() => 
+            _serviceProvider.GetService<TradingBot.IntelligenceStack.RealTradingMetricsService>());
     }
     
     /// <summary>
     /// Process a bar through the unified pipeline - THE ONLY PATH for bar processing
-    /// Flow: MarketStructureCore.Update → ZoneService.OnBar → PatternEngine.OnBar → DslEngine.Evaluate → FeatureBus.Publish
+    /// Flow: ZoneService.OnBar → PatternEngine.OnBar → DslEngine.Evaluate → FeatureBus.Publish
     /// </summary>
     public async Task<UnifiedBarProcessingResult> ProcessAsync(string symbol, Bar bar, CancellationToken cancellationToken = default)
     {
@@ -75,17 +74,7 @@ public sealed class UnifiedBarPipeline
         {
             _logger.LogDebug("Starting unified bar processing for {Symbol} at {Timestamp}", symbol, bar.Start);
             
-            // Step 1: MarketStructureCore.Update
-            var marketStructureResult = await ProcessMarketStructureUpdateAsync(symbol, bar, cancellationToken);
-            processingResult.PipelineSteps.Add(marketStructureResult);
-            
-            if (!marketStructureResult.Success)
-            {
-                _logger.LogWarning("MarketStructureCore update failed for {Symbol} - stopping pipeline", symbol);
-                return processingResult;
-            }
-            
-            // Step 2: ZoneService.OnBar
+            // Step 1: ZoneService.OnBar
             var zoneServiceResult = await ProcessZoneServiceOnBarAsync(symbol, bar, cancellationToken);
             processingResult.PipelineSteps.Add(zoneServiceResult);
             
@@ -95,7 +84,7 @@ public sealed class UnifiedBarPipeline
                 return processingResult;
             }
             
-            // Step 3: PatternEngine.OnBar
+            // Step 2: PatternEngine.OnBar
             var patternEngineResult = await ProcessPatternEngineOnBarAsync(symbol, bar, cancellationToken);
             processingResult.PipelineSteps.Add(patternEngineResult);
             
@@ -105,7 +94,7 @@ public sealed class UnifiedBarPipeline
                 return processingResult;
             }
             
-            // Step 4: DslEngine.Evaluate
+            // Step 3: DslEngine.Evaluate
             var dslEngineResult = await ProcessDslEngineEvaluateAsync(symbol, bar, cancellationToken);
             processingResult.PipelineSteps.Add(dslEngineResult);
             
@@ -115,7 +104,7 @@ public sealed class UnifiedBarPipeline
                 return processingResult;
             }
             
-            // Step 5: FeatureBus.Publish (pattern signals injection)
+            // Step 4: FeatureBus.Publish (pattern signals injection)
             var featureBusResult = await ProcessFeatureBusPublishAsync(symbol, bar, patternEngineResult, cancellationToken);
             processingResult.PipelineSteps.Add(featureBusResult);
             
@@ -158,51 +147,9 @@ public sealed class UnifiedBarPipeline
     }
     
     /// <summary>
-    /// Step 1: Process MarketStructureCore update
+    /// Step 1: Process ZoneService OnBar
     /// </summary>
-    private async Task<PipelineStepResult> ProcessMarketStructureUpdateAsync(string symbol, Bar bar, CancellationToken cancellationToken)
-    {
-        var stepResult = new PipelineStepResult 
-        { 
-            StepName = "MarketStructureCore.Update",
-            StartTime = DateTime.UtcNow 
-        };
-        
-        try
-        {
-            var marketStructureCore = _marketStructureCore.Value;
-            if (marketStructureCore != null)
-            {
-                await marketStructureCore.UpdateAsync(symbol, bar, cancellationToken);
-                stepResult.Success = true;
-                _logger.LogTrace("MarketStructureCore.Update completed for {Symbol}", symbol);
-            }
-            else
-            {
-                stepResult.Success = false;
-                stepResult.Error = "MarketStructureCore service not available";
-                _logger.LogWarning("MarketStructureCore service not registered in DI container");
-            }
-        }
-        catch (Exception ex)
-        {
-            stepResult.Success = false;
-            stepResult.Error = ex.Message;
-            _logger.LogError(ex, "Error in MarketStructureCore.Update for {Symbol}", symbol);
-        }
-        finally
-        {
-            stepResult.EndTime = DateTime.UtcNow;
-            stepResult.DurationMs = (stepResult.EndTime - stepResult.StartTime).TotalMilliseconds;
-        }
-        
-        return stepResult;
-    }
-    
-    /// <summary>
-    /// Step 2: Process ZoneService OnBar
-    /// </summary>
-    private async Task<PipelineStepResult> ProcessZoneServiceOnBarAsync(string symbol, Bar bar, CancellationToken cancellationToken)
+    private Task<PipelineStepResult> ProcessZoneServiceOnBarAsync(string symbol, Bar bar, CancellationToken cancellationToken)
     {
         var stepResult = new PipelineStepResult 
         { 
@@ -215,7 +162,7 @@ public sealed class UnifiedBarPipeline
             var zoneService = _zoneService.Value;
             if (zoneService != null)
             {
-                await zoneService.OnBarAsync(symbol, bar, cancellationToken);
+                zoneService.OnBar(symbol, bar.Start, bar.Open, bar.High, bar.Low, bar.Close, bar.Volume);
                 stepResult.Success = true;
                 _logger.LogTrace("ZoneService.OnBar completed for {Symbol}", symbol);
             }
@@ -238,11 +185,11 @@ public sealed class UnifiedBarPipeline
             stepResult.DurationMs = (stepResult.EndTime - stepResult.StartTime).TotalMilliseconds;
         }
         
-        return stepResult;
+        return Task.FromResult(stepResult);
     }
     
     /// <summary>
-    /// Step 3: Process PatternEngine OnBar
+    /// Step 2: Process PatternEngine OnBar
     /// </summary>
     private async Task<PipelineStepResult> ProcessPatternEngineOnBarAsync(string symbol, Bar bar, CancellationToken cancellationToken)
     {
@@ -287,7 +234,7 @@ public sealed class UnifiedBarPipeline
     }
     
     /// <summary>
-    /// Step 4: Process DslEngine Evaluate
+    /// Step 3: Process DslEngine Evaluate
     /// </summary>
     private async Task<PipelineStepResult> ProcessDslEngineEvaluateAsync(string symbol, Bar bar, CancellationToken cancellationToken)
     {
@@ -331,7 +278,7 @@ public sealed class UnifiedBarPipeline
     }
     
     /// <summary>
-    /// Step 5: Process FeatureBus Publish (pattern signals injection)
+    /// Step 4: Process FeatureBus Publish (pattern signals injection)
     /// </summary>
     private async Task<PipelineStepResult> ProcessFeatureBusPublishAsync(string symbol, Bar bar, PipelineStepResult patternEngineResult, CancellationToken cancellationToken)
     {
@@ -400,31 +347,28 @@ public sealed class UnifiedBarPipeline
                     ["success"] = result.Success.ToString().ToLowerInvariant()
                 };
                 
-                // Emit pipeline metrics
-                await metricsService.RecordGaugeAsync("unified_pipeline.processing_time_ms", result.ProcessingTimeMs, tags, cancellationToken);
-                await metricsService.RecordCounterAsync("unified_pipeline.bars_processed", 1, tags, cancellationToken);
+                // Emit pipeline metrics via logging for now
+                _logger.LogInformation("Unified pipeline metrics: Symbol={Symbol}, ProcessingTime={ProcessingTimeMs}ms, Success={Success}, BarsProcessed={BarsProcessed}", 
+                    result.Symbol, result.ProcessingTimeMs, result.Success, _barsProcessed);
                 
                 // Emit step-level metrics
                 foreach (var step in result.PipelineSteps)
                 {
-                    var stepTags = new Dictionary<string, string>(tags)
-                    {
-                        ["step"] = step.StepName,
-                        ["step_success"] = step.Success.ToString().ToLowerInvariant()
-                    };
-                    
-                    await metricsService.RecordGaugeAsync("unified_pipeline.step_duration_ms", step.DurationMs, stepTags, cancellationToken);
+                    _logger.LogTrace("Pipeline step metrics: Step={StepName}, Duration={DurationMs}ms, Success={Success}", 
+                        step.StepName, step.DurationMs, step.Success);
                 }
                 
-                // Emit cumulative metrics
-                await metricsService.RecordGaugeAsync("unified_pipeline.total_bars_processed", _barsProcessed, cancellationToken);
-                await metricsService.RecordGaugeAsync("unified_pipeline.total_errors", _pipelineErrors, cancellationToken);
+                // Log cumulative metrics
+                _logger.LogDebug("Pipeline cumulative metrics: TotalBarsProcessed={BarsProcessed}, TotalErrors={Errors}", 
+                    _barsProcessed, _pipelineErrors);
             }
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Error emitting pipeline telemetry for {Symbol}", result.Symbol);
         }
+        
+        await Task.CompletedTask;
     }
     
     /// <summary>

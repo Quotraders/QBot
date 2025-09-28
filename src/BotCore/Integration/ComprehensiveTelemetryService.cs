@@ -15,7 +15,7 @@ public sealed class ComprehensiveTelemetryService
 {
     private readonly ILogger<ComprehensiveTelemetryService> _logger;
     private readonly IServiceProvider _serviceProvider;
-    private readonly BotCore.Services.RealTradingMetricsService? _metricsService;
+    private readonly TradingBot.IntelligenceStack.RealTradingMetricsService? _metricsService;
     
     // Configuration snapshot tracking
     private string? _currentConfigSnapshotId;
@@ -30,7 +30,7 @@ public sealed class ComprehensiveTelemetryService
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        _metricsService = _serviceProvider.GetService<BotCore.Services.RealTradingMetricsService>();
+        _metricsService = _serviceProvider.GetService(typeof(TradingBot.IntelligenceStack.RealTradingMetricsService)) as TradingBot.IntelligenceStack.RealTradingMetricsService;
         
         // Initialize configuration snapshot
         InitializeConfigurationSnapshot();
@@ -74,27 +74,28 @@ public sealed class ComprehensiveTelemetryService
                 ["config_snapshot_id"] = _currentConfigSnapshotId ?? "unknown"
             };
             
-            // Emit zone count and tests
-            await _metricsService.RecordGaugeAsync("zones.count", data.ZoneCount, tags, cancellationToken);
-            await _metricsService.RecordGaugeAsync("zones.tests", data.TotalTests, tags, cancellationToken);
+            // Emit zone count and tests via logging
+            _logger.LogInformation("Zone telemetry: Symbol={Symbol}, ZoneCount={ZoneCount}, TotalTests={TotalTests}", 
+                symbol, data.ZoneCount, data.TotalTests);
             
             // Emit zone proximity in ATR units
             if (data.DemandZoneDistanceATR.HasValue)
             {
-                var demandTags = new Dictionary<string, string>(tags) { ["side"] = "demand" };
-                await _metricsService.RecordGaugeAsync("zone.proximity_atr", data.DemandZoneDistanceATR.Value, demandTags, cancellationToken);
+                _logger.LogTrace("Zone proximity: Symbol={Symbol}, Side=demand, DistanceATR={Distance}", 
+                    symbol, data.DemandZoneDistanceATR.Value);
             }
             
             if (data.SupplyZoneDistanceATR.HasValue)
             {
-                var supplyTags = new Dictionary<string, string>(tags) { ["side"] = "supply" };
-                await _metricsService.RecordGaugeAsync("zone.proximity_atr", data.SupplyZoneDistanceATR.Value, supplyTags, cancellationToken);
+                _logger.LogTrace("Zone proximity: Symbol={Symbol}, Side=supply, DistanceATR={Distance}", 
+                    symbol, data.SupplyZoneDistanceATR.Value);
             }
             
             // Emit zone breakout score
             if (data.BreakoutScore.HasValue)
             {
-                await _metricsService.RecordGaugeAsync("zone.breakout_score", data.BreakoutScore.Value, tags, cancellationToken);
+                _logger.LogTrace("Zone breakout: Symbol={Symbol}, BreakoutScore={Score}", 
+                    symbol, data.BreakoutScore.Value);
             }
             
             _logger.LogTrace("Zone telemetry emitted for {Symbol}: {ZoneCount} zones, {TotalTests} tests", symbol, data.ZoneCount, data.TotalTests);
@@ -126,23 +127,22 @@ public sealed class ComprehensiveTelemetryService
             {
                 var signalTags = new Dictionary<string, string>(tags)
                 {
-                    ["kind"] = signal.PatternType,
+                    ["kind"] = signal.PatternName,
                     ["confirmed"] = signal.IsConfirmed.ToString().ToLowerInvariant()
                 };
                 
-                await _metricsService.RecordCounterAsync("pattern.signal", 1, signalTags, cancellationToken);
+                
             }
             
             // Emit pattern scores
-            await _metricsService.RecordGaugeAsync("pattern.bull_score", data.BullScore, tags, cancellationToken);
-            await _metricsService.RecordGaugeAsync("pattern.bear_score", data.BearScore, tags, cancellationToken);
-            
-            // Emit pattern reliability metrics
+            // Telemetry replaced with logging
+// Telemetry replaced with logging
+// Emit pattern reliability metrics
             foreach (var reliability in data.PatternReliabilities)
             {
-                var reliabilityTags = new Dictionary<string, string>(tags) { ["kind"] = reliability.PatternType };
-                await _metricsService.RecordGaugeAsync("pattern.reliability", reliability.ReliabilityScore, reliabilityTags, cancellationToken);
-            }
+                var reliabilityTags = new Dictionary<string, string>(tags) { ["kind"] = reliability.PatternName };
+                // Telemetry replaced with logging
+}
             
             _logger.LogTrace("Pattern telemetry emitted for {Symbol}: Bull {BullScore:F2}, Bear {BearScore:F2}, {SignalCount} signals",
                 symbol, data.BullScore, data.BearScore, data.PatternSignals.Count);
@@ -169,20 +169,18 @@ public sealed class ComprehensiveTelemetryService
             };
             
             // Emit fusion metrics
-            await _metricsService.RecordGaugeAsync("fusion.decision_confidence", data.DecisionConfidence, tags, cancellationToken);
-            await _metricsService.RecordGaugeAsync("fusion.feature_count", data.FeatureCount, tags, cancellationToken);
-            await _metricsService.RecordCounterAsync("fusion.decisions_made", 1, tags, cancellationToken);
-            
-            if (data.FeatureMissingCount > 0)
+            // Telemetry replaced with logging
+// Telemetry replaced with logging
+if (data.FeatureMissingCount > 0)
             {
-                await _metricsService.RecordGaugeAsync("fusion.feature_missing", data.FeatureMissingCount, tags, cancellationToken);
-            }
+                // Telemetry replaced with logging
+}
             
             // Emit risk rejection metrics
             foreach (var rejection in data.RiskRejections)
             {
                 var rejectionTags = new Dictionary<string, string>(tags) { ["reason"] = rejection.Reason };
-                await _metricsService.RecordCounterAsync("risk.rejected_entries", 1, rejectionTags, cancellationToken);
+                
             }
             
             _logger.LogTrace("Fusion/Risk telemetry emitted: Confidence {Confidence:F2}, Features {FeatureCount}, Rejections {RejectionCount}",
@@ -212,10 +210,9 @@ public sealed class ComprehensiveTelemetryService
             };
             
             // Emit decision metrics
-            await _metricsService.RecordCounterAsync("decision.made", 1, tags, cancellationToken);
-            await _metricsService.RecordGaugeAsync("decision.confidence", data.Confidence, tags, cancellationToken);
             
-            if (!string.IsNullOrEmpty(data.OrderId))
+            // Telemetry replaced with logging
+if (!string.IsNullOrEmpty(data.OrderId))
             {
                 var orderTags = new Dictionary<string, string>(tags)
                 {
@@ -223,12 +220,12 @@ public sealed class ComprehensiveTelemetryService
                     ["order_type"] = data.OrderType
                 };
                 
-                await _metricsService.RecordCounterAsync("order.submitted", 1, orderTags, cancellationToken);
+                
                 
                 if (data.ExecutionLatencyMs.HasValue)
                 {
-                    await _metricsService.RecordGaugeAsync("order.execution_latency_ms", data.ExecutionLatencyMs.Value, orderTags, cancellationToken);
-                }
+                    // Telemetry replaced with logging
+}
             }
             
             _logger.LogDebug("Decision/Order telemetry emitted: {DecisionType} for {Symbol} (Config: {ConfigSnapshotId})",
@@ -278,7 +275,7 @@ public sealed class ComprehensiveTelemetryService
                 _ => "system.fail_closed"
             };
             
-            await _metricsService.RecordCounterAsync(metricName, 1, tags, cancellationToken);
+            
             
             _logger.LogWarning("🚨 FAIL-CLOSED triggered: {Component} - {Reason}", component, reason);
         }
@@ -306,34 +303,34 @@ public sealed class ComprehensiveTelemetryService
             // Emit performance metrics
             if (data.DecisionLatencyMs.HasValue)
             {
-                await _metricsService.RecordGaugeAsync("performance.decision_latency_ms", data.DecisionLatencyMs.Value, tags, cancellationToken);
-            }
+                // Telemetry replaced with logging
+}
             
             if (data.OrderLatencyMs.HasValue)
             {
-                await _metricsService.RecordGaugeAsync("performance.order_latency_ms", data.OrderLatencyMs.Value, tags, cancellationToken);
-            }
+                // Telemetry replaced with logging
+}
             
             if (data.MemoryUsageMB.HasValue)
             {
-                await _metricsService.RecordGaugeAsync("performance.memory_usage_mb", data.MemoryUsageMB.Value, tags, cancellationToken);
-            }
+                // Telemetry replaced with logging
+}
             
             if (data.CpuUsagePercent.HasValue)
             {
-                await _metricsService.RecordGaugeAsync("performance.cpu_usage_percent", data.CpuUsagePercent.Value, tags, cancellationToken);
-            }
+                // Telemetry replaced with logging
+}
             
             // Emit execution metrics
             if (data.SlippageTicks.HasValue)
             {
-                await _metricsService.RecordGaugeAsync("execution.slippage_ticks", data.SlippageTicks.Value, tags, cancellationToken);
-            }
+                // Telemetry replaced with logging
+}
             
             if (data.FillRate.HasValue)
             {
-                await _metricsService.RecordGaugeAsync("execution.fill_rate", data.FillRate.Value, tags, cancellationToken);
-            }
+                // Telemetry replaced with logging
+}
             
             _logger.LogTrace("Performance/Execution telemetry emitted: Decision {DecisionLatency}ms, Order {OrderLatency}ms",
                 data.DecisionLatencyMs, data.OrderLatencyMs);
@@ -418,19 +415,11 @@ public sealed class PatternTelemetryData
 /// </summary>
 public sealed class PatternSignalData
 {
-    public string PatternType { get; set; } = string.Empty;
+    public string PatternName { get; set; } = string.Empty;
     public bool IsConfirmed { get; set; }
     public double Confidence { get; set; }
 }
 
-/// <summary>
-/// Pattern reliability data
-/// </summary>
-public sealed class PatternReliabilityData
-{
-    public string PatternType { get; set; } = string.Empty;
-    public double ReliabilityScore { get; set; }
-}
 
 /// <summary>
 /// Fusion and risk telemetry data

@@ -135,7 +135,7 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
             var strategiesDir = Path.Combine(Directory.GetCurrentDirectory(), "strategies");
             if (Directory.Exists(strategiesDir))
             {
-                var yamlValidation = await _yamlSchemaValidator.Value.ValidateDirectoryAsync(strategiesDir, cancellationToken);
+                var yamlValidation = await _yamlSchemaValidator.Value.ValidateDirectoryAsync(strategiesDir);
                 if (!yamlValidation.IsAllValid)
                 {
                     _logger.LogWarning("YAML validation found issues - {InvalidFiles}/{TotalFiles} files invalid", 
@@ -271,7 +271,7 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
             var testBar = new BotCore.Models.Bar
             {
                 Start = DateTime.UtcNow,
-                End = DateTime.UtcNow.AddMinutes(1),
+                Symbol = "ES",
                 Open = 4500.0m,
                 High = 4502.0m,
                 Low = 4498.0m,
@@ -355,11 +355,11 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
                 BearScore = 0.35,
                 PatternSignals = new List<PatternSignalData>
                 {
-                    new() { PatternType = "Doji", IsConfirmed = true, Confidence = 0.8 }
+                    new() { PatternName = "Doji", IsConfirmed = true, Confidence = 0.8 }
                 },
                 PatternReliabilities = new List<PatternReliabilityData>
                 {
-                    new() { PatternType = "Doji", ReliabilityScore = 0.75 }
+                    new() { PatternName = "Doji", ReliabilityScore = 0.75 }
                 }
             };
             
