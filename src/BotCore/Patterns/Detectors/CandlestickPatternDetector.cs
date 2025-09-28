@@ -8,8 +8,8 @@ namespace BotCore.Patterns.Detectors;
 public class CandlestickPatternDetector : IPatternDetector
 {
     // S109 Magic Number Constants - Candlestick Pattern Thresholds
-    private const double MinSpinningTopBodyRatio = 0.1;
-    private const double MaxSpinningTopBodyRatio = 0.3;
+    private const decimal MinSpinningTopBodyRatio = 0.1m;
+    private const decimal MaxSpinningTopBodyRatio = 0.3m;
     private const double SpinningTopConfidence = 0.6;
     private const double StrongTrendConfidence = 0.8;
     
@@ -80,7 +80,7 @@ public class CandlestickPatternDetector : IPatternDetector
         if (range == 0) return new PatternResult { Score = 0, Confidence = 0 };
 
         var bodyRatio = bodySize / range;
-        var score = bodyRatio < 0.05 ? 0.9 : bodyRatio < 0.1 ? 0.7 : bodyRatio < 0.15 ? 0.5 : 0.0;
+        var score = bodyRatio < 0.05m ? 0.9 : bodyRatio < 0.1m ? 0.7 : bodyRatio < 0.15m ? 0.5 : 0.0;
 
         return new PatternResult
         {
@@ -118,9 +118,9 @@ public class CandlestickPatternDetector : IPatternDetector
 
         // Hammer criteria: small body, long lower shadow, minimal upper shadow
         var score = 0.0;
-        if (bodyRatio < 0.3 && lowerShadowRatio > 0.6 && upperShadowRatio < 0.1)
+        if (bodyRatio < 0.3m && lowerShadowRatio > 0.6m && upperShadowRatio < 0.1m)
         {
-            score = Math.Min(0.95, 0.7 + (lowerShadowRatio - 0.6) * 2);
+            score = Math.Min(0.95, 0.7 + (double)(lowerShadowRatio - 0.6m) * 2);
         }
 
         return new PatternResult
@@ -160,9 +160,9 @@ public class CandlestickPatternDetector : IPatternDetector
 
         // Shooting star criteria: small body, long upper shadow, minimal lower shadow
         var score = 0.0;
-        if (bodyRatio < 0.3 && upperShadowRatio > 0.6 && lowerShadowRatio < 0.1)
+        if (bodyRatio < 0.3m && upperShadowRatio > 0.6m && lowerShadowRatio < 0.1m)
         {
-            score = Math.Min(0.95, 0.7 + (upperShadowRatio - 0.6) * 2);
+            score = Math.Min(0.95, 0.7 + (double)(upperShadowRatio - 0.6m) * 2);
         }
 
         return new PatternResult
@@ -292,7 +292,7 @@ public class CandlestickPatternDetector : IPatternDetector
     {
         var bodySize = Math.Abs(bar.Close - bar.Open);
         var range = bar.High - bar.Low;
-        return range > 0 ? Math.Min(0.9, bodySize / range) : 0.0;
+        return range > 0 ? Math.Min(0.9, (double)(bodySize / range)) : 0.0;
     }
 
     private static double DetectSpinningTopLogic(Bar bar)
@@ -302,7 +302,7 @@ public class CandlestickPatternDetector : IPatternDetector
         if (range == 0) return 0.0;
         
         var bodyRatio = bodySize / range;
-        return bodyRatio > MinSpinningTopBodyRatio && bodyRatio < MaxSpinningTopBodyRatio ? SpinningTopConfidence : 0.0;
+        return bodyRatio > MinSpinningTopBodyRatio && bodyRatio < MaxSpinningTopBodyRatio ? (double)SpinningTopConfidence : 0.0;
     }
 
     private static double DetectThreeConsecutive(IReadOnlyList<Bar> bars, bool bullish)

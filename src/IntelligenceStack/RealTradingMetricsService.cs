@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TradingBot.IntelligenceStack;
@@ -77,6 +78,15 @@ public class RealTradingMetricsService : BackgroundService
     private static readonly Action<ILogger, Exception?> ServiceDisposed =
         LoggerMessage.Define(LogLevel.Information, new EventId(6012, "ServiceDisposed"),
             "[REAL_METRICS] Real Trading Metrics Service disposed");
+
+    private static readonly Action<ILogger, string, double, string, Exception?> GaugeRecorded =
+        LoggerMessage.Define<string, double, string>(LogLevel.Information, new EventId(6013, "GaugeRecorded"),
+            "[METRICS] Gauge {MetricName}={Value} tags=[{Tags}]");
+
+    private static readonly Action<ILogger, string, double, string, Exception?> CounterRecorded =
+        LoggerMessage.Define<string, double, string>(LogLevel.Information, new EventId(6014, "CounterRecorded"),
+            "[METRICS] Counter {MetricName}+={Value} tags=[{Tags}]");
+
     private readonly List<MetricsTradeRecord> _recentTrades = new();
     private readonly List<FeatureRecord> _recentFeatures = new();
 
@@ -351,6 +361,28 @@ public class RealTradingMetricsService : BackgroundService
 
         // Assuming risk-free rate of 0 for simplicity
         return averageReturn / returnStdDev;
+    }
+
+    /// <summary>
+    /// Record gauge metric
+    /// </summary>
+    public Task RecordGaugeAsync(string metricName, double value, Dictionary<string, object>? tags = null, CancellationToken cancellationToken = default)
+    {
+        // For now, just log the metric - in a real implementation, this would send to telemetry
+        var tagsStr = tags != null ? string.Join(", ", tags.Select(kv => $"{kv.Key}={kv.Value}")) : "";
+        GaugeRecorded(_logger, metricName, value, tagsStr, null);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Record counter metric
+    /// </summary>
+    public Task RecordCounterAsync(string metricName, double value, Dictionary<string, object>? tags = null, CancellationToken cancellationToken = default)
+    {
+        // For now, just log the metric - in a real implementation, this would send to telemetry
+        var tagsStr = tags != null ? string.Join(", ", tags.Select(kv => $"{kv.Key}={kv.Value}")) : "";
+        CounterRecorded(_logger, metricName, value, tagsStr, null);
+        return Task.CompletedTask;
     }
 
     public override Task StopAsync(CancellationToken cancellationToken)
