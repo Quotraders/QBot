@@ -10,12 +10,15 @@ public class DslStrategy
     public string Priority { get; set; } = string.Empty;
     public bool Enabled { get; set; } = true;
     public string Description { get; set; } = string.Empty;
+    public string Intent { get; set; } = string.Empty; // Added for knowledge graph compatibility
     
     public List<string> TelemetryTags { get; set; } = new();
     public DslConditions RegimeFilters { get; set; } = new();
     public DslConditions ZoneConditions { get; set; } = new();
     public DslConditions PatternConditions { get; set; } = new();
     public DslConditions MicroConditions { get; set; } = new();
+    public DslWhen? When { get; set; } // Added for knowledge graph compatibility
+    public DslPlaybook? Playbook { get; set; } // Added for knowledge graph compatibility
     
     public DslRiskManagement RiskManagement { get; set; } = new();
     public DslConfidenceCalculation ConfidenceCalculation { get; set; } = new();
@@ -46,6 +49,11 @@ public class DslWhen
     public string Action { get; set; } = string.Empty;
     public double Weight { get; set; } = 1.0;
     public bool IsRequired { get; set; } = false;
+    
+    // Knowledge graph compatibility properties
+    public List<string> Regime { get; set; } = new();
+    public List<string> MicroConditions { get; set; } = new();
+    public List<string> ContraIndications { get; set; } = new();
 }
 
 /// <summary>

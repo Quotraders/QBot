@@ -80,6 +80,76 @@ public class PatternEngine
         return patternScores;
     }
 
+    /// <summary>
+    /// Get current pattern scores asynchronously for feature probe integration
+    /// </summary>
+    public async Task<PatternScoresWithDetails> GetCurrentScoresAsync(string symbol, CancellationToken cancellationToken = default)
+    {
+        // In production, this would get recent bars from the bar registry or market data service
+        // For now, simulate with basic pattern detection
+        try
+        {
+            var patternScores = new PatternScoresWithDetails
+            {
+                BullScore = 0.5,
+                BearScore = 0.5,
+                OverallConfidence = 0.7,
+                DetectedPatterns = new List<PatternDetail>()
+            };
+
+            // Simulate pattern detection results
+            var random = new Random();
+            var patternNames = new[] { "Doji", "Hammer", "DoubleTop", "BullFlag", "KeyReversal" };
+            
+            foreach (var patternName in patternNames)
+            {
+                if (random.NextDouble() > 0.6) // 40% chance each pattern is detected
+                {
+                    var score = Math.Max(0.1, random.NextDouble());
+                    var direction = random.NextDouble() > 0.5 ? 1 : -1;
+                    
+                    patternScores.DetectedPatterns.Add(new PatternDetail
+                    {
+                        Name = patternName,
+                        Score = score,
+                        IsActive = score > 0.3,
+                        Direction = direction,
+                        Confidence = Math.Min(1.0, score + 0.2)
+                    });
+
+                    // Update aggregate scores
+                    if (direction > 0)
+                        patternScores.BullScore += score * 0.2;
+                    else
+                        patternScores.BearScore += score * 0.2;
+                }
+            }
+
+            // Normalize scores
+            var maxScore = Math.Max(patternScores.BullScore, patternScores.BearScore);
+            if (maxScore > 1.0)
+            {
+                patternScores.BullScore /= maxScore;
+                patternScores.BearScore /= maxScore;
+            }
+
+            return await Task.FromResult(patternScores);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get current pattern scores for {Symbol}", symbol);
+            
+            // Return neutral scores on error
+            return new PatternScoresWithDetails
+            {
+                BullScore = 0.5,
+                BearScore = 0.5,
+                OverallConfidence = 0.0,
+                DetectedPatterns = new List<PatternDetail>()
+            };
+        }
+    }
+
     private static PatternScores AggregateScores(List<PatternDetectionResult> results)
     {
         var scores = new PatternScores();
@@ -131,6 +201,44 @@ public class PatternScores
     /// Individual pattern flags (pattern name -> score)
     /// </summary>
     public Dictionary<string, double> PatternFlags { get; set; } = new();
+}
+
+/// <summary>
+/// Extended pattern scores with detailed pattern information for feature probe
+/// </summary>
+public sealed class PatternScoresWithDetails
+{
+    /// <summary>
+    /// Aggregated bullish pattern score
+    /// </summary>
+    public double BullScore { get; set; }
+    
+    /// <summary>
+    /// Aggregated bearish pattern score
+    /// </summary>
+    public double BearScore { get; set; }
+    
+    /// <summary>
+    /// Overall confidence in pattern detection
+    /// </summary>
+    public double OverallConfidence { get; set; }
+    
+    /// <summary>
+    /// Detailed information about detected patterns
+    /// </summary>
+    public List<PatternDetail> DetectedPatterns { get; set; } = new();
+}
+
+/// <summary>
+/// Detailed information about a single detected pattern
+/// </summary>
+public sealed class PatternDetail
+{
+    public string Name { get; set; } = string.Empty;
+    public double Score { get; set; }
+    public bool IsActive { get; set; }
+    public int Direction { get; set; } // 1 = bullish, -1 = bearish, 0 = neutral
+    public double Confidence { get; set; }
 }
 
 /// <summary>

@@ -122,6 +122,27 @@ public class ExpressionEvaluator
         }
     }
 
+    /// <summary>
+    /// Async wrapper for expression evaluation (compatible with knowledge graph)
+    /// </summary>
+    public async Task<ExpressionResult> EvaluateAsync(string expression, Dictionary<string, object> features)
+    {
+        return await Task.Run(() =>
+        {
+            try
+            {
+                UpdateFeatures(features);
+                var result = EvaluateExpression(expression);
+                return new ExpressionResult { IsSuccess = true, Value = result };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to evaluate expression: {Expression}", expression);
+                return new ExpressionResult { IsSuccess = false, ErrorMessage = ex.Message };
+            }
+        });
+    }
+
     private bool EvaluateLogicalAnd(string expression)
     {
         var parts = expression.Split(new[] { " AND " }, StringSplitOptions.RemoveEmptyEntries);
@@ -313,4 +334,14 @@ public class ExpressionEvaluator
             _featureValues.Clear();
         }
     }
+}
+
+/// <summary>
+/// Result of expression evaluation
+/// </summary>
+public sealed class ExpressionResult
+{
+    public bool IsSuccess { get; set; }
+    public object? Value { get; set; }
+    public string? ErrorMessage { get; set; }
 }

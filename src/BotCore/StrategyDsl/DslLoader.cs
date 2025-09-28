@@ -140,6 +140,14 @@ public class DslLoader
     }
 
     /// <summary>
+    /// Get all strategies (alias for LoadStrategiesAsync for knowledge graph compatibility)
+    /// </summary>
+    public async Task<IReadOnlyList<DslStrategy>> GetStrategiesAsync(CancellationToken cancellationToken = default)
+    {
+        return await LoadStrategiesAsync();
+    }
+
+    /// <summary>
     /// Check if strategies need reloading
     /// </summary>
     public bool NeedsReload()

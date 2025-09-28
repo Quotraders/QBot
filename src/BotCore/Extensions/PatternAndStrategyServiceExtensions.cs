@@ -79,14 +79,18 @@ public static class PatternAndStrategyServiceExtensions
         services.Configure<DslLoaderOptions>(
             configuration.GetSection("StrategyCatalog"));
 
-        // Register DSL loader
+        // Register knowledge graph configuration
+        services.Configure<StrategyKnowledgeGraphOptions>(
+            configuration.GetSection("StrategyKnowledgeGraph"));
+
+        // Register core DSL services
         services.AddSingleton<DslLoader>();
-
-        // Register expression evaluator
         services.AddSingleton<ExpressionEvaluator>();
-
-        // Register feature bus mapper
         services.AddSingleton<FeatureBusMapper>();
+
+        // Register Phase 5 services - Knowledge Graph Implementation
+        services.AddSingleton<FeatureProbe>();
+        services.AddSingleton<StrategyKnowledgeGraph>();
 
         return services;
     }
