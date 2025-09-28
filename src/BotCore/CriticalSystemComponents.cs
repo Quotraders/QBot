@@ -648,13 +648,13 @@ namespace TradingBot.Critical
             public decimal DailyPnL { get; set; }
         }
 
-        internal class MarketState
+        internal sealed class MarketState
         {
             public bool IsMarketOpen { get; set; }
             public DateTime LastUpdate { get; set; }
         }
 
-        internal class Order
+        internal sealed class Order
         {
             public string OrderId { get; set; } = string.Empty;
             public string Symbol { get; set; } = string.Empty;
