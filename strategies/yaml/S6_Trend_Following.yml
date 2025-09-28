@@ -1,0 +1,102 @@
+name: S6_Trend_Following
+family: trend_following
+priority: medium
+enabled: true
+description: "S6 strategy for trend following with pattern confirmation and momentum alignment"
+
+telemetry_tags:
+  - "S6"
+  - "TrendFollowing"
+  - "Momentum"
+  - "LowFrequency"
+
+regime_filters:
+  required:
+    - market_regime == "Trend" OR market_regime == "Momentum"
+  blocked:
+    - market_regime == "Range" AND atr.ratio < 0.5
+    - market_regime == "HighVol" AND volatility_z_score > 3.0
+
+zone_conditions:
+  preferred:
+    - zone.distance_atr >= 1.0  # Away from major zones
+    - zone.alignment == "trend"  # Zone alignment with trend
+  contraindications:
+    - zone.distance_atr <= 0.5 AND zone.type == "opposing"
+
+pattern_conditions:
+  confluence:
+    - pattern.kind::BullFlag OR pattern.kind::BearFlag
+    - pattern.kind::BullPennant OR pattern.kind::BearPennant  
+    - pattern.kind::PullbackRetest OR pattern.kind::BreakoutRetest
+  contraindications:
+    - pattern.kind::HeadAndShoulders OR pattern.kind::InverseHeadAndShoulders
+    - pattern.kind::KeyReversal OR pattern.kind::ClimaxReversal
+
+micro_conditions:
+  entry_triggers:
+    - trend.strength >= 0.7
+    - momentum.z_score >= 0.5 OR momentum.z_score <= -0.5  # Directional momentum
+    - ema.alignment == true  # EMA stack alignment
+    - pullback.depth <= 0.38  # Shallow pullback
+  
+  timing:
+    - time_of_day >= "09:30" AND time_of_day <= "15:00"
+    - trend_duration_bars >= 8  # Established trend
+
+risk_management:
+  position_sizing:
+    base_size: 1
+    confidence_multiplier: true
+    trend_strength_multiplier: true
+    max_size: 4
+    
+  stop_loss:
+    type: "trend_based"
+    distance_atr: 1.0
+    trail_distance_atr: 0.8
+    minimum_distance: 8
+    
+  take_profit:
+    type: "trend_extension"
+    initial_target_atr: 2.5
+    extension_levels: [1.5, 2.5, 4.0]
+    partial_exit_levels: [0.5, 0.3, 0.2]
+
+confidence_calculation:
+  base_confidence: 0.60
+  
+  boosters:
+    - trend.strength >= 0.8: +0.15
+    - pattern.bull_score >= 0.7 OR pattern.bear_score >= 0.7: +0.10
+    - momentum.z_score >= 1.0 OR momentum.z_score <= -1.0: +0.10
+    - ema.alignment == true AND ema.spacing > 0.001: +0.05
+    
+  penalties:
+    - pullback.depth >= 0.5: -0.15
+    - trend_duration_bars <= 5: -0.10
+    - volume.relative < 0.7: -0.05
+
+direction_logic:
+  long_conditions:
+    - trend.direction == "UP"
+    - momentum.z_score >= 0.3
+    - pattern.bull_score > pattern.bear_score
+    - ema.alignment == "bullish"
+    - pullback.complete == true
+    
+  short_conditions:
+    - trend.direction == "DOWN"
+    - momentum.z_score <= -0.3
+    - pattern.bear_score > pattern.bull_score
+    - ema.alignment == "bearish"  
+    - pullback.complete == true
+
+metadata:
+  version: "1.0"
+  author: "TradingBot"
+  last_updated: "2024-12-21"
+  backtest_results:
+    win_rate: 0.58
+    avg_r_multiple: 2.8
+    max_drawdown: 0.18

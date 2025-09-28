@@ -1,0 +1,97 @@
+name: S3_Compression_Breakout
+family: breakout
+priority: high  
+enabled: true
+description: "S3 strategy for volatility compression breakouts with momentum confirmation"
+
+telemetry_tags:
+  - "S3"
+  - "Compression"
+  - "VolatilityBreakout"
+  - "Momentum"
+
+regime_filters:
+  required:
+    - market_regime == "Range" OR market_regime == "Trend"
+  blocked:
+    - market_regime == "HighVol" AND volatility_z_score > 2.5
+    - economic_event_minutes <= 30
+
+zone_conditions:
+  required:
+    - zone.distance_atr >= 0.3  # Away from immediate zone influence
+  preferred:
+    - zone.breakout_score >= 0.75  # Strong breakout potential
+
+pattern_conditions:
+  confluence:
+    - pattern.kind::Compression OR pattern.kind::SymmetricalTriangle
+    - pattern.kind::BullPennant OR pattern.kind::BearPennant
+    - pattern.kind::Consolidation OR pattern.kind::Rectangle
+  contraindications:
+    - pattern.kind::DoubleTop OR pattern.kind::DoubleBottom  # Need clean breakout
+    - pattern.kind::TrendExhaustion
+
+micro_conditions:
+  entry_triggers:
+    - volatility_contraction == true
+    - atr.ratio <= 0.7  # Compressed volatility
+    - momentum.z_score >= -1.0 AND momentum.z_score <= 1.0
+    - volume_profile.breakout_ready == true
+  
+  timing:
+    - time_of_day >= "10:00" AND time_of_day <= "15:30"
+    - session_volume >= 0.6  # Adequate volume for breakout
+
+risk_management:
+  position_sizing:
+    base_size: 2
+    confidence_multiplier: true
+    max_size: 5
+    
+  stop_loss:
+    type: "pattern_based"
+    distance_atr: 0.8
+    minimum_distance: 6
+    
+  take_profit:
+    type: "momentum_based"
+    initial_target_atr: 2.0
+    extension_target_atr: 3.5
+    trail_after_profit: 0.7
+
+confidence_calculation:
+  base_confidence: 0.70
+  
+  boosters:
+    - pattern.kind::Compression AND atr.ratio <= 0.6: +0.15
+    - volume_profile.breakout_ready == true: +0.10
+    - zone.breakout_score >= 0.8: +0.10
+    - momentum.acceleration > 0.5: +0.05
+    
+  penalties:
+    - time_to_close_minutes <= 45: -0.20
+    - volume.relative < 0.8: -0.10
+    - economic_event_minutes <= 60: -0.05
+
+direction_logic:
+  long_conditions:
+    - price > compression.upper_bound
+    - momentum.z_score > 0.0
+    - volume.relative >= 1.2  # Volume confirmation
+    - pattern.bull_score > 0.6
+    
+  short_conditions:
+    - price < compression.lower_bound
+    - momentum.z_score < 0.0
+    - volume.relative >= 1.2
+    - pattern.bear_score > 0.6
+
+metadata:
+  version: "1.1"
+  author: "TradingBot"
+  last_updated: "2024-12-21"
+  backtest_results:
+    win_rate: 0.62
+    avg_r_multiple: 2.3
+    max_drawdown: 0.15

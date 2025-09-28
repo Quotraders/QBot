@@ -1,0 +1,93 @@
+name: Pullback_Reentry
+family: continuation
+priority: medium
+enabled: true
+description: "Pullback reentry strategy for established trends with confluence confirmation"
+
+telemetry_tags:
+  - "Pullback"
+  - "Reentry"
+  - "TrendContinuation"
+  - "Confluence"
+
+regime_filters:
+  required:
+    - market_regime == "Trend"
+  blocked:
+    - market_regime == "HighVol" AND volatility_z_score > 2.0
+    - market_regime == "Range" AND trend.strength < 0.5
+
+zone_conditions:
+  preferred:
+    - zone.distance_atr >= 0.5  # Some distance from major zones
+    - zone.alignment == "trend"
+  contraindications:
+    - zone.distance_atr <= 0.3 AND zone.type == "opposing"
+
+pattern_conditions:
+  confluence:
+    - pattern.kind::BullFlag OR pattern.kind::BearFlag
+    - pattern.kind::Consolidation
+    - pattern.kind::BreakoutRetest
+  contraindications:
+    - pattern.kind::TrendExhaustion OR pattern.kind::ClimaxReversal
+    - pattern.kind::KeyReversal
+
+micro_conditions:
+  entry_triggers:
+    - pullback.depth >= 0.2 AND pullback.depth <= 0.5  # Meaningful but not excessive
+    - fibonacci.level IN [0.382, 0.5, 0.618]  # Key Fibonacci levels
+    - trend.strength >= 0.6
+    - momentum.divergence == false
+  
+  timing:
+    - time_of_day >= "10:00" AND time_of_day <= "15:00"
+    - pullback_duration >= 3 AND pullback_duration <= 12
+
+risk_management:
+  position_sizing:
+    base_size: 2
+    confidence_multiplier: true
+    max_size: 4
+    
+  stop_loss:
+    type: "pullback_based"
+    distance_below_pullback_low: 0.4  # ATR
+    minimum_distance: 6
+    
+  take_profit:
+    type: "trend_extension"
+    initial_target_atr: 2.0
+    extension_target: "trend_projection"
+
+confidence_calculation:
+  base_confidence: 0.62
+  
+  boosters:
+    - fibonacci.level == 0.618: +0.10
+    - trend.strength >= 0.8: +0.08
+    - pattern.bull_score >= 0.6 OR pattern.bear_score >= 0.6: +0.08
+    - volume.pullback_confirmation == true: +0.05
+    
+  penalties:
+    - pullback.depth >= 0.65: -0.15
+    - trend_duration <= 8: -0.10
+    - momentum.weakness == true: -0.08
+
+direction_logic:
+  long_conditions:
+    - trend.direction == "UP"
+    - pullback.direction == "DOWN" AND pullback.complete == true
+    - momentum.bullish_divergence == false
+    - pattern.bull_score > 0.4
+    
+  short_conditions:
+    - trend.direction == "DOWN"  
+    - pullback.direction == "UP" AND pullback.complete == true
+    - momentum.bearish_divergence == false
+    - pattern.bear_score > 0.4
+
+metadata:
+  version: "1.0"
+  author: "TradingBot"
+  last_updated: "2024-12-21"
