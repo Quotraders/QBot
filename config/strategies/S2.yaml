@@ -1,0 +1,24 @@
+name: S2
+label: MeanReversion
+family: RangeFade
+bias: both
+when:
+  regime:
+    - Range
+    - LowVol
+  micro:
+    - "zone.dist_to_supply_atr >= 0.5"
+    - "zone.dist_to_demand_atr >= 0.5"
+contra:
+  - "pattern.bear_score > 0.7 and intent == Long"
+  - "pattern.bull_score > 0.7 and intent == Short"
+  - "zone.breakout_score > 0.7"
+confluence:
+  - "vwap.distance_atr <= 0.6"
+  - "keltner.band_touch == true or boll.band_touch == true"
+playbook:
+  entry: limit_reversion
+  bracket: "tp_at_zone_edge; sl_outside_zone buffer_ticks: 6"
+telemetryTags:
+  - S2
+  - RangeFade

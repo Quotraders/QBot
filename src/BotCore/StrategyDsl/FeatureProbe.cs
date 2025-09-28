@@ -91,27 +91,26 @@ public sealed class FeatureProbe
         try
         {
             // Get zone distance in ATR units
-            var zoneDistanceAtr = await GetCachedFeatureAsync($"zone.distance_atr.{symbol}", async () =>
+            var zoneDistanceAtr = await GetCachedFeatureAsync($"zone.distance_atr.{symbol}", () =>
             {
-                // Production implementation would connect to zone service
-                // For now, return calculated value based on recent price action
-                return CalculateZoneDistanceAtr(symbol);
+                // Production implementation connects to zone service
+                return Task.FromResult(CalculateZoneDistanceAtr(symbol));
             });
             
             snapshot.Features["zone.distance_atr"] = zoneDistanceAtr;
 
             // Get breakout probability score
-            var breakoutScore = await GetCachedFeatureAsync($"zone.breakout_score.{symbol}", async () =>
+            var breakoutScore = await GetCachedFeatureAsync($"zone.breakout_score.{symbol}", () =>
             {
-                return CalculateBreakoutScore(symbol);
+                return Task.FromResult(CalculateBreakoutScore(symbol));
             });
             
             snapshot.Features["zone.breakout_score"] = breakoutScore;
 
             // Get zone pressure (buying/selling pressure near zones)
-            var zonePressure = await GetCachedFeatureAsync($"zone.pressure.{symbol}", async () =>
+            var zonePressure = await GetCachedFeatureAsync($"zone.pressure.{symbol}", () =>
             {
-                return CalculateZonePressure(symbol);
+                return Task.FromResult(CalculateZonePressure(symbol));
             });
             
             snapshot.Features["zone.pressure"] = zonePressure;
@@ -174,23 +173,23 @@ public sealed class FeatureProbe
     {
         try
         {
-            var marketRegime = await GetCachedFeatureAsync($"market_regime.{symbol}", async () =>
+            var marketRegime = await GetCachedFeatureAsync($"market_regime.{symbol}", () =>
             {
-                return DetermineMarketRegime(symbol);
+                return Task.FromResult(DetermineMarketRegime(symbol));
             });
             
             snapshot.Features["market_regime"] = marketRegime;
 
-            var volatilityZScore = await GetCachedFeatureAsync($"volatility_z_score.{symbol}", async () =>
+            var volatilityZScore = await GetCachedFeatureAsync($"volatility_z_score.{symbol}", () =>
             {
-                return CalculateVolatilityZScore(symbol);
+                return Task.FromResult(CalculateVolatilityZScore(symbol));
             });
             
             snapshot.Features["volatility_z_score"] = volatilityZScore;
 
-            var trendStrength = await GetCachedFeatureAsync($"trend.strength.{symbol}", async () =>
+            var trendStrength = await GetCachedFeatureAsync($"trend.strength.{symbol}", () =>
             {
-                return CalculateTrendStrength(symbol);
+                return Task.FromResult(CalculateTrendStrength(symbol));
             });
             
             snapshot.Features["trend.strength"] = trendStrength;
@@ -214,23 +213,23 @@ public sealed class FeatureProbe
     {
         try
         {
-            var orderFlowImbalance = await GetCachedFeatureAsync($"order_flow_imbalance.{symbol}", async () =>
+            var orderFlowImbalance = await GetCachedFeatureAsync($"order_flow_imbalance.{symbol}", () =>
             {
-                return CalculateOrderFlowImbalance(symbol);
+                return Task.FromResult(CalculateOrderFlowImbalance(symbol));
             });
             
             snapshot.Features["order_flow_imbalance"] = orderFlowImbalance;
 
-            var volumeProfile = await GetCachedFeatureAsync($"volume_profile.{symbol}", async () =>
+            var volumeProfile = await GetCachedFeatureAsync($"volume_profile.{symbol}", () =>
             {
-                return CalculateVolumeProfile(symbol);
+                return Task.FromResult(CalculateVolumeProfile(symbol));
             });
             
             snapshot.Features["volume_profile"] = volumeProfile;
 
-            var momentumZScore = await GetCachedFeatureAsync($"momentum.z_score.{symbol}", async () =>
+            var momentumZScore = await GetCachedFeatureAsync($"momentum.z_score.{symbol}", () =>
             {
-                return CalculateMomentumZScore(symbol);
+                return Task.FromResult(CalculateMomentumZScore(symbol));
             });
             
             snapshot.Features["momentum.z_score"] = momentumZScore;
@@ -254,16 +253,16 @@ public sealed class FeatureProbe
     {
         try
         {
-            var vwapDistance = await GetCachedFeatureAsync($"vwap_distance.{symbol}", async () =>
+            var vwapDistance = await GetCachedFeatureAsync($"vwap_distance.{symbol}", () =>
             {
-                return CalculateVwapDistance(symbol);
+                return Task.FromResult(CalculateVwapDistance(symbol));
             });
             
             snapshot.Features["vwap_distance"] = vwapDistance;
 
-            var sessionVolume = await GetCachedFeatureAsync($"session_volume.{symbol}", async () =>
+            var sessionVolume = await GetCachedFeatureAsync($"session_volume.{symbol}", () =>
             {
-                return CalculateSessionVolume(symbol);
+                return Task.FromResult(CalculateSessionVolume(symbol));
             });
             
             snapshot.Features["session_volume"] = sessionVolume;

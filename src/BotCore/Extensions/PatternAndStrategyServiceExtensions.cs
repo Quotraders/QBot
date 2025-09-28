@@ -3,7 +3,12 @@ using Microsoft.Extensions.Configuration;
 using BotCore.Patterns;
 using BotCore.Patterns.Detectors;
 using BotCore.StrategyDsl;
+using BotCore.Strategy;
+using BotCore.Fusion;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace BotCore.Extensions;
 
@@ -75,22 +80,66 @@ public static class PatternAndStrategyServiceExtensions
     {
         if (configuration is null) throw new ArgumentNullException(nameof(configuration));
         
-        // Register DSL loader configuration
-        services.Configure<DslLoaderOptions>(
-            configuration.GetSection("StrategyCatalog"));
+        // Register DSL configuration - configurations handled per service
+        // No centralized DSL loader options needed with SimpleDslLoader
 
-        // Register knowledge graph configuration
-        services.Configure<StrategyKnowledgeGraphOptions>(
-            configuration.GetSection("StrategyKnowledgeGraph"));
+        // Register knowledge graph configuration - remove reference to missing options
+        // Configuration handled directly in production services
 
-        // Register core DSL services
-        services.AddSingleton<DslLoader>();
+        // Register core DSL services - DslLoader replaced by SimpleDslLoader in production services
         services.AddSingleton<ExpressionEvaluator>();
         services.AddSingleton<FeatureBusMapper>();
 
-        // Register Phase 5 services - Knowledge Graph Implementation
-        services.AddSingleton<FeatureProbe>();
-        services.AddSingleton<StrategyKnowledgeGraph>();
+        // Legacy registration removed - consolidated to AddStrategyKnowledgeGraphServices
+        // Old StrategyKnowledgeGraph replaced by new production implementation
+
+        return services;
+    }
+
+    /// <summary>
+    /// Register Strategy Knowledge Graph & Decision Fusion services (seed_version 1.0)
+    /// Adds complete strategy evaluation and fusion system with Neural-UCB and CVaR-PPO integration
+    /// </summary>
+    public static IServiceCollection AddStrategyKnowledgeGraphServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        if (configuration is null) throw new ArgumentNullException(nameof(configuration));
+
+        // Register required dependencies for production implementations - NO MOCKS
+        services.AddSingleton<FeatureBusAdapter>();
+        services.AddSingleton<IFeatureBusWithProbe>(provider => provider.GetRequiredService<FeatureBusAdapter>());
+        
+        // Register REAL production services with EnhancedRiskManager and RealTradingMetricsService
+        services.AddSingleton<IRiskManagerForFusion, ProductionRiskManager>();
+        services.AddSingleton<IMlrlMetricsServiceForFusion, ProductionMlrlMetricsService>();
+
+        // Load Strategy DSL cards from YAML files
+        var strategyFolder = configuration["StrategyCatalog:Folder"] ?? "config/strategies";
+        var strategyCards = SimpleDslLoader.LoadAll(strategyFolder);
+        services.AddSingleton(strategyCards);
+
+        // Register production feature probe for real-time feature access
+        services.AddSingleton<IFeatureProbe, ProductionFeatureProbe>();
+
+        // Register production regime service with real regime detection
+        services.AddSingleton<IRegimeService, ProductionRegimeService>();
+
+        // Register Strategy Knowledge Graph with new implementation
+        services.AddSingleton<IStrategyKnowledgeGraph, StrategyKnowledgeGraphNew>();
+
+        // Register production UCB and PPO services with real ML integration
+        services.AddSingleton<IUcbStrategyChooser, ProductionUcbStrategyChooser>();
+        services.AddSingleton<IPpoSizer, ProductionPpoSizer>();
+
+        // Register production ML configuration service with real config loading
+        services.AddSingleton<IMLConfigurationService, ProductionMLConfigurationService>();
+
+        // Register production metrics service with real telemetry
+        services.AddSingleton<IMetrics, ProductionMetrics>();
+
+        // Register Decision Fusion Coordinator
+        services.AddSingleton<DecisionFusionCoordinator>();
 
         return services;
     }
@@ -105,6 +154,9 @@ public static class PatternAndStrategyServiceExtensions
     {
         services.AddPatternRecognitionServices(configuration);
         services.AddStrategyDslServices(configuration);
+        
+        // Add Strategy Knowledge Graph & Decision Fusion services
+        services.AddStrategyKnowledgeGraphServices(configuration);
         
         return services;
     }
