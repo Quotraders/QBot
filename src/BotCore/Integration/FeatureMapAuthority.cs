@@ -395,7 +395,7 @@ public sealed class FeatureManifestReport
     public long ResolverCalls { get; set; }
     public long MissingFeatureCalls { get; set; }
     public long ResolverErrors { get; set; }
-    public Dictionary<string, string> RegisteredFeatures { get; set; } = new();
+    public Dictionary<string, string> RegisteredFeatures { get; } = new();
 }
 
 /// <summary>

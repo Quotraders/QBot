@@ -23,7 +23,7 @@ public sealed class ZoneFeatureResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<ZoneFeatureResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -78,7 +78,7 @@ public sealed class PatternFeatureResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<PatternFeatureResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -122,7 +122,7 @@ public sealed class TechnicalIndicatorResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<TechnicalIndicatorResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -176,7 +176,7 @@ public sealed class MarketDataResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<MarketDataResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -226,7 +226,7 @@ public sealed class PositionDataResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<PositionDataResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -271,7 +271,7 @@ public sealed class ZoneCountResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<ZoneCountResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -310,7 +310,7 @@ public sealed class ZoneTestsResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<ZoneTestsResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -352,7 +352,7 @@ public sealed class PatternScoreResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<PatternScoreResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -387,7 +387,7 @@ public sealed class PatternSignalResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<PatternSignalResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -426,7 +426,7 @@ public sealed class PatternConfirmationResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<PatternConfirmationResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -464,7 +464,7 @@ public sealed class PatternReliabilityResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<PatternReliabilityResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -501,7 +501,7 @@ public sealed class VolatilityContractionResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<VolatilityContractionResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -539,7 +539,7 @@ public sealed class MomentumZScoreResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<MomentumZScoreResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -577,7 +577,7 @@ public sealed class PullbackRiskResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<PullbackRiskResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -617,7 +617,7 @@ public sealed class VolumeMarketResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<VolumeMarketResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -655,7 +655,7 @@ public sealed class InsideBarsResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<InsideBarsResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -693,7 +693,7 @@ public sealed class VWAPDistanceResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<VWAPDistanceResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -733,7 +733,7 @@ public sealed class BandTouchResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<BandTouchResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -775,7 +775,7 @@ public sealed class ATRResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<ATRResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -813,7 +813,7 @@ public sealed class RealizedVolatilityResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<RealizedVolatilityResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -853,7 +853,7 @@ public sealed class RSIResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<RSIResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -893,7 +893,7 @@ public sealed class EMAResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<EMAResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -933,7 +933,7 @@ public sealed class SMAResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<SMAResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -976,7 +976,7 @@ public sealed class RiskRejectResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<RiskRejectResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -1193,7 +1193,7 @@ public sealed class RegimeTypeResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<RegimeTypeResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -1316,7 +1316,7 @@ public sealed class MarketSessionResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<MarketSessionResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -1439,7 +1439,7 @@ public sealed class MarketOpenMinutesResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<MarketOpenMinutesResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -1552,7 +1552,7 @@ public sealed class MarketCloseMinutesResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<MarketCloseMinutesResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -1744,7 +1744,7 @@ public sealed class ExecutionSlippageResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<ExecutionSlippageResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -1858,7 +1858,7 @@ public sealed class ExecutionFillRateResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<ExecutionFillRateResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -1972,7 +1972,7 @@ public sealed class DecisionLatencyResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<DecisionLatencyResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -2086,7 +2086,7 @@ public sealed class OrderLatencyResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<OrderLatencyResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -2200,7 +2200,7 @@ public sealed class RecentBarCountResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<RecentBarCountResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -2314,7 +2314,7 @@ public sealed class ProcessedBarCountResolver : IFeatureResolver
         _logger = serviceProvider.GetRequiredService<ILogger<ProcessedBarCountResolver>>();
     }
     
-    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
     {
         try
         {
