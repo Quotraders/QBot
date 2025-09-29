@@ -45,10 +45,10 @@ namespace BotCore.Strategy
             var currentSession = BotCore.Config.ES_NQ_TradingSchedule.GetCurrentSession(currentTimeSpan);
             var allowedStrategies = currentSession != null && currentSession.Strategies.ContainsKey(symbol)
                 ? currentSession.Strategies[symbol]
-                : new[] { "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14" };
+                : new[] { "S1", "S2", "S3", "S4", "S5", "S6", "S8", "S9", "S10", "S11", "S12", "S13", "S14" };
 
             var strategyMethods = new List<(string, Func<string, Env, Levels, IList<Bar>, RiskEngine, List<Candidate>>)> {
-                ("S1", S1), ("S2", S2), ("S3", S3), ("S4", S4), ("S5", S5), ("S6", S6), ("S7", S7), ("S8", S8), ("S9", S9), ("S10", S10), ("S11", S11), ("S12", S12), ("S13", S13), ("S14", S14)
+                ("S1", S1), ("S2", S2), ("S3", S3), ("S4", S4), ("S5", S5), ("S6", S6), ("S8", S8), ("S9", S9), ("S10", S10), ("S11", S11), ("S12", S12), ("S13", S13), ("S14", S14)
             };
 
             foreach (var (id, method) in strategyMethods)
@@ -128,7 +128,6 @@ namespace BotCore.Strategy
                 ["S4"] = S4,
                 ["S5"] = S5,
                 ["S6"] = S6,
-                ["S7"] = S7,
                 ["S8"] = S8,
                 ["S9"] = S9,
                 ["S10"] = S10,
@@ -215,7 +214,6 @@ namespace BotCore.Strategy
                 ["S4"] = S4,
                 ["S5"] = S5,
                 ["S6"] = S6,
-                ["S7"] = S7,
                 ["S8"] = S8,
                 ["S9"] = S9,
                 ["S10"] = S10,
@@ -859,17 +857,8 @@ namespace BotCore.Strategy
             }
         }
 
-        /// <summary>
-        /// Legacy S7 strategy method - kept for compatibility but returns empty list
-        /// Production code should use IS7Service via dependency injection instead
-        /// TODO: Replace AllStrategies.S7 calls with proper S7Service integration in StrategyGates
-        /// </summary>
-        public static List<Candidate> S7(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
-        {
-            // Legacy compatibility stub - S7 functionality moved to S7Service
-            // This prevents compilation errors while consumers migrate to S7Service
-            return new List<Candidate>();
-        }
+        // S7 strategy logic handled by IS7Service via dependency injection at higher levels
+        // S7 filtering applied through StrategyGates.PassesS7Gate() and feature bus integration
 
         public static List<Candidate> S8(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
         {
