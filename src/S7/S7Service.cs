@@ -19,6 +19,13 @@ namespace TradingBot.S7
         private readonly BreadthConfiguration _breadthConfig;
         private readonly IBreadthFeed? _breadthFeed;
 
+        // S7 Configuration Constants
+        private const int PriceHistoryBufferSize = 10;
+        private const int PriceHistoryCleanupSize = 10;
+        private const int DefaultCorrelationPeriod = 2;
+        private const decimal DefaultMinZScoreThreshold = 0.001m;
+        private const decimal AveragingDivisor = 2m;
+
         // Price history storage for ES and NQ
         private readonly Dictionary<string, List<PricePoint>> _priceHistory = new();
         
@@ -88,9 +95,9 @@ namespace TradingBot.S7
 
             // Maintain sliding window
             var maxLookback = Math.Max(_config.LookbackLongBars, _config.LookbackMediumBars);
-            if (_priceHistory[symbol].Count > maxLookback + 10) // Keep some buffer
+            if (_priceHistory[symbol].Count > maxLookback + PriceHistoryBufferSize) // Keep some buffer
             {
-                _priceHistory[symbol].RemoveRange(0, 10);
+                _priceHistory[symbol].RemoveRange(0, PriceHistoryCleanupSize);
             }
 
             // Update analysis for this symbol
@@ -198,8 +205,8 @@ namespace TradingBot.S7
                 IsActionable = IsSignalActionable(coherence, signalStrength),
                 LastUpdateTime = timestamp,
                 GlobalDispersionIndex = _globalDispersionIndex,
-                AdaptiveVolatilityMeasure = (GetRecentVolatility("ES") + GetRecentVolatility("NQ")) / 2m,
-                SystemCoherenceScore = (coherence + signalStrength) / 2m
+                AdaptiveVolatilityMeasure = (GetRecentVolatility("ES") + GetRecentVolatility("NQ")) / AveragingDivisor,
+                SystemCoherenceScore = (coherence + signalStrength) / AveragingDivisor
             };
 
             // Populate the read-only FeatureBusData dictionary
@@ -270,7 +277,7 @@ namespace TradingBot.S7
             var nqSignalDirection = GetSignalDirection(nqState);
 
             // FAIL-CLOSED: Check for missing data or invalid states
-            if (Math.Abs(esState.ZScore) < 0.001m && Math.Abs(nqState.ZScore) < 0.001m)
+            if (Math.Abs(esState.ZScore) < DefaultMinZScoreThreshold && Math.Abs(nqState.ZScore) < DefaultMinZScoreThreshold)
             {
                 _logger.LogError("[S7-AUDIT-VIOLATION] Zero Z-scores detected - TRIGGERING HOLD + TELEMETRY");
                 return 0m; // Fail-closed: no safe default, force hold
@@ -292,7 +299,7 @@ namespace TradingBot.S7
             
             // AUDIT-CLEAN: Use configuration values instead of hardcoded literals
             var directionAlignment = esSignalDirection == nqSignalDirection ? _config.DirectionAlignmentWeight : 0.0m;
-            var avgTimeframeCoherence = (esTimeframeCoherence + nqTimeframeCoherence) / 2;
+            var avgTimeframeCoherence = (esTimeframeCoherence + nqTimeframeCoherence) / AveragingDivisor;
 
             // AUDIT-CLEAN: All weights from configuration - NO HARDCODED VALUES
             return (zScoreAlignment * _config.ZScoreAlignmentWeight + 
@@ -345,7 +352,7 @@ namespace TradingBot.S7
         private decimal CalculateSignalStrength(S7State esState, S7State nqState, decimal coherence)
         {
             var maxZScore = Math.Max(Math.Abs(esState.ZScore), Math.Abs(nqState.ZScore));
-            var avgZScore = (Math.Abs(esState.ZScore) + Math.Abs(nqState.ZScore)) / 2;
+            var avgZScore = (Math.Abs(esState.ZScore) + Math.Abs(nqState.ZScore)) / AveragingDivisor;
             
             return avgZScore * coherence;
         }

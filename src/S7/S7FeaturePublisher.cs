@@ -75,9 +75,19 @@ namespace TradingBot.S7
 
                 return Task.CompletedTask;
             }
-            catch (Exception ex)
+            catch (ArgumentOutOfRangeException ex)
             {
-                _logger.LogError(ex, "[S7-FEATURE-PUBLISHER] Failed to start S7 feature publisher - TRIGGERING HOLD + TELEMETRY");
+                _logger.LogError(ex, "[S7-FEATURE-PUBLISHER] Invalid configuration for S7 feature publisher timer");
+                return Task.FromException(ex);
+            }
+            catch (ObjectDisposedException ex)
+            {
+                _logger.LogError(ex, "[S7-FEATURE-PUBLISHER] S7 feature publisher disposed during startup");
+                return Task.FromException(ex);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[S7-FEATURE-PUBLISHER] Invalid operation during S7 feature publisher startup");
                 return Task.FromException(ex);
             }
         }
@@ -90,9 +100,14 @@ namespace TradingBot.S7
                 _logger.LogInformation("[S7-FEATURE-PUBLISHER] S7 feature publisher stopped");
                 return Task.CompletedTask;
             }
-            catch (Exception ex)
+            catch (ObjectDisposedException ex)
             {
-                _logger.LogError(ex, "[S7-FEATURE-PUBLISHER] Error stopping S7 feature publisher");
+                _logger.LogError(ex, "[S7-FEATURE-PUBLISHER] S7 feature publisher already disposed during shutdown");
+                return Task.FromException(ex);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[S7-FEATURE-PUBLISHER] Invalid operation during S7 feature publisher shutdown");
                 return Task.FromException(ex);
             }
         }

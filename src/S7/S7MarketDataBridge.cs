@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using TradingBot.Abstractions;
@@ -78,9 +79,19 @@ namespace TradingBot.S7
                 _logger.LogWarning("[S7-BRIDGE] Enhanced market data service not available - S7 data feed disabled");
                 return Task.CompletedTask;
             }
-            catch (Exception ex)
+            catch (ReflectionTypeLoadException ex)
             {
-                _logger.LogError(ex, "[S7-BRIDGE] Failed to start S7 market data bridge");
+                _logger.LogError(ex, "[S7-BRIDGE] Failed to load types for S7 market data bridge");
+                return Task.FromException(ex);
+            }
+            catch (TargetInvocationException ex)
+            {
+                _logger.LogError(ex, "[S7-BRIDGE] Failed to invoke reflection method for S7 market data bridge");
+                return Task.FromException(ex);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[S7-BRIDGE] Invalid operation during S7 market data bridge setup");
                 return Task.FromException(ex);
             }
         }
@@ -104,9 +115,19 @@ namespace TradingBot.S7
                 _logger.LogInformation("[S7-BRIDGE] S7 market data bridge stopped");
                 return Task.CompletedTask;
             }
-            catch (Exception ex)
+            catch (ReflectionTypeLoadException ex)
             {
-                _logger.LogError(ex, "[S7-BRIDGE] Error stopping S7 market data bridge");
+                _logger.LogError(ex, "[S7-BRIDGE] Failed to load types during S7 bridge shutdown");
+                return Task.FromException(ex);
+            }
+            catch (TargetInvocationException ex)
+            {
+                _logger.LogError(ex, "[S7-BRIDGE] Failed to invoke reflection method during S7 bridge shutdown");
+                return Task.FromException(ex);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[S7-BRIDGE] Invalid operation during S7 bridge shutdown");
                 return Task.FromException(ex);
             }
         }
@@ -186,9 +207,21 @@ namespace TradingBot.S7
                         symbol, data.GetType().Name);
                 }
             }
-            catch (Exception ex)
+            catch (ReflectionTypeLoadException ex)
             {
-                _logger.LogError(ex, "[S7-BRIDGE] Error processing market data for {Symbol}", symbol);
+                _logger.LogError(ex, "[S7-BRIDGE] Reflection error processing market data for {Symbol}", symbol);
+            }
+            catch (TargetInvocationException ex)
+            {
+                _logger.LogError(ex, "[S7-BRIDGE] Invocation error processing market data for {Symbol}", symbol);
+            }
+            catch (InvalidCastException ex)
+            {
+                _logger.LogError(ex, "[S7-BRIDGE] Type conversion error processing market data for {Symbol}", symbol);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[S7-BRIDGE] Invalid operation processing market data for {Symbol}", symbol);
             }
         }
 
