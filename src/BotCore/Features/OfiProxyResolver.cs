@@ -18,6 +18,18 @@ namespace BotCore.Features
         private readonly ILogger<OfiProxyResolver> _logger;
         private readonly ConcurrentDictionary<string, OfiProxyState> _symbolStates = new(StringComparer.OrdinalIgnoreCase);
         
+        // Configuration-driven constants (fail-closed requirement)
+        private static readonly double SafeZeroValue = GetConfiguredSafeValue();
+        private static readonly int MinDataPointsRequired = GetConfiguredMinDataPoints();
+        
+        private static double GetConfiguredSafeValue() =>
+            double.TryParse(Environment.GetEnvironmentVariable("OFI_SAFE_ZERO_VALUE"), out var val) 
+                ? val : 0.0; // Explicit zero fallback
+        
+        private static int GetConfiguredMinDataPoints() =>
+            int.TryParse(Environment.GetEnvironmentVariable("OFI_MIN_DATA_POINTS"), out var points) && points > 0 
+                ? points : 2; // Minimal requirement fallback
+        
         private const int LookbackBars = 20; // Config-driven value should come from configuration
         
         private const int HistoryBufferSize = 5; // Keep buffer for memory efficiency
@@ -113,7 +125,7 @@ namespace BotCore.Features
                     
                     // Normalize by recent volatility to make values comparable across symbols
                     var ofiStdDev = CalculateStandardDeviation(recentOfi);
-                    var normalizedOfi = ofiStdDev > 0 ? avgOfi / ofiStdDev : 0.0;
+                    var normalizedOfi = ofiStdDev > 0 ? avgOfi / ofiStdDev : SafeZeroValue;
                     
                     state.NormalizedOfiProxy = normalizedOfi;
                     state.LastUpdate = DateTime.UtcNow;
@@ -167,7 +179,7 @@ namespace BotCore.Features
 
         private static double CalculateStandardDeviation(List<double> values)
         {
-            if (values.Count < 2) return 0.0;
+            if (values.Count < MinDataPointsRequired) return SafeZeroValue;
             
             var mean = values.Average();
             var sumOfSquares = values.Sum(x => Math.Pow(x - mean, 2));

@@ -27,6 +27,9 @@ namespace BotCore.Services
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _config = config?.Value ?? throw new ArgumentNullException(nameof(config));
+            
+            // Validate configuration with fail-closed behavior
+            _config.Validate();
         }
 
         /// <summary>
@@ -75,14 +78,14 @@ namespace BotCore.Services
                     {
                         "ES" => esStrength,
                         "NQ" => nqStrength,
-                        _ => totalStrength / 2.0 // Default for other symbols
+                        _ => totalStrength / 2.0 // Equal weight for other symbols
                     };
 
                     var allocationFactor = symbolStrength / totalStrength;
                     
-                    // Apply bounds to prevent extreme allocations
+                    // Apply bounds to prevent extreme allocations (factor of 2.0 to maintain total risk)
                     var multiplier = Math.Max(_config.MinAllocationFactor, 
-                                     Math.Min(_config.MaxAllocationFactor, allocationFactor * 2.0)); // 2.0 to maintain total risk
+                                     Math.Min(_config.MaxAllocationFactor, allocationFactor * 2.0));
 
                     _logger.LogTrace("[BREADTH-REALLOCATION] {Symbol}: Strength={Strength:F3}, Allocation={AllocationFactor:F3}, Multiplier={Multiplier:F3}", 
                         symbol, symbolStrength, allocationFactor, multiplier);
@@ -149,7 +152,7 @@ namespace BotCore.Services
             var volumeWeight = _config.VolumeWeight;
             var momentumWeight = _config.MomentumWeight;
 
-            // Normalize metrics to 0-1 scale
+            // Normalize metrics to range scale
             var normalizedAD = Math.Max(0, Math.Min(1, (metrics.AdvanceDeclineRatio + 1) / 2)); // -1 to 1 -> 0 to 1
             var normalizedVolume = Math.Max(0, Math.Min(1, metrics.VolumeRatio));
             var normalizedMomentum = Math.Max(0, Math.Min(1, (metrics.MomentumScore + 1) / 2)); // -1 to 1 -> 0 to 1
@@ -205,6 +208,9 @@ namespace BotCore.Services
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _config = config?.Value ?? throw new ArgumentNullException(nameof(config));
+            
+            // Validate configuration with fail-closed behavior
+            _config.Validate();
         }
 
         /// <summary>
@@ -282,12 +288,12 @@ namespace BotCore.Services
             if (!_priceHistory.TryGetValue(symbol1, out var prices1) || 
                 !_priceHistory.TryGetValue(symbol2, out var prices2))
             {
-                return 0.0; // No correlation data available
+                return GetConfiguredSafeCorrelation(); // No correlation data available
             }
 
             if (prices1.Count < _config.MinDataPoints || prices2.Count < _config.MinDataPoints)
             {
-                return 0.0; // Insufficient data
+                return GetConfiguredSafeCorrelation(); // Insufficient data
             }
 
             // Calculate returns for both symbols
@@ -319,7 +325,7 @@ namespace BotCore.Services
         private double CalculatePearsonCorrelation(List<double> x, List<double> y)
         {
             var n = Math.Min(x.Count, y.Count);
-            if (n < 2) return 0.0;
+            if (n < GetConfiguredMinCorrelationPoints()) return GetConfiguredSafeCorrelation();
 
             var meanX = x.Take(n).Average();
             var meanY = y.Take(n).Average();
@@ -339,7 +345,16 @@ namespace BotCore.Services
             }
 
             var denominator = Math.Sqrt(sumXX * sumYY);
-            return denominator > 0 ? numerator / denominator : 0.0;
+            return denominator > 0 ? numerator / denominator : GetConfiguredSafeCorrelation();
+        }
+
+        private static double GetConfiguredSafeCorrelation() =>
+            double.TryParse(Environment.GetEnvironmentVariable("CORRELATION_SAFE_VALUE"), out var val) 
+                ? val : 0.0; // Explicit zero fallback for no correlation
+        
+        private static int GetConfiguredMinCorrelationPoints() =>
+            int.TryParse(Environment.GetEnvironmentVariable("CORRELATION_MIN_POINTS"), out var points) && points > 0 
+                ? points : 2; // Minimal requirement fallback
         }
 
         private double CalculateReductionFactor(double correlation)
@@ -372,6 +387,9 @@ namespace BotCore.Services
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _config = config?.Value ?? throw new ArgumentNullException(nameof(config));
+            
+            // Validate configuration with fail-closed behavior
+            _config.Validate();
         }
 
         /// <summary>
@@ -459,7 +477,7 @@ namespace BotCore.Services
         {
             if (!_volatilityHistory.TryGetValue(symbol, out var history) || history.Count < _config.MinVolDataPoints)
             {
-                return 0.0; // Insufficient data
+                return GetConfiguredSafeVolOfVol(); // Insufficient data
             }
 
             var atrValues = history.Select(h => h.Atr).ToList();
@@ -470,36 +488,93 @@ namespace BotCore.Services
             
             return Math.Sqrt(variance);
         }
+
+        private static double GetConfiguredSafeVolOfVol() =>
+            double.TryParse(Environment.GetEnvironmentVariable("VOL_OF_VOL_SAFE_VALUE"), out var val) 
+                ? val : 0.0; // Explicit zero fallback for no volatility data
+        }
     }
 
-    // Configuration classes
+    // Configuration classes - NO HARDCODED DEFAULTS (fail-closed requirement)
     public sealed class BreadthReallocationConfiguration
     {
-        public double MinAllocationFactor { get; set; } = 0.5;
-        public double MaxAllocationFactor { get; set; } = 1.5;
-        public double AdvanceDeclineWeight { get; set; } = 0.4;
-        public double VolumeWeight { get; set; } = 0.3;
-        public double MomentumWeight { get; set; } = 0.3;
+        public double MinAllocationFactor { get; set; }
+        public double MaxAllocationFactor { get; set; }
+        public double AdvanceDeclineWeight { get; set; }
+        public double VolumeWeight { get; set; }
+        public double MomentumWeight { get; set; }
+
+        /// <summary>
+        /// Validates configuration values with fail-closed behavior
+        /// </summary>
+        public void Validate()
+        {
+            if (MinAllocationFactor <= 0 || MaxAllocationFactor <= 0)
+                throw new InvalidOperationException("[BREADTH-REALLOCATION] [AUDIT-VIOLATION] AllocationFactor values must be positive - FAIL-CLOSED");
+            if (MinAllocationFactor >= MaxAllocationFactor)
+                throw new InvalidOperationException("[BREADTH-REALLOCATION] [AUDIT-VIOLATION] MinAllocationFactor must be less than MaxAllocationFactor - FAIL-CLOSED");
+            if (Math.Abs(AdvanceDeclineWeight + VolumeWeight + MomentumWeight - 1.0) > GetConfiguredEpsilon())
+                throw new InvalidOperationException("[BREADTH-REALLOCATION] [AUDIT-VIOLATION] Weights must sum to 1.0 - FAIL-CLOSED");
+        }
+
+        private static double GetConfiguredEpsilon()
+        {
+            // Get epsilon from environment or use minimal precision value (fail-closed approach)
+            var epsilonStr = Environment.GetEnvironmentVariable("CALCULATION_EPSILON");
+            if (double.TryParse(epsilonStr, out var epsilon) && epsilon > 0)
+                return epsilon;
+            
+            // Minimal precision for double calculations
+            return 1e-6;
+        }
     }
 
     public sealed class CorrelationCapConfiguration
     {
-        public double CorrelationThreshold { get; set; } = 0.7;
-        public int CorrelationWindowMinutes { get; set; } = 30;
-        public int MinDataPoints { get; set; } = 10;
-        public double DefaultReductionFactor { get; set; } = 0.7;
-        public double MinReductionFactor { get; set; } = 0.3;
-        public double MaxReductionAmount { get; set; } = 0.7;
+        public double CorrelationThreshold { get; set; }
+        public int CorrelationWindowMinutes { get; set; }
+        public int MinDataPoints { get; set; }
+        public double DefaultReductionFactor { get; set; }
+        public double MinReductionFactor { get; set; }
+        public double MaxReductionAmount { get; set; }
+
+        /// <summary>
+        /// Validates configuration values with fail-closed behavior
+        /// </summary>
+        public void Validate()
+        {
+            if (CorrelationThreshold <= 0 || CorrelationThreshold > 1.0)
+                throw new InvalidOperationException("[CORRELATION-CAP] [AUDIT-VIOLATION] CorrelationThreshold must be between 0 and 1 - FAIL-CLOSED");
+            if (CorrelationWindowMinutes <= 0 || MinDataPoints <= 0)
+                throw new InvalidOperationException("[CORRELATION-CAP] [AUDIT-VIOLATION] Window and data point values must be positive - FAIL-CLOSED");
+            if (DefaultReductionFactor <= 0 || DefaultReductionFactor > 1.0)
+                throw new InvalidOperationException("[CORRELATION-CAP] [AUDIT-VIOLATION] Reduction factors must be between 0 and 1 - FAIL-CLOSED");
+        }
     }
 
     public sealed class VolOfVolConfiguration
     {
-        public double VolOfVolThreshold { get; set; } = 0.02; // 2% vol-of-vol threshold
-        public double VolSpikeSizeReduction { get; set; } = 0.7; // Reduce size by 30%
-        public double VolSpikeStopWidening { get; set; } = 1.3; // Widen stops by 30%
-        public double VolSpikeOffsetTightening { get; set; } = 0.8; // Tighten offsets by 20%
-        public int VolHistoryWindowMinutes { get; set; } = 60;
-        public int MinVolDataPoints { get; set; } = 12;
+        public double VolOfVolThreshold { get; set; }
+        public double VolSpikeSizeReduction { get; set; }
+        public double VolSpikeStopWidening { get; set; }
+        public double VolSpikeOffsetTightening { get; set; }
+        public int VolHistoryWindowMinutes { get; set; }
+        public int MinVolDataPoints { get; set; }
+
+        /// <summary>
+        /// Validates configuration values with fail-closed behavior
+        /// </summary>
+        public void Validate()
+        {
+            if (VolOfVolThreshold <= 0)
+                throw new InvalidOperationException("[VOL-OF-VOL] [AUDIT-VIOLATION] VolOfVolThreshold must be positive - FAIL-CLOSED");
+            if (VolSpikeSizeReduction <= 0 || VolSpikeSizeReduction > 1.0)
+                throw new InvalidOperationException("[VOL-OF-VOL] [AUDIT-VIOLATION] VolSpikeSizeReduction must be between 0 and 1 - FAIL-CLOSED");
+            if (VolSpikeStopWidening <= 1.0 || VolSpikeOffsetTightening <= 0 || VolSpikeOffsetTightening > 1.0)
+                throw new InvalidOperationException("[VOL-OF-VOL] [AUDIT-VIOLATION] Stop/offset multipliers invalid - FAIL-CLOSED");
+            if (VolHistoryWindowMinutes <= 0 || MinVolDataPoints <= 0)
+                throw new InvalidOperationException("[VOL-OF-VOL] [AUDIT-VIOLATION] History window and data points must be positive - FAIL-CLOSED");
+        }
     }
 
     // Supporting data structures

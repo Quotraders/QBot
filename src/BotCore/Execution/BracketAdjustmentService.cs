@@ -22,6 +22,9 @@ namespace BotCore.Execution
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _config = config?.Value ?? throw new ArgumentNullException(nameof(config));
+            
+            // Validate configuration with fail-closed behavior
+            _config.Validate();
         }
 
         /// <summary>
@@ -140,7 +143,7 @@ namespace BotCore.Execution
                 // Lower pattern reliability -> wider stop, tighter take profit
                 var reliabilityFactor = (decimal)intent.PatternReliability.Value;
                 var stopMultiplier = 1.0m + (1.0m - reliabilityFactor) * _config.PatternReliabilitySensitivity;
-                var takeMultiplier = 0.8m + reliabilityFactor * 0.4m; // Range: 0.8 to 1.2
+                var takeMultiplier = _config.TakeMultiplierBase + reliabilityFactor * _config.TakeMultiplierRange;
 
                 stopDistance *= stopMultiplier;
                 takeDistance *= takeMultiplier;
@@ -160,8 +163,8 @@ namespace BotCore.Execution
                 recommendation.Reasoning.Add($"High volatility -> bracket multiplier {_config.HighVolatilityMultiplier:F2}");
             }
 
-            // Apply volatility rank adjustment
-            var volRankMultiplier = 0.8m + (decimal)microstructure.VolatilityRank * 0.4m; // Range: 0.8 to 1.2
+            // Apply volatility rank adjustment using configuration
+            var volRankMultiplier = _config.VolRankMultiplierBase + (decimal)microstructure.VolatilityRank * _config.VolRankMultiplierRange;
             stopDistance *= volRankMultiplier;
             takeDistance *= volRankMultiplier;
 
@@ -228,20 +231,49 @@ namespace BotCore.Execution
     }
 
     /// <summary>
-    /// Configuration for bracket adjustment behavior
+    /// Configuration for bracket adjustment behavior - NO HARDCODED DEFAULTS (fail-closed requirement)
     /// </summary>
     public sealed class BracketConfiguration
     {
-        public decimal BaseStopAtrMultiplier { get; set; } = 2.0m;
-        public decimal BaseRiskRewardRatio { get; set; } = 2.0m;
-        public decimal MinRiskRewardRatio { get; set; } = 1.5m;
-        public decimal MinStopDistancePoints { get; set; } = 5.0m;
-        public decimal MaxStopLossPercentage { get; set; } = 3.0m; // 3% maximum stop loss
+        public decimal BaseStopAtrMultiplier { get; set; }
+        public decimal BaseRiskRewardRatio { get; set; }
+        public decimal MinRiskRewardRatio { get; set; }
+        public decimal MinStopDistancePoints { get; set; }
+        public decimal MaxStopLossPercentage { get; set; }
         
-        public decimal ConformalIntervalSensitivity { get; set; } = 2.0m;
-        public decimal ModelUncertaintySensitivity { get; set; } = 1.5m;
-        public decimal PatternReliabilitySensitivity { get; set; } = 0.5m;
-        public decimal HighVolatilityMultiplier { get; set; } = 1.3m;
+        public decimal ConformalIntervalSensitivity { get; set; }
+        public decimal ModelUncertaintySensitivity { get; set; }
+        public decimal PatternReliabilitySensitivity { get; set; }
+        public decimal HighVolatilityMultiplier { get; set; }
+        
+        // Take profit multiplier range settings (fail-closed requirement)
+        public decimal TakeMultiplierBase { get; set; }
+        public decimal TakeMultiplierRange { get; set; }
+        
+        // Volatility rank multiplier range settings (fail-closed requirement)
+        public decimal VolRankMultiplierBase { get; set; }
+        public decimal VolRankMultiplierRange { get; set; }
+
+        /// <summary>
+        /// Validates configuration values with fail-closed behavior
+        /// </summary>
+        public void Validate()
+        {
+            if (BaseStopAtrMultiplier <= 0 || BaseRiskRewardRatio <= 0 || MinRiskRewardRatio <= 0)
+                throw new InvalidOperationException("[BRACKET-ADJUSTMENT] [AUDIT-VIOLATION] Multiplier and ratio values must be positive - FAIL-CLOSED");
+            if (MinStopDistancePoints <= 0 || MaxStopLossPercentage <= 0)
+                throw new InvalidOperationException("[BRACKET-ADJUSTMENT] [AUDIT-VIOLATION] Distance and percentage values must be positive - FAIL-CLOSED");
+            if (MinRiskRewardRatio > BaseRiskRewardRatio)
+                throw new InvalidOperationException("[BRACKET-ADJUSTMENT] [AUDIT-VIOLATION] MinRiskRewardRatio cannot exceed BaseRiskRewardRatio - FAIL-CLOSED");
+            if (ConformalIntervalSensitivity <= 0 || ModelUncertaintySensitivity <= 0 || PatternReliabilitySensitivity <= 0)
+                throw new InvalidOperationException("[BRACKET-ADJUSTMENT] [AUDIT-VIOLATION] Sensitivity values must be positive - FAIL-CLOSED");
+            if (HighVolatilityMultiplier <= 1.0m)
+                throw new InvalidOperationException("[BRACKET-ADJUSTMENT] [AUDIT-VIOLATION] HighVolatilityMultiplier must be greater than 1.0 - FAIL-CLOSED");
+            if (TakeMultiplierBase <= 0 || TakeMultiplierRange <= 0)
+                throw new InvalidOperationException("[BRACKET-ADJUSTMENT] [AUDIT-VIOLATION] Take multiplier values must be positive - FAIL-CLOSED");
+            if (VolRankMultiplierBase <= 0 || VolRankMultiplierRange <= 0)
+                throw new InvalidOperationException("[BRACKET-ADJUSTMENT] [AUDIT-VIOLATION] VolRank multiplier values must be positive - FAIL-CLOSED");
+        }
     }
 
     /// <summary>

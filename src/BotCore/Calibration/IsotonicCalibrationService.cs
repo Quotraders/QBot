@@ -28,6 +28,9 @@ namespace BotCore.Calibration
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _config = config?.Value ?? throw new ArgumentNullException(nameof(config));
+            
+            // Validate configuration with fail-closed behavior
+            _config.Validate();
         }
 
         /// <summary>
@@ -114,14 +117,27 @@ namespace BotCore.Calibration
     }
 
     /// <summary>
-    /// Configuration for calibration service
+    /// Configuration for calibration service - NO HARDCODED DEFAULTS (fail-closed requirement)
     /// </summary>
     public sealed class CalibrationConfiguration
     {
-        public string CalibrationTableDirectory { get; set; } = "calibration";
-        public int MinCalibrationDataPoints { get; set; } = 100;
-        public int CalibrationBinCount { get; set; } = 10;
-        public double CalibrationUpdateThreshold { get; set; } = 0.05; // Rebuild if accuracy drops by 5%
+        public string CalibrationTableDirectory { get; set; } = string.Empty;
+        public int MinCalibrationDataPoints { get; set; }
+        public int CalibrationBinCount { get; set; }
+        public double CalibrationUpdateThreshold { get; set; }
+
+        /// <summary>
+        /// Validates configuration values with fail-closed behavior
+        /// </summary>
+        public void Validate()
+        {
+            if (string.IsNullOrWhiteSpace(CalibrationTableDirectory))
+                throw new InvalidOperationException("[ISOTONIC-CALIBRATION] [AUDIT-VIOLATION] CalibrationTableDirectory cannot be empty - FAIL-CLOSED");
+            if (MinCalibrationDataPoints <= 0 || CalibrationBinCount <= 0)
+                throw new InvalidOperationException("[ISOTONIC-CALIBRATION] [AUDIT-VIOLATION] Data points and bin count must be positive - FAIL-CLOSED");
+            if (CalibrationUpdateThreshold <= 0 || CalibrationUpdateThreshold >= 1.0)
+                throw new InvalidOperationException("[ISOTONIC-CALIBRATION] [AUDIT-VIOLATION] Update threshold must be between 0 and 1 - FAIL-CLOSED");
+        }
     }
 
     /// <summary>

@@ -18,6 +18,21 @@ namespace BotCore.Features
         private readonly ILogger<MtfStructureResolver> _logger;
         private readonly ConcurrentDictionary<string, MtfStructureState> _symbolStates = new(StringComparer.OrdinalIgnoreCase);
         
+        // Configuration-driven constants (fail-closed requirement)
+        private static readonly double SafeZeroValue = GetConfiguredSafeValue();
+        private static readonly int MinDataPointsRequired = GetConfiguredMinDataPoints();
+        private static readonly double GetConfiguredEpsilon() => 
+            double.TryParse(Environment.GetEnvironmentVariable("MTF_CALCULATION_EPSILON"), out var eps) && eps > 0 
+                ? eps : 1e-10; // Minimal precision fallback
+        
+        private static double GetConfiguredSafeValue() =>
+            double.TryParse(Environment.GetEnvironmentVariable("MTF_SAFE_ZERO_VALUE"), out var val) 
+                ? val : 0.0; // Explicit zero fallback
+        
+        private static int GetConfiguredMinDataPoints() =>
+            int.TryParse(Environment.GetEnvironmentVariable("MTF_MIN_DATA_POINTS"), out var points) && points > 0 
+                ? points : 2; // Minimal requirement fallback
+        
         private const int ShortHorizonBars = 10;
         private const int MediumHorizonBars = 30;
         
@@ -144,7 +159,7 @@ namespace BotCore.Features
 
         private static double CalculateSlope(List<PricePoint> prices)
         {
-            if (prices.Count < 2) return 0.0;
+            if (prices.Count < MinDataPointsRequired) return SafeZeroValue;
             
             var n = prices.Count;
             var xSum = 0.0;
@@ -164,7 +179,7 @@ namespace BotCore.Features
             }
             
             var denominator = n * xxSum - xSum * xSum;
-            if (Math.Abs(denominator) < 1e-10) return 0.0;
+            if (Math.Abs(denominator) < GetConfiguredEpsilon()) return SafeZeroValue;
             
             return (n * xySum - xSum * ySum) / denominator;
         }

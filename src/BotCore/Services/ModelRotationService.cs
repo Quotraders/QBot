@@ -38,6 +38,9 @@ namespace BotCore.Services
             _config = config?.Value ?? throw new ArgumentNullException(nameof(config));
             _regimeService = regimeService ?? throw new ArgumentNullException(nameof(regimeService));
 
+            // Validate configuration with fail-closed behavior
+            _config.Validate();
+
             // Initialize rotation timer
             _rotationTimer = new Timer(CheckForRotationAsync, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
         }
@@ -326,17 +329,30 @@ namespace BotCore.Services
     }
 
     /// <summary>
-    /// Configuration for model rotation behavior
+    /// Configuration for model rotation behavior - NO HARDCODED DEFAULTS (fail-closed requirement)
     /// </summary>
     public sealed class ModelRotationConfiguration
     {
-        public bool RotationEnabled { get; set; } = true;
-        public string ManifestPath { get; set; } = "manifests/manifest.json";
-        public string SelectedPath { get; set; } = "state/models/selected.json";
-        public string ActiveModelsDirectory { get; set; } = "models/active";
-        public int CooldownBars { get; set; } = 12; // 1 hour cooldown with 5-minute bars
-        public bool CanaryCheckEnabled { get; set; } = false;
-        public double CanaryAccuracyThreshold { get; set; } = 0.6;
+        public bool RotationEnabled { get; set; }
+        public string ManifestPath { get; set; } = string.Empty;
+        public string SelectedPath { get; set; } = string.Empty;
+        public string ActiveModelsDirectory { get; set; } = string.Empty;
+        public int CooldownBars { get; set; }
+        public bool CanaryCheckEnabled { get; set; }
+        public double CanaryAccuracyThreshold { get; set; }
+
+        /// <summary>
+        /// Validates configuration values with fail-closed behavior
+        /// </summary>
+        public void Validate()
+        {
+            if (string.IsNullOrWhiteSpace(ManifestPath) || string.IsNullOrWhiteSpace(SelectedPath) || string.IsNullOrWhiteSpace(ActiveModelsDirectory))
+                throw new InvalidOperationException("[MODEL-ROTATION] [AUDIT-VIOLATION] Path values cannot be empty - FAIL-CLOSED");
+            if (CooldownBars <= 0)
+                throw new InvalidOperationException("[MODEL-ROTATION] [AUDIT-VIOLATION] CooldownBars must be positive - FAIL-CLOSED");
+            if (CanaryCheckEnabled && CanaryAccuracyThreshold <= 0)
+                throw new InvalidOperationException("[MODEL-ROTATION] [AUDIT-VIOLATION] CanaryAccuracyThreshold must be positive when canary enabled - FAIL-CLOSED");
+        }
     }
 
     /// <summary>

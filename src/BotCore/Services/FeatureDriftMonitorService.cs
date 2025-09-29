@@ -33,6 +33,9 @@ namespace BotCore.Services
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _config = config?.Value ?? throw new ArgumentNullException(nameof(config));
+            
+            // Validate configuration with fail-closed behavior
+            _config.Validate();
         }
 
         /// <summary>
@@ -314,24 +317,33 @@ namespace BotCore.Services
     }
 
     /// <summary>
-    /// Configuration for drift monitoring behavior
+    /// Configuration for drift monitoring behavior - NO HARDCODED DEFAULTS (fail-closed requirement)
     /// </summary>
     public sealed class DriftMonitorConfiguration
     {
-        public double KSThreshold { get; set; } = 0.1; // KS statistic threshold
-        public double PSIThreshold { get; set; } = 0.1; // PSI threshold
-        public int MaxDriftViolations { get; set; } = 3; // Max violations before kill switch
-        public int MinBaselineDataPoints { get; set; } = 100;
-        public int MinDriftDataPoints { get; set; } = 30;
-        public int MaxRecentValues { get; set; } = 1000;
-        public int DriftWindowMinutes { get; set; } = 60;
-        public List<string> CriticalFeatures { get; set; } = new() 
-        { 
-            "liquidity.absorb_bull", 
-            "liquidity.absorb_bear", 
-            "mtf.align", 
-            "ofi.proxy" 
-        };
+        public double KSThreshold { get; set; }
+        public double PSIThreshold { get; set; }
+        public int MaxDriftViolations { get; set; }
+        public int MinBaselineDataPoints { get; set; }
+        public int MinDriftDataPoints { get; set; }
+        public int MaxRecentValues { get; set; }
+        public int DriftWindowMinutes { get; set; }
+        public List<string> CriticalFeatures { get; set; } = new();
+
+        /// <summary>
+        /// Validates configuration values with fail-closed behavior
+        /// </summary>
+        public void Validate()
+        {
+            if (KSThreshold <= 0 || PSIThreshold <= 0)
+                throw new InvalidOperationException("[FEATURE-DRIFT] [AUDIT-VIOLATION] Threshold values must be positive - FAIL-CLOSED");
+            if (MaxDriftViolations <= 0 || MinBaselineDataPoints <= 0 || MinDriftDataPoints <= 0)
+                throw new InvalidOperationException("[FEATURE-DRIFT] [AUDIT-VIOLATION] Count values must be positive - FAIL-CLOSED");
+            if (MaxRecentValues <= 0 || DriftWindowMinutes <= 0)
+                throw new InvalidOperationException("[FEATURE-DRIFT] [AUDIT-VIOLATION] Window and buffer values must be positive - FAIL-CLOSED");
+            if (CriticalFeatures.Count == 0)
+                throw new InvalidOperationException("[FEATURE-DRIFT] [AUDIT-VIOLATION] CriticalFeatures cannot be empty - FAIL-CLOSED");
+        }
     }
 
     /// <summary>
