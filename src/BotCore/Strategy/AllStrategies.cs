@@ -859,7 +859,17 @@ namespace BotCore.Strategy
             }
         }
 
-        // Legacy S7 strategy removed - Use S7Service via dependency injection for production
+        /// <summary>
+        /// Legacy S7 strategy method - kept for compatibility but returns empty list
+        /// Production code should use IS7Service via dependency injection instead
+        /// TODO: Replace AllStrategies.S7 calls with proper S7Service integration in StrategyGates
+        /// </summary>
+        public static List<Candidate> S7(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
+        {
+            // Legacy compatibility stub - S7 functionality moved to S7Service
+            // This prevents compilation errors while consumers migrate to S7Service
+            return new List<Candidate>();
+        }
 
         public static List<Candidate> S8(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
         {
