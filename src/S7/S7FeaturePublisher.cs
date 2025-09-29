@@ -139,7 +139,18 @@ namespace TradingBot.S7
                 {
                     foreach (var fusionTag in snapshot.FusionTags)
                     {
-                        _featureBus.Publish("FUSION", timestamp, fusionTag.Key, fusionTag.Value);
+                        if (fusionTag.Value is double doubleValue)
+                        {
+                            _featureBus.Publish("FUSION", timestamp, fusionTag.Key, doubleValue);
+                        }
+                        else if (fusionTag.Value is decimal decimalValue)
+                        {
+                            _featureBus.Publish("FUSION", timestamp, fusionTag.Key, (double)decimalValue);
+                        }
+                        else if (double.TryParse(fusionTag.Value?.ToString(), out var parsedValue))
+                        {
+                            _featureBus.Publish("FUSION", timestamp, fusionTag.Key, parsedValue);
+                        }
                     }
                 }
 

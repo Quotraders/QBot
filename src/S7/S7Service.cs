@@ -103,13 +103,13 @@ namespace TradingBot.S7
             }
         }
 
-        private async Task UpdateSymbolAnalysisAsync(string symbol, DateTime timestamp)
+        private Task UpdateSymbolAnalysisAsync(string symbol, DateTime timestamp)
         {
             var prices = _priceHistory[symbol];
             var state = _currentStates[symbol];
 
             if (prices.Count < _config.LookbackShortBars)
-                return; // Insufficient data
+                return Task.CompletedTask; // Insufficient data
 
             // Calculate multi-horizon relative strength
             state.RelativeStrengthShort = CalculateRelativeStrength(prices, _config.LookbackShortBars);
@@ -136,6 +136,8 @@ namespace TradingBot.S7
                 var featureTuple = GetFeatureTuple(symbol);
                 FeatureUpdated?.Invoke(this, new S7FeatureUpdatedEventArgs(featureTuple));
             }
+
+            return Task.CompletedTask;
         }
 
         private async Task UpdateCrossSymbolAnalysisAsync(DateTime timestamp)
@@ -197,9 +199,15 @@ namespace TradingBot.S7
                 LastUpdateTime = timestamp,
                 GlobalDispersionIndex = _globalDispersionIndex,
                 AdaptiveVolatilityMeasure = (GetRecentVolatility("ES") + GetRecentVolatility("NQ")) / 2m,
-                SystemCoherenceScore = (coherence + signalStrength) / 2m,
-                FeatureBusData = BuildFeatureBusData(esState, nqState, coherence, signalStrength)
+                SystemCoherenceScore = (coherence + signalStrength) / 2m
             };
+
+            // Populate the read-only FeatureBusData dictionary
+            var featureData = BuildFeatureBusData(esState, nqState, coherence, signalStrength);
+            foreach (var kvp in featureData)
+            {
+                _lastSnapshot.FeatureBusData[kvp.Key] = kvp.Value;
+            }
 
             // Add fusion tags for knowledge graph integration
             AddFusionTags(_lastSnapshot);
@@ -450,7 +458,7 @@ namespace TradingBot.S7
             if (!_currentStates.TryGetValue(symbol, out var state))
                 return new S7FeatureTuple { Symbol = symbol };
 
-            return new S7FeatureTuple
+            var featureTuple = new S7FeatureTuple
             {
                 Symbol = symbol,
                 RelativeStrengthShort = state.RelativeStrengthShort,
@@ -470,17 +478,17 @@ namespace TradingBot.S7
                 IsDispersionBoosted = state.IsDispersionBoosted,
                 IsDispersionBlocked = state.IsDispersionBlocked,
                 GlobalDispersionIndex = _lastSnapshot.GlobalDispersionIndex,
-                AdaptiveVolatilityMeasure = _lastSnapshot.AdaptiveVolatilityMeasure,
-                
-                ExtendedFeatures = new Dictionary<string, object>
-                {
-                    ["cooldown_bars_remaining"] = state.CooldownBarsRemaining,
-                    ["timestamp"] = state.Timestamp,
-                    ["signal_strength"] = _lastSnapshot.SignalStrength,
-                    ["system_coherence_score"] = _lastSnapshot.SystemCoherenceScore,
-                    ["fusion_tags"] = _lastSnapshot.FusionTags
-                }
+                AdaptiveVolatilityMeasure = _lastSnapshot.AdaptiveVolatilityMeasure
             };
+
+            // Populate the read-only ExtendedFeatures dictionary
+            featureTuple.ExtendedFeatures["cooldown_bars_remaining"] = state.CooldownBarsRemaining;
+            featureTuple.ExtendedFeatures["timestamp"] = state.Timestamp;
+            featureTuple.ExtendedFeatures["signal_strength"] = _lastSnapshot.SignalStrength;
+            featureTuple.ExtendedFeatures["system_coherence_score"] = _lastSnapshot.SystemCoherenceScore;
+            featureTuple.ExtendedFeatures["fusion_tags"] = _lastSnapshot.FusionTags;
+
+            return featureTuple;
         }
 
         public bool IsReady()
@@ -520,7 +528,7 @@ namespace TradingBot.S7
 
         private S7State CloneState(S7State original)
         {
-            return new S7State
+            var clonedState = new S7State
             {
                 Timestamp = original.Timestamp,
                 Symbol = original.Symbol,
@@ -538,19 +546,26 @@ namespace TradingBot.S7
                 AdvanceFraction = original.AdvanceFraction,
                 DispersionAdjustedSizeTilt = original.DispersionAdjustedSizeTilt,
                 IsDispersionBoosted = original.IsDispersionBoosted,
-                IsDispersionBlocked = original.IsDispersionBlocked,
-                AdditionalMetrics = new Dictionary<string, decimal>(original.AdditionalMetrics)
+                IsDispersionBlocked = original.IsDispersionBlocked
             };
+
+            // Copy the read-only AdditionalMetrics dictionary
+            foreach (var kvp in original.AdditionalMetrics)
+            {
+                clonedState.AdditionalMetrics[kvp.Key] = kvp.Value;
+            }
+
+            return clonedState;
         }
 
         /// <summary>
         /// Calculate adaptive threshold based on recent performance and volatility
         /// AUDIT-CLEAN: All parameters from config, no hardcoded values
         /// </summary>
-        private async Task<decimal> CalculateAdaptiveThresholdAsync(string symbol)
+        private Task<decimal> CalculateAdaptiveThresholdAsync(string symbol)
         {
             if (!_config.EnableAdaptiveThresholds)
-                return _config.ZThresholdEntry;
+                return Task.FromResult(_config.ZThresholdEntry);
 
             try
             {
@@ -573,12 +588,12 @@ namespace TradingBot.S7
                 newThreshold = Math.Max(_config.AdaptiveThresholdMin, Math.Min(_config.AdaptiveThresholdMax, newThreshold));
 
                 _adaptiveThresholds[symbol] = newThreshold;
-                return newThreshold;
+                return Task.FromResult(newThreshold);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "[S7-ADAPTIVE] Failed to calculate adaptive threshold for {Symbol}, using default", symbol);
-                return _config.ZThresholdEntry;
+                return Task.FromResult(_config.ZThresholdEntry);
             }
         }
 
