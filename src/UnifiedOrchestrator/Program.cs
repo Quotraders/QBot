@@ -1210,6 +1210,7 @@ Please check the configuration and ensure all required services are registered.
         // Register ML Configuration Service for hardcoded value replacement
         services.AddProductionConfigurationValidation(configuration);
         services.AddScoped<TradingBot.BotCore.Services.MLConfigurationService>();
+        services.AddScoped<TradingBot.Abstractions.IMLConfigurationService, TradingBot.BotCore.Services.MLConfigurationService>();
         
         // Register Execution Configuration Services - Replace hardcoded execution parameters
         services.AddScoped<TradingBot.Abstractions.IExecutionGuardsConfig, TradingBot.BotCore.Services.ExecutionGuardsConfigService>();

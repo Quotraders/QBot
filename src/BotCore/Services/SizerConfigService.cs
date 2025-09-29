@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using TradingBot.Abstractions;
@@ -25,7 +26,6 @@ namespace TradingBot.BotCore.Services
         // Position Sizing Constants
         private const double DefaultPositionSizeMultiplierBaseline = 1.0;
         private const double DefaultMinPositionSizeMultiplier = 0.1;
-        private const double DefaultMaxPositionSizeMultiplier = 2.5;
         private const double DefaultExplorationRate = 0.05;
         private const double DefaultWeightFloor = 0.10;
         
@@ -34,11 +34,13 @@ namespace TradingBot.BotCore.Services
         
         private readonly IConfiguration _config;
         private readonly ILogger<SizerConfigService> _logger;
+        private readonly IMLConfigurationService _mlConfig;
 
-        public SizerConfigService(IConfiguration config, ILogger<SizerConfigService> logger)
+        public SizerConfigService(IConfiguration config, ILogger<SizerConfigService> logger, IMLConfigurationService mlConfig)
         {
             _config = config;
             _logger = logger;
+            _mlConfig = mlConfig ?? throw new ArgumentNullException(nameof(mlConfig));
         }
 
         public double GetPpoLearningRate() => 
@@ -64,7 +66,7 @@ namespace TradingBot.BotCore.Services
             _config.GetValue("Sizer:MinPositionSizeMultiplier", DefaultMinPositionSizeMultiplier);
 
         public double GetMaxPositionSizeMultiplier() => 
-            _config.GetValue("Sizer:MaxPositionSizeMultiplier", DefaultMaxPositionSizeMultiplier);
+            _mlConfig.GetPositionSizeMultiplier();
 
         public double GetExplorationRate() => 
             _config.GetValue("Sizer:ExplorationRate", DefaultExplorationRate);
