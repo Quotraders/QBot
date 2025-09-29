@@ -51,97 +51,89 @@ public sealed class ProductionMetrics : IMetrics
 
     public void RecordGauge(string name, double value, Dictionary<string, string> tags)
     {
+        // Fail-closed enforcement: RealTradingMetricsService required for production telemetry
+        var realMetricsService = _serviceProvider.GetService<RealTradingMetricsService>();
+        if (realMetricsService == null)
+        {
+            // Audit log: Critical telemetry service unavailable - triggering hold decision
+            _logger.LogCritical("🚨 [AUDIT-FAIL-CLOSED] RealTradingMetricsService unavailable for fusion metric {Name} - triggering system hold", name);
+            throw new InvalidOperationException($"RealTradingMetricsService required for production telemetry - metric: {name}");
+        }
+
         try
         {
-            // Use real RealTradingMetricsService for production telemetry - no fallback logging
-            var realMetricsService = _serviceProvider.GetService<RealTradingMetricsService>();
-            if (realMetricsService != null)
+            // Merge tags with fusion-specific tags for comprehensive telemetry coverage
+            var allTags = new Dictionary<string, object>();
+            
+            // Add fusion tags first
+            foreach (var fusionTag in _fusionTags)
             {
-                // Merge tags with fusion-specific tags for comprehensive telemetry coverage
-                var allTags = new Dictionary<string, object>();
-                
-                // Add fusion tags first
-                foreach (var fusionTag in _fusionTags)
-                {
-                    allTags[fusionTag.Key] = fusionTag.Value;
-                }
-                
-                // Add provided tags
-                if (tags != null)
-                {
-                    foreach (var tag in tags)
-                    {
-                        allTags[tag.Key] = tag.Value;
-                    }
-                }
-
-                // Emit fusion metrics through real trading metrics service
-                _ = realMetricsService.RecordGaugeAsync($"fusion.{name}", value, allTags);
-                
-                _logger.LogTrace("Recorded fusion gauge metric via RealTradingMetricsService: {Name}={Value}", name, value);
-                return;
+                allTags[fusionTag.Key] = fusionTag.Value;
             }
             
-            // Fallback to structured logging with proper metrics format when service unavailable
-            _logger.LogInformation("[FUSION-METRICS] Gauge {MetricName}={Value:F3} {Tags}", 
-                $"fusion.{name}", value, System.Text.Json.JsonSerializer.Serialize(tags ?? new Dictionary<string, string>()));
-                
-            _logger.LogTrace("Recorded fusion gauge metric (service unavailable): {Name}={Value}", name, value);
-        }
-        catch (Exception ex) when (!(ex is InvalidOperationException))
-        {
-            _logger.LogError(ex, "Error recording fusion gauge metric {Name} - using fallback logging", name);
+            // Add provided tags
+            if (tags != null)
+            {
+                foreach (var tag in tags)
+                {
+                    allTags[tag.Key] = tag.Value;
+                }
+            }
+
+            // Emit fusion metrics through real trading metrics service - no fallbacks
+            _ = realMetricsService.RecordGaugeAsync($"fusion.{name}", value, allTags);
             
-            // Fallback logging on any errors
-            _logger.LogInformation("[FUSION-METRICS-FALLBACK] Gauge {MetricName}={Value:F3}", $"fusion.{name}", value);
+            _logger.LogTrace("Recorded fusion gauge metric via RealTradingMetricsService: {Name}={Value}", name, value);
+        }
+        catch (Exception ex)
+        {
+            // Audit log: Telemetry failure - fail closed
+            _logger.LogCritical(ex, "🚨 [AUDIT-FAIL-CLOSED] Critical telemetry failure for fusion metric {Name} - system hold required", name);
+            throw; // Fail-closed: propagate exception to trigger hold decision
         }
     }
 
     public void RecordCounter(string name, int value, Dictionary<string, string> tags)
     {
+        // Fail-closed enforcement: RealTradingMetricsService required for production telemetry
+        var realMetricsService = _serviceProvider.GetService<RealTradingMetricsService>();
+        if (realMetricsService == null)
+        {
+            // Audit log: Critical telemetry service unavailable - triggering hold decision
+            _logger.LogCritical("🚨 [AUDIT-FAIL-CLOSED] RealTradingMetricsService unavailable for fusion counter {Name} - triggering system hold", name);
+            throw new InvalidOperationException($"RealTradingMetricsService required for production telemetry - counter: {name}");
+        }
+
         try
         {
-            // Use real RealTradingMetricsService for production telemetry - no fallback logging
-            var realMetricsService = _serviceProvider.GetService<RealTradingMetricsService>();
-            if (realMetricsService != null)
+            // Merge tags with fusion-specific tags for comprehensive telemetry coverage
+            var allTags = new Dictionary<string, object>();
+            
+            // Add fusion tags first
+            foreach (var fusionTag in _fusionTags)
             {
-                // Merge tags with fusion-specific tags for comprehensive telemetry coverage
-                var allTags = new Dictionary<string, object>();
-                
-                // Add fusion tags first
-                foreach (var fusionTag in _fusionTags)
-                {
-                    allTags[fusionTag.Key] = fusionTag.Value;
-                }
-                
-                // Add provided tags
-                if (tags != null)
-                {
-                    foreach (var tag in tags)
-                    {
-                        allTags[tag.Key] = tag.Value;
-                    }
-                }
-
-                // Emit fusion counter metrics through real trading metrics service
-                _ = realMetricsService.RecordCounterAsync($"fusion.{name}", value, allTags);
-                
-                _logger.LogTrace("Recorded fusion counter metric via RealTradingMetricsService: {Name}={Value}", name, value);
-                return;
+                allTags[fusionTag.Key] = fusionTag.Value;
             }
             
-            // Fallback to structured logging with proper metrics format when service unavailable
-            _logger.LogInformation("[FUSION-METRICS] Counter {MetricName}+={Value} {Tags}", 
-                $"fusion.{name}", value, System.Text.Json.JsonSerializer.Serialize(tags ?? new Dictionary<string, string>()));
-                
-            _logger.LogTrace("Recorded fusion counter metric (service unavailable): {Name}={Value}", name, value);
+            // Add provided tags
+            if (tags != null)
+            {
+                foreach (var tag in tags)
+                {
+                    allTags[tag.Key] = tag.Value;
+                }
+            }
+
+            // Emit fusion counter metrics through real trading metrics service - no fallbacks
+            _ = realMetricsService.RecordCounterAsync($"fusion.{name}", value, allTags);
+            
+            _logger.LogTrace("Recorded fusion counter metric via RealTradingMetricsService: {Name}={Value}", name, value);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error recording fusion counter metric {Name} - using fallback logging", name);
-            
-            // Fallback logging on any errors
-            _logger.LogInformation("[FUSION-METRICS-FALLBACK] Counter {MetricName}+={Value}", $"fusion.{name}", value);
+            // Audit log: Telemetry failure - fail closed
+            _logger.LogCritical(ex, "🚨 [AUDIT-FAIL-CLOSED] Critical telemetry failure for fusion counter {Name} - system hold required", name);
+            throw; // Fail-closed: propagate exception to trigger hold decision
         }
     }
 
@@ -184,97 +176,89 @@ public sealed class ProductionMlrlMetricsService : IMlrlMetricsServiceForFusion
 
     public void RecordGauge(string name, double value, Dictionary<string, string> tags)
     {
+        // Fail-closed enforcement: RealTradingMetricsService required for production ML/RL telemetry
+        var realMetricsService = _serviceProvider.GetService<RealTradingMetricsService>();
+        if (realMetricsService == null)
+        {
+            // Audit log: Critical ML/RL telemetry service unavailable - triggering hold decision
+            _logger.LogCritical("🚨 [AUDIT-FAIL-CLOSED] RealTradingMetricsService unavailable for ML/RL metric {Name} - triggering system hold", name);
+            throw new InvalidOperationException($"RealTradingMetricsService required for production ML/RL telemetry - metric: {name}");
+        }
+
         try
         {
-            // Use real RealTradingMetricsService for ML/RL telemetry - no fallback logging
-            var realMetricsService = _serviceProvider.GetService<RealTradingMetricsService>();
-            if (realMetricsService != null)
+            // Merge tags with ML/RL specific tags for comprehensive telemetry coverage
+            var allTags = new Dictionary<string, object>();
+            
+            // Add fusion tags first  
+            foreach (var fusionTag in _fusionTags)
             {
-                // Merge tags with ML/RL specific tags for comprehensive telemetry coverage
-                var allTags = new Dictionary<string, object>();
-                
-                // Add fusion tags first  
-                foreach (var fusionTag in _fusionTags)
-                {
-                    allTags[fusionTag.Key] = fusionTag.Value;
-                }
-                
-                // Add provided tags
-                if (tags != null)
-                {
-                    foreach (var tag in tags)
-                    {
-                        allTags[tag.Key] = tag.Value;
-                    }
-                }
-
-                // Emit ML/RL metrics through real trading metrics service with mlrl prefix
-                _ = realMetricsService.RecordGaugeAsync($"mlrl.{name}", value, allTags);
-                
-                _logger.LogTrace("Recorded ML/RL gauge metric via RealTradingMetricsService: {Name}={Value}", name, value);
-                return;
+                allTags[fusionTag.Key] = fusionTag.Value;
             }
             
-            // Fallback to structured logging with proper ML metrics format when service unavailable
-            _logger.LogInformation("[ML-RL-METRICS] Gauge {MetricName}={Value:F3} {Tags}", 
-                $"mlrl.{name}", value, System.Text.Json.JsonSerializer.Serialize(tags ?? new Dictionary<string, string>()));
-                
-            _logger.LogTrace("Recorded ML/RL gauge metric (service unavailable): {Name}={Value}", name, value);
+            // Add provided tags
+            if (tags != null)
+            {
+                foreach (var tag in tags)
+                {
+                    allTags[tag.Key] = tag.Value;
+                }
+            }
+
+            // Emit ML/RL metrics through real trading metrics service with mlrl prefix - no fallbacks
+            _ = realMetricsService.RecordGaugeAsync($"mlrl.{name}", value, allTags);
+            
+            _logger.LogTrace("Recorded ML/RL gauge metric via RealTradingMetricsService: {Name}={Value}", name, value);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error recording ML/RL gauge metric {Name} - using fallback logging", name);
-            
-            // Fallback logging on any errors
-            _logger.LogInformation("[ML-RL-METRICS-FALLBACK] Gauge {MetricName}={Value:F3}", $"mlrl.{name}", value);
+            // Audit log: ML/RL telemetry failure - fail closed
+            _logger.LogCritical(ex, "🚨 [AUDIT-FAIL-CLOSED] Critical ML/RL telemetry failure for metric {Name} - system hold required", name);
+            throw; // Fail-closed: propagate exception to trigger hold decision
         }
     }
 
     public void RecordCounter(string name, int value, Dictionary<string, string> tags)
     {
+        // Fail-closed enforcement: RealTradingMetricsService required for production ML/RL telemetry
+        var realMetricsService = _serviceProvider.GetService<RealTradingMetricsService>();
+        if (realMetricsService == null)
+        {
+            // Audit log: Critical ML/RL telemetry service unavailable - triggering hold decision
+            _logger.LogCritical("🚨 [AUDIT-FAIL-CLOSED] RealTradingMetricsService unavailable for ML/RL counter {Name} - triggering system hold", name);
+            throw new InvalidOperationException($"RealTradingMetricsService required for production ML/RL telemetry - counter: {name}");
+        }
+
         try
         {
-            // Use real RealTradingMetricsService for ML/RL telemetry - no fallback logging
-            var realMetricsService = _serviceProvider.GetService<RealTradingMetricsService>();
-            if (realMetricsService != null)
+            // Merge tags with ML/RL specific tags for comprehensive telemetry coverage
+            var allTags = new Dictionary<string, object>();
+            
+            // Add fusion tags first
+            foreach (var fusionTag in _fusionTags)
             {
-                // Merge tags with ML/RL specific tags for comprehensive telemetry coverage
-                var allTags = new Dictionary<string, object>();
-                
-                // Add fusion tags first
-                foreach (var fusionTag in _fusionTags)
-                {
-                    allTags[fusionTag.Key] = fusionTag.Value;
-                }
-                
-                // Add provided tags
-                if (tags != null)
-                {
-                    foreach (var tag in tags)
-                    {
-                        allTags[tag.Key] = tag.Value;
-                    }
-                }
-
-                // Emit ML/RL counter metrics through real trading metrics service
-                _ = realMetricsService.RecordCounterAsync($"mlrl.{name}", value, allTags);
-                
-                _logger.LogTrace("Recorded ML/RL counter metric via RealTradingMetricsService: {Name}={Value}", name, value);
-                return;
+                allTags[fusionTag.Key] = fusionTag.Value;
             }
             
-            // Fallback to structured logging with proper ML counter format when service unavailable
-            _logger.LogInformation("[ML-RL-METRICS] Counter {MetricName}+={Value} {Tags}", 
-                $"mlrl.{name}", value, System.Text.Json.JsonSerializer.Serialize(tags ?? new Dictionary<string, string>()));
-                
-            _logger.LogTrace("Recorded ML/RL counter metric (service unavailable): {Name}={Value}", name, value);
+            // Add provided tags
+            if (tags != null)
+            {
+                foreach (var tag in tags)
+                {
+                    allTags[tag.Key] = tag.Value;
+                }
+            }
+
+            // Emit ML/RL counter metrics through real trading metrics service - no fallbacks
+            _ = realMetricsService.RecordCounterAsync($"mlrl.{name}", value, allTags);
+            
+            _logger.LogTrace("Recorded ML/RL counter metric via RealTradingMetricsService: {Name}={Value}", name, value);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error recording ML/RL counter metric {Name} - using fallback logging", name);
-            
-            // Fallback logging on any errors
-            _logger.LogInformation("[ML-RL-METRICS-FALLBACK] Counter {MetricName}+={Value}", $"mlrl.{name}", value);
+            // Audit log: ML/RL telemetry failure - fail closed
+            _logger.LogCritical(ex, "🚨 [AUDIT-FAIL-CLOSED] Critical ML/RL telemetry failure for counter {Name} - system hold required", name);
+            throw; // Fail-closed: propagate exception to trigger hold decision
         }
     }
 

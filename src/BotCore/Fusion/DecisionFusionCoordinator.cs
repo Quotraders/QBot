@@ -110,7 +110,7 @@ public sealed class DecisionFusionCoordinator
             }
 
             // Calculate fusion scores
-            double knowledgeScore = knowledgeRec?.Confidence ?? 0.0;
+            double knowledgeScore = knowledgeRec?.Confidence ?? GetConfigValue("Fusion:DefaultKnowledgeScore", 0.0);
             double combinedScore = (knowledgeScore * rails.KnowledgeWeight) + (ucbScore * rails.UcbWeight);
 
             // Check minimum confidence threshold
@@ -186,7 +186,11 @@ public sealed class DecisionFusionCoordinator
                 try
                 {
                     // Calculate base position size from strategy intent
-                    var baseSize = finalRec.Intent == StrategyIntent.Buy ? 1.0 : finalRec.Intent == StrategyIntent.Sell ? -1.0 : 0.0;
+                    var baseSize = finalRec.Intent == StrategyIntent.Buy 
+                        ? GetConfigValue("Fusion:BuyBaseSize", 1.0) 
+                        : finalRec.Intent == StrategyIntent.Sell 
+                            ? GetConfigValue("Fusion:SellBaseSize", -1.0) 
+                            : GetConfigValue("Fusion:NeutralBaseSize", 0.0);
                     
                     // Get risk from real risk management service with fallback handling
                     var riskManager = _serviceProvider.GetService<IRiskManagerForFusion>();
@@ -201,13 +205,13 @@ public sealed class DecisionFusionCoordinator
                         catch (Exception riskEx)
                         {
                             _logger.LogWarning(riskEx, "Risk manager unavailable for PPO sizing, using confidence-based risk");
-                            actualRisk = 1.0 - finalRec.Confidence; // Fallback to confidence-based risk
+                            actualRisk = GetConfigValue("Risk:ConfidenceBasedRisk", 1.0) - finalRec.Confidence; // Fallback to confidence-based risk from config
                         }
                     }
                     else
                     {
                         _logger.LogTrace("No risk manager service available, using confidence-based risk calculation");
-                        actualRisk = 1.0 - finalRec.Confidence; // Higher confidence = lower risk
+                        actualRisk = GetConfigValue("Risk:ConfidenceBasedRisk", 1.0) - finalRec.Confidence; // Higher confidence = lower risk from config
                     }
                     
                     var adjustedSize = await _ppo.SizeAsync(baseSize, finalRec.StrategyName, actualRisk, symbol, cancellationToken).ConfigureAwait(false);
@@ -264,6 +268,36 @@ public sealed class DecisionFusionCoordinator
                 
             // Fail-closed behavior: Return null to prevent trading on corrupted decisions
             return null;
+        }
+    }
+    
+    /// <summary>
+    /// Get configuration value with fallback - ensures fail-closed behavior for missing config
+    /// </summary>
+    private double GetConfigValue(string key, double defaultValue)
+    {
+        try
+        {
+            var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+            if (configuration == null)
+            {
+                _logger.LogWarning("🚨 [AUDIT-FAIL-CLOSED] Configuration service unavailable for key {Key} - using safe default {Default}", key, defaultValue);
+                return defaultValue;
+            }
+            
+            var value = configuration.GetValue<double>(key);
+            if (value == 0.0 && !configuration.GetSection(key).Exists())
+            {
+                _logger.LogTrace("Configuration key {Key} not found - using default {Default}", key, defaultValue);
+                return defaultValue;
+            }
+            
+            return value;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "🚨 [AUDIT-FAIL-CLOSED] Error reading configuration key {Key} - using safe default {Default}", key, defaultValue);
+            return defaultValue;
         }
     }
 

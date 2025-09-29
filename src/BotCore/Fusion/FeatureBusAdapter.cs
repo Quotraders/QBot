@@ -261,9 +261,11 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             foreach (var aggregator in barAggregators)
             {
                 var history = aggregator.GetHistory(symbol);
-                if (history.Count >= 20)
+                var minimumBarsRequired = GetConfigValue("FeatureBus:MinimumBarsForVolatility", 20);
+                if (history.Count >= minimumBarsRequired)
                 {
-                    var recentBars = history.TakeLast(20).ToList();
+                    var recentBarsCount = GetConfigValue("FeatureBus:RecentBarsForVolatility", 20);
+                    var recentBars = history.TakeLast(recentBarsCount).ToList();
                     return CalculateRealizedVolatility(recentBars);
                 }
             }
@@ -315,10 +317,13 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             foreach (var aggregator in barAggregators)
             {
                 var history = aggregator.GetHistory(symbol);
-                if (history.Count >= 20)
+                var minimumBarsRequired = GetConfigValue("FeatureBus:MinimumBarsForMomentum", 20);
+                if (history.Count >= minimumBarsRequired)
                 {
-                    var recentBars = history.TakeLast(20).ToList();
-                    var shortTermVol = CalculateRealizedVolatility(recentBars.TakeLast(5).ToList());
+                    var recentBarsCount = GetConfigValue("FeatureBus:RecentBarsForMomentum", 20);
+                    var shortTermBarsCount = GetConfigValue("FeatureBus:ShortTermBarsForMomentum", 5);
+                    var recentBars = history.TakeLast(recentBarsCount).ToList();
+                    var shortTermVol = CalculateRealizedVolatility(recentBars.TakeLast(shortTermBarsCount).ToList());
                     var longTermVol = CalculateRealizedVolatility(recentBars);
                     
                     if (longTermVol > 0)
@@ -803,6 +808,36 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         {
             _logger.LogError(ex, "Error getting bar count for {Symbol}", symbol);
             return null;
+        }
+    }
+    
+    /// <summary>
+    /// Get configuration value with fallback - ensures fail-closed behavior for missing config
+    /// </summary>
+    private int GetConfigValue(string key, int defaultValue)
+    {
+        try
+        {
+            var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+            if (configuration == null)
+            {
+                _logger.LogWarning("🚨 [AUDIT-FAIL-CLOSED] Configuration service unavailable for key {Key} - using safe default {Default}", key, defaultValue);
+                return defaultValue;
+            }
+            
+            var value = configuration.GetValue<int>(key);
+            if (value == 0 && !configuration.GetSection(key).Exists())
+            {
+                _logger.LogTrace("Configuration key {Key} not found - using default {Default}", key, defaultValue);
+                return defaultValue;
+            }
+            
+            return value;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "🚨 [AUDIT-FAIL-CLOSED] Error reading configuration key {Key} - using safe default {Default}", key, defaultValue);
+            return defaultValue;
         }
     }
 }
