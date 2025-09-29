@@ -84,7 +84,7 @@ namespace TradingBot.BotCore.Services
                 }
                 
                 _logger.LogError("[BREADTH-AUDIT-VIOLATION] Advance/Decline ratio requested but no data available - TRIGGERING HOLD + TELEMETRY");
-                return 0m; // Fail-closed: neutral ratio when data unavailable
+                return _config.AdvanceDeclineRatioMin; // Fail-closed: return min safe value from config
             }
 
             try
@@ -94,16 +94,16 @@ namespace TradingBot.BotCore.Services
                 
                 _logger.LogDebug("[BREADTH-FEED] Computed advance/decline ratio: {Ratio} from {DataSource}", syntheticRatio, _config.DataSource);
                 
-                // Apply configuration bounds validation
-                if (syntheticRatio < 0m) syntheticRatio = 0m;
-                if (syntheticRatio > 10m) syntheticRatio = 10m;
+                // Apply configuration bounds validation - ALL VALUES CONFIG-DRIVEN
+                if (syntheticRatio < _config.AdvanceDeclineRatioMin) syntheticRatio = _config.AdvanceDeclineRatioMin;
+                if (syntheticRatio > _config.AdvanceDeclineRatioMax) syntheticRatio = _config.AdvanceDeclineRatioMax;
                 
                 return syntheticRatio;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[BREADTH-AUDIT-VIOLATION] Error computing advance/decline ratio - TRIGGERING HOLD + TELEMETRY");
-                return 0m; // Fail-closed on any computation error
+                return _config.AdvanceDeclineRatioMin; // Fail-closed: return min safe value from config
             }
         }
 
@@ -124,7 +124,7 @@ namespace TradingBot.BotCore.Services
                 }
                 
                 _logger.LogError("[BREADTH-AUDIT-VIOLATION] New highs/lows ratio requested but no data available - TRIGGERING HOLD + TELEMETRY");
-                return 0m; // Fail-closed: neutral ratio when data unavailable
+                return _config.NewHighsLowsRatioMin; // Fail-closed: return min safe value from config
             }
 
             try
@@ -134,16 +134,16 @@ namespace TradingBot.BotCore.Services
                 
                 _logger.LogDebug("[BREADTH-FEED] Computed new highs/lows ratio: {Ratio} from {DataSource}", syntheticRatio, _config.DataSource);
                 
-                // Apply configuration bounds validation
-                if (syntheticRatio < 0m) syntheticRatio = 0m;
-                if (syntheticRatio > 20m) syntheticRatio = 20m;
+                // Apply configuration bounds validation - ALL VALUES CONFIG-DRIVEN
+                if (syntheticRatio < _config.NewHighsLowsRatioMin) syntheticRatio = _config.NewHighsLowsRatioMin;
+                if (syntheticRatio > _config.NewHighsLowsRatioMax) syntheticRatio = _config.NewHighsLowsRatioMax;
                 
                 return syntheticRatio;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[BREADTH-AUDIT-VIOLATION] Error computing new highs/lows ratio - TRIGGERING HOLD + TELEMETRY");
-                return 0m; // Fail-closed on any computation error
+                return _config.NewHighsLowsRatioMin; // Fail-closed: return min safe value from config
             }
         }
 
