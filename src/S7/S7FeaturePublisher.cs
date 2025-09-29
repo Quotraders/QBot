@@ -247,8 +247,6 @@ namespace TradingBot.S7
                     _logger.LogWarning(ex, "[S7-FEATURE-PUBLISHER] Object disposed publishing S7 features");
                 }
             }
-                }
-            }
         }
 
         public void Dispose()

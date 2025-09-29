@@ -614,9 +614,19 @@ namespace TradingBot.S7
                 _adaptiveThresholds[symbol] = newThreshold;
                 return Task.FromResult(newThreshold);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "[S7-ADAPTIVE] Failed to calculate adaptive threshold for {Symbol}, using default", symbol);
+                _logger.LogWarning(ex, "[S7-ADAPTIVE] Invalid operation calculating adaptive threshold for {Symbol}, using default", symbol);
+                return Task.FromResult(_config.ZThresholdEntry);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "[S7-ADAPTIVE] Invalid argument calculating adaptive threshold for {Symbol}, using default", symbol);
+                return Task.FromResult(_config.ZThresholdEntry);
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogWarning(ex, "[S7-ADAPTIVE] Timeout calculating adaptive threshold for {Symbol}, using default", symbol);
                 return Task.FromResult(_config.ZThresholdEntry);
             }
         }
@@ -768,9 +778,17 @@ namespace TradingBot.S7
                     adaptive_volatility_measure = snapshot.AdaptiveVolatilityMeasure
                 };
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "[S7-FUSION] Failed to add fusion tags");
+                _logger.LogWarning(ex, "[S7-FUSION] Invalid operation adding fusion tags");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "[S7-FUSION] Invalid argument adding fusion tags");
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning(ex, "[S7-FUSION] Key not found adding fusion tags");
             }
         }
 
