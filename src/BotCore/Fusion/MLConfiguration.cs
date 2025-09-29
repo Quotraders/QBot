@@ -252,7 +252,6 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
             return ("Conservative", BotCore.Strategy.StrategyIntent.Buy, 0.4);
         }
     }
-    }
 
     /// <summary>
     /// Update strategy performance for UCB learning

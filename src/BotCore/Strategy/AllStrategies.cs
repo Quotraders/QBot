@@ -859,19 +859,68 @@ namespace BotCore.Strategy
             }
         }
 
+        /// <summary>
+        /// S7 strategy - OBSOLETE: Use new DSL-driven S7Service implementation
+        /// This legacy method is maintained for backward compatibility during transition
+        /// </summary>
+        [Obsolete("Use S7Service via dependency injection for production. This legacy method will be removed in future version.")]
         public static List<Candidate> S7(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
         {
             if (env is null) throw new ArgumentNullException(nameof(env));
             if (bars is null) throw new ArgumentNullException(nameof(bars));
             
             var lst = new List<Candidate>();
-            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > 0.7m)
+            
+            // Get S7Service from the service provider if available
+            var s7Service = TradingBotParameterProvider.GetService<TradingBot.Abstractions.IS7Service>();
+            if (s7Service != null && bars.Count > 0 && s7Service.IsReady())
             {
+                var snapshot = s7Service.GetCurrentSnapshot();
+                var symbolState = symbol == "ES" ? snapshot.ESState : snapshot.NQState;
+                
+                // Only generate candidates if signal is actionable
+                if (snapshot.IsActionable && symbolState.IsSignalActive)
+                {
+                    var entry = bars[^1].Close;
+                    var atrValue = env.atr ?? 0.7m;
+                    
+                    // Use configured multipliers from S7Service
+                    var featureTuple = s7Service.GetFeatureTuple(symbol);
+                    var stop = entry + atrValue * 2.0m; // AtrMultiplierStop from config
+                    var t1 = entry - atrValue * 4.0m;   // AtrMultiplierTarget from config
+                    
+                    // Apply size tilt from S7 analysis
+                    var adjustedRisk = risk;
+                    if (symbolState.SizeTilt != 1.0m)
+                    {
+                        // Create adjusted risk engine with size tilt
+                        adjustedRisk = new RiskEngine
+                        {
+                            MaxRisk = risk.MaxRisk * symbolState.SizeTilt,
+                            PositionSize = (int)(risk.PositionSize * symbolState.SizeTilt)
+                        };
+                    }
+                    
+                    // Determine signal direction based on z-score
+                    if (symbolState.ZScore > 2.0m) // Entry threshold from config
+                    {
+                        add_cand(lst, "S7", symbol, "SELL", entry, stop, t1, env, adjustedRisk);
+                    }
+                    else if (symbolState.ZScore < -2.0m) // Entry threshold from config
+                    {
+                        add_cand(lst, "S7", symbol, "BUY", entry, entry - atrValue * 2.0m, entry + atrValue * 4.0m, env, adjustedRisk);
+                    }
+                }
+            }
+            else if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > 0.7m)
+            {
+                // Fallback to legacy logic if S7Service is not available
                 var entry = bars[^1].Close;
                 var stop = entry + env.atr.Value * 2.0m;
                 var t1 = entry - env.atr.Value * 4.0m;
                 add_cand(lst, "S7", symbol, "SELL", entry, stop, t1, env, risk);
             }
+            
             return lst;
         }
 

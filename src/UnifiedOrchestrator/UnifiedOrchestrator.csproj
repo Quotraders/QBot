@@ -35,6 +35,7 @@
     <ProjectReference Include="..\Abstractions\Abstractions.csproj" />
     <ProjectReference Include="..\IntelligenceStack\IntelligenceStack.csproj" />
     <ProjectReference Include="..\Zones\Zones.csproj" />
+    <ProjectReference Include="..\S7\S7.csproj" />
   </ItemGroup>
   
   <ItemGroup>

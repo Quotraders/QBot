@@ -166,5 +166,39 @@
     "min_confluence_conditions": { "min": 1, "max": 5, "default": 2 },
     "strategy_confidence_floor": { "min": 0.3, "max": 0.8, "default": 0.5 },
     "evidence_weight_threshold": { "min": 0.05, "max": 0.25, "default": 0.1 }
+  },
+  "s7": {
+    "lookback_short_bars": { "min": 5, "max": 20, "default": 10, "description": "Short-term lookback for relative strength calculation" },
+    "lookback_medium_bars": { "min": 15, "max": 50, "default": 30, "description": "Medium-term lookback for relative strength calculation" },
+    "lookback_long_bars": { "min": 40, "max": 120, "default": 60, "description": "Long-term lookback for relative strength calculation" },
+    "z_threshold_entry": { "min": 1.5, "max": 3.0, "default": 2.0, "description": "Z-score threshold for strategy entry signals" },
+    "z_threshold_exit": { "min": 0.5, "max": 2.0, "default": 1.0, "description": "Z-score threshold for strategy exit signals" },
+    "coherence_min": { "min": 0.6, "max": 0.9, "default": 0.75, "description": "Minimum coherence required between ES and NQ for signals" },
+    "cooldown_bars": { "min": 3, "max": 15, "default": 5, "description": "Cooldown period between signals to prevent flapping" },
+    "size_tilt_factor": { "min": 0.5, "max": 1.5, "default": 1.0, "description": "Position size adjustment based on signal strength" },
+    "atr_multiplier_stop": { "min": 1.5, "max": 3.0, "default": 2.0, "description": "ATR multiplier for stop loss calculation" },
+    "atr_multiplier_target": { "min": 2.0, "max": 6.0, "default": 4.0, "description": "ATR multiplier for profit target calculation" },
+    "min_atr_threshold": { "min": 0.5, "max": 1.5, "default": 0.7, "description": "Minimum ATR value required for signal generation" },
+    "zscore_alignment_weight": { "min": 0.1, "max": 0.8, "default": 0.4, "description": "AUDIT-CLEAN: Weight for Z-score alignment in coherence calculation" },
+    "direction_alignment_weight": { "min": 0.1, "max": 0.8, "default": 0.4, "description": "AUDIT-CLEAN: Weight for signal direction alignment in coherence calculation" },
+    "timeframe_coherence_weight": { "min": 0.1, "max": 0.5, "default": 0.2, "description": "AUDIT-CLEAN: Weight for timeframe coherence in overall coherence calculation" },
+    "leader_threshold": { "min": 1.1, "max": 2.0, "default": 1.2, "description": "AUDIT-CLEAN: Threshold for determining symbol leadership" },
+    "timeframe_count_normalizer": { "min": 2.0, "max": 5.0, "default": 3.0, "description": "AUDIT-CLEAN: Normalizer for timeframe count in coherence calculations" },
+    "max_size_tilt_multiplier": { "min": 1.5, "max": 3.0, "default": 2.0, "description": "AUDIT-CLEAN: Maximum multiplier for size tilt calculations" },
+    "base_breadth_score": { "min": 0.5, "max": 1.5, "default": 1.0, "description": "AUDIT-CLEAN: Base score for breadth calculations" },
+    "advance_decline_bonus": { "min": 0.05, "max": 0.2, "default": 0.1, "description": "AUDIT-CLEAN: Bonus applied for positive advance/decline ratio" },
+    "advance_decline_penalty": { "min": 0.05, "max": 0.2, "default": 0.1, "description": "AUDIT-CLEAN: Penalty applied for negative advance/decline ratio" },
+    "new_highs_lows_bonus": { "min": 0.01, "max": 0.1, "default": 0.05, "description": "AUDIT-CLEAN: Bonus applied for favorable new highs/lows ratio" },
+    "min_breadth_score": { "min": 0.1, "max": 0.8, "default": 0.5, "description": "AUDIT-CLEAN: Minimum allowable breadth score" },
+    "max_breadth_score": { "min": 1.2, "max": 2.0, "default": 1.5, "description": "AUDIT-CLEAN: Maximum allowable breadth score" },
+    "fail_on_unknown_keys": { "min": 0, "max": 1, "default": 1, "description": "FAIL-CLOSED: Trigger hold + telemetry on unknown configuration keys" },
+    "fail_on_missing_data": { "min": 0, "max": 1, "default": 1, "description": "FAIL-CLOSED: Trigger hold + telemetry on missing required data" }
+  },
+  "breadth": {
+    "enabled": { "min": 0, "max": 1, "default": 0, "description": "Enable breadth analysis addon for S7" },
+    "advance_decline_threshold": { "min": 0.6, "max": 0.9, "default": 0.75, "description": "Advance/decline threshold for market breadth" },
+    "new_highs_lows_ratio": { "min": 1.2, "max": 3.0, "default": 2.0, "description": "New highs to lows ratio threshold" },
+    "sector_rotation_weight": { "min": 0.1, "max": 0.5, "default": 0.25, "description": "Weight of sector rotation in breadth analysis" },
+    "breadth_lookback_bars": { "min": 10, "max": 50, "default": 20, "description": "Lookback period for breadth calculations" }
   }
 }

@@ -7,7 +7,7 @@ namespace BotCore.Config
         public static string Profile => "high_win_rate";
         public static Dictionary<string, int> AttemptCaps => new()
         {
-            { "S1", 0 }, { "S2", 2 }, { "S3", 2 }, { "S4", 0 }, { "S5", 0 }, { "S6", 2 }, { "S7", 0 }, { "S8", 0 }, { "S9", 0 }, { "S10", 0 }, { "S11", 2 }, { "S12", 0 }, { "S13", 0 }
+            { "S1", 0 }, { "S2", 2 }, { "S3", 2 }, { "S4", 0 }, { "S5", 0 }, { "S6", 2 }, { "S7", 1 }, { "S8", 0 }, { "S9", 0 }, { "S10", 0 }, { "S11", 2 }, { "S12", 0 }, { "S13", 0 }
         };
         public static Dictionary<string, int> Buffers => new() { { "ES_ticks", 1 }, { "NQ_ticks", 2 } };
         public static Dictionary<string, object> GlobalFilters => new()
