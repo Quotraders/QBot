@@ -24,20 +24,22 @@ public sealed class VolatilityContractionResolver : IFeatureResolver
         try
         {
             var featureBus = _serviceProvider.GetRequiredService<BotCore.Fusion.IFeatureBusWithProbe>();
-            var value = featureBus.Probe(symbol, "vdc");
+            // Note: This resolver is registered for "vdc" key and probes "volatility.contraction" 
+            // The FeatureBusMapper should handle the mapping from "vdc" to "volatility.contraction"
+            var value = featureBus.Probe(symbol, "volatility.contraction");
             
             if (!value.HasValue)
             {
-                throw new InvalidOperationException($"VDC not available for symbol '{symbol}' - fail closed");
+                throw new InvalidOperationException($"Volatility contraction not available for symbol '{symbol}' - fail closed");
             }
             
-            _logger.LogTrace("VDC for {Symbol}: {Value}", symbol, value);
+            _logger.LogTrace("Volatility contraction for {Symbol}: {Value}", symbol, value);
             return Task.FromResult(value);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to resolve VDC for symbol {Symbol}", symbol);
-            throw new InvalidOperationException($"Production VDC resolution failed for '{symbol}': {ex.Message}", ex);
+            _logger.LogError(ex, "Failed to resolve volatility contraction for symbol {Symbol}", symbol);
+            throw new InvalidOperationException($"Production volatility contraction resolution failed for '{symbol}': {ex.Message}", ex);
         }
     }
 }
@@ -58,7 +60,8 @@ public sealed class MomentumZScoreResolver : IFeatureResolver
         try
         {
             var featureBus = _serviceProvider.GetRequiredService<BotCore.Fusion.IFeatureBusWithProbe>();
-            var value = featureBus.Probe(symbol, "mom.zscore");
+            // Fixed: Use the actual key that DecisionFusionCoordinator publishes
+            var value = featureBus.Probe(symbol, "momentum.zscore");
             
             if (!value.HasValue)
             {

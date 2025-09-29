@@ -162,7 +162,8 @@ public sealed class SpreadResolver : IFeatureResolver
         try
         {
             var featureBus = _serviceProvider.GetRequiredService<BotCore.Fusion.IFeatureBusWithProbe>();
-            var value = featureBus.Probe(symbol, "spread");
+            // Fixed: Use "spread.current" to match FeatureMapAuthority registration
+            var value = featureBus.Probe(symbol, "spread.current");
             
             if (!value.HasValue)
             {
@@ -196,7 +197,8 @@ public sealed class LiquidityScoreResolver : IFeatureResolver
         try
         {
             var featureBus = _serviceProvider.GetRequiredService<BotCore.Fusion.IFeatureBusWithProbe>();
-            var value = featureBus.Probe(symbol, "liquidity_score");
+            // Fixed: Use "liquidity.score" to match FeatureMapAuthority registration  
+            var value = featureBus.Probe(symbol, "liquidity.score");
             
             if (!value.HasValue)
             {

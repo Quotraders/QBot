@@ -62,21 +62,22 @@ public sealed class RealizedVolatilityResolver : IFeatureResolver
         try
         {
             var featureBus = _serviceProvider.GetRequiredService<BotCore.Fusion.IFeatureBusWithProbe>();
-            var featureKey = $"realized_volatility.{_period}";
+            // Fixed: Use the actual key that DecisionFusionCoordinator publishes
+            var featureKey = "volatility.realized";
             var value = featureBus.Probe(symbol, featureKey);
             
             if (!value.HasValue)
             {
-                throw new InvalidOperationException($"Realized volatility({_period}) not available for symbol '{symbol}' - fail closed");
+                throw new InvalidOperationException($"Realized volatility not available for symbol '{symbol}' - fail closed");
             }
             
-            _logger.LogTrace("Realized volatility({Period}) for {Symbol}: {Value}", _period, symbol, value);
+            _logger.LogTrace("Realized volatility for {Symbol}: {Value}", symbol, value);
             return Task.FromResult(value);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to resolve realized volatility({Period}) for symbol {Symbol}", _period, symbol);
-            throw new InvalidOperationException($"Production realized volatility({_period}) resolution failed for '{symbol}': {ex.Message}", ex);
+            _logger.LogError(ex, "Failed to resolve realized volatility for symbol {Symbol}", symbol);
+            throw new InvalidOperationException($"Production realized volatility resolution failed for '{symbol}': {ex.Message}", ex);
         }
     }
 }

@@ -105,6 +105,7 @@ public sealed class FeatureMapAuthority
     /// </summary>
     private void RegisterMarketMicrostructureResolvers()
     {
+        // Fixed: Register with DSL shorthand keys that StrategyKnowledgeGraphNew actually uses
         RegisterResolver("vdc", new VolatilityContractionResolver(_serviceProvider));
         RegisterResolver("mom.zscore", new MomentumZScoreResolver(_serviceProvider));
         RegisterResolver("pullback.risk", new PullbackRiskResolver(_serviceProvider));
