@@ -148,16 +148,29 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             var marketDataService = _serviceProvider.GetService<BotCore.Services.MarketTimeService>();
             if (marketDataService != null)
             {
-                // For production implementation, this would get real-time prices
-                // For now, return a reasonable default based on symbol
-                return symbol switch
+                // Try to get real-time price from market data service
+                var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+                foreach (var aggregator in barAggregators)
                 {
-                    "ES" => 4250.0,
-                    "NQ" => 15000.0,
-                    _ => 100.0
-                };
+                    var history = aggregator.GetHistory(symbol);
+                    if (history.Count > 0)
+                    {
+                        var latestBar = history[^1];
+                        return (double)latestBar.Close;
+                    }
+                }
+                
+                // If no bar data, try to get from price feed service
+                var priceFeedService = _serviceProvider.GetService<BotCore.Services.PriceFeedService>();
+                if (priceFeedService != null)
+                {
+                    // Implementation would depend on the actual price feed service interface
+                    _logger.LogTrace("PriceFeedService available but no current price method - using latest bar fallback");
+                }
             }
             
+            // If no real data available, fail fast rather than return stub values
+            _logger.LogWarning("No real-time price data available for {Symbol} - market data service integration required", symbol);
             return null;
         }
         catch (Exception ex)
@@ -600,19 +613,45 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
     {
         try
         {
-            // Get market data service to calculate spread
+            // Get market data service to calculate spread from real bid/ask data
             var marketDataService = _serviceProvider.GetService<BotCore.Services.MarketTimeService>();
             if (marketDataService != null)
             {
-                // For production implementation, this would use real bid/ask data
-                // For now, return a realistic spread based on symbol type
-                return symbol switch
+                // Try to get real bid/ask data from tick data or level 1 quotes
+                var tickDataService = _serviceProvider.GetService<BotCore.Services.TickDataService>();
+                if (tickDataService != null)
                 {
-                    "ES" or "NQ" => 0.25, // ES/NQ typical spread
-                    _ => 1.0 // Default spread
-                };
+                    var latestTick = tickDataService.GetLatestTick(symbol);
+                    if (latestTick != null && latestTick.Bid > 0 && latestTick.Ask > 0)
+                    {
+                        var spread = latestTick.Ask - latestTick.Bid;
+                        _logger.LogTrace("Real spread for {Symbol}: {Spread}", symbol, spread);
+                        return spread;
+                    }
+                }
+                
+                // Fallback to bar data spread estimation if tick data unavailable
+                var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+                foreach (var aggregator in barAggregators)
+                {
+                    var history = aggregator.GetHistory(symbol);
+                    if (history.Count >= 2)
+                    {
+                        var recentBars = history.TakeLast(2).ToList();
+                        var avgVolume = recentBars.Average(b => b.Volume);
+                        
+                        // Estimate spread based on recent volatility and volume
+                        var priceRange = (double)(recentBars.Max(b => b.High) - recentBars.Min(b => b.Low));
+                        var estimatedSpread = priceRange * (1000.0 / Math.Max(avgVolume, 100.0)) * 0.1;
+                        
+                        _logger.LogTrace("Estimated spread for {Symbol}: {Spread} (based on bars)", symbol, estimatedSpread);
+                        return estimatedSpread;
+                    }
+                }
             }
             
+            // Fail fast if no real market data is available
+            _logger.LogWarning("No real market data available to calculate spread for {Symbol}", symbol);
             return null;
         }
         catch (Exception ex)
@@ -672,11 +711,26 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             var patternEngine = _serviceProvider.GetService<BotCore.Patterns.PatternEngine>();
             if (patternEngine != null)
             {
-                // For production implementation, this would get real pattern scores
-                // For now, return reasonable defaults
-                return bullish ? 0.6 : 0.4;
+                // Get actual pattern analysis from the pattern engine
+                var patterns = patternEngine.AnalyzePatterns(symbol);
+                if (patterns.Any())
+                {
+                    // Calculate aggregated score for bullish/bearish patterns
+                    var relevantPatterns = bullish 
+                        ? patterns.Where(p => p.Intent == BotCore.Strategy.StrategyIntent.Buy)
+                        : patterns.Where(p => p.Intent == BotCore.Strategy.StrategyIntent.Sell);
+                    
+                    if (relevantPatterns.Any())
+                    {
+                        var avgScore = relevantPatterns.Average(p => p.Confidence);
+                        _logger.LogTrace("Pattern score for {Symbol} (bullish: {Bullish}): {Score:F3}", symbol, bullish, avgScore);
+                        return avgScore;
+                    }
+                }
             }
             
+            // Fail fast if pattern engine is not available - don't return defaults
+            _logger.LogWarning("PatternEngine not available or no patterns found for {Symbol} - real pattern analysis required", symbol);
             return null;
         }
         catch (Exception ex)
@@ -696,11 +750,22 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             var regimeService = _serviceProvider.GetService<BotCore.Services.RegimeDetectionService>();
             if (regimeService != null)
             {
-                // For production implementation, this would get real regime detection
-                // For now, return trend regime (1.0)
-                return 1.0;
+                // Get actual regime detection from service
+                var regime = regimeService.DetectRegime(symbol);
+                var regimeValue = regime switch
+                {
+                    BotCore.Services.MarketRegime.Trending => 1.0,
+                    BotCore.Services.MarketRegime.Ranging => 0.0,
+                    BotCore.Services.MarketRegime.Volatile => -1.0,
+                    _ => 0.5 // Neutral/Unknown
+                };
+                
+                _logger.LogTrace("Regime for {Symbol}: {Regime} (value: {Value})", symbol, regime, regimeValue);
+                return regimeValue;
             }
             
+            // Fail fast if regime service is not available
+            _logger.LogWarning("RegimeDetectionService not available for {Symbol} - real regime analysis required", symbol);
             return null;
         }
         catch (Exception ex)

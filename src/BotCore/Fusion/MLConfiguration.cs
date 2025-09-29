@@ -203,8 +203,9 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
         {
             _logger.LogError(ex, "Error in UCB strategy prediction for symbol {Symbol}", symbol);
             
-            // Fallback to safe default using valid StrategyIntent values
-            return ("MeanReversion", BotCore.Strategy.StrategyIntent.Buy, 0.3);
+            // Fail fast if no ML model is available - don't return hard-coded defaults
+            _logger.LogWarning("UCB prediction failed for {Symbol} - real Neural-UCB integration required", symbol);
+            throw new InvalidOperationException($"UCB prediction failed for {symbol} - Neural-UCB service not available or not trained");
         }
     }
 
@@ -252,45 +253,72 @@ public sealed class ProductionPpoSizer : IPpoSizer
 
     public async Task<double> PredictSizeAsync(string symbol, BotCore.Strategy.StrategyIntent intent, double risk, CancellationToken cancellationToken = default)
     {
-        await Task.CompletedTask.ConfigureAwait(false);
-        
         try
         {
-            // Base position size based on risk
-            var baseSize = risk * 0.5; // Conservative base sizing
-            
-            // Intent-based adjustments - using valid StrategyIntent values (Buy/Sell)
-            var intentMultiplier = intent switch
+            // Try to get real PPO model service
+            var ppoService = _serviceProvider.GetService<BotCore.ML.PPOService>();
+            if (ppoService != null)
             {
-                BotCore.Strategy.StrategyIntent.Buy => 1.0, // Standard long position sizing
-                BotCore.Strategy.StrategyIntent.Sell => 1.0, // Standard short position sizing
-                _ => 1.0
-            };
-
-            // Symbol-based adjustments
-            var symbolMultiplier = symbol switch
+                // Use actual PPO model for position sizing
+                var marketState = await GetMarketStateAsync(symbol, cancellationToken).ConfigureAwait(false);
+                var actionVector = new double[] { risk, (double)intent, GetSymbolEncoding(symbol) };
+                
+                var ppoSize = await ppoService.PredictActionAsync(marketState, actionVector, cancellationToken).ConfigureAwait(false);
+                
+                _logger.LogDebug("PPO size prediction for {Symbol}: {Size} (risk: {Risk}, intent: {Intent})", 
+                    symbol, ppoSize, risk, intent);
+                
+                return Math.Max(0.01, Math.Min(ppoSize, 2.0)); // Clamp to reasonable bounds
+            }
+            
+            // Try alternative RL service
+            var rlService = _serviceProvider.GetService<BotCore.ML.ReinforcementLearningService>();
+            if (rlService != null)
             {
-                "ES" => 1.0, // Standard for ES
-                "NQ" => 0.9, // Slightly smaller for NQ (more volatile)
-                _ => 0.8 // More conservative for other symbols
-            };
-
-            var finalSize = baseSize * intentMultiplier * symbolMultiplier;
+                var sizeRecommendation = await rlService.GetPositionSizeAsync(symbol, intent, risk, cancellationToken).ConfigureAwait(false);
+                if (sizeRecommendation.HasValue)
+                {
+                    _logger.LogDebug("RL size recommendation for {Symbol}: {Size}", symbol, sizeRecommendation.Value);
+                    return sizeRecommendation.Value;
+                }
+            }
             
-            // Ensure within bounds
-            finalSize = Math.Max(0.0, Math.Min(finalSize, 0.1)); // Max 10% position
-            
-            _logger.LogTrace("PPO size prediction for {Symbol} {Intent}: {Size:P2} (risk: {Risk:P2})", 
-                symbol, intent, finalSize, risk);
-            
-            return finalSize;
+            // Fail fast if no ML models are available
+            _logger.LogWarning("No PPO/RL service available for position sizing of {Symbol} - real ML integration required", symbol);
+            throw new InvalidOperationException($"PPO sizing failed for {symbol} - ML services not available or not trained");
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!(ex is InvalidOperationException))
         {
-            _logger.LogError(ex, "Error in PPO size prediction for {Symbol} {Intent}", symbol, intent);
-            
-            // Fallback to very conservative sizing
-            return Math.Min(risk * 0.2, 0.02); // Max 2% position
+            _logger.LogError(ex, "Error in PPO size prediction for symbol {Symbol}", symbol);
+            throw new InvalidOperationException($"PPO sizing error for {symbol}: {ex.Message}", ex);
         }
+    }
+
+    private async Task<double[]> GetMarketStateAsync(string symbol, CancellationToken cancellationToken)
+    {
+        // Get market features for PPO model input
+        var featureBus = _serviceProvider.GetService<IFeatureBusWithProbe>();
+        if (featureBus != null)
+        {
+            var price = featureBus.Probe(symbol, "price.current") ?? 0.0;
+            var volatility = featureBus.Probe(symbol, "volatility.realized") ?? 0.0;
+            var volume = featureBus.Probe(symbol, "volume.current") ?? 0.0;
+            
+            return new double[] { price, volatility, volume };
+        }
+        
+        return new double[] { 0.0, 0.0, 0.0 };
+    }
+
+    private static double GetSymbolEncoding(string symbol)
+    {
+        return symbol switch
+        {
+            "ES" => 1.0,
+            "NQ" => 2.0,
+            "YM" => 3.0,
+            "RTY" => 4.0,
+            _ => 0.0
+        };
     }
 }

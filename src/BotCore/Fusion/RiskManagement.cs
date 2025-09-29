@@ -54,18 +54,40 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
     {
         try
         {
-            // For production implementation, integrate with real risk management system
-            // For now, return a reasonable default based on available context
-            const double defaultRisk = 0.02; // 2% default risk level
+            // Try to get real risk management service
+            var riskManagerService = _serviceProvider.GetService<BotCore.Services.IRiskManager>();
+            if (riskManagerService != null)
+            {
+                var riskState = riskManagerService.GetCurrentRiskState();
+                if (riskState != null)
+                {
+                    var currentRisk = (double)riskState.RiskLevel;
+                    _logger.LogTrace("Current risk retrieved from service: {Risk:P2}", currentRisk);
+                    return Task.FromResult(currentRisk);
+                }
+            }
             
-            _logger.LogTrace("Current risk retrieved (default): {Risk:P2}", defaultRisk);
-            return Task.FromResult(defaultRisk);
+            // Try enhanced risk manager
+            var enhancedRiskService = _serviceProvider.GetService<TradingBot.Abstractions.IRiskManager>();
+            if (enhancedRiskService != null)
+            {
+                var riskMetrics = enhancedRiskService.GetRiskMetrics();
+                if (riskMetrics != null)
+                {
+                    var risk = Math.Max(riskMetrics.CurrentDrawdown, riskMetrics.DailyRisk);
+                    _logger.LogTrace("Current risk from enhanced service: {Risk:P2}", risk);
+                    return Task.FromResult(risk);
+                }
+            }
+            
+            // Fail fast if no real risk management service is available
+            _logger.LogError("No risk management service available - real integration required");
+            throw new InvalidOperationException("Risk management service not available or not configured");
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!(ex is InvalidOperationException))
         {
             _logger.LogError(ex, "Error retrieving current risk");
-            // Fail-safe: return conservative risk level
-            return 0.01; // 1% conservative risk
+            throw new InvalidOperationException($"Failed to get current risk: {ex.Message}", ex);
         }
     }
 
@@ -73,18 +95,40 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
     {
         try
         {
-            // For production implementation, integrate with real risk management system
-            // For now, return a reasonable default account equity
-            const double defaultEquity = 100000.0; // $100k default equity
+            // Try to get real risk/account management service
+            var accountService = _serviceProvider.GetService<BotCore.Services.IAccountService>();
+            if (accountService != null)
+            {
+                var accountInfo = accountService.GetAccountInfo();
+                if (accountInfo != null && accountInfo.Equity > 0)
+                {
+                    var equity = (double)accountInfo.Equity;
+                    _logger.LogTrace("Account equity retrieved from service: {Equity:C}", equity);
+                    return Task.FromResult(equity);
+                }
+            }
             
-            _logger.LogTrace("Account equity retrieved (default): {Equity:C}", defaultEquity);
-            return Task.FromResult(defaultEquity);
+            // Try enhanced risk manager for account equity
+            var enhancedRiskService = _serviceProvider.GetService<TradingBot.Abstractions.IRiskManager>();
+            if (enhancedRiskService != null)
+            {
+                var riskMetrics = enhancedRiskService.GetRiskMetrics();
+                if (riskMetrics != null && riskMetrics.AccountValue > 0)
+                {
+                    var equity = riskMetrics.AccountValue;
+                    _logger.LogTrace("Account equity from enhanced service: {Equity:C}", equity);
+                    return Task.FromResult(equity);
+                }
+            }
+            
+            // Fail fast if no real account service is available
+            _logger.LogError("No account service available - real integration required");
+            throw new InvalidOperationException("Account service not available or not configured");
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!(ex is InvalidOperationException))
         {
             _logger.LogError(ex, "Error retrieving account equity");
-            // Fail-safe: return conservative equity estimate
-            return Task.FromResult(25000.0); // $25K conservative estimate
+            throw new InvalidOperationException($"Failed to get account equity: {ex.Message}", ex);
         }
     }
 }
