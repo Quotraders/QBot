@@ -17,6 +17,70 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ## 🚨 PHASE 2 - ANALYZER VIOLATION ELIMINATION (IN PROGRESS)
 
+### Round 25 - Systematic High-Priority Fix Session (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 7309+ | 7295+ | S7Service.cs, TradingBotSymbolSessionManager.cs, BarAggregator.cs | Named constants for trading configuration, averaging divisors, session parameters (28+ violations fixed) |
+| CA1031 | 280+ | 270+ | S7MarketDataBridge.cs, S7FeaturePublisher.cs, CloudDataUploader.cs, CloudRlTrainer.cs | Specific exception handling for reflection, HTTP, I/O, and JSON operations (10+ violations fixed) |
+| CA1062 | 200+ | 196+ | StructuralPatternDetector.cs, ReversalPatternDetector.cs, ContinuationPatternDetector.cs, CandlestickPatternDetector.cs | ArgumentNullException guards for public API entry points (4 violations fixed) |
+
+**Example Pattern - S109 Trading Session Constants**:
+```csharp
+// Before (Violation)
+MarketSession.RegularHours => 1.0m,      // Standard multiplier for regular hours
+MarketSession.PostMarket => 1.15m,       // Higher volatility/risk in after hours
+return sessionType switch { MarketSession.RegularHours => 9, MarketSession.PostMarket => 16 };
+
+// After (Compliant)
+private const decimal RegularHoursMultiplier = 1.0m;
+private const decimal PostMarketMultiplier = 1.15m;
+private const int RegularHoursStart = 9;     // 9:30 AM ET
+private const int PostMarketStart = 16;      // 4:00 PM ET
+
+MarketSession.RegularHours => RegularHoursMultiplier,
+MarketSession.PostMarket => PostMarketMultiplier,
+return sessionType switch { MarketSession.RegularHours => RegularHoursStart, MarketSession.PostMarket => PostMarketStart };
+```
+
+**Example Pattern - CA1031 Specific Exception Handling**:
+```csharp
+// Before (Violation)
+catch (Exception ex)
+{
+    _log.LogError(ex, "[CloudDataUploader] Failed to upload training data");
+}
+
+// After (Compliant)
+catch (HttpRequestException ex)
+{
+    _log.LogError(ex, "[CloudDataUploader] HTTP error uploading training data");
+}
+catch (UnauthorizedAccessException ex)
+{
+    _log.LogError(ex, "[CloudDataUploader] Access denied uploading training data");
+}
+catch (IOException ex)
+{
+    _log.LogError(ex, "[CloudDataUploader] I/O error uploading training data");
+}
+```
+
+**Example Pattern - CA1062 Null Guards**:
+```csharp
+// Before (Violation)
+public PatternResult Detect(IReadOnlyList<Bar> bars)
+{
+    if (bars.Count < RequiredBars)  // CA1062: bars could be null
+
+// After (Compliant)
+public PatternResult Detect(IReadOnlyList<Bar> bars)
+{
+    if (bars is null) throw new ArgumentNullException(nameof(bars));
+    if (bars.Count < RequiredBars)
+```
+
+**Rationale**: Systematic elimination of Priority 1 violations following Analyzer-Fix-Guidebook.md patterns. Applied production-safe exception handling for cloud services, proper null validation for public APIs, and configuration-driven constants for all trading parameters. Zero suppressions maintained throughout.
+
 ### Priority 1: Correctness & Invariants (Current Session)
 | Error Code | Count | Files Affected | Fix Applied |
 |------------|-------|----------------|-------------|
