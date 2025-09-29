@@ -1,9 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
-using TradingBot.Backtest.ExecutionSimulators;
-using TradingBot.Safety.Analysis;
-using TradingBot.Safety.Explainability;
-using TradingBot.Monitoring.Alerts;
+// TODO: Re-enable when circular dependencies are resolved
+// using TradingBot.Backtest.ExecutionSimulators;
+// using TradingBot.Safety.Analysis;
+// using TradingBot.Safety.Explainability;
+// using TradingBot.Monitoring.Alerts;
 
 namespace TradingBot.BotCore.Extensions
 {
@@ -20,11 +21,12 @@ namespace TradingBot.BotCore.Extensions
             this IServiceCollection services, 
             IConfiguration configuration)
         {
+            // TODO: Re-enable when circular dependencies are resolved
             // Register core enhanced services
-            services.AddBookAwareSimulation(configuration);
-            services.AddCounterfactualReplay(configuration);
-            services.AddExplainabilityServices(configuration);
-            services.AddEnhancedAlerting(configuration);
+            // services.AddBookAwareSimulation(configuration);
+            // services.AddCounterfactualReplay(configuration);
+            // services.AddExplainabilityServices(configuration);
+            // services.AddEnhancedAlerting(configuration);
 
             return services;
         }

@@ -7,6 +7,7 @@ using System.IO;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using TradingBot.Abstractions;
 
 namespace BotCore.Services
 {
@@ -396,7 +397,7 @@ namespace BotCore.Services
     /// <summary>
     /// Basic artifact information
     /// </summary>
-    public sealed class ArtifactInfo
+    public class ArtifactInfo
     {
         public string Path { get; set; } = string.Empty;
         public string Sha256 { get; set; } = string.Empty;
@@ -412,7 +413,7 @@ namespace BotCore.Services
         public DateTime LastRotation { get; set; }
         public int RotationCount { get; set; }
         public DateTime CooldownExpires { get; set; }
-        public PerformanceMetrics PerformanceMetrics { get; set; } = new();
+        public ModelPerformanceMetrics PerformanceMetrics { get; set; } = new();
         public string Version { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }
     }
@@ -430,7 +431,7 @@ namespace BotCore.Services
     /// <summary>
     /// Performance metrics for tracking model effectiveness
     /// </summary>
-    public sealed class PerformanceMetrics
+    public sealed class ModelPerformanceMetrics
     {
         public int TotalTrades { get; set; }
         public double WinRate { get; set; }
@@ -438,13 +439,4 @@ namespace BotCore.Services
         public double MaxDrawdown { get; set; }
     }
 
-    /// <summary>
-    /// Model information from manifest
-    /// </summary>
-    public sealed class ModelInfo
-    {
-        public string Url { get; set; } = string.Empty;
-        public string Sha256 { get; set; } = string.Empty;
-        public long Size { get; set; }
-    }
 }
