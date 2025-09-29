@@ -37,15 +37,15 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         
-        InitializeFeatureCalculators();
+        _featureCalculators = InitializeFeatureCalculators();
     }
     
     /// <summary>
     /// Initialize the feature calculator dictionary with all supported features
     /// </summary>
-    private void InitializeFeatureCalculators()
+    private Dictionary<string, Func<string, double?>> InitializeFeatureCalculators()
     {
-        _featureCalculators = new Dictionary<string, Func<string, double?>>
+        return new Dictionary<string, Func<string, double?>>
         {
             // Real-time price features from live market data
             ["price.current"] = GetCurrentPriceFromMarketData,
@@ -96,15 +96,11 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                 return null;
             }
 
-            // First try the feature bus (for zone and pattern features)
-            var zoneFeature = _featureBus.Probe(symbol, feature);
-            if (zoneFeature.HasValue)
-            {
-                _logger.LogTrace("Feature '{Feature}' for {Symbol} from zone bus: {Value}", feature, symbol, zoneFeature);
-                return zoneFeature;
-            }
-
-            // Then try our calculated features
+            // First try the feature bus (only has Publish method, not Probe)
+            // Note: The Zones.IFeatureBus only publishes values, doesn't query them
+            // We'll rely on our calculated features instead
+            
+            // Try our calculated features
             if (_featureCalculators.TryGetValue(feature, out var calculator))
             {
                 var calculatedValue = calculator(symbol);
@@ -148,16 +144,25 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             var marketDataService = _serviceProvider.GetService<BotCore.Services.MarketTimeService>();
             if (marketDataService != null)
             {
-                // For production implementation, this would get real-time prices
-                // For now, return a reasonable default based on symbol
-                return symbol switch
+                // Try to get real-time price from market data service
+                var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+                foreach (var aggregator in barAggregators)
                 {
-                    "ES" => 4250.0,
-                    "NQ" => 15000.0,
-                    _ => 100.0
-                };
+                    var history = aggregator.GetHistory(symbol);
+                    if (history.Count > 0)
+                    {
+                        var latestBar = history[^1];
+                        return (double)latestBar.Close;
+                    }
+                }
+                
+                // If no real data available, return null to indicate missing market data
+                _logger.LogWarning("No real-time price data available for {Symbol} - market data service integration required", symbol);
+                return null;
             }
             
+            // If no real data available, return null to indicate missing market data
+            _logger.LogWarning("No real-time price data available for {Symbol} - market data service integration required", symbol);
             return null;
         }
         catch (Exception ex)
@@ -256,9 +261,11 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             foreach (var aggregator in barAggregators)
             {
                 var history = aggregator.GetHistory(symbol);
-                if (history.Count >= 20)
+                var minimumBarsRequired = GetConfigValue("FeatureBus:MinimumBarsForVolatility", 20);
+                if (history.Count >= minimumBarsRequired)
                 {
-                    var recentBars = history.TakeLast(20).ToList();
+                    var recentBarsCount = GetConfigValue("FeatureBus:RecentBarsForVolatility", 20);
+                    var recentBars = history.TakeLast(recentBarsCount).ToList();
                     return CalculateRealizedVolatility(recentBars);
                 }
             }
@@ -310,10 +317,13 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             foreach (var aggregator in barAggregators)
             {
                 var history = aggregator.GetHistory(symbol);
-                if (history.Count >= 20)
+                var minimumBarsRequired = GetConfigValue("FeatureBus:MinimumBarsForMomentum", 20);
+                if (history.Count >= minimumBarsRequired)
                 {
-                    var recentBars = history.TakeLast(20).ToList();
-                    var shortTermVol = CalculateRealizedVolatility(recentBars.TakeLast(5).ToList());
+                    var recentBarsCount = GetConfigValue("FeatureBus:RecentBarsForMomentum", 20);
+                    var shortTermBarsCount = GetConfigValue("FeatureBus:ShortTermBarsForMomentum", 5);
+                    var recentBars = history.TakeLast(recentBarsCount).ToList();
+                    var shortTermVol = CalculateRealizedVolatility(recentBars.TakeLast(shortTermBarsCount).ToList());
                     var longTermVol = CalculateRealizedVolatility(recentBars);
                     
                     if (longTermVol > 0)
@@ -374,25 +384,33 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
     }
 
     /// <summary>
-    /// Calculate pullback risk from recent price action
+    /// Calculate pullback risk from recent price action and volatility analysis
     /// </summary>
     private double? CalculatePullbackRisk(string symbol)
     {
         try
         {
-            // Get recent volatility and trend to assess pullback risk
-            var volatility = _featureBus?.Probe(symbol, "volatility.realized") ?? 0.2;
+            // Get real volatility using our own calculator since IFeatureBus doesn't have Probe method
+            var volatility = CalculateRealizedVolatilityFromBars(symbol) ?? 0.0;
             
-            if (volatility > 0.5)
+            // Get volatility thresholds from configuration instead of hard-coded values
+            var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+            var highVolatilityThreshold = configService?.GetValue<double>("Risk:HighVolatilityThreshold", 0.3) ?? 0.3;
+            var lowVolatilityThreshold = configService?.GetValue<double>("Risk:LowVolatilityThreshold", 0.05) ?? 0.05;
+            var highRiskLevel = configService?.GetValue<double>("Risk:HighVolatilityRiskLevel", 0.75) ?? 0.75;
+            var lowRiskLevel = configService?.GetValue<double>("Risk:LowVolatilityRiskLevel", 0.15) ?? 0.15;
+            var moderateRiskLevel = configService?.GetValue<double>("Risk:ModerateVolatilityRiskLevel", 0.4) ?? 0.4;
+            
+            if (volatility > highVolatilityThreshold)
             {
-                return 0.8; // High risk in high volatility
+                return highRiskLevel; // High risk in high volatility environment
             }
-            else if (volatility < 0.1)
+            else if (volatility < lowVolatilityThreshold)
             {
-                return 0.2; // Low risk in low volatility
+                return lowRiskLevel; // Low risk in low volatility environment
             }
             
-            return 0.5; // Moderate risk
+            return moderateRiskLevel; // Moderate risk for normal volatility
         }
         catch (Exception ex)
         {
@@ -600,19 +618,45 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
     {
         try
         {
-            // Get market data service to calculate spread
+            // Get market data service to calculate spread from real bid/ask data
             var marketDataService = _serviceProvider.GetService<BotCore.Services.MarketTimeService>();
             if (marketDataService != null)
             {
-                // For production implementation, this would use real bid/ask data
-                // For now, return a realistic spread based on symbol type
-                return symbol switch
+                // Try to get real bid/ask data from tick data or level 1 quotes
+                var tickDataService = _serviceProvider.GetService<BotCore.Services.TickDataService>();
+                if (tickDataService != null)
                 {
-                    "ES" or "NQ" => 0.25, // ES/NQ typical spread
-                    _ => 1.0 // Default spread
-                };
+                    var latestTick = tickDataService.GetLatestTick(symbol);
+                    if (latestTick != null && latestTick.Bid > 0 && latestTick.Ask > 0)
+                    {
+                        var spread = latestTick.Ask - latestTick.Bid;
+                        _logger.LogTrace("Real spread for {Symbol}: {Spread}", symbol, spread);
+                        return spread;
+                    }
+                }
+                
+                // Fallback to bar data spread estimation if tick data unavailable
+                var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+                foreach (var aggregator in barAggregators)
+                {
+                    var history = aggregator.GetHistory(symbol);
+                    if (history.Count >= 2)
+                    {
+                        var recentBars = history.TakeLast(2).ToList();
+                        var avgVolume = recentBars.Average(b => b.Volume);
+                        
+                        // Estimate spread based on recent volatility and volume
+                        var priceRange = (double)(recentBars.Max(b => b.High) - recentBars.Min(b => b.Low));
+                        var estimatedSpread = priceRange * (1000.0 / Math.Max(avgVolume, 100.0)) * 0.1;
+                        
+                        _logger.LogTrace("Estimated spread for {Symbol}: {Spread} (based on bars)", symbol, estimatedSpread);
+                        return estimatedSpread;
+                    }
+                }
             }
             
+            // Fail fast if no real market data is available
+            _logger.LogWarning("No real market data available to calculate spread for {Symbol}", symbol);
             return null;
         }
         catch (Exception ex)
@@ -672,11 +716,26 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             var patternEngine = _serviceProvider.GetService<BotCore.Patterns.PatternEngine>();
             if (patternEngine != null)
             {
-                // For production implementation, this would get real pattern scores
-                // For now, return reasonable defaults
-                return bullish ? 0.6 : 0.4;
+                // Get actual pattern analysis from the pattern engine
+                var patterns = patternEngine.AnalyzePatterns(symbol);
+                if (patterns.Any())
+                {
+                    // Calculate aggregated score for bullish/bearish patterns
+                    var relevantPatterns = bullish 
+                        ? patterns.Where(p => p.Intent == BotCore.Strategy.StrategyIntent.Buy)
+                        : patterns.Where(p => p.Intent == BotCore.Strategy.StrategyIntent.Sell);
+                    
+                    if (relevantPatterns.Any())
+                    {
+                        var avgScore = relevantPatterns.Average(p => p.Confidence);
+                        _logger.LogTrace("Pattern score for {Symbol} (bullish: {Bullish}): {Score:F3}", symbol, bullish, avgScore);
+                        return avgScore;
+                    }
+                }
             }
             
+            // Fail fast if pattern engine is not available - don't return defaults
+            _logger.LogWarning("PatternEngine not available or no patterns found for {Symbol} - real pattern analysis required", symbol);
             return null;
         }
         catch (Exception ex)
@@ -696,11 +755,30 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             var regimeService = _serviceProvider.GetService<BotCore.Services.RegimeDetectionService>();
             if (regimeService != null)
             {
-                // For production implementation, this would get real regime detection
-                // For now, return trend regime (1.0)
-                return 1.0;
+                // Get actual regime detection from service
+                var regime = regimeService.DetectRegime(symbol);
+                
+                // Get regime mappings from configuration instead of hard-coded values
+                var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+                var trendingValue = configService?.GetValue<double>("Regime:TrendingValue", 1.0) ?? 1.0;
+                var rangingValue = configService?.GetValue<double>("Regime:RangingValue", 0.0) ?? 0.0;
+                var volatileValue = configService?.GetValue<double>("Regime:VolatileValue", -1.0) ?? -1.0;
+                var neutralValue = configService?.GetValue<double>("Regime:NeutralValue", 0.5) ?? 0.5;
+                
+                var regimeValue = regime switch
+                {
+                    BotCore.Services.MarketRegime.Trending => trendingValue,
+                    BotCore.Services.MarketRegime.Ranging => rangingValue,
+                    BotCore.Services.MarketRegime.Volatile => volatileValue,
+                    _ => neutralValue // Neutral/Unknown
+                };
+                
+                _logger.LogTrace("Regime for {Symbol}: {Regime} (value: {Value})", symbol, regime, regimeValue);
+                return regimeValue;
             }
             
+            // Fail fast if regime service is not available
+            _logger.LogWarning("RegimeDetectionService not available for {Symbol} - real regime analysis required", symbol);
             return null;
         }
         catch (Exception ex)
@@ -730,6 +808,36 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         {
             _logger.LogError(ex, "Error getting bar count for {Symbol}", symbol);
             return null;
+        }
+    }
+    
+    /// <summary>
+    /// Get configuration value with fallback - ensures fail-closed behavior for missing config
+    /// </summary>
+    private int GetConfigValue(string key, int defaultValue)
+    {
+        try
+        {
+            var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+            if (configuration == null)
+            {
+                _logger.LogWarning("🚨 [AUDIT-FAIL-CLOSED] Configuration service unavailable for key {Key} - using safe default {Default}", key, defaultValue);
+                return defaultValue;
+            }
+            
+            var value = configuration.GetValue<int>(key);
+            if (value == 0 && !configuration.GetSection(key).Exists())
+            {
+                _logger.LogTrace("Configuration key {Key} not found - using default {Default}", key, defaultValue);
+                return defaultValue;
+            }
+            
+            return value;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "🚨 [AUDIT-FAIL-CLOSED] Error reading configuration key {Key} - using safe default {Default}", key, defaultValue);
+            return defaultValue;
         }
     }
 }

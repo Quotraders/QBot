@@ -138,10 +138,10 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
             // Available strategies for UCB selection
             var strategies = new[]
             {
-                ("MeanReversion", BotCore.Strategy.StrategyIntent.ScalpLong),
-                ("TrendFollowing", BotCore.Strategy.StrategyIntent.SwingLong), 
-                ("Breakout", BotCore.Strategy.StrategyIntent.ScalpLong),
-                ("MomentumFade", BotCore.Strategy.StrategyIntent.ScalpShort)
+                ("MeanReversion", BotCore.Strategy.StrategyIntent.Buy),
+                ("TrendFollowing", BotCore.Strategy.StrategyIntent.Buy), 
+                ("Breakout", BotCore.Strategy.StrategyIntent.Buy),
+                ("MomentumFade", BotCore.Strategy.StrategyIntent.Sell)
             };
 
             var totalCount = 0;
@@ -203,9 +203,55 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
         {
             _logger.LogError(ex, "Error in UCB strategy prediction for symbol {Symbol}", symbol);
             
-            // Fallback to safe default
-            return ("MeanReversion", BotCore.Strategy.StrategyIntent.ScalpLong, 0.3);
+            // Fallback to intelligent strategy selection based on available data
+            return SelectIntelligentFallbackStrategy(symbol);
         }
+    }
+    
+    private (string Strategy, BotCore.Strategy.StrategyIntent Intent, double Score) SelectIntelligentFallbackStrategy(string symbol)
+    {
+        try
+        {
+            // Use feature bus to make intelligent strategy selection
+            var featureBus = _serviceProvider.GetService<IFeatureBusWithProbe>();
+            
+            if (featureBus != null)
+            {
+                var volatility = featureBus.Probe(symbol, "volatility.realized") ?? 0.02;
+                var regime = featureBus.Probe(symbol, "regime.current") ?? 0.5;
+                var momentum = featureBus.Probe(symbol, "momentum.current") ?? 0.0;
+                
+                // Select strategy based on market conditions
+                if (regime > 0.7) // Trending market
+                {
+                    if (momentum > 0.0)
+                    {
+                        return ("TrendFollowing", BotCore.Strategy.StrategyIntent.Buy, 0.7);
+                    }
+                    else
+                    {
+                        return ("TrendFollowing", BotCore.Strategy.StrategyIntent.Sell, 0.7);
+                    }
+                }
+                else if (regime < 0.3) // Ranging market
+                {
+                    return ("MeanReversion", momentum > 0.0 ? BotCore.Strategy.StrategyIntent.Sell : BotCore.Strategy.StrategyIntent.Buy, 0.6);
+                }
+                else if (volatility > 0.03) // High volatility
+                {
+                    return ("Breakout", momentum > 0.0 ? BotCore.Strategy.StrategyIntent.Buy : BotCore.Strategy.StrategyIntent.Sell, 0.65);
+                }
+            }
+            
+            // Final fallback to momentum-based strategy
+            return ("MomentumFade", BotCore.Strategy.StrategyIntent.Buy, 0.5);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error in fallback strategy selection for {Symbol}", symbol);
+            return ("Conservative", BotCore.Strategy.StrategyIntent.Buy, 0.4);
+        }
+    }
     }
 
     /// <summary>
@@ -252,46 +298,151 @@ public sealed class ProductionPpoSizer : IPpoSizer
 
     public async Task<double> PredictSizeAsync(string symbol, BotCore.Strategy.StrategyIntent intent, double risk, CancellationToken cancellationToken = default)
     {
-        await Task.CompletedTask.ConfigureAwait(false);
-        
         try
         {
-            // Base position size based on risk
-            var baseSize = risk * 0.5; // Conservative base sizing
-            
-            // Intent-based adjustments
-            var intentMultiplier = intent switch
+            // Use real RLAdvisorSystem for PPO-based position sizing
+            var rlAdvisorSystem = _serviceProvider.GetService<TradingBot.IntelligenceStack.RLAdvisorSystem>();
+            if (rlAdvisorSystem != null)
             {
-                BotCore.Strategy.StrategyIntent.ScalpLong or BotCore.Strategy.StrategyIntent.ScalpShort => 0.8, // Smaller for scalping
-                BotCore.Strategy.StrategyIntent.SwingLong or BotCore.Strategy.StrategyIntent.SwingShort => 1.2, // Larger for swings
-                BotCore.Strategy.StrategyIntent.Hold => 0.0, // No position for hold
-                _ => 1.0
-            };
-
-            // Symbol-based adjustments
-            var symbolMultiplier = symbol switch
-            {
-                "ES" => 1.0, // Standard for ES
-                "NQ" => 0.9, // Slightly smaller for NQ (more volatile)
-                _ => 0.8 // More conservative for other symbols
-            };
-
-            var finalSize = baseSize * intentMultiplier * symbolMultiplier;
+                // Create market context for RL system
+                var marketContext = await CreateMarketContextAsync(symbol, intent, risk, cancellationToken).ConfigureAwait(false);
+                
+                // Get size recommendation from RL system
+                var recommendation = await rlAdvisorSystem.GetPositionSizingRecommendationAsync(marketContext, cancellationToken).ConfigureAwait(false);
+                
+                if (recommendation.HasValue)
+                {
+                    // Normalize size recommendation based on risk and intent
+                    var normalizedSize = NormalizeSizeRecommendation(recommendation.Value, risk, intent);
+                    
+                    _logger.LogDebug("PPO size prediction for {Symbol}: {Size:F4} (risk: {Risk:P2}, intent: {Intent}, raw: {Raw:F4})", 
+                        symbol, normalizedSize, risk, intent, recommendation.Value);
+                    
+                    return normalizedSize;
+                }
+            }
             
-            // Ensure within bounds
-            finalSize = Math.Max(0.0, Math.Min(finalSize, 0.1)); // Max 10% position
-            
-            _logger.LogTrace("PPO size prediction for {Symbol} {Intent}: {Size:P2} (risk: {Risk:P2})", 
-                symbol, intent, finalSize, risk);
-            
-            return finalSize;
+            // Fallback to intelligent heuristic-based sizing with real market data
+            return await CalculateIntelligentFallbackSizeAsync(symbol, intent, risk, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in PPO size prediction for {Symbol} {Intent}", symbol, intent);
+            _logger.LogError(ex, "Error in PPO size prediction for symbol {Symbol}", symbol);
             
-            // Fallback to very conservative sizing
-            return Math.Min(risk * 0.2, 0.02); // Max 2% position
+            // Fallback to safe conservative sizing
+            return CalculateConservativeFallbackSize(risk, intent);
         }
+    }
+
+    private async Task<TradingBot.Abstractions.MarketContext> CreateMarketContextAsync(
+        string symbol, 
+        BotCore.Strategy.StrategyIntent intent, 
+        double risk, 
+        CancellationToken cancellationToken)
+    {
+        // Get feature bus for market data
+        var featureBus = _serviceProvider.GetService<IFeatureBusWithProbe>();
+        
+        var currentPrice = featureBus?.Probe(symbol, "price.current") ?? 4000.0;
+        var volatility = featureBus?.Probe(symbol, "volatility.realized") ?? 0.02;
+        var volume = featureBus?.Probe(symbol, "volume.current") ?? 1000.0;
+        
+        return new TradingBot.Abstractions.MarketContext
+        {
+            Symbol = symbol,
+            CurrentPrice = (decimal)currentPrice,
+            CurrentVolatility = volatility,
+            PositionSize = intent == BotCore.Strategy.StrategyIntent.Buy ? 1.0m : 
+                         intent == BotCore.Strategy.StrategyIntent.Sell ? -1.0m : 0.0m,
+            UnrealizedPnL = 0.0m, // New position
+            HoldDuration = TimeSpan.Zero,
+            TechnicalIndicators = new Dictionary<string, double>
+            {
+                ["volume"] = volume,
+                ["risk_level"] = risk
+            },
+            MarketRegime = GetMarketRegime(symbol)
+        };
+    }
+    
+    private string GetMarketRegime(string symbol)
+    {
+        var featureBus = _serviceProvider.GetService<IFeatureBusWithProbe>();
+        var regimeValue = featureBus?.Probe(symbol, "regime.current") ?? 0.5;
+        
+        return regimeValue switch
+        {
+            > 0.7 => "TRENDING",
+            < 0.3 => "RANGING", 
+            _ => "VOLATILE"
+        };
+    }
+    
+    private static double NormalizeSizeRecommendation(double rawRecommendation, double risk, BotCore.Strategy.StrategyIntent intent)
+    {
+        // Normalize the raw RL recommendation to a reasonable position size
+        var baseSize = Math.Abs(rawRecommendation);
+        
+        // Scale by risk tolerance
+        var riskAdjustedSize = baseSize * risk;
+        
+        // Apply directional multiplier
+        var directionalMultiplier = intent switch
+        {
+            BotCore.Strategy.StrategyIntent.Buy => 1.0,
+            BotCore.Strategy.StrategyIntent.Sell => -1.0,
+            _ => 0.0
+        };
+        
+        // Clamp to reasonable bounds (max 10% position)
+        var finalSize = Math.Max(-0.1, Math.Min(0.1, riskAdjustedSize * directionalMultiplier));
+        
+        return finalSize;
+    }
+    
+    private async Task<double> CalculateIntelligentFallbackSizeAsync(
+        string symbol, 
+        BotCore.Strategy.StrategyIntent intent, 
+        double risk, 
+        CancellationToken cancellationToken)
+    {
+        // Intelligent fallback using real market data when RL system unavailable
+        var featureBus = _serviceProvider.GetService<IFeatureBusWithProbe>();
+        
+        if (featureBus != null)
+        {
+            var volatility = featureBus.Probe(symbol, "volatility.realized") ?? 0.02;
+            var volume = featureBus.Probe(symbol, "volume.current") ?? 1000.0;
+            
+            // Size based on volatility and volume
+            var volatilityAdjustment = Math.Max(0.5, Math.Min(2.0, 1.0 / volatility));
+            var volumeAdjustment = Math.Max(0.8, Math.Min(1.2, volume / 1000.0));
+            
+            var baseSize = risk * 0.5 * volatilityAdjustment * volumeAdjustment;
+            
+            var directionalSize = intent switch
+            {
+                BotCore.Strategy.StrategyIntent.Buy => baseSize,
+                BotCore.Strategy.StrategyIntent.Sell => -baseSize,
+                _ => 0.0
+            };
+            
+            return Math.Max(-0.05, Math.Min(0.05, directionalSize)); // Max 5% position
+        }
+        
+        return CalculateConservativeFallbackSize(risk, intent);
+    }
+    
+    private static double CalculateConservativeFallbackSize(double risk, BotCore.Strategy.StrategyIntent intent)
+    {
+        // Ultra-conservative sizing when no services available
+        var conservativeSize = risk * 0.2; // Very small positions
+        
+        return intent switch
+        {
+            BotCore.Strategy.StrategyIntent.Buy => Math.Min(0.02, conservativeSize),  // Max 2%
+            BotCore.Strategy.StrategyIntent.Sell => Math.Max(-0.02, -conservativeSize), // Max 2%
+            _ => 0.0
+        };
     }
 }

@@ -52,55 +52,116 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
 
     public async Task<double> GetCurrentRiskAsync(CancellationToken cancellationToken = default)
     {
+        var operationId = Guid.NewGuid().ToString("N")[..8];
+        var startTime = DateTime.UtcNow;
+        
         try
         {
-            var riskManager = _serviceProvider.GetService<BotCore.Services.EnhancedRiskManager>();
-            if (riskManager != null)
+            // Audit log: Risk assessment initiated
+            _logger.LogDebug("🔍 [AUDIT-{OperationId}] Risk assessment initiated at {Timestamp}", operationId, startTime);
+            
+            // Use the real EnhancedRiskManager service for production risk assessment
+            var enhancedRiskManager = _serviceProvider.GetService<Trading.Safety.IEnhancedRiskManager>();
+            if (enhancedRiskManager != null)
             {
-                // Get risk from the real risk management system
-                var currentRisk = await riskManager.CalculateCurrentRiskAsync(cancellationToken).ConfigureAwait(false);
+                var riskState = await enhancedRiskManager.GetCurrentRiskStateAsync().ConfigureAwait(false);
                 
-                _logger.LogTrace("Current risk retrieved: {Risk:P2}", currentRisk);
+                // Calculate current risk as percentage of daily loss limit
+                var currentRisk = Math.Max(
+                    Math.Abs(riskState.CurrentPnL / riskState.DailyLossLimit),
+                    Math.Abs(riskState.DrawdownFromPeak / riskState.MaxDrawdownLimit)
+                );
+                
+                // Audit log: Enhanced risk manager result
+                _logger.LogDebug("🔍 [AUDIT-{OperationId}] Enhanced risk assessment: Risk={Risk:P2}, PnL={PnL:C}, Drawdown={Drawdown:P2}, Duration={Duration}ms", 
+                    operationId, currentRisk, riskState.CurrentPnL, riskState.DrawdownFromPeak, (DateTime.UtcNow - startTime).TotalMilliseconds);
+                    
                 return currentRisk;
             }
 
-            // Fallback to default risk level
-            const double defaultRisk = 0.02; // 2% default risk
-            _logger.LogWarning("EnhancedRiskManager not available, using default risk: {Risk:P2}", defaultRisk);
-            return defaultRisk;
+            // Fallback to basic risk manager from abstractions
+            var basicRiskManager = _serviceProvider.GetService<TradingBot.Abstractions.IRiskManager>();
+            if (basicRiskManager != null)
+            {
+                // Use risk breach status as simple risk level
+                var riskLevel = basicRiskManager.IsRiskBreached ? GetConfigValue("Risk:BreachedRiskLevel", 0.8) : GetConfigValue("Risk:NormalRiskLevel", 0.2);
+                
+                // Audit log: Basic risk manager result
+                _logger.LogDebug("🔍 [AUDIT-{OperationId}] Basic risk assessment: Risk={Risk:P2}, Breached={Breached}, Duration={Duration}ms", 
+                    operationId, riskLevel, basicRiskManager.IsRiskBreached, (DateTime.UtcNow - startTime).TotalMilliseconds);
+                    
+                return riskLevel;
+            }
+            
+            // Conservative default with audit logging
+            var conservativeRisk = GetConfigValue("Risk:ConservativeDefault", 0.1);
+            _logger.LogWarning("🔍 [AUDIT-{OperationId}] No risk management service available - using conservative default: {Risk:P2}", operationId, conservativeRisk);
+            return conservativeRisk;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving current risk");
-            // Fail-safe: return conservative risk level
-            return 0.01; // 1% conservative risk
+            var safeRisk = GetConfigValue("Risk:SafeDefault", 0.05);
+            _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk assessment failed - using safe default: {Risk:P2}, Duration={Duration}ms", 
+                operationId, safeRisk, (DateTime.UtcNow - startTime).TotalMilliseconds);
+            return safeRisk;
         }
+    }
+
+    private double GetConfigValue(string key, double defaultValue)
+    {
+        var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+        return configuration?.GetValue<double>(key) ?? defaultValue;
     }
 
     public async Task<double> GetAccountEquityAsync(CancellationToken cancellationToken = default)
     {
+        var operationId = Guid.NewGuid().ToString("N")[..8];
+        var startTime = DateTime.UtcNow;
+        
         try
         {
-            var riskManager = _serviceProvider.GetService<BotCore.Services.EnhancedRiskManager>();
-            if (riskManager != null)
+            // Audit log: Account equity assessment initiated
+            _logger.LogDebug("🔍 [AUDIT-{OperationId}] Account equity assessment initiated at {Timestamp}", operationId, startTime);
+            
+            // Use the real EnhancedRiskManager service for production account equity
+            var enhancedRiskManager = _serviceProvider.GetService<Trading.Safety.IEnhancedRiskManager>();
+            if (enhancedRiskManager != null)
             {
-                // Get account equity from the real risk management system
-                var equity = await riskManager.GetAccountEquityAsync(cancellationToken).ConfigureAwait(false);
+                var riskState = await enhancedRiskManager.GetCurrentRiskStateAsync().ConfigureAwait(false);
                 
-                _logger.LogTrace("Account equity retrieved: {Equity:C}", equity);
-                return equity;
+                // Calculate current account equity (starting equity + current P&L)
+                var currentEquity = riskState.StartingCapital + riskState.CurrentPnL;
+                
+                // Audit log: Enhanced account equity result
+                _logger.LogDebug("🔍 [AUDIT-{OperationId}] Enhanced account equity: Equity={Equity:C}, Starting={Starting:C}, PnL={PnL:C}, Duration={Duration}ms", 
+                    operationId, currentEquity, riskState.StartingCapital, riskState.CurrentPnL, (DateTime.UtcNow - startTime).TotalMilliseconds);
+                    
+                return (double)currentEquity;
             }
 
-            // Fallback to estimated equity
-            const double defaultEquity = 50000.0; // $50K default
-            _logger.LogWarning("EnhancedRiskManager not available, using default equity: {Equity:C}", defaultEquity);
-            return defaultEquity;
+            // Fallback to configuration-based account equity
+            var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+            if (configuration != null)
+            {
+                var configuredEquity = configuration.GetValue<double>("Account:StartingEquity", GetConfigValue("Account:DefaultEquity", 100000.0));
+                
+                // Audit log: Configuration-based equity result
+                _logger.LogDebug("🔍 [AUDIT-{OperationId}] Configuration-based account equity: Equity={Equity:C}, Duration={Duration}ms", 
+                    operationId, configuredEquity, (DateTime.UtcNow - startTime).TotalMilliseconds);
+                return configuredEquity;
+            }
+            
+            // Conservative default for demo/test environments
+            var conservativeEquity = GetConfigValue("Account:ConservativeDefault", 50000.0);
+            _logger.LogWarning("🔍 [AUDIT-{OperationId}] No account service available - using conservative default: {Equity:C}", operationId, conservativeEquity);
+            return conservativeEquity;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving account equity");
-            // Fail-safe: return conservative equity estimate
-            return 25000.0; // $25K conservative estimate
+            var safeEquity = GetConfigValue("Account:SafeDefault", 25000.0);
+            _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Account equity assessment failed - using safe default: {Equity:C}, Duration={Duration}ms", 
+                operationId, safeEquity, (DateTime.UtcNow - startTime).TotalMilliseconds);
+            return safeEquity;
         }
     }
 }
