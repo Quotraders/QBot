@@ -388,14 +388,34 @@ namespace TradingBot.S7
                 // AUDIT-CLEAN: Use configured min/max bounds instead of hardcoded 0.5m/1.5m
                 return Math.Max(_config.MinBreadthScore, Math.Min(_config.MaxBreadthScore, breadthScore));
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
                 if (_config.FailOnMissingData)
                 {
-                    _logger.LogError(ex, "[S7-AUDIT-VIOLATION] Breadth calculation failed - TRIGGERING HOLD + TELEMETRY");
+                    _logger.LogError(ex, "[S7-AUDIT-VIOLATION] Invalid operation in breadth calculation - TRIGGERING HOLD + TELEMETRY");
                     return 0m; // Fail-closed: no safe defaults
                 }
-                _logger.LogWarning(ex, "[S7-AUDIT-VIOLATION] Breadth calculation error, using configured base score");
+                _logger.LogWarning(ex, "[S7-AUDIT-VIOLATION] Invalid operation in breadth calculation, using configured base score");
+                return _config.BaseBreadthScore; // Configured fallback instead of hardcoded 1.0m
+            }
+            catch (TimeoutException ex)
+            {
+                if (_config.FailOnMissingData)
+                {
+                    _logger.LogError(ex, "[S7-AUDIT-VIOLATION] Timeout in breadth calculation - TRIGGERING HOLD + TELEMETRY");
+                    return 0m; // Fail-closed: no safe defaults
+                }
+                _logger.LogWarning(ex, "[S7-AUDIT-VIOLATION] Timeout in breadth calculation, using configured base score");
+                return _config.BaseBreadthScore; // Configured fallback instead of hardcoded 1.0m
+            }
+            catch (ArgumentException ex)
+            {
+                if (_config.FailOnMissingData)
+                {
+                    _logger.LogError(ex, "[S7-AUDIT-VIOLATION] Invalid argument in breadth calculation - TRIGGERING HOLD + TELEMETRY");
+                    return 0m; // Fail-closed: no safe defaults
+                }
+                _logger.LogWarning(ex, "[S7-AUDIT-VIOLATION] Invalid argument in breadth calculation, using configured base score");
                 return _config.BaseBreadthScore; // Configured fallback instead of hardcoded 1.0m
             }
         }

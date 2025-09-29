@@ -581,6 +581,11 @@ namespace TradingBot.Critical
         private const decimal StopLossPercentage = 0.98m;           // Stop loss at 2% below entry
         private const decimal TakeProfitPercentage = 1.02m;         // Take profit at 2% above entry
         
+        // Threading and System Recovery Constants
+        private const int ThreadPoolMultiplier = 2;                 // Multiplier for thread pool sizing
+        private const int EmergencyProtectionTimeoutMs = 5000;      // Emergency position protection timeout
+        private const int OrderExecutionDelayMs = 50;               // Simulate order execution time
+        
         private readonly string _stateFile = "trading_state.json";
         private readonly string _backupStateFile = "trading_state.backup.json";
         private readonly Timer _statePersistenceTimer;
@@ -1065,7 +1070,7 @@ namespace TradingBot.Critical
             if (workerThreads < Environment.ProcessorCount)
             {
                 _logger.LogWarning("[CRITICAL] Thread pool starvation detected, adjusting limits");
-                ThreadPool.SetMinThreads(Environment.ProcessorCount * 2, ioThreads);
+                ThreadPool.SetMinThreads(Environment.ProcessorCount * ThreadPoolMultiplier, ioThreads);
             }
             
             // If still frozen after intelligent recovery, initiate emergency protocol
@@ -1096,7 +1101,7 @@ namespace TradingBot.Critical
             SaveCrashDump(exception);
             
             // Attempt emergency position protection
-            Task.Run(async () => await EmergencyPositionProtection().ConfigureAwait(false)).Wait(5000);
+            Task.Run(async () => await EmergencyPositionProtection().ConfigureAwait(false)).Wait(EmergencyProtectionTimeoutMs);
         }
 
         // Additional stub implementations
@@ -1136,7 +1141,7 @@ namespace TradingBot.Critical
                 };
                 
                 _logger?.LogError("[Emergency] Order logged: {OrderData}", orderData);
-                await Task.Delay(50).ConfigureAwait(false); // Simulate order execution time
+                await Task.Delay(OrderExecutionDelayMs).ConfigureAwait(false); // Simulate order execution time
             }
             catch (Exception ex)
             {

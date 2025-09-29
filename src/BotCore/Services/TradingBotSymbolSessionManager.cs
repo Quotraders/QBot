@@ -444,6 +444,8 @@ namespace TradingBot.BotCore.Services
     /// </summary>
     public class SessionBayesianPriors
     {
+        private const int MinimumTradesForConfidenceInterval = 10;
+        
         public double SuccessRate { get; private set; } = 0.5;
         public double AverageReturn { get; private set; } = 0.0;
         public int TotalTrades { get; private set; } = 0;
