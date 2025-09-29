@@ -25,6 +25,16 @@ public sealed class FeatureProbe
     private const double DefaultTimeToCloseMinutes = 240.0; // 4 hours
     private const int SessionTimeoutMinutes = 60;
     
+    // Calculation simulation constants
+    private const double SimulationCenterValue = 0.5; // Center point for random calculations
+    private const double SimulationRangeMultiplier = 2.0; // Range multiplier for simulation
+    private const double SimulationVolatilityMultiplier = 4.0; // Volatility range multiplier
+    private const int SimulationRegimeCount = 4; // Number of regime types
+    private const int SimulationVolumeProfileCount = 3; // Number of volume profile types
+    private const double SimulationVwapDistanceRange = 0.2; // VWAP distance range
+    private const int MinSessionVolume = 500000; // Minimum session volume for simulation
+    private const int MaxSessionVolume = 2000000; // Maximum session volume for simulation
+    
     private readonly ILogger<FeatureProbe> _logger;
     private readonly IConfiguration _configuration;
     private readonly PatternEngine _patternEngine;
@@ -403,18 +413,18 @@ public sealed class FeatureProbe
     }
 
     // Production calculation methods (simplified for implementation)
-    private double CalculateZoneDistanceAtr(string symbol) => Math.Abs(new Random().NextDouble() - 0.5) * 2.0;
+    private double CalculateZoneDistanceAtr(string symbol) => Math.Abs(new Random().NextDouble() - SimulationCenterValue) * SimulationRangeMultiplier;
     private double CalculateBreakoutScore(string symbol) => Math.Min(1.0, Math.Max(0.0, new Random().NextDouble()));
-    private double CalculateZonePressure(string symbol) => (new Random().NextDouble() - 0.5) * 2.0;
-    private string GetCurrentZoneType(string symbol) => new Random().NextDouble() > 0.5 ? "supply" : "demand";
-    private string DetermineMarketRegime(string symbol) => new[] { "trending", "ranging", "high_vol", "compression" }[new Random().Next(4)];
-    private double CalculateVolatilityZScore(string symbol) => (new Random().NextDouble() - 0.5) * 4.0;
-    private double CalculateTrendStrength(string symbol) => Math.Min(1.0, Math.Max(-1.0, (new Random().NextDouble() - 0.5) * 2.0));
-    private double CalculateOrderFlowImbalance(string symbol) => (new Random().NextDouble() - 0.5) * 2.0;
-    private string CalculateVolumeProfile(string symbol) => new[] { "bullish", "bearish", "balanced" }[new Random().Next(3)];
-    private double CalculateMomentumZScore(string symbol) => (new Random().NextDouble() - 0.5) * 4.0;
-    private double CalculateVwapDistance(string symbol) => (new Random().NextDouble() - 0.5) * 0.2;
-    private double CalculateSessionVolume(string symbol) => new Random().Next(500000, 2000000);
+    private double CalculateZonePressure(string symbol) => (new Random().NextDouble() - SimulationCenterValue) * SimulationRangeMultiplier;
+    private string GetCurrentZoneType(string symbol) => new Random().NextDouble() > SimulationCenterValue ? "supply" : "demand";
+    private string DetermineMarketRegime(string symbol) => new[] { "trending", "ranging", "high_vol", "compression" }[new Random().Next(SimulationRegimeCount)];
+    private double CalculateVolatilityZScore(string symbol) => (new Random().NextDouble() - SimulationCenterValue) * SimulationVolatilityMultiplier;
+    private double CalculateTrendStrength(string symbol) => Math.Min(1.0, Math.Max(-1.0, (new Random().NextDouble() - SimulationCenterValue) * SimulationRangeMultiplier));
+    private double CalculateOrderFlowImbalance(string symbol) => (new Random().NextDouble() - SimulationCenterValue) * SimulationRangeMultiplier;
+    private string CalculateVolumeProfile(string symbol) => new[] { "bullish", "bearish", "balanced" }[new Random().Next(SimulationVolumeProfileCount)];
+    private double CalculateMomentumZScore(string symbol) => (new Random().NextDouble() - SimulationCenterValue) * SimulationVolatilityMultiplier;
+    private double CalculateVwapDistance(string symbol) => (new Random().NextDouble() - SimulationCenterValue) * SimulationVwapDistanceRange;
+    private double CalculateSessionVolume(string symbol) => new Random().Next(MinSessionVolume, MaxSessionVolume);
 }
 
 /// <summary>

@@ -585,6 +585,10 @@ namespace TradingBot.Critical
         private const int ThreadPoolMultiplier = 2;                 // Multiplier for thread pool sizing
         private const int EmergencyProtectionTimeoutMs = 5000;      // Emergency position protection timeout
         private const int OrderExecutionDelayMs = 50;               // Simulate order execution time
+        private const int OrderCancellationDelayMs = 200;           // Order cancellation processing time
+        private const int EmergencyCleanupDelayMs = 500;           // Emergency cleanup delay
+        private const int PositionRiskThresholdDollars = 10000;    // Position risk threshold in dollars
+        private const int StrategyResumeDelayMs = 200;             // Strategy resume processing time
         
         private readonly string _stateFile = "trading_state.json";
         private readonly string _backupStateFile = "trading_state.backup.json";
@@ -923,9 +927,17 @@ namespace TradingBot.Critical
                     _logger.LogInformation("[POSITION_RECONCILE] ✅ All positions reconciled successfully");
                 }
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[POSITION_RECONCILE] Failed to reconcile positions");
+                _logger.LogError(ex, "[POSITION_RECONCILE] Invalid operation reconciling positions");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "[POSITION_RECONCILE] Invalid argument reconciling positions");
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogError(ex, "[POSITION_RECONCILE] Timeout reconciling positions");
             }
         }
         
@@ -947,9 +959,17 @@ namespace TradingBot.Critical
                 
                 _logger.LogInformation("[DISCREPANCIES] Stored {Count} position discrepancies for review", discrepancies.Count);
             }
-            catch (Exception ex)
+            catch (SQLiteException ex)
             {
-                _logger.LogError(ex, "[DISCREPANCIES] Failed to store position discrepancies");
+                _logger.LogError(ex, "[DISCREPANCIES] Database error storing position discrepancies");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[DISCREPANCIES] Invalid operation storing position discrepancies");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "[DISCREPANCIES] Invalid argument storing position discrepancies");
             }
             
             return Task.CompletedTask;
@@ -1011,9 +1031,21 @@ namespace TradingBot.Critical
                     
                     LogCriticalAction($"Emergency liquidation: {position.Symbol} x {position.Quantity}");
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "Failed during emergency liquidation for position {Symbol}", position.Symbol);
+                    _logger.LogError(ex, "Invalid operation during emergency liquidation for position {Symbol}", position.Symbol);
+                    // Try alternative broker if available
+                    await ExecuteBackupLiquidation(position).ConfigureAwait(false);
+                }
+                catch (TimeoutException ex)
+                {
+                    _logger.LogError(ex, "Timeout during emergency liquidation for position {Symbol}", position.Symbol);
+                    // Try alternative broker if available
+                    await ExecuteBackupLiquidation(position).ConfigureAwait(false);
+                }
+                catch (ArgumentException ex)
+                {
+                    _logger.LogError(ex, "Invalid argument during emergency liquidation for position {Symbol}", position.Symbol);
                     // Try alternative broker if available
                     await ExecuteBackupLiquidation(position).ConfigureAwait(false);
                 }
@@ -1143,9 +1175,17 @@ namespace TradingBot.Critical
                 _logger?.LogError("[Emergency] Order logged: {OrderData}", orderData);
                 await Task.Delay(OrderExecutionDelayMs).ConfigureAwait(false); // Simulate order execution time
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger?.LogError(ex, "[Emergency] Failed to execute emergency order");
+                _logger?.LogError(ex, "[Emergency] Invalid operation executing emergency order");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger?.LogError(ex, "[Emergency] Invalid argument executing emergency order");
+            }
+            catch (TimeoutException ex)
+            {
+                _logger?.LogError(ex, "[Emergency] Timeout executing emergency order");
             }
         }
 
@@ -1168,9 +1208,17 @@ namespace TradingBot.Critical
                 _logger?.LogError("[Emergency] Backup liquidation attempted: {Data}", liquidationData);
                 await Task.Delay(BackupExecutionDelayMs).ConfigureAwait(false); // Simulate backup execution time
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger?.LogError(ex, "[Emergency] Backup liquidation failed");
+                _logger?.LogError(ex, "[Emergency] Invalid operation during backup liquidation");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger?.LogError(ex, "[Emergency] Invalid argument during backup liquidation");
+            }
+            catch (TimeoutException ex)
+            {
+                _logger?.LogError(ex, "[Emergency] Timeout during backup liquidation");
             }
         }
 
@@ -1190,11 +1238,19 @@ namespace TradingBot.Critical
                 };
                 
                 _logger?.LogError("[Emergency] All orders cancelled: {Data}", cancellationData);
-                await Task.Delay(200).ConfigureAwait(false); // Simulate cancellation processing time
+                await Task.Delay(OrderCancellationDelayMs).ConfigureAwait(false); // Simulate cancellation processing time
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger?.LogError(ex, "[Emergency] Failed to cancel pending orders");
+                _logger?.LogError(ex, "[Emergency] Invalid operation cancelling pending orders");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger?.LogError(ex, "[Emergency] Invalid argument cancelling pending orders");
+            }
+            catch (TimeoutException ex)
+            {
+                _logger?.LogError(ex, "[Emergency] Timeout cancelling pending orders");
             }
         }
         private async Task DisableAllStrategies() 
@@ -1212,9 +1268,17 @@ namespace TradingBot.Critical
                 
                 await Task.Delay(EmergencyCommandDelayMs).ConfigureAwait(false); // Brief pause to ensure command propagation
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger?.LogError(ex, "[Emergency] Failed to disable strategies");
+                _logger?.LogError(ex, "[Emergency] Invalid operation disabling strategies");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger?.LogError(ex, "[Emergency] Invalid argument disabling strategies");
+            }
+            catch (TimeoutException ex)
+            {
+                _logger?.LogError(ex, "[Emergency] Timeout disabling strategies");
             }
         }
 
@@ -1230,9 +1294,17 @@ namespace TradingBot.Critical
                 var logEntry = $"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff} [EMERGENCY] {message}\n";
                 await File.AppendAllTextAsync(emergencyLog, logEntry).ConfigureAwait(false);
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                Console.WriteLine($"[CRITICAL] Emergency alert failed: {ex.Message}");
+                Console.WriteLine($"[CRITICAL] I/O error in emergency alert: {ex.Message}");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                Console.WriteLine($"[CRITICAL] Access denied writing emergency alert: {ex.Message}");
+            }
+            catch (ArgumentException ex)
+            {
+                Console.WriteLine($"[CRITICAL] Invalid argument in emergency alert: {ex.Message}");
             }
         }
 
@@ -1256,7 +1328,7 @@ namespace TradingBot.Critical
                 // Close connections
                 CloseAllConnections();
                 
-                await Task.Delay(500).ConfigureAwait(false); // Brief delay to ensure cleanup
+                await Task.Delay(EmergencyCleanupDelayMs).ConfigureAwait(false); // Brief delay to ensure cleanup
             }
             catch (Exception cleanupEx)
             {
@@ -1329,7 +1401,7 @@ namespace TradingBot.Critical
                 {
                     var riskLevel = Math.Abs(position.Quantity) * 50; // Simplified risk calculation
                     
-                    if (riskLevel > 10000) // Emergency risk threshold
+                    if (riskLevel > PositionRiskThresholdDollars) // Emergency risk threshold
                     {
                         _logger?.LogError("[Emergency] High risk position detected: {Symbol} Risk: {Risk}", 
                             position.Symbol, riskLevel);
@@ -1370,7 +1442,7 @@ namespace TradingBot.Critical
                 };
                 
                 _logger?.LogWarning("[Recovery] Strategies resumed: {Data}", resumeData);
-                await Task.Delay(200).ConfigureAwait(false); // Brief processing delay
+                await Task.Delay(StrategyResumeDelayMs).ConfigureAwait(false); // Brief processing delay
             }
             catch (Exception ex)
             {

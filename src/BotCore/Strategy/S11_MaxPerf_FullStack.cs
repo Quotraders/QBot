@@ -213,7 +213,15 @@ namespace TopstepX.S11
         }
     }
 
-    public sealed class Ema { private readonly double _k; private bool _seed; public double Value { get; private set; } public Ema(int n){ _k=2.0/(n+1);} public double Update(double v){ if(!_seed){ Value=v; _seed=true; } else Value = v*_k + Value*(1-_k); return Value; } }
+    public sealed class Ema 
+    { 
+        private const double EmaSmoothingFactorMultiplier = 2.0; // Standard EMA smoothing factor: 2/(n+1)
+        private readonly double _k; 
+        private bool _seed; 
+        public double Value { get; private set; } 
+        public Ema(int n){ _k=EmaSmoothingFactorMultiplier/(n+1);} 
+        public double Update(double v){ if(!_seed){ Value=v; _seed=true; } else Value = v*_k + Value*(1-_k); return Value; } 
+    }
 
     public sealed class Rsi
     {
