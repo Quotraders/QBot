@@ -2,6 +2,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using TradingBot.Abstractions;
@@ -9,18 +10,17 @@ using TradingBot.Abstractions;
 namespace TradingBot.S7
 {
     /// <summary>
-    /// Simple S7 service update bridge - demonstrates S7 service functionality
-    /// In production, this would connect to real market data feeds
+    /// Market data to S7 service bridge - feeds bar data to S7 multi-horizon relative strength analysis
+    /// Integrates with EnhancedMarketDataFlowService for proper production-grade data flow
     /// </summary>
     public class S7MarketDataBridge : IHostedService, IDisposable
     {
         private readonly ILogger<S7MarketDataBridge> _logger;
         private readonly IServiceProvider _serviceProvider;
+        private object? _marketDataService;  // Will resolve to IEnhancedMarketDataFlowService
         private IS7Service? _s7Service;
         private S7Configuration? _config;
-        private Timer? _updateTimer;
         private bool _disposed;
-        private readonly Random _random = new();
 
         public S7MarketDataBridge(
             ILogger<S7MarketDataBridge> logger,
@@ -50,14 +50,32 @@ namespace TradingBot.S7
                     return Task.CompletedTask;
                 }
 
-                // Start a timer to simulate market data updates for demonstration
-                // In production, this would connect to real market data feeds
-                _updateTimer = new Timer(UpdateMarketDataCallback, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(_config.BarTimeframeMinutes * 60));
+                // Try to get the enhanced market data service
+                // Using reflection to avoid direct BotCore dependency
+                var marketDataServiceType = AppDomain.CurrentDomain.GetAssemblies()
+                    .SelectMany(a => a.GetTypes())
+                    .FirstOrDefault(t => t.Name == "IEnhancedMarketDataFlowService");
 
-                _logger.LogInformation("[S7-BRIDGE] S7 market data bridge started successfully");
-                _logger.LogInformation("[S7-BRIDGE] Monitoring symbols: {Symbols}", string.Join(", ", _config.Symbols));
-                _logger.LogInformation("[S7-BRIDGE] Update interval: {Minutes} minutes", _config.BarTimeframeMinutes);
+                if (marketDataServiceType != null)
+                {
+                    _marketDataService = _serviceProvider.GetService(marketDataServiceType);
+                    if (_marketDataService != null)
+                    {
+                        // Use reflection to subscribe to the OnMarketDataReceived event
+                        var eventInfo = marketDataServiceType.GetEvent("OnMarketDataReceived");
+                        if (eventInfo != null)
+                        {
+                            var handler = new Action<string, object>(OnMarketDataReceived);
+                            eventInfo.AddEventHandler(_marketDataService, handler);
+                            
+                            _logger.LogInformation("[S7-BRIDGE] S7 market data bridge connected to EnhancedMarketDataFlowService");
+                            _logger.LogInformation("[S7-BRIDGE] Monitoring symbols: {Symbols}", string.Join(", ", _config.Symbols));
+                            return Task.CompletedTask;
+                        }
+                    }
+                }
 
+                _logger.LogWarning("[S7-BRIDGE] Enhanced market data service not available - S7 data feed disabled");
                 return Task.CompletedTask;
             }
             catch (Exception ex)
@@ -71,7 +89,18 @@ namespace TradingBot.S7
         {
             try
             {
-                _updateTimer?.Dispose();
+                if (_marketDataService != null)
+                {
+                    // Use reflection to unsubscribe from the event
+                    var marketDataServiceType = _marketDataService.GetType();
+                    var eventInfo = marketDataServiceType.GetEvent("OnMarketDataReceived");
+                    if (eventInfo != null)
+                    {
+                        var handler = new Action<string, object>(OnMarketDataReceived);
+                        eventInfo.RemoveEventHandler(_marketDataService, handler);
+                    }
+                }
+
                 _logger.LogInformation("[S7-BRIDGE] S7 market data bridge stopped");
                 return Task.CompletedTask;
             }
@@ -82,41 +111,84 @@ namespace TradingBot.S7
             }
         }
 
-        private async void UpdateMarketDataCallback(object? state)
+        private async void OnMarketDataReceived(string symbol, object data)
         {
             try
             {
                 if (_s7Service == null || _config == null)
                     return;
 
-                var timestamp = DateTime.UtcNow;
+                // Only process data for configured symbols (ES and NQ)
+                if (!_config.Symbols.Contains(symbol, StringComparer.OrdinalIgnoreCase))
+                    return;
 
-                // Simulate price updates for configured symbols
-                foreach (var symbol in _config.Symbols)
+                // Extract close price from market data
+                decimal? closePrice = null;
+                DateTime timestamp = DateTime.UtcNow;
+
+                if (data is MarketData marketData)
                 {
-                    // Generate realistic price movements (simplified simulation)
-                    var basePrice = symbol == "ES" ? 4500m : 15000m; // Typical ES and NQ price levels
-                    var priceVariation = (decimal)(_random.NextDouble() - 0.5) * 10; // ±5 points variation
-                    var simulatedPrice = basePrice + priceVariation;
+                    closePrice = marketData.Close ?? marketData.Last ?? marketData.Price;
+                    timestamp = marketData.Timestamp;
+                }
+                else if (data is System.Text.Json.JsonElement jsonElement)
+                {
+                    // Handle JSON market data format
+                    if (jsonElement.TryGetProperty("close", out var closeProp) && closeProp.TryGetDecimal(out var close))
+                    {
+                        closePrice = close;
+                    }
+                    else if (jsonElement.TryGetProperty("last", out var lastProp) && lastProp.TryGetDecimal(out var last))
+                    {
+                        closePrice = last;
+                    }
+                    else if (jsonElement.TryGetProperty("price", out var priceProp) && priceProp.TryGetDecimal(out var price))
+                    {
+                        closePrice = price;
+                    }
 
-                    // Update S7 service with simulated price data
-                    await _s7Service.UpdateAsync(symbol, simulatedPrice, timestamp).ConfigureAwait(false);
+                    if (jsonElement.TryGetProperty("timestamp", out var timestampProp))
+                    {
+                        if (timestampProp.TryGetDateTime(out var dt))
+                            timestamp = dt;
+                        else if (timestampProp.TryGetInt64(out var unixMs))
+                            timestamp = DateTimeOffset.FromUnixTimeMilliseconds(unixMs).DateTime;
+                    }
+                }
+                else
+                {
+                    // Try to extract price using reflection as fallback
+                    var type = data.GetType();
+                    var closeProperty = type.GetProperty("Close") ?? type.GetProperty("Last") ?? type.GetProperty("Price");
+                    if (closeProperty != null && closeProperty.PropertyType == typeof(decimal))
+                    {
+                        closePrice = (decimal?)closeProperty.GetValue(data);
+                    }
 
-                    _logger.LogDebug("[S7-BRIDGE] Updated S7 service: {Symbol} @ {Price} ({Timestamp})", 
-                        symbol, simulatedPrice, timestamp);
+                    var timestampProperty = type.GetProperty("Timestamp") ?? type.GetProperty("Time");
+                    if (timestampProperty != null && timestampProperty.PropertyType == typeof(DateTime))
+                    {
+                        timestamp = (DateTime)timestampProperty.GetValue(data)!;
+                    }
                 }
 
-                // Log S7 status periodically
-                if (_s7Service.IsReady())
+                if (closePrice.HasValue)
                 {
-                    var snapshot = _s7Service.GetCurrentSnapshot();
-                    _logger.LogInformation("[S7-BRIDGE] S7 Snapshot - Leader: {Leader}, Coherence: {Coherence:F3}, Actionable: {Actionable}",
-                        snapshot.DominantLeader, snapshot.CrossSymbolCoherence, snapshot.IsActionable);
+                    // Update S7 service with new price data
+                    await _s7Service.UpdateAsync(symbol, closePrice.Value, timestamp).ConfigureAwait(false);
+
+                    _logger.LogTrace("[S7-BRIDGE] Updated S7 service: {Symbol} @ {Price} ({Timestamp})", 
+                        symbol, closePrice.Value, timestamp);
+                }
+                else
+                {
+                    _logger.LogDebug("[S7-BRIDGE] Could not extract close price from market data for {Symbol}: {DataType}", 
+                        symbol, data.GetType().Name);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[S7-BRIDGE] Error in market data update callback");
+                _logger.LogError(ex, "[S7-BRIDGE] Error processing market data for {Symbol}", symbol);
             }
         }
 
@@ -124,7 +196,18 @@ namespace TradingBot.S7
         {
             if (!_disposed)
             {
-                _updateTimer?.Dispose();
+                if (_marketDataService != null)
+                {
+                    // Use reflection to unsubscribe from the event
+                    var marketDataServiceType = _marketDataService.GetType();
+                    var eventInfo = marketDataServiceType.GetEvent("OnMarketDataReceived");
+                    if (eventInfo != null)
+                    {
+                        var handler = new Action<string, object>(OnMarketDataReceived);
+                        eventInfo.RemoveEventHandler(_marketDataService, handler);
+                    }
+                }
+
                 _disposed = true;
             }
         }

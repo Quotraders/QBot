@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using TradingBot.Abstractions;
 
 namespace TradingBot.S7
 {
@@ -27,7 +28,7 @@ namespace TradingBot.S7
         // Cross-symbol analysis state
         private S7Snapshot _lastSnapshot = new();
 
-        public event EventHandler<S7FeatureTuple>? FeatureUpdated;
+        public event EventHandler<S7FeatureUpdatedEventArgs>? FeatureUpdated;
 
         public S7Service(
             ILogger<S7Service> logger,
@@ -124,7 +125,7 @@ namespace TradingBot.S7
             if (_config.EnableFeatureBus)
             {
                 var featureTuple = GetFeatureTuple(symbol);
-                FeatureUpdated?.Invoke(this, featureTuple);
+                FeatureUpdated?.Invoke(this, new S7FeatureUpdatedEventArgs(featureTuple));
             }
         }
 

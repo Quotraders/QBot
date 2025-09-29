@@ -580,17 +580,17 @@ Please check the configuration and ensure all required services are registered.
         // ================================================================================
         
         // Configure S7 strategy options
-        services.Configure<TradingBot.S7.S7Configuration>(configuration.GetSection("S7"));
-        services.Configure<TradingBot.S7.BreadthConfiguration>(configuration.GetSection("Breadth"));
+        services.Configure<TradingBot.Abstractions.S7Configuration>(configuration.GetSection("S7"));
+        services.Configure<TradingBot.Abstractions.BreadthConfiguration>(configuration.GetSection("Breadth"));
         
         // Register S7 service with full DSL implementation
-        services.AddSingleton<TradingBot.S7.IS7Service, TradingBot.S7.S7Service>();
-        services.AddSingleton<TradingBot.S7.IS7FeatureSource>(provider => 
-            (TradingBot.S7.IS7FeatureSource)provider.GetRequiredService<TradingBot.S7.IS7Service>());
+        services.AddSingleton<TradingBot.Abstractions.IS7Service, TradingBot.S7.S7Service>();
+        services.AddSingleton<TradingBot.Abstractions.IS7FeatureSource>(provider => 
+            (TradingBot.Abstractions.IS7FeatureSource)provider.GetRequiredService<TradingBot.Abstractions.IS7Service>());
         
         // Register optional breadth feed service (disabled by default)
         // Note: IBreadthFeed implementation can be added later if needed
-        services.AddSingleton<TradingBot.S7.IBreadthFeed>(provider => null!);
+        services.AddSingleton<TradingBot.Abstractions.IBreadthFeed>(provider => null!);
         
         // Register S7 market data bridge for live data integration
         services.AddHostedService<TradingBot.S7.S7MarketDataBridge>();

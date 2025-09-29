@@ -33,7 +33,6 @@
     <ProjectReference Include="..\\IntelligenceStack\\IntelligenceStack.csproj" />
     <ProjectReference Include="..\\RLAgent\\RLAgent.csproj" />
     <ProjectReference Include="..\\Zones\\Zones.csproj" />
-    <ProjectReference Include="..\\S7\\S7.csproj" />
   </ItemGroup>
 
   <ItemGroup>

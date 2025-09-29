@@ -867,7 +867,7 @@ namespace BotCore.Strategy
             var lst = new List<Candidate>();
             
             // Get S7Service from the service provider if available
-            var s7Service = TradingBotParameterProvider.GetService<TradingBot.S7.IS7Service>();
+            var s7Service = TradingBotParameterProvider.GetService<TradingBot.Abstractions.IS7Service>();
             if (s7Service != null && bars.Count > 0 && s7Service.IsReady())
             {
                 var snapshot = s7Service.GetCurrentSnapshot();
