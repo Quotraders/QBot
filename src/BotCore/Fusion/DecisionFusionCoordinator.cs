@@ -126,7 +126,7 @@ public sealed class DecisionFusionCoordinator
             }
 
             // Determine final recommendation - prefer Knowledge Graph if available and high confidence
-            StrategyRecommendation finalRec;
+            BotCore.Strategy.StrategyRecommendation finalRec;
             
             if (knowledgeRec != null && knowledgeScore >= rails.MinConfidence)
             {
@@ -138,7 +138,7 @@ public sealed class DecisionFusionCoordinator
             else if (!string.IsNullOrEmpty(ucbStrategy) && ucbScore >= rails.MinConfidence)
             {
                 // Use UCB recommendation
-                finalRec = new StrategyRecommendation
+                finalRec = new BotCore.Strategy.StrategyRecommendation
                 {
                     StrategyName = ucbStrategy,
                     Intent = ucbIntent,
@@ -170,7 +170,7 @@ public sealed class DecisionFusionCoordinator
                 
                 // Fall back to highest scoring system
                 finalRec = knowledgeScore > ucbScore ? knowledgeRec : 
-                    new StrategyRecommendation
+                    new BotCore.Strategy.StrategyRecommendation
                     {
                         StrategyName = ucbStrategy,
                         Intent = ucbIntent,

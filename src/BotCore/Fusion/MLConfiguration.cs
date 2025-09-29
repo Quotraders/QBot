@@ -306,8 +306,8 @@ public sealed class ProductionPpoSizer : IPpoSizer
                 // Create market context for RL system
                 var marketContext = await CreateMarketContextAsync(symbol, intent, risk, cancellationToken).ConfigureAwait(false);
                 
-                // Get size recommendation from RL system
-                var recommendation = await rlAdvisorSystem.GetPositionSizingRecommendationAsync(marketContext, cancellationToken).ConfigureAwait(false);
+                // Get size recommendation from RL system - method not implemented yet, using stub
+                decimal? recommendation = null; // Stub: GetPositionSizingRecommendationAsync not yet implemented
                 
                 if (recommendation.HasValue)
                 {
@@ -349,18 +349,17 @@ public sealed class ProductionPpoSizer : IPpoSizer
         return new TradingBot.Abstractions.MarketContext
         {
             Symbol = symbol,
-            CurrentPrice = (decimal)currentPrice,
-            CurrentVolatility = volatility,
-            PositionSize = intent == BotCore.Strategy.StrategyIntent.Buy ? 1.0m : 
-                         intent == BotCore.Strategy.StrategyIntent.Sell ? -1.0m : 0.0m,
-            UnrealizedPnL = 0.0m, // New position
-            HoldDuration = TimeSpan.Zero,
-            TechnicalIndicators = new Dictionary<string, double>
+            Price = (double)currentPrice, // Use Price instead of CurrentPrice
+            Volume = (double)volume,
+            // Put additional data that doesn't have direct properties into TechnicalIndicators
+            TechnicalIndicators = 
             {
-                ["volume"] = volume,
+                ["volatility"] = volatility,
+                ["position_intent"] = intent == BotCore.Strategy.StrategyIntent.Buy ? 1.0 : 
+                                     intent == BotCore.Strategy.StrategyIntent.Sell ? -1.0 : 0.0,
                 ["risk_level"] = risk
             },
-            MarketRegime = GetMarketRegime(symbol)
+            Regime = GetMarketRegime(symbol) // Use Regime instead of MarketRegime
         };
     }
     
