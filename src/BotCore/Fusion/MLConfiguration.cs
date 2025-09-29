@@ -306,18 +306,20 @@ public sealed class ProductionPpoSizer : IPpoSizer
                 // Create market context for RL system
                 var marketContext = await CreateMarketContextAsync(symbol, intent, risk, cancellationToken).ConfigureAwait(false);
                 
-                // Get size recommendation from RL system - method not implemented yet, using stub
-                decimal? recommendation = null; // Stub: GetPositionSizingRecommendationAsync not yet implemented
+                // Attempt to get size recommendation from RL system - fail-closed approach
+                _logger.LogDebug("Attempting ML position sizing for {Symbol} with intent {Intent}, risk {Risk:P2}", symbol, intent, risk);
                 
-                if (recommendation.HasValue)
+                // Check if RL system has the required capability
+                if (!IsRLSystemCapableOfPositionSizing(rlAdvisorSystem))
                 {
-                    // Normalize size recommendation based on risk and intent
-                    var normalizedSize = NormalizeSizeRecommendation(recommendation.Value, risk, intent);
-                    
-                    _logger.LogDebug("PPO size prediction for {Symbol}: {Size:F4} (risk: {Risk:P2}, intent: {Intent}, raw: {Raw:F4})", 
-                        symbol, normalizedSize, risk, intent, recommendation.Value);
-                    
-                    return normalizedSize;
+                    _logger.LogError("RL system lacks position sizing capability - fail-closed: cannot provide ML-based position sizing");
+                    throw new InvalidOperationException("ML position sizing unavailable - RL system lacks required capability (fail-closed)");
+                }
+                
+                // If we reach here, the RL system should have position sizing capability
+                // Since the method doesn't exist, this indicates incomplete implementation
+                _logger.LogError("RL system position sizing not implemented - fail-closed: cannot provide ML sizing for {Symbol}", symbol);
+                throw new NotImplementedException("ML position sizing not yet implemented in RL system (fail-closed)");
                 }
             }
             
@@ -333,7 +335,7 @@ public sealed class ProductionPpoSizer : IPpoSizer
         }
     }
 
-    private Task<TradingBot.Abstractions.MarketContext> CreateMarketContextAsync(
+    private async Task<TradingBot.Abstractions.MarketContext> CreateMarketContextAsync(
         string symbol, 
         BotCore.Strategy.StrategyIntent intent, 
         double risk, 
@@ -346,23 +348,21 @@ public sealed class ProductionPpoSizer : IPpoSizer
         var volatility = featureBus?.Probe(symbol, "volatility.realized") ?? 0.02;
         var volume = featureBus?.Probe(symbol, "volume.current") ?? 1000.0;
         
-        var result = new TradingBot.Abstractions.MarketContext
+        return new TradingBot.Abstractions.MarketContext
         {
             Symbol = symbol,
-            Price = (double)currentPrice, // Use Price instead of CurrentPrice
-            Volume = (double)volume,
-            // Put additional data that doesn't have direct properties into TechnicalIndicators
+            Price = currentPrice, // Use existing Price property
+            Volume = volume, // Use existing Volume property
+            // Store additional data in TechnicalIndicators since direct properties don't exist
             TechnicalIndicators = 
             {
                 ["volatility"] = volatility,
+                ["risk_level"] = risk,
                 ["position_intent"] = intent == BotCore.Strategy.StrategyIntent.Buy ? 1.0 : 
-                                     intent == BotCore.Strategy.StrategyIntent.Sell ? -1.0 : 0.0,
-                ["risk_level"] = risk
+                                     intent == BotCore.Strategy.StrategyIntent.Sell ? -1.0 : 0.0
             },
-            Regime = GetMarketRegime(symbol) // Use Regime instead of MarketRegime
+            Regime = GetMarketRegime(symbol) // Use existing Regime property
         };
-        
-        return Task.FromResult(result);
     }
     
     private string GetMarketRegime(string symbol)
@@ -399,8 +399,18 @@ public sealed class ProductionPpoSizer : IPpoSizer
         
         return finalSize;
     }
-    
-    private Task<double> CalculateIntelligentFallbackSizeAsync(
+
+    /// <summary>
+    /// Check if RL system has position sizing capability - fail-closed validation
+    /// </summary>
+    private bool IsRLSystemCapableOfPositionSizing(RLAdvisorSystem rlSystem)
+    {
+        // Since GetPositionSizingRecommendationAsync doesn't exist,
+        // we know the system lacks this capability
+        return false;
+    }
+
+    private async Task<double> CalculateIntelligentFallbackSizeAsync(
         string symbol, 
         BotCore.Strategy.StrategyIntent intent, 
         double risk, 
@@ -427,10 +437,10 @@ public sealed class ProductionPpoSizer : IPpoSizer
                 _ => 0.0
             };
             
-            return Task.FromResult(Math.Max(-0.05, Math.Min(0.05, directionalSize))); // Max 5% position
+            return Math.Max(-0.05, Math.Min(0.05, directionalSize)); // Max 5% position
         }
         
-        return Task.FromResult(CalculateConservativeFallbackSize(risk, intent));
+        return CalculateConservativeFallbackSize(risk, intent);
     }
     
     private static double CalculateConservativeFallbackSize(double risk, BotCore.Strategy.StrategyIntent intent)

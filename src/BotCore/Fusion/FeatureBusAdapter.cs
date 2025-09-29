@@ -632,20 +632,14 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             if (marketDataService != null)
             {
                 // Try to get real bid/ask data from tick data or level 1 quotes
-                // Note: TickDataService doesn't exist - stubbed for now
-                // var tickDataService = _serviceProvider.GetService<BotCore.Services.TickDataService>();
-                var tickDataService = (object?)null; // Stub: TickDataService not implemented
+                var tickDataService = _serviceProvider.GetService<BotCore.Services.TickDataService>();
                 if (tickDataService != null)
                 {
-                    // var latestTick = tickDataService.GetLatestTick(symbol);
-                    // Stub: TickDataService methods not available
-                    var latestTick = (object?)null;
-                    if (latestTick != null) // This will never be true with the stub
+                    var latestTick = tickDataService.GetLatestTick(symbol);
+                    if (latestTick != null && latestTick.Bid > 0 && latestTick.Ask > 0)
                     {
-                        // var spread = latestTick.Ask - latestTick.Bid;
-                        // Stub: latestTick properties not available
-                        var spread = 0.01; // Default spread stub
-                        _logger.LogTrace("Stub spread for {Symbol}: {Spread}", symbol, spread);
+                        var spread = latestTick.Ask - latestTick.Bid;
+                        _logger.LogTrace("Real spread for {Symbol}: {Spread}", symbol, spread);
                         return spread;
                     }
                 }

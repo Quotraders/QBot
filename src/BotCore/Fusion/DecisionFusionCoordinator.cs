@@ -126,7 +126,7 @@ public sealed class DecisionFusionCoordinator
             }
 
             // Determine final recommendation - prefer Knowledge Graph if available and high confidence
-            BotCore.Strategy.StrategyRecommendation finalRec;
+            StrategyRecommendation finalRec;
             
             if (knowledgeRec != null && knowledgeScore >= rails.MinConfidence)
             {
@@ -138,16 +138,24 @@ public sealed class DecisionFusionCoordinator
             else if (!string.IsNullOrEmpty(ucbStrategy) && ucbScore >= rails.MinConfidence)
             {
                 // Use UCB recommendation
-                finalRec = new BotCore.Strategy.StrategyRecommendation(
-                    ucbStrategy,
-                    ucbIntent,
-                    ucbScore,
-                    new List<BotCore.Strategy.StrategyEvidence>
+                finalRec = new StrategyRecommendation
+                {
+                    StrategyName = ucbStrategy,
+                    Intent = ucbIntent,
+                    Confidence = ucbScore,
+                    Symbol = symbol,
+                    Timestamp = DateTime.UtcNow,
+                    Evidence = new List<StrategyEvidence>
                     {
-                        new BotCore.Strategy.StrategyEvidence("UCB_prediction", ucbScore, $"Neural-UCB selected {ucbStrategy} with confidence {ucbScore:F3}")
+                        new StrategyEvidence
+                        {
+                            Name = "UCB_prediction",
+                            Score = ucbScore,
+                            Explanation = $"Neural-UCB selected {ucbStrategy} with confidence {ucbScore:F3}"
+                        }
                     },
-                    new List<string> { "ucb_source", "fusion_coordinator" }
-                );
+                    TelemetryTags = new List<string> { "ucb_source", "fusion_coordinator" }
+                };
                 _logger.LogDebug("Using UCB recommendation for {Symbol}: {Strategy} (score: {Score:F3})",
                     symbol, ucbStrategy, ucbScore);
             }
@@ -162,13 +170,14 @@ public sealed class DecisionFusionCoordinator
                 
                 // Fall back to highest scoring system
                 finalRec = knowledgeScore > ucbScore ? knowledgeRec : 
-                    new BotCore.Strategy.StrategyRecommendation(
-                        ucbStrategy,
-                        ucbIntent,
-                        ucbScore,
-                        new List<BotCore.Strategy.StrategyEvidence>(),
-                        new List<string> { "fallback", "highest_score" }
-                    );
+                    new StrategyRecommendation
+                    {
+                        StrategyName = ucbStrategy,
+                        Intent = ucbIntent,
+                        Confidence = ucbScore,
+                        Symbol = symbol,
+                        Timestamp = DateTime.UtcNow
+                    };
             }
 
             // Apply PPO position sizing if available

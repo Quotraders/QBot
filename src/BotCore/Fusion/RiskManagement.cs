@@ -6,44 +6,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using BotCore.Services;
+using TradingBot.Abstractions;
 
-namespace BotCore.Fusion
-{
-    /// <summary>
-    /// Stub interface for enhanced risk management - replace with proper implementation when Safety reference is resolved
-    /// </summary>
-    public interface IEnhancedRiskManager
-    {
-        Task<RiskStateStub> GetCurrentRiskStateAsync();
-    }
-
-    /// <summary>
-    /// Stub class for risk state - minimal implementation to fix CS errors
-    /// </summary>
-    public class RiskStateStub
-    {
-        public decimal CurrentPnL { get; set; }
-        public decimal StartingCapital { get; set; } = 100000m;
-        public decimal DailyLossLimit { get; set; } = 5000m;
-        public decimal DrawdownFromPeak { get; set; }
-        public decimal MaxDrawdownLimit { get; set; } = 0.10m;
-    }
-
-    /// <summary>
-    /// Stub implementation of enhanced risk manager
-    /// </summary>
-    public class StubEnhancedRiskManager : IEnhancedRiskManager
-    {
-        public Task<RiskStateStub> GetCurrentRiskStateAsync()
-        {
-            return Task.FromResult(new RiskStateStub
-            {
-                CurrentPnL = 0m,
-                StartingCapital = 100000m,
-                DrawdownFromPeak = 0m
-            });
-        }
-    }
+namespace BotCore.Fusion;
 
 /// <summary>
 /// Risk manager interface for accessing current risk metrics - uses real EnhancedRiskManager
@@ -97,57 +62,63 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
             // Audit log: Risk assessment initiated
             _logger.LogDebug("🔍 [AUDIT-{OperationId}] Risk assessment initiated at {Timestamp}", operationId, startTime);
             
-            // Use the real EnhancedRiskManager service for production risk assessment
-            var enhancedRiskManager = _serviceProvider.GetService<IEnhancedRiskManager>();
-            if (enhancedRiskManager != null)
-            {
-                var riskState = await enhancedRiskManager.GetCurrentRiskStateAsync().ConfigureAwait(false);
-                
-                // Calculate current risk as percentage of daily loss limit
-                var currentRisk = Math.Max(
-                    Math.Abs((double)riskState.CurrentPnL / (double)riskState.DailyLossLimit),
-                    Math.Abs((double)riskState.DrawdownFromPeak / (double)riskState.MaxDrawdownLimit)
-                );
-                
-                // Audit log: Enhanced risk manager result
-                _logger.LogDebug("🔍 [AUDIT-{OperationId}] Enhanced risk assessment: Risk={Risk:P2}, PnL={PnL:C}, Drawdown={Drawdown:P2}, Duration={Duration}ms", 
-                    operationId, currentRisk, riskState.CurrentPnL, riskState.DrawdownFromPeak, (DateTime.UtcNow - startTime).TotalMilliseconds);
-                    
-                return currentRisk;
-            }
-
-            // Fallback to basic risk manager from abstractions
-            var basicRiskManager = _serviceProvider.GetService<TradingBot.Abstractions.IRiskManager>();
+            // Use basic risk manager from abstractions - fail-closed approach
+            var basicRiskManager = _serviceProvider.GetService<IRiskManager>();
             if (basicRiskManager != null)
             {
-                // Use risk breach status as simple risk level
-                var riskLevel = basicRiskManager.IsRiskBreached ? GetConfigValue("Risk:BreachedRiskLevel", 0.8) : GetConfigValue("Risk:NormalRiskLevel", 0.2);
-                
-                // Audit log: Basic risk manager result
-                _logger.LogDebug("🔍 [AUDIT-{OperationId}] Basic risk assessment: Risk={Risk:P2}, Breached={Breached}, Duration={Duration}ms", 
-                    operationId, riskLevel, basicRiskManager.IsRiskBreached, (DateTime.UtcNow - startTime).TotalMilliseconds);
+                try
+                {
+                    // If risk is breached, return maximum risk (fail-closed)
+                    if (basicRiskManager.IsRiskBreached)
+                    {
+                        _logger.LogWarning("🚨 [AUDIT-{OperationId}] Risk breach detected - returning maximum risk (fail-closed)", operationId);
+                        return 1.0; // Maximum risk = hold/no trading
+                    }
                     
-                return riskLevel;
+                    // Get configured risk level from config (no hardcoded defaults)
+                    var configuration = _serviceProvider.GetService<IConfiguration>();
+                    if (configuration == null)
+                    {
+                        _logger.LogError("🚨 [AUDIT-{OperationId}] Configuration service unavailable - fail-closed: returning hold", operationId);
+                        return 1.0; // Fail-closed: hold when config unavailable
+                    }
+                    
+                    // Try to get configured risk level with bounds validation
+                    var configuredRisk = configuration.GetValue<double?>("Risk:NormalRiskLevel");
+                    if (!configuredRisk.HasValue)
+                    {
+                        _logger.LogError("🚨 [AUDIT-{OperationId}] Risk configuration missing - fail-closed: returning hold", operationId);
+                        return 1.0; // Fail-closed: hold when config missing
+                    }
+                    
+                    // Validate bounds
+                    if (configuredRisk.Value < 0.0 || configuredRisk.Value > 1.0)
+                    {
+                        _logger.LogError("🚨 [AUDIT-{OperationId}] Risk configuration out of bounds {Risk} - fail-closed: returning hold", operationId, configuredRisk.Value);
+                        return 1.0; // Fail-closed: hold when config invalid
+                    }
+                    
+                    _logger.LogDebug("🔍 [AUDIT-{OperationId}] Risk assessment successful: Risk={Risk:P2}, Duration={Duration}ms", 
+                        operationId, configuredRisk.Value, (DateTime.UtcNow - startTime).TotalMilliseconds);
+                    return configuredRisk.Value;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk assessment failed - fail-closed: returning hold", operationId);
+                    return 1.0; // Fail-closed: hold on any error
+                }
             }
             
-            // Conservative default with audit logging
-            var conservativeRisk = GetConfigValue("Risk:ConservativeDefault", 0.1);
-            _logger.LogWarning("🔍 [AUDIT-{OperationId}] No risk management service available - using conservative default: {Risk:P2}", operationId, conservativeRisk);
-            return conservativeRisk;
+            // No risk manager available - fail-closed
+            _logger.LogError("🚨 [AUDIT-{OperationId}] No risk management service available - fail-closed: returning hold", operationId);
+            return 1.0; // Fail-closed: hold when no service
         }
         catch (Exception ex)
         {
-            var safeRisk = GetConfigValue("Risk:SafeDefault", 0.05);
-            _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk assessment failed - using safe default: {Risk:P2}, Duration={Duration}ms", 
-                operationId, safeRisk, (DateTime.UtcNow - startTime).TotalMilliseconds);
-            return safeRisk;
+            _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk assessment failed - fail-closed: returning hold, Duration={Duration}ms", 
+                operationId, (DateTime.UtcNow - startTime).TotalMilliseconds);
+            return 1.0; // Fail-closed: hold on any unexpected error
         }
-    }
-
-    private double GetConfigValue(string key, double defaultValue)
-    {
-        var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
-        return configuration?.GetValue<double>(key) ?? defaultValue;
     }
 
     public async Task<double> GetAccountEquityAsync(CancellationToken cancellationToken = default)
@@ -160,46 +131,38 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
             // Audit log: Account equity assessment initiated
             _logger.LogDebug("🔍 [AUDIT-{OperationId}] Account equity assessment initiated at {Timestamp}", operationId, startTime);
             
-            // Use the real EnhancedRiskManager service for production account equity
-            var enhancedRiskManager = _serviceProvider.GetService<IEnhancedRiskManager>();
-            if (enhancedRiskManager != null)
+            // Get configuration service - required for account equity
+            var configuration = _serviceProvider.GetService<IConfiguration>();
+            if (configuration == null)
             {
-                var riskState = await enhancedRiskManager.GetCurrentRiskStateAsync().ConfigureAwait(false);
-                
-                // Calculate current account equity (starting equity + current P&L)
-                var currentEquity = riskState.StartingCapital + riskState.CurrentPnL;
-                
-                // Audit log: Enhanced account equity result
-                _logger.LogDebug("🔍 [AUDIT-{OperationId}] Enhanced account equity: Equity={Equity:C}, Starting={Starting:C}, PnL={PnL:C}, Duration={Duration}ms", 
-                    operationId, currentEquity, riskState.StartingCapital, riskState.CurrentPnL, (DateTime.UtcNow - startTime).TotalMilliseconds);
-                    
-                return (double)currentEquity;
-            }
-
-            // Fallback to configuration-based account equity
-            var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
-            if (configuration != null)
-            {
-                var configuredEquity = configuration.GetValue<double>("Account:StartingEquity", GetConfigValue("Account:DefaultEquity", 100000.0));
-                
-                // Audit log: Configuration-based equity result
-                _logger.LogDebug("🔍 [AUDIT-{OperationId}] Configuration-based account equity: Equity={Equity:C}, Duration={Duration}ms", 
-                    operationId, configuredEquity, (DateTime.UtcNow - startTime).TotalMilliseconds);
-                return configuredEquity;
+                _logger.LogError("🚨 [AUDIT-{OperationId}] Configuration service unavailable - fail-closed: cannot determine account equity", operationId);
+                throw new InvalidOperationException("Account equity unavailable - configuration service missing (fail-closed)");
             }
             
-            // Conservative default for demo/test environments
-            var conservativeEquity = GetConfigValue("Account:ConservativeDefault", 50000.0);
-            _logger.LogWarning("🔍 [AUDIT-{OperationId}] No account service available - using conservative default: {Equity:C}", operationId, conservativeEquity);
-            return conservativeEquity;
+            // Get configured starting equity with bounds validation
+            var startingEquity = configuration.GetValue<double?>("Account:StartingEquity");
+            if (!startingEquity.HasValue)
+            {
+                _logger.LogError("🚨 [AUDIT-{OperationId}] Account equity configuration missing - fail-closed", operationId);
+                throw new InvalidOperationException("Account equity unavailable - configuration missing (fail-closed)");
+            }
+            
+            // Validate bounds (reasonable account size)
+            if (startingEquity.Value <= 0 || startingEquity.Value > 10000000) // $10M max reasonable
+            {
+                _logger.LogError("🚨 [AUDIT-{OperationId}] Account equity configuration out of bounds {Equity:C} - fail-closed", operationId, startingEquity.Value);
+                throw new InvalidOperationException($"Account equity out of bounds: {startingEquity.Value:C} (fail-closed)");
+            }
+            
+            _logger.LogDebug("🔍 [AUDIT-{OperationId}] Account equity from config: {Equity:C}, Duration={Duration}ms", 
+                operationId, startingEquity.Value, (DateTime.UtcNow - startTime).TotalMilliseconds);
+            return startingEquity.Value;
         }
         catch (Exception ex)
         {
-            var safeEquity = GetConfigValue("Account:SafeDefault", 25000.0);
-            _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Account equity assessment failed - using safe default: {Equity:C}, Duration={Duration}ms", 
-                operationId, safeEquity, (DateTime.UtcNow - startTime).TotalMilliseconds);
-            return safeEquity;
+            _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Account equity assessment failed - fail-closed: cannot proceed, Duration={Duration}ms", 
+                operationId, (DateTime.UtcNow - startTime).TotalMilliseconds);
+            throw; // Fail-closed: propagate error instead of returning default
         }
     }
-}
 }
