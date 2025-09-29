@@ -1,0 +1,41 @@
+{
+  "BookAwareSimulator": {
+    "Enabled": false,
+    "HistoricalDataDays": 30,
+    "MaxSlippageMultiplier": 2.0,
+    "MaxPriceDeviationMultiplier": 3.0,
+    "CommissionPerContract": 2.50,
+    "MinFillTimeMs": 10.0,
+    "TrainingDatasetPath": "data/training/execution"
+  },
+  "CounterfactualReplay": {
+    "GateLogsPath": "state/gates",
+    "NightlyRunHour": 2,
+    "NightlyRunMinute": 0,
+    "HistoricalDataDays": 7
+  },
+  "Explainability": {
+    "ExplainabilityPath": "state/explain",
+    "IndentedJson": false,
+    "MaxStampAgeHours": 72
+  },
+  "EnhancedAlerting": {
+    "CheckIntervalSeconds": 30,
+    "PatternPromotedThreshold": 1.0,
+    "PatternPromotedWindowMinutes": 5,
+    "ModelRollbackThreshold": 1.0,
+    "ModelRollbackWindowMinutes": 1,
+    "FeatureDriftThreshold": 0.3,
+    "FeatureDriftWindowMinutes": 15,
+    "QueueEtaBreachThreshold": 1.0,
+    "QueueEtaBreachWindowMinutes": 1,
+    "LiquidityDegradationThreshold": 0.6,
+    "LiquidityDegradationWindowMinutes": 10,
+    "OfiProxyAnomalyThreshold": 2.0,
+    "OfiProxyAnomalyWindowMinutes": 5,
+    "CriticalFeaturesMissingThreshold": 3.0,
+    "CriticalFeaturesMissingWindowMinutes": 5,
+    "TranchePerformanceDegradationThreshold": -0.2,
+    "TranchePerformanceDegradationWindowMinutes": 30
+  }
+}

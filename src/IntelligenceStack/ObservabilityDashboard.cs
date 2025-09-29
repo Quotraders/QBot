@@ -520,6 +520,9 @@ public class ObservabilityDashboard : IDisposable
         };
     }
 
+    // Enhanced dashboard methods removed to resolve SonarCloud S1144 violations
+    // These methods can be re-added when dashboard endpoints are implemented
+
     /// <summary>
     /// Get RL advisor dashboard
     /// </summary>
@@ -858,6 +861,14 @@ public class ObservabilityDashboard : IDisposable
         };
     }
 
+    // Helper methods for new dashboard panels
+
+    // Helper methods for enhanced dashboards removed to resolve SonarCloud violations
+    // These will be re-added when dashboard endpoints are implemented
+
+    // Helper methods for enhanced dashboards removed to resolve SonarCloud violations
+    // These will be re-added when dashboard endpoints are implemented
+
     public void Dispose()
     {
         Dispose(true);
@@ -1110,5 +1121,8 @@ public class MetricPoint
     public double Value { get; set; }
     public Dictionary<string, string> Tags { get; } = new();
 }
+
+// Enhanced dashboard data structures temporarily removed to resolve SonarCloud violations
+// These will be re-added when dashboard endpoints are implemented
 
 #endregion
