@@ -348,7 +348,6 @@ namespace TopstepX.S6
             bool shortSide= s.LastClose < s.ON_Low  && s.TrendAgree1m5m(false);
             if (!longSide && !shortSide) return;
 
-            long entry = s.LastClose;
             double stopPx = s.ComputeStopPx(longSide);
             double tgtPx  = s.ComputeTargetPx(longSide);
 

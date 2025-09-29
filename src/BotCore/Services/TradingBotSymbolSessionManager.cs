@@ -27,6 +27,32 @@ namespace TradingBot.BotCore.Services
         // Statistical analysis constants
         private const int MinimumTradesForConfidenceInterval = 10;
 
+        // Trading Session Multipliers
+        private const decimal RegularHoursMultiplier = 1.0m;
+        private const decimal PostMarketMultiplier = 1.15m;
+        private const decimal PreMarketMultiplier = 1.10m;
+        private const decimal ClosedMarketMultiplier = 0.0m;
+
+        // Symbol-Specific Multipliers
+        private const decimal EsBaselineMultiplier = 1.0m;
+        private const decimal NqHighVolatilityMultiplier = 1.08m;
+        private const decimal YmLowVolatilityMultiplier = 0.95m;
+        private const decimal RtyHighestVolatilityMultiplier = 1.12m;
+
+        // Trading Session Hours (ET)
+        private const int RegularHoursStart = 9;     // 9:30 AM ET
+        private const int RegularHoursEnd = 16;      // 4:00 PM ET
+        private const int PostMarketStart = 16;      // 4:00 PM ET
+        private const int PostMarketEnd = 20;        // 8:00 PM ET
+        private const int PreMarketStart = 4;        // 4:00 AM ET
+        private const int PreMarketEnd = 9;          // 9:30 AM ET
+        private const int ClosedMarketHour = 0;
+
+        // Position Size Base Units
+        private const int EsBaseUnit = 2;
+        private const int NqBaseUnit = 3;
+        private const int DefaultBaseUnit = 1;
+
         public TradingBotSymbolSessionManager(
             SafeHoldDecisionPolicy? neutralBandService, 
             ILogger<TradingBotSymbolSessionManager> logger)
@@ -247,11 +273,11 @@ namespace TradingBot.BotCore.Services
         {
             return sessionType switch
             {
-                MarketSession.RegularHours => 1.0m,      // Standard multiplier for regular hours
-                MarketSession.PostMarket => 1.15m,       // Higher volatility/risk in after hours
-                MarketSession.PreMarket => 1.10m,        // Moderate increase for pre-market
-                MarketSession.Closed => 0.0m,            // No trading when closed
-                _ => 1.0m
+                MarketSession.RegularHours => RegularHoursMultiplier,      // Standard multiplier for regular hours
+                MarketSession.PostMarket => PostMarketMultiplier,       // Higher volatility/risk in after hours
+                MarketSession.PreMarket => PreMarketMultiplier,        // Moderate increase for pre-market
+                MarketSession.Closed => ClosedMarketMultiplier,            // No trading when closed
+                _ => RegularHoursMultiplier
             };
         }
 
@@ -262,11 +288,11 @@ namespace TradingBot.BotCore.Services
         {
             return symbol switch
             {
-                "ES" => 1.0m,        // E-mini S&P 500 - baseline
-                "NQ" => 1.08m,       // E-mini Nasdaq - higher volatility
-                "YM" => 0.95m,       // E-mini Dow - lower volatility
-                "RTY" => 1.12m,      // E-mini Russell - highest volatility
-                _ => 1.0m
+                "ES" => EsBaselineMultiplier,        // E-mini S&P 500 - baseline
+                "NQ" => NqHighVolatilityMultiplier,       // E-mini Nasdaq - higher volatility
+                "YM" => YmLowVolatilityMultiplier,       // E-mini Dow - lower volatility
+                "RTY" => RtyHighestVolatilityMultiplier,      // E-mini Russell - highest volatility
+                _ => EsBaselineMultiplier
             };
         }
 
@@ -277,11 +303,11 @@ namespace TradingBot.BotCore.Services
         {
             return sessionType switch
             {
-                MarketSession.RegularHours => 9,      // 9:30 AM ET
-                MarketSession.PostMarket => 16,       // 4:00 PM ET
-                MarketSession.PreMarket => 4,         // 4:00 AM ET
-                MarketSession.Closed => 0,
-                _ => 9
+                MarketSession.RegularHours => RegularHoursStart,      // 9:30 AM ET
+                MarketSession.PostMarket => PostMarketStart,       // 4:00 PM ET
+                MarketSession.PreMarket => PreMarketStart,         // 4:00 AM ET
+                MarketSession.Closed => ClosedMarketHour,
+                _ => RegularHoursStart
             };
         }
 
@@ -292,18 +318,18 @@ namespace TradingBot.BotCore.Services
         {
             return sessionType switch
             {
-                MarketSession.RegularHours => 16,     // 4:00 PM ET
-                MarketSession.PostMarket => 20,       // 8:00 PM ET
-                MarketSession.PreMarket => 9,         // 9:30 AM ET
-                MarketSession.Closed => 0,
-                _ => 16
+                MarketSession.RegularHours => RegularHoursEnd,     // 4:00 PM ET
+                MarketSession.PostMarket => PostMarketEnd,       // 8:00 PM ET
+                MarketSession.PreMarket => PreMarketEnd,         // 9:30 AM ET
+                MarketSession.Closed => ClosedMarketHour,
+                _ => RegularHoursEnd
             };
         }
 
         /// <summary>
         /// Get maximum position size from configuration (not hardcoded)
         /// </summary>
-        private int GetMaxPositionSizeFromConfig(string symbol)
+        private static int GetMaxPositionSizeFromConfig(string symbol)
         {
             // In production, this would come from risk management configuration
             // Using position size multiplier as basis for calculation
@@ -311,9 +337,9 @@ namespace TradingBot.BotCore.Services
             
             return symbol switch
             {
-                "ES" => (int)(multiplier * 2), // ES base unit * multiplier
-                "NQ" => (int)(multiplier * 3), // NQ base unit * multiplier  
-                _ => (int)(multiplier * 1)     // Default fallback
+                "ES" => (int)(multiplier * EsBaseUnit), // ES base unit * multiplier
+                "NQ" => (int)(multiplier * NqBaseUnit), // NQ base unit * multiplier  
+                _ => (int)(multiplier * DefaultBaseUnit)     // Default fallback
             };
         }
 
@@ -418,7 +444,6 @@ namespace TradingBot.BotCore.Services
     /// </summary>
     public class SessionBayesianPriors
     {
-        // Statistical analysis constants
         private const int MinimumTradesForConfidenceInterval = 10;
         
         public double SuccessRate { get; private set; } = 0.5;

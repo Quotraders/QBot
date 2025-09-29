@@ -213,7 +213,15 @@ namespace TopstepX.S11
         }
     }
 
-    public sealed class Ema { private readonly double _k; private bool _seed; public double Value { get; private set; } public Ema(int n){ _k=2.0/(n+1);} public double Update(double v){ if(!_seed){ Value=v; _seed=true; } else Value = v*_k + Value*(1-_k); return Value; } }
+    public sealed class Ema 
+    { 
+        private const double EmaSmoothingFactorMultiplier = 2.0; // Standard EMA smoothing factor: 2/(n+1)
+        private readonly double _k; 
+        private bool _seed; 
+        public double Value { get; private set; } 
+        public Ema(int n){ _k=EmaSmoothingFactorMultiplier/(n+1);} 
+        public double Update(double v){ if(!_seed){ Value=v; _seed=true; } else Value = v*_k + Value*(1-_k); return Value; } 
+    }
 
     public sealed class Rsi
     {
@@ -361,7 +369,6 @@ namespace TopstepX.S11
             
             if (!fadeLong && !fadeShort) return;
 
-            long entry = s.LastClose;
             double stopPx = s.ComputeStopBeyondExtreme(fadeLong);
             double tgtPx = s.ComputeTargetTowardMean(fadeLong);
 
@@ -577,9 +584,7 @@ namespace TopstepX.S11
         public void UpdateDivergence()
         {
             if (_es.Min1.Count < 2 || _nq.Min1.Count < 2) return;
-            double esRet = (_es.ToPx(_es.Min1.Last().Close) - _es.ToPx(_es.Min1.Last(1).Close)) / _es.ToPx(_es.Min1.Last(1).Close);
-            double nqRet = (_nq.ToPx(_nq.Min1.Last().Close) - _nq.ToPx(_nq.Min1.Last(1).Close)) / _nq.ToPx(_nq.Min1.Last(1).Close);
-            // Could store divergence if needed for S11 logic
+            // Divergence calculation would go here if needed for S11 logic
         }
     }
 }

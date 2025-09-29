@@ -475,8 +475,8 @@ public sealed class ZoneStateSnapshot
 {
     public DateTime CapturedAt { get; set; }
     public string Symbol { get; set; } = string.Empty;
-    public List<ZoneBuffer> ZoneBuffers { get; set; } = new();
-    public Dictionary<string, double> ZoneMetrics { get; set; } = new();
+    public IReadOnlyList<ZoneBuffer> ZoneBuffers { get; set; } = new List<ZoneBuffer>();
+    public IReadOnlyDictionary<string, double> ZoneMetrics { get; set; } = new Dictionary<string, double>();
     public int ActiveZoneCount { get; set; }
     public DateTime LastZoneUpdate { get; set; }
 }
@@ -501,7 +501,7 @@ public sealed class ZoneBuffer
 public sealed class PatternReliabilitySnapshot
 {
     public DateTime CapturedAt { get; set; }
-    public Dictionary<string, PatternReliabilityData> PatternReliabilities { get; set; } = new();
+    public IReadOnlyDictionary<string, PatternReliabilityData> PatternReliabilities { get; set; } = new Dictionary<string, PatternReliabilityData>();
     public long TotalPatternDetections { get; set; }
     public long ConfirmedPatterns { get; set; }
 }
@@ -525,8 +525,8 @@ public sealed class PatternReliabilityData
 public sealed class FusionStateSnapshot
 {
     public DateTime CapturedAt { get; set; }
-    public Dictionary<string, double> LastFeatureValues { get; set; } = new();
-    public Dictionary<string, DateTime> FeatureTimestamps { get; set; } = new();
+    public IReadOnlyDictionary<string, double> LastFeatureValues { get; set; } = new Dictionary<string, double>();
+    public IReadOnlyDictionary<string, DateTime> FeatureTimestamps { get; set; } = new Dictionary<string, DateTime>();
     public long DecisionCount { get; set; }
     public long HoldDecisionCount { get; set; }
     public DateTime LastDecision { get; set; }
@@ -538,9 +538,9 @@ public sealed class FusionStateSnapshot
 public sealed class MetricsStateSnapshot
 {
     public DateTime CapturedAt { get; set; }
-    public Dictionary<string, double> GaugeValues { get; set; } = new();
-    public Dictionary<string, long> CounterValues { get; set; } = new();
-    public Dictionary<string, List<double>> HistogramValues { get; set; } = new();
+    public IReadOnlyDictionary<string, double> GaugeValues { get; set; } = new Dictionary<string, double>();
+    public IReadOnlyDictionary<string, long> CounterValues { get; set; } = new Dictionary<string, long>();
+    public IReadOnlyDictionary<string, IReadOnlyList<double>> HistogramValues { get; set; } = new Dictionary<string, IReadOnlyList<double>>();
 }
 
 /// <summary>

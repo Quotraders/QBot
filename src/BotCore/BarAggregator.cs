@@ -10,6 +10,8 @@ namespace BotCore
 
     public sealed class BarAggregator(int seconds)
     {
+        private const decimal BidAskAverageDivisor = 2m;
+        
         private readonly object _lock = new();
         private readonly int _seconds = Math.Max(5, seconds);
         private DateTimeOffset _bucket = DateTimeOffset.MinValue;
@@ -65,7 +67,7 @@ namespace BotCore
                 var hasBid = TryGetDecimal(quote, out var bid, "bid", "bidPrice", "b");
                 var hasAsk = TryGetDecimal(quote, out var ask, "ask", "askPrice", "a");
                 if (!(hasBid && hasAsk)) return;
-                price = (bid + ask) / 2m;
+                price = (bid + ask) / BidAskAverageDivisor;
             }
 
             var ts = TryGetExchangeTime(quote) ?? DateTimeOffset.UtcNow;

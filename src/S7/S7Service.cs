@@ -19,6 +19,12 @@ namespace TradingBot.S7
         private readonly BreadthConfiguration _breadthConfig;
         private readonly IBreadthFeed? _breadthFeed;
 
+        // S7 Configuration Constants
+        private const int PriceHistoryBufferSize = 10;
+        private const int PriceHistoryCleanupSize = 10;
+        private const decimal DefaultMinZScoreThreshold = 0.001m;
+        private const decimal AveragingDivisor = 2m;
+
         // Price history storage for ES and NQ
         private readonly Dictionary<string, List<PricePoint>> _priceHistory = new();
         
@@ -33,11 +39,18 @@ namespace TradingBot.S7
         private readonly Dictionary<string, List<decimal>> _volatilityHistory = new();
         private readonly Dictionary<string, decimal> _adaptiveThresholds = new();
         
-        // Multi-index dispersion tracking
-        private readonly Dictionary<string, List<decimal>> _dispersionHistory = new();
         private decimal _globalDispersionIndex = 0.5m;
 
         public event EventHandler<S7FeatureUpdatedEventArgs>? FeatureUpdated;
+
+        // LoggerMessage delegates for performance
+        private static readonly Action<ILogger, string, Exception?> _logS7ServiceInitialized = 
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(2001, "S7ServiceInitialized"), 
+                "S7Service initialized for symbols: {Symbols}");
+                
+        private static readonly Action<ILogger, string, Exception?> _logUnknownSymbol = 
+            LoggerMessage.Define<string>(LogLevel.Warning, new EventId(2002, "UnknownSymbol"), 
+                "Received price update for unknown symbol: {Symbol}");
 
         public S7Service(
             ILogger<S7Service> logger,
@@ -68,8 +81,7 @@ namespace TradingBot.S7
                 };
             }
 
-            _logger.LogInformation("S7Service initialized for symbols: {Symbols}", 
-                string.Join(", ", _config.Symbols));
+            _logS7ServiceInitialized(_logger, string.Join(", ", _config.Symbols), null);
         }
 
         public async Task UpdateAsync(string symbol, decimal close, DateTime timestamp)
@@ -79,7 +91,7 @@ namespace TradingBot.S7
 
             if (!_priceHistory.ContainsKey(symbol))
             {
-                _logger.LogWarning("Received price update for unknown symbol: {Symbol}", symbol);
+                _logUnknownSymbol(_logger, symbol, null);
                 return;
             }
 
@@ -88,9 +100,9 @@ namespace TradingBot.S7
 
             // Maintain sliding window
             var maxLookback = Math.Max(_config.LookbackLongBars, _config.LookbackMediumBars);
-            if (_priceHistory[symbol].Count > maxLookback + 10) // Keep some buffer
+            if (_priceHistory[symbol].Count > maxLookback + PriceHistoryBufferSize) // Keep some buffer
             {
-                _priceHistory[symbol].RemoveRange(0, 10);
+                _priceHistory[symbol].RemoveRange(0, PriceHistoryCleanupSize);
             }
 
             // Update analysis for this symbol
@@ -198,8 +210,8 @@ namespace TradingBot.S7
                 IsActionable = IsSignalActionable(coherence, signalStrength),
                 LastUpdateTime = timestamp,
                 GlobalDispersionIndex = _globalDispersionIndex,
-                AdaptiveVolatilityMeasure = (GetRecentVolatility("ES") + GetRecentVolatility("NQ")) / 2m,
-                SystemCoherenceScore = (coherence + signalStrength) / 2m
+                AdaptiveVolatilityMeasure = (GetRecentVolatility("ES") + GetRecentVolatility("NQ")) / AveragingDivisor,
+                SystemCoherenceScore = (coherence + signalStrength) / AveragingDivisor
             };
 
             // Populate the read-only FeatureBusData dictionary
@@ -218,7 +230,7 @@ namespace TradingBot.S7
             }
         }
 
-        private decimal CalculateRelativeStrength(List<PricePoint> prices, int lookback)
+        private static decimal CalculateRelativeStrength(List<PricePoint> prices, int lookback)
         {
             if (prices.Count < lookback)
                 return 0;
@@ -270,7 +282,7 @@ namespace TradingBot.S7
             var nqSignalDirection = GetSignalDirection(nqState);
 
             // FAIL-CLOSED: Check for missing data or invalid states
-            if (Math.Abs(esState.ZScore) < 0.001m && Math.Abs(nqState.ZScore) < 0.001m)
+            if (Math.Abs(esState.ZScore) < DefaultMinZScoreThreshold && Math.Abs(nqState.ZScore) < DefaultMinZScoreThreshold)
             {
                 _logger.LogError("[S7-AUDIT-VIOLATION] Zero Z-scores detected - TRIGGERING HOLD + TELEMETRY");
                 return 0m; // Fail-closed: no safe default, force hold
@@ -292,7 +304,7 @@ namespace TradingBot.S7
             
             // AUDIT-CLEAN: Use configuration values instead of hardcoded literals
             var directionAlignment = esSignalDirection == nqSignalDirection ? _config.DirectionAlignmentWeight : 0.0m;
-            var avgTimeframeCoherence = (esTimeframeCoherence + nqTimeframeCoherence) / 2;
+            var avgTimeframeCoherence = (esTimeframeCoherence + nqTimeframeCoherence) / AveragingDivisor;
 
             // AUDIT-CLEAN: All weights from configuration - NO HARDCODED VALUES
             return (zScoreAlignment * _config.ZScoreAlignmentWeight + 
@@ -342,10 +354,10 @@ namespace TradingBot.S7
             return S7Leader.None;
         }
 
-        private decimal CalculateSignalStrength(S7State esState, S7State nqState, decimal coherence)
+        private static decimal CalculateSignalStrength(S7State esState, S7State nqState, decimal coherence)
         {
             var maxZScore = Math.Max(Math.Abs(esState.ZScore), Math.Abs(nqState.ZScore));
-            var avgZScore = (Math.Abs(esState.ZScore) + Math.Abs(nqState.ZScore)) / 2;
+            var avgZScore = (Math.Abs(esState.ZScore) + Math.Abs(nqState.ZScore)) / AveragingDivisor;
             
             return avgZScore * coherence;
         }
@@ -384,14 +396,34 @@ namespace TradingBot.S7
                 // AUDIT-CLEAN: Use configured min/max bounds instead of hardcoded 0.5m/1.5m
                 return Math.Max(_config.MinBreadthScore, Math.Min(_config.MaxBreadthScore, breadthScore));
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
                 if (_config.FailOnMissingData)
                 {
-                    _logger.LogError(ex, "[S7-AUDIT-VIOLATION] Breadth calculation failed - TRIGGERING HOLD + TELEMETRY");
+                    _logger.LogError(ex, "[S7-AUDIT-VIOLATION] Invalid operation in breadth calculation - TRIGGERING HOLD + TELEMETRY");
                     return 0m; // Fail-closed: no safe defaults
                 }
-                _logger.LogWarning(ex, "[S7-AUDIT-VIOLATION] Breadth calculation error, using configured base score");
+                _logger.LogWarning(ex, "[S7-AUDIT-VIOLATION] Invalid operation in breadth calculation, using configured base score");
+                return _config.BaseBreadthScore; // Configured fallback instead of hardcoded 1.0m
+            }
+            catch (TimeoutException ex)
+            {
+                if (_config.FailOnMissingData)
+                {
+                    _logger.LogError(ex, "[S7-AUDIT-VIOLATION] Timeout in breadth calculation - TRIGGERING HOLD + TELEMETRY");
+                    return 0m; // Fail-closed: no safe defaults
+                }
+                _logger.LogWarning(ex, "[S7-AUDIT-VIOLATION] Timeout in breadth calculation, using configured base score");
+                return _config.BaseBreadthScore; // Configured fallback instead of hardcoded 1.0m
+            }
+            catch (ArgumentException ex)
+            {
+                if (_config.FailOnMissingData)
+                {
+                    _logger.LogError(ex, "[S7-AUDIT-VIOLATION] Invalid argument in breadth calculation - TRIGGERING HOLD + TELEMETRY");
+                    return 0m; // Fail-closed: no safe defaults
+                }
+                _logger.LogWarning(ex, "[S7-AUDIT-VIOLATION] Invalid argument in breadth calculation, using configured base score");
                 return _config.BaseBreadthScore; // Configured fallback instead of hardcoded 1.0m
             }
         }
@@ -590,9 +622,19 @@ namespace TradingBot.S7
                 _adaptiveThresholds[symbol] = newThreshold;
                 return Task.FromResult(newThreshold);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "[S7-ADAPTIVE] Failed to calculate adaptive threshold for {Symbol}, using default", symbol);
+                _logger.LogWarning(ex, "[S7-ADAPTIVE] Invalid operation calculating adaptive threshold for {Symbol}, using default", symbol);
+                return Task.FromResult(_config.ZThresholdEntry);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "[S7-ADAPTIVE] Invalid argument calculating adaptive threshold for {Symbol}, using default", symbol);
+                return Task.FromResult(_config.ZThresholdEntry);
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogWarning(ex, "[S7-ADAPTIVE] Timeout calculating adaptive threshold for {Symbol}, using default", symbol);
                 return Task.FromResult(_config.ZThresholdEntry);
             }
         }
@@ -744,9 +786,17 @@ namespace TradingBot.S7
                     adaptive_volatility_measure = snapshot.AdaptiveVolatilityMeasure
                 };
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "[S7-FUSION] Failed to add fusion tags");
+                _logger.LogWarning(ex, "[S7-FUSION] Invalid operation adding fusion tags");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "[S7-FUSION] Invalid argument adding fusion tags");
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning(ex, "[S7-FUSION] Key not found adding fusion tags");
             }
         }
 

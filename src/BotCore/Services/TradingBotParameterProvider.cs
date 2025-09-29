@@ -12,6 +12,11 @@ namespace TradingBot.BotCore.Services
     /// </summary>
     public static class TradingBotParameterProvider
     {
+        // Trading Parameter Fallback Constants
+        private const double DefaultAIConfidenceThreshold = 0.75;
+        private const double DefaultPositionSizeMultiplier = 2.0;
+        private const double DefaultMinimumConfidence = 0.65;
+        
         private static IServiceProvider? _serviceProvider;
         private static ILogger? _logger;
         
@@ -32,7 +37,7 @@ namespace TradingBot.BotCore.Services
             return ServiceProviderHelper.ExecuteWithService<MLConfigurationService, double>(
                 _serviceProvider,
                 service => service.GetAIConfidenceThreshold(),
-                0.75 // Conservative fallback
+                DefaultAIConfidenceThreshold // Conservative fallback
             );
         }
         
@@ -44,7 +49,7 @@ namespace TradingBot.BotCore.Services
             return ServiceProviderHelper.ExecuteWithService<MLConfigurationService, double>(
                 _serviceProvider,
                 service => service.GetPositionSizeMultiplier(),
-                2.0 // Conservative fallback
+                DefaultPositionSizeMultiplier // Conservative fallback
             );
         }
         
@@ -56,7 +61,7 @@ namespace TradingBot.BotCore.Services
             return ServiceProviderHelper.ExecuteWithService<MLConfigurationService, double>(
                 _serviceProvider,
                 service => service.GetMinimumConfidence(),
-                0.65 // Conservative fallback
+                DefaultMinimumConfidence // Conservative fallback
             );
         }
 

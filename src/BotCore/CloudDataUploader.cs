@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -66,9 +67,21 @@ namespace BotCore
             {
                 await UploadTrainingDataToCloudAsync().ConfigureAwait(false);
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
             {
-                _log.LogError(ex, "[CloudDataUploader] Failed to upload training data");
+                _log.LogError(ex, "[CloudDataUploader] HTTP error uploading training data");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _log.LogError(ex, "[CloudDataUploader] Access denied uploading training data");
+            }
+            catch (IOException ex)
+            {
+                _log.LogError(ex, "[CloudDataUploader] I/O error uploading training data");
+            }
+            catch (TimeoutException ex)
+            {
+                _log.LogError(ex, "[CloudDataUploader] Timeout uploading training data");
             }
         }
 
@@ -171,9 +184,21 @@ namespace BotCore
                     File.Delete(tempParquetPath);
                 }
             }
-            catch (Exception ex)
+            catch (FileNotFoundException ex)
             {
-                _log.LogError(ex, "[CloudDataUploader] Error converting/uploading {File}", jsonlPath);
+                _log.LogError(ex, "[CloudDataUploader] File not found error converting/uploading {File}", jsonlPath);
+            }
+            catch (IOException ex)
+            {
+                _log.LogError(ex, "[CloudDataUploader] I/O error converting/uploading {File}", jsonlPath);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _log.LogError(ex, "[CloudDataUploader] Access denied converting/uploading {File}", jsonlPath);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _log.LogError(ex, "[CloudDataUploader] Invalid operation converting/uploading {File}", jsonlPath);
             }
         }
 
