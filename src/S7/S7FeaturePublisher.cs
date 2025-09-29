@@ -14,7 +14,7 @@ namespace TradingBot.S7
     /// Publishes S7 features to IFeatureBus for knowledge graph and DSL consumption
     /// AUDIT-CLEAN: No hardcoded values, fail-closed behavior, full telemetry
     /// </summary>
-    public class S7FeaturePublisher : IHostedService, IDisposable
+    public sealed class S7FeaturePublisher : IHostedService, IDisposable
     {
         private readonly ILogger<S7FeaturePublisher> _logger;
         private readonly IServiceProvider _serviceProvider;
@@ -23,6 +23,23 @@ namespace TradingBot.S7
         private S7Configuration? _config;
         private Timer? _publishTimer;
         private bool _disposed;
+
+        // LoggerMessage delegates for performance
+        private static readonly Action<ILogger, Exception?> _logS7ServiceNotAvailable = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(1001, "S7ServiceNotAvailable"), 
+                "[S7-FEATURE-PUBLISHER] S7 service not available - TRIGGERING HOLD + TELEMETRY");
+                
+        private static readonly Action<ILogger, Exception?> _logFeatureBusNotAvailable = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(1002, "FeatureBusNotAvailable"), 
+                "[S7-FEATURE-PUBLISHER] Feature bus not available - TRIGGERING HOLD + TELEMETRY");
+                
+        private static readonly Action<ILogger, Exception?> _logConfigNotAvailable = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(1003, "ConfigNotAvailable"), 
+                "[S7-FEATURE-PUBLISHER] S7 configuration not available - TRIGGERING HOLD + TELEMETRY");
+                
+        private static readonly Action<ILogger, Exception?> _logFeaturePublishingDisabled = 
+            LoggerMessage.Define(LogLevel.Information, new EventId(1004, "FeaturePublishingDisabled"), 
+                "[S7-FEATURE-PUBLISHER] S7 feature publishing disabled in configuration");
 
         public S7FeaturePublisher(
             ILogger<S7FeaturePublisher> logger,
@@ -44,25 +61,25 @@ namespace TradingBot.S7
                 // FAIL-CLOSED: Check for missing dependencies
                 if (_s7Service == null)
                 {
-                    _logger.LogError("[S7-FEATURE-PUBLISHER] S7 service not available - TRIGGERING HOLD + TELEMETRY");
+                    _logS7ServiceNotAvailable(_logger, null);
                     return Task.CompletedTask;
                 }
 
                 if (_featureBus == null)
                 {
-                    _logger.LogError("[S7-FEATURE-PUBLISHER] Feature bus not available - TRIGGERING HOLD + TELEMETRY");
+                    _logFeatureBusNotAvailable(_logger, null);
                     return Task.CompletedTask;
                 }
 
                 if (_config == null)
                 {
-                    _logger.LogError("[S7-FEATURE-PUBLISHER] S7 configuration not available - TRIGGERING HOLD + TELEMETRY");
+                    _logConfigNotAvailable(_logger, null);
                     return Task.CompletedTask;
                 }
 
                 if (!_config.Enabled || !_config.EnableFeatureBus)
                 {
-                    _logger.LogInformation("[S7-FEATURE-PUBLISHER] S7 feature publishing disabled in configuration");
+                    _logFeaturePublishingDisabled(_logger, null);
                     return Task.CompletedTask;
                 }
 

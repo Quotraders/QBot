@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace BotCore.StrategyDsl;
 
 /// <summary>
@@ -14,14 +16,14 @@ public class DslStrategy
     public string Description { get; set; } = string.Empty;
     public string Intent { get; set; } = string.Empty; // Added for knowledge graph compatibility
     
-    public List<string> TelemetryTags { get; set; } = new();
+    public IReadOnlyList<string> TelemetryTags { get; set; } = new List<string>();
     public DslConditions RegimeFilters { get; set; } = new();
     public DslConditions ZoneConditions { get; set; } = new();
     public DslConditions PatternConditions { get; set; } = new();
     public DslConditions MicroConditions { get; set; } = new();
     public DslWhen? When { get; set; } // Added for knowledge graph compatibility
-    public List<string>? Contra { get; set; } // Direct contraindications from YAML
-    public List<string> Confluence { get; set; } = new(); // Direct confluence from YAML
+    public IReadOnlyList<string>? Contra { get; set; } // Direct contraindications from YAML
+    public IReadOnlyList<string> Confluence { get; set; } = new List<string>(); // Direct confluence from YAML
     public DslPlaybook? Playbook { get; set; } // Added for knowledge graph compatibility
     
     public DslRiskManagement RiskManagement { get; set; } = new();
@@ -35,13 +37,13 @@ public class DslStrategy
 /// </summary>
 public class DslConditions
 {
-    public List<string> Required { get; set; } = new();
-    public List<string> Preferred { get; set; } = new();
-    public List<string> Blocked { get; set; } = new();
-    public List<string> Confluence { get; set; } = new();
-    public List<string> Contraindications { get; set; } = new();
-    public List<string> EntryTriggers { get; set; } = new();
-    public List<string> Timing { get; set; } = new();
+    public IReadOnlyList<string> Required { get; set; } = new List<string>();
+    public IReadOnlyList<string> Preferred { get; set; } = new List<string>();
+    public IReadOnlyList<string> Blocked { get; set; } = new List<string>();
+    public IReadOnlyList<string> Confluence { get; set; } = new List<string>();
+    public IReadOnlyList<string> Contraindications { get; set; } = new List<string>();
+    public IReadOnlyList<string> EntryTriggers { get; set; } = new List<string>();
+    public IReadOnlyList<string> Timing { get; set; } = new List<string>();
 }
 
 /// <summary>

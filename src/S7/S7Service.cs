@@ -22,7 +22,6 @@ namespace TradingBot.S7
         // S7 Configuration Constants
         private const int PriceHistoryBufferSize = 10;
         private const int PriceHistoryCleanupSize = 10;
-        private const int DefaultCorrelationPeriod = 2;
         private const decimal DefaultMinZScoreThreshold = 0.001m;
         private const decimal AveragingDivisor = 2m;
 
@@ -40,8 +39,6 @@ namespace TradingBot.S7
         private readonly Dictionary<string, List<decimal>> _volatilityHistory = new();
         private readonly Dictionary<string, decimal> _adaptiveThresholds = new();
         
-        // Multi-index dispersion tracking
-        private readonly Dictionary<string, List<decimal>> _dispersionHistory = new();
         private decimal _globalDispersionIndex = 0.5m;
 
         public event EventHandler<S7FeatureUpdatedEventArgs>? FeatureUpdated;

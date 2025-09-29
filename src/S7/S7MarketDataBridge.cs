@@ -14,7 +14,7 @@ namespace TradingBot.S7
     /// Market data to S7 service bridge - feeds bar data to S7 multi-horizon relative strength analysis
     /// Integrates with EnhancedMarketDataFlowService for proper production-grade data flow
     /// </summary>
-    public class S7MarketDataBridge : IHostedService, IDisposable
+    public sealed class S7MarketDataBridge : IHostedService, IDisposable
     {
         private readonly ILogger<S7MarketDataBridge> _logger;
         private readonly IServiceProvider _serviceProvider;
