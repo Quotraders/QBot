@@ -592,6 +592,9 @@ Please check the configuration and ensure all required services are registered.
         // Note: IBreadthFeed implementation can be added later if needed
         services.AddSingleton<TradingBot.S7.IBreadthFeed>(provider => null!);
         
+        // Register S7 market data bridge for live data integration
+        services.AddHostedService<TradingBot.S7.S7MarketDataBridge>();
+        
         Console.WriteLine("📈 [S7-STRATEGY] S7 Multi-Horizon Relative Strength strategy registered - Full DSL implementation ready!");
         
         // ================================================================================
