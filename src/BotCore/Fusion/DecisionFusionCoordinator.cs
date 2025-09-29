@@ -36,6 +36,7 @@ public sealed class DecisionFusionCoordinator
     private readonly IMLConfigurationService _cfg;
     private readonly IMetrics _metrics;
     private readonly ILogger<DecisionFusionCoordinator> _logger;
+    private readonly IServiceProvider _serviceProvider;
 
     public DecisionFusionCoordinator(
         IStrategyKnowledgeGraph graph, 
@@ -43,7 +44,8 @@ public sealed class DecisionFusionCoordinator
         IPpoSizer ppo, 
         IMLConfigurationService cfg, 
         IMetrics metrics,
-        ILogger<DecisionFusionCoordinator> logger)
+        ILogger<DecisionFusionCoordinator> logger,
+        IServiceProvider serviceProvider)
     {
         _graph = graph ?? throw new ArgumentNullException(nameof(graph));
         _ucb = ucb ?? throw new ArgumentNullException(nameof(ucb));
@@ -51,6 +53,7 @@ public sealed class DecisionFusionCoordinator
         _cfg = cfg ?? throw new ArgumentNullException(nameof(cfg));
         _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
     }
 
     /// <summary>
@@ -156,10 +159,16 @@ public sealed class DecisionFusionCoordinator
             {
                 try
                 {
-                    var baseSize = finalRec.Intent == StrategyIntent.Long ? 1.0 : finalRec.Intent == StrategyIntent.Short ? -1.0 : 0.0;
-                    var risk = 1.0 - finalRec.Confidence; // Higher confidence = lower risk
+                    // Calculate base position size from strategy intent
+                    var baseSize = finalRec.Intent == StrategyIntent.Buy ? 1.0 : finalRec.Intent == StrategyIntent.Sell ? -1.0 : 0.0;
                     
-                    var adjustedSize = await _ppo.SizeAsync(baseSize, finalRec.StrategyName, risk, symbol, cancellationToken).ConfigureAwait(false);
+                    // Get risk from real risk management service instead of hard-coded calculation
+                    var riskManager = _serviceProvider.GetService<IRiskManagerForFusion>();
+                    var actualRisk = riskManager != null 
+                        ? await riskManager.GetCurrentRiskAsync(cancellationToken).ConfigureAwait(false)
+                        : throw new InvalidOperationException("Risk management service not available for PPO sizing");
+                    
+                    var adjustedSize = await _ppo.SizeAsync(baseSize, finalRec.StrategyName, actualRisk, symbol, cancellationToken).ConfigureAwait(false);
                     
                     // Update recommendation with PPO sizing
                     finalRec.AdditionalData ??= new Dictionary<string, object>();

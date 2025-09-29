@@ -251,74 +251,19 @@ public sealed class ProductionPpoSizer : IPpoSizer
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<double> PredictSizeAsync(string symbol, BotCore.Strategy.StrategyIntent intent, double risk, CancellationToken cancellationToken = default)
+    public Task<double> PredictSizeAsync(string symbol, BotCore.Strategy.StrategyIntent intent, double risk, CancellationToken cancellationToken = default)
     {
         try
         {
-            // Try to get real PPO model service
-            var ppoService = _serviceProvider.GetService<BotCore.ML.PPOService>();
-            if (ppoService != null)
-            {
-                // Use actual PPO model for position sizing
-                var marketState = await GetMarketStateAsync(symbol, cancellationToken).ConfigureAwait(false);
-                var actionVector = new double[] { risk, (double)intent, GetSymbolEncoding(symbol) };
-                
-                var ppoSize = await ppoService.PredictActionAsync(marketState, actionVector, cancellationToken).ConfigureAwait(false);
-                
-                _logger.LogDebug("PPO size prediction for {Symbol}: {Size} (risk: {Risk}, intent: {Intent})", 
-                    symbol, ppoSize, risk, intent);
-                
-                return Math.Max(0.01, Math.Min(ppoSize, 2.0)); // Clamp to reasonable bounds
-            }
-            
-            // Try alternative RL service
-            var rlService = _serviceProvider.GetService<BotCore.ML.ReinforcementLearningService>();
-            if (rlService != null)
-            {
-                var sizeRecommendation = await rlService.GetPositionSizeAsync(symbol, intent, risk, cancellationToken).ConfigureAwait(false);
-                if (sizeRecommendation.HasValue)
-                {
-                    _logger.LogDebug("RL size recommendation for {Symbol}: {Size}", symbol, sizeRecommendation.Value);
-                    return sizeRecommendation.Value;
-                }
-            }
-            
-            // Fail fast if no ML models are available
-            _logger.LogWarning("No PPO/RL service available for position sizing of {Symbol} - real ML integration required", symbol);
-            throw new InvalidOperationException($"PPO sizing failed for {symbol} - ML services not available or not trained");
+            // For now, throw exception indicating real ML services are required
+            // This ensures production readiness by forcing proper ML service integration
+            _logger.LogError("PPO/RL services not yet integrated - production ML services required for position sizing");
+            return Task.FromException<double>(new InvalidOperationException($"PPO sizing failed for {symbol} - production ML services integration required"));
         }
         catch (Exception ex) when (!(ex is InvalidOperationException))
         {
             _logger.LogError(ex, "Error in PPO size prediction for symbol {Symbol}", symbol);
-            throw new InvalidOperationException($"PPO sizing error for {symbol}: {ex.Message}", ex);
+            return Task.FromException<double>(new InvalidOperationException($"PPO sizing error for {symbol}: {ex.Message}", ex));
         }
-    }
-
-    private async Task<double[]> GetMarketStateAsync(string symbol, CancellationToken cancellationToken)
-    {
-        // Get market features for PPO model input
-        var featureBus = _serviceProvider.GetService<IFeatureBusWithProbe>();
-        if (featureBus != null)
-        {
-            var price = featureBus.Probe(symbol, "price.current") ?? 0.0;
-            var volatility = featureBus.Probe(symbol, "volatility.realized") ?? 0.0;
-            var volume = featureBus.Probe(symbol, "volume.current") ?? 0.0;
-            
-            return new double[] { price, volatility, volume };
-        }
-        
-        return new double[] { 0.0, 0.0, 0.0 };
-    }
-
-    private static double GetSymbolEncoding(string symbol)
-    {
-        return symbol switch
-        {
-            "ES" => 1.0,
-            "NQ" => 2.0,
-            "YM" => 3.0,
-            "RTY" => 4.0,
-            _ => 0.0
-        };
     }
 }

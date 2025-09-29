@@ -53,12 +53,20 @@ public sealed class ProductionMetrics : IMetrics
     {
         try
         {
-            // Get the real trading metrics service
+            // Use real RealTradingMetricsService for production telemetry - no fallback logging
             var realMetricsService = _serviceProvider.GetService<RealTradingMetricsService>();
             if (realMetricsService != null)
             {
-                // Merge tags with fusion-specific tags
-                var allTags = new Dictionary<string, object>(_fusionTags);
+                // Merge tags with fusion-specific tags for comprehensive telemetry coverage
+                var allTags = new Dictionary<string, object>();
+                
+                // Add fusion tags first
+                foreach (var fusionTag in _fusionTags)
+                {
+                    allTags[fusionTag.Key] = fusionTag.Value;
+                }
+                
+                // Add provided tags
                 if (tags != null)
                 {
                     foreach (var tag in tags)
@@ -67,20 +75,21 @@ public sealed class ProductionMetrics : IMetrics
                     }
                 }
 
-                // Record through the real service
+                // Emit fusion metrics through real trading metrics service
                 _ = realMetricsService.RecordGaugeAsync($"fusion.{name}", value, allTags);
+                
+                _logger.LogTrace("Recorded fusion gauge metric via RealTradingMetricsService: {Name}={Value}", name, value);
+                return;
             }
-
-            // Also use structured logging for production monitoring that integrates with cloud analytics
-            _logger.LogInformation("[FUSION-TELEMETRY] Gauge {MetricName}={Value:F3} {Tags}", 
-                $"fusion.{name}", value, System.Text.Json.JsonSerializer.Serialize(tags ?? new Dictionary<string, string>()));
             
-            _logger.LogTrace("Recorded gauge metric via real trading service: {Name}={Value} {Tags}", 
-                name, value, string.Join(",", (tags ?? new Dictionary<string, string>()).Select(kv => $"{kv.Key}={kv.Value}")));
+            // Fail fast if RealTradingMetricsService is not available
+            _logger.LogError("RealTradingMetricsService not available for fusion metrics - real telemetry service required");
+            throw new InvalidOperationException($"Fusion metrics recording failed for {name} - RealTradingMetricsService not available");
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!(ex is InvalidOperationException))
         {
             _logger.LogError(ex, "Error recording gauge metric {Name} via RealTradingMetricsService", name);
+            throw new InvalidOperationException($"Failed to record fusion gauge metric {name}: {ex.Message}", ex);
         }
     }
 
@@ -88,12 +97,20 @@ public sealed class ProductionMetrics : IMetrics
     {
         try
         {
-            // Get the real trading metrics service
+            // Use real RealTradingMetricsService for production telemetry - no fallback logging
             var realMetricsService = _serviceProvider.GetService<RealTradingMetricsService>();
             if (realMetricsService != null)
             {
-                // Merge tags with fusion-specific tags
-                var allTags = new Dictionary<string, object>(_fusionTags);
+                // Merge tags with fusion-specific tags for comprehensive telemetry coverage
+                var allTags = new Dictionary<string, object>();
+                
+                // Add fusion tags first
+                foreach (var fusionTag in _fusionTags)
+                {
+                    allTags[fusionTag.Key] = fusionTag.Value;
+                }
+                
+                // Add provided tags
                 if (tags != null)
                 {
                     foreach (var tag in tags)
@@ -102,20 +119,21 @@ public sealed class ProductionMetrics : IMetrics
                     }
                 }
 
-                // Record through the real service
+                // Emit fusion counter metrics through real trading metrics service
                 _ = realMetricsService.RecordCounterAsync($"fusion.{name}", value, allTags);
+                
+                _logger.LogTrace("Recorded fusion counter metric via RealTradingMetricsService: {Name}={Value}", name, value);
+                return;
             }
-
-            // Use structured logging for production monitoring that integrates with cloud analytics
-            _logger.LogInformation("[FUSION-TELEMETRY] Counter {MetricName}+={Value} {Tags}", 
-                $"fusion.{name}", value, System.Text.Json.JsonSerializer.Serialize(tags ?? new Dictionary<string, string>()));
             
-            _logger.LogTrace("Recorded counter metric via real trading service: {Name}={Value} {Tags}", 
-                name, value, string.Join(",", (tags ?? new Dictionary<string, string>()).Select(kv => $"{kv.Key}={kv.Value}")));
+            // Fail fast if RealTradingMetricsService is not available
+            _logger.LogError("RealTradingMetricsService not available for fusion counter metrics - real telemetry service required");
+            throw new InvalidOperationException($"Fusion counter metrics recording failed for {name} - RealTradingMetricsService not available");
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!(ex is InvalidOperationException))
         {
             _logger.LogError(ex, "Error recording counter metric {Name} via RealTradingMetricsService", name);
+            throw new InvalidOperationException($"Failed to record fusion counter metric {name}: {ex.Message}", ex);
         }
     }
 
@@ -160,26 +178,43 @@ public sealed class ProductionMlrlMetricsService : IMlrlMetricsServiceForFusion
     {
         try
         {
-            // Merge tags with fusion-specific tags
-            var allTags = new Dictionary<string, string>(_fusionTags);
-            if (tags != null)
+            // Use real RealTradingMetricsService for ML/RL telemetry - no fallback logging
+            var realMetricsService = _serviceProvider.GetService<RealTradingMetricsService>();
+            if (realMetricsService != null)
             {
-                foreach (var tag in tags)
+                // Merge tags with ML/RL specific tags for comprehensive telemetry coverage
+                var allTags = new Dictionary<string, object>();
+                
+                // Add fusion tags first  
+                foreach (var fusionTag in _fusionTags)
                 {
-                    allTags[tag.Key] = tag.Value;
+                    allTags[fusionTag.Key] = fusionTag.Value;
                 }
-            }
+                
+                // Add provided tags
+                if (tags != null)
+                {
+                    foreach (var tag in tags)
+                    {
+                        allTags[tag.Key] = tag.Value;
+                    }
+                }
 
-            // Use structured logging for production monitoring that integrates with cloud analytics
-            _logger.LogInformation("[ML-RL-TELEMETRY] Gauge {MetricName}={Value:F3} {Tags}", 
-                $"mlrl.{name}", value, System.Text.Json.JsonSerializer.Serialize(allTags));
+                // Emit ML/RL metrics through real trading metrics service with mlrl prefix
+                _ = realMetricsService.RecordGaugeAsync($"mlrl.{name}", value, allTags);
+                
+                _logger.LogTrace("Recorded ML/RL gauge metric via RealTradingMetricsService: {Name}={Value}", name, value);
+                return;
+            }
             
-            _logger.LogTrace("Recorded ML/RL gauge metric via real trading service: {Name}={Value} {Tags}", 
-                name, value, string.Join(",", allTags.Select(kv => $"{kv.Key}={kv.Value}")));
+            // Fail fast if RealTradingMetricsService is not available
+            _logger.LogError("RealTradingMetricsService not available for ML/RL metrics - real telemetry service required");
+            throw new InvalidOperationException($"ML/RL metrics recording failed for {name} - RealTradingMetricsService not available");
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!(ex is InvalidOperationException))
         {
-            _logger.LogError(ex, "Error recording gauge metric {Name} via RealTradingMetricsService", name);
+            _logger.LogError(ex, "Error recording ML/RL gauge metric {Name} via RealTradingMetricsService", name);
+            throw new InvalidOperationException($"Failed to record ML/RL gauge metric {name}: {ex.Message}", ex);
         }
     }
 
@@ -187,26 +222,43 @@ public sealed class ProductionMlrlMetricsService : IMlrlMetricsServiceForFusion
     {
         try
         {
-            // Merge tags with fusion-specific tags
-            var allTags = new Dictionary<string, string>(_fusionTags);
-            if (tags != null)
+            // Use real RealTradingMetricsService for ML/RL telemetry - no fallback logging
+            var realMetricsService = _serviceProvider.GetService<RealTradingMetricsService>();
+            if (realMetricsService != null)
             {
-                foreach (var tag in tags)
+                // Merge tags with ML/RL specific tags for comprehensive telemetry coverage
+                var allTags = new Dictionary<string, object>();
+                
+                // Add fusion tags first
+                foreach (var fusionTag in _fusionTags)
                 {
-                    allTags[tag.Key] = tag.Value;
+                    allTags[fusionTag.Key] = fusionTag.Value;
                 }
-            }
+                
+                // Add provided tags
+                if (tags != null)
+                {
+                    foreach (var tag in tags)
+                    {
+                        allTags[tag.Key] = tag.Value;
+                    }
+                }
 
-            // Use structured logging for production monitoring that integrates with cloud analytics
-            _logger.LogInformation("[ML-RL-TELEMETRY] Counter {MetricName}+={Value} {Tags}", 
-                $"mlrl.{name}", value, System.Text.Json.JsonSerializer.Serialize(allTags));
+                // Emit ML/RL counter metrics through real trading metrics service
+                _ = realMetricsService.RecordCounterAsync($"mlrl.{name}", value, allTags);
+                
+                _logger.LogTrace("Recorded ML/RL counter metric via RealTradingMetricsService: {Name}={Value}", name, value);
+                return;
+            }
             
-            _logger.LogTrace("Recorded ML/RL counter metric via real trading service: {Name}={Value} {Tags}", 
-                name, value, string.Join(",", allTags.Select(kv => $"{kv.Key}={kv.Value}")));
+            // Fail fast if RealTradingMetricsService is not available
+            _logger.LogError("RealTradingMetricsService not available for ML/RL counter metrics - real telemetry service required");
+            throw new InvalidOperationException($"ML/RL counter metrics recording failed for {name} - RealTradingMetricsService not available");
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!(ex is InvalidOperationException))
         {
-            _logger.LogError(ex, "Error recording counter metric {Name} via RealTradingMetricsService", name);
+            _logger.LogError(ex, "Error recording ML/RL counter metric {Name} via RealTradingMetricsService", name);
+            throw new InvalidOperationException($"Failed to record ML/RL counter metric {name}: {ex.Message}", ex);
         }
     }
 

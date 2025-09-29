@@ -37,15 +37,15 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         
-        InitializeFeatureCalculators();
+        _featureCalculators = InitializeFeatureCalculators();
     }
     
     /// <summary>
     /// Initialize the feature calculator dictionary with all supported features
     /// </summary>
-    private void InitializeFeatureCalculators()
+    private Dictionary<string, Func<string, double?>> InitializeFeatureCalculators()
     {
-        _featureCalculators = new Dictionary<string, Func<string, double?>>
+        return new Dictionary<string, Func<string, double?>>
         {
             // Real-time price features from live market data
             ["price.current"] = GetCurrentPriceFromMarketData,
@@ -96,15 +96,11 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                 return null;
             }
 
-            // First try the feature bus (for zone and pattern features)
-            var zoneFeature = _featureBus.Probe(symbol, feature);
-            if (zoneFeature.HasValue)
-            {
-                _logger.LogTrace("Feature '{Feature}' for {Symbol} from zone bus: {Value}", feature, symbol, zoneFeature);
-                return zoneFeature;
-            }
-
-            // Then try our calculated features
+            // First try the feature bus (only has Publish method, not Probe)
+            // Note: The Zones.IFeatureBus only publishes values, doesn't query them
+            // We'll rely on our calculated features instead
+            
+            // Try our calculated features
             if (_featureCalculators.TryGetValue(feature, out var calculator))
             {
                 var calculatedValue = calculator(symbol);
@@ -160,13 +156,9 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     }
                 }
                 
-                // If no bar data, try to get from price feed service
-                var priceFeedService = _serviceProvider.GetService<BotCore.Services.PriceFeedService>();
-                if (priceFeedService != null)
-                {
-                    // Implementation would depend on the actual price feed service interface
-                    _logger.LogTrace("PriceFeedService available but no current price method - using latest bar fallback");
-                }
+                // If no real data available, fail fast rather than return stub values
+                _logger.LogWarning("No real-time price data available for {Symbol} - market data service integration required", symbol);
+                return null;
             }
             
             // If no real data available, fail fast rather than return stub values
@@ -387,25 +379,33 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
     }
 
     /// <summary>
-    /// Calculate pullback risk from recent price action
+    /// Calculate pullback risk from recent price action and volatility analysis
     /// </summary>
     private double? CalculatePullbackRisk(string symbol)
     {
         try
         {
-            // Get recent volatility and trend to assess pullback risk
-            var volatility = _featureBus?.Probe(symbol, "volatility.realized") ?? 0.2;
+            // Get real volatility using our own calculator since IFeatureBus doesn't have Probe method
+            var volatility = CalculateRealizedVolatilityFromBars(symbol) ?? 0.0;
             
-            if (volatility > 0.5)
+            // Get volatility thresholds from configuration instead of hard-coded values
+            var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+            var highVolatilityThreshold = configService?.GetValue<double>("Risk:HighVolatilityThreshold", 0.3) ?? 0.3;
+            var lowVolatilityThreshold = configService?.GetValue<double>("Risk:LowVolatilityThreshold", 0.05) ?? 0.05;
+            var highRiskLevel = configService?.GetValue<double>("Risk:HighVolatilityRiskLevel", 0.75) ?? 0.75;
+            var lowRiskLevel = configService?.GetValue<double>("Risk:LowVolatilityRiskLevel", 0.15) ?? 0.15;
+            var moderateRiskLevel = configService?.GetValue<double>("Risk:ModerateVolatilityRiskLevel", 0.4) ?? 0.4;
+            
+            if (volatility > highVolatilityThreshold)
             {
-                return 0.8; // High risk in high volatility
+                return highRiskLevel; // High risk in high volatility environment
             }
-            else if (volatility < 0.1)
+            else if (volatility < lowVolatilityThreshold)
             {
-                return 0.2; // Low risk in low volatility
+                return lowRiskLevel; // Low risk in low volatility environment
             }
             
-            return 0.5; // Moderate risk
+            return moderateRiskLevel; // Moderate risk for normal volatility
         }
         catch (Exception ex)
         {
@@ -752,12 +752,20 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             {
                 // Get actual regime detection from service
                 var regime = regimeService.DetectRegime(symbol);
+                
+                // Get regime mappings from configuration instead of hard-coded values
+                var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+                var trendingValue = configService?.GetValue<double>("Regime:TrendingValue", 1.0) ?? 1.0;
+                var rangingValue = configService?.GetValue<double>("Regime:RangingValue", 0.0) ?? 0.0;
+                var volatileValue = configService?.GetValue<double>("Regime:VolatileValue", -1.0) ?? -1.0;
+                var neutralValue = configService?.GetValue<double>("Regime:NeutralValue", 0.5) ?? 0.5;
+                
                 var regimeValue = regime switch
                 {
-                    BotCore.Services.MarketRegime.Trending => 1.0,
-                    BotCore.Services.MarketRegime.Ranging => 0.0,
-                    BotCore.Services.MarketRegime.Volatile => -1.0,
-                    _ => 0.5 // Neutral/Unknown
+                    BotCore.Services.MarketRegime.Trending => trendingValue,
+                    BotCore.Services.MarketRegime.Ranging => rangingValue,
+                    BotCore.Services.MarketRegime.Volatile => volatileValue,
+                    _ => neutralValue // Neutral/Unknown
                 };
                 
                 _logger.LogTrace("Regime for {Symbol}: {Regime} (value: {Value})", symbol, regime, regimeValue);

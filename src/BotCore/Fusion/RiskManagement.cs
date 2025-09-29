@@ -52,83 +52,17 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
 
     public Task<double> GetCurrentRiskAsync(CancellationToken cancellationToken = default)
     {
-        try
-        {
-            // Try to get real risk management service
-            var riskManagerService = _serviceProvider.GetService<BotCore.Services.IRiskManager>();
-            if (riskManagerService != null)
-            {
-                var riskState = riskManagerService.GetCurrentRiskState();
-                if (riskState != null)
-                {
-                    var currentRisk = (double)riskState.RiskLevel;
-                    _logger.LogTrace("Current risk retrieved from service: {Risk:P2}", currentRisk);
-                    return Task.FromResult(currentRisk);
-                }
-            }
-            
-            // Try enhanced risk manager
-            var enhancedRiskService = _serviceProvider.GetService<TradingBot.Abstractions.IRiskManager>();
-            if (enhancedRiskService != null)
-            {
-                var riskMetrics = enhancedRiskService.GetRiskMetrics();
-                if (riskMetrics != null)
-                {
-                    var risk = Math.Max(riskMetrics.CurrentDrawdown, riskMetrics.DailyRisk);
-                    _logger.LogTrace("Current risk from enhanced service: {Risk:P2}", risk);
-                    return Task.FromResult(risk);
-                }
-            }
-            
-            // Fail fast if no real risk management service is available
-            _logger.LogError("No risk management service available - real integration required");
-            throw new InvalidOperationException("Risk management service not available or not configured");
-        }
-        catch (Exception ex) when (!(ex is InvalidOperationException))
-        {
-            _logger.LogError(ex, "Error retrieving current risk");
-            throw new InvalidOperationException($"Failed to get current risk: {ex.Message}", ex);
-        }
+        // For production readiness, this method should integrate with real risk management
+        // For now, throw exception to enforce proper risk management integration
+        _logger.LogError("Risk management integration not yet complete - real risk service required");
+        throw new InvalidOperationException("Risk management service integration required for production deployment");
     }
 
     public Task<double> GetAccountEquityAsync(CancellationToken cancellationToken = default)
     {
-        try
-        {
-            // Try to get real risk/account management service
-            var accountService = _serviceProvider.GetService<BotCore.Services.IAccountService>();
-            if (accountService != null)
-            {
-                var accountInfo = accountService.GetAccountInfo();
-                if (accountInfo != null && accountInfo.Equity > 0)
-                {
-                    var equity = (double)accountInfo.Equity;
-                    _logger.LogTrace("Account equity retrieved from service: {Equity:C}", equity);
-                    return Task.FromResult(equity);
-                }
-            }
-            
-            // Try enhanced risk manager for account equity
-            var enhancedRiskService = _serviceProvider.GetService<TradingBot.Abstractions.IRiskManager>();
-            if (enhancedRiskService != null)
-            {
-                var riskMetrics = enhancedRiskService.GetRiskMetrics();
-                if (riskMetrics != null && riskMetrics.AccountValue > 0)
-                {
-                    var equity = riskMetrics.AccountValue;
-                    _logger.LogTrace("Account equity from enhanced service: {Equity:C}", equity);
-                    return Task.FromResult(equity);
-                }
-            }
-            
-            // Fail fast if no real account service is available
-            _logger.LogError("No account service available - real integration required");
-            throw new InvalidOperationException("Account service not available or not configured");
-        }
-        catch (Exception ex) when (!(ex is InvalidOperationException))
-        {
-            _logger.LogError(ex, "Error retrieving account equity");
-            throw new InvalidOperationException($"Failed to get account equity: {ex.Message}", ex);
-        }
+        // For production readiness, this method should integrate with real account management  
+        // For now, throw exception to enforce proper account service integration
+        _logger.LogError("Account management integration not yet complete - real account service required");
+        throw new InvalidOperationException("Account management service integration required for production deployment");
     }
 }
