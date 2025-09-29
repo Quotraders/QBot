@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -222,6 +223,22 @@ namespace TradingBot.S7
             catch (InvalidOperationException ex)
             {
                 _logger.LogError(ex, "[S7-BRIDGE] Invalid operation processing market data for {Symbol}", symbol);
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "[S7-BRIDGE] [S7-AUDIT-VIOLATION] HTTP request error processing market data for {Symbol} - FAIL-CLOSED + TELEMETRY", symbol);
+            }
+            catch (OperationCanceledException ex)
+            {
+                _logger.LogError(ex, "[S7-BRIDGE] [S7-AUDIT-VIOLATION] Operation canceled processing market data for {Symbol} - FAIL-CLOSED + TELEMETRY", symbol);
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogError(ex, "[S7-BRIDGE] [S7-AUDIT-VIOLATION] Timeout processing market data for {Symbol} - FAIL-CLOSED + TELEMETRY", symbol);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "[S7-BRIDGE] [S7-AUDIT-VIOLATION] Invalid argument processing market data for {Symbol} - FAIL-CLOSED + TELEMETRY", symbol);
             }
         }
 
