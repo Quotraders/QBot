@@ -625,6 +625,30 @@ Please check the configuration and ensure all required services are registered.
         
         Console.WriteLine("⚡ [EXECUTION-ALPHA] S7 execution enhancements registered - Order type selection, child scheduling, bracket adjustment ready!");
         Console.WriteLine("🔧 [AUTOMATION-UPGRADE] Feature engineering pipeline registered - Liquidity, MTF, OFI resolvers ready!");
+        
+        // ================================================================================
+        // REGIME-TAGGED MODEL ROTATION & PORTFOLIO RISK TILTS
+        // Advanced model rotation and portfolio risk management services
+        
+        services.Configure<BotCore.Services.ModelRotationConfiguration>(configuration.GetSection("Rotation"));
+        services.Configure<BotCore.Services.BreadthReallocationConfiguration>(configuration.GetSection("Portfolio:BreadthReallocation"));
+        services.Configure<BotCore.Services.CorrelationCapConfiguration>(configuration.GetSection("Portfolio:CorrelationCap"));
+        services.Configure<BotCore.Services.VolOfVolConfiguration>(configuration.GetSection("Portfolio:VolOfVol"));
+        services.Configure<BotCore.Services.DriftMonitorConfiguration>(configuration.GetSection("DataHygiene:DriftMonitor"));
+        
+        services.AddSingleton<BotCore.Services.ModelRotationService>();
+        services.AddSingleton<BotCore.Services.S7BreadthReallocationService>();
+        services.AddSingleton<BotCore.Services.CorrelationAwareCapService>();
+        services.AddSingleton<BotCore.Services.VolOfVolGuardService>();
+        services.AddSingleton<BotCore.Services.FeatureDriftMonitorService>();
+        
+        // Register model rotation as hosted service
+        services.AddHostedService<BotCore.Services.ModelRotationService>(provider => 
+            provider.GetRequiredService<BotCore.Services.ModelRotationService>());
+        
+        Console.WriteLine("🔄 [MODEL-ROTATION] Regime-tagged model rotation service registered - Automatic model switching per market regime!");
+        Console.WriteLine("📊 [PORTFOLIO-TILTS] Risk management services registered - Breadth reallocation, correlation caps, vol-of-vol guard!");
+        Console.WriteLine("🛡️ [DATA-HYGIENE] Drift defenses registered - Feature drift monitoring with kill switches!");
         Console.WriteLine("📈 [S7-STRATEGY] S7 Multi-Horizon Relative Strength strategy registered - Full DSL implementation ready!");
         
         // ================================================================================

@@ -1,22 +1,88 @@
 {
-  "Version": "1.2.0",
+  "Version": "1.3.0",
   "CreatedAt": "2025-01-01T12:00:00Z",
   "DriftScore": 0.08,
   "Models": {
     "confidence_model": {
-      "Url": "https://github.com/ml-models/trading-models/releases/download/v1.2.0/confidence_v1.2.0.onnx",
+      "Url": "https://github.com/ml-models/trading-models/releases/download/v1.3.0/confidence_v1.3.0.onnx",
       "Sha256": "d4f8c9b2e3a1567890abcdef1234567890abcdef1234567890abcdef12345678",
       "Size": 2048576
     },
     "rl_model": {
-      "Url": "https://github.com/ml-models/trading-models/releases/download/v1.2.0/rl_v1.2.0.onnx",
+      "Url": "https://github.com/ml-models/trading-models/releases/download/v1.3.0/rl_v1.3.0.onnx",
       "Sha256": "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456",
       "Size": 4194304
     },
     "ucb_model": {
-      "Url": "https://github.com/ml-models/trading-models/releases/download/v1.2.0/ucb_v1.2.0.onnx", 
+      "Url": "https://github.com/ml-models/trading-models/releases/download/v1.3.0/ucb_v1.3.0.onnx", 
       "Sha256": "f6e5d4c3b2a1567890fedcba0987654321fedcba0987654321fedcba09876543",
       "Size": 1572864
+    }
+  },
+  "RegimeArtifacts": {
+    "TREND_HIGH_VOL": {
+      "UcbModel": {
+        "Path": "models/ucb_trend_highvol_v1.3.0.onnx",
+        "Sha256": "a1b2c3d4e5f67890123456789012345678901234567890123456789012345678",
+        "TrancheId": "ucb_trend_hv_20250101"
+      },
+      "PpoModel": {
+        "Path": "models/ppo_trend_highvol_v1.3.0.onnx", 
+        "Sha256": "b2c3d4e5f6789012345678901234567890123456789012345678901234567890",
+        "TrancheId": "ppo_trend_hv_20250101"
+      },
+      "CalibrationTable": {
+        "Path": "calibration/breakout_trend_highvol.json",
+        "Sha256": "c3d4e5f678901234567890123456789012345678901234567890123456789012"
+      }
+    },
+    "TREND_LOW_VOL": {
+      "UcbModel": {
+        "Path": "models/ucb_trend_lowvol_v1.3.0.onnx",
+        "Sha256": "d4e5f6789012345678901234567890123456789012345678901234567890123",
+        "TrancheId": "ucb_trend_lv_20250101"
+      },
+      "PpoModel": {
+        "Path": "models/ppo_trend_lowvol_v1.3.0.onnx",
+        "Sha256": "e5f67890123456789012345678901234567890123456789012345678901234567",
+        "TrancheId": "ppo_trend_lv_20250101"
+      },
+      "CalibrationTable": {
+        "Path": "calibration/breakout_trend_lowvol.json",
+        "Sha256": "f678901234567890123456789012345678901234567890123456789012345678"
+      }
+    },
+    "RANGE_HIGH_VOL": {
+      "UcbModel": {
+        "Path": "models/ucb_range_highvol_v1.3.0.onnx",
+        "Sha256": "789012345678901234567890123456789012345678901234567890123456789",
+        "TrancheId": "ucb_range_hv_20250101"
+      },
+      "PpoModel": {
+        "Path": "models/ppo_range_highvol_v1.3.0.onnx",
+        "Sha256": "890123456789012345678901234567890123456789012345678901234567890",
+        "TrancheId": "ppo_range_hv_20250101"
+      },
+      "CalibrationTable": {
+        "Path": "calibration/breakout_range_highvol.json",
+        "Sha256": "901234567890123456789012345678901234567890123456789012345678901"
+      }
+    },
+    "RANGE_LOW_VOL": {
+      "UcbModel": {
+        "Path": "models/ucb_range_lowvol_v1.3.0.onnx",
+        "Sha256": "012345678901234567890123456789012345678901234567890123456789012",
+        "TrancheId": "ucb_range_lv_20250101"
+      },
+      "PpoModel": {
+        "Path": "models/ppo_range_lowvol_v1.3.0.onnx",
+        "Sha256": "123456789012345678901234567890123456789012345678901234567890123",
+        "TrancheId": "ppo_range_lv_20250101"
+      },
+      "CalibrationTable": {
+        "Path": "calibration/breakout_range_lowvol.json",
+        "Sha256": "234567890123456789012345678901234567890123456789012345678901234"
+      }
     }
   }
 }
