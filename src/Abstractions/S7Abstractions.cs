@@ -67,7 +67,7 @@ namespace TradingBot.Abstractions
     }
 
     /// <summary>
-    /// Configuration for S7 strategy parameters
+    /// Configuration for S7 strategy parameters - ALL values must come from bounds validation
     /// </summary>
     public class S7Configuration
     {
@@ -87,6 +87,31 @@ namespace TradingBot.Abstractions
         public decimal MinAtrThreshold { get; set; } = 0.7m;
         public bool EnableFeatureBus { get; set; } = true;
         public bool EnableTelemetry { get; set; } = true;
+
+        // Coherence calculation weights - MUST come from config, no hardcoded values
+        public decimal ZScoreAlignmentWeight { get; set; } = 0.4m;
+        public decimal DirectionAlignmentWeight { get; set; } = 0.4m;
+        public decimal TimeframeCoherenceWeight { get; set; } = 0.2m;
+        
+        // Leader threshold calculations - MUST come from config
+        public decimal LeaderThreshold { get; set; } = 1.2m;
+        public decimal TimeframeCountNormalizer { get; set; } = 3.0m;
+        
+        // Size tilt calculations - MUST come from config
+        public decimal MaxSizeTiltMultiplier { get; set; } = 2.0m;
+        
+        // Breadth scoring parameters - MUST come from config
+        public decimal BaseBreadthScore { get; set; } = 1.0m;
+        public decimal AdvanceDeclineBonus { get; set; } = 0.1m;
+        public decimal AdvanceDeclinePenalty { get; set; } = 0.1m;
+        public decimal NewHighsLowsBonus { get; set; } = 0.05m;
+        public decimal MinBreadthScore { get; set; } = 0.5m;
+        public decimal MaxBreadthScore { get; set; } = 1.5m;
+        
+        // Fail-closed configuration - unknown keys must trigger holds
+        public bool FailOnUnknownKeys { get; set; } = true;
+        public bool FailOnMissingData { get; set; } = true;
+        public string TelemetryPrefix { get; set; } = "s7";
     }
 
     /// <summary>

@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../Abstractions/Abstractions.csproj" />
+    <ProjectReference Include="../Zones/Zones.csproj" />
   </ItemGroup>
 
   <ItemGroup>
