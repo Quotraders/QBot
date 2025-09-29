@@ -52,7 +52,7 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<double> GetCurrentRiskAsync(CancellationToken cancellationToken = default)
+    public Task<double> GetCurrentRiskAsync(CancellationToken cancellationToken = default)
     {
         var operationId = Guid.NewGuid().ToString("N")[..8];
         var startTime = DateTime.UtcNow;
@@ -72,7 +72,7 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
                     if (basicRiskManager.IsRiskBreached)
                     {
                         _logger.LogWarning("🚨 [AUDIT-{OperationId}] Risk breach detected - returning maximum risk (fail-closed)", operationId);
-                        return 1.0; // Maximum risk = hold/no trading
+                        return Task.FromResult(1.0); // Maximum risk = hold/no trading
                     }
                     
                     // Get configured risk level from config (no hardcoded defaults)
@@ -80,7 +80,7 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
                     if (configuration == null)
                     {
                         _logger.LogError("🚨 [AUDIT-{OperationId}] Configuration service unavailable - fail-closed: returning hold", operationId);
-                        return 1.0; // Fail-closed: hold when config unavailable
+                        return Task.FromResult(1.0); // Fail-closed: hold when config unavailable
                     }
                     
                     // Try to get configured risk level with bounds validation
@@ -88,40 +88,40 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
                     if (!configuredRisk.HasValue)
                     {
                         _logger.LogError("🚨 [AUDIT-{OperationId}] Risk configuration missing - fail-closed: returning hold", operationId);
-                        return 1.0; // Fail-closed: hold when config missing
+                        return Task.FromResult(1.0); // Fail-closed: hold when config missing
                     }
                     
                     // Validate bounds
                     if (configuredRisk.Value < 0.0 || configuredRisk.Value > 1.0)
                     {
                         _logger.LogError("🚨 [AUDIT-{OperationId}] Risk configuration out of bounds {Risk} - fail-closed: returning hold", operationId, configuredRisk.Value);
-                        return 1.0; // Fail-closed: hold when config invalid
+                        return Task.FromResult(1.0); // Fail-closed: hold when config invalid
                     }
                     
                     _logger.LogDebug("🔍 [AUDIT-{OperationId}] Risk assessment successful: Risk={Risk:P2}, Duration={Duration}ms", 
                         operationId, configuredRisk.Value, (DateTime.UtcNow - startTime).TotalMilliseconds);
-                    return configuredRisk.Value;
+                    return Task.FromResult(configuredRisk.Value);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk assessment failed - fail-closed: returning hold", operationId);
-                    return 1.0; // Fail-closed: hold on any error
+                    return Task.FromResult(1.0); // Fail-closed: hold on any error
                 }
             }
             
             // No risk manager available - fail-closed
             _logger.LogError("🚨 [AUDIT-{OperationId}] No risk management service available - fail-closed: returning hold", operationId);
-            return 1.0; // Fail-closed: hold when no service
+            return Task.FromResult(1.0); // Fail-closed: hold when no service
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk assessment failed - fail-closed: returning hold, Duration={Duration}ms", 
                 operationId, (DateTime.UtcNow - startTime).TotalMilliseconds);
-            return 1.0; // Fail-closed: hold on any unexpected error
+            return Task.FromResult(1.0); // Fail-closed: hold on any unexpected error
         }
     }
 
-    public async Task<double> GetAccountEquityAsync(CancellationToken cancellationToken = default)
+    public Task<double> GetAccountEquityAsync(CancellationToken cancellationToken = default)
     {
         var operationId = Guid.NewGuid().ToString("N")[..8];
         var startTime = DateTime.UtcNow;
@@ -156,7 +156,7 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
             
             _logger.LogDebug("🔍 [AUDIT-{OperationId}] Account equity from config: {Equity:C}, Duration={Duration}ms", 
                 operationId, startingEquity.Value, (DateTime.UtcNow - startTime).TotalMilliseconds);
-            return startingEquity.Value;
+            return Task.FromResult(startingEquity.Value);
         }
         catch (Exception ex)
         {

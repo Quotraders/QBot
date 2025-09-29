@@ -48,6 +48,7 @@ namespace TopstepX.Bot.Core.Services
         private readonly StrategyMlModelManager _strategyMlModelManager;
         private readonly UnifiedTradingBrain _unifiedTradingBrain;
         private readonly ITopstepXAdapterService _topstepXAdapter;
+        private readonly TradingBot.Abstractions.IS7Service? _s7Service;
         
         // Account/contract selection fields
         private string[] _chosenContracts = Array.Empty<string>();
@@ -193,6 +194,13 @@ namespace TopstepX.Bot.Core.Services
             _strategyMlModelManager = strategyMlModelManager;
             _unifiedTradingBrain = unifiedTradingBrain;
             _topstepXAdapter = topstepXAdapter;
+            
+            // Get S7 Service from DI for strategy gate integration
+            _s7Service = serviceProvider.GetService<TradingBot.Abstractions.IS7Service>();
+            if (_s7Service == null)
+            {
+                logger.LogWarning("[S7-INTEGRATION] IS7Service not available - S7 strategy gates will be disabled");
+            }
             
             // Initialize Production Readiness Components - NEW
             _historicalBridge = historicalBridge;
@@ -602,8 +610,8 @@ namespace TopstepX.Bot.Core.Services
                 // Create levels (enhanced with ML predictions)
                 var levels = new Levels();
 
-                // PHASE 4: Generate strategy candidates using AllStrategies with ML/RL enhancements
-                var candidates = AllStrategies.generate_candidates(symbol, env, levels, bars, _riskEngine);
+                // PHASE 4: Generate strategy candidates using AllStrategies with ML/RL enhancements and S7 gates
+                var candidates = AllStrategies.generate_candidates(symbol, env, levels, bars, _riskEngine, _s7Service);
                 
                 // PHASE 5: ML/RL BRAIN ENHANCEMENT - Use UnifiedTradingBrain for intelligent decisions
                 var brainDecision = await _unifiedTradingBrain.MakeIntelligentDecisionAsync(

@@ -320,7 +320,6 @@ public sealed class ProductionPpoSizer : IPpoSizer
                 // Since the method doesn't exist, this indicates incomplete implementation
                 _logger.LogError("RL system position sizing not implemented - fail-closed: cannot provide ML sizing for {Symbol}", symbol);
                 throw new NotImplementedException("ML position sizing not yet implemented in RL system (fail-closed)");
-                }
             }
             
             // Fallback to intelligent heuristic-based sizing with real market data
@@ -403,7 +402,7 @@ public sealed class ProductionPpoSizer : IPpoSizer
     /// <summary>
     /// Check if RL system has position sizing capability - fail-closed validation
     /// </summary>
-    private bool IsRLSystemCapableOfPositionSizing(RLAdvisorSystem rlSystem)
+    private bool IsRLSystemCapableOfPositionSizing(TradingBot.IntelligenceStack.RLAdvisorSystem rlSystem)
     {
         // Since GetPositionSizingRecommendationAsync doesn't exist,
         // we know the system lacks this capability
