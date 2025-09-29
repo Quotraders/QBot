@@ -71,8 +71,19 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
                     // If risk is breached, return maximum risk (fail-closed)
                     if (basicRiskManager.IsRiskBreached)
                     {
-                        _logger.LogWarning("🚨 [AUDIT-{OperationId}] Risk breach detected - returning maximum risk (fail-closed)", operationId);
-                        return Task.FromResult(1.0); // Maximum risk = hold/no trading
+                        // Get configured maximum risk value
+                        var configService = _serviceProvider.GetService<IConfiguration>();
+                        var maxRisk = configService?.GetValue<double>("Risk:MaximumRiskLevel") ?? 1.0;
+                        
+                        // Validate configuration bounds
+                        if (maxRisk < 0.0 || maxRisk > 1.0)
+                        {
+                            _logger.LogError("🚨 [AUDIT-{OperationId}] Risk:MaximumRiskLevel configuration out of bounds {MaxRisk} - using 1.0", operationId, maxRisk);
+                            maxRisk = 1.0;
+                        }
+                        
+                        _logger.LogWarning("🚨 [AUDIT-{OperationId}] Risk breach detected - returning maximum risk {MaxRisk:P2} (fail-closed)", operationId, maxRisk);
+                        return Task.FromResult(maxRisk);
                     }
                     
                     // Get configured risk level from config (no hardcoded defaults)
@@ -80,7 +91,8 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
                     if (configuration == null)
                     {
                         _logger.LogError("🚨 [AUDIT-{OperationId}] Configuration service unavailable - fail-closed: returning hold", operationId);
-                        return Task.FromResult(1.0); // Fail-closed: hold when config unavailable
+                        var holdRisk = GetConfiguredHoldRiskLevel(_serviceProvider);
+                        return Task.FromResult(holdRisk);
                     }
                     
                     // Try to get configured risk level with bounds validation
@@ -88,14 +100,20 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
                     if (!configuredRisk.HasValue)
                     {
                         _logger.LogError("🚨 [AUDIT-{OperationId}] Risk configuration missing - fail-closed: returning hold", operationId);
-                        return Task.FromResult(1.0); // Fail-closed: hold when config missing
+                        var holdRisk = GetConfiguredHoldRiskLevel(_serviceProvider);
+                        return Task.FromResult(holdRisk);
                     }
                     
                     // Validate bounds
-                    if (configuredRisk.Value < 0.0 || configuredRisk.Value > 1.0)
+                    var minRiskLevel = configuration.GetValue<double>("Risk:MinimumRiskLevel", 0.0);
+                    var maxRiskLevel = configuration.GetValue<double>("Risk:MaximumRiskLevel", 1.0);
+                    
+                    if (configuredRisk.Value < minRiskLevel || configuredRisk.Value > maxRiskLevel)
                     {
-                        _logger.LogError("🚨 [AUDIT-{OperationId}] Risk configuration out of bounds {Risk} - fail-closed: returning hold", operationId, configuredRisk.Value);
-                        return Task.FromResult(1.0); // Fail-closed: hold when config invalid
+                        _logger.LogError("🚨 [AUDIT-{OperationId}] Risk configuration out of bounds {Risk} (min: {Min}, max: {Max}) - fail-closed: returning hold", 
+                            operationId, configuredRisk.Value, minRiskLevel, maxRiskLevel);
+                        var holdRisk = GetConfiguredHoldRiskLevel(_serviceProvider);
+                        return Task.FromResult(holdRisk);
                     }
                     
                     _logger.LogDebug("🔍 [AUDIT-{OperationId}] Risk assessment successful: Risk={Risk:P2}, Duration={Duration}ms", 
@@ -105,19 +123,51 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk assessment failed - fail-closed: returning hold", operationId);
-                    return Task.FromResult(1.0); // Fail-closed: hold on any error
+                    var holdRisk = GetConfiguredHoldRiskLevel(_serviceProvider);
+                    return Task.FromResult(holdRisk);
                 }
             }
             
             // No risk manager available - fail-closed
             _logger.LogError("🚨 [AUDIT-{OperationId}] No risk management service available - fail-closed: returning hold", operationId);
-            return Task.FromResult(1.0); // Fail-closed: hold when no service
+            var holdRiskFallback = GetConfiguredHoldRiskLevel(_serviceProvider);
+            return Task.FromResult(holdRiskFallback);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk assessment failed - fail-closed: returning hold, Duration={Duration}ms", 
                 operationId, (DateTime.UtcNow - startTime).TotalMilliseconds);
-            return Task.FromResult(1.0); // Fail-closed: hold on any unexpected error
+            var holdRiskException = GetConfiguredHoldRiskLevel(_serviceProvider);
+            return Task.FromResult(holdRiskException);
+        }
+    }
+
+    /// <summary>
+    /// Get configured hold risk level with proper bounds validation - fail-closed approach
+    /// </summary>
+    private static double GetConfiguredHoldRiskLevel(IServiceProvider serviceProvider)
+    {
+        try
+        {
+            var configuration = serviceProvider.GetService<IConfiguration>();
+            if (configuration == null)
+            {
+                return 1.0; // Ultimate fallback - complete hold
+            }
+
+            var holdRisk = configuration.GetValue<double>("Risk:HoldRiskLevel", 1.0);
+            
+            // Validate bounds
+            if (holdRisk < 0.0 || holdRisk > 1.0)
+            {
+                return 1.0; // Ultimate fallback - complete hold
+            }
+            
+            return holdRisk;
+        }
+        catch
+        {
+            return 1.0; // Ultimate fallback - complete hold
         }
     }
 
@@ -147,11 +197,15 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
                 throw new InvalidOperationException("Account equity unavailable - configuration missing (fail-closed)");
             }
             
-            // Validate bounds (reasonable account size)
-            if (startingEquity.Value <= 0 || startingEquity.Value > 10000000) // $10M max reasonable
+            // Validate bounds with configurable limits
+            var minEquity = configuration.GetValue<double>("Account:MinimumEquity", 1000.0);
+            var maxEquity = configuration.GetValue<double>("Account:MaximumEquity", 10000000.0);
+            
+            if (startingEquity.Value <= minEquity || startingEquity.Value > maxEquity)
             {
-                _logger.LogError("🚨 [AUDIT-{OperationId}] Account equity configuration out of bounds {Equity:C} - fail-closed", operationId, startingEquity.Value);
-                throw new InvalidOperationException($"Account equity out of bounds: {startingEquity.Value:C} (fail-closed)");
+                _logger.LogError("🚨 [AUDIT-{OperationId}] Account equity configuration out of bounds {Equity:C} (min: {Min:C}, max: {Max:C}) - fail-closed", 
+                    operationId, startingEquity.Value, minEquity, maxEquity);
+                throw new InvalidOperationException($"Account equity out of bounds: {startingEquity.Value:C} (min: {minEquity:C}, max: {maxEquity:C}) (fail-closed)");
             }
             
             _logger.LogDebug("🔍 [AUDIT-{OperationId}] Account equity from config: {Equity:C}, Duration={Duration}ms", 

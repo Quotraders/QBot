@@ -83,22 +83,10 @@ public sealed class ProductionMLConfigurationService : IMLConfigurationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving ML configuration");
+            _logger.LogError(ex, "🚨 Error retrieving ML configuration - fail-closed: cannot provide ML configuration");
             
-            // Return safe defaults
-            return new Dictionary<string, object>
-            {
-                ["ucb_exploration_factor"] = 1.0,
-                ["ucb_confidence_interval"] = 0.9,
-                ["ppo_learning_rate"] = 0.0001,
-                ["ppo_clip_ratio"] = 0.1,
-                ["model_update_interval"] = 7200, // 2 hours (more conservative)
-                ["feature_window_size"] = 50,
-                ["risk_adjustment_factor"] = 0.5, // More conservative
-                ["enable_model_updates"] = false, // Conservative default
-                ["enable_exploration"] = false, // Conservative default
-                ["max_position_size"] = 0.05 // 5% max position (conservative)
-            };
+            // Fail-closed: Do not return safe defaults, throw to force proper configuration
+            throw new InvalidOperationException("ML configuration unavailable - system must be properly configured (fail-closed)", ex);
         }
     }
 
@@ -158,11 +146,13 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
 
             if (totalCount == 0)
             {
-                // No history, return random strategy
+                // No history - get configured initial score instead of hardcoded value
+                var initialScore = _configuration.GetValue<double>("ML:UCB:InitialStrategyScore", 0.5);
                 var random = new Random();
                 var selected = strategies[random.Next(strategies.Length)];
-                _logger.LogTrace("UCB strategy selection for {Symbol}: {Strategy} (random)", symbol, selected.Item1);
-                return (selected.Item1, selected.Item2, 0.5);
+                _logger.LogTrace("UCB strategy selection for {Symbol}: {Strategy} (no history, initial score: {Score:F3})", 
+                    symbol, selected.Item1, initialScore);
+                return (selected.Item1, selected.Item2, initialScore);
             }
 
             // UCB1 algorithm
@@ -171,7 +161,11 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
 
             foreach (var (strategy, intent) in strategies)
             {
-                double ucbScore = 0.5; // Default score
+                // Get UCB parameters from configuration
+                var explorationFactor = _configuration.GetValue<double>("ML:UCB:ExplorationFactor", 1.4);
+                var defaultUcbScore = _configuration.GetValue<double>("ML:UCB:DefaultScore", 0.5);
+                
+                double ucbScore = defaultUcbScore; // Configured default score
                 
                 lock (_statsLock)
                 {
@@ -197,7 +191,8 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
             _logger.LogTrace("UCB strategy selection for {Symbol}: {Strategy} (UCB score: {Score:F3})", 
                 symbol, bestStrategy.Item1, bestScore);
             
-            return (bestStrategy.Item1, bestStrategy.Item2, Math.Min(bestScore, 1.0));
+            var maxScore = _configuration.GetValue<double>("ML:UCB:MaxScore", 1.0);
+            return (bestStrategy.Item1, bestStrategy.Item2, Math.Min(bestScore, maxScore));
         }
         catch (Exception ex)
         {
@@ -217,39 +212,65 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
             
             if (featureBus != null)
             {
-                var volatility = featureBus.Probe(symbol, "volatility.realized") ?? 0.02;
-                var regime = featureBus.Probe(symbol, "regime.current") ?? 0.5;
-                var momentum = featureBus.Probe(symbol, "momentum.current") ?? 0.0;
+                // Get default values from configuration when features are unavailable
+                var defaultVolatility = _configuration.GetValue<double>("Trading:DefaultVolatility", 0.02);
+                var defaultRegime = _configuration.GetValue<double>("Trading:DefaultRegime", 0.5);
+                var defaultMomentum = _configuration.GetValue<double>("Trading:DefaultMomentum", 0.0);
                 
-                // Select strategy based on market conditions
-                if (regime > 0.7) // Trending market
+                var volatility = featureBus.Probe(symbol, "volatility.realized") ?? defaultVolatility;
+                var regime = featureBus.Probe(symbol, "regime.current") ?? defaultRegime;
+                var momentum = featureBus.Probe(symbol, "momentum.current") ?? defaultMomentum;
+                
+                // Get market condition thresholds from configuration
+                var trendingThreshold = _configuration.GetValue<double>("Trading:TrendingRegimeThreshold", 0.7);
+                var highVolThreshold = _configuration.GetValue<double>("Trading:HighVolatilityThreshold", 0.03);
+                var momentumConfidence = _configuration.GetValue<double>("Trading:MomentumConfidenceScore", 0.6);
+                var volatilityConfidence = _configuration.GetValue<double>("Trading:VolatilityConfidenceScore", 0.65);
+                var defaultConfidence = _configuration.GetValue<double>("Trading:DefaultConfidenceScore", 0.5);
+                
+                // Select strategy based on market conditions with configured thresholds
+                var rangingThreshold = _configuration.GetValue<double>("Trading:RangingRegimeThreshold", 0.3);
+                var trendConfidence = _configuration.GetValue<double>("Trading:TrendFollowingConfidence", 0.7);
+                
+                if (regime > trendingThreshold) // Trending market
                 {
-                    if (momentum > 0.0)
+                    var momentumThreshold = _configuration.GetValue<double>("Trading:MomentumPositiveThreshold", 0.0);
+                    if (momentum > momentumThreshold)
                     {
-                        return ("TrendFollowing", BotCore.Strategy.StrategyIntent.Buy, 0.7);
+                        return ("TrendFollowing", BotCore.Strategy.StrategyIntent.Buy, trendConfidence);
                     }
                     else
                     {
-                        return ("TrendFollowing", BotCore.Strategy.StrategyIntent.Sell, 0.7);
+                        return ("TrendFollowing", BotCore.Strategy.StrategyIntent.Sell, trendConfidence);
                     }
                 }
-                else if (regime < 0.3) // Ranging market
+                else if (regime < rangingThreshold) // Ranging market
                 {
-                    return ("MeanReversion", momentum > 0.0 ? BotCore.Strategy.StrategyIntent.Sell : BotCore.Strategy.StrategyIntent.Buy, 0.6);
+                    var meanReversionConfidence = _configuration.GetValue<double>("Trading:MeanReversionConfidence", 0.6);
+                    var momentumThreshold = _configuration.GetValue<double>("Trading:MomentumPositiveThreshold", 0.0);
+                    return ("MeanReversion", momentum > momentumThreshold ? BotCore.Strategy.StrategyIntent.Sell : BotCore.Strategy.StrategyIntent.Buy, meanReversionConfidence);
                 }
-                else if (volatility > 0.03) // High volatility
+                else if (volatility > highVolThreshold) // High volatility
                 {
-                    return ("Breakout", momentum > 0.0 ? BotCore.Strategy.StrategyIntent.Buy : BotCore.Strategy.StrategyIntent.Sell, 0.65);
+                    var breakoutConfidence = _configuration.GetValue<double>("Trading:BreakoutConfidence", 0.65);
+                    var momentumThreshold = _configuration.GetValue<double>("Trading:MomentumPositiveThreshold", 0.0);
+                    return ("Breakout", momentum > momentumThreshold ? BotCore.Strategy.StrategyIntent.Buy : BotCore.Strategy.StrategyIntent.Sell, breakoutConfidence);
                 }
             }
             
-            // Final fallback to momentum-based strategy
-            return ("MomentumFade", BotCore.Strategy.StrategyIntent.Buy, 0.5);
+            // Default strategy with configured confidence when no specific conditions are met or features unavailable
+            var defaultStrategy = _configuration.GetValue<string>("Trading:DefaultStrategy", "MomentumFade");
+            var defaultIntent = Enum.Parse<BotCore.Strategy.StrategyIntent>(_configuration.GetValue<string>("Trading:DefaultIntent", "Buy"));
+            var defaultConfidenceFinal = _configuration.GetValue<double>("Trading:DefaultConfidenceScore", 0.5);
+            
+            return (defaultStrategy, defaultIntent, defaultConfidenceFinal);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error in fallback strategy selection for {Symbol}", symbol);
-            return ("Conservative", BotCore.Strategy.StrategyIntent.Buy, 0.4);
+            _logger.LogError(ex, "🚨 Error in strategy selection for {Symbol} - fail-closed: cannot provide strategy recommendation", symbol);
+            
+            // Fail-closed: Do not return safe defaults, throw to force proper configuration
+            throw new InvalidOperationException($"Strategy selection failed for {symbol} - system must be properly configured (fail-closed)", ex);
         }
     }
 
@@ -316,10 +337,22 @@ public sealed class ProductionPpoSizer : IPpoSizer
                     throw new InvalidOperationException("ML position sizing unavailable - RL system lacks required capability (fail-closed)");
                 }
                 
-                // If we reach here, the RL system should have position sizing capability
-                // Since the method doesn't exist, this indicates incomplete implementation
-                _logger.LogError("RL system position sizing not implemented - fail-closed: cannot provide ML sizing for {Symbol}", symbol);
-                throw new NotImplementedException("ML position sizing not yet implemented in RL system (fail-closed)");
+                // RL system lacks position sizing capability - fail-closed approach
+                _logger.LogError("🚨 [AUDIT-{OperationId}] RL system position sizing not available - fail-closed: cannot provide ML sizing for {Symbol}", 
+                    Guid.NewGuid().ToString("N")[..8], symbol);
+                
+                // Get configuration for fail-closed behavior
+                var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+                var shouldHoldOnMlUnavailable = configuration?.GetValue<bool>("ML:HoldOnPositionSizingUnavailable") ?? true;
+                
+                if (shouldHoldOnMlUnavailable)
+                {
+                    // Fail-closed: force hold when ML sizing unavailable
+                    throw new InvalidOperationException("ML position sizing unavailable - system configured to fail-closed (hold)");
+                }
+                
+                // If configuration allows fallback, proceed to heuristic sizing
+                _logger.LogWarning("🔄 [AUDIT] ML position sizing unavailable but fallback allowed - proceeding to heuristic sizing");
             }
             
             // Fallback to intelligent heuristic-based sizing with real market data
