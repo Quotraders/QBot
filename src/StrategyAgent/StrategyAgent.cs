@@ -12,9 +12,10 @@ using BotCore.Strategy;
 
 namespace StrategyAgent
 {
-    public class StrategyAgent(TradingProfileConfig cfg)
+    public class StrategyAgent(TradingProfileConfig cfg, TradingBot.Abstractions.IS7Service? s7Service = null)
     {
         private readonly TradingProfileConfig _cfg = cfg;
+        private readonly TradingBot.Abstractions.IS7Service? _s7Service = s7Service;
         private static readonly Dictionary<(string Strat, string Sym, string Side), long> _lastBarEnteredTs = [];
 
         public List<Signal> RunAll(BotCore.Models.MarketSnapshot snap, IReadOnlyList<Bar> bars, RiskEngine risk)
@@ -66,7 +67,7 @@ namespace StrategyAgent
                 List<Signal> candidates;
                 try
                 {
-                    candidates = AllStrategies.generate_candidates(snap.Symbol, _cfg, s, [.. bars], risk, snap);
+                    candidates = AllStrategies.generate_candidates(snap.Symbol, _cfg, s, [.. bars], risk, snap, _s7Service);
                 }
                 catch (Exception)
                 {

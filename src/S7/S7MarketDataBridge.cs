@@ -128,7 +128,7 @@ namespace TradingBot.S7
 
                 if (data is MarketData marketData)
                 {
-                    closePrice = marketData.Close ?? marketData.Last ?? marketData.Price;
+                    closePrice = (decimal)marketData.Close;
                     timestamp = marketData.Timestamp;
                 }
                 else if (data is System.Text.Json.JsonElement jsonElement)

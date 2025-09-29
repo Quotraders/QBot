@@ -27,10 +27,15 @@ namespace BotCore.Strategy
 
         public static List<Candidate> generate_candidates(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
         {
-            return generate_candidates_with_time_filter(symbol, env, levels, bars, risk, DateTime.UtcNow);
+            return generate_candidates_with_time_filter(symbol, env, levels, bars, risk, DateTime.UtcNow, null);
         }
 
-        public static List<Candidate> generate_candidates_with_time_filter(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk, DateTime currentTime)
+        public static List<Candidate> generate_candidates(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk, TradingBot.Abstractions.IS7Service? s7Service)
+        {
+            return generate_candidates_with_time_filter(symbol, env, levels, bars, risk, DateTime.UtcNow, s7Service);
+        }
+
+        public static List<Candidate> generate_candidates_with_time_filter(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk, DateTime currentTime, TradingBot.Abstractions.IS7Service? s7Service = null)
         {
             if (env is null) throw new ArgumentNullException(nameof(env));
             
@@ -62,6 +67,10 @@ namespace BotCore.Strategy
 
                 // Apply time-based performance filtering
                 if (!ShouldRunStrategyAtTime(id, currentTime.Hour))
+                    continue;
+
+                // Apply S7 gate for gated strategies (S2, S3, S6, S11) if S7Service available
+                if (!StrategyGates.PassesS7Gate(s7Service, id)) 
                     continue;
 
                 var candidates = method(symbol, env, levels, bars, risk);
