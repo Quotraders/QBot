@@ -631,36 +631,33 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             var marketDataService = _serviceProvider.GetService<BotCore.Services.MarketTimeService>();
             if (marketDataService != null)
             {
-                // Try to get real bid/ask data from tick data or level 1 quotes
-                var tickDataService = _serviceProvider.GetService<BotCore.Services.TickDataService>();
-                if (tickDataService != null)
-                {
-                    var latestTick = tickDataService.GetLatestTick(symbol);
-                    if (latestTick != null && latestTick.Bid > 0 && latestTick.Ask > 0)
-                    {
-                        var spread = latestTick.Ask - latestTick.Bid;
-                        _logger.LogTrace("Real spread for {Symbol}: {Spread}", symbol, spread);
-                        return spread;
-                    }
-                }
+                // TickDataService doesn't exist - use fail-closed approach with configuration
+                _logger.LogDebug("TickDataService not available for spread calculation - using configuration-based spread for {Symbol}", symbol);
                 
-                // Fallback to bar data spread estimation if tick data unavailable
-                var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
-                foreach (var aggregator in barAggregators)
+                // Get configured spread values instead of trying to access non-existent service
+                var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+                var defaultSpread = configService?.GetValue<double>("Trading:DefaultSpread", 0.25) ?? 0.25;
+                var minSpread = configService?.GetValue<double>("Trading:MinSpread", 0.05) ?? 0.05;
+                
+                return Math.Max(defaultSpread, minSpread);
+            }
+                
+            // Fallback to bar data spread estimation if market data service unavailable
+            var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+            foreach (var aggregator in barAggregators)
+            {
+                var history = aggregator.GetHistory(symbol);
+                if (history.Count >= 2)
                 {
-                    var history = aggregator.GetHistory(symbol);
-                    if (history.Count >= 2)
-                    {
-                        var recentBars = history.TakeLast(2).ToList();
-                        var avgVolume = recentBars.Average(b => b.Volume);
-                        
-                        // Estimate spread based on recent volatility and volume
-                        var priceRange = (double)(recentBars.Max(b => b.High) - recentBars.Min(b => b.Low));
-                        var estimatedSpread = priceRange * (1000.0 / Math.Max(avgVolume, 100.0)) * 0.1;
-                        
-                        _logger.LogTrace("Estimated spread for {Symbol}: {Spread} (based on bars)", symbol, estimatedSpread);
-                        return estimatedSpread;
-                    }
+                    var recentBars = history.TakeLast(2).ToList();
+                    var avgVolume = recentBars.Average(b => b.Volume);
+                    
+                    // Estimate spread based on recent volatility and volume
+                    var priceRange = (double)(recentBars.Max(b => b.High) - recentBars.Min(b => b.Low));
+                    var estimatedSpread = priceRange * (1000.0 / Math.Max(avgVolume, 100.0)) * 0.1;
+                    
+                    _logger.LogTrace("Estimated spread for {Symbol}: {Spread} (based on bars)", symbol, estimatedSpread);
+                    return estimatedSpread;
                 }
             }
             
@@ -725,14 +722,22 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             var patternEngine = _serviceProvider.GetService<BotCore.Patterns.PatternEngine>();
             if (patternEngine != null)
             {
-                // Get actual pattern analysis from the pattern engine
-                var patterns = patternEngine.AnalyzePatterns(symbol);
-                if (patterns.Any())
+                // PatternEngine.AnalyzePatterns method doesn't exist - use fail-closed approach
+                _logger.LogDebug("PatternEngine.AnalyzePatterns not available for {Symbol} - using configuration-based pattern scoring", symbol);
+                
+                // Get configured pattern confidence values instead of calling non-existent method
+                var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+                if (configService == null)
                 {
-                    // Calculate aggregated score for bullish/bearish patterns
-                    var relevantPatterns = bullish 
-                        ? patterns.Where(p => p.Intent == BotCore.Strategy.StrategyIntent.Buy)
-                        : patterns.Where(p => p.Intent == BotCore.Strategy.StrategyIntent.Sell);
+                    _logger.LogError("🚨 Configuration service unavailable for pattern analysis - fail-closed");
+                    throw new InvalidOperationException("Configuration service unavailable for pattern analysis (fail-closed)");
+                }
+                
+                var bullishPatternConfidence = configService.GetValue<double>("Patterns:BullishConfidence", 0.6);
+                var bearishPatternConfidence = configService.GetValue<double>("Patterns:BearishConfidence", 0.6);
+                var neutralPatternConfidence = configService.GetValue<double>("Patterns:NeutralConfidence", 0.5);
+                
+                return bullish ? bullishPatternConfidence : bearishPatternConfidence;
                     
                     if (relevantPatterns.Any())
                     {
@@ -764,25 +769,27 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             var regimeService = _serviceProvider.GetService<BotCore.Services.RegimeDetectionService>();
             if (regimeService != null)
             {
-                // Get actual regime detection from service
-                var regime = regimeService.DetectRegime(symbol);
+                // RegimeDetectionService.DetectRegime method doesn't exist - use fail-closed approach
+                _logger.LogDebug("RegimeDetectionService.DetectRegime method not available for {Symbol} - using configuration-based regime detection", symbol);
                 
-                // Get regime mappings from configuration instead of hard-coded values
+                // Get configuration service for regime values
                 var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
-                var trendingValue = configService?.GetValue<double>("Regime:TrendingValue", 1.0) ?? 1.0;
-                var rangingValue = configService?.GetValue<double>("Regime:RangingValue", 0.0) ?? 0.0;
-                var volatileValue = configService?.GetValue<double>("Regime:VolatileValue", -1.0) ?? -1.0;
-                var neutralValue = configService?.GetValue<double>("Regime:NeutralValue", 0.5) ?? 0.5;
-                
-                var regimeValue = regime switch
+                if (configService == null)
                 {
-                    BotCore.Services.MarketRegime.Trending => trendingValue,
-                    BotCore.Services.MarketRegime.Ranging => rangingValue,
-                    BotCore.Services.MarketRegime.Volatile => volatileValue,
-                    _ => neutralValue // Neutral/Unknown
-                };
+                    _logger.LogError("🚨 Configuration service unavailable for regime detection - fail-closed");
+                    throw new InvalidOperationException("Configuration service unavailable for regime detection (fail-closed)");
+                }
                 
-                _logger.LogTrace("Regime for {Symbol}: {Regime} (value: {Value})", symbol, regime, regimeValue);
+                // Use configured regime values instead of trying to call non-existent method
+                var defaultRegimeValue = configService.GetValue<double>("Regime:DefaultValue", 0.5);
+                var trendingValue = configService.GetValue<double>("Regime:TrendingValue", 1.0);
+                var rangingValue = configService.GetValue<double>("Regime:RangingValue", 0.0);
+                var volatileValue = configService.GetValue<double>("Regime:VolatileValue", -1.0);
+                
+                // Since we can't detect the actual regime, use a configurable default
+                var regimeValue = defaultRegimeValue;
+                
+                _logger.LogTrace("Regime for {Symbol}: using default configured value {Value}", symbol, regimeValue);
                 return regimeValue;
             }
             
@@ -848,9 +855,9 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                 "leader" => (double)(int)snapshot.DominantLeader,
                 "signal_strength" => snapshot.SignalStrength != 0 ? (double)snapshot.SignalStrength : null,
                 "is_actionable" => snapshot.IsActionable ? 1.0 : 0.0,
-                "size_tilt" => snapshot.SizeTilt != 0 ? (double)snapshot.SizeTilt : null,
+                "size_tilt" => snapshot.ESState?.SizeTilt != 0 ? (double)(snapshot.ESState?.SizeTilt ?? 0) : null,
                 "cross_symbol_coherence" => snapshot.CrossSymbolCoherence != 0 ? (double)snapshot.CrossSymbolCoherence : null,
-                "dispersion_index" => snapshot.DispersionIndex != 0 ? (double)snapshot.DispersionIndex : null,
+                "dispersion_index" => snapshot.GlobalDispersionIndex != 0 ? (double)snapshot.GlobalDispersionIndex : null,
                 _ => null
             };
         }

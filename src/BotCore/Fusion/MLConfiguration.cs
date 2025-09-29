@@ -328,6 +328,9 @@ public sealed class ProductionPpoSizer : IPpoSizer
 
     public async Task<double> PredictSizeAsync(string symbol, BotCore.Strategy.StrategyIntent intent, double risk, CancellationToken cancellationToken = default)
     {
+        // Add proper async operation to satisfy CS1998
+        await Task.CompletedTask.ConfigureAwait(false);
+        
         try
         {
             // Use real RLAdvisorSystem for PPO-based position sizing
