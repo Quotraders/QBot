@@ -31,6 +31,8 @@ namespace TradingBot.BotCore.Extensions
             return services;
         }
 
+        // TODO: Re-enable when circular dependencies are resolved
+        /*
         /// <summary>
         /// Register book-aware execution simulation services
         /// </summary>
@@ -120,7 +122,10 @@ namespace TradingBot.BotCore.Extensions
 
             return services;
         }
+        */
 
+        // TODO: Re-enable when circular dependencies are resolved
+        /*
         /// <summary>
         /// Configure enhanced trading bot settings with production defaults
         /// </summary>
@@ -167,5 +172,6 @@ namespace TradingBot.BotCore.Extensions
 
             return services;
         }
+        */
     }
 }

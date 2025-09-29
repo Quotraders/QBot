@@ -47,5 +47,61 @@ namespace TradingBot.BotCore.Services
 
         public decimal GetMaxMarketImpactBps() => 
             _config.GetValue("ExecutionCost:MaxMarketImpactBps", 20.0m);
+
+        public decimal GetOpeningAuctionAdjustment() => 
+            _config.GetValue("ExecutionCost:OpeningAuctionAdjustment", 1.2m);
+
+        public decimal GetClosingAuctionAdjustment() => 
+            _config.GetValue("ExecutionCost:ClosingAuctionAdjustment", 1.1m);
+
+        public decimal GetAfterHoursAdjustment() => 
+            _config.GetValue("ExecutionCost:AfterHoursAdjustment", 1.5m);
+
+        public decimal GetImbalanceAdjustmentMultiplier() => 
+            _config.GetValue("ExecutionCost:ImbalanceAdjustmentMultiplier", 1.3m);
+
+        public decimal GetMinSlippageBps() => 
+            _config.GetValue("ExecutionCost:MinSlippageBps", 0.5m);
+
+        public decimal GetMaxTimeMultiplier() => 
+            _config.GetValue("ExecutionCost:MaxTimeMultiplier", 3.0m);
+
+        public decimal GetTimeMultiplierBaseline() => 
+            _config.GetValue("ExecutionCost:TimeMultiplierBaseline", 15.0m); // 15 minutes baseline
+
+        public decimal GetVolatilityBoost() => 
+            _config.GetValue("ExecutionCost:VolatilityBoost", 1.2m);
+
+        public decimal GetVolumeThreshold() => 
+            _config.GetValue("ExecutionCost:VolumeThreshold", 1000.0m);
+
+        public decimal GetVolumeBoost() => 
+            _config.GetValue("ExecutionCost:VolumeBoost", 1.1m);
+
+        public decimal GetMaxFillProbability() => 
+            _config.GetValue("ExecutionCost:MaxFillProbability", 0.95m);
+
+        public decimal GetMinFillProbability() => 
+            _config.GetValue("ExecutionCost:MinFillProbability", 0.3m);
+
+        public decimal GetDefaultSpreadPenetration() => 
+            _config.GetValue("ExecutionCost:DefaultSpreadPenetration", 0.5m);
+
+        public decimal GetMaxSlippageCap() => 
+            _config.GetValue("ExecutionCost:MaxSlippageCap", 5.0m);
+
+        public FillProbabilityThresholds GetFillProbabilityThresholds() => 
+            new FillProbabilityThresholds
+            {
+                AtMarketProbability = _config.GetValue("ExecutionCost:AtMarketProbability", 0.9m),
+                PassiveFallbackProbability = _config.GetValue("ExecutionCost:PassiveFallbackProbability", 0.2m),
+                DistanceThresholds = new List<DistanceThreshold>
+                {
+                    new DistanceThreshold { MaxDistance = 0.25, FillProbability = 0.8m },
+                    new DistanceThreshold { MaxDistance = 0.5, FillProbability = 0.6m },
+                    new DistanceThreshold { MaxDistance = 1.0, FillProbability = 0.4m },
+                    new DistanceThreshold { MaxDistance = 2.0, FillProbability = 0.3m }
+                }
+            };
     }
 }
