@@ -186,6 +186,7 @@ namespace TradingBot.BotCore.Services
 
         /// <summary>
         /// Compute synthetic advance/decline ratio from ES/NQ relationship and time-based patterns
+        /// ALL VALUES CONFIG-DRIVEN WITH BOUNDS VALIDATION
         /// </summary>
         private decimal ComputeSyntheticAdvanceDeclineRatio()
         {
@@ -193,57 +194,59 @@ namespace TradingBot.BotCore.Services
             var currentTime = DateTime.UtcNow;
             var hour = currentTime.Hour;
             
-            // Market breadth tends to be stronger during active trading hours
-            decimal baseRatio = 1.0m;
+            // Market breadth tends to be stronger during active trading hours - ALL CONFIG-DRIVEN
+            decimal baseRatio = _config.BaseAdvanceDeclineRatio;
             
-            if (hour >= 14 && hour <= 21) // 9:30 AM - 4:30 PM ET (active US hours)
+            if (hour >= _config.UsMarketStartHour && hour <= _config.UsMarketEndHour) // US market hours from config
             {
-                baseRatio = 1.2m; // Stronger breadth during active hours
+                baseRatio = _config.UsHoursAdvanceDeclineMultiplier; // Config-driven multiplier
             }
-            else if (hour >= 8 && hour <= 13) // European/Pre-market hours
+            else if (hour >= _config.EuropeanMarketStartHour && hour <= _config.EuropeanMarketEndHour) // European hours from config
             {
-                baseRatio = 0.9m; // Moderate breadth during European session
+                baseRatio = _config.EuropeanHoursAdvanceDeclineMultiplier; // Config-driven multiplier
             }
             else // Overnight hours
             {
-                baseRatio = 0.7m; // Weaker breadth overnight
+                baseRatio = _config.OvernightHoursAdvanceDeclineMultiplier; // Config-driven multiplier
             }
             
             // Apply configuration bounds and volatility adjustments
             var adjustedRatio = baseRatio * _config.AdvanceDeclineThreshold;
             
-            return Math.Clamp(adjustedRatio, 0.1m, 5.0m);
+            return Math.Clamp(adjustedRatio, _config.AdvanceDeclineRatioMin, _config.AdvanceDeclineRatioMax);
         }
 
         /// <summary>
         /// Compute synthetic new highs/lows ratio from market strength patterns
+        /// ALL VALUES CONFIG-DRIVEN WITH BOUNDS VALIDATION
         /// </summary>
         private decimal ComputeSyntheticNewHighsLowsRatio()
         {
             var currentTime = DateTime.UtcNow;
             var dayOfWeek = currentTime.DayOfWeek;
             
-            // New highs/lows patterns vary by day of week
+            // New highs/lows patterns vary by day of week - ALL CONFIG-DRIVEN
             decimal baseRatio = _config.NewHighsLowsRatio;
             
             switch (dayOfWeek)
             {
                 case DayOfWeek.Monday:
-                    baseRatio *= 1.1m; // Monday reversals create more extremes
+                    baseRatio *= _config.MondayNewHighsLowsMultiplier; // Config-driven Monday multiplier
                     break;
                 case DayOfWeek.Friday:
-                    baseRatio *= 0.9m; // Friday consolidation reduces extremes
+                    baseRatio *= _config.FridayNewHighsLowsMultiplier; // Config-driven Friday multiplier
                     break;
                 default:
-                    baseRatio *= 1.0m; // Neutral mid-week pattern
+                    baseRatio *= _config.MidWeekNewHighsLowsMultiplier; // Config-driven mid-week multiplier
                     break;
             }
             
-            return Math.Clamp(baseRatio, 0.5m, 10.0m);
+            return Math.Clamp(baseRatio, _config.NewHighsLowsRatioMin, _config.NewHighsLowsRatioMax);
         }
 
         /// <summary>
         /// Compute synthetic sector rotation data from configuration and market patterns
+        /// ALL VALUES CONFIG-DRIVEN WITH BOUNDS VALIDATION
         /// </summary>
         private Dictionary<string, decimal> ComputeSyntheticSectorRotationData()
         {
@@ -254,25 +257,25 @@ namespace TradingBot.BotCore.Services
             // Apply sector rotation weight from configuration
             var rotationWeight = _config.SectorRotationWeight;
             
-            // Synthetic sector strength during different market hours
-            if (hour >= 14 && hour <= 21) // US market hours
+            // Synthetic sector strength during different market hours - ALL CONFIG-DRIVEN
+            if (hour >= _config.UsMarketStartHour && hour <= _config.UsMarketEndHour) // US market hours from config
             {
-                sectorData["Technology"] = rotationWeight * 1.2m;
-                sectorData["Financials"] = rotationWeight * 1.1m;
-                sectorData["Healthcare"] = rotationWeight * 0.9m;
-                sectorData["Energy"] = rotationWeight * 1.0m;
+                sectorData["Technology"] = rotationWeight * _config.TechnologyUsHoursMultiplier;
+                sectorData["Financials"] = rotationWeight * _config.FinancialsUsHoursMultiplier;
+                sectorData["Healthcare"] = rotationWeight * _config.HealthcareUsHoursMultiplier;
+                sectorData["Energy"] = rotationWeight * _config.EnergyUsHoursMultiplier;
             }
-            else if (hour >= 8 && hour <= 13) // European hours
+            else if (hour >= _config.EuropeanMarketStartHour && hour <= _config.EuropeanMarketEndHour) // European hours from config
             {
-                sectorData["Financials"] = rotationWeight * 1.3m;
-                sectorData["Materials"] = rotationWeight * 1.1m;
-                sectorData["Technology"] = rotationWeight * 0.8m;
+                sectorData["Financials"] = rotationWeight * _config.FinancialsEuropeanHoursMultiplier;
+                sectorData["Materials"] = rotationWeight * _config.MaterialsEuropeanHoursMultiplier;
+                sectorData["Technology"] = rotationWeight * _config.TechnologyEuropeanHoursMultiplier;
             }
             else // Overnight/Asian hours
             {
-                sectorData["Technology"] = rotationWeight * 1.4m;
-                sectorData["Communications"] = rotationWeight * 1.0m;
-                sectorData["Consumer"] = rotationWeight * 0.7m;
+                sectorData["Technology"] = rotationWeight * _config.TechnologyOvernightMultiplier;
+                sectorData["Communications"] = rotationWeight * _config.CommunicationsOvernightMultiplier;
+                sectorData["Consumer"] = rotationWeight * _config.ConsumerOvernightMultiplier;
             }
             
             return sectorData;

@@ -224,7 +224,7 @@ namespace TradingBot.Abstractions
     }
 
     /// <summary>
-    /// Breadth analysis configuration (optional add-on)
+    /// Breadth analysis configuration (optional add-on) - ALL VALUES CONFIG-DRIVEN WITH BOUNDS VALIDATION
     /// </summary>
     public class BreadthConfiguration
     {
@@ -235,6 +235,45 @@ namespace TradingBot.Abstractions
         public int BreadthLookbackBars { get; set; } = 20;
         public string DataSource { get; set; } = "IndexBreadthFeed";
         public bool FailOnMissingData { get; set; }
+        
+        // Market hour boundaries for breadth calculation
+        public int UsMarketStartHour { get; set; } = 14; // 9:30 AM ET in UTC
+        public int UsMarketEndHour { get; set; } = 21;   // 4:30 PM ET in UTC
+        public int EuropeanMarketStartHour { get; set; } = 8;  // European session start
+        public int EuropeanMarketEndHour { get; set; } = 13;   // European session end
+        
+        // Breadth ratio multipliers - config-driven with bounds validation
+        public decimal BaseAdvanceDeclineRatio { get; set; } = 1.0m;
+        public decimal UsHoursAdvanceDeclineMultiplier { get; set; } = 1.2m;
+        public decimal EuropeanHoursAdvanceDeclineMultiplier { get; set; } = 0.9m;
+        public decimal OvernightHoursAdvanceDeclineMultiplier { get; set; } = 0.7m;
+        
+        // Bounds validation for advance/decline ratio
+        public decimal AdvanceDeclineRatioMin { get; set; } = 0.1m;
+        public decimal AdvanceDeclineRatioMax { get; set; } = 5.0m;
+        
+        // Day-of-week multipliers for new highs/lows
+        public decimal MondayNewHighsLowsMultiplier { get; set; } = 1.1m;
+        public decimal FridayNewHighsLowsMultiplier { get; set; } = 0.9m;
+        public decimal MidWeekNewHighsLowsMultiplier { get; set; } = 1.0m;
+        
+        // Bounds validation for new highs/lows ratio
+        public decimal NewHighsLowsRatioMin { get; set; } = 0.5m;
+        public decimal NewHighsLowsRatioMax { get; set; } = 10.0m;
+        
+        // Sector rotation multipliers by session
+        public decimal TechnologyUsHoursMultiplier { get; set; } = 1.2m;
+        public decimal FinancialsUsHoursMultiplier { get; set; } = 1.1m;
+        public decimal HealthcareUsHoursMultiplier { get; set; } = 0.9m;
+        public decimal EnergyUsHoursMultiplier { get; set; } = 1.0m;
+        
+        public decimal FinancialsEuropeanHoursMultiplier { get; set; } = 1.3m;
+        public decimal MaterialsEuropeanHoursMultiplier { get; set; } = 1.1m;
+        public decimal TechnologyEuropeanHoursMultiplier { get; set; } = 0.8m;
+        
+        public decimal TechnologyOvernightMultiplier { get; set; } = 1.4m;
+        public decimal CommunicationsOvernightMultiplier { get; set; } = 1.0m;
+        public decimal ConsumerOvernightMultiplier { get; set; } = 0.7m;
     }
 
     /// <summary>
