@@ -82,7 +82,16 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             ["regime.type"] = GetRegimeFromService,
             
             // Bar count from real bar history
-            ["bars.recent"] = GetRecentBarCountFromHistory
+            ["bars.recent"] = GetRecentBarCountFromHistory,
+            
+            // S7 multi-horizon relative strength features from IS7Service
+            ["s7.coherence"] = symbol => GetS7FeatureFromService("coherence"),
+            ["s7.leader"] = symbol => GetS7FeatureFromService("leader"),
+            ["s7.signal_strength"] = symbol => GetS7FeatureFromService("signal_strength"),
+            ["s7.is_actionable"] = symbol => GetS7FeatureFromService("is_actionable"),
+            ["s7.size_tilt"] = symbol => GetS7FeatureFromService("size_tilt"),
+            ["s7.cross_symbol_coherence"] = symbol => GetS7FeatureFromService("cross_symbol_coherence"),
+            ["s7.dispersion_index"] = symbol => GetS7FeatureFromService("dispersion_index")
         };
     }
 
@@ -808,6 +817,47 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         {
             _logger.LogError(ex, "Error getting bar count for {Symbol}", symbol);
             return null;
+        }
+    }
+    
+    /// <summary>
+    /// Get S7 feature from IS7Service with fail-closed behavior
+    /// </summary>
+    private double? GetS7FeatureFromService(string featureName)
+    {
+        try
+        {
+            var s7Service = _serviceProvider.GetService<TradingBot.Abstractions.IS7Service>();
+            if (s7Service == null)
+            {
+                _logger.LogWarning("[S7-FEATURE-BUS] IS7Service not available - feature '{Feature}' returning null", featureName);
+                return null;
+            }
+
+            var snapshot = s7Service.GetCurrentSnapshot();
+            if (snapshot == null)
+            {
+                _logger.LogDebug("[S7-FEATURE-BUS] No S7 snapshot available - feature '{Feature}' returning null", featureName);
+                return null;
+            }
+
+            // Map feature name to snapshot property
+            return featureName switch
+            {
+                "coherence" => snapshot.CrossSymbolCoherence != 0 ? (double)snapshot.CrossSymbolCoherence : null,
+                "leader" => (double)(int)snapshot.DominantLeader,
+                "signal_strength" => snapshot.SignalStrength != 0 ? (double)snapshot.SignalStrength : null,
+                "is_actionable" => snapshot.IsActionable ? 1.0 : 0.0,
+                "size_tilt" => snapshot.SizeTilt != 0 ? (double)snapshot.SizeTilt : null,
+                "cross_symbol_coherence" => snapshot.CrossSymbolCoherence != 0 ? (double)snapshot.CrossSymbolCoherence : null,
+                "dispersion_index" => snapshot.DispersionIndex != 0 ? (double)snapshot.DispersionIndex : null,
+                _ => null
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[S7-AUDIT-VIOLATION] Error reading S7 feature '{Feature}' - TRIGGERING HOLD + TELEMETRY", featureName);
+            return null; // Fail-closed: any S7 error should not break feature bus
         }
     }
     
