@@ -234,6 +234,7 @@ namespace TradingBot.Abstractions
         public decimal SectorRotationWeight { get; set; } = 0.25m;
         public int BreadthLookbackBars { get; set; } = 20;
         public string DataSource { get; set; } = "IndexBreadthFeed";
+        public bool FailOnMissingData { get; set; }
     }
 
     /// <summary>
