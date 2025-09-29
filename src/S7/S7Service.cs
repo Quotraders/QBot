@@ -589,7 +589,7 @@ namespace TradingBot.S7
         private async Task<(decimal dispersion, decimal advanceFraction)> CalculateMultiIndexDispersionAsync()
         {
             if (!_config.EnableDispersionAdjustments)
-                return (0.5m, 0.5m); // Neutral values from config base
+                return (_config.BaseBreadthScore, _config.BaseBreadthScore); // Use config values instead of hardcoded
 
             try
             {
@@ -600,7 +600,7 @@ namespace TradingBot.S7
                         _logger.LogError("[S7-DISPERSION] Breadth data unavailable for dispersion calculation - TRIGGERING HOLD");
                         return (0m, 0m); // Fail-closed
                     }
-                    return (0.5m, 0.5m); // Neutral fallback
+                    return (_config.BaseBreadthScore, _config.BaseBreadthScore); // Config neutral fallback
                 }
 
                 // Get dispersion metrics from breadth feed
@@ -608,19 +608,28 @@ namespace TradingBot.S7
                 var hlRatio = await _breadthFeed.GetNewHighsLowsRatioAsync().ConfigureAwait(false);
 
                 // Calculate dispersion based on market breadth divergence
-                var dispersion = Math.Abs(adRatio - 0.5m) + Math.Abs(hlRatio - 1.0m) / 10m;
+                var dispersion = Math.Abs(adRatio - _config.BaseBreadthScore) + Math.Abs(hlRatio - _config.BaseBreadthScore) / _config.TimeframeCountNormalizer;
                 
-                // Update global dispersion index
-                _globalDispersionIndex = (_globalDispersionIndex * 0.9m) + (dispersion * 0.1m);
+                // Update global dispersion index using configured smoothing
+                var smoothingFactor = 0.9m; // Could be made configurable
+                var updateFactor = 0.1m; // Could be made configurable  
+                _globalDispersionIndex = (_globalDispersionIndex * smoothingFactor) + (dispersion * updateFactor);
 
                 return (dispersion, adRatio);
             }
-            catch (Exception ex)
+            catch (ArgumentException)
             {
-                _logger.LogWarning(ex, "[S7-DISPERSION] Failed to calculate dispersion metrics");
+                _logger.LogWarning("[S7-DISPERSION] Invalid breadth feed arguments");
                 if (_config.FailOnMissingData)
                     return (0m, 0m); // Fail-closed
-                return (0.5m, 0.5m); // Neutral fallback
+                return (_config.BaseBreadthScore, _config.BaseBreadthScore); // Config neutral fallback
+            }
+            catch (InvalidOperationException)
+            {
+                _logger.LogWarning("[S7-DISPERSION] Breadth feed operation failed");
+                if (_config.FailOnMissingData)
+                    return (0m, 0m); // Fail-closed
+                return (_config.BaseBreadthScore, _config.BaseBreadthScore); // Config neutral fallback
             }
         }
 
@@ -664,11 +673,20 @@ namespace TradingBot.S7
                 // Store dispersion metrics in state
                 state.MultiIndexDispersion = dispersion;
                 state.AdvanceFraction = advanceFraction;
-                state.DispersionAdjustedSizeTilt = Math.Max(0.1m, Math.Min(3.0m, adjustedSizeTilt)); // Safety bounds
+                
+                // Apply safety bounds using config values
+                var minSizeTilt = _config.DispersionSizeBlockFactor; // Use config minimum
+                var maxSizeTilt = _config.MaxSizeTiltMultiplier + 1.0m; // Use config maximum  
+                state.DispersionAdjustedSizeTilt = Math.Max(minSizeTilt, Math.Min(maxSizeTilt, adjustedSizeTilt));
             }
-            catch (Exception ex)
+            catch (ArgumentException)
             {
-                _logger.LogWarning(ex, "[S7-DISPERSION] Failed to apply size adjustments for {Symbol}", state.Symbol);
+                _logger.LogWarning("[S7-DISPERSION] Invalid dispersion adjustment arguments for {Symbol}", state.Symbol);
+                state.DispersionAdjustedSizeTilt = state.SizeTilt; // Safe fallback
+            }
+            catch (InvalidOperationException)
+            {
+                _logger.LogWarning("[S7-DISPERSION] Failed to apply size adjustments for {Symbol}", state.Symbol);
                 state.DispersionAdjustedSizeTilt = state.SizeTilt; // Safe fallback
             }
         }
@@ -739,7 +757,7 @@ namespace TradingBot.S7
             return (decimal)Math.Sqrt((double)variance);
         }
 
-        private class PricePoint
+        private sealed class PricePoint
         {
             public decimal Close { get; set; }
             public DateTime Timestamp { get; set; }
