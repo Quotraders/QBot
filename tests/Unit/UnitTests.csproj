@@ -30,6 +30,7 @@
     <ProjectReference Include="../../src/UnifiedOrchestrator/UnifiedOrchestrator.csproj" />
     <ProjectReference Include="../../src/Abstractions/Abstractions.csproj" />
     <ProjectReference Include="../../src/Zones/Zones.csproj" />
+    <ProjectReference Include="../../src/S7/S7.csproj" />
   </ItemGroup>
 
 </Project>

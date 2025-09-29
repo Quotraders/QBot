@@ -1,0 +1,230 @@
+# S7 Multi-Horizon Relative Strength Strategy DSL Configuration
+# Phase 5 - DSL & Knowledge Graph Integration
+# Required by S7 Audit-Clean Acceptance Contract
+
+strategy:
+  id: "S7"
+  name: "Multi-Horizon Relative Strength"
+  type: "MeanReversion"
+  description: "Sophisticated multi-horizon relative strength analysis with ES/NQ coherence detection"
+  version: "2.0.0"
+  enabled: true
+
+# Regime filters - require certain coherence/RSz levels
+regime_filters:
+  - name: "coherence_minimum"
+    condition: "s7.coherence >= 0.75"
+    description: "Require minimum cross-symbol coherence for signal validity"
+    
+  - name: "signal_strength"
+    condition: "s7.rsz >= 2.0"
+    description: "Require minimum z-score strength for entry signals"
+    
+  - name: "leadership_clarity"
+    condition: "s7.leader != 'Divergent'"
+    description: "Avoid trading during divergent leadership periods"
+
+# Micro conditions using s7.* keys
+micro_conditions:
+  entry:
+    - condition: "s7.rs > 0 AND s7.rsz > s7_z_threshold_entry"
+      weight: 0.4
+      description: "Short-term relative strength with statistical significance"
+      
+    - condition: "s7.rs.medium > 0 AND s7.rs.long > 0"
+      weight: 0.3
+      description: "Multi-horizon trend alignment"
+      
+    - condition: "s7.coherence >= s7_coherence_min"
+      weight: 0.3
+      description: "Cross-symbol coherence validation"
+
+  exit:
+    - condition: "s7.rsz < s7_z_threshold_exit"
+      weight: 0.6
+      description: "Z-score mean reversion signal"
+      
+    - condition: "s7.coherence < s7_coherence_min"
+      weight: 0.4
+      description: "Loss of cross-symbol coherence"
+
+# Confluence rules
+confluence:
+  required_score: 0.7
+  description: "Minimum weighted score from micro conditions"
+  
+  # Additional confluence with other strategies
+  cross_strategy:
+    - strategy: "S2"
+      condition: "NOT s2.signal_active"
+      weight: 0.1
+      description: "Avoid conflict with active S2 mean reversion signals"
+      
+    - strategy: "S3"
+      condition: "s3.ema_slope_alignment"
+      weight: 0.1
+      description: "Benefit from EMA trend alignment"
+
+# Playbook - S7 remains filter-only but influences others
+playbook:
+  signal_generation: false  # S7 acts as filter/enhancer, not signal generator
+  
+  strategy_filters:
+    - target_strategy: "S2"
+      filter_condition: "s7.coherence >= 0.75 AND s7.leader != 'Divergent'"
+      action: "allow"
+      size_adjustment: "s7.size_tilt"
+      
+    - target_strategy: "S3"
+      filter_condition: "s7.coherence >= 0.75"
+      action: "allow"
+      size_adjustment: "s7.size_tilt"
+      
+    - target_strategy: "S6"
+      filter_condition: "s7.coherence >= 0.70"
+      action: "allow"
+      size_adjustment: "s7.size_tilt"
+      
+    - target_strategy: "S11"
+      filter_condition: "s7.coherence >= 0.80 AND s7.leader == s11.target_symbol"
+      action: "allow"
+      size_adjustment: "s7.size_tilt * 1.2"
+
+# Feature mappings for knowledge graph
+features:
+  inputs:
+    - key: "s7.rs"
+      source: "S7FeaturePublisher"
+      description: "Short-term relative strength"
+      type: "decimal"
+      
+    - key: "s7.rs.medium"
+      source: "S7FeaturePublisher"
+      description: "Medium-term relative strength"
+      type: "decimal"
+      
+    - key: "s7.rs.long"
+      source: "S7FeaturePublisher"
+      description: "Long-term relative strength"
+      type: "decimal"
+      
+    - key: "s7.rsz"
+      source: "S7FeaturePublisher"
+      description: "Z-score of relative strength"
+      type: "decimal"
+      
+    - key: "s7.coherence"
+      source: "S7FeaturePublisher"
+      description: "Cross-symbol coherence measure"
+      type: "decimal"
+      
+    - key: "s7.leader"
+      source: "S7FeaturePublisher"
+      description: "Dominant leadership symbol"
+      type: "string"
+      
+    - key: "s7.size_tilt"
+      source: "S7FeaturePublisher"
+      description: "Position size adjustment factor"
+      type: "decimal"
+
+  outputs:
+    - key: "s7.signal_active"
+      description: "Whether S7 analysis indicates actionable conditions"
+      type: "boolean"
+      
+    - key: "s7.risk_regime"
+      description: "Current risk regime assessment (RiskOn/RiskOff/Neutral)"
+      type: "string"
+
+# Telemetry tags for monitoring and debugging
+telemetry:
+  tags:
+    - "multi_horizon_analysis"
+    - "cross_symbol_coherence"
+    - "relative_strength"
+    - "statistical_significance"
+    - "regime_filter"
+    
+  metrics:
+    - name: "s7_coherence_distribution"
+      type: "histogram"
+      description: "Distribution of cross-symbol coherence values"
+      
+    - name: "s7_leadership_transitions"
+      type: "counter"
+      description: "Count of leadership transitions between ES/NQ"
+      
+    - name: "s7_signal_strength"
+      type: "gauge"
+      description: "Current signal strength magnitude"
+      
+  rejection_reasons:
+    - "s7_coherence_low"
+    - "s7_leadership_divergent"
+    - "s7_cooldown_active"
+    - "s7_data_insufficient"
+    - "s7_momentum_contra"
+
+# Configuration parameter bindings
+parameters:
+  lookback_short_bars:
+    binding: "bounds.s7.lookback_short_bars"
+    description: "Short-term lookback window"
+    
+  lookback_medium_bars:
+    binding: "bounds.s7.lookback_medium_bars"
+    description: "Medium-term lookback window"
+    
+  lookback_long_bars:
+    binding: "bounds.s7.lookback_long_bars"
+    description: "Long-term lookback window"
+    
+  z_threshold_entry:
+    binding: "bounds.s7.z_threshold_entry"
+    description: "Z-score threshold for strategy entry"
+    
+  z_threshold_exit:
+    binding: "bounds.s7.z_threshold_exit"
+    description: "Z-score threshold for strategy exit"
+    
+  coherence_min:
+    binding: "bounds.s7.coherence_min"
+    description: "Minimum required cross-symbol coherence"
+    
+  cooldown_bars:
+    binding: "bounds.s7.cooldown_bars"
+    description: "Cooldown period between signals"
+
+# Risk management integration
+risk:
+  position_sizing:
+    base_multiplier: 1.0
+    coherence_adjustment: "s7.size_tilt"
+    leadership_bonus: 0.2  # Additional sizing when clear leadership
+    
+  stop_loss:
+    atr_multiplier: "bounds.s7.atr_multiplier_stop"
+    coherence_factor: "1.0 - s7.coherence"  # Tighter stops during low coherence
+    
+  profit_target:
+    atr_multiplier: "bounds.s7.atr_multiplier_target"
+    strength_factor: "s7.rsz / 2.0"  # Scale targets with signal strength
+
+# Knowledge graph integration
+knowledge_graph:
+  node_type: "AnalysisEngine"
+  relationships:
+    - type: "ANALYZES"
+      target: ["ES", "NQ"]
+      
+    - type: "INFLUENCES"
+      target: ["S2", "S3", "S6", "S11"]
+      
+    - type: "PROVIDES_FEATURES"
+      target: "FeatureBus"
+      
+  properties:
+    analysis_type: "multi_horizon_relative_strength"
+    output_frequency: "per_bar"
+    confidence_metric: "cross_symbol_coherence"

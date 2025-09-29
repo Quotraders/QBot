@@ -859,6 +859,11 @@ namespace BotCore.Strategy
             }
         }
 
+        /// <summary>
+        /// S7 strategy - OBSOLETE: Use new DSL-driven S7Service implementation
+        /// This legacy method is maintained for backward compatibility during transition
+        /// </summary>
+        [Obsolete("Use S7Service via dependency injection for production. This legacy method will be removed in future version.")]
         public static List<Candidate> S7(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
         {
             if (env is null) throw new ArgumentNullException(nameof(env));
