@@ -107,7 +107,7 @@ namespace BotCore.Strategy
         }
 
         // Config-aware method for StrategyAgent
-        public static List<Signal> generate_candidates(string symbol, TradingProfileConfig cfg, StrategyDef def, List<Bar> bars, object risk, BotCore.Models.MarketSnapshot snap)
+        public static List<Signal> generate_candidates(string symbol, TradingProfileConfig cfg, StrategyDef def, List<Bar> bars, object risk, BotCore.Models.MarketSnapshot snap, TradingBot.Abstractions.IS7Service? s7Service = null)
         {
             if (cfg is null) throw new ArgumentNullException(nameof(cfg));
             if (def is null) throw new ArgumentNullException(nameof(def));
@@ -139,6 +139,9 @@ namespace BotCore.Strategy
 
             if (!def.Enabled) return [];
             if (!map.TryGetValue(def.Name, out var fn)) return [];
+
+            // Apply S7 gate for gated strategies (S2, S3, S6, S11) before candidate generation
+            if (!StrategyGates.PassesS7Gate(s7Service, def.Name)) return [];
 
             var candidates = fn(symbol, env, levels, bars, riskEngine);
 
@@ -202,7 +205,8 @@ namespace BotCore.Strategy
         // Deterministic combined candidate flow (no forced trade); config-aware with defs list
         public static List<Signal> generate_candidates(
             string symbol, Env env, Levels levels, IList<Bar> bars,
-            IList<StrategyDef> defs, RiskEngine risk, TradingProfileConfig profile, BotCore.Models.MarketSnapshot snap, int max = 10)
+            IList<StrategyDef> defs, RiskEngine risk, TradingProfileConfig profile, BotCore.Models.MarketSnapshot snap, 
+            TradingBot.Abstractions.IS7Service? s7Service = null, int max = 10)
         {
             if (bars is null) throw new ArgumentNullException(nameof(bars));
             
@@ -227,6 +231,10 @@ namespace BotCore.Strategy
             {
                 if (!map.TryGetValue(def.Name, out var fn)) continue;
                 if (!StrategyGates.PassesGlobal(profile, snap)) continue; // AlwaysOn => true
+                
+                // Apply S7 gate for gated strategies (S2, S3, S6, S11) before candidate generation
+                if (!StrategyGates.PassesS7Gate(s7Service, def.Name)) continue;
+                
                 var raw = fn(symbol, env, levels, bars, risk);
                 var family = def.Family ?? "breakout";
                 var w = StrategyGates.ScoreWeight(profile, snap, family);

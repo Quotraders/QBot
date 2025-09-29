@@ -22,6 +22,7 @@ namespace BotCore.Services
         private readonly Dictionary<string, IStrategy> _strategies;
         private readonly TimeZoneInfo _centralTime;
         private readonly OnnxModelLoader? _onnxLoader;
+        private readonly TradingBot.Abstractions.IS7Service? _s7Service;
         
         // Bar collections for correlation analysis - injected or managed externally
         private IReadOnlyList<Bar>? _esBars;
@@ -78,9 +79,10 @@ namespace BotCore.Services
             }
         };
 
-        public TimeOptimizedStrategyManager(ILogger<TimeOptimizedStrategyManager> logger, OnnxModelLoader? onnxLoader = null)
+        public TimeOptimizedStrategyManager(ILogger<TimeOptimizedStrategyManager> logger, TradingBot.Abstractions.IS7Service? s7Service = null, OnnxModelLoader? onnxLoader = null)
         {
             _logger = logger;
+            _s7Service = s7Service;
             _onnxLoader = onnxLoader;
             _strategies = new Dictionary<string, IStrategy>();
             _centralTime = TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time");
@@ -361,6 +363,12 @@ namespace BotCore.Services
 
         private List<Candidate> GenerateStrategyCandidates(string strategyId, string instrument, TradingBot.Abstractions.MarketData data, IReadOnlyList<Bar> bars)
         {
+            // Apply S7 gate for gated strategies (S2, S3, S6, S11) before generating candidates
+            if (!StrategyGates.PassesS7Gate(_s7Service, strategyId))
+            {
+                return new List<Candidate>(); // S7 gate failed, return empty candidates
+            }
+            
             // Use existing AllStrategies system to generate candidates
             try
             {
