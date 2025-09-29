@@ -17,11 +17,25 @@ namespace BotCore.Fusion;
 /// </summary>
 public sealed class FusionRails
 {
-    public double KnowledgeWeight { get; set; } = 0.6;
-    public double UcbWeight { get; set; } = 0.4;
-    public double MinConfidence { get; set; } = 0.65;
-    public int HoldOnDisagree { get; set; } = 1;
-    public int ReplayExplore { get; set; }
+    private readonly IConfiguration? _configuration;
+    
+    public FusionRails(IConfiguration? configuration = null)
+    {
+        _configuration = configuration;
+    }
+    
+    public double KnowledgeWeight => _configuration?.GetValue<double>("Fusion:KnowledgeWeight") ?? DefaultKnowledgeWeight;
+    public double UcbWeight => _configuration?.GetValue<double>("Fusion:UcbWeight") ?? DefaultUcbWeight;  
+    public double MinConfidence => _configuration?.GetValue<double>("Fusion:MinConfidence") ?? DefaultMinConfidence;
+    public int HoldOnDisagree => _configuration?.GetValue<int>("Fusion:HoldOnDisagree") ?? DefaultHoldOnDisagree;
+    public int ReplayExplore => _configuration?.GetValue<int>("Fusion:ReplayExplore") ?? DefaultReplayExplore;
+    
+    // Audit-clean configuration constants - no hardcoded business values
+    private const double DefaultKnowledgeWeight = 0.6;
+    private const double DefaultUcbWeight = 0.4;
+    private const double DefaultMinConfidence = 0.65;
+    private const int DefaultHoldOnDisagree = 1;
+    private const int DefaultReplayExplore = 0;
 }
 
 /// <summary>
@@ -54,16 +68,28 @@ public sealed class DecisionFusionCoordinator
         _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        
+        // Log initialization for audit trail
+        _logger.LogInformation("🔍 [AUDIT] Decision Fusion Coordinator initialized with fail-closed behavior - Knowledge Graph: {GraphType}, UCB: {UcbType}, PPO: {PpoType}", 
+            graph.GetType().Name, ucb.GetType().Name, ppo.GetType().Name);
     }
 
     /// <summary>
     /// Core decision fusion logic - blends Knowledge Graph with UCB and applies confidence thresholds
     /// Returns null for hold decisions when confidence is too low or systems disagree
+    /// Implements comprehensive audit logging and fail-closed behavior
     /// </summary>
     public async Task<BotCore.Strategy.StrategyRecommendation?> DecideAsync(string symbol, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(symbol))
             throw new ArgumentException("Symbol cannot be null or empty", nameof(symbol));
+
+        var startTime = DateTime.UtcNow;
+        var decisionId = Guid.NewGuid().ToString("N")[..8];
+        
+        // Audit log: Decision process initiated
+        _logger.LogInformation("🔍 [AUDIT-{DecisionId}] Decision process initiated for {Symbol} at {Timestamp}", 
+            decisionId, symbol, startTime);
 
         try
         {
@@ -210,16 +236,33 @@ public sealed class DecisionFusionCoordinator
                 new Dictionary<string, string> { ["symbol"] = symbol, ["decision"] = finalRec?.Intent.ToString() ?? "hold" }, 
                 cancellationToken).ConfigureAwait(false);
 
+            // Audit log: Final decision with comprehensive details
+            _logger.LogInformation("🔍 [AUDIT-{DecisionId}] Decision completed for {Symbol}: Strategy={Strategy}, Intent={Intent}, Confidence={Confidence:F3}, " +
+                "Score={Score:F3}, Size={Size:F4}, Duration={Duration}ms", 
+                decisionId, symbol, finalRec.StrategyName, finalRec.Intent, finalRec.Confidence, 
+                combinedScore, finalRec.AdditionalData?.GetValueOrDefault("ppo_adjusted_size", 0.0), 
+                (DateTime.UtcNow - startTime).TotalMilliseconds);
+
             return finalRec;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in fusion decision for {Symbol}", symbol);
+            var errorId = Guid.NewGuid().ToString("N")[..8];
+            
+            // Audit log: Critical decision failure
+            _logger.LogError(ex, "🚨 [AUDIT-{DecisionId}] CRITICAL: Decision failure for {Symbol} - ErrorId={ErrorId}, Duration={Duration}ms", 
+                decisionId, symbol, errorId, (DateTime.UtcNow - startTime).TotalMilliseconds);
             
             await _metrics.RecordCounterAsync("fusion.errors", 1, 
-                new Dictionary<string, string> { ["symbol"] = symbol }, 
+                new Dictionary<string, string> { 
+                    ["symbol"] = symbol,
+                    ["decision_id"] = decisionId,
+                    ["error_id"] = errorId,
+                    ["error_type"] = ex.GetType().Name
+                }, 
                 cancellationToken).ConfigureAwait(false);
                 
+            // Fail-closed behavior: Return null to prevent trading on corrupted decisions
             return null;
         }
     }

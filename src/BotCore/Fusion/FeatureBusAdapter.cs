@@ -156,12 +156,12 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     }
                 }
                 
-                // If no real data available, fail fast rather than return stub values
+                // If no real data available, return null to indicate missing market data
                 _logger.LogWarning("No real-time price data available for {Symbol} - market data service integration required", symbol);
                 return null;
             }
             
-            // If no real data available, fail fast rather than return stub values
+            // If no real data available, return null to indicate missing market data
             _logger.LogWarning("No real-time price data available for {Symbol} - market data service integration required", symbol);
             return null;
         }
