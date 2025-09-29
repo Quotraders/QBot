@@ -17,6 +17,7 @@ using TradingBot.Backtest;
 using BotCore.Services;
 using BotCore.Extensions;  // Add this for ProductionReadinessServiceExtensions
 using BotCore.Compatibility;  // Add this for CompatibilityKitServiceExtensions
+using TradingBot.BotCore.Extensions;  // Add this for EnhancedTradingBotServiceExtensions
 using UnifiedOrchestrator.Services;  // Add this for BacktestLearningService
 using TopstepX.Bot.Authentication;
 using DotNetEnv;
@@ -847,6 +848,21 @@ Please check the configuration and ensure all required services are registered.
         
         // Register Promotion Service with atomic swaps and instant rollback
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IPromotionService, TradingBot.UnifiedOrchestrator.Promotion.PromotionService>();
+        
+        // ================================================================================
+        // 🚀 ENHANCED TRADING BOT COMPONENTS - PRODUCTION-READY ENHANCEMENTS 🚀
+        // ================================================================================
+        
+        // Register enhanced trading bot services with comprehensive monitoring and analysis
+        services.AddEnhancedTradingBotServices(configuration);
+        services.ConfigureEnhancedTradingBotDefaults(configuration);
+        
+        Console.WriteLine("🎯 [ENHANCED-COMPONENTS] Book-aware simulator, counterfactual replay, explainability stamps, and enhanced alerting registered!");
+        Console.WriteLine("📊 [OBSERVABILITY] Enhanced dashboards with liquidity, OFI, pattern, and fusion metrics ready!");
+        Console.WriteLine("🔍 [EXPLAINABILITY] Decision evidence tracking with zone scores, pattern probabilities, and S7 state capture enabled!");
+        Console.WriteLine("🎲 [SIMULATION] Book-aware execution simulator with live fill distributions and training feedback active!");
+        Console.WriteLine("🔄 [COUNTERFACTUAL] Nightly gate analysis with blocked signal replay for effectiveness validation scheduled!");
+        Console.WriteLine("🚨 [ENHANCED-ALERTS] Pattern promotion, model rollback, feature drift, and queue ETA breach monitoring configured!");
         
         // Register Production Validation Service for runtime proof
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IValidationService, TradingBot.UnifiedOrchestrator.Services.ProductionValidationService>();
