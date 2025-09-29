@@ -24,9 +24,9 @@ public sealed class VolatilityContractionResolver : IFeatureResolver
         try
         {
             var featureBus = _serviceProvider.GetRequiredService<BotCore.Fusion.IFeatureBusWithProbe>();
-            // Note: This resolver is registered for "vdc" key and probes "volatility.contraction" 
-            // The FeatureBusMapper should handle the mapping from "vdc" to "volatility.contraction"
-            var value = featureBus.Probe(symbol, "volatility.contraction");
+            // Use key aliasing: "vdc" DSL key maps to "volatility.contraction" published key
+            var actualKey = FeatureMapAuthority.ResolveFeatureKey("vdc");
+            var value = featureBus.Probe(symbol, actualKey);
             
             if (!value.HasValue)
             {
@@ -60,8 +60,9 @@ public sealed class MomentumZScoreResolver : IFeatureResolver
         try
         {
             var featureBus = _serviceProvider.GetRequiredService<BotCore.Fusion.IFeatureBusWithProbe>();
-            // Fixed: Use the actual key that DecisionFusionCoordinator publishes
-            var value = featureBus.Probe(symbol, "momentum.zscore");
+            // Use key aliasing: "mom.zscore" DSL key maps to "momentum.zscore" published key
+            var actualKey = FeatureMapAuthority.ResolveFeatureKey("mom.zscore");
+            var value = featureBus.Probe(symbol, actualKey);
             
             if (!value.HasValue)
             {

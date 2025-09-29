@@ -20,6 +20,16 @@ public sealed class FeatureMapAuthority
     // Master feature resolver manifest - ALL DSL keys must be mapped here
     private readonly Dictionary<string, IFeatureResolver> _featureResolvers = new();
     
+    // Feature key aliasing - maps DSL shorthand keys to actual published feature keys
+    private static readonly Dictionary<string, string> FeatureKeyAliases = new()
+    {
+        // DSL shorthand -> Published key
+        ["vdc"] = "volatility.contraction",
+        ["mom.zscore"] = "momentum.zscore",
+        ["liquidity_score"] = "liquidity.score",
+        ["spread"] = "spread.current"
+    };
+    
     // Telemetry tracking for missing features
     private readonly HashSet<string> _reportedMissingFeatures = new();
     private readonly object _reportingLock = new();
@@ -152,8 +162,14 @@ public sealed class FeatureMapAuthority
         RegisterResolver("market.session", new MarketSessionResolver(_serviceProvider));
         RegisterResolver("market.open_minutes", new MarketOpenMinutesResolver(_serviceProvider));
         RegisterResolver("market.close_minutes", new MarketCloseMinutesResolver(_serviceProvider));
-        RegisterResolver("spread.current", new SpreadResolver(_serviceProvider));
-        RegisterResolver("liquidity.score", new LiquidityScoreResolver(_serviceProvider));
+        
+        // Register both aliased keys for spread and liquidity
+        var spreadResolver = new SpreadResolver(_serviceProvider);
+        var liquidityResolver = new LiquidityScoreResolver(_serviceProvider);
+        RegisterResolver("spread.current", spreadResolver);
+        RegisterResolver("spread", spreadResolver); // DSL shorthand
+        RegisterResolver("liquidity.score", liquidityResolver);
+        RegisterResolver("liquidity_score", liquidityResolver); // DSL shorthand
     }
     
     /// <summary>
@@ -303,6 +319,14 @@ public sealed class FeatureMapAuthority
                 _logger.LogWarning(ex, "Error emitting fusion.feature_missing telemetry for {FeatureKey}", featureKey);
             }
         }
+    }
+    
+    /// <summary>
+    /// Resolve feature key aliases - maps DSL shorthand to actual published keys
+    /// </summary>
+    public static string ResolveFeatureKey(string dslKey)
+    {
+        return FeatureKeyAliases.TryGetValue(dslKey, out var actualKey) ? actualKey : dslKey;
     }
     
     /// <summary>
