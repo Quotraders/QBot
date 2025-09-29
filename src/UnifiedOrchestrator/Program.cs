@@ -598,6 +598,21 @@ Please check the configuration and ensure all required services are registered.
         // Register S7 feature publisher for knowledge graph integration
         services.AddHostedService<TradingBot.S7.S7FeaturePublisher>();
         
+        // ================================================================================
+        // AUTOMATION-FIRST UPGRADE SCOPE - Feature Engineering Pipeline
+        // Register feature resolvers as singletons for fail-closed feature extraction
+        
+        services.AddSingleton<BotCore.Features.IFeatureResolver, BotCore.Features.LiquidityAbsorptionResolver>();
+        services.AddSingleton<BotCore.Features.IFeatureResolver, BotCore.Features.MtfStructureResolver>();
+        services.AddSingleton<BotCore.Features.IFeatureResolver, BotCore.Features.OfiProxyResolver>();
+        
+        // Register feature publisher hosted service for automated feature publishing
+        services.AddHostedService<BotCore.Features.FeaturePublisher>();
+        
+        // Register bar dispatcher hook for real-time feature extraction
+        services.AddHostedService<BotCore.Features.BarDispatcherHook>();
+        
+        Console.WriteLine("🔧 [AUTOMATION-UPGRADE] Feature engineering pipeline registered - Liquidity, MTF, OFI resolvers ready!");
         Console.WriteLine("📈 [S7-STRATEGY] S7 Multi-Horizon Relative Strength strategy registered - Full DSL implementation ready!");
         
         // ================================================================================
