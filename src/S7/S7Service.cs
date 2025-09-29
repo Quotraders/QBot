@@ -222,7 +222,7 @@ namespace TradingBot.S7
             }
         }
 
-        private decimal CalculateRelativeStrength(List<PricePoint> prices, int lookback)
+        private static decimal CalculateRelativeStrength(List<PricePoint> prices, int lookback)
         {
             if (prices.Count < lookback)
                 return 0;
@@ -346,7 +346,7 @@ namespace TradingBot.S7
             return S7Leader.None;
         }
 
-        private decimal CalculateSignalStrength(S7State esState, S7State nqState, decimal coherence)
+        private static decimal CalculateSignalStrength(S7State esState, S7State nqState, decimal coherence)
         {
             var maxZScore = Math.Max(Math.Abs(esState.ZScore), Math.Abs(nqState.ZScore));
             var avgZScore = (Math.Abs(esState.ZScore) + Math.Abs(nqState.ZScore)) / AveragingDivisor;

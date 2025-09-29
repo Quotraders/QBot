@@ -329,7 +329,7 @@ namespace TradingBot.BotCore.Services
         /// <summary>
         /// Get maximum position size from configuration (not hardcoded)
         /// </summary>
-        private int GetMaxPositionSizeFromConfig(string symbol)
+        private static int GetMaxPositionSizeFromConfig(string symbol)
         {
             // In production, this would come from risk management configuration
             // Using position size multiplier as basis for calculation

@@ -86,10 +86,10 @@ namespace BotCore.Utilities
             T? defaultValue = default,
             bool suppressExceptions = true)
         {
-            if (operation is null) throw new ArgumentNullException(nameof(operation));
-            if (logger is null) throw new ArgumentNullException(nameof(logger));
-            if (componentName is null) throw new ArgumentNullException(nameof(componentName));
-            if (operationDescription is null) throw new ArgumentNullException(nameof(operationDescription));
+            ArgumentNullException.ThrowIfNull(operation);
+            ArgumentNullException.ThrowIfNull(logger);
+            ArgumentNullException.ThrowIfNull(componentName);
+            ArgumentNullException.ThrowIfNull(operationDescription);
 
             try
             {

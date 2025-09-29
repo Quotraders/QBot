@@ -89,7 +89,7 @@ public class NeuralUcbExtended : IDisposable
         MarketContext marketContext,
         CancellationToken cancellationToken = default)
     {
-        if (marketContext is null) throw new ArgumentNullException(nameof(marketContext));
+        ArgumentNullException.ThrowIfNull(marketContext);
         
         try
         {
