@@ -214,15 +214,15 @@ namespace TradingBot.S7
 
                 _logger.LogDebug("[S7-FEATURE-PUBLISHER] Published S7 features for {SymbolCount} symbols", _config.Symbols.Count);
             }
-            catch (InvalidOperationException ex)
+            catch (ObjectDisposedException ex)
             {
                 if (_config?.FailOnMissingData == true)
                 {
-                    _logger.LogError(ex, "[S7-FEATURE-PUBLISHER] Invalid operation during feature publishing - TRIGGERING HOLD + TELEMETRY");
+                    _logger.LogError(ex, "[S7-FEATURE-PUBLISHER] Object disposed during feature publishing - TRIGGERING HOLD + TELEMETRY");
                 }
                 else
                 {
-                    _logger.LogWarning(ex, "[S7-FEATURE-PUBLISHER] Invalid operation publishing S7 features");
+                    _logger.LogWarning(ex, "[S7-FEATURE-PUBLISHER] Object disposed publishing S7 features");
                 }
             }
             catch (ArgumentException ex)
@@ -236,15 +236,15 @@ namespace TradingBot.S7
                     _logger.LogWarning(ex, "[S7-FEATURE-PUBLISHER] Invalid argument publishing S7 features");
                 }
             }
-            catch (ObjectDisposedException ex)
+            catch (InvalidOperationException ex)
             {
                 if (_config?.FailOnMissingData == true)
                 {
-                    _logger.LogError(ex, "[S7-FEATURE-PUBLISHER] Object disposed during feature publishing - TRIGGERING HOLD + TELEMETRY");
+                    _logger.LogError(ex, "[S7-FEATURE-PUBLISHER] Invalid operation during feature publishing - TRIGGERING HOLD + TELEMETRY");
                 }
                 else
                 {
-                    _logger.LogWarning(ex, "[S7-FEATURE-PUBLISHER] Object disposed publishing S7 features");
+                    _logger.LogWarning(ex, "[S7-FEATURE-PUBLISHER] Invalid operation publishing S7 features");
                 }
             }
         }
