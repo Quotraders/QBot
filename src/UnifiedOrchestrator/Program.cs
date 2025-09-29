@@ -612,6 +612,18 @@ Please check the configuration and ensure all required services are registered.
         // Register bar dispatcher hook for real-time feature extraction
         services.AddHostedService<BotCore.Features.BarDispatcherHook>();
         
+        // ================================================================================
+        // EXECUTION ALPHA UPGRADES - S7 Execution Path Enhancement
+        // Advanced execution services for intelligent order type selection and management
+        
+        services.Configure<BotCore.Execution.S7ExecutionConfiguration>(configuration.GetSection("S7:Execution"));
+        services.Configure<BotCore.Execution.BracketConfiguration>(configuration.GetSection("S7:Brackets"));
+        
+        services.AddSingleton<BotCore.Execution.S7OrderTypeSelector>();
+        services.AddSingleton<BotCore.Execution.ChildOrderScheduler>();
+        services.AddSingleton<BotCore.Execution.BracketAdjustmentService>();
+        
+        Console.WriteLine("⚡ [EXECUTION-ALPHA] S7 execution enhancements registered - Order type selection, child scheduling, bracket adjustment ready!");
         Console.WriteLine("🔧 [AUTOMATION-UPGRADE] Feature engineering pipeline registered - Liquidity, MTF, OFI resolvers ready!");
         Console.WriteLine("📈 [S7-STRATEGY] S7 Multi-Horizon Relative Strength strategy registered - Full DSL implementation ready!");
         
