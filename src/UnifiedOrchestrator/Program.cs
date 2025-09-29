@@ -598,6 +598,57 @@ Please check the configuration and ensure all required services are registered.
         // Register S7 feature publisher for knowledge graph integration
         services.AddHostedService<TradingBot.S7.S7FeaturePublisher>();
         
+        // ================================================================================
+        // AUTOMATION-FIRST UPGRADE SCOPE - Feature Engineering Pipeline
+        // Register feature resolvers as singletons for fail-closed feature extraction
+        
+        services.AddSingleton<BotCore.Features.IFeatureResolver, BotCore.Features.LiquidityAbsorptionResolver>();
+        services.AddSingleton<BotCore.Features.IFeatureResolver, BotCore.Features.MtfStructureResolver>();
+        services.AddSingleton<BotCore.Features.IFeatureResolver, BotCore.Features.OfiProxyResolver>();
+        
+        // Register feature publisher hosted service for automated feature publishing
+        services.AddHostedService<BotCore.Features.FeaturePublisher>();
+        
+        // Register bar dispatcher hook for real-time feature extraction
+        services.AddHostedService<BotCore.Features.BarDispatcherHook>();
+        
+        // ================================================================================
+        // EXECUTION ALPHA UPGRADES - S7 Execution Path Enhancement
+        // Advanced execution services for intelligent order type selection and management
+        
+        services.Configure<BotCore.Execution.S7ExecutionConfiguration>(configuration.GetSection("S7:Execution"));
+        services.Configure<BotCore.Execution.BracketConfiguration>(configuration.GetSection("S7:Brackets"));
+        
+        services.AddSingleton<BotCore.Execution.S7OrderTypeSelector>();
+        services.AddSingleton<BotCore.Execution.ChildOrderScheduler>();
+        services.AddSingleton<BotCore.Execution.BracketAdjustmentService>();
+        
+        Console.WriteLine("⚡ [EXECUTION-ALPHA] S7 execution enhancements registered - Order type selection, child scheduling, bracket adjustment ready!");
+        Console.WriteLine("🔧 [AUTOMATION-UPGRADE] Feature engineering pipeline registered - Liquidity, MTF, OFI resolvers ready!");
+        
+        // ================================================================================
+        // REGIME-TAGGED MODEL ROTATION & PORTFOLIO RISK TILTS
+        // Advanced model rotation and portfolio risk management services
+        
+        services.Configure<BotCore.Services.ModelRotationConfiguration>(configuration.GetSection("Rotation"));
+        services.Configure<BotCore.Services.BreadthReallocationConfiguration>(configuration.GetSection("Portfolio:BreadthReallocation"));
+        services.Configure<BotCore.Services.CorrelationCapConfiguration>(configuration.GetSection("Portfolio:CorrelationCap"));
+        services.Configure<BotCore.Services.VolOfVolConfiguration>(configuration.GetSection("Portfolio:VolOfVol"));
+        services.Configure<BotCore.Services.DriftMonitorConfiguration>(configuration.GetSection("DataHygiene:DriftMonitor"));
+        
+        services.AddSingleton<BotCore.Services.ModelRotationService>();
+        services.AddSingleton<BotCore.Services.S7BreadthReallocationService>();
+        services.AddSingleton<BotCore.Services.CorrelationAwareCapService>();
+        services.AddSingleton<BotCore.Services.VolOfVolGuardService>();
+        services.AddSingleton<BotCore.Services.FeatureDriftMonitorService>();
+        
+        // Register model rotation as hosted service
+        services.AddHostedService<BotCore.Services.ModelRotationService>(provider => 
+            provider.GetRequiredService<BotCore.Services.ModelRotationService>());
+        
+        Console.WriteLine("🔄 [MODEL-ROTATION] Regime-tagged model rotation service registered - Automatic model switching per market regime!");
+        Console.WriteLine("📊 [PORTFOLIO-TILTS] Risk management services registered - Breadth reallocation, correlation caps, vol-of-vol guard!");
+        Console.WriteLine("🛡️ [DATA-HYGIENE] Drift defenses registered - Feature drift monitoring with kill switches!");
         Console.WriteLine("📈 [S7-STRATEGY] S7 Multi-Horizon Relative Strength strategy registered - Full DSL implementation ready!");
         
         // ================================================================================

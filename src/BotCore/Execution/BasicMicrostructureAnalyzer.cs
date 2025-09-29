@@ -108,24 +108,26 @@ public class BasicMicrostructureAnalyzer : IMicrostructureAnalyzer
         // Volatility adjustment
         var volatilityAdjustment = currentState.IsVolatile ? 3m : 0m;
 
-        // Session adjustment
+        // Session adjustment using configuration
         var sessionAdjustment = currentState.Session switch
         {
-            MarketSession.OpeningAuction => 5m,
-            MarketSession.ClosingAuction => 3m,
-            MarketSession.AfterHours => 8m,
+            MarketSession.OpeningAuction => _costConfig.GetOpeningAuctionAdjustment(),
+            MarketSession.ClosingAuction => _costConfig.GetClosingAuctionAdjustment(),
+            MarketSession.AfterHours => _costConfig.GetAfterHoursAdjustment(),
             _ => 0m
         };
 
-        // Order imbalance adjustment
+        // Order imbalance adjustment using configuration
+        var imbalanceMultiplier = _costConfig.GetImbalanceAdjustmentMultiplier();
         var imbalanceAdjustment = isBuy
-            ? Math.Max(0, -currentState.OrderImbalance * 2m) // Penalty for buying when asks dominate
-            : Math.Max(0, currentState.OrderImbalance * 2m);  // Penalty for selling when bids dominate
+            ? Math.Max(0, -currentState.OrderImbalance * imbalanceMultiplier) // Penalty for buying when asks dominate
+            : Math.Max(0, currentState.OrderImbalance * imbalanceMultiplier);  // Penalty for selling when bids dominate
 
         var totalSlippageBps = baseSlippageBps + marketImpactBps + volatilityAdjustment +
                                sessionAdjustment + imbalanceAdjustment;
 
-        return Math.Max(0.5m, totalSlippageBps);
+        var minSlippage = _costConfig.GetMinSlippageBps();
+        return Math.Max(minSlippage, totalSlippageBps);
     }
 
     public async Task<decimal> EstimateLimitOrderFillProbabilityAsync(
@@ -145,30 +147,27 @@ public class BasicMicrostructureAnalyzer : IMicrostructureAnalyzer
             ? (marketPrice - limitPrice) / currentState.MidPrice
             : (limitPrice - marketPrice) / currentState.MidPrice;
 
-        // Base probability based on price aggressiveness
-        var baseProbability = priceDistance switch
-        {
-            <= 0 => 0.95m, // At or better than market
-            <= 0.0005m => 0.80m, // Within 5 bps
-            <= 0.001m => 0.60m,  // Within 10 bps
-            <= 0.002m => 0.40m,  // Within 20 bps
-            <= 0.005m => 0.20m,  // Within 50 bps
-            _ => 0.05m // Very passive
-        };
+        // Base probability using configuration-driven thresholds (fail-closed requirement)
+        var baseProbability = CalculateBaseProbabilityFromConfig(priceDistance);
 
-        // Time adjustment
-        var timeMultiplier = Math.Min(2m, (decimal)timeHorizon.TotalMinutes / 5m);
+        // Time adjustment using configuration
+        var timeMultiplier = Math.Min(_costConfig.GetMaxTimeMultiplier(), 
+            (decimal)timeHorizon.TotalMinutes / _costConfig.GetTimeMultiplierBaseline());
 
         // Volatility boost (more likely to fill in volatile markets)
-        var volatilityBoost = currentState.IsVolatile ? 0.15m : 0m;
+        var volatilityBoost = currentState.IsVolatile ? _costConfig.GetVolatilityBoost() : 0m;
 
         // Volume boost (more likely to fill in active markets)
-        var volumeBoost = currentState.VolumeRate > 1000 ? 0.10m : 0m;
+        var volumeThreshold = _costConfig.GetVolumeThreshold();
+        var volumeBoost = currentState.VolumeRate > volumeThreshold ? _costConfig.GetVolumeBoost() : 0m;
 
-        var adjustedProbability = Math.Min(0.98m,
+        var maxProbability = _costConfig.GetMaxFillProbability();
+        var minProbability = _costConfig.GetMinFillProbability();
+        
+        var adjustedProbability = Math.Min(maxProbability,
             baseProbability * timeMultiplier + volatilityBoost + volumeBoost);
 
-        return Math.Max(0.01m, adjustedProbability);
+        return Math.Max(minProbability, adjustedProbability);
     }
 
     public async Task<ExecutionRecommendation> GetExecutionRecommendationAsync(
@@ -225,8 +224,9 @@ public class BasicMicrostructureAnalyzer : IMicrostructureAnalyzer
         if (intent.LimitPrice.HasValue)
             return intent.LimitPrice.Value;
 
-        // Default to midpoint or slightly better
-        var offset = state.BidAskSpread * 0.3m; // 30% through spread
+        // Default to midpoint or slightly better using configuration
+        var spreadPenetration = _costConfig.GetDefaultSpreadPenetration();
+        var offset = state.BidAskSpread * spreadPenetration;
         return intent.IsBuy
             ? state.BidPrice + offset
             : state.AskPrice - offset;
@@ -239,7 +239,8 @@ public class BasicMicrostructureAnalyzer : IMicrostructureAnalyzer
             ? (marketPrice - limitPrice) / state.MidPrice * 10000
             : (limitPrice - marketPrice) / state.MidPrice * 10000;
 
-        return Math.Max(-10m, -savings); // Negative means savings, cap at 10 bps cost
+        var maxSlippageCap = _costConfig.GetMaxSlippageCap();
+        return Math.Max(maxSlippageCap, -savings); // Negative means savings, cap at configured max
     }
 
     private static ExecutionRecommendation ChooseOptimalStrategy(
@@ -383,6 +384,29 @@ public class BasicMicrostructureAnalyzer : IMicrostructureAnalyzer
             var t when t < TimeSpan.FromHours(16) => MarketSession.ClosingAuction,
             _ => MarketSession.AfterHours
         };
+    }
+
+    /// <summary>
+    /// Calculate base fill probability from configuration-driven thresholds (fail-closed requirement)
+    /// </summary>
+    private decimal CalculateBaseProbabilityFromConfig(decimal priceDistance)
+    {
+        // Use configuration-driven probability thresholds to avoid hardcoded values
+        var thresholds = _costConfig.GetFillProbabilityThresholds();
+        
+        // At or better than market
+        if (priceDistance <= 0)
+            return thresholds.AtMarketProbability;
+
+        // Check distance thresholds in order
+        foreach (var threshold in thresholds.DistanceThresholds.OrderBy(t => t.MaxDistance))
+        {
+            if (priceDistance <= (decimal)threshold.MaxDistance)
+                return threshold.FillProbability;
+        }
+
+        // Very passive - use fallback probability
+        return thresholds.PassiveFallbackProbability;
     }
 }
 
