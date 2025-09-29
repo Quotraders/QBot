@@ -589,8 +589,8 @@ Please check the configuration and ensure all required services are registered.
             (TradingBot.Abstractions.IS7FeatureSource)provider.GetRequiredService<TradingBot.Abstractions.IS7Service>());
         
         // Register optional breadth feed service (disabled by default)
-        // Note: IBreadthFeed implementation can be added later if needed
-        services.AddSingleton<TradingBot.Abstractions.IBreadthFeed>(provider => null!);
+        // Register IBreadthFeed implementation with fail-closed behavior
+        services.AddSingleton<TradingBot.Abstractions.IBreadthFeed, TradingBot.BotCore.Services.ProductionBreadthFeedService>();
         
         // Register S7 market data bridge for live data integration
         services.AddHostedService<TradingBot.S7.S7MarketDataBridge>();
@@ -1210,6 +1210,7 @@ Please check the configuration and ensure all required services are registered.
         // Register ML Configuration Service for hardcoded value replacement
         services.AddProductionConfigurationValidation(configuration);
         services.AddScoped<TradingBot.BotCore.Services.MLConfigurationService>();
+        services.AddScoped<TradingBot.Abstractions.IMLConfigurationService, TradingBot.BotCore.Services.MLConfigurationService>();
         
         // Register Execution Configuration Services - Replace hardcoded execution parameters
         services.AddScoped<TradingBot.Abstractions.IExecutionGuardsConfig, TradingBot.BotCore.Services.ExecutionGuardsConfigService>();

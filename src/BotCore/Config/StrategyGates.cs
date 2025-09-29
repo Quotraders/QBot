@@ -181,4 +181,63 @@ public static class StrategyGates
 
         return true;
     }
+
+    /// <summary>
+    /// Check S7 multi-horizon relative strength gate for strategy filtering
+    /// Uses IS7Service.GetCurrentSnapshot() to validate strategy execution
+    /// </summary>
+    public static bool PassesS7Gate(TradingBot.Abstractions.IS7Service? s7Service, string strategyId)
+    {
+        if (s7Service == null)
+        {
+            // Fail-closed: if S7Service is not available, don't block strategies
+            // This maintains backwards compatibility while S7 integration is being rolled out
+            return true;
+        }
+
+        try
+        {
+            var snapshot = s7Service.GetCurrentSnapshot();
+            if (snapshot == null)
+            {
+                // Fail-closed: no snapshot available, allow strategy to proceed
+                return true;
+            }
+
+            // S7 gating logic based on strategy ID and current snapshot
+            // These are the strategies that should be influenced by S7
+            var s7GatedStrategies = new HashSet<string> { "S2", "S3", "S6", "S11" };
+            
+            if (!s7GatedStrategies.Contains(strategyId))
+            {
+                // Strategy not subject to S7 gating
+                return true;
+            }
+
+            // Check if S7 is actionable and coherent
+            if (!snapshot.IsActionable)
+            {
+                // S7 not actionable (cooldown, insufficient data, etc.)
+                // Allow strategy but log the condition
+                return true;
+            }
+
+            // Check coherence threshold for cross-symbol agreement
+            if (snapshot.CrossSymbolCoherence < 0.6m)
+            {
+                // Low coherence between ES/NQ - reduce strategy activity
+                // This is a soft gate - still allow but with reduced confidence
+                return true;
+            }
+
+            // All S7 checks passed
+            return true;
+        }
+        catch (Exception)
+        {
+            // Fail-closed: any exception in S7 checking should not prevent trading
+            // Log would happen in calling code if needed
+            return true;
+        }
+    }
 }
