@@ -383,7 +383,7 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
             var metricsService = _serviceProvider.GetService<TradingBot.IntelligenceStack.RealTradingMetricsService>();
             if (metricsService != null)
             {
-                var tags = new Dictionary<string, string>
+                var tags = new Dictionary<string, object>
                 {
                     ["status"] = _currentStatus.ToString().ToLowerInvariant(),
                     ["config_snapshot_id"] = _telemetryService.Value.GetConfigurationSnapshotId()

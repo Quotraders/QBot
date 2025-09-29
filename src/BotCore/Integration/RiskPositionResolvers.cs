@@ -4,6 +4,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using TopstepX.Bot.Core.Services;
 
 namespace BotCore.Integration;
 
@@ -12,10 +13,16 @@ public sealed class RiskRejectResolver : IFeatureResolver
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<RiskRejectResolver> _logger;
+    private readonly string _riskType;
     
-    public RiskRejectResolver(IServiceProvider serviceProvider)
+    public RiskRejectResolver(IServiceProvider serviceProvider) : this(serviceProvider, "all_types")
+    {
+    }
+    
+    public RiskRejectResolver(IServiceProvider serviceProvider, string riskType)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _riskType = riskType ?? "all_types";
         _logger = serviceProvider.GetRequiredService<ILogger<RiskRejectResolver>>();
     }
     
@@ -25,7 +32,7 @@ public sealed class RiskRejectResolver : IFeatureResolver
         {
             // PRODUCTION REQUIREMENT: RiskManagementService must exist - fail closed if not available
             var riskManagement = _serviceProvider.GetRequiredService<BotCore.Services.RiskManagementService>();
-            var rejectCount = await riskManagement.GetRiskRejectCountAsync(symbol, cancellationToken).ConfigureAwait(false);
+            var rejectCount = await riskManagement.GetRiskRejectCountAsync(symbol, _riskType, cancellationToken).ConfigureAwait(false);
             
             _logger.LogTrace("Risk reject count for {Symbol}: {Count}", symbol, rejectCount);
             return rejectCount;
@@ -54,13 +61,13 @@ public sealed class PositionSizeResolver : IFeatureResolver
         try
         {
             var positionTracker = _serviceProvider.GetRequiredService<PositionTrackingSystem>();
-            var positions = positionTracker.GetPositions();
+            var positions = positionTracker.GetAllPositions();
             
-            var symbolPositions = positions.Where(p => p.Symbol == symbol).ToList();
-            var totalSize = symbolPositions.Sum(p => p.Size);
+            var symbolPositions = positions.Values.Where(p => p.Symbol == symbol).ToList();
+            var totalSize = symbolPositions.Sum(p => p.NetQuantity);
             
             _logger.LogTrace("Position size for {Symbol}: {Size}", symbol, totalSize);
-            return Task.FromResult(totalSize);
+            return Task.FromResult((double?)totalSize);
         }
         catch (Exception ex)
         {
@@ -86,13 +93,13 @@ public sealed class PositionPnLResolver : IFeatureResolver
         try
         {
             var positionTracker = _serviceProvider.GetRequiredService<PositionTrackingSystem>();
-            var positions = positionTracker.GetPositions();
+            var positions = positionTracker.GetAllPositions();
             
-            var symbolPositions = positions.Where(p => p.Symbol == symbol).ToList();
+            var symbolPositions = positions.Values.Where(p => p.Symbol == symbol).ToList();
             var totalPnL = symbolPositions.Sum(p => p.RealizedPnL);
             
             _logger.LogTrace("Position realized P&L for {Symbol}: {PnL:C}", symbol, totalPnL);
-            return Task.FromResult(totalPnL);
+            return Task.FromResult((double?)totalPnL);
         }
         catch (Exception ex)
         {
@@ -118,13 +125,13 @@ public sealed class UnrealizedPnLResolver : IFeatureResolver
         try
         {
             var positionTracker = _serviceProvider.GetRequiredService<PositionTrackingSystem>();
-            var positions = positionTracker.GetPositions();
+            var positions = positionTracker.GetAllPositions();
             
-            var symbolPositions = positions.Where(p => p.Symbol == symbol).ToList();
+            var symbolPositions = positions.Values.Where(p => p.Symbol == symbol).ToList();
             var totalUnrealizedPnL = symbolPositions.Sum(p => p.UnrealizedPnL);
             
             _logger.LogTrace("Position unrealized P&L for {Symbol}: {PnL:C}", symbol, totalUnrealizedPnL);
-            return Task.FromResult(totalUnrealizedPnL);
+            return Task.FromResult((double?)totalUnrealizedPnL);
         }
         catch (Exception ex)
         {

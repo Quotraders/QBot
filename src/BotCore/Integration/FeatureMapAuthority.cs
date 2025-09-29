@@ -315,8 +315,7 @@ public sealed class FeatureMapAuthority
             TotalResolvers = _featureResolvers.Count,
             ResolverCalls = _resolverCalls,
             MissingFeatureCalls = _missingFeatureCalls,
-            ResolverErrors = _resolverErrors,
-            RegisteredFeatures = new Dictionary<string, string>()
+            ResolverErrors = _resolverErrors
         };
         
         foreach (var kvp in _featureResolvers)
