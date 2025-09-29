@@ -162,11 +162,27 @@ public sealed class DecisionFusionCoordinator
                     // Calculate base position size from strategy intent
                     var baseSize = finalRec.Intent == StrategyIntent.Buy ? 1.0 : finalRec.Intent == StrategyIntent.Sell ? -1.0 : 0.0;
                     
-                    // Get risk from real risk management service instead of hard-coded calculation
+                    // Get risk from real risk management service with fallback handling
                     var riskManager = _serviceProvider.GetService<IRiskManagerForFusion>();
-                    var actualRisk = riskManager != null 
-                        ? await riskManager.GetCurrentRiskAsync(cancellationToken).ConfigureAwait(false)
-                        : throw new InvalidOperationException("Risk management service not available for PPO sizing");
+                    double actualRisk;
+                    
+                    if (riskManager != null)
+                    {
+                        try
+                        {
+                            actualRisk = await riskManager.GetCurrentRiskAsync(cancellationToken).ConfigureAwait(false);
+                        }
+                        catch (Exception riskEx)
+                        {
+                            _logger.LogWarning(riskEx, "Risk manager unavailable for PPO sizing, using confidence-based risk");
+                            actualRisk = 1.0 - finalRec.Confidence; // Fallback to confidence-based risk
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogTrace("No risk manager service available, using confidence-based risk calculation");
+                        actualRisk = 1.0 - finalRec.Confidence; // Higher confidence = lower risk
+                    }
                     
                     var adjustedSize = await _ppo.SizeAsync(baseSize, finalRec.StrategyName, actualRisk, symbol, cancellationToken).ConfigureAwait(false);
                     
