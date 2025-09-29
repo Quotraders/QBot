@@ -147,8 +147,8 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
             if (totalCount == 0)
             {
                 // No history - get configured initial score from service provider
-                var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
-                var initialScore = configuration?.GetValue<double>("ML:UCB:InitialStrategyScore", 0.5) ?? 0.5;
+                var initialConfig = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+                var initialScore = initialConfig?.GetValue<double>("ML:UCB:InitialStrategyScore", 0.5) ?? 0.5;
                 var random = new Random();
                 var selected = strategies[random.Next(strategies.Length)];
                 _logger.LogTrace("UCB strategy selection for {Symbol}: {Strategy} (no history, initial score: {Score:F3})", 
@@ -164,6 +164,10 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
             var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
             var explorationFactor = configuration?.GetValue<double>("ML:UCB:ExplorationFactor", 1.4) ?? 1.4;
             var defaultUcbScore = configuration?.GetValue<double>("ML:UCB:DefaultScore", 0.5) ?? 0.5;
+
+            foreach (var (strategy, intent) in strategies)
+            {
+                double ucbScore = defaultUcbScore; // Configured default score
                 
                 lock (_statsLock)
                 {
@@ -208,31 +212,39 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
             // Use feature bus to make intelligent strategy selection
             var featureBus = _serviceProvider.GetService<IFeatureBusWithProbe>();
             
+            // Get configuration service first
+            var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+            if (configuration == null)
+            {
+                _logger.LogError("🚨 Configuration service unavailable for fallback strategy selection - using simple fallback");
+                return ("MomentumFade", BotCore.Strategy.StrategyIntent.Buy, 0.5); // Safe fallback
+            }
+            
             if (featureBus != null)
             {
                 // Get default values from configuration when features are unavailable
-                var defaultVolatility = _configuration.GetValue<double>("Trading:DefaultVolatility", 0.02);
-                var defaultRegime = _configuration.GetValue<double>("Trading:DefaultRegime", 0.5);
-                var defaultMomentum = _configuration.GetValue<double>("Trading:DefaultMomentum", 0.0);
+                var defaultVolatility = configuration.GetValue<double>("Trading:DefaultVolatility", 0.02);
+                var defaultRegime = configuration.GetValue<double>("Trading:DefaultRegime", 0.5);
+                var defaultMomentum = configuration.GetValue<double>("Trading:DefaultMomentum", 0.0);
                 
                 var volatility = featureBus.Probe(symbol, "volatility.realized") ?? defaultVolatility;
                 var regime = featureBus.Probe(symbol, "regime.current") ?? defaultRegime;
                 var momentum = featureBus.Probe(symbol, "momentum.current") ?? defaultMomentum;
                 
                 // Get market condition thresholds from configuration
-                var trendingThreshold = _configuration.GetValue<double>("Trading:TrendingRegimeThreshold", 0.7);
-                var highVolThreshold = _configuration.GetValue<double>("Trading:HighVolatilityThreshold", 0.03);
-                var momentumConfidence = _configuration.GetValue<double>("Trading:MomentumConfidenceScore", 0.6);
-                var volatilityConfidence = _configuration.GetValue<double>("Trading:VolatilityConfidenceScore", 0.65);
-                var defaultConfidence = _configuration.GetValue<double>("Trading:DefaultConfidenceScore", 0.5);
+                var trendingThreshold = configuration.GetValue<double>("Trading:TrendingRegimeThreshold", 0.7);
+                var highVolThreshold = configuration.GetValue<double>("Trading:HighVolatilityThreshold", 0.03);
+                var momentumConfidence = configuration.GetValue<double>("Trading:MomentumConfidenceScore", 0.6);
+                var volatilityConfidence = configuration.GetValue<double>("Trading:VolatilityConfidenceScore", 0.65);
+                var defaultConfidence = configuration.GetValue<double>("Trading:DefaultConfidenceScore", 0.5);
                 
                 // Select strategy based on market conditions with configured thresholds
-                var rangingThreshold = _configuration.GetValue<double>("Trading:RangingRegimeThreshold", 0.3);
-                var trendConfidence = _configuration.GetValue<double>("Trading:TrendFollowingConfidence", 0.7);
+                var rangingThreshold = configuration.GetValue<double>("Trading:RangingRegimeThreshold", 0.3);
+                var trendConfidence = configuration.GetValue<double>("Trading:TrendFollowingConfidence", 0.7);
                 
                 if (regime > trendingThreshold) // Trending market
                 {
-                    var momentumThreshold = _configuration.GetValue<double>("Trading:MomentumPositiveThreshold", 0.0);
+                    var momentumThreshold = configuration.GetValue<double>("Trading:MomentumPositiveThreshold", 0.0);
                     if (momentum > momentumThreshold)
                     {
                         return ("TrendFollowing", BotCore.Strategy.StrategyIntent.Buy, trendConfidence);
@@ -244,22 +256,22 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
                 }
                 else if (regime < rangingThreshold) // Ranging market
                 {
-                    var meanReversionConfidence = _configuration.GetValue<double>("Trading:MeanReversionConfidence", 0.6);
-                    var momentumThreshold = _configuration.GetValue<double>("Trading:MomentumPositiveThreshold", 0.0);
+                    var meanReversionConfidence = configuration.GetValue<double>("Trading:MeanReversionConfidence", 0.6);
+                    var momentumThreshold = configuration.GetValue<double>("Trading:MomentumPositiveThreshold", 0.0);
                     return ("MeanReversion", momentum > momentumThreshold ? BotCore.Strategy.StrategyIntent.Sell : BotCore.Strategy.StrategyIntent.Buy, meanReversionConfidence);
                 }
                 else if (volatility > highVolThreshold) // High volatility
                 {
-                    var breakoutConfidence = _configuration.GetValue<double>("Trading:BreakoutConfidence", 0.65);
-                    var momentumThreshold = _configuration.GetValue<double>("Trading:MomentumPositiveThreshold", 0.0);
+                    var breakoutConfidence = configuration.GetValue<double>("Trading:BreakoutConfidence", 0.65);
+                    var momentumThreshold = configuration.GetValue<double>("Trading:MomentumPositiveThreshold", 0.0);
                     return ("Breakout", momentum > momentumThreshold ? BotCore.Strategy.StrategyIntent.Buy : BotCore.Strategy.StrategyIntent.Sell, breakoutConfidence);
                 }
             }
             
-            // Default strategy with configured confidence when no specific conditions are met or features unavailable
-            var defaultStrategy = _configuration.GetValue<string>("Trading:DefaultStrategy", "MomentumFade");
-            var defaultIntent = Enum.Parse<BotCore.Strategy.StrategyIntent>(_configuration.GetValue<string>("Trading:DefaultIntent", "Buy"));
-            var defaultConfidenceFinal = _configuration.GetValue<double>("Trading:DefaultConfidenceScore", 0.5);
+            // Use the configuration for default strategy
+            var defaultStrategy = configuration.GetValue<string>("Trading:DefaultStrategy", "MomentumFade");
+            var defaultIntent = Enum.Parse<BotCore.Strategy.StrategyIntent>(configuration.GetValue<string>("Trading:DefaultIntent", "Buy"));
+            var defaultConfidenceFinal = configuration.GetValue<double>("Trading:DefaultConfidenceScore", 0.5);
             
             return (defaultStrategy, defaultIntent, defaultConfidenceFinal);
         }
@@ -323,7 +335,7 @@ public sealed class ProductionPpoSizer : IPpoSizer
             if (rlAdvisorSystem != null)
             {
                 // Create market context for RL system
-                var marketContext = await CreateMarketContextAsync(symbol, intent, risk, cancellationToken).ConfigureAwait(false);
+                var marketContext = CreateMarketContext(symbol, intent, risk);
                 
                 // Attempt to get size recommendation from RL system - fail-closed approach
                 _logger.LogDebug("Attempting ML position sizing for {Symbol} with intent {Intent}, risk {Risk:P2}", symbol, intent, risk);
@@ -354,7 +366,7 @@ public sealed class ProductionPpoSizer : IPpoSizer
             }
             
             // Fallback to intelligent heuristic-based sizing with real market data
-            return await CalculateIntelligentFallbackSizeAsync(symbol, intent, risk, cancellationToken).ConfigureAwait(false);
+            return CalculateIntelligentFallbackSize(symbol, intent, risk);
         }
         catch (Exception ex)
         {
@@ -365,11 +377,10 @@ public sealed class ProductionPpoSizer : IPpoSizer
         }
     }
 
-    private async Task<TradingBot.Abstractions.MarketContext> CreateMarketContextAsync(
+    private TradingBot.Abstractions.MarketContext CreateMarketContext(
         string symbol, 
         BotCore.Strategy.StrategyIntent intent, 
-        double risk, 
-        CancellationToken cancellationToken)
+        double risk)
     {
         // Get feature bus for market data
         var featureBus = _serviceProvider.GetService<IFeatureBusWithProbe>();
@@ -486,11 +497,10 @@ public sealed class ProductionPpoSizer : IPpoSizer
         return false;
     }
 
-    private async Task<double> CalculateIntelligentFallbackSizeAsync(
+    private double CalculateIntelligentFallbackSize(
         string symbol, 
         BotCore.Strategy.StrategyIntent intent, 
-        double risk, 
-        CancellationToken cancellationToken)
+        double risk)
     {
         // Intelligent fallback using real market data when RL system unavailable
         var featureBus = _serviceProvider.GetService<IFeatureBusWithProbe>();

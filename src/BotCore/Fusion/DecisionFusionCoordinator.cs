@@ -93,7 +93,10 @@ public sealed class DecisionFusionCoordinator
 
         try
         {
-            var rails = await _cfg.GetFusionRailsAsync(cancellationToken).ConfigureAwait(false);
+            // Get configuration data instead of non-existent GetFusionRailsAsync
+            var config = await _cfg.GetConfigurationAsync(cancellationToken).ConfigureAwait(false);
+            var minConfidence = config.TryGetValue("fusion_min_confidence", out var minConfObj) && minConfObj is double minConf ? minConf : 0.6;
+            var maxRecommendations = config.TryGetValue("fusion_max_recommendations", out var maxRecObj) && maxRecObj is int maxRec ? maxRec : 5;
             
             // Get Knowledge Graph recommendation
             var knowledgeRecommendations = await _graph.EvaluateAsync(symbol, DateTime.UtcNow, cancellationToken).ConfigureAwait(false);
@@ -128,56 +131,63 @@ public sealed class DecisionFusionCoordinator
             // Determine final recommendation - prefer Knowledge Graph if available and high confidence
             StrategyRecommendation finalRec;
             
-            if (knowledgeRec != null && knowledgeScore >= rails.MinConfidence)
+            if (knowledgeRec != null && knowledgeScore >= minConfidence)
             {
                 // Use Knowledge Graph recommendation
                 finalRec = knowledgeRec;
                 _logger.LogDebug("Using knowledge graph recommendation for {Symbol}: {Strategy} (score: {Score:F3})",
                     symbol, knowledgeRec.StrategyName, knowledgeScore);
             }
-            else if (!string.IsNullOrEmpty(ucbStrategy) && ucbScore >= rails.MinConfidence)
+            else if (!string.IsNullOrEmpty(ucbStrategy) && ucbScore >= minConfidence)
             {
-                // Use UCB recommendation
-                finalRec = new StrategyRecommendation
-                {
-                    StrategyName = ucbStrategy,
-                    Intent = ucbIntent,
-                    Confidence = ucbScore,
-                    Symbol = symbol,
-                    Timestamp = DateTime.UtcNow,
-                    Evidence = new List<StrategyEvidence>
+                // Use UCB recommendation - create proper record constructor
+                finalRec = new BotCore.Strategy.StrategyRecommendation(
+                    StrategyName: ucbStrategy,
+                    Intent: ucbIntent,
+                    Confidence: ucbScore,
+                    Evidence: new List<BotCore.Strategy.StrategyEvidence>
                     {
-                        new StrategyEvidence
-                        {
-                            Name = "UCB_prediction",
-                            Score = ucbScore,
-                            Explanation = $"Neural-UCB selected {ucbStrategy} with confidence {ucbScore:F3}"
-                        }
+                        new BotCore.Strategy.StrategyEvidence(
+                            Name: "UCB_prediction",
+                            Value: ucbScore,
+                            Note: $"Neural-UCB selected {ucbStrategy} with confidence {ucbScore:F3}")
                     },
-                    TelemetryTags = new List<string> { "ucb_source", "fusion_coordinator" }
-                };
+                    TelemetryTags: new List<string> { "UCB", "fusion" });
+                    
                 _logger.LogDebug("Using UCB recommendation for {Symbol}: {Strategy} (score: {Score:F3})",
                     symbol, ucbStrategy, ucbScore);
             }
             else
             {
                 // Systems disagree or low confidence - hold based on configuration
-                if (rails.HoldOnDisagree > 0)
+                var holdOnDisagree = config.TryGetValue("fusion_hold_on_disagree", out var holdObj) && holdObj is double holdVal ? holdVal : 0.0;
+                
+                if (holdOnDisagree > 0)
                 {
                     _logger.LogTrace("Systems disagree or low individual confidence for {Symbol} - holding per configuration", symbol);
                     return null;
                 }
                 
                 // Fall back to highest scoring system
-                finalRec = knowledgeScore > ucbScore ? knowledgeRec : 
-                    new StrategyRecommendation
-                    {
-                        StrategyName = ucbStrategy,
-                        Intent = ucbIntent,
-                        Confidence = ucbScore,
-                        Symbol = symbol,
-                        Timestamp = DateTime.UtcNow
-                    };
+                if (knowledgeScore > ucbScore && knowledgeRec != null)
+                {
+                    finalRec = knowledgeRec;
+                }
+                else
+                {
+                    finalRec = new BotCore.Strategy.StrategyRecommendation(
+                        StrategyName: ucbStrategy ?? "MomentumFade",
+                        Intent: ucbIntent,
+                        Confidence: ucbScore,
+                        Evidence: new List<BotCore.Strategy.StrategyEvidence>
+                        {
+                            new BotCore.Strategy.StrategyEvidence(
+                                Name: "UCB_fallback",
+                                Value: ucbScore,
+                                Note: "Fallback to UCB recommendation")
+                        },
+                        TelemetryTags: new List<string> { "UCB_fallback", "fusion" });
+                }
             }
 
             // Apply PPO position sizing if available
