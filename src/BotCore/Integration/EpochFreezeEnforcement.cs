@@ -3,6 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using Zones;
+using TradingBot.IntelligenceStack;
 
 namespace BotCore.Integration;
 
@@ -451,17 +454,17 @@ public sealed class EpochFreezeEnforcement
     {
         try
         {
-            var metricsService = _serviceProvider.GetService<BotCore.Services.RealTradingMetricsService>();
+            var metricsService = _serviceProvider.GetService<RealTradingMetricsService>();
             if (metricsService != null)
             {
-                var tags = new Dictionary<string, string>
+                var tags = new Dictionary<string, object>
                 {
                     ["symbol"] = snapshot.Symbol,
                     ["direction"] = snapshot.Direction.ToString().ToLowerInvariant()
                 };
                 
                 await metricsService.RecordCounterAsync("epoch_freeze.snapshots_captured", 1, tags, cancellationToken);
-                await metricsService.RecordGaugeAsync("epoch_freeze.active_epochs", _activeEpochs.Count, cancellationToken);
+                await metricsService.RecordGaugeAsync("epoch_freeze.active_epochs", _activeEpochs.Count, tags, cancellationToken);
             }
         }
         catch (Exception ex)
@@ -477,12 +480,12 @@ public sealed class EpochFreezeEnforcement
     {
         try
         {
-            var metricsService = _serviceProvider.GetService<BotCore.Services.RealTradingMetricsService>();
+            var metricsService = _serviceProvider.GetService<RealTradingMetricsService>();
             if (metricsService != null)
             {
                 foreach (var violation in result.Violations)
                 {
-                    var tags = new Dictionary<string, string>
+                    var tags = new Dictionary<string, object>
                     {
                         ["position_id"] = result.PositionId,
                         ["violation_type"] = violation.ViolationType,
@@ -506,11 +509,11 @@ public sealed class EpochFreezeEnforcement
     {
         try
         {
-            var metricsService = _serviceProvider.GetService<BotCore.Services.RealTradingMetricsService>();
+            var metricsService = _serviceProvider.GetService<RealTradingMetricsService>();
             if (metricsService != null)
             {
                 var duration = DateTime.UtcNow - snapshot.CapturedAt;
-                var tags = new Dictionary<string, string>
+                var tags = new Dictionary<string, object>
                 {
                     ["symbol"] = snapshot.Symbol,
                     ["direction"] = snapshot.Direction.ToString().ToLowerInvariant()

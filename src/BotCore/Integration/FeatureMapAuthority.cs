@@ -20,6 +20,16 @@ public sealed class FeatureMapAuthority
     // Master feature resolver manifest - ALL DSL keys must be mapped here
     private readonly Dictionary<string, IFeatureResolver> _featureResolvers = new();
     
+    // Feature key aliasing - maps DSL shorthand keys to actual published feature keys
+    private static readonly Dictionary<string, string> FeatureKeyAliases = new()
+    {
+        // DSL shorthand -> Published key
+        ["vdc"] = "volatility.contraction",
+        ["mom.zscore"] = "momentum.zscore",
+        ["liquidity_score"] = "liquidity.score",
+        ["spread"] = "spread.current"
+    };
+    
     // Telemetry tracking for missing features
     private readonly HashSet<string> _reportedMissingFeatures = new();
     private readonly object _reportingLock = new();
@@ -105,6 +115,7 @@ public sealed class FeatureMapAuthority
     /// </summary>
     private void RegisterMarketMicrostructureResolvers()
     {
+        // Fixed: Register with DSL shorthand keys that StrategyKnowledgeGraphNew actually uses
         RegisterResolver("vdc", new VolatilityContractionResolver(_serviceProvider));
         RegisterResolver("mom.zscore", new MomentumZScoreResolver(_serviceProvider));
         RegisterResolver("pullback.risk", new PullbackRiskResolver(_serviceProvider));
@@ -151,8 +162,14 @@ public sealed class FeatureMapAuthority
         RegisterResolver("market.session", new MarketSessionResolver(_serviceProvider));
         RegisterResolver("market.open_minutes", new MarketOpenMinutesResolver(_serviceProvider));
         RegisterResolver("market.close_minutes", new MarketCloseMinutesResolver(_serviceProvider));
-        RegisterResolver("spread.current", new SpreadResolver(_serviceProvider));
-        RegisterResolver("liquidity.score", new LiquidityScoreResolver(_serviceProvider));
+        
+        // Register both aliased keys for spread and liquidity
+        var spreadResolver = new SpreadResolver(_serviceProvider);
+        var liquidityResolver = new LiquidityScoreResolver(_serviceProvider);
+        RegisterResolver("spread.current", spreadResolver);
+        RegisterResolver("spread", spreadResolver); // DSL shorthand
+        RegisterResolver("liquidity.score", liquidityResolver);
+        RegisterResolver("liquidity_score", liquidityResolver); // DSL shorthand
     }
     
     /// <summary>
@@ -305,6 +322,14 @@ public sealed class FeatureMapAuthority
     }
     
     /// <summary>
+    /// Resolve feature key aliases - maps DSL shorthand to actual published keys
+    /// </summary>
+    public static string ResolveFeatureKey(string dslKey)
+    {
+        return FeatureKeyAliases.TryGetValue(dslKey, out var actualKey) ? actualKey : dslKey;
+    }
+    
+    /// <summary>
     /// Get comprehensive feature manifest report
     /// </summary>
     public FeatureManifestReport GetManifestReport()
@@ -315,8 +340,7 @@ public sealed class FeatureMapAuthority
             TotalResolvers = _featureResolvers.Count,
             ResolverCalls = _resolverCalls,
             MissingFeatureCalls = _missingFeatureCalls,
-            ResolverErrors = _resolverErrors,
-            RegisteredFeatures = new Dictionary<string, string>()
+            ResolverErrors = _resolverErrors
         };
         
         foreach (var kvp in _featureResolvers)

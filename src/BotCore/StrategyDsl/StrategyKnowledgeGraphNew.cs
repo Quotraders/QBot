@@ -76,10 +76,20 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
                 _ => 0.0
             };
         }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Feature retrieval operation failed for {Key} for {Symbol}", key, symbol);
+            return 0.0;
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument when retrieving feature {Key} for {Symbol}", key, symbol);
+            return 0.0;
+        }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error retrieving feature {Key} for {Symbol}", key, symbol);
-            return 0.0;
+            _logger.LogError(ex, "Unexpected error retrieving feature {Key} for {Symbol}", key, symbol);
+            throw; // Rethrow unexpected exceptions
         }
     }
 

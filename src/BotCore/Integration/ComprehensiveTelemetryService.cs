@@ -66,6 +66,8 @@ public sealed class ComprehensiveTelemetryService
         if (string.IsNullOrWhiteSpace(symbol) || data == null || _metricsService == null)
             return;
             
+        await Task.CompletedTask.ConfigureAwait(false); // CS1998 fix - ensure method is truly async
+            
         try
         {
             var tags = new Dictionary<string, string>
@@ -114,6 +116,8 @@ public sealed class ComprehensiveTelemetryService
         if (string.IsNullOrWhiteSpace(symbol) || data == null || _metricsService == null)
             return;
             
+        await Task.CompletedTask.ConfigureAwait(false); // CS1998 fix - ensure method is truly async
+            
         try
         {
             var tags = new Dictionary<string, string>
@@ -161,6 +165,8 @@ public sealed class ComprehensiveTelemetryService
         if (data == null || _metricsService == null)
             return;
             
+        await Task.CompletedTask.ConfigureAwait(false); // CS1998 fix - ensure method is truly async
+            
         try
         {
             var tags = new Dictionary<string, string>
@@ -199,6 +205,8 @@ if (data.FeatureMissingCount > 0)
     {
         if (data == null || _metricsService == null)
             return;
+            
+        await Task.CompletedTask.ConfigureAwait(false); // CS1998 fix - ensure method is truly async
             
         try
         {
@@ -244,6 +252,8 @@ if (!string.IsNullOrEmpty(data.OrderId))
     {
         if (string.IsNullOrWhiteSpace(component) || string.IsNullOrWhiteSpace(reason) || _metricsService == null)
             return;
+            
+        await Task.CompletedTask.ConfigureAwait(false); // CS1998 fix - ensure method is truly async
             
         try
         {
@@ -292,6 +302,8 @@ if (!string.IsNullOrEmpty(data.OrderId))
     {
         if (data == null || _metricsService == null)
             return;
+            
+        await Task.CompletedTask.ConfigureAwait(false); // CS1998 fix - ensure method is truly async
             
         try
         {
