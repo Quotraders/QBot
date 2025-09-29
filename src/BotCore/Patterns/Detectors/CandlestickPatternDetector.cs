@@ -1,3 +1,4 @@
+using System;
 using BotCore.Models;
 
 namespace BotCore.Patterns.Detectors;
@@ -45,6 +46,8 @@ public class CandlestickPatternDetector : IPatternDetector
 
     public PatternResult Detect(IReadOnlyList<Bar> bars)
     {
+        if (bars is null) throw new ArgumentNullException(nameof(bars));
+        
         if (bars.Count < RequiredBars)
         {
             return new PatternResult { Score = 0, Confidence = 0 };
