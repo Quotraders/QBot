@@ -138,10 +138,10 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
             // Available strategies for UCB selection
             var strategies = new[]
             {
-                ("MeanReversion", BotCore.Strategy.StrategyIntent.ScalpLong),
-                ("TrendFollowing", BotCore.Strategy.StrategyIntent.SwingLong), 
-                ("Breakout", BotCore.Strategy.StrategyIntent.ScalpLong),
-                ("MomentumFade", BotCore.Strategy.StrategyIntent.ScalpShort)
+                ("MeanReversion", BotCore.Strategy.StrategyIntent.Buy),
+                ("TrendFollowing", BotCore.Strategy.StrategyIntent.Buy), 
+                ("Breakout", BotCore.Strategy.StrategyIntent.Buy),
+                ("MomentumFade", BotCore.Strategy.StrategyIntent.Sell)
             };
 
             var totalCount = 0;
@@ -203,8 +203,8 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
         {
             _logger.LogError(ex, "Error in UCB strategy prediction for symbol {Symbol}", symbol);
             
-            // Fallback to safe default
-            return ("MeanReversion", BotCore.Strategy.StrategyIntent.ScalpLong, 0.3);
+            // Fallback to safe default using valid StrategyIntent values
+            return ("MeanReversion", BotCore.Strategy.StrategyIntent.Buy, 0.3);
         }
     }
 
@@ -259,12 +259,11 @@ public sealed class ProductionPpoSizer : IPpoSizer
             // Base position size based on risk
             var baseSize = risk * 0.5; // Conservative base sizing
             
-            // Intent-based adjustments
+            // Intent-based adjustments - using valid StrategyIntent values (Buy/Sell)
             var intentMultiplier = intent switch
             {
-                BotCore.Strategy.StrategyIntent.ScalpLong or BotCore.Strategy.StrategyIntent.ScalpShort => 0.8, // Smaller for scalping
-                BotCore.Strategy.StrategyIntent.SwingLong or BotCore.Strategy.StrategyIntent.SwingShort => 1.2, // Larger for swings
-                BotCore.Strategy.StrategyIntent.Hold => 0.0, // No position for hold
+                BotCore.Strategy.StrategyIntent.Buy => 1.0, // Standard long position sizing
+                BotCore.Strategy.StrategyIntent.Sell => 1.0, // Standard short position sizing
                 _ => 1.0
             };
 
