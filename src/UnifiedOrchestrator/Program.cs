@@ -576,6 +576,25 @@ Please check the configuration and ensure all required services are registered.
         Console.WriteLine("🎯 [ZONE-AWARENESS] Modern zone awareness services registered - Modern-only provider active!");
         
         // ================================================================================
+        // S7 MULTI-HORIZON RELATIVE STRENGTH STRATEGY
+        // ================================================================================
+        
+        // Configure S7 strategy options
+        services.Configure<TradingBot.S7.S7Configuration>(configuration.GetSection("S7"));
+        services.Configure<TradingBot.S7.BreadthConfiguration>(configuration.GetSection("Breadth"));
+        
+        // Register S7 service with full DSL implementation
+        services.AddSingleton<TradingBot.S7.IS7Service, TradingBot.S7.S7Service>();
+        services.AddSingleton<TradingBot.S7.IS7FeatureSource>(provider => 
+            (TradingBot.S7.IS7FeatureSource)provider.GetRequiredService<TradingBot.S7.IS7Service>());
+        
+        // Register optional breadth feed service (disabled by default)
+        // Note: IBreadthFeed implementation can be added later if needed
+        services.AddSingleton<TradingBot.S7.IBreadthFeed>(provider => null!);
+        
+        Console.WriteLine("📈 [S7-STRATEGY] S7 Multi-Horizon Relative Strength strategy registered - Full DSL implementation ready!");
+        
+        // ================================================================================
 
         // Register trading activity logger for comprehensive trading event logging
         services.AddSingleton<TradingActivityLogger>();
