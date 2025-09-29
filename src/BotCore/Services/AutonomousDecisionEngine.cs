@@ -104,6 +104,28 @@ public class AutonomousDecisionEngine : BackgroundService
     private const decimal HighConfidenceThreshold = 0.6m;    // High confidence threshold for aggressive trades
     private const decimal MediumConfidenceThreshold = 0.4m; // Medium confidence threshold for balanced trades
     
+    // Strategy-regime fitness scoring constants
+    private const decimal HighFitnessScore = 0.9m;      // High strategy-regime fit score
+    private const decimal MediumHighFitnessScore = 0.8m; // Medium-high strategy-regime fit score  
+    private const decimal MediumFitnessScore = 0.7m;    // Medium strategy-regime fit score
+    private const decimal LowMediumFitnessScore = 0.6m; // Low-medium strategy-regime fit score
+    private const decimal DefaultFitnessScore = 0.5m;   // Default/neutral strategy-regime fit score
+    
+    // Performance analysis constants
+    private const int MinTradesForConsistency = 5;      // Minimum trades needed for consistency analysis
+    private const decimal ConsistencyNormalizationFactor = 100.0m; // Normalize consistency by $100
+    
+    // Performance-based position sizing constants
+    private const int MinWinsForSizeIncrease = 3;        // Minimum wins to increase position size
+    private const int MinLossesForSizeDecrease = 3;      // Minimum losses to decrease position size
+    private const decimal BaseSizeMultiplier = 1.0m;     // Base position size multiplier
+    private const decimal PositionSizeIncrement = 0.1m;  // Position size increment per win/loss
+    private const decimal MaxSizeMultiplier = 1.5m;      // Maximum position size multiplier
+    private const decimal MinSizeMultiplier = 0.5m;      // Minimum position size multiplier  
+    private const int MaxWinsForCalculation = 5;         // Maximum wins to use in size calculation
+    private const int WinsOffsetForCalculation = 2;      // Offset wins for size calculation
+    private const int LossesOffsetForCalculation = 2;    // Offset losses for size calculation
+    
     public AutonomousDecisionEngine(
         ILogger<AutonomousDecisionEngine> logger,
         IServiceProvider serviceProvider,
@@ -377,21 +399,21 @@ public class AutonomousDecisionEngine : BackgroundService
         // Different strategies perform better in different market regimes
         return (_currentAutonomousMarketRegime, strategy) switch
         {
-            (AutonomousMarketRegime.Trending, "S11") => 0.9m,
-            (AutonomousMarketRegime.Trending, "S6") => 0.7m,
-            (AutonomousMarketRegime.Ranging, "S2") => 0.8m,
-            (AutonomousMarketRegime.Ranging, "S3") => 0.9m,
-            (AutonomousMarketRegime.Volatile, "S6") => 0.8m,
-            (AutonomousMarketRegime.Volatile, "S11") => 0.6m,
-            (AutonomousMarketRegime.LowVolatility, "S2") => 0.9m,
-            (AutonomousMarketRegime.LowVolatility, "S3") => 0.8m,
-            _ => 0.5m
+            (AutonomousMarketRegime.Trending, "S11") => HighFitnessScore,
+            (AutonomousMarketRegime.Trending, "S6") => MediumFitnessScore,
+            (AutonomousMarketRegime.Ranging, "S2") => MediumHighFitnessScore,
+            (AutonomousMarketRegime.Ranging, "S3") => HighFitnessScore,
+            (AutonomousMarketRegime.Volatile, "S6") => MediumHighFitnessScore,
+            (AutonomousMarketRegime.Volatile, "S11") => LowMediumFitnessScore,
+            (AutonomousMarketRegime.LowVolatility, "S2") => HighFitnessScore,
+            (AutonomousMarketRegime.LowVolatility, "S3") => MediumHighFitnessScore,
+            _ => DefaultFitnessScore
         };
     }
     
     private decimal CalculateConsistencyScore(AutonomousStrategyMetrics metrics)
     {
-        if (metrics.RecentTrades.Count < 5) return 0.5m;
+        if (metrics.RecentTrades.Count < MinTradesForConsistency) return DefaultFitnessScore;
         
         var pnls = metrics.RecentTrades.Select(t => t.PnL).ToArray();
         var avgPnL = pnls.Average();
@@ -399,14 +421,14 @@ public class AutonomousDecisionEngine : BackgroundService
         var stdDev = Math.Sqrt(variance);
         
         // Lower standard deviation = higher consistency
-        var consistencyScore = Math.Max(0, 1 - (decimal)(stdDev / 100.0)); // Normalize by $100
+        var consistencyScore = Math.Max(0, 1 - (decimal)(stdDev / (double)ConsistencyNormalizationFactor)); // Normalize by $100
         
         return consistencyScore;
     }
     
     private decimal CalculateProfitabilityScore(AutonomousStrategyMetrics metrics)
     {
-        if (metrics.TotalTrades == 0) return 0.5m;
+        if (metrics.TotalTrades == 0) return DefaultFitnessScore;
         
         var winRate = metrics.WinningTrades / (decimal)metrics.TotalTrades;
         var avgWin = metrics.WinningTrades > 0 ? metrics.TotalProfit / metrics.WinningTrades : 0;
@@ -417,7 +439,7 @@ public class AutonomousDecisionEngine : BackgroundService
         var winRateScore = winRate;
         var profitFactorScore = Math.Max(0, Math.Min(1, profitFactor / 2m)); // Normalize around 2.0
         
-        return (winRateScore * 0.5m) + (profitFactorScore * 0.5m);
+        return (winRateScore * DefaultFitnessScore) + (profitFactorScore * DefaultFitnessScore);
     }
     
     private async Task<decimal> CalculateOptimalPositionSizeAsync(CancellationToken cancellationToken)
@@ -452,16 +474,16 @@ public class AutonomousDecisionEngine : BackgroundService
     private decimal CalculatePerformanceMultiplier()
     {
         // Increase position size during winning streaks, decrease during losing streaks
-        if (_consecutiveWins >= 3)
+        if (_consecutiveWins >= MinWinsForSizeIncrease)
         {
-            return 1.0m + (0.1m * Math.Min(_consecutiveWins - 2, 5)); // Up to 1.5x for 7+ wins
+            return BaseSizeMultiplier + (PositionSizeIncrement * Math.Min(_consecutiveWins - WinsOffsetForCalculation, MaxWinsForCalculation)); // Up to 1.5x for 7+ wins
         }
-        else if (_consecutiveLosses >= 3)
+        else if (_consecutiveLosses >= MinLossesForSizeDecrease)
         {
-            return Math.Max(0.5m, 1.0m - (0.1m * (_consecutiveLosses - 2))); // Down to 0.5x
+            return Math.Max(MinSizeMultiplier, BaseSizeMultiplier - (PositionSizeIncrement * (_consecutiveLosses - LossesOffsetForCalculation))); // Down to 0.5x
         }
         
-        return 1.0m;
+        return BaseSizeMultiplier;
     }
     
     private async Task<decimal> CalculateVolatilityMultiplierAsync(CancellationToken cancellationToken)

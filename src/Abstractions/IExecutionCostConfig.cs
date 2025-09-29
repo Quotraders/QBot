@@ -127,9 +127,22 @@ namespace TradingBot.Abstractions
     /// </summary>
     public class FillProbabilityThresholds
     {
+        private readonly List<DistanceThreshold> _distanceThresholds = new();
+        
         public decimal AtMarketProbability { get; set; } = 0.9m;
         public decimal PassiveFallbackProbability { get; set; } = 0.2m;
-        public List<DistanceThreshold> DistanceThresholds { get; set; } = new();
+        public IReadOnlyList<DistanceThreshold> DistanceThresholds => _distanceThresholds;
+        
+        public void AddDistanceThreshold(DistanceThreshold threshold)
+        {
+            _distanceThresholds.Add(threshold);
+        }
+        
+        public void SetDistanceThresholds(IEnumerable<DistanceThreshold> thresholds)
+        {
+            _distanceThresholds.Clear();
+            _distanceThresholds.AddRange(thresholds);
+        }
     }
 
     /// <summary>

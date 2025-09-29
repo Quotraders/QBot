@@ -90,18 +90,24 @@ namespace TradingBot.BotCore.Services
         public decimal GetMaxSlippageCap() => 
             _config.GetValue("ExecutionCost:MaxSlippageCap", 5.0m);
 
-        public FillProbabilityThresholds GetFillProbabilityThresholds() => 
-            new FillProbabilityThresholds
+        public FillProbabilityThresholds GetFillProbabilityThresholds() 
+        {
+            var thresholds = new FillProbabilityThresholds
             {
                 AtMarketProbability = _config.GetValue("ExecutionCost:AtMarketProbability", 0.9m),
-                PassiveFallbackProbability = _config.GetValue("ExecutionCost:PassiveFallbackProbability", 0.2m),
-                DistanceThresholds = new List<DistanceThreshold>
-                {
-                    new DistanceThreshold { MaxDistance = 0.25, FillProbability = 0.8m },
-                    new DistanceThreshold { MaxDistance = 0.5, FillProbability = 0.6m },
-                    new DistanceThreshold { MaxDistance = 1.0, FillProbability = 0.4m },
-                    new DistanceThreshold { MaxDistance = 2.0, FillProbability = 0.3m }
-                }
+                PassiveFallbackProbability = _config.GetValue("ExecutionCost:PassiveFallbackProbability", 0.2m)
             };
+            
+            // Configure distance thresholds
+            thresholds.SetDistanceThresholds(new[]
+            {
+                new DistanceThreshold { MaxDistance = 0.25, FillProbability = 0.8m },
+                new DistanceThreshold { MaxDistance = 0.5, FillProbability = 0.6m },
+                new DistanceThreshold { MaxDistance = 1.0, FillProbability = 0.4m },
+                new DistanceThreshold { MaxDistance = 2.0, FillProbability = 0.3m }
+            });
+            
+            return thresholds;
+        }
     }
 }
