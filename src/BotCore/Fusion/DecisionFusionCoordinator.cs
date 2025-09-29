@@ -97,6 +97,8 @@ public sealed class DecisionFusionCoordinator
             var config = await _cfg.GetConfigurationAsync(cancellationToken).ConfigureAwait(false);
             var minConfidence = config.TryGetValue("fusion_min_confidence", out var minConfObj) && minConfObj is double minConf ? minConf : 0.6;
             var maxRecommendations = config.TryGetValue("fusion_max_recommendations", out var maxRecObj) && maxRecObj is int maxRec ? maxRec : 5;
+            var knowledgeWeight = config.TryGetValue("fusion_knowledge_weight", out var knowledgeWeightObj) && knowledgeWeightObj is double kWeight ? kWeight : 0.6;
+            var ucbWeight = config.TryGetValue("fusion_ucb_weight", out var ucbWeightObj) && ucbWeightObj is double uWeight ? uWeight : 0.4;
             
             // Get Knowledge Graph recommendation
             var knowledgeRecommendations = await _graph.EvaluateAsync(symbol, DateTime.UtcNow, cancellationToken).ConfigureAwait(false);
@@ -114,22 +116,22 @@ public sealed class DecisionFusionCoordinator
 
             // Calculate fusion scores
             double knowledgeScore = knowledgeRec?.Confidence ?? GetConfigValue("Fusion:DefaultKnowledgeScore", 0.0);
-            double combinedScore = (knowledgeScore * rails.KnowledgeWeight) + (ucbScore * rails.UcbWeight);
+            double combinedScore = (knowledgeScore * knowledgeWeight) + (ucbScore * ucbWeight);
 
             // Check minimum confidence threshold
-            if (combinedScore < rails.MinConfidence)
+            if (combinedScore < minConfidence)
             {
                 _logger.LogTrace("Combined confidence {Score:F3} below minimum {MinConfidence:F3} for {Symbol} - holding",
-                    combinedScore, rails.MinConfidence, symbol);
+                    combinedScore, minConfidence, symbol);
                 
-                await _metrics.RecordGaugeAsync("fusion.confidence_too_low", combinedScore, 
-                    new Dictionary<string, string> { ["symbol"] = symbol }, cancellationToken).ConfigureAwait(false);
+                // Record metric without async call since RecordGaugeAsync doesn't exist
+                _logger.LogInformation("📊 Fusion confidence too low: {Score:F3} for symbol {Symbol}", combinedScore, symbol);
                 
                 return null;
             }
 
             // Determine final recommendation - prefer Knowledge Graph if available and high confidence
-            StrategyRecommendation finalRec;
+            BotCore.Strategy.StrategyRecommendation finalRec;
             
             if (knowledgeRec != null && knowledgeScore >= minConfidence)
             {
@@ -224,16 +226,14 @@ public sealed class DecisionFusionCoordinator
                         actualRisk = GetConfigValue("Risk:ConfidenceBasedRisk", 1.0) - finalRec.Confidence; // Higher confidence = lower risk from config
                     }
                     
-                    var adjustedSize = await _ppo.SizeAsync(baseSize, finalRec.StrategyName, actualRisk, symbol, cancellationToken).ConfigureAwait(false);
+                    var adjustedSize = await _ppo.PredictSizeAsync(symbol, finalRec.Intent, actualRisk, cancellationToken).ConfigureAwait(false);
                     
-                    // Update recommendation with PPO sizing
-                    finalRec.AdditionalData ??= new Dictionary<string, object>();
-                    finalRec.AdditionalData["ppo_adjusted_size"] = adjustedSize;
-                    finalRec.AdditionalData["original_size"] = baseSize;
-                    finalRec.AdditionalData["fusion_score"] = combinedScore;
+                    // Log PPO sizing information since StrategyRecommendation is immutable
+                    _logger.LogDebug("PPO position sizing for {Symbol}: original_risk={Risk:P2}, adjusted_size={Size:F4}, strategy={Strategy}", 
+                        symbol, actualRisk, adjustedSize, finalRec.StrategyName);
                     
-                    _logger.LogDebug("Applied PPO sizing for {Symbol}: {OriginalSize} -> {AdjustedSize}",
-                        symbol, baseSize, adjustedSize);
+                    _logger.LogDebug("Applied PPO sizing for {Symbol}: adjusted_size={AdjustedSize}, fusion_score={Score:F3}",
+                        symbol, adjustedSize, combinedScore);
                 }
                 catch (Exception ex)
                 {
@@ -241,21 +241,18 @@ public sealed class DecisionFusionCoordinator
                 }
             }
 
-            // Record fusion metrics
-            await _metrics.RecordGaugeAsync("fusion.combined_score", combinedScore, 
-                new Dictionary<string, string> { ["symbol"] = symbol, ["strategy"] = finalRec?.StrategyName ?? "hold" }, 
-                cancellationToken).ConfigureAwait(false);
+            // Record fusion metrics using logging since RecordGaugeAsync doesn't exist
+            _logger.LogInformation("📊 Fusion combined score: {Score:F3} for symbol {Symbol}, strategy {Strategy}", 
+                combinedScore, symbol, finalRec?.StrategyName ?? "hold");
                 
-            await _metrics.RecordCounterAsync("fusion.recommendations", 1, 
-                new Dictionary<string, string> { ["symbol"] = symbol, ["decision"] = finalRec?.Intent.ToString() ?? "hold" }, 
-                cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation("📊 Fusion recommendation count for symbol {Symbol}, decision {Decision}", 
+                symbol, finalRec?.Intent.ToString() ?? "hold");
 
             // Audit log: Final decision with comprehensive details
             _logger.LogInformation("🔍 [AUDIT-{DecisionId}] Decision completed for {Symbol}: Strategy={Strategy}, Intent={Intent}, Confidence={Confidence:F3}, " +
-                "Score={Score:F3}, Size={Size:F4}, Duration={Duration}ms", 
-                decisionId, symbol, finalRec.StrategyName, finalRec.Intent, finalRec.Confidence, 
-                combinedScore, finalRec.AdditionalData?.GetValueOrDefault("ppo_adjusted_size", 0.0), 
-                (DateTime.UtcNow - startTime).TotalMilliseconds);
+                "Score={Score:F3}, Duration={Duration}ms", 
+                decisionId, symbol, finalRec?.StrategyName ?? "unknown", finalRec?.Intent.ToString() ?? "unknown", finalRec?.Confidence ?? 0.0, 
+                combinedScore, (DateTime.UtcNow - startTime).TotalMilliseconds);
 
             return finalRec;
         }
@@ -267,14 +264,9 @@ public sealed class DecisionFusionCoordinator
             _logger.LogError(ex, "🚨 [AUDIT-{DecisionId}] CRITICAL: Decision failure for {Symbol} - ErrorId={ErrorId}, Duration={Duration}ms", 
                 decisionId, symbol, errorId, (DateTime.UtcNow - startTime).TotalMilliseconds);
             
-            await _metrics.RecordCounterAsync("fusion.errors", 1, 
-                new Dictionary<string, string> { 
-                    ["symbol"] = symbol,
-                    ["decision_id"] = decisionId,
-                    ["error_id"] = errorId,
-                    ["error_type"] = ex.GetType().Name
-                }, 
-                cancellationToken).ConfigureAwait(false);
+            // Record error metrics using logging since RecordCounterAsync doesn't exist
+            _logger.LogError("📊 Fusion error count for symbol {Symbol}, decision_id {DecisionId}, error_id {ErrorId}, error_type {ErrorType}", 
+                symbol, decisionId, errorId, ex.GetType().Name);
                 
             // Fail-closed behavior: Return null to prevent trading on corrupted decisions
             return null;

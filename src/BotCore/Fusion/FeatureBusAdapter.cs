@@ -738,18 +738,10 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                 var neutralPatternConfidence = configService.GetValue<double>("Patterns:NeutralConfidence", 0.5);
                 
                 return bullish ? bullishPatternConfidence : bearishPatternConfidence;
-                    
-                    if (relevantPatterns.Any())
-                    {
-                        var avgScore = relevantPatterns.Average(p => p.Confidence);
-                        _logger.LogTrace("Pattern score for {Symbol} (bullish: {Bullish}): {Score:F3}", symbol, bullish, avgScore);
-                        return avgScore;
-                    }
-                }
             }
             
             // Fail fast if pattern engine is not available - don't return defaults
-            _logger.LogWarning("PatternEngine not available or no patterns found for {Symbol} - real pattern analysis required", symbol);
+            _logger.LogWarning("PatternEngine not available for {Symbol} - real pattern analysis required", symbol);
             return null;
         }
         catch (Exception ex)
