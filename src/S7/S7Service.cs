@@ -43,6 +43,15 @@ namespace TradingBot.S7
 
         public event EventHandler<S7FeatureUpdatedEventArgs>? FeatureUpdated;
 
+        // LoggerMessage delegates for performance
+        private static readonly Action<ILogger, string, Exception?> _logS7ServiceInitialized = 
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(2001, "S7ServiceInitialized"), 
+                "S7Service initialized for symbols: {Symbols}");
+                
+        private static readonly Action<ILogger, string, Exception?> _logUnknownSymbol = 
+            LoggerMessage.Define<string>(LogLevel.Warning, new EventId(2002, "UnknownSymbol"), 
+                "Received price update for unknown symbol: {Symbol}");
+
         public S7Service(
             ILogger<S7Service> logger,
             IOptions<S7Configuration> config,
@@ -72,8 +81,7 @@ namespace TradingBot.S7
                 };
             }
 
-            _logger.LogInformation("S7Service initialized for symbols: {Symbols}", 
-                string.Join(", ", _config.Symbols));
+            _logS7ServiceInitialized(_logger, string.Join(", ", _config.Symbols), null);
         }
 
         public async Task UpdateAsync(string symbol, decimal close, DateTime timestamp)
@@ -83,7 +91,7 @@ namespace TradingBot.S7
 
             if (!_priceHistory.ContainsKey(symbol))
             {
-                _logger.LogWarning("Received price update for unknown symbol: {Symbol}", symbol);
+                _logUnknownSymbol(_logger, symbol, null);
                 return;
             }
 
