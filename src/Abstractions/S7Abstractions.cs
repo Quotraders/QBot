@@ -20,6 +20,15 @@ namespace TradingBot.Abstractions
         public int CooldownBarsRemaining { get; set; }
         public bool IsSignalActive { get; set; }
         public decimal SizeTilt { get; set; }
+        
+        // Enhanced fields for adaptive tuning and dispersion analysis
+        public decimal AdaptiveThreshold { get; set; }
+        public decimal MultiIndexDispersion { get; set; }
+        public decimal AdvanceFraction { get; set; }
+        public decimal DispersionAdjustedSizeTilt { get; set; } = 1.0m;
+        public bool IsDispersionBoosted { get; set; }
+        public bool IsDispersionBlocked { get; set; }
+        
         public Dictionary<string, decimal> AdditionalMetrics { get; } = new();
     }
 
@@ -46,6 +55,12 @@ namespace TradingBot.Abstractions
         public decimal SignalStrength { get; set; }
         public bool IsActionable { get; set; }
         public DateTime LastUpdateTime { get; set; }
+        
+        // Enhanced fields for knowledge graph and fusion tags
+        public decimal GlobalDispersionIndex { get; set; }
+        public decimal AdaptiveVolatilityMeasure { get; set; }
+        public decimal SystemCoherenceScore { get; set; }
+        public Dictionary<string, object> FusionTags { get; } = new();
         public Dictionary<string, decimal> FeatureBusData { get; } = new();
     }
 
@@ -63,6 +78,17 @@ namespace TradingBot.Abstractions
         public decimal SizeTilt { get; set; }
         public string Leader { get; set; } = string.Empty;
         public bool IsSignalActive { get; set; }
+        
+        // Enhanced features for adaptive tuning and dispersion
+        public decimal AdaptiveThreshold { get; set; }
+        public decimal MultiIndexDispersion { get; set; }
+        public decimal AdvanceFraction { get; set; }
+        public decimal DispersionAdjustedSizeTilt { get; set; }
+        public bool IsDispersionBoosted { get; set; }
+        public bool IsDispersionBlocked { get; set; }
+        public decimal GlobalDispersionIndex { get; set; }
+        public decimal AdaptiveVolatilityMeasure { get; set; }
+        
         public Dictionary<string, object> ExtendedFeatures { get; } = new();
     }
 
@@ -107,6 +133,29 @@ namespace TradingBot.Abstractions
         public decimal NewHighsLowsBonus { get; set; } = 0.05m;
         public decimal MinBreadthScore { get; set; } = 0.5m;
         public decimal MaxBreadthScore { get; set; } = 1.5m;
+        
+        // Multi-index dispersion and advance fraction parameters - MUST come from config
+        public decimal DispersionThreshold { get; set; } = 0.3m;
+        public decimal AdvanceFractionMin { get; set; } = 0.6m;
+        public decimal DispersionSizeBoostFactor { get; set; } = 1.5m;
+        public decimal DispersionSizeBlockFactor { get; set; } = 0.5m;
+        public bool EnableDispersionAdjustments { get; set; } = true;
+        
+        // Adaptive parameter tuning configuration - MUST come from config  
+        public bool EnableAdaptiveThresholds { get; set; } = true;
+        public decimal AdaptiveThresholdMin { get; set; } = 1.5m;
+        public decimal AdaptiveThresholdMax { get; set; } = 3.0m;
+        public decimal AdaptiveSensitivity { get; set; } = 0.1m;
+        public int AdaptiveLookbackPeriod { get; set; } = 20;
+        public decimal AdaptiveVolatilityWeight { get; set; } = 0.3m;
+        public decimal AdaptivePerformanceWeight { get; set; } = 0.7m;
+        
+        // Knowledge graph telemetry tags - MUST come from config
+        public bool EnableFusionTags { get; set; } = true;
+        public string FusionStateTagPrefix { get; set; } = "fusion.s7_state";
+        public string FusionCoherenceTag { get; set; } = "fusion.s7_coherence";
+        public string FusionDispersionTag { get; set; } = "fusion.s7_dispersion";
+        public string FusionAdaptiveTag { get; set; } = "fusion.s7_adaptive";
         
         // Fail-closed configuration - unknown keys must trigger holds
         public bool FailOnUnknownKeys { get; set; } = true;

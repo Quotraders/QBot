@@ -64,6 +64,17 @@ namespace BotCore.Services
                 [15] = 0.85,  // 3:00 PM
                 [16] = 0.82,  // 4:00 PM
                 [17] = 0.75   // After hours
+            },
+
+            ["S7"] = new() // Multi-Horizon Relative Strength - Best during active market hours
+            {
+                [9] = 0.89,   // Market open
+                [10] = 0.92,  // Morning trend - BEST
+                [11] = 0.88,  // Mid-morning
+                [13] = 0.90,  // Post-lunch
+                [14] = 0.87,  // Afternoon
+                [15] = 0.84,  // Late afternoon
+                [20] = 0.78   // Overnight (reduced)
             }
         };
 

@@ -128,13 +128,27 @@ namespace TradingBot.S7
                 _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.leader", (double)snapshot.DominantLeader);
                 _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.signal_strength", (double)snapshot.SignalStrength);
                 _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.actionable", snapshot.IsActionable ? 1.0 : 0.0);
+                
+                // Publish enhanced cross-symbol features for adaptive analysis
+                _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.global_dispersion", (double)snapshot.GlobalDispersionIndex);
+                _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.adaptive_volatility", (double)snapshot.AdaptiveVolatilityMeasure);
+                _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.system_coherence", (double)snapshot.SystemCoherenceScore);
+
+                // Publish fusion tags for knowledge graph integration if enabled
+                if (_config.EnableFusionTags)
+                {
+                    foreach (var fusionTag in snapshot.FusionTags)
+                    {
+                        _featureBus.Publish("FUSION", timestamp, fusionTag.Key, fusionTag.Value);
+                    }
+                }
 
                 // Publish individual symbol features
                 foreach (var symbol in _config.Symbols)
                 {
                     var featureTuple = _s7Service.GetFeatureTuple(symbol);
                     
-                    // AUDIT-CLEAN: Publish all features with configured telemetry prefix
+                    // AUDIT-CLEAN: Publish core features with configured telemetry prefix
                     _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.rs", (double)featureTuple.RelativeStrengthShort);
                     _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.rs.medium", (double)featureTuple.RelativeStrengthMedium);
                     _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.rs.long", (double)featureTuple.RelativeStrengthLong);
@@ -143,6 +157,16 @@ namespace TradingBot.S7
                     _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.size_tilt", (double)featureTuple.SizeTilt);
                     _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.leader", featureTuple.Leader == "ES" ? 1.0 : (featureTuple.Leader == "NQ" ? -1.0 : 0.0));
                     _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.signal_active", featureTuple.IsSignalActive ? 1.0 : 0.0);
+                    
+                    // AUDIT-CLEAN: Publish enhanced adaptive and dispersion features
+                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.adaptive_threshold", (double)featureTuple.AdaptiveThreshold);
+                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.multi_index_dispersion", (double)featureTuple.MultiIndexDispersion);
+                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.advance_fraction", (double)featureTuple.AdvanceFraction);
+                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.dispersion_adjusted_size_tilt", (double)featureTuple.DispersionAdjustedSizeTilt);
+                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.dispersion_boosted", featureTuple.IsDispersionBoosted ? 1.0 : 0.0);
+                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.dispersion_blocked", featureTuple.IsDispersionBlocked ? 1.0 : 0.0);
+                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.global_dispersion_index", (double)featureTuple.GlobalDispersionIndex);
+                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.adaptive_volatility_measure", (double)featureTuple.AdaptiveVolatilityMeasure);
                 }
 
                 _logger.LogDebug("[S7-FEATURE-PUBLISHER] Published S7 features for {SymbolCount} symbols", _config.Symbols.Count);
