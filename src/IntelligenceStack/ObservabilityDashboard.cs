@@ -521,6 +521,206 @@ public class ObservabilityDashboard : IDisposable
     }
 
     /// <summary>
+    /// Get enhanced liquidity metrics dashboard
+    /// </summary>
+    private async Task<LiquidityMetricsDashboard> GetLiquidityMetricsDashboardAsync(CancellationToken cancellationToken)
+    {
+        // Brief async operation for proper async pattern
+        await Task.Delay(1, cancellationToken).ConfigureAwait(false);
+        
+        var liquidityMetrics = GetRecentMetrics("liquidity").TakeLast(100);
+        
+        var dashboard = new LiquidityMetricsDashboard
+        {
+            LiquidityScore = liquidityMetrics.LastOrDefault()?.Value ?? 0.0,
+            OrderBookDepth = GetLatestMetricValue("liquidity.order_book_depth"),
+            SpreadQuality = GetLatestMetricValue("liquidity.spread_quality"),
+            MarketImpact = GetLatestMetricValue("liquidity.market_impact"),
+            VwapDeviation = GetLatestMetricValue("liquidity.vwap_deviation"),
+            LiquidityTrend = CalculateTrend(liquidityMetrics.Select(m => m.Value))
+        };
+        
+        // Populate time series data
+        foreach (var metric in liquidityMetrics)
+        {
+            dashboard.TimeSeriesData.Add(new TimeSeriesPoint
+            {
+                Timestamp = metric.Timestamp,
+                Value = metric.Value
+            });
+        }
+        
+        return dashboard;
+    }
+
+    /// <summary>
+    /// Get OFI (Order Flow Imbalance) proxy metrics dashboard
+    /// </summary>
+    private async Task<OfuProxyDashboard> GetOfiProxyDashboardAsync(CancellationToken cancellationToken)
+    {
+        // Brief async operation for proper async pattern
+        await Task.Delay(1, cancellationToken).ConfigureAwait(false);
+        
+        var ofiMetrics = GetRecentMetrics("ofi").TakeLast(100);
+        
+        var dashboard = new OfuProxyDashboard
+        {
+            OfiProxy = GetLatestMetricValue("ofi.proxy"),
+            BidAskImbalance = GetLatestMetricValue("ofi.bid_ask_imbalance"),
+            VolumeImbalance = GetLatestMetricValue("ofi.volume_imbalance"),
+            OrderFlowDirection = GetLatestMetricValue("ofi.flow_direction"),
+            FlowStrength = GetLatestMetricValue("ofi.flow_strength"),
+            OfiTrend = CalculateTrend(ofiMetrics.Select(m => m.Value))
+        };
+
+        // Populate imbalance history
+        foreach (var metric in ofiMetrics)
+        {
+            dashboard.ImbalanceHistory.Add(new OfiDataPoint
+            {
+                Timestamp = metric.Timestamp,
+                BidVolume = GetMetricTagValue(metric, "bid_volume", 0.0),
+                AskVolume = GetMetricTagValue(metric, "ask_volume", 0.0),
+                Imbalance = metric.Value
+            });
+        }
+        
+        return dashboard;
+    }
+
+    /// <summary>
+    /// Get pattern shadow signal dashboard
+    /// </summary>
+    private async Task<PatternShadowSignalDashboard> GetPatternShadowSignalDashboardAsync(CancellationToken cancellationToken)
+    {
+        // Brief async operation for proper async pattern
+        await Task.Delay(1, cancellationToken).ConfigureAwait(false);
+        
+        var shadowSignals = GetRecentMetrics("pattern.shadow_signal").TakeLast(50);
+        
+        var dashboard = new PatternShadowSignalDashboard
+        {
+            ShadowSignalCount = shadowSignals.Count(),
+            PromotedSignalCount = GetRecentMetrics("pattern.promoted_transformer").Count(),
+            AccuracyRate = CalculateShadowSignalAccuracy(shadowSignals)
+        };
+
+        // Populate latest signals
+        foreach (var signal in shadowSignals)
+        {
+            dashboard.LatestSignals.Add(new ShadowSignalEvent
+            {
+                Timestamp = signal.Timestamp,
+                Pattern = GetMetricTagValue(signal, "pattern", "Unknown"),
+                Confidence = signal.Value,
+                Symbol = GetMetricTagValue(signal, "symbol", ""),
+                Promoted = GetMetricTagValue(signal, "promoted", false)
+            });
+        }
+
+        // Populate pattern distribution
+        var patternDistribution = CalculatePatternDistribution(shadowSignals);
+        foreach (var kvp in patternDistribution)
+        {
+            dashboard.PatternDistribution[kvp.Key] = kvp.Value;
+        }
+        
+        return dashboard;
+    }
+
+    /// <summary>
+    /// Get model tranche selection dashboard
+    /// </summary>
+    private async Task<ModelTrancheDashboard> GetModelTrancheDashboardAsync(CancellationToken cancellationToken)
+    {
+        // Brief async operation for proper async pattern
+        await Task.Delay(1, cancellationToken).ConfigureAwait(false);
+        
+        var trancheMetrics = GetRecentMetrics("model.tranche_selected").TakeLast(100);
+        
+        var dashboard = new ModelTrancheDashboard
+        {
+            OptimalTrancheScore = GetLatestMetricValue("model.optimal_tranche_score")
+        };
+
+        // Populate active tranches
+        var activeTranches = trancheMetrics.GroupBy(m => GetMetricTagValue(m, "tranche", "Unknown"))
+            .ToDictionary(g => g.Key, g => g.Count());
+        foreach (var kvp in activeTranches)
+        {
+            dashboard.ActiveTranches[kvp.Key] = kvp.Value;
+        }
+
+        // Populate tranche performance
+        var tranchePerformance = CalculateTranchePerformance(trancheMetrics);
+        foreach (var kvp in tranchePerformance)
+        {
+            dashboard.TranchePerformance[kvp.Key] = kvp.Value;
+        }
+
+        // Populate selection history
+        foreach (var metric in trancheMetrics)
+        {
+            dashboard.SelectionHistory.Add(new TrancheSelection
+            {
+                Timestamp = metric.Timestamp,
+                Tranche = GetMetricTagValue(metric, "tranche", "Unknown"),
+                Reason = GetMetricTagValue(metric, "reason", ""),
+                Performance = metric.Value
+            });
+        }
+        
+        return dashboard;
+    }
+
+    /// <summary>
+    /// Get fusion feature missing dashboard
+    /// </summary>
+    private async Task<FusionFeatureDashboard> GetFusionFeatureDashboardAsync(CancellationToken cancellationToken)
+    {
+        // Brief async operation for proper async pattern
+        await Task.Delay(1, cancellationToken).ConfigureAwait(false);
+        
+        var missingFeatures = GetRecentMetrics("fusion.feature_missing").TakeLast(100);
+        
+        var dashboard = new FusionFeatureDashboard
+        {
+            TotalMissingFeatures = missingFeatures.Count(),
+            MissingFeatureRate = CalculateMissingFeatureRate(missingFeatures),
+            CriticalMissing = missingFeatures.Where(m => GetMetricTagValue(m, "critical", false)).Count()
+        };
+
+        // Populate feature availability
+        var featureAvailability = CalculateFeatureAvailability();
+        foreach (var kvp in featureAvailability)
+        {
+            dashboard.FeatureAvailability[kvp.Key] = kvp.Value;
+        }
+
+        // Populate missing feature breakdown
+        var missingFeatureBreakdown = missingFeatures.GroupBy(m => GetMetricTagValue(m, "feature_name", "Unknown"))
+            .ToDictionary(g => g.Key, g => g.Count());
+        foreach (var kvp in missingFeatureBreakdown)
+        {
+            dashboard.MissingFeatureBreakdown[kvp.Key] = kvp.Value;
+        }
+
+        // Populate latest missing features
+        foreach (var feature in missingFeatures)
+        {
+            dashboard.LatestMissingFeatures.Add(new MissingFeatureEvent
+            {
+                Timestamp = feature.Timestamp,
+                FeatureName = GetMetricTagValue(feature, "feature_name", "Unknown"),
+                Criticality = GetMetricTagValue(feature, "critical", false) ? "Critical" : "Normal",
+                Impact = feature.Value
+            });
+        }
+        
+        return dashboard;
+    }
+
+    /// <summary>
     /// Get RL advisor dashboard
     /// </summary>
     private async Task<RLAdvisorDashboard> GetRLAdvisorDashboardAsync(CancellationToken cancellationToken)
@@ -858,6 +1058,97 @@ public class ObservabilityDashboard : IDisposable
         };
     }
 
+    // Helper methods for new dashboard panels
+
+    private double GetLatestMetricValue(string metricName)
+    {
+        lock (_lock)
+        {
+            if (_metrics.TryGetValue(metricName, out var timeSeries) && timeSeries.Points.Count > 0)
+            {
+                return timeSeries.Points.Last().Value;
+            }
+        }
+        return 0.0;
+    }
+
+    private T GetMetricTagValue<T>(MetricPoint metric, string tagKey, T defaultValue)
+    {
+        if (metric.Tags.TryGetValue(tagKey, out var value))
+        {
+            try
+            {
+                if (typeof(T) == typeof(bool) && bool.TryParse(value, out var boolValue))
+                    return (T)(object)boolValue;
+                if (typeof(T) == typeof(double) && double.TryParse(value, out var doubleValue))
+                    return (T)(object)doubleValue;
+                if (typeof(T) == typeof(string))
+                    return (T)(object)value;
+            }
+            catch
+            {
+                // Fall through to default value
+            }
+        }
+        return defaultValue;
+    }
+
+    private double CalculateTrend(IEnumerable<double> values)
+    {
+        var valueList = values.ToList();
+        if (valueList.Count < 2) return 0.0;
+        
+        var recent = valueList.TakeLast(Math.Min(10, valueList.Count)).ToList();
+        var older = valueList.Take(recent.Count).ToList();
+        
+        var recentAvg = recent.Average();
+        var olderAvg = older.Average();
+        
+        return recentAvg - olderAvg;
+    }
+
+    private double CalculateShadowSignalAccuracy(IEnumerable<MetricPoint> shadowSignals)
+    {
+        var signals = shadowSignals.ToList();
+        if (signals.Count == 0) return 0.0;
+        
+        var accurateCount = signals.Count(s => GetMetricTagValue(s, "accurate", false));
+        return (double)accurateCount / signals.Count;
+    }
+
+    private Dictionary<string, int> CalculatePatternDistribution(IEnumerable<MetricPoint> shadowSignals)
+    {
+        return shadowSignals.GroupBy(s => GetMetricTagValue(s, "pattern", "Unknown"))
+                           .ToDictionary(g => g.Key, g => g.Count());
+    }
+
+    private Dictionary<string, double> CalculateTranchePerformance(IEnumerable<MetricPoint> trancheMetrics)
+    {
+        return trancheMetrics.GroupBy(m => GetMetricTagValue(m, "tranche", "Unknown"))
+                            .ToDictionary(g => g.Key, g => g.Average(m => m.Value));
+    }
+
+    private double CalculateMissingFeatureRate(IEnumerable<MetricPoint> missingFeatures)
+    {
+        var totalFeatures = GetLatestMetricValue("fusion.total_features");
+        if (totalFeatures == 0) return 0.0;
+        
+        var missingCount = missingFeatures.Count();
+        return missingCount / totalFeatures;
+    }
+
+    private Dictionary<string, double> CalculateFeatureAvailability()
+    {
+        // Sample feature availability calculation
+        return new Dictionary<string, double>
+        {
+            ["market_data"] = GetLatestMetricValue("fusion.market_data_availability"),
+            ["sentiment"] = GetLatestMetricValue("fusion.sentiment_availability"),
+            ["technical"] = GetLatestMetricValue("fusion.technical_availability"),
+            ["fundamental"] = GetLatestMetricValue("fusion.fundamental_availability")
+        };
+    }
+
     public void Dispose()
     {
         Dispose(true);
@@ -1109,6 +1400,98 @@ public class MetricPoint
     public DateTime Timestamp { get; set; }
     public double Value { get; set; }
     public Dictionary<string, string> Tags { get; } = new();
+}
+
+// New Enhanced Dashboard Data Structures for Production Trading Bot
+
+public class LiquidityMetricsDashboard
+{
+    public double LiquidityScore { get; set; }
+    public double OrderBookDepth { get; set; }
+    public double SpreadQuality { get; set; }
+    public double MarketImpact { get; set; }
+    public double VwapDeviation { get; set; }
+    public double LiquidityTrend { get; set; }
+    public Collection<TimeSeriesPoint> TimeSeriesData { get; } = new();
+}
+
+public class OfuProxyDashboard
+{
+    public double OfiProxy { get; set; }
+    public double BidAskImbalance { get; set; }
+    public double VolumeImbalance { get; set; }
+    public double OrderFlowDirection { get; set; }
+    public double FlowStrength { get; set; }
+    public double OfiTrend { get; set; }
+    public Collection<OfiDataPoint> ImbalanceHistory { get; } = new();
+}
+
+public class PatternShadowSignalDashboard
+{
+    public int ShadowSignalCount { get; set; }
+    public int PromotedSignalCount { get; set; }
+    public double AccuracyRate { get; set; }
+    public Collection<ShadowSignalEvent> LatestSignals { get; } = new();
+    public Dictionary<string, int> PatternDistribution { get; } = new();
+}
+
+public class ModelTrancheDashboard
+{
+    public Dictionary<string, int> ActiveTranches { get; } = new();
+    public Dictionary<string, double> TranchePerformance { get; } = new();
+    public Collection<TrancheSelection> SelectionHistory { get; } = new();
+    public double OptimalTrancheScore { get; set; }
+}
+
+public class FusionFeatureDashboard
+{
+    public int TotalMissingFeatures { get; set; }
+    public double MissingFeatureRate { get; set; }
+    public int CriticalMissing { get; set; }
+    public Dictionary<string, double> FeatureAvailability { get; } = new();
+    public Dictionary<string, int> MissingFeatureBreakdown { get; } = new();
+    public Collection<MissingFeatureEvent> LatestMissingFeatures { get; } = new();
+}
+
+// Supporting data structures
+
+public class TimeSeriesPoint
+{
+    public DateTime Timestamp { get; set; }
+    public double Value { get; set; }
+}
+
+public class OfiDataPoint
+{
+    public DateTime Timestamp { get; set; }
+    public double BidVolume { get; set; }
+    public double AskVolume { get; set; }
+    public double Imbalance { get; set; }
+}
+
+public class ShadowSignalEvent
+{
+    public DateTime Timestamp { get; set; }
+    public string Pattern { get; set; } = string.Empty;
+    public double Confidence { get; set; }
+    public string Symbol { get; set; } = string.Empty;
+    public bool Promoted { get; set; }
+}
+
+public class TrancheSelection
+{
+    public DateTime Timestamp { get; set; }
+    public string Tranche { get; set; } = string.Empty;
+    public string Reason { get; set; } = string.Empty;
+    public double Performance { get; set; }
+}
+
+public class MissingFeatureEvent
+{
+    public DateTime Timestamp { get; set; }
+    public string FeatureName { get; set; } = string.Empty;
+    public string Criticality { get; set; } = string.Empty;
+    public double Impact { get; set; }
 }
 
 #endregion
