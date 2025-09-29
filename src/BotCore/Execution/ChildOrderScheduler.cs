@@ -148,6 +148,10 @@ namespace BotCore.Execution
 
         private bool ShouldSliceOrder(ExecutionIntent intent)
         {
+            // Don't slice if maximum urgency (market orders) - checked FIRST for fail-closed behavior
+            if (intent.UrgencyScore > 0.9)
+                return false;
+
             // Slice large orders to reduce market impact
             if ((double)intent.Quantity > _config.ChildOrderSlicingThreshold)
                 return true;
@@ -155,10 +159,6 @@ namespace BotCore.Execution
             // Slice orders with high uncertainty for better price discovery
             if (intent.ModelUncertainty.HasValue && intent.ModelUncertainty.Value > 0.7)
                 return true;
-
-            // Don't slice if maximum urgency (market orders)
-            if (intent.UrgencyScore > 0.9)
-                return false;
 
             return false;
         }

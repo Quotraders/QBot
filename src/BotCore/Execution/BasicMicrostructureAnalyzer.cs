@@ -219,7 +219,7 @@ public class BasicMicrostructureAnalyzer : IMicrostructureAnalyzer
         return fillProbability * grossEV - slippageCost;
     }
 
-    private static decimal GetOptimalLimitPrice(TradeIntent intent, MicrostructureState state)
+    private decimal GetOptimalLimitPrice(TradeIntent intent, MicrostructureState state)
     {
         if (intent.LimitPrice.HasValue)
             return intent.LimitPrice.Value;
@@ -232,7 +232,7 @@ public class BasicMicrostructureAnalyzer : IMicrostructureAnalyzer
             : state.AskPrice - offset;
     }
 
-    private static decimal CalculateLimitOrderSlippage(TradeIntent intent, decimal limitPrice, MicrostructureState state)
+    private decimal CalculateLimitOrderSlippage(TradeIntent intent, decimal limitPrice, MicrostructureState state)
     {
         var marketPrice = intent.IsBuy ? state.AskPrice : state.BidPrice;
         var savings = intent.IsBuy
