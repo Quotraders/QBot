@@ -138,24 +138,16 @@ public sealed class DecisionFusionCoordinator
             else if (!string.IsNullOrEmpty(ucbStrategy) && ucbScore >= rails.MinConfidence)
             {
                 // Use UCB recommendation
-                finalRec = new BotCore.Strategy.StrategyRecommendation
-                {
-                    StrategyName = ucbStrategy,
-                    Intent = ucbIntent,
-                    Confidence = ucbScore,
-                    Symbol = symbol,
-                    Timestamp = DateTime.UtcNow,
-                    Evidence = new List<StrategyEvidence>
+                finalRec = new BotCore.Strategy.StrategyRecommendation(
+                    ucbStrategy,
+                    ucbIntent,
+                    ucbScore,
+                    new List<BotCore.Strategy.StrategyEvidence>
                     {
-                        new StrategyEvidence
-                        {
-                            Name = "UCB_prediction",
-                            Score = ucbScore,
-                            Explanation = $"Neural-UCB selected {ucbStrategy} with confidence {ucbScore:F3}"
-                        }
+                        new BotCore.Strategy.StrategyEvidence("UCB_prediction", ucbScore, $"Neural-UCB selected {ucbStrategy} with confidence {ucbScore:F3}")
                     },
-                    TelemetryTags = new List<string> { "ucb_source", "fusion_coordinator" }
-                };
+                    new List<string> { "ucb_source", "fusion_coordinator" }
+                );
                 _logger.LogDebug("Using UCB recommendation for {Symbol}: {Strategy} (score: {Score:F3})",
                     symbol, ucbStrategy, ucbScore);
             }
@@ -170,14 +162,13 @@ public sealed class DecisionFusionCoordinator
                 
                 // Fall back to highest scoring system
                 finalRec = knowledgeScore > ucbScore ? knowledgeRec : 
-                    new BotCore.Strategy.StrategyRecommendation
-                    {
-                        StrategyName = ucbStrategy,
-                        Intent = ucbIntent,
-                        Confidence = ucbScore,
-                        Symbol = symbol,
-                        Timestamp = DateTime.UtcNow
-                    };
+                    new BotCore.Strategy.StrategyRecommendation(
+                        ucbStrategy,
+                        ucbIntent,
+                        ucbScore,
+                        new List<BotCore.Strategy.StrategyEvidence>(),
+                        new List<string> { "fallback", "highest_score" }
+                    );
             }
 
             // Apply PPO position sizing if available

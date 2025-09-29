@@ -333,7 +333,7 @@ public sealed class ProductionPpoSizer : IPpoSizer
         }
     }
 
-    private async Task<TradingBot.Abstractions.MarketContext> CreateMarketContextAsync(
+    private Task<TradingBot.Abstractions.MarketContext> CreateMarketContextAsync(
         string symbol, 
         BotCore.Strategy.StrategyIntent intent, 
         double risk, 
@@ -346,7 +346,7 @@ public sealed class ProductionPpoSizer : IPpoSizer
         var volatility = featureBus?.Probe(symbol, "volatility.realized") ?? 0.02;
         var volume = featureBus?.Probe(symbol, "volume.current") ?? 1000.0;
         
-        return new TradingBot.Abstractions.MarketContext
+        var result = new TradingBot.Abstractions.MarketContext
         {
             Symbol = symbol,
             Price = (double)currentPrice, // Use Price instead of CurrentPrice
@@ -361,6 +361,8 @@ public sealed class ProductionPpoSizer : IPpoSizer
             },
             Regime = GetMarketRegime(symbol) // Use Regime instead of MarketRegime
         };
+        
+        return Task.FromResult(result);
     }
     
     private string GetMarketRegime(string symbol)
@@ -398,7 +400,7 @@ public sealed class ProductionPpoSizer : IPpoSizer
         return finalSize;
     }
     
-    private async Task<double> CalculateIntelligentFallbackSizeAsync(
+    private Task<double> CalculateIntelligentFallbackSizeAsync(
         string symbol, 
         BotCore.Strategy.StrategyIntent intent, 
         double risk, 
@@ -425,10 +427,10 @@ public sealed class ProductionPpoSizer : IPpoSizer
                 _ => 0.0
             };
             
-            return Math.Max(-0.05, Math.Min(0.05, directionalSize)); // Max 5% position
+            return Task.FromResult(Math.Max(-0.05, Math.Min(0.05, directionalSize))); // Max 5% position
         }
         
-        return CalculateConservativeFallbackSize(risk, intent);
+        return Task.FromResult(CalculateConservativeFallbackSize(risk, intent));
     }
     
     private static double CalculateConservativeFallbackSize(double risk, BotCore.Strategy.StrategyIntent intent)
