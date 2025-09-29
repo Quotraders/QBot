@@ -26,6 +26,13 @@ public interface IFeatureProbe
 /// </summary>
 public sealed class ProductionFeatureProbe : IFeatureProbe
 {
+    // Feature fallback constants for missing data scenarios
+    private const double DefaultVolatilityContractionFallback = 0.6;
+    private const double DefaultPullbackRiskFallback = 0.5;
+    private const double DefaultVwapDistanceFallback = 0.3;
+    private const double DefaultEvaluationThreshold = 0.5;
+    private const double DefaultPatternScoreThreshold = 0.3;
+    
     private readonly ILogger<ProductionFeatureProbe> _logger;
     private readonly IFeatureBusWithProbe _featureBus;
     private readonly PatternEngine _patternEngine;
@@ -63,12 +70,12 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
                 "pattern.bear_score" => GetPatternScore(symbol, false),
 
                 // Market microstructure features - from feature bus
-                "vdc" => _featureBus.Probe(symbol, "volatility.contraction") ?? 0.6,
+                "vdc" => _featureBus.Probe(symbol, "volatility.contraction") ?? DefaultVolatilityContractionFallback,
                 "mom.zscore" => _featureBus.Probe(symbol, "momentum.zscore") ?? 0.0,
-                "pullback.at_risk" => _featureBus.Probe(symbol, "pullback.risk") ?? 0.5,
+                "pullback.at_risk" => _featureBus.Probe(symbol, "pullback.risk") ?? DefaultPullbackRiskFallback,
                 "climax.volume_thrust" => _featureBus.Probe(symbol, "volume.thrust") ?? 1.0,
                 "inside_bars_lookback" => _featureBus.Probe(symbol, "inside_bars") ?? 0.0,
-                "vwap.distance_atr" => _featureBus.Probe(symbol, "vwap.distance_atr") ?? 0.3,
+                "vwap.distance_atr" => _featureBus.Probe(symbol, "vwap.distance_atr") ?? DefaultVwapDistanceFallback,
                 "keltner.band_touch" => _featureBus.Probe(symbol, "keltner.touch") ?? 0.0,
                 "boll.band_touch" => _featureBus.Probe(symbol, "bollinger.touch") ?? 0.0,
 
@@ -109,9 +116,19 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
                 _ => 0.0
             };
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Error getting zone feature {Feature} for {Symbol}", featureName, symbol);
+            _logger.LogWarning(ex, "Invalid operation getting zone feature {Feature} for {Symbol}", featureName, symbol);
+            return 0.0;
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument getting zone feature {Feature} for {Symbol}", featureName, symbol);
+            return 0.0;
+        }
+        catch (KeyNotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Zone feature {Feature} not found for {Symbol}", featureName, symbol);
             return 0.0;
         }
     }
@@ -132,22 +149,47 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
             
             return score;
         }
-        catch (Exception ex)
+        catch (TimeoutException ex)
         {
-            _logger.LogWarning(ex, "Error getting pattern score from PatternEngine for {Symbol}, bullish={Bullish}, falling back to feature bus", 
+            _logger.LogWarning(ex, "Timeout getting pattern score from PatternEngine for {Symbol}, bullish={Bullish}, falling back to feature bus", 
                 symbol, bullish);
                 
             // Fallback to feature bus if PatternEngine fails
             try
             {
                 return bullish 
-                    ? _featureBus.Probe(symbol, "pattern.bull_score") ?? 0.3
-                    : _featureBus.Probe(symbol, "pattern.bear_score") ?? 0.3;
+                    ? _featureBus.Probe(symbol, "pattern.bull_score") ?? DefaultPatternScoreThreshold
+                    : _featureBus.Probe(symbol, "pattern.bear_score") ?? DefaultPatternScoreThreshold;
             }
-            catch
+            catch (InvalidOperationException)
             {
-                return 0.3; // Neutral score as final fallback
+                return DefaultPatternScoreThreshold; // Neutral score as final fallback
             }
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation getting pattern score from PatternEngine for {Symbol}, bullish={Bullish}, falling back to feature bus", 
+                symbol, bullish);
+                
+            // Fallback to feature bus if PatternEngine fails
+            try
+            {
+                return bullish 
+                    ? _featureBus.Probe(symbol, "pattern.bull_score") ?? DefaultPatternScoreThreshold
+                    : _featureBus.Probe(symbol, "pattern.bear_score") ?? DefaultPatternScoreThreshold;
+            }
+            catch (InvalidOperationException)
+            {
+                return DefaultPatternScoreThreshold; // Neutral score as final fallback
+            }
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument getting pattern score from PatternEngine for {Symbol}, bullish={Bullish}, falling back to feature bus", 
+                symbol, bullish);
+                
+            // Fallback to feature bus if PatternEngine fails
+            return DefaultPatternScoreThreshold; // Use default directly for argument errors
         }
     }
     
@@ -283,9 +325,17 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
                 _logger.LogTrace("Strategy {StrategyName} recommended with confidence {Confidence:F2}", 
                     card.Name, confidence);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "Error evaluating strategy {StrategyName}", card.Name);
+                _logger.LogError(ex, "Invalid operation evaluating strategy {StrategyName}", card.Name);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "Invalid argument evaluating strategy {StrategyName}", card.Name);
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogError(ex, "Timeout evaluating strategy {StrategyName}", card.Name);
             }
         }
 
@@ -386,7 +436,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
                 {
                     var featureName = expression.Split("==")[0].Trim();
                     var featureValue = _probe.Get(symbol, featureName);
-                    return featureValue > 0.5; // Treat > 0.5 as true
+                    return featureValue > DefaultEvaluationThreshold; // Treat > 0.5 as true
                 }
             }
             else if (expression.Contains("or"))
@@ -402,9 +452,19 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
 
             return false;
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to evaluate expression: {Expression}", expression);
+            _logger.LogWarning(ex, "Invalid operation evaluating expression: {Expression}", expression);
+            return false;
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument evaluating expression: {Expression}", expression);
+            return false;
+        }
+        catch (FormatException ex)
+        {
+            _logger.LogWarning(ex, "Format error evaluating expression: {Expression}", expression);
             return false;
         }
     }
@@ -502,9 +562,19 @@ public sealed class ProductionRegimeService : IRegimeService
 
                 return _lastRegime;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "Error detecting regime for {Symbol}, using cached value {Regime}", symbol, _lastRegime);
+                _logger.LogError(ex, "Invalid operation detecting regime for {Symbol}, using cached value {Regime}", symbol, _lastRegime);
+                return _lastRegime;
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogError(ex, "Timeout detecting regime for {Symbol}, using cached value {Regime}", symbol, _lastRegime);
+                return _lastRegime;
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "Invalid argument detecting regime for {Symbol}, using cached value {Regime}", symbol, _lastRegime);
                 return _lastRegime;
             }
         }

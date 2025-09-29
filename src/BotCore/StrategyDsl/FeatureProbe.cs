@@ -14,6 +14,17 @@ namespace BotCore.StrategyDsl;
 /// </summary>
 public sealed class FeatureProbe
 {
+    // Default feature values for missing data scenarios
+    private const double DefaultDistanceAtrFallback = 0.5;
+    private const double DefaultBreakoutScoreFallback = 0.5;
+    private const double DefaultPatternScoreFallback = 0.5;
+    
+    // Session and timing constants
+    private const double DefaultSessionVolumeTarget = 1000000;
+    private const double DefaultTimeOfDay = 12.0; // Noon
+    private const double DefaultTimeToCloseMinutes = 240.0; // 4 hours
+    private const int SessionTimeoutMinutes = 60;
+    
     private readonly ILogger<FeatureProbe> _logger;
     private readonly IConfiguration _configuration;
     private readonly PatternEngine _patternEngine;
@@ -121,12 +132,30 @@ public sealed class FeatureProbe
             _logger.LogTrace("Zone metrics probed for {Symbol}: distance_atr={DistanceAtr:F2}, breakout_score={BreakoutScore:F2}",
                 symbol, zoneDistanceAtr, breakoutScore);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to probe zone metrics for {Symbol}", symbol);
+            _logger.LogWarning(ex, "Invalid operation probing zone metrics for {Symbol}", symbol);
             // Set default values to prevent strategy evaluation failures
-            snapshot.Features["zone.distance_atr"] = 0.5;
-            snapshot.Features["zone.breakout_score"] = 0.5;
+            snapshot.Features["zone.distance_atr"] = DefaultDistanceAtrFallback;
+            snapshot.Features["zone.breakout_score"] = DefaultBreakoutScoreFallback;
+            snapshot.Features["zone.pressure"] = 0.0;
+            snapshot.Features["zone.type"] = "unknown";
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument probing zone metrics for {Symbol}", symbol);
+            // Set default values to prevent strategy evaluation failures
+            snapshot.Features["zone.distance_atr"] = DefaultDistanceAtrFallback;
+            snapshot.Features["zone.breakout_score"] = DefaultBreakoutScoreFallback;
+            snapshot.Features["zone.pressure"] = 0.0;
+            snapshot.Features["zone.type"] = "unknown";
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "Timeout probing zone metrics for {Symbol}", symbol);
+            // Set default values to prevent strategy evaluation failures
+            snapshot.Features["zone.distance_atr"] = DefaultDistanceAtrFallback;
+            snapshot.Features["zone.breakout_score"] = DefaultBreakoutScoreFallback;
             snapshot.Features["zone.pressure"] = 0.0;
             snapshot.Features["zone.type"] = "unknown";
         }
@@ -156,12 +185,28 @@ public sealed class FeatureProbe
             _logger.LogTrace("Pattern scores probed for {Symbol}: bull={BullScore:F2}, bear={BearScore:F2}, patterns={PatternCount}",
                 symbol, patternScores.BullScore, patternScores.BearScore, patternScores.DetectedPatterns.Count);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to probe pattern scores for {Symbol}", symbol);
+            _logger.LogWarning(ex, "Invalid operation probing pattern scores for {Symbol}", symbol);
             // Set neutral pattern scores
-            snapshot.Features["pattern.bull_score"] = 0.5;
-            snapshot.Features["pattern.bear_score"] = 0.5;
+            snapshot.Features["pattern.bull_score"] = DefaultPatternScoreFallback;
+            snapshot.Features["pattern.bear_score"] = DefaultPatternScoreFallback;
+            snapshot.Features["pattern.confidence"] = 0.0;
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "Timeout probing pattern scores for {Symbol}", symbol);
+            // Set neutral pattern scores
+            snapshot.Features["pattern.bull_score"] = DefaultPatternScoreFallback;
+            snapshot.Features["pattern.bear_score"] = DefaultPatternScoreFallback;
+            snapshot.Features["pattern.confidence"] = 0.0;
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument probing pattern scores for {Symbol}", symbol);
+            // Set neutral pattern scores
+            snapshot.Features["pattern.bull_score"] = DefaultPatternScoreFallback;
+            snapshot.Features["pattern.bear_score"] = DefaultPatternScoreFallback;
             snapshot.Features["pattern.confidence"] = 0.0;
         }
     }
@@ -197,9 +242,23 @@ public sealed class FeatureProbe
             _logger.LogTrace("Regime state probed for {Symbol}: regime={Regime}, vol_z={VolZ:F2}, trend={TrendStrength:F2}",
                 symbol, marketRegime, volatilityZScore, trendStrength);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to probe regime state for {Symbol}", symbol);
+            _logger.LogWarning(ex, "Invalid operation probing regime state for {Symbol}", symbol);
+            snapshot.Features["market_regime"] = "unknown";
+            snapshot.Features["volatility_z_score"] = 0.0;
+            snapshot.Features["trend.strength"] = 0.0;
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "Timeout probing regime state for {Symbol}", symbol);
+            snapshot.Features["market_regime"] = "unknown";
+            snapshot.Features["volatility_z_score"] = 0.0;
+            snapshot.Features["trend.strength"] = 0.0;
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument probing regime state for {Symbol}", symbol);
             snapshot.Features["market_regime"] = "unknown";
             snapshot.Features["volatility_z_score"] = 0.0;
             snapshot.Features["trend.strength"] = 0.0;
@@ -237,9 +296,23 @@ public sealed class FeatureProbe
             _logger.LogTrace("Microstructure probed for {Symbol}: order_flow={OrderFlow:F2}, volume_profile={VolumeProfile}",
                 symbol, orderFlowImbalance, volumeProfile);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to probe microstructure for {Symbol}", symbol);
+            _logger.LogWarning(ex, "Invalid operation probing microstructure for {Symbol}", symbol);
+            snapshot.Features["order_flow_imbalance"] = 0.0;
+            snapshot.Features["volume_profile"] = "balanced";
+            snapshot.Features["momentum.z_score"] = 0.0;
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "Timeout probing microstructure for {Symbol}", symbol);
+            snapshot.Features["order_flow_imbalance"] = 0.0;
+            snapshot.Features["volume_profile"] = "balanced";
+            snapshot.Features["momentum.z_score"] = 0.0;
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument probing microstructure for {Symbol}", symbol);
             snapshot.Features["order_flow_imbalance"] = 0.0;
             snapshot.Features["volume_profile"] = "balanced";
             snapshot.Features["momentum.z_score"] = 0.0;
@@ -269,7 +342,7 @@ public sealed class FeatureProbe
 
             // Time-based features
             var now = DateTime.UtcNow;
-            snapshot.Features["time_of_day"] = now.Hour + (now.Minute / 60.0);
+            snapshot.Features["time_of_day"] = now.Hour + (now.Minute / SessionTimeoutMinutes);
             
             // Market close time (assuming 4 PM ET = 20:00 UTC)
             var marketCloseUtc = DateTime.UtcNow.Date.AddHours(20);
@@ -280,13 +353,29 @@ public sealed class FeatureProbe
             _logger.LogTrace("Additional features probed for {Symbol}: vwap_distance={VwapDistance:F2}, session_volume={SessionVolume:F0}",
                 symbol, vwapDistance, sessionVolume);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to probe additional features for {Symbol}", symbol);
+            _logger.LogWarning(ex, "Invalid operation probing additional features for {Symbol}", symbol);
             snapshot.Features["vwap_distance"] = 0.0;
-            snapshot.Features["session_volume"] = 1000000;
-            snapshot.Features["time_of_day"] = 12.0;
-            snapshot.Features["time_to_close_minutes"] = 240.0;
+            snapshot.Features["session_volume"] = DefaultSessionVolumeTarget;
+            snapshot.Features["time_of_day"] = DefaultTimeOfDay;
+            snapshot.Features["time_to_close_minutes"] = DefaultTimeToCloseMinutes;
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "Timeout probing additional features for {Symbol}", symbol);
+            snapshot.Features["vwap_distance"] = 0.0;
+            snapshot.Features["session_volume"] = DefaultSessionVolumeTarget;
+            snapshot.Features["time_of_day"] = DefaultTimeOfDay;
+            snapshot.Features["time_to_close_minutes"] = DefaultTimeToCloseMinutes;
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument probing additional features for {Symbol}", symbol);
+            snapshot.Features["vwap_distance"] = 0.0;
+            snapshot.Features["session_volume"] = DefaultSessionVolumeTarget;
+            snapshot.Features["time_of_day"] = DefaultTimeOfDay;
+            snapshot.Features["time_to_close_minutes"] = DefaultTimeToCloseMinutes;
         }
     }
 
@@ -350,7 +439,19 @@ public sealed class FeatureSnapshot
         {
             return (T)Convert.ChangeType(value, typeof(T));
         }
-        catch
+        catch (InvalidCastException)
+        {
+            return defaultValue;
+        }
+        catch (FormatException)
+        {
+            return defaultValue;
+        }
+        catch (OverflowException)
+        {
+            return defaultValue;
+        }
+        catch (ArgumentException)
         {
             return defaultValue;
         }
