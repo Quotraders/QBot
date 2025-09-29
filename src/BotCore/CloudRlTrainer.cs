@@ -44,9 +44,17 @@ public sealed class CloudRlTrainer : IDisposable
             _log.LogInformation("[CloudRlTrainer] Checking GitHub Releases for new models...");
             await CheckGitHubReleasesAsync().ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            LoggingHelper.LogError(_log, ex, "CloudRlTrainer", "check for updates");
+            LoggingHelper.LogError(_log, ex, "CloudRlTrainer", "HTTP error checking for updates");
+        }
+        catch (TaskCanceledException ex)
+        {
+            LoggingHelper.LogError(_log, ex, "CloudRlTrainer", "timeout checking for updates");
+        }
+        catch (InvalidOperationException ex)
+        {
+            LoggingHelper.LogError(_log, ex, "CloudRlTrainer", "invalid operation checking for updates");
         }
     }
 
@@ -84,9 +92,21 @@ public sealed class CloudRlTrainer : IDisposable
                 }
             }
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            _log.LogWarning(ex, "[CloudRlTrainer] Failed to check GitHub releases");
+            _log.LogWarning(ex, "[CloudRlTrainer] HTTP error checking GitHub releases");
+        }
+        catch (JsonException ex)
+        {
+            _log.LogWarning(ex, "[CloudRlTrainer] JSON parsing error checking GitHub releases");
+        }
+        catch (IOException ex)
+        {
+            _log.LogWarning(ex, "[CloudRlTrainer] I/O error checking GitHub releases");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _log.LogWarning(ex, "[CloudRlTrainer] Access denied checking GitHub releases");
         }
     }
 
