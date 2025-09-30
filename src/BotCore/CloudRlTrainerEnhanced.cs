@@ -96,9 +96,25 @@ namespace BotCore
                 _log.LogInformation("[CloudRlTrainerEnhanced] ✅ Updated to version {Version} with {Samples} training samples",
                     manifest.Version, manifest.TrainingSamples);
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
             {
-                _log.LogError(ex, "[CloudRlTrainerEnhanced] Failed to check for model updates");
+                _log.LogError(ex, "[CloudRlTrainerEnhanced] HTTP error checking for model updates");
+            }
+            catch (TaskCanceledException ex)
+            {
+                _log.LogError(ex, "[CloudRlTrainerEnhanced] Timeout checking for model updates");
+            }
+            catch (IOException ex)
+            {
+                _log.LogError(ex, "[CloudRlTrainerEnhanced] I/O error during model update");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _log.LogError(ex, "[CloudRlTrainerEnhanced] Access denied during model update");
+            }
+            catch (JsonException ex)
+            {
+                _log.LogError(ex, "[CloudRlTrainerEnhanced] JSON parsing error during model update");
             }
         }
 

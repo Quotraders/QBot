@@ -19,12 +19,16 @@ namespace TradingBot.BotCore.Services
         private readonly RSA _signingKey;
         private readonly string _publicKeyPem;
 
+        // Cryptographic configuration constants
+        private const int RsaKeySizeBits = 2048;              // RSA key size for signing
+        private const int HashPrefixLength = 12;             // Length of hash prefix for logging
+
         public IntegritySigningService(ILogger<IntegritySigningService> logger)
         {
             _logger = logger;
             
             // Initialize RSA key pair for signing (in production, load from secure key store)
-            _signingKey = RSA.Create(2048);
+            _signingKey = RSA.Create(RsaKeySizeBits);
             _publicKeyPem = Convert.ToBase64String(_signingKey.ExportRSAPublicKey());
             
             _logger.LogInformation("🔐 [INTEGRITY] Integrity signing service initialized with RSA-2048");
@@ -43,7 +47,7 @@ namespace TradingBot.BotCore.Services
                 var hash = Convert.ToHexString(hashBytes).ToLowerInvariant();
                 
                 _logger.LogDebug("📋 [INTEGRITY] File hash calculated: {File} -> {Hash}", 
-                    Path.GetFileName(filePath), hash[..12] + "...");
+                    Path.GetFileName(filePath), hash[..HashPrefixLength] + "...");
                     
                 return hash;
             }
@@ -225,7 +229,25 @@ namespace TradingBot.BotCore.Services
 
                 return result;
             }
-            catch (Exception ex)
+            catch (FileNotFoundException ex)
+            {
+                result.AddError($"Verification error: {ex.Message}");
+                _logger.LogError(ex, "🚨 [INTEGRITY] Error verifying manifest: {Name}", manifest.Name);
+                return result;
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                result.AddError($"Verification error: {ex.Message}");
+                _logger.LogError(ex, "🚨 [INTEGRITY] Error verifying manifest: {Name}", manifest.Name);
+                return result;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                result.AddError($"Verification error: {ex.Message}");
+                _logger.LogError(ex, "🚨 [INTEGRITY] Error verifying manifest: {Name}", manifest.Name);
+                return result;
+            }
+            catch (IOException ex)
             {
                 result.AddError($"Verification error: {ex.Message}");
                 _logger.LogError(ex, "🚨 [INTEGRITY] Error verifying manifest: {Name}", manifest.Name);

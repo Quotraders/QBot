@@ -11,6 +11,10 @@ public class FeatureBusMapper
     private readonly Dictionary<string, string> _keyMappings = new();
     private readonly Dictionary<string, object> _cachedValues = new();
 
+    // Default feature value constants
+    private const int DefaultMinutesValue = 60;                // Default minutes for time-based features
+    private const double DefaultStrengthValue = 0.5;           // Default strength/confidence value
+
     public FeatureBusMapper(ILogger<FeatureBusMapper> logger)
     {
         _logger = logger;
@@ -195,6 +199,8 @@ public class FeatureBusMapper
     /// </summary>
     public HashSet<string> ExtractIdentifiers(IEnumerable<string> expressions)
     {
+        ArgumentNullException.ThrowIfNull(expressions);
+        
         var allIdentifiers = new HashSet<string>();
         
         foreach (var expression in expressions)
@@ -215,6 +221,9 @@ public class FeatureBusMapper
     public Dictionary<string, object> CreateFeatureDictionary(IEnumerable<string> expressions, 
                                                               Dictionary<string, object> rawFeatureValues)
     {
+        ArgumentNullException.ThrowIfNull(expressions);
+        ArgumentNullException.ThrowIfNull(rawFeatureValues);
+        
         var identifiers = ExtractIdentifiers(expressions);
         var featureDict = new Dictionary<string, object>();
 
@@ -277,8 +286,8 @@ public class FeatureBusMapper
             var id when id.Contains("distance") => 1.0,
             var id when id.Contains("ratio") => 1.0,
             var id when id.Contains("count") => 0,
-            var id when id.Contains("minutes") => 60,
-            var id when id.Contains("strength") => 0.5,
+            var id when id.Contains("minutes") => DefaultMinutesValue,
+            var id when id.Contains("strength") => DefaultStrengthValue,
             var id when id.EndsWith("_confirmed") || id.EndsWith("_ready") => false,
             var id when id.Contains("alignment") => "neutral",
             var id when id.Contains("direction") => "neutral",

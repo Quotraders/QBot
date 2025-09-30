@@ -27,6 +27,12 @@ namespace TopstepX.Bot.Core.Services
         private readonly PositionTrackingSystem _positionTracker;
         private readonly EmergencyStopSystem _emergencyStop;
         
+        // Order type constants for API integration
+        private const int LimitOrderType = 1;
+        private const int MarketOrderType = 2;
+        private const int StopOrderType = 4;
+        private const int TrailingStopOrderType = 5;
+        
         public event EventHandler<OrderConfirmedEventArgs>? OrderConfirmed;
         public event EventHandler<OrderRejectedEventArgs>? OrderRejected;
         public event EventHandler<FillConfirmedEventArgs>? FillConfirmed;
@@ -209,11 +215,11 @@ namespace TopstepX.Bot.Core.Services
         {
             return orderType.ToUpper() switch
             {
-                "LIMIT" => 1,
-                "MARKET" => 2,
-                "STOP" => 4,
-                "TRAILING_STOP" => 5,
-                _ => 1 // Default to limit
+                "LIMIT" => LimitOrderType,
+                "MARKET" => MarketOrderType,
+                "STOP" => StopOrderType,
+                "TRAILING_STOP" => TrailingStopOrderType,
+                _ => LimitOrderType // Default to limit
             };
         }
 
@@ -256,7 +262,15 @@ namespace TopstepX.Bot.Core.Services
                     _orderTracking.TryRemove(staleRecord.ClientOrderId, out _);
                 }
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "❌ Error during order verification");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "❌ Error during order verification");
+            }
+            catch (KeyNotFoundException ex)
             {
                 _logger.LogError(ex, "❌ Error during order verification");
             }
@@ -285,7 +299,19 @@ namespace TopstepX.Bot.Core.Services
                     }
                 }
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
+            {
+                _logger.LogWarning(ex, "⚠️ Failed to verify order {OrderId} via API", order.GatewayOrderId);
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogWarning(ex, "⚠️ Failed to verify order {OrderId} via API", order.GatewayOrderId);
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "⚠️ Failed to verify order {OrderId} via API", order.GatewayOrderId);
+            }
+            catch (ArgumentException ex)
             {
                 _logger.LogWarning(ex, "⚠️ Failed to verify order {OrderId} via API", order.GatewayOrderId);
             }
@@ -323,7 +349,27 @@ namespace TopstepX.Bot.Core.Services
                 
                 return false;
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "❌ Error cancelling order {ClientOrderId}", clientOrderId);
+                return false;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ Error cancelling order {ClientOrderId}", clientOrderId);
+                return false;
+            }
+            catch (FormatException ex)
+            {
+                _logger.LogError(ex, "❌ Error cancelling order {ClientOrderId}", clientOrderId);
+                return false;
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "❌ Error cancelling order {ClientOrderId}", clientOrderId);
+                return false;
+            }
+            catch (ArgumentException ex)
             {
                 _logger.LogError(ex, "❌ Error cancelling order {ClientOrderId}", clientOrderId);
                 return false;

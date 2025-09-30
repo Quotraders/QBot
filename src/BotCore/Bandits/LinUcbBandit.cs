@@ -191,6 +191,8 @@ internal sealed class LinUcbArm
     // LinUCB arm constants for mathematical operations
     private const decimal FallbackPrediction = 0.5m; // Default prediction when matrix inversion fails
     private const decimal FallbackConfidenceInterval = 1m; // Default confidence interval for fallback scenarios
+    private const decimal MatrixSingularityTolerance = 0.0000000001m; // Tolerance for matrix singularity detection (1e-10)
+    private const int MatrixMultiplier = 2; // Matrix size multiplier for augmented operations
     private bool _inverseNeedsUpdate = true;
 
     public int UpdateCount { get; private set; }
@@ -378,14 +380,14 @@ internal sealed class LinUcbArm
             }
 
             // Check for singular matrix
-            if (Math.Abs(augmented[i, i]) < 1e-10m)
+            if (Math.Abs(augmented[i, i]) < MatrixSingularityTolerance)
             {
                 throw new InvalidOperationException("Matrix is singular");
             }
 
             // Scale pivot row
             var pivot = augmented[i, i];
-            for (int j = 0; j < 2 * n; j++)
+            for (int j = 0; j < MatrixMultiplier * n; j++)
             {
                 augmented[i, j] /= pivot;
             }
@@ -396,7 +398,7 @@ internal sealed class LinUcbArm
                 if (k != i)
                 {
                     var factor = augmented[k, i];
-                    for (int j = 0; j < 2 * n; j++)
+                    for (int j = 0; j < MatrixMultiplier * n; j++)
                     {
                         augmented[k, j] -= factor * augmented[i, j];
                     }

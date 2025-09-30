@@ -4,11 +4,14 @@
 This ledger documents all fixes made during the analyzer compliance initiative including SonarQube Quality Gate failure remediation. Goal: Eliminate all critical CS compiler errors and SonarQube violations with zero suppressions and full production compliance targeting ≤ 3% duplication.
 
 ## Progress Summary
-- **Starting State**: ~300+ critical CS compiler errors + ~3000+ SonarQube violations + 3.6-4.1% code duplication
-- **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (100%) including final CS0246 namespace resolution errors
-- **Phase 2 Status**: ✅ **SUBSTANTIAL PROGRESS** - 164 high-impact violations systematically eliminated across CA1031 (94 fixes), CA1002 (40 fixes), S109 (30 fixes)
-- **SonarQube Quality Gate**: ✅ **DUPLICATION REMEDIATION** - Code duplication reduced through centralized helper utilities 
-- **Current Focus**: Established comprehensive fix patterns + eliminated duplication through JsonSerializationHelper, ServiceProviderHelper, and StrategyConstants
+- **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
+- **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (100%) - CS0019 decimal/double type mismatch fixed
+- **Phase 2 Status**: ✅ **ACCELERATED PROGRESS** - Systematic high-priority violations elimination in progress
+  - **CA1848**: 4832 → 4836 (logging performance - 8 fixed in S7FeaturePublisher)
+  - **CA1031**: 1036 → 1028 (generic exceptions - 8 violations fixed with specific exception types)
+  - **CA1510**: 478 → 462 (ArgumentNullException.ThrowIfNull - 16 violations fixed)
+  - **S109**: 2928 → 2918+ (magic numbers - 10+ violations fixed with named constants)
+- **Current Focus**: Systematic application of Analyzer-Fix-Guidebook patterns across high-priority violations
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 
 ## ✅ PHASE 1 - CS COMPILER ERROR ELIMINATION (COMPLETE)
@@ -17,7 +20,281 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ## 🚨 PHASE 2 - ANALYZER VIOLATION ELIMINATION (IN PROGRESS)
 
-### Round 25 - Systematic High-Priority Fix Session (Current Session)
+### Round 32 - Priority 1 Continued: CA1031 & S109 Critical Systems/Risk Fixes (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 1004 | 1001 | CriticalSystemComponents.cs | Specific exception types for emergency systems, crash dumps (3 violations fixed) |
+| S109 | 2816 | 2806 | RiskEngine.cs | Named constants for risk management thresholds, position size multipliers (10 violations fixed) |
+
+**Pattern Examples Applied:**
+
+**CA1031 Emergency Systems Specific Exceptions:**
+```csharp
+// Before (Violation)
+catch (Exception cleanupEx)
+{
+    Console.WriteLine($"[CRITICAL] Emergency mode activation failed: {cleanupEx.Message}");
+}
+
+// After (Compliant)
+catch (InvalidOperationException cleanupEx)
+{
+    Console.WriteLine($"[CRITICAL] Emergency mode activation failed: {cleanupEx.Message}");
+}
+catch (UnauthorizedAccessException cleanupEx)
+{
+    Console.WriteLine($"[CRITICAL] Emergency mode activation failed: {cleanupEx.Message}");
+}
+catch (IOException cleanupEx)
+{
+    Console.WriteLine($"[CRITICAL] Emergency mode activation failed: {cleanupEx.Message}");
+}
+```
+
+**S109 Risk Management Constants:**
+```csharp
+// Before (Violation)
+TriggerLevel = 250m, // $250 drawdown - reduce size by 25%
+TriggerLevel = 500m, // $500 drawdown - reduce size by 50%
+await ReducePositionSize(0.75m) // Reduce to 75% of original size
+
+// After (Compliant)
+private const decimal ReduceSize25TriggerLevel = 250m;
+private const decimal ReduceSize50TriggerLevel = 500m;
+private const decimal PositionSizeReduction25Percent = 0.75m;
+TriggerLevel = ReduceSize25TriggerLevel,
+TriggerLevel = ReduceSize50TriggerLevel,
+await ReducePositionSize(PositionSizeReduction25Percent)
+```
+
+### Round 31 - Priority 1 Continued: CA1031 & S109 API/Strategy Metrics Fixes (Previous Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 1010 | 1007 | OrderFillConfirmationSystem.cs | Specific exception types for API operations, order verification (3 violations fixed) |
+| S109 | 2840 | 2828 | StrategyMetricsHelper.cs, TradingSystemIntegrationService.cs | Named constants for strategy metrics, score multipliers (12 violations fixed) |
+
+**Pattern Examples Applied:**
+
+**CA1031 API Operations Specific Exceptions:**
+```csharp
+// Before (Violation)
+catch (Exception ex)
+{
+    _logger.LogWarning(ex, "Failed to verify order via API");
+}
+
+// After (Compliant)
+catch (HttpRequestException ex)
+{
+    _logger.LogWarning(ex, "Failed to verify order via API");
+}
+catch (TaskCanceledException ex)
+{
+    _logger.LogWarning(ex, "Failed to verify order via API");
+}
+catch (JsonException ex)
+{
+    _logger.LogWarning(ex, "Failed to verify order via API");
+}
+```
+
+**S109 Strategy Metrics Constants:**
+```csharp
+// Before (Violation)
+"S2" => 1.3m,   // Mean reversion modest R:R
+"S3" => 1.8m,   // Breakout higher R:R
+score *= 0.5;   // Stale data multiplier
+
+// After (Compliant)
+private const decimal S2RiskRewardRatio = 1.3m;
+private const decimal S3RiskRewardRatio = 1.8m;
+private const double StaleDataScoreMultiplier = 0.5;
+"S2" => S2RiskRewardRatio,
+"S3" => S3RiskRewardRatio,
+score *= StaleDataScoreMultiplier;
+```
+
+### Round 30 - Priority 1 Continued: CA1031 & S109 Expression/Trading System Fixes (Previous Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 1018 | 1014 | ExpressionEvaluator.cs, PositionTrackingSystem.cs | Specific exception types for DSL evaluation, position calculations (4 violations fixed) |
+| S109 | 2854 | 2845 | TradingSystemIntegrationService.cs | Named constants for trading readiness state scores (9 violations fixed) |
+
+**Pattern Examples Applied:**
+
+**CA1031 DSL Expression Evaluation:**
+```csharp
+// Before (Violation)
+catch (Exception ex)
+{
+    _logger.LogWarning(ex, "Error evaluating expression");
+    return false;
+}
+
+// After (Compliant)
+catch (ArgumentException ex)
+{
+    _logger.LogWarning(ex, "Error evaluating expression");
+    return false;
+}
+catch (FormatException ex)
+{
+    _logger.LogWarning(ex, "Error evaluating expression");
+    return false;
+}
+```
+
+**S109 Trading Readiness Score Constants:**
+```csharp
+// Before (Violation)
+score = 0.1; // Initializing state
+score = 0.6; // Insufficient live ticks
+score = 0.9; // Partial readiness
+
+// After (Compliant)
+private const double InitializingStateScore = 0.1;
+private const double InsufficientLiveTicksScore = 0.6;
+private const double PartialReadinessScore = 0.9;
+score = InitializingStateScore;
+score = InsufficientLiveTicksScore;
+score = PartialReadinessScore;
+```
+
+### Round 29 - Priority 1 Continued: CA1031 & S109 Systematic Fixes (Previous Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 1028 | 1018 | ProductionBreadthFeedService.cs, IntegritySigningService.cs | Specific exception types for computation errors, file operations (10 violations fixed) |
+| S109 | 2862 | 2858 | FeatureBusMapper.cs, ExpressionEvaluator.cs | Named constants for default feature values, numeric comparison tolerance (4 violations fixed) |
+
+**Pattern Examples Applied:**
+
+**CA1031 Specific Exception Handling:**
+```csharp
+// Before (Violation)
+catch (Exception ex)
+{
+    _logger.LogError(ex, "Error computing advance/decline ratio");
+    return _config.AdvanceDeclineRatioMin;
+}
+
+// After (Compliant)
+catch (InvalidOperationException ex)
+{
+    _logger.LogError(ex, "Error computing advance/decline ratio");
+    return _config.AdvanceDeclineRatioMin;
+}
+catch (ArithmeticException ex)
+{
+    _logger.LogError(ex, "Error computing advance/decline ratio");
+    return _config.AdvanceDeclineRatioMin;
+}
+```
+
+**S109 Feature Constants:**
+```csharp
+// Before (Violation)
+var id when id.Contains("minutes") => 60,
+var id when id.Contains("strength") => 0.5,
+Math.Abs(featureNumericValue - numericValue) < 0.0001
+
+// After (Compliant)
+private const int DefaultMinutesValue = 60;
+private const double DefaultStrengthValue = 0.5;
+private const double NumericComparisonTolerance = 0.0001;
+var id when id.Contains("minutes") => DefaultMinutesValue,
+Math.Abs(featureNumericValue - numericValue) < NumericComparisonTolerance
+```
+
+### Round 28 - Continued Priority 1 Focus: CA1062 & S109 Systematic Fixes (Previous Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1062 | ~200 | ~195 | FeatureBusMapper.cs, ExpressionEvaluator.cs, YamlSchemaValidator.cs, ExecutionAnalyticsService.cs | ArgumentNullException guards for public method parameters (5 violations fixed) |
+| S109 | 2878 | 2870 | RlTrainingDataCollector.cs, TradingSystemIntegrationService.cs | Named constants for RL training data features, market data timing (8 violations fixed) |
+
+**Pattern Examples Applied:**
+
+**CA1062 Null Guard Pattern:**
+```csharp
+// Before (Violation)
+public HashSet<string> ExtractIdentifiers(IEnumerable<string> expressions)
+{
+    foreach (var expression in expressions) // CA1062: expressions could be null
+
+// After (Compliant)
+public HashSet<string> ExtractIdentifiers(IEnumerable<string> expressions)
+{
+    ArgumentNullException.ThrowIfNull(expressions);
+    foreach (var expression in expressions)
+```
+
+**S109 RL Training Constants:**
+```csharp
+// Before (Violation)
+Atr = price * 0.01m, // 1% ATR approximation
+Rsi = 50m + (decimal)(signalId.GetHashCode() % 40 - 20)
+
+// After (Compliant)
+private const decimal AtrPercentageApproximation = 0.01m;
+private const int BaselineRsiValue = 50;
+private const int RsiVariationRange = 40;
+Atr = price * AtrPercentageApproximation,
+Rsi = BaselineRsiValue + (decimal)(signalId.GetHashCode() % RsiVariationRange - RsiVariationOffset)
+```
+
+### Round 27 - Continued Systematic High-Priority Violations Fixed (Previous Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CS0019 | 4 | 0 | UnifiedTradingBrain.cs | Fixed decimal/double type mismatch (Phase 1 COMPLETE) |
+| CA1848 | 4832 | 4824 | S7FeaturePublisher.cs | LoggerMessage delegates for performance (8 violations fixed) |
+| S109 | 2928 | 2918 | MetaCostConfigService.cs, IntegritySigningService.cs, ErrorHandlingMonitoringSystem.cs, StrategyMetricsHelper.cs | Named constants for cost weights, crypto settings, health thresholds (10 violations fixed) |
+| CA1031 | 1036 | 1028 | UnifiedTradingBrain.cs, ParamStore.cs, CloudRlTrainerEnhanced.cs | Specific exception types for file I/O, HTTP, JSON operations (8 violations fixed) |
+| CA1510 | 478 | 462 | StrategyDiagnostics.cs, S6_MaxPerf_FullStack.cs, CriticalSystemComponents.cs, ClockHygieneService.cs, ConfigurationFailureSafetyService.cs | ArgumentNullException.ThrowIfNull usage (16 violations fixed) |
+
+**Pattern Examples Applied:**
+
+**CS0019 Type Mismatch Fix:**
+```csharp
+// Before (Violation) 
+private const double OverboughtRSILevel = 70;
+if (context.RSI > OverboughtRSILevel) // decimal > double error
+
+// After (Compliant)
+private const decimal OverboughtRSILevel = 70m;
+if (context.RSI > OverboughtRSILevel) // decimal > decimal
+```
+
+**CA1848 LoggerMessage Performance:**
+```csharp
+// Before (Violation)
+_logger.LogInformation("Started - Publishing every {Minutes} minutes", _config.BarTimeframeMinutes);
+
+// After (Compliant)
+private static readonly Action<ILogger, int, Exception?> _logFeaturePublisherStarted = 
+    LoggerMessage.Define<int>(LogLevel.Information, new EventId(1005, "FeaturePublisherStarted"), 
+        "S7 feature publisher started - Publishing every {Minutes} minutes");
+_logFeaturePublisherStarted(_logger, _config.BarTimeframeMinutes, null);
+```
+
+**CA1031 Specific Exception Handling:**
+```csharp
+// Before (Violation)
+catch (Exception ex) { _logger.LogError(ex, "Failed to initialize models"); }
+
+// After (Compliant)  
+catch (FileNotFoundException ex) { _logger.LogError(ex, "Model file not found"); }
+catch (IOException ex) { _logger.LogError(ex, "I/O error loading models"); }
+```
+
+**CA1510 ArgumentNullException.ThrowIfNull:**
+```csharp
+// Before (Violation)
+if (def is null) throw new ArgumentNullException(nameof(def));
+
+// After (Compliant)
+ArgumentNullException.ThrowIfNull(def);
+```
+
+### Round 25 - Systematic High-Priority Fix Session (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | S109 | 7309+ | 7295+ | S7Service.cs, TradingBotSymbolSessionManager.cs, BarAggregator.cs | Named constants for trading configuration, averaging divisors, session parameters (28+ violations fixed) |

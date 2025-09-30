@@ -12,6 +12,9 @@ public class ExpressionEvaluator
     private readonly ILogger<ExpressionEvaluator> _logger;
     private readonly Dictionary<string, object> _featureValues = new();
 
+    // Numeric comparison tolerance constant
+    private const double NumericComparisonTolerance = 0.0001;   // Tolerance for floating-point equality comparisons
+
     // Regex patterns for parsing expressions
     private static readonly Regex ComparisonRegex = new(
         @"^(\w+(?:\.\w+)*)\s*(>=|<=|>|<|==|!=)\s*(.+)$", 
@@ -35,6 +38,8 @@ public class ExpressionEvaluator
     /// </summary>
     public void UpdateFeatures(Dictionary<string, object> features)
     {
+        ArgumentNullException.ThrowIfNull(features);
+        
         lock (_featureValues)
         {
             _featureValues.Clear();
@@ -77,7 +82,22 @@ public class ExpressionEvaluator
             // Handle single condition
             return EvaluateSingleCondition(expression);
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Error evaluating expression: {Expression}", expression);
+            return false;
+        }
+        catch (FormatException ex)
+        {
+            _logger.LogWarning(ex, "Error evaluating expression: {Expression}", expression);
+            return false;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Error evaluating expression: {Expression}", expression);
+            return false;
+        }
+        catch (KeyNotFoundException ex)
         {
             _logger.LogWarning(ex, "Error evaluating expression: {Expression}", expression);
             return false;
@@ -135,7 +155,22 @@ public class ExpressionEvaluator
                 var result = EvaluateExpression(expression);
                 return new ExpressionResult { IsSuccess = true, Value = result };
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "Failed to evaluate expression: {Expression}", expression);
+                return new ExpressionResult { IsSuccess = false, ErrorMessage = ex.Message };
+            }
+            catch (FormatException ex)
+            {
+                _logger.LogError(ex, "Failed to evaluate expression: {Expression}", expression);
+                return new ExpressionResult { IsSuccess = false, ErrorMessage = ex.Message };
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Failed to evaluate expression: {Expression}", expression);
+                return new ExpressionResult { IsSuccess = false, ErrorMessage = ex.Message };
+            }
+            catch (KeyNotFoundException ex)
             {
                 _logger.LogError(ex, "Failed to evaluate expression: {Expression}", expression);
                 return new ExpressionResult { IsSuccess = false, ErrorMessage = ex.Message };
@@ -304,8 +339,8 @@ public class ExpressionEvaluator
                 "<=" => featureNumericValue <= numericValue,
                 ">" => featureNumericValue > numericValue,
                 "<" => featureNumericValue < numericValue,
-                "==" => Math.Abs(featureNumericValue - numericValue) < 0.0001,
-                "!=" => Math.Abs(featureNumericValue - numericValue) >= 0.0001,
+                "==" => Math.Abs(featureNumericValue - numericValue) < NumericComparisonTolerance,
+                "!=" => Math.Abs(featureNumericValue - numericValue) >= NumericComparisonTolerance,
                 _ => false
             };
         }

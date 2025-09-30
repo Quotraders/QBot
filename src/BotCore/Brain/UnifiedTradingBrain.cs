@@ -91,8 +91,8 @@ namespace BotCore.Brain
         private const decimal HighVolumeRatioThreshold = 1.5m;       // High volume ratio threshold
         private const decimal StrongTrendThreshold = 0.7m;           // Strong trend threshold
         private const decimal WeakTrendThreshold = 0.3m;             // Weak trend threshold
-        private const double OverboughtRSILevel = 70;                // RSI overbought level
-        private const double OversoldRSILevel = 30;                  // RSI oversold level
+        private const decimal OverboughtRSILevel = 70m;              // RSI overbought level
+        private const decimal OversoldRSILevel = 30m;               // RSI oversold level
         private const decimal BaseConfidenceThreshold = 0.5m;        // Base confidence threshold
         private const decimal MinConfidenceAdjustment = 0.1m;        // Minimum confidence adjustment
         
@@ -201,9 +201,34 @@ namespace BotCore.Brain
                 IsInitialized = true;
                 _logger.LogInformation("✅ [UNIFIED-BRAIN] All models loaded successfully - Brain is ONLINE with production CVaR-PPO");
             }
-            catch (Exception ex)
+            catch (FileNotFoundException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Failed to initialize models - Using fallback logic");
+                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Model file not found - Using fallback logic");
+                IsInitialized = false; // Will use rule-based fallbacks
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Model directory not found - Using fallback logic");
+                IsInitialized = false; // Will use rule-based fallbacks
+            }
+            catch (IOException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] I/O error loading models - Using fallback logic");
+                IsInitialized = false; // Will use rule-based fallbacks
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Access denied loading models - Using fallback logic");
+                IsInitialized = false; // Will use rule-based fallbacks
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Invalid operation during model loading - Using fallback logic");
+                IsInitialized = false; // Will use rule-based fallbacks
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Invalid argument for model loading - Using fallback logic");
                 IsInitialized = false; // Will use rule-based fallbacks
             }
         }

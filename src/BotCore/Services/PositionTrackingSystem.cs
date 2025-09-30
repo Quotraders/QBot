@@ -103,7 +103,15 @@ namespace TopstepX.Bot.Core.Services
                     _pendingOrders.TryRemove(pending.ClientOrderId, out _);
                 }
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "❌ Error processing fill for {Symbol}", symbol);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "❌ Error processing fill for {Symbol}", symbol);
+            }
+            catch (KeyNotFoundException ex)
             {
                 _logger.LogError(ex, "❌ Error processing fill for {Symbol}", symbol);
             }
@@ -278,7 +286,15 @@ namespace TopstepX.Bot.Core.Services
                         position.Symbol, position.NetQuantity, position.AveragePrice, position.DailyPnL);
                 }
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "❌ Error during position reconciliation");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "❌ Error during position reconciliation");
+            }
+            catch (KeyNotFoundException ex)
             {
                 _logger.LogError(ex, "❌ Error during position reconciliation");
             }

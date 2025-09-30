@@ -94,6 +94,7 @@ namespace TopstepX.Bot.Core.Services
         private const double MaxSuccessRate = 100.0;
         private const double WarningHealthScore = 70.0;
         private const double CriticalHealthScore = 20.0;
+        private const double HealthySystemThreshold = 80.0;      // 80% threshold for healthy system
         
         public event EventHandler<CriticalErrorEventArgs>? CriticalErrorDetected;
         public event EventHandler<HealthStatusEventArgs>? HealthStatusChanged;
@@ -347,7 +348,7 @@ namespace TopstepX.Bot.Core.Services
             {
                 var overallHealth = CalculateOverallHealth();
                 var previousHealth = _isSystemHealthy;
-                _isSystemHealthy = overallHealth >= 80.0; // 80% threshold for healthy system
+                _isSystemHealthy = overallHealth >= HealthySystemThreshold;
                 
                 if (previousHealth != _isSystemHealthy)
                 {

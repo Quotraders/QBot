@@ -113,6 +113,18 @@ namespace BotCore.Risk
         private decimal _peakBalance;
         private bool _tradingHalted;
         private decimal _positionSizeMultiplier = 1.0m;
+
+        // Risk management threshold constants
+        private const decimal ReduceSize25TriggerLevel = 250m;        // $250 drawdown - reduce size by 25%
+        private const decimal ReduceSize50TriggerLevel = 500m;        // $500 drawdown - reduce size by 50%
+        private const decimal ReduceSize75TriggerLevel = 750m;        // $750 drawdown - reduce size by 75%
+        private const decimal StrategyRotationTriggerLevel = 1000m;   // $1000 drawdown - switch to conservative
+        private const decimal HaltNewTradesTriggerLevel = 1500m;      // $1500 drawdown - halt new trades
+        
+        // Position size multiplier constants
+        private const decimal PositionSizeReduction25Percent = 0.75m; // Reduce to 75% of original size
+        private const decimal PositionSizeReduction50Percent = 0.5m;  // Reduce to 50% of original size
+        private const decimal PositionSizeReduction75Percent = 0.25m; // Reduce to 25% of original size
         
         /// <summary>
         /// Gets whether trading is currently halted due to risk management
@@ -159,31 +171,31 @@ namespace BotCore.Risk
             {
                 new DrawdownAction { 
                     ActionType = "REDUCE_SIZE_25", 
-                    TriggerLevel = 250m, 
+                    TriggerLevel = ReduceSize25TriggerLevel, 
                     Description = "Reduce position size by 25%",
-                    Action = async () => await ReducePositionSize(0.75m).ConfigureAwait(false)
+                    Action = async () => await ReducePositionSize(PositionSizeReduction25Percent).ConfigureAwait(false)
                 },
                 new DrawdownAction { 
                     ActionType = "REDUCE_SIZE_50", 
-                    TriggerLevel = 500m, 
+                    TriggerLevel = ReduceSize50TriggerLevel, 
                     Description = "Reduce position size by 50%",
-                    Action = async () => await ReducePositionSize(0.5m).ConfigureAwait(false)
+                    Action = async () => await ReducePositionSize(PositionSizeReduction50Percent).ConfigureAwait(false)
                 },
                 new DrawdownAction { 
                     ActionType = "REDUCE_SIZE_75", 
-                    TriggerLevel = 750m, 
+                    TriggerLevel = ReduceSize75TriggerLevel, 
                     Description = "Reduce position size by 75%",
-                    Action = async () => await ReducePositionSize(0.25m).ConfigureAwait(false)
+                    Action = async () => await ReducePositionSize(PositionSizeReduction75Percent).ConfigureAwait(false)
                 },
                 new DrawdownAction { 
                     ActionType = "STRATEGY_ROTATION", 
-                    TriggerLevel = 1000m, 
+                    TriggerLevel = StrategyRotationTriggerLevel, 
                     Description = "Switch to conservative strategies only",
                     Action = async () => await SwitchToConservativeMode().ConfigureAwait(false)
                 },
                 new DrawdownAction { 
                     ActionType = "HALT_NEW_TRADES", 
-                    TriggerLevel = 1500m, 
+                    TriggerLevel = HaltNewTradesTriggerLevel, 
                     Description = "Stop opening new positions",
                     Action = async () => await HaltNewTrades().ConfigureAwait(false)
                 },

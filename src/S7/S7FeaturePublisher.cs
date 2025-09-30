@@ -40,6 +40,34 @@ namespace TradingBot.S7
         private static readonly Action<ILogger, Exception?> _logFeaturePublishingDisabled = 
             LoggerMessage.Define(LogLevel.Information, new EventId(1004, "FeaturePublishingDisabled"), 
                 "[S7-FEATURE-PUBLISHER] S7 feature publishing disabled in configuration");
+                
+        private static readonly Action<ILogger, int, Exception?> _logFeaturePublisherStarted = 
+            LoggerMessage.Define<int>(LogLevel.Information, new EventId(1005, "FeaturePublisherStarted"), 
+                "[S7-FEATURE-PUBLISHER] S7 feature publisher started - Publishing every {Minutes} minutes");
+                
+        private static readonly Action<ILogger, Exception?> _logFeaturePublisherStopped = 
+            LoggerMessage.Define(LogLevel.Information, new EventId(1006, "FeaturePublisherStopped"), 
+                "[S7-FEATURE-PUBLISHER] S7 feature publisher stopped");
+                
+        private static readonly Action<ILogger, Exception?> _logInvalidConfiguration = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(1007, "InvalidConfiguration"), 
+                "[S7-FEATURE-PUBLISHER] Invalid configuration for S7 feature publisher timer");
+                
+        private static readonly Action<ILogger, Exception?> _logDisposedDuringStartup = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(1008, "DisposedDuringStartup"), 
+                "[S7-FEATURE-PUBLISHER] S7 feature publisher disposed during startup");
+                
+        private static readonly Action<ILogger, Exception?> _logAlreadyDisposed = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(1009, "AlreadyDisposed"), 
+                "[S7-FEATURE-PUBLISHER] S7 feature publisher already disposed during shutdown");
+                
+        private static readonly Action<ILogger, Exception?> _logInvalidOperationShutdown = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(1010, "InvalidOperationShutdown"), 
+                "[S7-FEATURE-PUBLISHER] Invalid operation during S7 feature publisher shutdown");
+                
+        private static readonly Action<ILogger, Exception?> _logInvalidOperationStartup = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(1011, "InvalidOperationStartup"), 
+                "[S7-FEATURE-PUBLISHER] Invalid operation during S7 feature publisher startup");
 
         public S7FeaturePublisher(
             ILogger<S7FeaturePublisher> logger,
@@ -87,45 +115,44 @@ namespace TradingBot.S7
                 var publishInterval = TimeSpan.FromMinutes(_config.BarTimeframeMinutes);
                 _publishTimer = new Timer(PublishFeaturesCallback, null, TimeSpan.Zero, publishInterval);
 
-                _logger.LogInformation("[S7-FEATURE-PUBLISHER] S7 feature publisher started - Publishing every {Minutes} minutes", 
-                    _config.BarTimeframeMinutes);
+                _logFeaturePublisherStarted(_logger, _config.BarTimeframeMinutes, null);
 
                 return Task.CompletedTask;
             }
             catch (ArgumentOutOfRangeException ex)
             {
-                _logger.LogError(ex, "[S7-FEATURE-PUBLISHER] Invalid configuration for S7 feature publisher timer");
+                _logInvalidConfiguration(_logger, ex);
                 return Task.FromException(ex);
             }
             catch (ObjectDisposedException ex)
             {
-                _logger.LogError(ex, "[S7-FEATURE-PUBLISHER] S7 feature publisher disposed during startup");
+                _logDisposedDuringStartup(_logger, ex);
                 return Task.FromException(ex);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[S7-FEATURE-PUBLISHER] Invalid operation during S7 feature publisher startup");
+                _logInvalidOperationStartup(_logger, ex);
                 return Task.FromException(ex);
             }
         }
 
-        public Task StopAsync(CancellationToken cancellationToken)
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
             try
             {
-                _publishTimer?.Dispose();
-                _logger.LogInformation("[S7-FEATURE-PUBLISHER] S7 feature publisher stopped");
-                return Task.CompletedTask;
+                if (_publishTimer != null)
+                    await _publishTimer.DisposeAsync().ConfigureAwait(false);
+                _logFeaturePublisherStopped(_logger, null);
             }
             catch (ObjectDisposedException ex)
             {
-                _logger.LogError(ex, "[S7-FEATURE-PUBLISHER] S7 feature publisher already disposed during shutdown");
-                return Task.FromException(ex);
+                _logAlreadyDisposed(_logger, ex);
+                throw;
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[S7-FEATURE-PUBLISHER] Invalid operation during S7 feature publisher shutdown");
-                return Task.FromException(ex);
+                _logInvalidOperationShutdown(_logger, ex);
+                throw;
             }
         }
 
