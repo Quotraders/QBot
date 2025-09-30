@@ -17,6 +17,27 @@ namespace BotCore.Services
         private readonly IServiceProvider _serviceProvider;
         private readonly ITradingReadinessTracker? _readinessTracker;
 
+        // LoggerMessage delegates for production performance
+        private static readonly Action<ILogger, string, Exception?> LogNoBarsToConsume =
+            LoggerMessage.Define<string>(LogLevel.Debug, new EventId(1, nameof(LogNoBarsToConsume)),
+                "[BAR-CONSUMER] No bars to consume for {ContractId}");
+
+        private static readonly Action<ILogger, int, string, Exception?> LogProcessingBars =
+            LoggerMessage.Define<int, string>(LogLevel.Information, new EventId(2, nameof(LogProcessingBars)),
+                "[BAR-CONSUMER] Processing {BarCount} historical bars for {ContractId}");
+
+        private static readonly Action<ILogger, int, int, Exception?> LogUpdatedReadinessTracker =
+            LoggerMessage.Define<int, int>(LogLevel.Information, new EventId(3, nameof(LogUpdatedReadinessTracker)),
+                "[BAR-CONSUMER] ✅ Updated readiness tracker: +{SeededBarCount} seeded bars, +{BarSeenCount} bars seen");
+
+        private static readonly Action<ILogger, string, Exception?> LogNoReadinessTracker =
+            LoggerMessage.Define<string>(LogLevel.Warning, new EventId(4, nameof(LogNoReadinessTracker)),
+                "[BAR-CONSUMER] ⚠️ No readiness tracker available - bars processed but not counted for readiness");
+
+        private static readonly Action<ILogger, int, string, Exception?> LogSuccessfullyProcessed =
+            LoggerMessage.Define<int, string>(LogLevel.Information, new EventId(5, nameof(LogSuccessfullyProcessed)),
+                "[BAR-CONSUMER] ✅ Successfully processed {BarCount} historical bars for {ContractId}");
+
         public TradingSystemBarConsumer(
             ILogger<TradingSystemBarConsumer> logger,
             IServiceProvider serviceProvider,
@@ -36,11 +57,11 @@ namespace BotCore.Services
             var barList = bars.ToList();
             if (barList.Count == 0)
             {
-                _logger.LogDebug("[BAR-CONSUMER] No bars to consume for {ContractId}", contractId);
+                LogNoBarsToConsume(_logger, contractId, null);
                 return;
             }
 
-            _logger.LogInformation("[BAR-CONSUMER] Processing {BarCount} historical bars for {ContractId}", barList.Count, contractId);
+            LogProcessingBars(_logger, barList.Count, contractId, null);
 
             try
             {
@@ -49,12 +70,11 @@ namespace BotCore.Services
                 {
                     _readinessTracker.IncrementSeededBars(barList.Count);
                     _readinessTracker.IncrementBarsSeen(barList.Count);
-                    _logger.LogInformation("[BAR-CONSUMER] ✅ Updated readiness tracker: +{BarCount} seeded bars, +{BarCount} bars seen", 
-                        barList.Count, barList.Count);
+                    LogUpdatedReadinessTracker(_logger, barList.Count, barList.Count, null);
                 }
                 else
                 {
-                    _logger.LogWarning("[BAR-CONSUMER] ⚠️ No readiness tracker available - bars processed but not counted for readiness");
+                    LogNoReadinessTracker(_logger, contractId, null);
                 }
 
                 // Try to feed bars into any available BarAggregator instances
@@ -63,7 +83,7 @@ namespace BotCore.Services
                 // Try to find and notify any bar event handlers
                 NotifyBarHandlers(contractId, barList);
 
-                _logger.LogInformation("[BAR-CONSUMER] ✅ Successfully processed {BarCount} historical bars for {ContractId}", barList.Count, contractId);
+                LogSuccessfullyProcessed(_logger, barList.Count, contractId, null);
             }
             catch (Exception ex)
             {

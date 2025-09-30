@@ -502,7 +502,10 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     var avgVolume = recentBars.Average(b => b.Volume);
                     var latestVolume = recentBars[^1].Volume;
                     
-                    return avgVolume > 0 ? latestVolume / avgVolume : 1.0;
+                    var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+                    var defaultVolumeRatio = configService?.GetValue<double>("Features:DefaultVolumeRatio", 1.0) ?? 1.0;
+                    
+                    return avgVolume > 0 ? latestVolume / avgVolume : defaultVolumeRatio;
                 }
             }
             
@@ -625,9 +628,14 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     var upperBand = ema + (2.0 * atr);
                     var lowerBand = ema - (2.0 * atr);
                     
-                    if (currentPrice >= upperBand) return 1.0; // Upper touch
-                    if (currentPrice <= lowerBand) return -1.0; // Lower touch
-                    return 0.0; // No touch
+                    var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+                    var upperTouchValue = configService?.GetValue<double>("Features:KeltnerUpperTouchValue", 1.0) ?? 1.0;
+                    var lowerTouchValue = configService?.GetValue<double>("Features:KeltnerLowerTouchValue", -1.0) ?? -1.0;
+                    var noTouchValue = configService?.GetValue<double>("Features:KeltnerNoTouchValue", 0.0) ?? 0.0;
+                    
+                    if (currentPrice >= upperBand) return upperTouchValue; // Upper touch
+                    if (currentPrice <= lowerBand) return lowerTouchValue; // Lower touch
+                    return noTouchValue; // No touch
                 }
             }
             
@@ -662,9 +670,14 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     var upperBand = sma + (2.0 * stdDev);
                     var lowerBand = sma - (2.0 * stdDev);
                     
-                    if (currentPrice >= upperBand) return 1.0; // Upper touch
-                    if (currentPrice <= lowerBand) return -1.0; // Lower touch
-                    return 0.0; // No touch
+                    var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+                    var upperTouchValue = configService?.GetValue<double>("Features:BollingerUpperTouchValue", 1.0) ?? 1.0;
+                    var lowerTouchValue = configService?.GetValue<double>("Features:BollingerLowerTouchValue", -1.0) ?? -1.0;
+                    var noTouchValue = configService?.GetValue<double>("Features:BollingerNoTouchValue", 0.0) ?? 0.0;
+                    
+                    if (currentPrice >= upperBand) return upperTouchValue; // Upper touch
+                    if (currentPrice <= lowerBand) return lowerTouchValue; // Lower touch
+                    return noTouchValue; // No touch
                 }
             }
             
@@ -791,8 +804,11 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                 // In a full implementation, we'd cache recent order book snapshots
                 _logger.LogTrace("[LIQUIDITY-SCORE] Order book data feed available for {Symbol}", symbol);
                 
-                // Apply a small enhancement factor when order book data is available
-                return baseScore * 1.1; // 10% boost for having order book data
+                // Apply enhancement factor from configuration when order book data is available
+                var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+                var orderBookEnhancementFactor = configService?.GetValue<double>("Features:OrderBookEnhancementFactor", 1.1) ?? 1.1;
+                
+                return baseScore * orderBookEnhancementFactor;
             }
             
             return null; // Return null to use base score
@@ -818,6 +834,12 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                 var recentBars = history.TakeLast(10).ToList();
                 var baselineVolume = (double)history.TakeLast(20).Take(10).Average(b => b.Volume);
                 
+                // Get configuration values instead of hardcoded multipliers
+                var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+                var volumeThresholdMultiplier = configService?.GetValue<double>("Features:VolumeThresholdMultiplier", 1.5) ?? 1.5;
+                var spreadThresholdMultiplier = configService?.GetValue<double>("Features:SpreadThresholdMultiplier", 1.2) ?? 1.2;
+                var maxAbsorptionScore = configService?.GetValue<double>("Features:MaxAbsorptionScore", 10.0) ?? 10.0;
+                
                 // Bull absorption: High volume + price rises + above-average volume
                 var bullAbsorption = 0.0;
                 for (int i = 1; i < recentBars.Count; i++)
@@ -826,8 +848,8 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     var previous = recentBars[i - 1];
                     
                     var priceRise = current.Close > previous.Close;
-                    var highVolume = (double)current.Volume > baselineVolume * 1.5; // 50% above baseline
-                    var wideSpread = (current.High - current.Low) > (previous.High - previous.Low) * 1.2m;
+                    var highVolume = (double)current.Volume > baselineVolume * volumeThresholdMultiplier;
+                    var wideSpread = (current.High - current.Low) > (previous.High - previous.Low) * (decimal)spreadThresholdMultiplier;
                     
                     if (priceRise && highVolume && wideSpread)
                     {
@@ -835,7 +857,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     }
                 }
                 
-                var absorptionScore = Math.Min(10.0, bullAbsorption / recentBars.Count);
+                var absorptionScore = Math.Min(maxAbsorptionScore, bullAbsorption / recentBars.Count);
                 _logger.LogTrace("[LIQUIDITY-ABSORB-BULL] Calculated for {Symbol}: {Score:F4}", symbol, absorptionScore);
                 return absorptionScore;
             }
@@ -863,6 +885,12 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                 var recentBars = history.TakeLast(10).ToList();
                 var baselineVolume = (double)history.TakeLast(20).Take(10).Average(b => b.Volume);
                 
+                // Get configuration values instead of hardcoded multipliers (reuse from bull calculation)
+                var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+                var volumeThresholdMultiplier = configService?.GetValue<double>("Features:VolumeThresholdMultiplier", 1.5) ?? 1.5;
+                var spreadThresholdMultiplier = configService?.GetValue<double>("Features:SpreadThresholdMultiplier", 1.2) ?? 1.2;
+                var maxAbsorptionScore = configService?.GetValue<double>("Features:MaxAbsorptionScore", 10.0) ?? 10.0;
+                
                 // Bear absorption: High volume + price falls + above-average volume
                 var bearAbsorption = 0.0;
                 for (int i = 1; i < recentBars.Count; i++)
@@ -871,8 +899,8 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     var previous = recentBars[i - 1];
                     
                     var priceFall = current.Close < previous.Close;
-                    var highVolume = (double)current.Volume > baselineVolume * 1.5; // 50% above baseline
-                    var wideSpread = (current.High - current.Low) > (previous.High - previous.Low) * 1.2m;
+                    var highVolume = (double)current.Volume > baselineVolume * volumeThresholdMultiplier;
+                    var wideSpread = (current.High - current.Low) > (previous.High - previous.Low) * (decimal)spreadThresholdMultiplier;
                     
                     if (priceFall && highVolume && wideSpread)
                     {
@@ -880,7 +908,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     }
                 }
                 
-                var absorptionScore = Math.Min(10.0, bearAbsorption / recentBars.Count);
+                var absorptionScore = Math.Min(maxAbsorptionScore, bearAbsorption / recentBars.Count);
                 _logger.LogTrace("[LIQUIDITY-ABSORB-BEAR] Calculated for {Symbol}: {Score:F4}", symbol, absorptionScore);
                 return absorptionScore;
             }
@@ -932,7 +960,9 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     
                     // VPR score: proximity to high-volume areas
                     var distanceFromVolumeCenter = Math.Abs(currentBucketIndex - maxVolumeIndex);
-                    var vprScore = Math.Max(0.0, 10.0 - distanceFromVolumeCenter);
+                    var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+                    var maxVprScore = configService?.GetValue<double>("Features:MaxVprScore", 10.0) ?? 10.0;
+                    var vprScore = Math.Max(0.0, maxVprScore - distanceFromVolumeCenter);
                     
                     _logger.LogTrace("[LIQUIDITY-VPR] Calculated for {Symbol}: {Score:F4} (current bucket: {Current}, max volume bucket: {MaxVolume})", 
                         symbol, vprScore, currentBucketIndex, maxVolumeIndex);
@@ -974,14 +1004,19 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     
                     // Positive imbalance: price up + volume up = buying pressure
                     // Negative imbalance: price down + volume up = selling pressure
-                    var volumeWeight = Math.Min(3.0, volumeRatio); // Cap at 3x
+                    var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+                    var maxVolumeWeight = configService?.GetValue<double>("Features:MaxVolumeWeight", 3.0) ?? 3.0;
+                    var volumeWeight = Math.Min(maxVolumeWeight, volumeRatio); // Cap at configured max
                     var priceDirection = Math.Sign(priceChange);
                     
                     imbalanceScore += priceDirection * volumeWeight;
                 }
                 
-                // Normalize to -10 to +10 range
-                var normalizedScore = Math.Max(-10.0, Math.Min(10.0, imbalanceScore / recentBars.Count));
+                // Normalize to configured range
+                var configServiceNorm = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+                var minImbalanceScore = configServiceNorm?.GetValue<double>("Features:MinImbalanceScore", -10.0) ?? -10.0;
+                var maxImbalanceScore = configServiceNorm?.GetValue<double>("Features:MaxImbalanceScore", 10.0) ?? 10.0;
+                var normalizedScore = Math.Max(minImbalanceScore, Math.Min(maxImbalanceScore, imbalanceScore / recentBars.Count));
                 
                 _logger.LogTrace("[OFI-PROXY] Calculated for {Symbol}: {Score:F4} (imbalance: {RawScore:F2})", 
                     symbol, normalizedScore, imbalanceScore);
