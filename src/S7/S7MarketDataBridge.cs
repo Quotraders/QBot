@@ -166,7 +166,43 @@ namespace TradingBot.S7
             }
         }
 
-        private async void OnMarketDataReceived(string symbol, object data)
+        private void OnMarketDataReceived(string symbol, object data)
+        {
+            // Use Task.Run to safely handle async work in event handler
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await OnMarketDataReceivedAsync(symbol, data).ConfigureAwait(false);
+                }
+                catch (ArgumentException ex)
+                {
+                    _logger.LogError(ex, "[S7-BRIDGE] Invalid argument in market data processing for {Symbol}", symbol);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    _logger.LogError(ex, "[S7-BRIDGE] Invalid operation in market data processing for {Symbol}", symbol);
+                }
+                catch (OperationCanceledException ex)
+                {
+                    _logger.LogError(ex, "[S7-BRIDGE] Operation canceled in market data processing for {Symbol}", symbol);
+                }
+                catch (TimeoutException ex)
+                {
+                    _logger.LogError(ex, "[S7-BRIDGE] Timeout in market data processing for {Symbol}", symbol);
+                }
+                catch (HttpRequestException ex)
+                {
+                    _logger.LogError(ex, "[S7-BRIDGE] HTTP error in market data processing for {Symbol}", symbol);
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    _logger.LogError(ex, "[S7-BRIDGE] Access denied in market data processing for {Symbol}", symbol);
+                }
+            });
+        }
+
+        private async Task OnMarketDataReceivedAsync(string symbol, object data)
         {
             try
             {
