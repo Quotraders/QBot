@@ -338,6 +338,16 @@ public sealed class PatternDetail
     public bool IsActive { get; set; }
     public int Direction { get; set; } // 1 = bullish, -1 = bearish, 0 = neutral
     public double Confidence { get; set; }
+    
+    /// <summary>
+    /// True if this pattern indicates bullish direction
+    /// </summary>
+    public bool IsBullish => Direction > 0;
+    
+    /// <summary>
+    /// True if this pattern indicates bearish direction
+    /// </summary>
+    public bool IsBearish => Direction < 0;
 }
 
 /// <summary>
