@@ -39,7 +39,16 @@ public static class ParamStore
                 return false; // nothing changed, skip
             return true;
         }
-        catch { return true; }
+        catch (ArgumentException)
+        {
+            // If string formatting or comparison fails, default to applying the change
+            return true;
+        }
+        catch (OutOfMemoryException)
+        {
+            // If we're out of memory, we need to apply the change to be safe
+            return true;
+        }
     }
 
     private static void AppendHistory(string evt, string strat, string root, DateTime? expiresUtc, object payload)
@@ -61,9 +70,21 @@ public static class ParamStore
             var line = JsonSerializer.Serialize(rec) + Environment.NewLine;
             File.AppendAllText(path, line);
         }
-        catch (Exception)
+        catch (DirectoryNotFoundException)
+        {
+            // Best-effort logging only; ignore if directory doesn't exist
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Best-effort logging only; ignore access denied
+        }
+        catch (IOException)
         {
             // Best-effort logging only; ignore IO issues
+        }
+        catch (JsonException)
+        {
+            // Best-effort logging only; ignore JSON serialization issues
         }
     }
 

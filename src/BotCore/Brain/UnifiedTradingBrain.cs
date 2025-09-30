@@ -201,9 +201,34 @@ namespace BotCore.Brain
                 IsInitialized = true;
                 _logger.LogInformation("✅ [UNIFIED-BRAIN] All models loaded successfully - Brain is ONLINE with production CVaR-PPO");
             }
-            catch (Exception ex)
+            catch (FileNotFoundException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Failed to initialize models - Using fallback logic");
+                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Model file not found - Using fallback logic");
+                IsInitialized = false; // Will use rule-based fallbacks
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Model directory not found - Using fallback logic");
+                IsInitialized = false; // Will use rule-based fallbacks
+            }
+            catch (IOException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] I/O error loading models - Using fallback logic");
+                IsInitialized = false; // Will use rule-based fallbacks
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Access denied loading models - Using fallback logic");
+                IsInitialized = false; // Will use rule-based fallbacks
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Invalid operation during model loading - Using fallback logic");
+                IsInitialized = false; // Will use rule-based fallbacks
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Invalid argument for model loading - Using fallback logic");
                 IsInitialized = false; // Will use rule-based fallbacks
             }
         }
