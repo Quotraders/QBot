@@ -10,6 +10,9 @@ namespace BotCore.Risk
 {
     public sealed class RiskEngine
     {
+        // Risk management constants
+        private const decimal EmergencyDrawdownThresholdDollars = 2000m;
+        
         public RiskConfig cfg { get; set; } = new RiskConfig();
         private readonly DrawdownProtectionSystem _drawdownProtection;
 
@@ -201,7 +204,7 @@ namespace BotCore.Risk
                 },
                 new DrawdownAction { 
                     ActionType = "CLOSE_ALL", 
-                    TriggerLevel = 2000m, 
+                    TriggerLevel = EmergencyDrawdownThresholdDollars, 
                     Description = "Close all positions and halt",
                     Action = async () => await EmergencyCloseAll().ConfigureAwait(false)
                 }

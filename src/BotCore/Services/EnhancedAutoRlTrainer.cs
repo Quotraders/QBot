@@ -14,6 +14,10 @@ namespace BotCore
     /// </summary>
     public sealed class EnhancedAutoRlTrainer : IDisposable
     {
+        // Training configuration constants
+        private const int MinimumTrainingSamples = 100;
+        private const int TrainingDataRetentionDays = 7;
+        
         private readonly ILogger<EnhancedAutoRlTrainer> _logger;
         private readonly IEnhancedTrainingDataService _trainingDataService;
         private readonly Timer _timer;
@@ -53,9 +57,9 @@ namespace BotCore
                 // Check total training samples across all sources
                 var totalSamples = await GetTotalTrainingSampleCountAsync().ConfigureAwait(false);
 
-                if (totalSamples < 100)
+                if (totalSamples < MinimumTrainingSamples)
                 {
-                    _logger.LogDebug("[EnhancedAutoRlTrainer] Insufficient data for training: {SampleCount} samples (need 100+)", totalSamples);
+                    _logger.LogDebug("[EnhancedAutoRlTrainer] Insufficient data for training: {SampleCount} samples (need {MinimumSamples}+)", totalSamples, MinimumTrainingSamples);
                     return;
                 }
 
@@ -77,16 +81,24 @@ namespace BotCore
                     _logger.LogInformation("[EnhancedAutoRlTrainer] ✅ Automated training complete! New model deployed");
 
                     // Cleanup old data
-                    await _trainingDataService.CleanupOldDataAsync(7).ConfigureAwait(false);
+                    await _trainingDataService.CleanupOldDataAsync(TrainingDataRetentionDays).ConfigureAwait(false);
                 }
                 else
                 {
                     _logger.LogError("[EnhancedAutoRlTrainer] ❌ Training failed");
                 }
             }
-            catch (Exception ex)
+            catch (DirectoryNotFoundException ex)
             {
-                _logger.LogError(ex, "[EnhancedAutoRlTrainer] Error during automated training check");
+                _logger.LogError(ex, "[EnhancedAutoRlTrainer] Training directory not found during automated training check");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogError(ex, "[EnhancedAutoRlTrainer] Access denied during automated training check");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[EnhancedAutoRlTrainer] Invalid operation during automated training check");
             }
         }
 

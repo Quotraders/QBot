@@ -1462,9 +1462,13 @@ namespace TradingBot.Critical
                 
                 await Task.Delay(EmergencyCommandDelayMs).ConfigureAwait(false); // Brief processing delay
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger?.LogError(ex, "[Emergency] Position protection failed");
+                _logger?.LogError(ex, "[Emergency] Invalid operation during position protection");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger?.LogError(ex, "[Emergency] Invalid argument during position protection");
             }
         }
 
@@ -1493,9 +1497,13 @@ namespace TradingBot.Critical
                 _logger?.LogWarning("[Recovery] Strategies resumed: {Data}", resumeData);
                 await Task.Delay(StrategyResumeDelayMs).ConfigureAwait(false); // Brief processing delay
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger?.LogError(ex, "[Recovery] Failed to resume strategies");
+                _logger?.LogError(ex, "[Recovery] Invalid operation during strategy resume");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger?.LogError(ex, "[Recovery] Invalid argument during strategy resume");
             }
         }
 
