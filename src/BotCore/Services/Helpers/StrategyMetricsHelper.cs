@@ -83,6 +83,27 @@ namespace TradingBot.BotCore.Services.Helpers
         private const decimal SigmaEnterReferenceTendency = 2.0m;   // Reference sigma_enter value for impact calculation
         private const decimal ParameterSensitivityFactor = 0.02m;  // Sensitivity factor for parameter impact calculation
         
+        // Width rank threshold parameter constants
+        private const decimal MaxWidthRankImpact = 0.03m;          // Maximum width rank parameter impact
+        private const decimal DefaultWidthRankThreshold = 0.25m;    // Default width rank threshold value
+        private const decimal WidthRankSensitivityFactor = 0.1m;   // Width rank sensitivity multiplier
+        
+        // Strategy multiplier bound constants
+        private const decimal S2MaxMultiplierBound = 2.0m;         // S2 strategy maximum multiplier bound
+        private const decimal S2DivisorConstant = 2.0m;            // S2 sigma_enter divisor constant
+        private const decimal S2UnitConstant = 1.0m;               // S2 unit constant for calculation
+        
+        private const decimal S3MinMultiplierBound = 0.3m;         // S3 strategy minimum multiplier bound  
+        private const decimal S3MaxMultiplierBound = 1.8m;         // S3 strategy maximum multiplier bound
+        
+        private const decimal S6MinMultiplierBound = 0.4m;         // S6 strategy minimum multiplier bound
+        private const decimal S6MaxMultiplierBound = 1.6m;         // S6 strategy maximum multiplier bound
+        private const decimal S6MomentumLookbackReference = 20.0m; // S6 momentum lookback reference value
+        
+        private const decimal S11MinMultiplierBound = 0.2m;        // S11 strategy minimum multiplier bound
+        private const decimal S11MaxMultiplierBound = 2.5m;        // S11 strategy maximum multiplier bound
+        private const decimal S11TrendLengthReference = 30.0m;     // S11 trend length reference value
+        
         /// <summary>
         /// Get strategy base win rate
         /// Consolidates all strategy-specific win rate logic
@@ -172,7 +193,7 @@ namespace TradingBot.BotCore.Services.Helpers
                     "sigma_enter" when param.DecimalValue.HasValue => 
                         Math.Max(-MaxParameterImpact, Math.Min(MaxParameterImpact, (SigmaEnterReferenceTendency - param.DecimalValue.Value) * ParameterSensitivityFactor)),
                     "width_rank_threshold" when param.DecimalValue.HasValue => 
-                        Math.Max(-0.03m, Math.Min(0.03m, (0.25m - param.DecimalValue.Value) * 0.1m)),
+                        Math.Max(-MaxWidthRankImpact, Math.Min(MaxWidthRankImpact, (DefaultWidthRankThreshold - param.DecimalValue.Value) * WidthRankSensitivityFactor)),
                     _ => 0m
                 };
             }
@@ -185,9 +206,9 @@ namespace TradingBot.BotCore.Services.Helpers
         /// </summary>
         private static decimal GetS2StrategyMultiplier(IReadOnlyList<TradingBotTuningRunner.ParameterConfig> parameters)
         {
-            var sigmaEnter = GetParameterValue(parameters, "sigma_enter", 2.0m);
-            var widthRank = GetParameterValue(parameters, "width_rank_threshold", 0.25m);
-            return Math.Max(MinimumMultiplierBound, Math.Min(2.0m, (sigmaEnter / 2.0m) * (1.0m - widthRank)));
+            var sigmaEnter = GetParameterValue(parameters, "sigma_enter", SigmaEnterReferenceTendency);
+            var widthRank = GetParameterValue(parameters, "width_rank_threshold", DefaultWidthRankThreshold);
+            return Math.Max(MinimumMultiplierBound, Math.Min(S2MaxMultiplierBound, (sigmaEnter / S2DivisorConstant) * (S2UnitConstant - widthRank)));
         }
 
         /// <summary>
@@ -197,7 +218,7 @@ namespace TradingBot.BotCore.Services.Helpers
         {
             var squeezeThreshold = GetParameterValue(parameters, "squeeze_threshold", 0.8m);
             var breakoutConfidence = GetParameterValue(parameters, "breakout_confidence", 0.7m);
-            return Math.Max(0.3m, Math.Min(1.8m, squeezeThreshold * breakoutConfidence));
+            return Math.Max(S3MinMultiplierBound, Math.Min(S3MaxMultiplierBound, squeezeThreshold * breakoutConfidence));
         }
 
         /// <summary>
@@ -207,7 +228,7 @@ namespace TradingBot.BotCore.Services.Helpers
         {
             var momentumLookback = GetParameterValue(parameters, "momentum_lookback", 20);
             var momentumThreshold = GetParameterValue(parameters, "momentum_threshold", 0.6m);
-            return Math.Max(0.4m, Math.Min(1.6m, (momentumLookback / 20.0m) * momentumThreshold));
+            return Math.Max(S6MinMultiplierBound, Math.Min(S6MaxMultiplierBound, (momentumLookback / S6MomentumLookbackReference) * momentumThreshold));
         }
 
         /// <summary>
@@ -217,7 +238,7 @@ namespace TradingBot.BotCore.Services.Helpers
         {
             var trendLength = GetParameterValue(parameters, "trend_length", 30);
             var trendStrength = GetParameterValue(parameters, "trend_strength", 0.8m);
-            return Math.Max(0.2m, Math.Min(2.5m, (trendLength / 30.0m) * trendStrength));
+            return Math.Max(S11MinMultiplierBound, Math.Min(S11MaxMultiplierBound, (trendLength / S11TrendLengthReference) * trendStrength));
         }
 
         /// <summary>

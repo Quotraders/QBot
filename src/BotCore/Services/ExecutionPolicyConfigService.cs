@@ -10,6 +10,9 @@ namespace TradingBot.BotCore.Services
     /// </summary>
     public class ExecutionPolicyConfigService : IExecutionPolicyConfig
     {
+        // Default execution policy constants
+        private const int DefaultLimitOrderTimeoutSeconds = 30;
+        
         private readonly IConfiguration _config;
         private readonly ILogger<ExecutionPolicyConfigService> _logger;
 
@@ -29,7 +32,7 @@ namespace TradingBot.BotCore.Services
             _config.GetValue("ExecutionPolicy:UseAggressiveFillsDuringVolatility", true);
 
         public int GetLimitOrderTimeoutSeconds() => 
-            _config.GetValue("ExecutionPolicy:LimitOrderTimeoutSeconds", 30);
+            _config.GetValue("ExecutionPolicy:LimitOrderTimeoutSeconds", DefaultLimitOrderTimeoutSeconds);
 
         public bool EnableSmartOrderRouting() => 
             _config.GetValue("ExecutionPolicy:EnableSmartOrderRouting", false);
