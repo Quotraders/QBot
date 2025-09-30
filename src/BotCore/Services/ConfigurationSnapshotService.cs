@@ -127,9 +127,14 @@ namespace TradingBot.BotCore.Services
                 }
 
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "Error capturing configuration snapshot values");
+                _logger.LogError(ex, "Service resolution error capturing configuration snapshot values");
+                values["capture_error"] = ex.Message;
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "Invalid argument error capturing configuration snapshot values");
                 values["capture_error"] = ex.Message;
             }
 
@@ -188,7 +193,15 @@ namespace TradingBot.BotCore.Services
                 {
                     return (T)Convert.ChangeType(value, typeof(T));
                 }
-                catch
+                catch (InvalidCastException)
+                {
+                    return defaultValue;
+                }
+                catch (FormatException)
+                {
+                    return defaultValue;
+                }
+                catch (OverflowException)
                 {
                     return defaultValue;
                 }

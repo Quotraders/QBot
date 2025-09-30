@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Text.Json;
 using System.Data.SQLite;
+using System.Net.Http;
 using Microsoft.Extensions.Logging;
 using TradingBot.Abstractions;
 
@@ -444,9 +445,13 @@ namespace TradingBot.Critical
                 cmd.Parameters.AddWithValue("@ExecutionProof", order.ExecutionProof);
                 cmd.ExecuteNonQuery();
             }
-            catch (Exception ex)
+            catch (SQLiteException ex)
             {
-                _logger.LogError(ex, "Failed to log verified execution for order {OrderId}", order.OrderId);
+                _logger.LogError(ex, "Database error logging verified execution for order {OrderId}", order.OrderId);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Invalid operation logging verified execution for order {OrderId}", order.OrderId);
             }
         }
 
@@ -476,9 +481,13 @@ namespace TradingBot.Critical
                 cmd.Parameters.AddWithValue("@Price", order.Price);
                 cmd.ExecuteNonQuery();
             }
-            catch (Exception ex)
+            catch (SQLiteException ex)
             {
-                _logger.LogError(ex, "Failed to log order failure alert for {OrderId}", order.OrderId);
+                _logger.LogError(ex, "Database error logging order failure alert for {OrderId}", order.OrderId);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Invalid operation logging order failure alert for {OrderId}", order.OrderId);
             }
 
             return Task.CompletedTask;
@@ -510,9 +519,17 @@ namespace TradingBot.Critical
                     _logger.LogWarning("[ORDER_QUERY] Failed to query order {OrderId}: {StatusCode}", SecurityHelpers.MaskOrderId(orderId), response.StatusCode);
                 }
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "[ORDER_QUERY] Error querying order status for {OrderId}", SecurityHelpers.MaskOrderId(orderId));
+                _logger.LogError(ex, "[ORDER_QUERY] HTTP error querying order status for {OrderId}", SecurityHelpers.MaskOrderId(orderId));
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "[ORDER_QUERY] JSON parsing error for order {OrderId}", SecurityHelpers.MaskOrderId(orderId));
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "[ORDER_QUERY] Request timeout querying order {OrderId}", SecurityHelpers.MaskOrderId(orderId));
             }
             
             return null;
