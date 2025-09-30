@@ -17,6 +17,9 @@ namespace BotCore.Integration;
 /// </summary>
 public sealed class UnifiedBarPipeline
 {
+    // Pipeline health constants
+    private const double HealthyErrorRateThreshold = 0.01; // 1% error rate threshold
+    
     private readonly ILogger<UnifiedBarPipeline> _logger;
     private readonly IServiceProvider _serviceProvider;
     
@@ -358,7 +361,7 @@ public sealed class UnifiedBarPipeline
             PipelineErrors = _pipelineErrors,
             LastBarProcessed = _lastBarProcessed,
             ErrorRate = _barsProcessed > 0 ? (double)_pipelineErrors / _barsProcessed : 0.0,
-            IsHealthy = _pipelineErrors == 0 || (_barsProcessed > 0 && (double)_pipelineErrors / _barsProcessed < 0.01) // < 1% error rate
+            IsHealthy = _pipelineErrors == 0 || (_barsProcessed > 0 && (double)_pipelineErrors / _barsProcessed < HealthyErrorRateThreshold) // < 1% error rate
         };
     }
 }
