@@ -150,7 +150,7 @@ namespace BotCore.Services
                 // Fallback: Use your sophisticated session analysis instead of simulation
                 var totalExposure = positions.Sum(p => Math.Abs(p.Size * p.CurrentPrice));
 
-                // Use your ES_NQ_TradingSchedule logic for session weighting
+                // Use your EsNqTradingSchedule logic for session weighting
                 var sessionWeight = GetSessionExposureWeight(session);
                 return (double)(totalExposure * sessionWeight);
             }
@@ -426,13 +426,13 @@ namespace BotCore.Services
         }
         
         /// <summary>
-        /// Get session exposure weight using your ES_NQ_TradingSchedule algorithms
+        /// Get session exposure weight using your EsNqTradingSchedule algorithms
         /// </summary>
         private decimal GetSessionExposureWeight(string session)
         {
             try
             {
-                // Integration point: Use your ES_NQ_TradingSchedule session analysis
+                // Integration point: Use your EsNqTradingSchedule session analysis
                 // Connect to your sophisticated session management logic
                 
                 return session.ToLower() switch

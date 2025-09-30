@@ -15,7 +15,7 @@ namespace TopstepX.Bot.Core.Services
     /// Real-time Position Tracking and Risk Management System
     /// Critical component for live trading safety
     /// </summary>
-    public class PositionTrackingSystem
+    public class PositionTrackingSystem : IDisposable
     {
         private readonly ILogger<PositionTrackingSystem> _logger;
         private readonly ConcurrentDictionary<string, Position> _positions = new();
@@ -24,11 +24,7 @@ namespace TopstepX.Bot.Core.Services
         private readonly Timer _reconciliationTimer;
         private readonly object _lockObject = new();
         
-        // Risk management constants (S109 compliance)
-        private const decimal DEFAULT_MAX_DAILY_LOSS = -1000m; // $1000 max daily loss
-        private const decimal DEFAULT_MAX_POSITION_SIZE = 5m; // 5 contracts max
-        private const decimal DEFAULT_MAX_DRAWDOWN = -2000m; // $2000 max drawdown
-        private const int DEFAULT_MAX_ORDERS_PER_MINUTE = 10;
+        // Risk management constants (S109 compliance) - Only used constants kept
         private const decimal DEFAULT_ACCOUNT_BALANCE = 50000m; // Account size
         private const decimal DEFAULT_MAX_RISK_PER_TRADE = 200m; // $200 max per trade
         

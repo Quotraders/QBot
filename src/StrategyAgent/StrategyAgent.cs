@@ -111,7 +111,7 @@ namespace StrategyAgent
 
             // Enhanced ES/NQ correlation guard with 24/7 session awareness
             var currentTime = snap.UtcNow.TimeOfDay;
-            var currentSession = BotCore.Config.ES_NQ_TradingSchedule.GetCurrentSession(currentTime);
+            var currentSession = BotCore.Config.EsNqTradingSchedule.GetCurrentSession(currentTime);
 
             if (currentSession != null)
             {
@@ -123,7 +123,7 @@ namespace StrategyAgent
                 var adjustedSignals = new List<Signal>();
                 foreach (var signal in outSignals)
                 {
-                    var sizeMultiplier = BotCore.Config.ES_NQ_TradingSchedule.GetPositionSizeMultiplier(signal.Symbol, currentTime);
+                    var sizeMultiplier = BotCore.Config.EsNqTradingSchedule.GetPositionSizeMultiplier(signal.Symbol, currentTime);
                     var adjustedSignal = signal with
                     {
                         Size = (int)(signal.Size * sizeMultiplier)

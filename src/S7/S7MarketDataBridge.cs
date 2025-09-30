@@ -53,6 +53,94 @@ namespace TradingBot.S7
             LoggerMessage.Define(LogLevel.Warning, new EventId(2007, "MarketDataServiceNotAvailable"), 
                 "[S7-BRIDGE] Market data service not available - S7 bridge disabled");
 
+        private static readonly Action<ILogger, string, Exception?> _logMonitoringSymbols = 
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(2008, "MonitoringSymbols"), 
+                "[S7-BRIDGE] Monitoring symbols: {Symbols}");
+
+        private static readonly Action<ILogger, Exception?> _logReflectionMethodError = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(2009, "ReflectionMethodError"), 
+                "[S7-BRIDGE] Failed to invoke reflection method for S7 market data bridge");
+
+        private static readonly Action<ILogger, Exception?> _logInvalidOperationSetup = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(2010, "InvalidOperationSetup"), 
+                "[S7-BRIDGE] Invalid operation during S7 market data bridge setup");
+
+        private static readonly Action<ILogger, Exception?> _logTypeLoadShutdown = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(2011, "TypeLoadShutdown"), 
+                "[S7-BRIDGE] Failed to load types during S7 bridge shutdown");
+
+        private static readonly Action<ILogger, Exception?> _logInvocationShutdown = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(2012, "InvocationShutdown"), 
+                "[S7-BRIDGE] Failed to invoke reflection method during S7 bridge shutdown");
+
+        private static readonly Action<ILogger, Exception?> _logInvalidOperationShutdown = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(2013, "InvalidOperationShutdown"), 
+                "[S7-BRIDGE] Invalid operation during S7 bridge shutdown");
+
+        private static readonly Action<ILogger, string, Exception?> _logMarketDataArgumentError = 
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(2014, "MarketDataArgumentError"), 
+                "[S7-BRIDGE] Invalid argument in market data processing for {Symbol}");
+
+        private static readonly Action<ILogger, string, Exception?> _logMarketDataOperationError = 
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(2015, "MarketDataOperationError"), 
+                "[S7-BRIDGE] Invalid operation in market data processing for {Symbol}");
+
+        private static readonly Action<ILogger, string, Exception?> _logMarketDataCancelledError = 
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(2016, "MarketDataCancelledError"), 
+                "[S7-BRIDGE] Operation canceled in market data processing for {Symbol}");
+
+        private static readonly Action<ILogger, string, Exception?> _logMarketDataTimeoutError = 
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(2017, "MarketDataTimeoutError"), 
+                "[S7-BRIDGE] Timeout in market data processing for {Symbol}");
+
+        private static readonly Action<ILogger, string, Exception?> _logMarketDataHttpError = 
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(2018, "MarketDataHttpError"), 
+                "[S7-BRIDGE] HTTP error in market data processing for {Symbol}");
+
+        private static readonly Action<ILogger, string, Exception?> _logMarketDataAccessError = 
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(2019, "MarketDataAccessError"), 
+                "[S7-BRIDGE] Access denied in market data processing for {Symbol}");
+
+        private static readonly Action<ILogger, string, decimal, DateTime, Exception?> _logServiceUpdated = 
+            LoggerMessage.Define<string, decimal, DateTime>(LogLevel.Trace, new EventId(2020, "ServiceUpdated"), 
+                "[S7-BRIDGE] Updated S7 service: {Symbol} @ {Price} ({Timestamp})");
+
+        private static readonly Action<ILogger, string, string, Exception?> _logCouldNotExtractPrice = 
+            LoggerMessage.Define<string, string>(LogLevel.Debug, new EventId(2021, "CouldNotExtractPrice"), 
+                "[S7-BRIDGE] Could not extract close price from market data for {Symbol}: {DataType}");
+
+        private static readonly Action<ILogger, string, Exception?> _logReflectionProcessingError = 
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(2022, "ReflectionProcessingError"), 
+                "[S7-BRIDGE] Reflection error processing market data for {Symbol}");
+
+        private static readonly Action<ILogger, string, Exception?> _logInvocationProcessingError = 
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(2023, "InvocationProcessingError"), 
+                "[S7-BRIDGE] Invocation error processing market data for {Symbol}");
+
+        private static readonly Action<ILogger, string, Exception?> _logTypeConversionError = 
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(2024, "TypeConversionError"), 
+                "[S7-BRIDGE] Type conversion error processing market data for {Symbol}");
+
+        private static readonly Action<ILogger, string, Exception?> _logInvalidOperationProcessing = 
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(2025, "InvalidOperationProcessing"), 
+                "[S7-BRIDGE] Invalid operation processing market data for {Symbol}");
+
+        private static readonly Action<ILogger, string, Exception?> _logHttpRequestAuditViolation = 
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(2026, "HttpRequestAuditViolation"), 
+                "[S7-BRIDGE] [S7-AUDIT-VIOLATION] HTTP request error processing market data for {Symbol} - FAIL-CLOSED + TELEMETRY");
+
+        private static readonly Action<ILogger, string, Exception?> _logOperationCancelledAuditViolation = 
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(2027, "OperationCancelledAuditViolation"), 
+                "[S7-BRIDGE] [S7-AUDIT-VIOLATION] Operation canceled processing market data for {Symbol} - FAIL-CLOSED + TELEMETRY");
+
+        private static readonly Action<ILogger, string, Exception?> _logTimeoutAuditViolation = 
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(2028, "TimeoutAuditViolation"), 
+                "[S7-BRIDGE] [S7-AUDIT-VIOLATION] Timeout processing market data for {Symbol} - FAIL-CLOSED + TELEMETRY");
+
+        private static readonly Action<ILogger, string, Exception?> _logArgumentAuditViolation = 
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(2029, "ArgumentAuditViolation"), 
+                "[S7-BRIDGE] [S7-AUDIT-VIOLATION] Invalid argument processing market data for {Symbol} - FAIL-CLOSED + TELEMETRY");
+
         public S7MarketDataBridge(
             ILogger<S7MarketDataBridge> logger,
             IServiceProvider serviceProvider)
@@ -99,9 +187,13 @@ namespace TradingBot.S7
                             var handler = new Action<string, object>(OnMarketDataReceived);
                             eventInfo.AddEventHandler(_marketDataService, handler);
                             
-                            _logger.LogInformation("[S7-BRIDGE] S7 market data bridge connected to EnhancedMarketDataFlowService");
-                            _logger.LogInformation("[S7-BRIDGE] Monitoring symbols: {Symbols}", string.Join(", ", _config.Symbols));
+                            _logBridgeStarted(_logger, null);
+                            _logMonitoringSymbols(_logger, string.Join(", ", _config.Symbols), null);
                             return Task.CompletedTask;
+                        }
+                        else
+                        {
+                            _logSubscriptionError(_logger, null);
                         }
                     }
                 }
@@ -116,12 +208,12 @@ namespace TradingBot.S7
             }
             catch (TargetInvocationException ex)
             {
-                _logger.LogError(ex, "[S7-BRIDGE] Failed to invoke reflection method for S7 market data bridge");
+                _logReflectionMethodError(_logger, ex);
                 return Task.FromException(ex);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[S7-BRIDGE] Invalid operation during S7 market data bridge setup");
+                _logInvalidOperationSetup(_logger, ex);
                 return Task.FromException(ex);
             }
         }
@@ -147,22 +239,58 @@ namespace TradingBot.S7
             }
             catch (ReflectionTypeLoadException ex)
             {
-                _logger.LogError(ex, "[S7-BRIDGE] Failed to load types during S7 bridge shutdown");
+                _logTypeLoadShutdown(_logger, ex);
                 return Task.FromException(ex);
             }
             catch (TargetInvocationException ex)
             {
-                _logger.LogError(ex, "[S7-BRIDGE] Failed to invoke reflection method during S7 bridge shutdown");
+                _logInvocationShutdown(_logger, ex);
                 return Task.FromException(ex);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[S7-BRIDGE] Invalid operation during S7 bridge shutdown");
+                _logInvalidOperationShutdown(_logger, ex);
                 return Task.FromException(ex);
             }
         }
 
-        private async void OnMarketDataReceived(string symbol, object data)
+        private void OnMarketDataReceived(string symbol, object data)
+        {
+            // Use Task.Run to safely handle async work in event handler
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await OnMarketDataReceivedAsync(symbol, data).ConfigureAwait(false);
+                }
+                catch (ArgumentException ex)
+                {
+                    _logMarketDataArgumentError(_logger, symbol, ex);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    _logMarketDataOperationError(_logger, symbol, ex);
+                }
+                catch (OperationCanceledException ex)
+                {
+                    _logMarketDataCancelledError(_logger, symbol, ex);
+                }
+                catch (TimeoutException ex)
+                {
+                    _logMarketDataTimeoutError(_logger, symbol, ex);
+                }
+                catch (HttpRequestException ex)
+                {
+                    _logMarketDataHttpError(_logger, symbol, ex);
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    _logMarketDataAccessError(_logger, symbol, ex);
+                }
+            });
+        }
+
+        private async Task OnMarketDataReceivedAsync(string symbol, object data)
         {
             try
             {
@@ -228,46 +356,44 @@ namespace TradingBot.S7
                     // Update S7 service with new price data
                     await _s7Service.UpdateAsync(symbol, closePrice.Value, timestamp).ConfigureAwait(false);
 
-                    _logger.LogTrace("[S7-BRIDGE] Updated S7 service: {Symbol} @ {Price} ({Timestamp})", 
-                        symbol, closePrice.Value, timestamp);
+                    _logServiceUpdated(_logger, symbol, closePrice.Value, timestamp, null);
                 }
                 else
                 {
-                    _logger.LogDebug("[S7-BRIDGE] Could not extract close price from market data for {Symbol}: {DataType}", 
-                        symbol, data.GetType().Name);
+                    _logCouldNotExtractPrice(_logger, symbol, data.GetType().Name, null);
                 }
             }
             catch (ReflectionTypeLoadException ex)
             {
-                _logger.LogError(ex, "[S7-BRIDGE] Reflection error processing market data for {Symbol}", symbol);
+                _logReflectionProcessingError(_logger, symbol, ex);
             }
             catch (TargetInvocationException ex)
             {
-                _logger.LogError(ex, "[S7-BRIDGE] Invocation error processing market data for {Symbol}", symbol);
+                _logInvocationProcessingError(_logger, symbol, ex);
             }
             catch (InvalidCastException ex)
             {
-                _logger.LogError(ex, "[S7-BRIDGE] Type conversion error processing market data for {Symbol}", symbol);
+                _logTypeConversionError(_logger, symbol, ex);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[S7-BRIDGE] Invalid operation processing market data for {Symbol}", symbol);
+                _logInvalidOperationProcessing(_logger, symbol, ex);
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "[S7-BRIDGE] [S7-AUDIT-VIOLATION] HTTP request error processing market data for {Symbol} - FAIL-CLOSED + TELEMETRY", symbol);
+                _logHttpRequestAuditViolation(_logger, symbol, ex);
             }
             catch (OperationCanceledException ex)
             {
-                _logger.LogError(ex, "[S7-BRIDGE] [S7-AUDIT-VIOLATION] Operation canceled processing market data for {Symbol} - FAIL-CLOSED + TELEMETRY", symbol);
+                _logOperationCancelledAuditViolation(_logger, symbol, ex);
             }
             catch (TimeoutException ex)
             {
-                _logger.LogError(ex, "[S7-BRIDGE] [S7-AUDIT-VIOLATION] Timeout processing market data for {Symbol} - FAIL-CLOSED + TELEMETRY", symbol);
+                _logTimeoutAuditViolation(_logger, symbol, ex);
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "[S7-BRIDGE] [S7-AUDIT-VIOLATION] Invalid argument processing market data for {Symbol} - FAIL-CLOSED + TELEMETRY", symbol);
+                _logArgumentAuditViolation(_logger, symbol, ex);
             }
         }
 

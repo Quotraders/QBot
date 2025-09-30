@@ -68,8 +68,8 @@ public sealed class Hysteresis
 
 public sealed class BufferConfig
 {
-    [JsonPropertyName("ES_ticks")] public int ES_Ticks { get; set; }
-    [JsonPropertyName("NQ_ticks")] public int NQ_Ticks { get; set; }
+    [JsonPropertyName("ES_ticks")] public int EsTicks { get; set; }
+    [JsonPropertyName("NQ_ticks")] public int NqTicks { get; set; }
 }
 
 public sealed class AlwaysOnConfig

@@ -24,7 +24,6 @@ namespace BotCore
     public class EnhancedTrainingDataService : IEnhancedTrainingDataService
     {
         private readonly ILogger<EnhancedTrainingDataService> _logger;
-        private readonly string _dataPath;
         private readonly string _liveDataPath;
         private readonly List<TradeData> _currentSession = new();
         private int _tradeCounter;
@@ -32,10 +31,10 @@ namespace BotCore
         public EnhancedTrainingDataService(ILogger<EnhancedTrainingDataService> logger)
         {
             _logger = logger;
-            _dataPath = Path.Combine(AppContext.BaseDirectory, "data", "rl_training");
-            _liveDataPath = Path.Combine(_dataPath, "live");
+            var dataPath = Path.Combine(AppContext.BaseDirectory, "data", "rl_training");
+            _liveDataPath = Path.Combine(dataPath, "live");
 
-            Directory.CreateDirectory(_dataPath);
+            Directory.CreateDirectory(dataPath);
             Directory.CreateDirectory(_liveDataPath);
 
             _logger.LogInformation("[EnhancedTrainingData] Initialized - saving to {DataPath}", _liveDataPath);

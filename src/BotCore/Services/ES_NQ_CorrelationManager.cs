@@ -638,7 +638,7 @@ using System.Globalization;
         {
             try
             {
-                // Integration point: Use your ES_NQ_TradingSchedule logic
+                // Integration point: Use your EsNqTradingSchedule logic
                 var timeOfDay = DateTime.UtcNow.AddMinutes(-barIndex * 5).TimeOfDay;
                 var hour = timeOfDay.Hours;
                 

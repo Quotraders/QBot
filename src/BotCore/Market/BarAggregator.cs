@@ -44,7 +44,7 @@ namespace BotCore.Market
                 if (bar is not null)
                 {
                     AddHistory(cid, bar);
-                    OnBarClosed?.Invoke(cid, bar);
+                    OnBarClosed?.Invoke(this, new BarClosedEventArgs(cid, bar));
                 }
                 // open new
                 _working[cid] = new Bar(start, end, price, price, price, price, qty);
@@ -63,7 +63,7 @@ namespace BotCore.Market
             {
                 var b = _working[cid];
                 AddHistory(cid, b);
-                OnBarClosed?.Invoke(cid, b);
+                OnBarClosed?.Invoke(this, new BarClosedEventArgs(cid, b));
                 _working.Remove(cid);
             }
         }

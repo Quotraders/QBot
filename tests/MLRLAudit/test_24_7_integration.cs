@@ -46,7 +46,7 @@ namespace TestEnhancedZones
             
             foreach (var time in testTimes)
             {
-                var session = ES_NQ_TradingSchedule.GetCurrentSession(time);
+                var session = EsNqTradingSchedule.GetCurrentSession(time);
                 if (session != null)
                 {
                     Console.WriteLine($"  ✓ {time:hh\\:mm} -> {session.Description} (Primary: {session.PrimaryInstrument})");

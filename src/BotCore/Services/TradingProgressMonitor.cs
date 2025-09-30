@@ -155,7 +155,7 @@ namespace BotCore.Services
                         }).ToArray()),
                     bestTimes = GetBestTradingTimes().Take(5).ToArray(),
                     activeStrategies = _metrics.Values.Select(m => m.StrategyId).Distinct().Count(),
-                    currentSession = ES_NQ_TradingSchedule.GetCurrentSession(DateTime.UtcNow.TimeOfDay)?.Description ?? "MARKET CLOSED"
+                    currentSession = EsNqTradingSchedule.GetCurrentSession(DateTime.UtcNow.TimeOfDay)?.Description ?? "MARKET CLOSED"
                 };
             }
 
@@ -217,7 +217,7 @@ namespace BotCore.Services
         private string GetSessionForHour(int hour)
         {
             var timeSpan = new TimeSpan(hour, 0, 0);
-            var session = ES_NQ_TradingSchedule.GetCurrentSession(timeSpan);
+            var session = EsNqTradingSchedule.GetCurrentSession(timeSpan);
             return session?.Description ?? "Unknown";
         }
 

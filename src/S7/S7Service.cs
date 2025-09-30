@@ -52,6 +52,102 @@ namespace TradingBot.S7
             LoggerMessage.Define<string>(LogLevel.Warning, new EventId(2002, "UnknownSymbol"), 
                 "Received price update for unknown symbol: {Symbol}");
 
+        private static readonly Action<ILogger, Exception?> _logZeroZScoreAuditViolation = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(2003, "ZeroZScoreAuditViolation"), 
+                "[S7-AUDIT-VIOLATION] Zero Z-scores detected - TRIGGERING HOLD + TELEMETRY");
+
+        private static readonly Action<ILogger, Exception?> _logInvalidZScoreAuditViolation = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(2004, "InvalidZScoreAuditViolation"), 
+                "[S7-AUDIT-VIOLATION] Invalid Z-score data - TRIGGERING HOLD + TELEMETRY");
+
+        private static readonly Action<ILogger, Exception?> _logMissingStateAuditViolation = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(2005, "MissingStateAuditViolation"), 
+                "[S7-AUDIT-VIOLATION] Missing state data for leader calculation - TRIGGERING HOLD + TELEMETRY");
+
+        private static readonly Action<ILogger, Exception?> _logBreadthUnavailableError = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(2006, "BreadthUnavailableError"), 
+                "[S7-AUDIT-VIOLATION] Breadth feed unavailable but required - TRIGGERING HOLD + TELEMETRY");
+
+        private static readonly Action<ILogger, Exception?> _logBreadthUnavailableWarning = 
+            LoggerMessage.Define(LogLevel.Warning, new EventId(2007, "BreadthUnavailableWarning"), 
+                "[S7-AUDIT-VIOLATION] Breadth feed unavailable, using configured base score");
+
+        private static readonly Action<ILogger, Exception?> _logInvalidOperationBreadthError = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(2008, "InvalidOperationBreadthError"), 
+                "[S7-AUDIT-VIOLATION] Invalid operation in breadth calculation - TRIGGERING HOLD + TELEMETRY");
+
+        private static readonly Action<ILogger, Exception?> _logInvalidOperationBreadthWarning = 
+            LoggerMessage.Define(LogLevel.Warning, new EventId(2009, "InvalidOperationBreadthWarning"), 
+                "[S7-AUDIT-VIOLATION] Invalid operation in breadth calculation, using configured base score");
+
+        private static readonly Action<ILogger, Exception?> _logTimeoutBreadthError = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(2010, "TimeoutBreadthError"), 
+                "[S7-AUDIT-VIOLATION] Timeout in breadth calculation - TRIGGERING HOLD + TELEMETRY");
+
+        private static readonly Action<ILogger, Exception?> _logTimeoutBreadthWarning = 
+            LoggerMessage.Define(LogLevel.Warning, new EventId(2011, "TimeoutBreadthWarning"), 
+                "[S7-AUDIT-VIOLATION] Timeout in breadth calculation, using configured base score");
+
+        private static readonly Action<ILogger, Exception?> _logArgumentBreadthError = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(2012, "ArgumentBreadthError"), 
+                "[S7-AUDIT-VIOLATION] Invalid argument in breadth calculation - TRIGGERING HOLD + TELEMETRY");
+
+        private static readonly Action<ILogger, Exception?> _logArgumentBreadthWarning = 
+            LoggerMessage.Define(LogLevel.Warning, new EventId(2013, "ArgumentBreadthWarning"), 
+                "[S7-AUDIT-VIOLATION] Invalid argument in breadth calculation, using configured base score");
+
+        private static readonly Action<ILogger, string, decimal, decimal, bool, Exception?> _logTelemetryAnalysis = 
+            LoggerMessage.Define<string, decimal, decimal, bool>(LogLevel.Information, new EventId(2014, "TelemetryAnalysis"), 
+                "S7 Analysis - Leader: {Leader}, Coherence: {Coherence:F3}, Strength: {Strength:F3}, Actionable: {Actionable}");
+
+        private static readonly Action<ILogger, string, int, Exception?> _logResetCooldown = 
+            LoggerMessage.Define<string, int>(LogLevel.Debug, new EventId(2015, "ResetCooldown"), 
+                "Reset cooldown for {Symbol} to {Bars} bars");
+
+        private static readonly Action<ILogger, string, Exception?> _logAdaptiveInvalidOperation = 
+            LoggerMessage.Define<string>(LogLevel.Warning, new EventId(2016, "AdaptiveInvalidOperation"), 
+                "[S7-ADAPTIVE] Invalid operation calculating adaptive threshold for {Symbol}, using default");
+
+        private static readonly Action<ILogger, string, Exception?> _logAdaptiveInvalidArgument = 
+            LoggerMessage.Define<string>(LogLevel.Warning, new EventId(2017, "AdaptiveInvalidArgument"), 
+                "[S7-ADAPTIVE] Invalid argument calculating adaptive threshold for {Symbol}, using default");
+
+        private static readonly Action<ILogger, string, Exception?> _logAdaptiveTimeout = 
+            LoggerMessage.Define<string>(LogLevel.Warning, new EventId(2018, "AdaptiveTimeout"), 
+                "[S7-ADAPTIVE] Timeout calculating adaptive threshold for {Symbol}, using default");
+
+        private static readonly Action<ILogger, Exception?> _logDispersionBreadthUnavailable = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(2019, "DispersionBreadthUnavailable"), 
+                "[S7-DISPERSION] Breadth data unavailable for dispersion calculation - TRIGGERING HOLD");
+
+        private static readonly Action<ILogger, Exception?> _logDispersionInvalidArguments = 
+            LoggerMessage.Define(LogLevel.Warning, new EventId(2020, "DispersionInvalidArguments"), 
+                "[S7-DISPERSION] Invalid breadth feed arguments");
+
+        private static readonly Action<ILogger, Exception?> _logDispersionOperationFailed = 
+            LoggerMessage.Define(LogLevel.Warning, new EventId(2021, "DispersionOperationFailed"), 
+                "[S7-DISPERSION] Breadth feed operation failed");
+
+        private static readonly Action<ILogger, string, Exception?> _logDispersionAdjustmentArguments = 
+            LoggerMessage.Define<string>(LogLevel.Warning, new EventId(2022, "DispersionAdjustmentArguments"), 
+                "[S7-DISPERSION] Invalid dispersion adjustment arguments for {Symbol}");
+
+        private static readonly Action<ILogger, string, Exception?> _logDispersionSizeAdjustmentFailed = 
+            LoggerMessage.Define<string>(LogLevel.Warning, new EventId(2023, "DispersionSizeAdjustmentFailed"), 
+                "[S7-DISPERSION] Failed to apply size adjustments for {Symbol}");
+
+        private static readonly Action<ILogger, Exception?> _logFusionInvalidOperation = 
+            LoggerMessage.Define(LogLevel.Warning, new EventId(2024, "FusionInvalidOperation"), 
+                "[S7-FUSION] Invalid operation adding fusion tags");
+
+        private static readonly Action<ILogger, Exception?> _logFusionInvalidArgument = 
+            LoggerMessage.Define(LogLevel.Warning, new EventId(2025, "FusionInvalidArgument"), 
+                "[S7-FUSION] Invalid argument adding fusion tags");
+
+        private static readonly Action<ILogger, Exception?> _logFusionKeyNotFound = 
+            LoggerMessage.Define(LogLevel.Warning, new EventId(2026, "FusionKeyNotFound"), 
+                "[S7-FUSION] Key not found adding fusion tags");
+
         public S7Service(
             ILogger<S7Service> logger,
             IOptions<S7Configuration> config,
@@ -89,14 +185,14 @@ namespace TradingBot.S7
             if (!_config.Enabled)
                 return;
 
-            if (!_priceHistory.ContainsKey(symbol))
+            if (!_priceHistory.TryGetValue(symbol, out var priceList))
             {
                 _logUnknownSymbol(_logger, symbol, null);
                 return;
             }
 
             // Add new price point
-            _priceHistory[symbol].Add(new PricePoint { Close = close, Timestamp = timestamp });
+            priceList.Add(new PricePoint { Close = close, Timestamp = timestamp });
 
             // Maintain sliding window
             var maxLookback = Math.Max(_config.LookbackLongBars, _config.LookbackMediumBars);
@@ -239,8 +335,8 @@ namespace TradingBot.S7
             if (recent.Count < 2)
                 return 0;
 
-            var startPrice = recent.First().Close;
-            var endPrice = recent.Last().Close;
+            var startPrice = recent[0].Close;
+            var endPrice = recent[recent.Count - 1].Close;
 
             return (endPrice - startPrice) / startPrice;
         }
@@ -284,7 +380,7 @@ namespace TradingBot.S7
             // FAIL-CLOSED: Check for missing data or invalid states
             if (Math.Abs(esState.ZScore) < DefaultMinZScoreThreshold && Math.Abs(nqState.ZScore) < DefaultMinZScoreThreshold)
             {
-                _logger.LogError("[S7-AUDIT-VIOLATION] Zero Z-scores detected - TRIGGERING HOLD + TELEMETRY");
+                _logZeroZScoreAuditViolation(_logger, null);
                 return 0m; // Fail-closed: no safe default, force hold
             }
 
@@ -292,7 +388,7 @@ namespace TradingBot.S7
             var maxZScore = Math.Max(Math.Abs(esState.ZScore), Math.Abs(nqState.ZScore));
             if (maxZScore == 0)
             {
-                _logger.LogError("[S7-AUDIT-VIOLATION] Invalid Z-score data - TRIGGERING HOLD + TELEMETRY");
+                _logInvalidZScoreAuditViolation(_logger, null);
                 return 0m; // Fail-closed
             }
             
@@ -338,7 +434,7 @@ namespace TradingBot.S7
             // FAIL-CLOSED: Check for invalid data
             if (esState == null || nqState == null)
             {
-                _logger.LogError("[S7-AUDIT-VIOLATION] Missing state data for leader calculation - TRIGGERING HOLD + TELEMETRY");
+                _logMissingStateAuditViolation(_logger, null);
                 return S7Leader.Divergent; // Fail-closed: force divergent to prevent signals
             }
 
@@ -356,7 +452,6 @@ namespace TradingBot.S7
 
         private static decimal CalculateSignalStrength(S7State esState, S7State nqState, decimal coherence)
         {
-            var maxZScore = Math.Max(Math.Abs(esState.ZScore), Math.Abs(nqState.ZScore));
             var avgZScore = (Math.Abs(esState.ZScore) + Math.Abs(nqState.ZScore)) / AveragingDivisor;
             
             return avgZScore * coherence;
@@ -369,10 +464,10 @@ namespace TradingBot.S7
             {
                 if (_config.FailOnMissingData)
                 {
-                    _logger.LogError("[S7-AUDIT-VIOLATION] Breadth feed unavailable but required - TRIGGERING HOLD + TELEMETRY");
+                    _logBreadthUnavailableError(_logger, null);
                     return 0m; // Fail-closed: no safe defaults
                 }
-                _logger.LogWarning("[S7-AUDIT-VIOLATION] Breadth feed unavailable, using configured base score");
+                _logBreadthUnavailableWarning(_logger, null);
                 return _config.BaseBreadthScore; // Configured neutral value instead of hardcoded 1.0m
             }
 
@@ -400,30 +495,30 @@ namespace TradingBot.S7
             {
                 if (_config.FailOnMissingData)
                 {
-                    _logger.LogError(ex, "[S7-AUDIT-VIOLATION] Invalid operation in breadth calculation - TRIGGERING HOLD + TELEMETRY");
+                    _logInvalidOperationBreadthError(_logger, ex);
                     return 0m; // Fail-closed: no safe defaults
                 }
-                _logger.LogWarning(ex, "[S7-AUDIT-VIOLATION] Invalid operation in breadth calculation, using configured base score");
+                _logInvalidOperationBreadthWarning(_logger, ex);
                 return _config.BaseBreadthScore; // Configured fallback instead of hardcoded 1.0m
             }
             catch (TimeoutException ex)
             {
                 if (_config.FailOnMissingData)
                 {
-                    _logger.LogError(ex, "[S7-AUDIT-VIOLATION] Timeout in breadth calculation - TRIGGERING HOLD + TELEMETRY");
+                    _logTimeoutBreadthError(_logger, ex);
                     return 0m; // Fail-closed: no safe defaults
                 }
-                _logger.LogWarning(ex, "[S7-AUDIT-VIOLATION] Timeout in breadth calculation, using configured base score");
+                _logTimeoutBreadthWarning(_logger, ex);
                 return _config.BaseBreadthScore; // Configured fallback instead of hardcoded 1.0m
             }
             catch (ArgumentException ex)
             {
                 if (_config.FailOnMissingData)
                 {
-                    _logger.LogError(ex, "[S7-AUDIT-VIOLATION] Invalid argument in breadth calculation - TRIGGERING HOLD + TELEMETRY");
+                    _logArgumentBreadthError(_logger, ex);
                     return 0m; // Fail-closed: no safe defaults
                 }
-                _logger.LogWarning(ex, "[S7-AUDIT-VIOLATION] Invalid argument in breadth calculation, using configured base score");
+                _logArgumentBreadthWarning(_logger, ex);
                 return _config.BaseBreadthScore; // Configured fallback instead of hardcoded 1.0m
             }
         }
@@ -456,7 +551,7 @@ namespace TradingBot.S7
                    HasSufficientDataForBothSymbols();
         }
 
-        private Dictionary<string, decimal> BuildFeatureBusData(S7State esState, S7State nqState, decimal coherence, decimal signalStrength)
+        private static Dictionary<string, decimal> BuildFeatureBusData(S7State esState, S7State nqState, decimal coherence, decimal signalStrength)
         {
             return new Dictionary<string, decimal>
             {
@@ -476,8 +571,7 @@ namespace TradingBot.S7
 
         private void LogTelemetry(S7Snapshot snapshot)
         {
-            _logger.LogInformation("S7 Analysis - Leader: {Leader}, Coherence: {Coherence:F3}, Strength: {Strength:F3}, Actionable: {Actionable}",
-                snapshot.DominantLeader, snapshot.CrossSymbolCoherence, snapshot.SignalStrength, snapshot.IsActionable);
+            _logTelemetryAnalysis(_logger, snapshot.DominantLeader.ToString(), snapshot.CrossSymbolCoherence, snapshot.SignalStrength, snapshot.IsActionable, null);
         }
 
         public S7Snapshot GetCurrentSnapshot()
@@ -533,19 +627,16 @@ namespace TradingBot.S7
             if (_currentStates.TryGetValue(symbol, out var state))
             {
                 state.CooldownBarsRemaining = _config.CooldownBars;
-                _logger.LogDebug("Reset cooldown for {Symbol} to {Bars} bars", symbol, _config.CooldownBars);
+                _logResetCooldown(_logger, symbol, _config.CooldownBars, null);
             }
         }
 
         public Dictionary<string, object> GetAllFeatures()
         {
-            var features = new Dictionary<string, object>();
-            
-            foreach (var kvp in _currentStates)
-            {
-                var featureTuple = GetFeatureTuple(kvp.Key);
-                features[$"{kvp.Key.ToLowerInvariant()}_features"] = featureTuple;
-            }
+            var features = _currentStates.ToDictionary(
+                kvp => $"{kvp.Key.ToUpperInvariant()}_features", 
+                kvp => (object)GetFeatureTuple(kvp.Key)
+            );
 
             features["snapshot"] = _lastSnapshot;
             return features;
@@ -558,7 +649,7 @@ namespace TradingBot.S7
                 _priceHistory[symbol].Count >= _config.LookbackShortBars);
         }
 
-        private S7State CloneState(S7State original)
+        private static S7State CloneState(S7State original)
         {
             var clonedState = new S7State
             {
@@ -624,17 +715,17 @@ namespace TradingBot.S7
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "[S7-ADAPTIVE] Invalid operation calculating adaptive threshold for {Symbol}, using default", symbol);
+                _logAdaptiveInvalidOperation(_logger, symbol, ex);
                 return Task.FromResult(_config.ZThresholdEntry);
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning(ex, "[S7-ADAPTIVE] Invalid argument calculating adaptive threshold for {Symbol}, using default", symbol);
+                _logAdaptiveInvalidArgument(_logger, symbol, ex);
                 return Task.FromResult(_config.ZThresholdEntry);
             }
             catch (TimeoutException ex)
             {
-                _logger.LogWarning(ex, "[S7-ADAPTIVE] Timeout calculating adaptive threshold for {Symbol}, using default", symbol);
+                _logAdaptiveTimeout(_logger, symbol, ex);
                 return Task.FromResult(_config.ZThresholdEntry);
             }
         }
@@ -654,7 +745,7 @@ namespace TradingBot.S7
                 {
                     if (_config.FailOnMissingData)
                     {
-                        _logger.LogError("[S7-DISPERSION] Breadth data unavailable for dispersion calculation - TRIGGERING HOLD");
+                        _logDispersionBreadthUnavailable(_logger, null);
                         return (0m, 0m); // Fail-closed
                     }
                     return (_config.BaseBreadthScore, _config.BaseBreadthScore); // Config neutral fallback
@@ -674,16 +765,16 @@ namespace TradingBot.S7
 
                 return (dispersion, adRatio);
             }
-            catch (ArgumentException)
+            catch (ArgumentException ex)
             {
-                _logger.LogWarning("[S7-DISPERSION] Invalid breadth feed arguments");
+                _logDispersionInvalidArguments(_logger, ex);
                 if (_config.FailOnMissingData)
                     return (0m, 0m); // Fail-closed
                 return (_config.BaseBreadthScore, _config.BaseBreadthScore); // Config neutral fallback
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogWarning("[S7-DISPERSION] Breadth feed operation failed");
+                _logDispersionOperationFailed(_logger, ex);
                 if (_config.FailOnMissingData)
                     return (0m, 0m); // Fail-closed
                 return (_config.BaseBreadthScore, _config.BaseBreadthScore); // Config neutral fallback
@@ -736,14 +827,14 @@ namespace TradingBot.S7
                 var maxSizeTilt = _config.MaxSizeTiltMultiplier + 1.0m; // Use config maximum  
                 state.DispersionAdjustedSizeTilt = Math.Max(minSizeTilt, Math.Min(maxSizeTilt, adjustedSizeTilt));
             }
-            catch (ArgumentException)
+            catch (ArgumentException ex)
             {
-                _logger.LogWarning("[S7-DISPERSION] Invalid dispersion adjustment arguments for {Symbol}", state.Symbol);
+                _logDispersionAdjustmentArguments(_logger, state.Symbol, ex);
                 state.DispersionAdjustedSizeTilt = state.SizeTilt; // Safe fallback
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogWarning("[S7-DISPERSION] Failed to apply size adjustments for {Symbol}", state.Symbol);
+                _logDispersionSizeAdjustmentFailed(_logger, state.Symbol, ex);
                 state.DispersionAdjustedSizeTilt = state.SizeTilt; // Safe fallback
             }
         }
@@ -788,34 +879,34 @@ namespace TradingBot.S7
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "[S7-FUSION] Invalid operation adding fusion tags");
+                _logFusionInvalidOperation(_logger, ex);
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning(ex, "[S7-FUSION] Invalid argument adding fusion tags");
+                _logFusionInvalidArgument(_logger, ex);
             }
             catch (KeyNotFoundException ex)
             {
-                _logger.LogWarning(ex, "[S7-FUSION] Key not found adding fusion tags");
+                _logFusionKeyNotFound(_logger, ex);
             }
         }
 
         private decimal GetRecentPerformance(string symbol)
         {
-            if (!_performanceHistory.ContainsKey(symbol) || _performanceHistory[symbol].Count == 0)
+            if (!_performanceHistory.TryGetValue(symbol, out var performanceList) || performanceList.Count == 0)
                 return 0m;
 
-            var recent = _performanceHistory[symbol].TakeLast(_config.AdaptiveLookbackPeriod);
+            var recent = performanceList.TakeLast(_config.AdaptiveLookbackPeriod).ToList();
             return recent.DefaultIfEmpty(0m).Average();
         }
 
         private decimal GetRecentVolatility(string symbol)
         {
-            if (!_volatilityHistory.ContainsKey(symbol) || _volatilityHistory[symbol].Count < 2)
+            if (!_volatilityHistory.TryGetValue(symbol, out var volatilityList) || volatilityList.Count < 2)
                 return 0m;
 
-            var recent = _volatilityHistory[symbol].TakeLast(_config.AdaptiveLookbackPeriod);
-            if (recent.Count() < 2) return 0m;
+            var recent = volatilityList.TakeLast(_config.AdaptiveLookbackPeriod).ToList();
+            if (recent.Count < 2) return 0m;
 
             var mean = recent.Average();
             var variance = recent.Select(x => (x - mean) * (x - mean)).Average();

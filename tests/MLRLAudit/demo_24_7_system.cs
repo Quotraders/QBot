@@ -22,7 +22,7 @@ public static class QuickDemo
         Console.WriteLine("\n📅 ACTIVE TRADING SESSIONS:");
         foreach (var (time, description) in testTimes)
         {
-            var session = ES_NQ_TradingSchedule.GetCurrentSession(time);
+            var session = EsNqTradingSchedule.GetCurrentSession(time);
             if (session != null)
             {
                 Console.WriteLine($"\n⏰ {time:hh\\:mm} - {description}");

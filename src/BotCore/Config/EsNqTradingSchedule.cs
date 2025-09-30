@@ -9,10 +9,10 @@ namespace BotCore.Config
     /// 24/7 ES & NQ futures trading schedule with time-optimized strategy allocation
     /// Covers all major trading sessions from Asian overnight to US close
     /// </summary>
-    public static class ES_NQ_TradingSchedule
+    public static class EsNqTradingSchedule
     {
         // ES & NQ FUTURES TRADING HOURS (23/5 - Sunday 5PM to Friday 4PM CT)
-        public static readonly Dictionary<string, TradingSession> Sessions = new()
+        public static readonly IReadOnlyDictionary<string, TradingSession> Sessions = new Dictionary<string, TradingSession>
         {
             // ============================================
             // OVERNIGHT SESSION (BEST FOR NQ)
@@ -357,7 +357,7 @@ namespace BotCore.Config
     {
         public TimeSpan Start { get; init; }
         public TimeSpan End { get; init; }
-        public string[] Instruments { get; init; } = Array.Empty<string>();
+        public IReadOnlyList<string> Instruments { get; init; } = Array.Empty<string>();
         public string PrimaryInstrument { get; init; } = "";
         public Dictionary<string, string[]> Strategies { get; init; } = new();
         public Dictionary<string, double> PositionSizeMultiplier { get; init; } = new();
