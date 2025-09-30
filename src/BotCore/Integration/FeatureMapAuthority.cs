@@ -132,6 +132,14 @@ public sealed class FeatureMapAuthority
         RegisterResolver("keltner.touch", new BandTouchResolver(_serviceProvider, "keltner"));
         RegisterResolver("bollinger.touch", new BandTouchResolver(_serviceProvider, "bollinger"));
         
+        // Liquidity absorption features
+        RegisterResolver("liquidity.absorb_bull", new LiquidityAbsorptionFeatureResolver(_serviceProvider, "liquidity.absorb_bull"));
+        RegisterResolver("liquidity.absorb_bear", new LiquidityAbsorptionFeatureResolver(_serviceProvider, "liquidity.absorb_bear"));
+        RegisterResolver("liquidity.vpr", new LiquidityAbsorptionFeatureResolver(_serviceProvider, "liquidity.vpr"));
+        
+        // Order flow imbalance proxy
+        RegisterResolver("ofi.proxy", new OfiProxyFeatureResolver(_serviceProvider));
+        
         // Multi-timeframe structure features using adapter pattern
         RegisterResolver("mtf.align", new MtfFeatureResolver(_serviceProvider, "mtf.align"));
         RegisterResolver("mtf.bias", new MtfFeatureResolver(_serviceProvider, "mtf.bias"));
@@ -479,6 +487,88 @@ public sealed class MtfFeatureResolver : IFeatureResolver
         {
             _logger.LogError(ex, "Failed to resolve MTF feature {FeatureKey} for symbol {Symbol}", _featureKey, symbol);
             throw new InvalidOperationException($"Production MTF feature resolution failed for '{symbol}.{_featureKey}': {ex.Message}", ex);
+        }
+    }
+}
+
+/// <summary>
+/// Liquidity Absorption Feature Resolver adapter - bridges LiquidityAbsorptionResolver to Integration interface
+/// </summary>
+public sealed class LiquidityAbsorptionFeatureResolver : IFeatureResolver
+{
+    private readonly IServiceProvider _serviceProvider;
+    private readonly string _featureKey;
+    private readonly ILogger<LiquidityAbsorptionFeatureResolver> _logger;
+    
+    public LiquidityAbsorptionFeatureResolver(IServiceProvider serviceProvider, string featureKey)
+    {
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _featureKey = featureKey ?? throw new ArgumentNullException(nameof(featureKey));
+        _logger = serviceProvider.GetRequiredService<ILogger<LiquidityAbsorptionFeatureResolver>>();
+    }
+    
+    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var liquidityResolver = _serviceProvider.GetRequiredService<BotCore.Features.LiquidityAbsorptionResolver>();
+            var value = await liquidityResolver.TryGetAsync(symbol, _featureKey, cancellationToken).ConfigureAwait(false);
+            
+            if (value.HasValue)
+            {
+                _logger.LogTrace("Liquidity feature {FeatureKey} for {Symbol}: {Value}", _featureKey, symbol, value.Value);
+            }
+            else
+            {
+                _logger.LogTrace("Liquidity feature {FeatureKey} for {Symbol}: no value available", _featureKey, symbol);
+            }
+            
+            return value;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to resolve liquidity feature {FeatureKey} for symbol {Symbol}", _featureKey, symbol);
+            throw new InvalidOperationException($"Production liquidity feature resolution failed for '{symbol}.{_featureKey}': {ex.Message}", ex);
+        }
+    }
+}
+
+/// <summary>
+/// Order Flow Imbalance Proxy Feature Resolver adapter - bridges OfiProxyResolver to Integration interface
+/// </summary>
+public sealed class OfiProxyFeatureResolver : IFeatureResolver
+{
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<OfiProxyFeatureResolver> _logger;
+    
+    public OfiProxyFeatureResolver(IServiceProvider serviceProvider)
+    {
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _logger = serviceProvider.GetRequiredService<ILogger<OfiProxyFeatureResolver>>();
+    }
+    
+    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var ofiResolver = _serviceProvider.GetRequiredService<BotCore.Features.OfiProxyResolver>();
+            var value = await ofiResolver.TryGetAsync(symbol, "ofi.proxy", cancellationToken).ConfigureAwait(false);
+            
+            if (value.HasValue)
+            {
+                _logger.LogTrace("OFI proxy for {Symbol}: {Value}", symbol, value.Value);
+            }
+            else
+            {
+                _logger.LogTrace("OFI proxy for {Symbol}: no value available", symbol);
+            }
+            
+            return value;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to resolve OFI proxy for symbol {Symbol}", symbol);
+            throw new InvalidOperationException($"Production OFI proxy resolution failed for '{symbol}': {ex.Message}", ex);
         }
     }
 }
