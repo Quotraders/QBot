@@ -129,7 +129,7 @@ namespace TradingBot.BotCore.Services.Helpers
         {
             if (parameters == null || !parameters.Any())
             {
-                return 1.0m;
+                return DefaultStrategyMultiplier;
             }
 
             return strategyId switch
@@ -138,7 +138,7 @@ namespace TradingBot.BotCore.Services.Helpers
                 "S3" => GetS3StrategyMultiplier(parameters),
                 "S6" => GetS6StrategyMultiplier(parameters),
                 "S11" => GetS11StrategyMultiplier(parameters),
-                _ => 1.0m
+                _ => DefaultStrategyMultiplier
             };
         }
 
@@ -178,7 +178,7 @@ namespace TradingBot.BotCore.Services.Helpers
         {
             var sigmaEnter = GetParameterValue(parameters, "sigma_enter", 2.0m);
             var widthRank = GetParameterValue(parameters, "width_rank_threshold", 0.25m);
-            return Math.Max(0.5m, Math.Min(2.0m, (sigmaEnter / 2.0m) * (1.0m - widthRank)));
+            return Math.Max(MinimumMultiplierBound, Math.Min(2.0m, (sigmaEnter / 2.0m) * (1.0m - widthRank)));
         }
 
         /// <summary>

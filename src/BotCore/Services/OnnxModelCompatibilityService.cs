@@ -166,7 +166,7 @@ namespace TradingBot.BotCore.Services
             }
         }
 
-        private static string GetCurrentOnnxRuntimeVersion()
+        private string GetCurrentOnnxRuntimeVersion()
         {
             try
             {
