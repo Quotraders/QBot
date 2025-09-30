@@ -91,8 +91,8 @@ namespace BotCore.Brain
         private const decimal HighVolumeRatioThreshold = 1.5m;       // High volume ratio threshold
         private const decimal StrongTrendThreshold = 0.7m;           // Strong trend threshold
         private const decimal WeakTrendThreshold = 0.3m;             // Weak trend threshold
-        private const double OverboughtRSILevel = 70;                // RSI overbought level
-        private const double OversoldRSILevel = 30;                  // RSI oversold level
+        private const decimal OverboughtRSILevel = 70m;              // RSI overbought level
+        private const decimal OversoldRSILevel = 30m;               // RSI oversold level
         private const decimal BaseConfidenceThreshold = 0.5m;        // Base confidence threshold
         private const decimal MinConfidenceAdjustment = 0.1m;        // Minimum confidence adjustment
         
