@@ -27,6 +27,12 @@ namespace TopstepX.Bot.Core.Services
         private readonly PositionTrackingSystem _positionTracker;
         private readonly EmergencyStopSystem _emergencyStop;
         
+        // Order type constants for API integration
+        private const int LimitOrderType = 1;
+        private const int MarketOrderType = 2;
+        private const int StopOrderType = 4;
+        private const int TrailingStopOrderType = 5;
+        
         public event EventHandler<OrderConfirmedEventArgs>? OrderConfirmed;
         public event EventHandler<OrderRejectedEventArgs>? OrderRejected;
         public event EventHandler<FillConfirmedEventArgs>? FillConfirmed;
@@ -209,11 +215,11 @@ namespace TopstepX.Bot.Core.Services
         {
             return orderType.ToUpper() switch
             {
-                "LIMIT" => 1,
-                "MARKET" => 2,
-                "STOP" => 4,
-                "TRAILING_STOP" => 5,
-                _ => 1 // Default to limit
+                "LIMIT" => LimitOrderType,
+                "MARKET" => MarketOrderType,
+                "STOP" => StopOrderType,
+                "TRAILING_STOP" => TrailingStopOrderType,
+                _ => LimitOrderType // Default to limit
             };
         }
 

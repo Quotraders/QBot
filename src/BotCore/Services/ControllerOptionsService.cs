@@ -18,6 +18,11 @@ namespace TradingBot.BotCore.Services
         private const double DefaultBearConfidenceUpper = 0.85;       // Bear regime confidence upper bound
         private const double DefaultSidewaysConfidenceLower = 0.7;    // Sideways regime confidence lower bound
         private const double DefaultSidewaysConfidenceUpper = 0.8;    // Sideways regime confidence upper bound
+        private const double DefaultConfidenceLower = 0.65;           // Default confidence lower bound
+        private const double DefaultConfidenceUpper = 0.85;           // Default confidence upper bound
+        private const int DefaultMaxTradesPerHour = 5;                // Maximum trades per hour limit
+        private const int DefaultMaxTradesPerDay = 20;                // Maximum trades per day limit
+        private const int DefaultSafeHoldExtrasMinutes = 15;          // Default safe hold extra minutes
         
         private readonly IConfiguration _config;
 
@@ -41,18 +46,18 @@ namespace TradingBot.BotCore.Services
                 _config.GetValue("Controller:ConfidenceBands:Sideways:Upper", DefaultSidewaysConfidenceUpper)
             ),
             _ => (
-                _config.GetValue("Controller:ConfidenceBands:Default:Lower", 0.65),
-                _config.GetValue("Controller:ConfidenceBands:Default:Upper", 0.85)
+                _config.GetValue("Controller:ConfidenceBands:Default:Lower", DefaultConfidenceLower),
+                _config.GetValue("Controller:ConfidenceBands:Default:Upper", DefaultConfidenceUpper)
             )
         };
 
         public (int PerHour, int PerDay) GetTradePacingLimits() => (
-            _config.GetValue("Controller:TradePacing:MaxPerHour", 5),
-            _config.GetValue("Controller:TradePacing:MaxPerDay", 20)
+            _config.GetValue("Controller:TradePacing:MaxPerHour", DefaultMaxTradesPerHour),
+            _config.GetValue("Controller:TradePacing:MaxPerDay", DefaultMaxTradesPerDay)
         );
 
         public int GetSafeHoldExtrasMinutes() => 
-            _config.GetValue("Controller:SafeHoldExtrasMinutes", 15);
+            _config.GetValue("Controller:SafeHoldExtrasMinutes", DefaultSafeHoldExtrasMinutes);
 
         public double GetUcbExplorationParameter() => 
             _config.GetValue("Controller:UCB:ExplorationParameter", 1.4);

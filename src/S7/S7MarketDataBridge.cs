@@ -24,6 +24,35 @@ namespace TradingBot.S7
         private S7Configuration? _config;
         private bool _disposed;
 
+        // LoggerMessage delegates for performance
+        private static readonly Action<ILogger, Exception?> _logS7ServiceNotAvailable = 
+            LoggerMessage.Define(LogLevel.Warning, new EventId(2001, "S7ServiceNotAvailable"), 
+                "[S7-BRIDGE] S7 service not available - S7 data feed disabled");
+                
+        private static readonly Action<ILogger, Exception?> _logS7ServiceDisabled = 
+            LoggerMessage.Define(LogLevel.Information, new EventId(2002, "S7ServiceDisabled"), 
+                "[S7-BRIDGE] S7 service disabled in configuration");
+                
+        private static readonly Action<ILogger, Exception?> _logBridgeStarted = 
+            LoggerMessage.Define(LogLevel.Information, new EventId(2003, "BridgeStarted"), 
+                "[S7-BRIDGE] S7 market data bridge started successfully");
+                
+        private static readonly Action<ILogger, Exception?> _logBridgeStopped = 
+            LoggerMessage.Define(LogLevel.Information, new EventId(2004, "BridgeStopped"), 
+                "[S7-BRIDGE] S7 market data bridge stopped");
+                
+        private static readonly Action<ILogger, Exception?> _logReflectionError = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(2005, "ReflectionError"), 
+                "[S7-BRIDGE] Reflection error accessing market data service");
+                
+        private static readonly Action<ILogger, Exception?> _logSubscriptionError = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(2006, "SubscriptionError"), 
+                "[S7-BRIDGE] Error subscribing to market data events");
+                
+        private static readonly Action<ILogger, Exception?> _logMarketDataServiceNotAvailable = 
+            LoggerMessage.Define(LogLevel.Warning, new EventId(2007, "MarketDataServiceNotAvailable"), 
+                "[S7-BRIDGE] Market data service not available - S7 bridge disabled");
+
         public S7MarketDataBridge(
             ILogger<S7MarketDataBridge> logger,
             IServiceProvider serviceProvider)
@@ -42,13 +71,13 @@ namespace TradingBot.S7
 
                 if (_s7Service == null)
                 {
-                    _logger.LogWarning("[S7-BRIDGE] S7 service not available - S7 data feed disabled");
+                    _logS7ServiceNotAvailable(_logger, null);
                     return Task.CompletedTask;
                 }
 
                 if (_config == null || !_config.Enabled)
                 {
-                    _logger.LogInformation("[S7-BRIDGE] S7 service disabled in configuration");
+                    _logS7ServiceDisabled(_logger, null);
                     return Task.CompletedTask;
                 }
 
@@ -77,12 +106,12 @@ namespace TradingBot.S7
                     }
                 }
 
-                _logger.LogWarning("[S7-BRIDGE] Enhanced market data service not available - S7 data feed disabled");
+                    _logMarketDataServiceNotAvailable(_logger, null);
                 return Task.CompletedTask;
             }
             catch (ReflectionTypeLoadException ex)
             {
-                _logger.LogError(ex, "[S7-BRIDGE] Failed to load types for S7 market data bridge");
+                _logReflectionError(_logger, ex);
                 return Task.FromException(ex);
             }
             catch (TargetInvocationException ex)
@@ -113,7 +142,7 @@ namespace TradingBot.S7
                     }
                 }
 
-                _logger.LogInformation("[S7-BRIDGE] S7 market data bridge stopped");
+                _logBridgeStopped(_logger, null);
                 return Task.CompletedTask;
             }
             catch (ReflectionTypeLoadException ex)
