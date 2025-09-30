@@ -79,6 +79,13 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
                 "keltner.band_touch" => _featureBus.Probe(symbol, "keltner.touch") ?? 0.0,
                 "boll.band_touch" => _featureBus.Probe(symbol, "bollinger.touch") ?? 0.0,
 
+                // BREADTH FEATURES INTENTIONALLY DISABLED: Short-circuit to neutral scores
+                // Breadth feed subscription not active - return neutral values to avoid risk check bypass
+                string k when k.StartsWith("breadth.", StringComparison.OrdinalIgnoreCase) => 0.5, // Neutral score
+                "breadth.advance_decline" => 0.5, // Neutral advance/decline ratio
+                "breadth.highs_lows" => 0.5, // Neutral highs/lows ratio  
+                "breadth.sector_rotation" => 0.5, // Neutral sector rotation
+
                 // Default fallback
                 _ => 0.0
             };

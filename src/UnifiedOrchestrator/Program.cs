@@ -591,7 +591,9 @@ Please check the configuration and ensure all required services are registered.
         
         // Register optional breadth feed service (disabled by default)
         // Register IBreadthFeed implementation with fail-closed behavior
-        services.AddSingleton<TradingBot.Abstractions.IBreadthFeed, TradingBot.BotCore.Services.ProductionBreadthFeedService>();
+        // BREADTH FEED INTENTIONALLY DISABLED: Using NullBreadthDataSource until real market breadth subscription is active
+        // Prevents live workflows from consuming CSV stub data and ensures fail-closed behavior for breadth.* features
+        services.AddSingleton<TradingBot.Abstractions.IBreadthFeed, BotCore.Services.NullBreadthDataSource>();
         
         // Register S7 market data bridge for live data integration
         services.AddHostedService<TradingBot.S7.S7MarketDataBridge>();
@@ -635,7 +637,9 @@ Please check the configuration and ensure all required services are registered.
         services.Configure<BotCore.Services.DriftMonitorConfiguration>(configuration.GetSection("DataHygiene:DriftMonitor"));
         
         services.AddSingleton<BotCore.Services.ModelRotationService>();
-        services.AddSingleton<BotCore.Services.S7BreadthReallocationService>();
+        // S7 BREADTH REALLOCATION INTENTIONALLY DISABLED: Keep breadth adjustments switched off
+        // Commenting out S7BreadthReallocationService registration until real breadth feed is active
+        // services.AddSingleton<BotCore.Services.S7BreadthReallocationService>();
         services.AddSingleton<BotCore.Services.CorrelationAwareCapService>();
         services.AddSingleton<BotCore.Services.VolOfVolGuardService>();
         services.AddSingleton<BotCore.Services.FeatureDriftMonitorService>();
