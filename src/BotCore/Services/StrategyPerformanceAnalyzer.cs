@@ -47,6 +47,35 @@ public class StrategyPerformanceAnalyzer
     private const int PerformanceHistoryLimit = 1000;
     private const int RecentTradesWindow = 50;
     
+    // Strategy scoring constants
+    private const decimal DefaultStrategyScore = 0.5m;        // Default score for unknown strategy
+    private const decimal BaseScoreWeight = 0.25m;            // Weight for base performance score
+    private const decimal RegimeScoreWeight = 0.25m;          // Weight for regime-specific score
+    private const decimal TimeScoreWeight = 0.20m;            // Weight for time-specific score
+    private const decimal RecentScoreWeight = 0.20m;          // Weight for recent performance score
+    private const decimal ConsistencyScoreWeight = 0.10m;     // Weight for consistency score
+    
+    // Performance alert thresholds
+    private const decimal LowPerformanceThreshold = 0.3m;     // Threshold for low recent performance
+    private const decimal GoodPerformanceThreshold = 0.6m;    // Threshold for good overall performance
+    private const decimal LowWinRateThreshold = 0.35m;        // Threshold for low win rate alert
+    private const decimal LowProfitFactorThreshold = 1.1m;    // Threshold for low profit factor alert
+    private const decimal ExcessiveDrawdownRatio = 0.4m;      // Ratio for excessive drawdown alert
+    private const int MinTradesForWinRateAlert = 20;          // Minimum trades for win rate alert
+    private const int MinTradesForProfitFactorAlert = 15;     // Minimum trades for profit factor alert
+    
+    // Performance scoring multipliers
+    private const decimal OptimalVolatilityBoostMultiplier = 1.1m; // Score boost for optimal volatility
+    
+    // Strategy recommendation constants
+    private const int MaxRecommendationsToReturn = 5;       // Maximum recommendations to return
+    
+    // Strategy characteristics constants - Volatility ranges
+    private const decimal S2VolatilityRangeLow = 0.3m;      // S2 strategy optimal volatility low
+    private const decimal S2VolatilityRangeHigh = 0.7m;     // S2 strategy optimal volatility high
+    private const decimal S3VolatilityRangeLow = 0.2m;      // S3 strategy optimal volatility low
+    private const decimal S3VolatilityRangeHigh = 0.6m;     // S3 strategy optimal volatility high
+    
     // Strategy definitions and characteristics
     private Dictionary<string, StrategyCharacteristics> _strategyCharacteristics = new();
     
@@ -130,7 +159,7 @@ public class StrategyPerformanceAnalyzer
         {
             if (!_strategyAnalysis.ContainsKey(strategy))
             {
-                return 0.5m; // Default score for unknown strategy
+                return DefaultStrategyScore; // Default score for unknown strategy
             }
             
             var analysis = _strategyAnalysis[strategy];
@@ -144,11 +173,11 @@ public class StrategyPerformanceAnalyzer
             
             // Weighted combination
             var totalScore = 
-                (baseScore * 0.25m) +
-                (regimeScore * 0.25m) +
-                (timeScore * 0.20m) +
-                (recentScore * 0.20m) +
-                (consistencyScore * 0.10m);
+                (baseScore * BaseScoreWeight) +
+                (regimeScore * RegimeScoreWeight) +
+                (timeScore * TimeScoreWeight) +
+                (recentScore * RecentScoreWeight) +
+                (consistencyScore * ConsistencyScoreWeight);
             
             _logger.LogDebug("🎯 [STRATEGY-ANALYZER] Score for {Strategy}: {Total:F3} (Base:{Base:F2}, Regime:{Regime:F2}, Time:{Time:F2}, Recent:{Recent:F2}, Consistency:{Consistency:F2})",
                 strategy, totalScore, baseScore, regimeScore, timeScore, recentScore, consistencyScore);
@@ -221,7 +250,7 @@ public class StrategyPerformanceAnalyzer
                 
                 // Check for performance degradation
                 var recentPerformance = GetRecentPerformanceScore(strategy);
-                if (recentPerformance < 0.3m && analysis.OverallScore > 0.6m)
+                if (recentPerformance < LowPerformanceThreshold && analysis.OverallScore > GoodPerformanceThreshold)
                 {
                     alerts.Add(new StrategyAlert
                     {
@@ -235,7 +264,7 @@ public class StrategyPerformanceAnalyzer
                 }
                 
                 // Check for low win rate
-                if (analysis.WinRate < 0.35m && analysis.AllTrades.Count > 20)
+                if (analysis.WinRate < LowWinRateThreshold && analysis.AllTrades.Count > MinTradesForWinRateAlert)
                 {
                     alerts.Add(new StrategyAlert
                     {
@@ -249,7 +278,7 @@ public class StrategyPerformanceAnalyzer
                 }
                 
                 // Check for poor profit factor
-                if (analysis.ProfitFactor < 1.1m && analysis.AllTrades.Count > 15)
+                if (analysis.ProfitFactor < LowProfitFactorThreshold && analysis.AllTrades.Count > MinTradesForProfitFactorAlert)
                 {
                     alerts.Add(new StrategyAlert
                     {
@@ -263,7 +292,7 @@ public class StrategyPerformanceAnalyzer
                 }
                 
                 // Check for excessive drawdown
-                if (analysis.MaxDrawdown > analysis.TotalPnL * 0.4m && analysis.TotalPnL > 0)
+                if (analysis.MaxDrawdown > analysis.TotalPnL * ExcessiveDrawdownRatio && analysis.TotalPnL > 0)
                 {
                     alerts.Add(new StrategyAlert
                     {
@@ -317,7 +346,7 @@ public class StrategyPerformanceAnalyzer
             recommendations.AddRange(entryExitOptimizations);
         }
         
-        return recommendations.OrderByDescending(r => r.ImpactScore).Take(5).ToList();
+        return recommendations.OrderByDescending(r => r.ImpactScore).Take(MaxRecommendationsToReturn).ToList();
     }
     
     /// <summary>
@@ -370,7 +399,7 @@ public class StrategyPerformanceAnalyzer
         _strategyAnalysis[strategy] = new StrategyAnalysis
         {
             StrategyName = strategy,
-            OverallScore = 0.5m // Default neutral score
+            OverallScore = DefaultStrategyScore // Default neutral score
         };
         
         _performanceHistory[strategy] = new Queue<StrategyPerformanceSnapshot>();
@@ -385,7 +414,7 @@ public class StrategyPerformanceAnalyzer
                 Name = "S2",
                 Type = StrategyType.MeanReversion,
                 BestMarketConditions = new[] { AnalyzerMarketRegime.Ranging, AnalyzerMarketRegime.LowVolatility },
-                OptimalVolatilityRange = new[] { 0.3m, 0.7m },
+                OptimalVolatilityRange = new[] { S2VolatilityRangeLow, S2VolatilityRangeHigh },
                 PreferredTimeWindows = new[] { new TimeSpan(11, 0, 0), new TimeSpan(14, 0, 0) },
                 Description = "Mean reversion strategy optimized for ranging markets"
             },
@@ -394,7 +423,7 @@ public class StrategyPerformanceAnalyzer
                 Name = "S3",
                 Type = StrategyType.MeanReversion,
                 BestMarketConditions = new[] { AnalyzerMarketRegime.Ranging, AnalyzerMarketRegime.LowVolatility },
-                OptimalVolatilityRange = new[] { 0.2m, 0.6m },
+                OptimalVolatilityRange = new[] { S3VolatilityRangeLow, S3VolatilityRangeHigh },
                 PreferredTimeWindows = new[] { new TimeSpan(12, 0, 0), new TimeSpan(15, 0, 0) },
                 Description = "Enhanced mean reversion with adaptive parameters"
             },
@@ -626,7 +655,7 @@ public class StrategyPerformanceAnalyzer
         
         if (volatility >= minVol && volatility <= maxVol)
         {
-            return baseScore * 1.1m; // Boost score for optimal volatility
+            return baseScore * OptimalVolatilityBoostMultiplier; // Boost score for optimal volatility
         }
         else if (volatility < minVol * 0.5m || volatility > maxVol * 2m)
         {
