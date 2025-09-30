@@ -20,7 +20,31 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ## 🚨 PHASE 2 - ANALYZER VIOLATION ELIMINATION (IN PROGRESS)
 
-**Round 37 - Phase 2 Priority 1 Correctness: S109 Magic Number Elimination (Current Session)**
+**Round 38 - Phase 2 Priority 1 Correctness: S109 Magic Number Systematic Elimination (Current Session)**
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 3396 | 2624 | StrategyMetricsHelper.cs, StrategyKnowledgeGraphNew.cs, ExecutionPolicyConfigService.cs, S6_S11_Bridge.cs, S3Strategy.cs | Named constants for strategy calculations, trading bounds, instrument specifications, scoring algorithms, and validation thresholds |
+
+**Example Pattern - S109 Comprehensive Strategy Constants:**
+```csharp
+// Before (Violation) - Magic numbers in trading strategy logic
+if (lastVol > recentAvgVol * 1.2) qScore += 0.2m;
+return Math.Max(0.5m, Math.Min(1.8m, squeezeThreshold * breakoutConfidence));
+if (bars.Count < 80) return lst;
+
+// After (Compliant) - Named constants with business context
+private const decimal VolumeBoostThreshold = 1.2m;
+private const decimal VolumeBoostAmount = 0.2m; 
+private const decimal S3MinMultiplierBound = 0.3m;
+private const decimal S3MaxMultiplierBound = 1.8m;
+private const int MinimumBarsRequired = 80;
+
+if (lastVol > recentAvgVol * VolumeBoostThreshold) qScore += VolumeBoostAmount;
+return Math.Max(S3MinMultiplierBound, Math.Min(S3MaxMultiplierBound, squeezeThreshold * breakoutConfidence));
+if (bars.Count < MinimumBarsRequired) return lst;
+```
+
+**Round 37 - Phase 2 Priority 1 Correctness: S109 Magic Number Elimination (Previous Session)**
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | S109 | 2724 | 2708 | ExecutionResolvers.cs, UnifiedBarPipeline.cs, DeterminismService.cs, EmaCrossStrategy.cs, CloudDataUploader.cs, BarTrackingService.cs, OfiProxyResolver.cs, EconomicEventManager.cs | Named constants for trading execution metrics, pipeline health thresholds, GUID generation, EMA calculations, and configuration values |

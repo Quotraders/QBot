@@ -22,6 +22,11 @@ namespace BotCore.Strategy
             return v is not null && (v.Equals("1", StringComparison.OrdinalIgnoreCase) || v.Equals("true", StringComparison.OrdinalIgnoreCase));
         }
         // S3 state and constants
+        private const int MinimumBarsRequired = 80;  // Minimum bars needed for pre-squeeze, TF2 agg, etc.
+        private const decimal MinimumRankThreshold = 0.05m; // Minimum rank threshold for risk management
+        private const decimal PostOpenTighteningAdjustment = 0.02m; // Amount to tighten rank after RTH open
+        private const int VwapHoldBarsCount = 2; // Number of bars to check for VWAP hold validation
+        
         private static readonly ConcurrentDictionary<string, SegmentState> _segState = new(StringComparer.OrdinalIgnoreCase);
         private static readonly ConcurrentDictionary<(string Sym, DateOnly Day, string Sess, Side Side), int> _attempts = new();
         private static readonly TimeSpan OvernightWinStart = new(2, 55, 0);
@@ -55,7 +60,7 @@ namespace BotCore.Strategy
             if (risk is null) throw new ArgumentNullException(nameof(risk));
             
             var lst = new List<Candidate>();
-            if (bars.Count < 80) return lst; // need enough for pre-squeeze, TF2 agg, etc.
+            if (bars.Count < MinimumBarsRequired) return lst; // need enough for pre-squeeze, TF2 agg, etc.
             // Normalize bar timestamps to ET for all session/time-of-day logic (bars arrive as UTC)
             static DateTime ToEt(Bar b)
             {
@@ -243,7 +248,7 @@ namespace BotCore.Strategy
             // Roll guard tighten (tighter rank requirement around roll week)
             if (cfg.RollEnabled && IsWithinRollWindow(last.Start.Date, cfg.RollDaysBefore, cfg.RollDaysAfter))
             {
-                rankThresh = Math.Max(0.05m, rankThresh - cfg.RollRankTighten);
+                rankThresh = Math.Max(MinimumRankThreshold, rankThresh - cfg.RollRankTighten);
                 if (widthRank > rankThresh) { Reject("roll_tighten"); return lst; } // re-check if adapting tightened threshold disqualifies
             }
 
@@ -313,7 +318,7 @@ namespace BotCore.Strategy
                     entry = Math.Max(px, Math.Max(last.High + tick, boxHi + buf));
                 }
                 if (entry <= 0) return lst;
-                if (!HoldsAroundVwap(bars, segVwap, true, 2)) { Reject("vwap_hold_long"); return lst; }
+                if (!HoldsAroundVwap(bars, segVwap, true, VwapHoldBarsCount)) { Reject("vwap_hold_long"); return lst; }
 
                 var isl = Math.Min(boxLo - cfg.StopAtrMult * atr, SwingLow(bars, 5));
                 var r = entry - isl;
@@ -340,7 +345,7 @@ namespace BotCore.Strategy
                     entry = Math.Min(px, Math.Min(last.Low - tick, boxLo - buf));
                 }
                 if (entry <= 0) { Reject("entry_nonpos_short"); return lst; }
-                if (!HoldsAroundVwap(bars, segVwap, false, 2)) { Reject("vwap_hold_short"); return lst; }
+                if (!HoldsAroundVwap(bars, segVwap, false, VwapHoldBarsCount)) { Reject("vwap_hold_short"); return lst; }
 
                 var ish = Math.Max(boxHi + cfg.StopAtrMult * atr, SwingHigh(bars, 5));
                 var r = ish - entry;
@@ -649,7 +654,7 @@ namespace BotCore.Strategy
             // Simple hourly adaptation: slightly tighter just after RTH open
             var minuteOfDay = local.Hour * 60 + local.Minute;
             // Tighten by 0.02 between 09:30-10:30, otherwise base
-            if (minuteOfDay >= 570 && minuteOfDay <= 630) return Math.Max(0.05m, baseRank - 0.02m);
+            if (minuteOfDay >= 570 && minuteOfDay <= 630) return Math.Max(MinimumRankThreshold, baseRank - PostOpenTighteningAdjustment);
             return baseRank;
         }
 

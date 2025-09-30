@@ -33,6 +33,9 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
     private const double DefaultEvaluationThreshold = 0.5;
     private const double DefaultPatternScoreThreshold = 0.3;
     
+    // Breadth features neutral score constants (disabled functionality)
+    private const double BreadthNeutralScore = 0.5; // Neutral score for disabled breadth features
+    
     private readonly ILogger<ProductionFeatureProbe> _logger;
     private readonly IFeatureBusWithProbe _featureBus;
     private readonly PatternEngine _patternEngine;
@@ -81,10 +84,10 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
 
                 // BREADTH FEATURES INTENTIONALLY DISABLED: Short-circuit to neutral scores
                 // Breadth feed subscription not active - return neutral values to avoid risk check bypass
-                string k when k.StartsWith("breadth.", StringComparison.OrdinalIgnoreCase) => 0.5, // Neutral score
-                "breadth.advance_decline" => 0.5, // Neutral advance/decline ratio
-                "breadth.highs_lows" => 0.5, // Neutral highs/lows ratio  
-                "breadth.sector_rotation" => 0.5, // Neutral sector rotation
+                string k when k.StartsWith("breadth.", StringComparison.OrdinalIgnoreCase) => BreadthNeutralScore, // Neutral score
+                "breadth.advance_decline" => BreadthNeutralScore, // Neutral advance/decline ratio
+                "breadth.highs_lows" => BreadthNeutralScore, // Neutral highs/lows ratio  
+                "breadth.sector_rotation" => BreadthNeutralScore, // Neutral sector rotation
 
                 // Default fallback
                 _ => 0.0
