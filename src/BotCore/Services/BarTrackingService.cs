@@ -13,6 +13,9 @@ namespace BotCore.Services
     /// </summary>
     public class BarTrackingService
     {
+        // Metrics calculation constants
+        private const double ProcessingRateWindowMinutes = 30.0;
+        
         private readonly ILogger<BarTrackingService> _logger;
         private readonly ConcurrentDictionary<string, BarMetrics> _symbolMetrics = new();
 
@@ -139,7 +142,7 @@ namespace BotCore.Services
                     TotalProcessed = metrics.TotalProcessedCount,
                     RecentCount = recentCount,
                     LastProcessedTime = metrics.LastProcessedTime,
-                    ProcessingRate = recentCount / 30.0 // bars per minute over last 30 minutes
+                    ProcessingRate = recentCount / ProcessingRateWindowMinutes // bars per minute over last 30 minutes
                 };
             }
         }

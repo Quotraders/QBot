@@ -5,14 +5,18 @@ namespace BotCore
 {
     public static class EmaCrossStrategy
     {
+        // EMA calculation constants
+        private const decimal EmaMultiplier = 2m;
+        private const int MinimumHistoryBuffer = 2;
+        
         public static int TrySignal(IReadOnlyList<Bar> bars, int fast = 8, int slow = 21)
         {
             if (bars is null) throw new ArgumentNullException(nameof(bars));
             
-            if (bars.Count < Math.Max(fast, slow) + 2) return 0;
+            if (bars.Count < Math.Max(fast, slow) + MinimumHistoryBuffer) return 0;
             decimal emaFastPrev = 0, emaSlowPrev = 0;
-            var alphaF = 2m / (fast + 1);
-            var alphaS = 2m / (slow + 1);
+            var alphaF = EmaMultiplier / (fast + 1);
+            var alphaS = EmaMultiplier / (slow + 1);
             decimal emaSlow;
             // initialize with the first close
             decimal emaFast = emaSlow = bars[0].Close;
