@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using BotCore.Features;
 
 namespace BotCore.Integration;
 
@@ -26,6 +27,9 @@ public sealed class FeatureMapAuthority
         // DSL shorthand -> Published key
         ["vdc"] = "volatility.contraction",
         ["mom.zscore"] = "momentum.zscore",
+        ["momentum.z_score"] = "momentum.zscore", // Alternative mapping
+        ["momentum.acceleration"] = "momentum.zscore", // Acceleration approximated via Z-score
+        ["pullback.risk"] = "pullback.risk",
         ["liquidity_score"] = "liquidity.score",
         ["spread"] = "spread.current"
     };
@@ -118,12 +122,18 @@ public sealed class FeatureMapAuthority
         // Fixed: Register with DSL shorthand keys that StrategyKnowledgeGraphNew actually uses
         RegisterResolver("vdc", new VolatilityContractionResolver(_serviceProvider));
         RegisterResolver("mom.zscore", new MomentumZScoreResolver(_serviceProvider));
+        RegisterResolver("momentum.z_score", new MomentumZScoreResolver(_serviceProvider)); // Alternative key
+        RegisterResolver("momentum.acceleration", new MomentumZScoreResolver(_serviceProvider)); // Acceleration via Z-score
         RegisterResolver("pullback.risk", new PullbackRiskResolver(_serviceProvider));
         RegisterResolver("volume.thrust", new VolumeMarketResolver(_serviceProvider, "thrust"));
         RegisterResolver("inside_bars", new InsideBarsResolver(_serviceProvider));
         RegisterResolver("vwap.distance_atr", new VWAPDistanceResolver(_serviceProvider));
         RegisterResolver("keltner.touch", new BandTouchResolver(_serviceProvider, "keltner"));
         RegisterResolver("bollinger.touch", new BandTouchResolver(_serviceProvider, "bollinger"));
+        
+        // Multi-timeframe structure features from MtfStructureResolver
+        RegisterResolver("mtf.align", new MtfStructureResolver(_serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<BotCore.Features.MtfStructureResolver>>(), _serviceProvider));
+        RegisterResolver("mtf.bias", new MtfStructureResolver(_serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<BotCore.Features.MtfStructureResolver>>(), _serviceProvider));
     }
     
     /// <summary>

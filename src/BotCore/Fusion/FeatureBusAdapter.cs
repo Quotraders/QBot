@@ -41,6 +41,53 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
     }
     
     /// <summary>
+    /// Get bar history from BarPyramid (preferred) or fallback to individual BarAggregator services
+    /// Ensures GetServices<BarAggregator> returns populated histories after BarPyramid integration
+    /// </summary>
+    private IReadOnlyList<BotCore.Market.Bar> GetBarHistory(string symbol, int minBars = 10)
+    {
+        // First try BarPyramid for populated bar histories
+        var barPyramid = _serviceProvider.GetService<BotCore.Market.BarPyramid>();
+        if (barPyramid != null)
+        {
+            // Try M1 first for finest granularity
+            var history = barPyramid.M1.GetHistory(symbol);
+            if (history.Count >= minBars)
+            {
+                return history;
+            }
+            
+            // Try M5 if M1 doesn't have enough data
+            history = barPyramid.M5.GetHistory(symbol);
+            if (history.Count >= minBars)
+            {
+                return history;
+            }
+            
+            // Try M30 as last resort
+            history = barPyramid.M30.GetHistory(symbol);
+            if (history.Count >= minBars)
+            {
+                return history;
+            }
+        }
+        
+        // Fallback: try individual BarAggregator services 
+        var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+        foreach (var aggregator in barAggregators)
+        {
+            var history = aggregator.GetHistory(symbol);
+            if (history.Count >= minBars)
+            {
+                return history;
+            }
+        }
+        
+        // Return empty list if no suitable history found
+        return Array.Empty<BotCore.Market.Bar>();
+    }
+    
+    /// <summary>
     /// Initialize the feature calculator dictionary with all supported features
     /// </summary>
     private Dictionary<string, Func<string, double?>> InitializeFeatureCalculators()
@@ -352,37 +399,38 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
     }
 
     /// <summary>
-    /// Calculate momentum Z-score from price action
+    /// Calculate momentum Z-score from price action using BarPyramid
     /// </summary>
     private double? CalculateMomentumZScore(string symbol)
     {
         try
         {
-            var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
-            foreach (var aggregator in barAggregators)
+            var history = GetBarHistory(symbol, 20);
+            if (history.Count >= 20)
             {
-                var history = aggregator.GetHistory(symbol);
-                if (history.Count >= 20)
+                var prices = history.TakeLast(20).Select(b => (double)b.Close).ToList();
+                var returns = new List<double>();
+                
+                for (int i = 1; i < prices.Count; i++)
                 {
-                    var prices = history.TakeLast(20).Select(b => (double)b.Close).ToList();
-                    var returns = new List<double>();
+                    returns.Add((prices[i] - prices[i - 1]) / prices[i - 1]);
+                }
+                
+                if (returns.Count > 0)
+                {
+                    var mean = returns.Average();
+                    var stdDev = Math.Sqrt(returns.Select(r => Math.Pow(r - mean, 2)).Average());
+                    var latestReturn = returns[^1];
                     
-                    for (int i = 1; i < prices.Count; i++)
-                    {
-                        returns.Add((prices[i] - prices[i - 1]) / prices[i - 1]);
-                    }
-                    
-                    if (returns.Count > 0)
-                    {
-                        var mean = returns.Average();
-                        var stdDev = Math.Sqrt(returns.Select(r => Math.Pow(r - mean, 2)).Average());
-                        var latestReturn = returns[^1];
-                        
-                        return stdDev > 0 ? (latestReturn - mean) / stdDev : 0;
-                    }
+                    var zScore = stdDev > 0 ? (latestReturn - mean) / stdDev : 0;
+                    _logger.LogTrace("[MOMENTUM-ZSCORE] Calculated for {Symbol}: {ZScore:F4} (bars={BarCount})", 
+                        symbol, zScore, history.Count);
+                    return zScore;
                 }
             }
             
+            _logger.LogDebug("[MOMENTUM-ZSCORE] Insufficient data for {Symbol} - only {BarCount} bars available", 
+                symbol, history.Count);
             return null;
         }
         catch (Exception ex)
