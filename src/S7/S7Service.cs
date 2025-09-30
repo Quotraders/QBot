@@ -896,7 +896,7 @@ namespace TradingBot.S7
             if (!_performanceHistory.TryGetValue(symbol, out var performanceList) || performanceList.Count == 0)
                 return 0m;
 
-            var recent = performanceList.TakeLast(_config.AdaptiveLookbackPeriod);
+            var recent = performanceList.TakeLast(_config.AdaptiveLookbackPeriod).ToList();
             return recent.DefaultIfEmpty(0m).Average();
         }
 
@@ -905,8 +905,8 @@ namespace TradingBot.S7
             if (!_volatilityHistory.TryGetValue(symbol, out var volatilityList) || volatilityList.Count < 2)
                 return 0m;
 
-            var recent = volatilityList.TakeLast(_config.AdaptiveLookbackPeriod);
-            if (recent.Count() < 2) return 0m;
+            var recent = volatilityList.TakeLast(_config.AdaptiveLookbackPeriod).ToList();
+            if (recent.Count < 2) return 0m;
 
             var mean = recent.Average();
             var variance = recent.Select(x => (x - mean) * (x - mean)).Average();

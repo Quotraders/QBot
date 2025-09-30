@@ -118,7 +118,7 @@ namespace BotCore.Services
             if (data is null) throw new ArgumentNullException(nameof(data));
             
             var currentTime = GetMarketTime(data.Timestamp);
-            var session = ES_NQ_TradingSchedule.GetCurrentSession(currentTime);
+            var session = EsNqTradingSchedule.GetCurrentSession(currentTime);
 
             if (session == null)
             {
