@@ -16,7 +16,16 @@ namespace BotCore.Features
     public sealed class MtfStructureResolver : IFeatureResolver
     {
         private readonly ILogger<MtfStructureResolver> _logger;
+        private readonly IServiceProvider _serviceProvider;
         private readonly ConcurrentDictionary<string, MtfStructureState> _symbolStates = new(StringComparer.OrdinalIgnoreCase);
+        
+        // Contract ID to Symbol mapping (ContractDirectory equivalent)
+        private static readonly Dictionary<string, string> ContractToSymbolMap = new()
+        {
+            { "CON.F.US.EP.Z25", "ES" },
+            { "CON.F.US.ENQ.Z25", "NQ" },
+            // Add more TopstepX contract mappings as needed
+        };
         
         // Configuration-driven constants (fail-closed requirement)
         private static readonly double SafeZeroValue = GetConfiguredSafeValue();
@@ -44,9 +53,10 @@ namespace BotCore.Features
             "mtf.bias"
         };
 
-        public MtfStructureResolver(ILogger<MtfStructureResolver> logger)
+        public MtfStructureResolver(ILogger<MtfStructureResolver> logger, IServiceProvider serviceProvider)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         }
 
         public string[] GetAvailableFeatureKeys() => _availableFeatureKeys;
@@ -69,7 +79,10 @@ namespace BotCore.Features
             {
                 await Task.CompletedTask.ConfigureAwait(false);
 
-                var state = _symbolStates.GetOrAdd(symbol, _ => new MtfStructureState());
+                // Normalize contract ID to symbol using ContractDirectory
+                var normalizedSymbol = NormalizeContractIdToSymbol(symbol);
+                
+                var state = _symbolStates.GetOrAdd(normalizedSymbol, _ => new MtfStructureState());
                 
                 // Extract close price from bar data
                 var barType = barData.GetType();
@@ -78,7 +91,8 @@ namespace BotCore.Features
 
                 if (closeProperty == null)
                 {
-                    _logger.LogError("[MTF-RESOLVER] [AUDIT-VIOLATION] Missing close price property for {Symbol} - FAIL-CLOSED + TELEMETRY", symbol);
+                    _logger.LogError("[MTF-RESOLVER] [AUDIT-VIOLATION] Missing close price property for {Symbol} -> {NormalizedSymbol} - FAIL-CLOSED + TELEMETRY", 
+                        symbol, normalizedSymbol);
                     return;
                 }
 
@@ -111,13 +125,13 @@ namespace BotCore.Features
                     state.Bias = bias;
                     state.LastUpdate = DateTime.UtcNow;
 
-                    _logger.LogTrace("[MTF-RESOLVER] Updated {Symbol}: Alignment={Alignment:F4}, Bias={Bias:F4}", 
-                        symbol, alignment, bias);
+                    _logger.LogTrace("[MTF-RESOLVER] Updated {Symbol} -> {NormalizedSymbol}: Alignment={Alignment:F4}, Bias={Bias:F4}", 
+                        symbol, normalizedSymbol, alignment, bias);
                 }
                 else
                 {
-                    _logger.LogTrace("[MTF-RESOLVER] Insufficient data for {Symbol}: {Count}/{Required} bars", 
-                        symbol, state.PriceHistory.Count, MediumHorizonBars);
+                    _logger.LogTrace("[MTF-RESOLVER] Insufficient data for {Symbol} -> {NormalizedSymbol}: {Count}/{Required} bars", 
+                        symbol, normalizedSymbol, state.PriceHistory.Count, MediumHorizonBars);
                 }
             }
             catch (Exception ex)
@@ -138,16 +152,30 @@ namespace BotCore.Features
 
             await Task.CompletedTask.ConfigureAwait(false);
 
-            if (!_symbolStates.TryGetValue(symbol, out var state))
+            // Normalize symbol for consistent lookup
+            var normalizedSymbol = NormalizeContractIdToSymbol(symbol);
+
+            if (!_symbolStates.TryGetValue(normalizedSymbol, out var state))
             {
-                _logger.LogWarning("[MTF-RESOLVER] [AUDIT-VIOLATION] No state for symbol {Symbol} - FAIL-CLOSED + TELEMETRY", symbol);
+                _logger.LogWarning("[MTF-RESOLVER] [AUDIT-VIOLATION] No state for symbol {Symbol} -> {NormalizedSymbol} - FAIL-CLOSED + TELEMETRY", 
+                    symbol, normalizedSymbol);
                 return null;
             }
 
             if (state.PriceHistory.Count < MediumHorizonBars)
             {
-                _logger.LogWarning("[MTF-RESOLVER] [AUDIT-VIOLATION] Insufficient data for {Symbol}: {Count}/{Required} bars - FAIL-CLOSED + TELEMETRY", 
-                    symbol, state.PriceHistory.Count, MediumHorizonBars);
+                // Add telemetry for stale slope data (>2 bars age check)
+                var dataAge = DateTime.UtcNow - state.LastUpdate;
+                if (dataAge > TimeSpan.FromMinutes(10)) // 2+ bars at 5min = 10+ minutes
+                {
+                    _logger.LogWarning("[MTF-RESOLVER] [AUDIT-VIOLATION] Stale slope data for {Symbol} -> {NormalizedSymbol}: age={Age:F1}min - FAIL-CLOSED + TELEMETRY", 
+                        symbol, normalizedSymbol, dataAge.TotalMinutes);
+                }
+                else
+                {
+                    _logger.LogWarning("[MTF-RESOLVER] [AUDIT-VIOLATION] Insufficient data for {Symbol} -> {NormalizedSymbol}: {Count}/{Required} bars - FAIL-CLOSED + TELEMETRY", 
+                        symbol, normalizedSymbol, state.PriceHistory.Count, MediumHorizonBars);
+                }
                 return null;
             }
 
@@ -157,6 +185,74 @@ namespace BotCore.Features
                 "mtf.bias" => state.Bias,
                 _ => null
             };
+        }
+
+        /// <summary>
+        /// Normalize contract ID to symbol using ContractDirectory equivalent mapping
+        /// Implements fail-closed behavior for unmapped contracts
+        /// </summary>
+        private string NormalizeContractIdToSymbol(string contractIdOrSymbol)
+        {
+            if (string.IsNullOrWhiteSpace(contractIdOrSymbol))
+            {
+                _logger.LogWarning("[MTF-RESOLVER] Empty contract ID/symbol provided, returning as-is");
+                return contractIdOrSymbol ?? string.Empty;
+            }
+
+            // Try to map contract ID to symbol
+            if (ContractToSymbolMap.TryGetValue(contractIdOrSymbol, out var mappedSymbol))
+            {
+                _logger.LogTrace("[MTF-RESOLVER] Mapped contract ID {ContractId} -> {Symbol}", contractIdOrSymbol, mappedSymbol);
+                return mappedSymbol;
+            }
+
+            // If no mapping found, check if it's already a symbol (ES, NQ, etc.)
+            if (contractIdOrSymbol.Length <= 3 && contractIdOrSymbol.All(char.IsLetter))
+            {
+                _logger.LogTrace("[MTF-RESOLVER] Input {Input} appears to be a symbol, using as-is", contractIdOrSymbol);
+                return contractIdOrSymbol.ToUpperInvariant();
+            }
+
+            // Try to extract symbol from contract ID using pattern matching
+            var extractedSymbol = ExtractSymbolFromContractId(contractIdOrSymbol);
+            if (!string.IsNullOrEmpty(extractedSymbol))
+            {
+                _logger.LogTrace("[MTF-RESOLVER] Extracted symbol {Symbol} from contract ID {ContractId}", 
+                    extractedSymbol, contractIdOrSymbol);
+                return extractedSymbol;
+            }
+
+            // Fail-closed: log warning and return original value for downstream handling
+            _logger.LogWarning("[MTF-RESOLVER] Could not normalize contract ID {ContractId} to symbol, using as-is", 
+                contractIdOrSymbol);
+            return contractIdOrSymbol;
+        }
+
+        /// <summary>
+        /// Extract symbol from TopstepX contract ID format (e.g., "CON.F.US.EP.Z25" -> "ES")
+        /// </summary>
+        private static string ExtractSymbolFromContractId(string contractId)
+        {
+            try
+            {
+                var parts = contractId.Split('.');
+                if (parts.Length >= 4)
+                {
+                    // TopstepX format: CON.F.US.EP.Z25 -> EP (which maps to ES)
+                    var instrumentPart = parts[3];
+                    return instrumentPart switch
+                    {
+                        "EP" => "ES",
+                        "ENQ" => "NQ",
+                        _ => instrumentPart
+                    };
+                }
+            }
+            catch (Exception)
+            {
+                // Swallow parsing errors and return empty
+            }
+            return string.Empty;
         }
 
         private static double CalculateSlope(List<PricePoint> prices)

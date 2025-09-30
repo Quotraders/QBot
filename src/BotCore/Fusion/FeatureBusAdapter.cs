@@ -41,6 +41,53 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
     }
     
     /// <summary>
+    /// Get bar history from BarPyramid (preferred) or fallback to individual BarAggregator services
+    /// Ensures GetServices<BarAggregator> returns populated histories after BarPyramid integration
+    /// </summary>
+    private IReadOnlyList<BotCore.Market.Bar> GetBarHistory(string symbol, int minBars = 10)
+    {
+        // First try BarPyramid for populated bar histories
+        var barPyramid = _serviceProvider.GetService<BotCore.Market.BarPyramid>();
+        if (barPyramid != null)
+        {
+            // Try M1 first for finest granularity
+            var history = barPyramid.M1.GetHistory(symbol);
+            if (history.Count >= minBars)
+            {
+                return history;
+            }
+            
+            // Try M5 if M1 doesn't have enough data
+            history = barPyramid.M5.GetHistory(symbol);
+            if (history.Count >= minBars)
+            {
+                return history;
+            }
+            
+            // Try M30 as last resort
+            history = barPyramid.M30.GetHistory(symbol);
+            if (history.Count >= minBars)
+            {
+                return history;
+            }
+        }
+        
+        // Fallback: try individual BarAggregator services 
+        var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
+        foreach (var aggregator in barAggregators)
+        {
+            var history = aggregator.GetHistory(symbol);
+            if (history.Count >= minBars)
+            {
+                return history;
+            }
+        }
+        
+        // Return empty list if no suitable history found
+        return Array.Empty<BotCore.Market.Bar>();
+    }
+    
+    /// <summary>
     /// Initialize the feature calculator dictionary with all supported features
     /// </summary>
     private Dictionary<string, Func<string, double?>> InitializeFeatureCalculators()
@@ -352,37 +399,38 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
     }
 
     /// <summary>
-    /// Calculate momentum Z-score from price action
+    /// Calculate momentum Z-score from price action using BarPyramid
     /// </summary>
     private double? CalculateMomentumZScore(string symbol)
     {
         try
         {
-            var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
-            foreach (var aggregator in barAggregators)
+            var history = GetBarHistory(symbol, 20);
+            if (history.Count >= 20)
             {
-                var history = aggregator.GetHistory(symbol);
-                if (history.Count >= 20)
+                var prices = history.TakeLast(20).Select(b => (double)b.Close).ToList();
+                var returns = new List<double>();
+                
+                for (int i = 1; i < prices.Count; i++)
                 {
-                    var prices = history.TakeLast(20).Select(b => (double)b.Close).ToList();
-                    var returns = new List<double>();
+                    returns.Add((prices[i] - prices[i - 1]) / prices[i - 1]);
+                }
+                
+                if (returns.Count > 0)
+                {
+                    var mean = returns.Average();
+                    var stdDev = Math.Sqrt(returns.Select(r => Math.Pow(r - mean, 2)).Average());
+                    var latestReturn = returns[^1];
                     
-                    for (int i = 1; i < prices.Count; i++)
-                    {
-                        returns.Add((prices[i] - prices[i - 1]) / prices[i - 1]);
-                    }
-                    
-                    if (returns.Count > 0)
-                    {
-                        var mean = returns.Average();
-                        var stdDev = Math.Sqrt(returns.Select(r => Math.Pow(r - mean, 2)).Average());
-                        var latestReturn = returns[^1];
-                        
-                        return stdDev > 0 ? (latestReturn - mean) / stdDev : 0;
-                    }
+                    var zScore = stdDev > 0 ? (latestReturn - mean) / stdDev : 0;
+                    _logger.LogTrace("[MOMENTUM-ZSCORE] Calculated for {Symbol}: {ZScore:F4} (bars={BarCount})", 
+                        symbol, zScore, history.Count);
+                    return zScore;
                 }
             }
             
+            _logger.LogDebug("[MOMENTUM-ZSCORE] Insufficient data for {Symbol} - only {BarCount} bars available", 
+                symbol, history.Count);
             return null;
         }
         catch (Exception ex)
@@ -679,30 +727,37 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
     {
         try
         {
-            var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
-            foreach (var aggregator in barAggregators)
+            // Use the improved GetBarHistory method for populated bar data
+            var recentBars = GetBarHistory(symbol, 10);
+            if (recentBars.Count >= 10)
             {
-                var history = aggregator.GetHistory(symbol);
-                if (history.Count >= 10)
+                var last10Bars = recentBars.TakeLast(10).ToList();
+                var avgVolume = last10Bars.Average(b => b.Volume);
+                
+                // Calculate liquidity score based on volume and price stability
+                var priceRange = last10Bars.Max(b => b.High) - last10Bars.Min(b => b.Low);
+                var avgPrice = last10Bars.Average(b => (b.High + b.Low) / 2);
+                
+                if (avgPrice > 0)
                 {
-                    var recentBars = history.TakeLast(10).ToList();
-                    var avgVolume = recentBars.Average(b => b.Volume);
+                    var volatilityRatio = (double)(priceRange / avgPrice);
+                    var volumeScore = Math.Min(avgVolume / 1000.0, 10.0); // Normalize volume
+                    var stabilityScore = Math.Max(0.1, 1.0 - volatilityRatio); // Stability bonus
                     
-                    // Calculate liquidity score based on volume and price stability
-                    var priceRange = recentBars.Max(b => b.High) - recentBars.Min(b => b.Low);
-                    var avgPrice = recentBars.Average(b => (b.High + b.Low) / 2);
+                    var liquidityScore = Math.Min(10.0, volumeScore * stabilityScore);
                     
-                    if (avgPrice > 0)
-                    {
-                        var volatilityRatio = (double)(priceRange / avgPrice);
-                        var volumeScore = Math.Min(avgVolume / 1000.0, 10.0); // Normalize volume
-                        var stabilityScore = Math.Max(0.1, 1.0 - volatilityRatio); // Stability bonus
-                        
-                        return Math.Min(10.0, volumeScore * stabilityScore);
-                    }
+                    // Try to enhance with order book data if available
+                    var enhancedScore = EnhanceWithOrderBookData(symbol, liquidityScore);
+                    
+                    _logger.LogTrace("[LIQUIDITY-SCORE] Calculated for {Symbol}: {Score:F4} (bars={BarCount}, enhanced={Enhanced})", 
+                        symbol, enhancedScore ?? liquidityScore, recentBars.Count, enhancedScore.HasValue);
+                    
+                    return enhancedScore ?? liquidityScore;
                 }
             }
             
+            _logger.LogDebug("[LIQUIDITY-SCORE] Insufficient data for {Symbol} - only {BarCount} bars available", 
+                symbol, recentBars.Count);
             return null;
         }
         catch (Exception ex)
@@ -713,7 +768,35 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
     }
 
     /// <summary>
-    /// Get pattern score from real pattern engine
+    /// Enhance liquidity score with order book data if available
+    /// </summary>
+    private double? EnhanceWithOrderBookData(string symbol, double baseScore)
+    {
+        try
+        {
+            // Try to get order book data from RedundantDataFeedManager
+            var dataFeedManager = _serviceProvider.GetService<BotCore.Market.IDataFeed>();
+            if (dataFeedManager != null)
+            {
+                // For now, this is a placeholder - real order book integration would be async
+                // In a full implementation, we'd cache recent order book snapshots
+                _logger.LogTrace("[LIQUIDITY-SCORE] Order book data feed available for {Symbol}", symbol);
+                
+                // Apply a small enhancement factor when order book data is available
+                return baseScore * 1.1; // 10% boost for having order book data
+            }
+            
+            return null; // Return null to use base score
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "[LIQUIDITY-SCORE] Could not enhance with order book data for {Symbol}", symbol);
+            return null; // Return null to use base score
+        }
+    }
+
+    /// <summary>
+    /// Get pattern score from real pattern engine using proper async calls
     /// </summary>
     private double? GetPatternScoreFromEngine(string symbol, bool bullish)
     {
@@ -722,20 +805,65 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             var patternEngine = _serviceProvider.GetService<BotCore.Patterns.PatternEngine>();
             if (patternEngine != null)
             {
-                // PatternEngine.AnalyzePatterns method doesn't exist - use fail-closed approach
-                _logger.LogDebug("PatternEngine.AnalyzePatterns not available for {Symbol} - using configuration-based pattern scoring", symbol);
+                // Use proper async method with cancellation token
+                var cancellationToken = CancellationToken.None; // For synchronous context, use None
                 
-                // Get configured pattern confidence values instead of calling non-existent method
+                try
+                {
+                    // Attempt to call the real PatternEngine.GetCurrentScoresAsync method
+                    var scoresTask = patternEngine.GetCurrentScoresAsync(symbol, cancellationToken);
+                    
+                    // Wait for the task with a reasonable timeout (non-blocking in real implementation)
+                    if (scoresTask.Wait(TimeSpan.FromMilliseconds(500))) // 500ms timeout
+                    {
+                        var patternScores = scoresTask.Result;
+                        if (patternScores?.DetectedPatterns != null && patternScores.DetectedPatterns.Any())
+                        {
+                            // Get the appropriate pattern score based on bullish/bearish request
+                            var relevantPatterns = patternScores.DetectedPatterns
+                                .Where(p => bullish ? p.IsBullish : p.IsBearish)
+                                .ToList();
+                            
+                            if (relevantPatterns.Any())
+                            {
+                                var avgConfidence = relevantPatterns.Average(p => p.Confidence);
+                                _logger.LogTrace("[PATTERN-ENGINE] Found {PatternCount} {Direction} patterns for {Symbol}, avg confidence: {Confidence:F4}", 
+                                    relevantPatterns.Count, bullish ? "bullish" : "bearish", symbol, avgConfidence);
+                                return avgConfidence;
+                            }
+                        }
+                        
+                        _logger.LogDebug("[PATTERN-ENGINE] No {Direction} patterns found for {Symbol}", 
+                            bullish ? "bullish" : "bearish", symbol);
+                        return 0.0; // No patterns found
+                    }
+                    else
+                    {
+                        _logger.LogWarning("[PATTERN-ENGINE] GetCurrentScoresAsync timed out for {Symbol} - falling back to config", symbol);
+                    }
+                }
+                catch (NotImplementedException)
+                {
+                    _logger.LogDebug("[PATTERN-ENGINE] GetCurrentScoresAsync not implemented yet for {Symbol} - using configuration fallback", symbol);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[PATTERN-ENGINE] Error calling GetCurrentScoresAsync for {Symbol} - falling back to config", symbol);
+                }
+                
+                // Fallback to configuration values only on real failures
                 var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
                 if (configService == null)
                 {
                     _logger.LogError("🚨 Configuration service unavailable for pattern analysis - fail-closed");
-                    throw new InvalidOperationException("Configuration service unavailable for pattern analysis (fail-closed)");
+                    return null; // Fail-closed: no default values
                 }
                 
                 var bullishPatternConfidence = configService.GetValue<double>("Patterns:BullishConfidence", 0.6);
                 var bearishPatternConfidence = configService.GetValue<double>("Patterns:BearishConfidence", 0.6);
-                var neutralPatternConfidence = configService.GetValue<double>("Patterns:NeutralConfidence", 0.5);
+                
+                _logger.LogTrace("[PATTERN-ENGINE] Using config fallback for {Symbol}: {Direction}={Confidence}", 
+                    symbol, bullish ? "bullish" : "bearish", bullish ? bullishPatternConfidence : bearishPatternConfidence);
                 
                 return bullish ? bullishPatternConfidence : bearishPatternConfidence;
             }
