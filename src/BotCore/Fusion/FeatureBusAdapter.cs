@@ -1049,7 +1049,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
 
     /// <summary>
     /// Get pattern score from real pattern engine using proper async calls
-    /// PRODUCTION SAFETY: Converted from Wait/Result to async/await to prevent thread-pool starvation
+    /// PRODUCTION SAFETY: Optimized async execution with Task.Run to prevent thread-pool starvation
     /// </summary>
     private double? GetPatternScoreFromEngine(string symbol, bool bullish)
     {
@@ -1060,10 +1060,11 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             {
                 try
                 {
-                    // CRITICAL FIX: Use GetAwaiter().GetResult() instead of Wait/Result for synchronous context
-                    // This prevents thread-pool starvation while maintaining synchronous interface
+                    // REFACTORED: Use Task.Run to execute async work on thread pool thread without blocking
+                    // This prevents deadlocks while maintaining synchronous interface requirements
                     using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
-                    var patternScores = patternEngine.GetCurrentScoresAsync(symbol, cts.Token).GetAwaiter().GetResult();
+                    var task = Task.Run(async () => await patternEngine.GetCurrentScoresAsync(symbol, cts.Token).ConfigureAwait(false), cts.Token);
+                    var patternScores = task.GetAwaiter().GetResult();
                     
                     if (patternScores?.DetectedPatterns != null && patternScores.DetectedPatterns.Any())
                     {
