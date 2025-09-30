@@ -89,14 +89,14 @@ namespace TradingBot.S7
             if (!_config.Enabled)
                 return;
 
-            if (!_priceHistory.ContainsKey(symbol))
+            if (!_priceHistory.TryGetValue(symbol, out var priceList))
             {
                 _logUnknownSymbol(_logger, symbol, null);
                 return;
             }
 
             // Add new price point
-            _priceHistory[symbol].Add(new PricePoint { Close = close, Timestamp = timestamp });
+            priceList.Add(new PricePoint { Close = close, Timestamp = timestamp });
 
             // Maintain sliding window
             var maxLookback = Math.Max(_config.LookbackLongBars, _config.LookbackMediumBars);
@@ -239,8 +239,8 @@ namespace TradingBot.S7
             if (recent.Count < 2)
                 return 0;
 
-            var startPrice = recent.First().Close;
-            var endPrice = recent.Last().Close;
+            var startPrice = recent[0].Close;
+            var endPrice = recent[recent.Count - 1].Close;
 
             return (endPrice - startPrice) / startPrice;
         }
@@ -356,7 +356,6 @@ namespace TradingBot.S7
 
         private static decimal CalculateSignalStrength(S7State esState, S7State nqState, decimal coherence)
         {
-            var maxZScore = Math.Max(Math.Abs(esState.ZScore), Math.Abs(nqState.ZScore));
             var avgZScore = (Math.Abs(esState.ZScore) + Math.Abs(nqState.ZScore)) / AveragingDivisor;
             
             return avgZScore * coherence;
@@ -456,7 +455,7 @@ namespace TradingBot.S7
                    HasSufficientDataForBothSymbols();
         }
 
-        private Dictionary<string, decimal> BuildFeatureBusData(S7State esState, S7State nqState, decimal coherence, decimal signalStrength)
+        private static Dictionary<string, decimal> BuildFeatureBusData(S7State esState, S7State nqState, decimal coherence, decimal signalStrength)
         {
             return new Dictionary<string, decimal>
             {
@@ -558,7 +557,7 @@ namespace TradingBot.S7
                 _priceHistory[symbol].Count >= _config.LookbackShortBars);
         }
 
-        private S7State CloneState(S7State original)
+        private static S7State CloneState(S7State original)
         {
             var clonedState = new S7State
             {
@@ -802,19 +801,19 @@ namespace TradingBot.S7
 
         private decimal GetRecentPerformance(string symbol)
         {
-            if (!_performanceHistory.ContainsKey(symbol) || _performanceHistory[symbol].Count == 0)
+            if (!_performanceHistory.TryGetValue(symbol, out var performanceList) || performanceList.Count == 0)
                 return 0m;
 
-            var recent = _performanceHistory[symbol].TakeLast(_config.AdaptiveLookbackPeriod);
+            var recent = performanceList.TakeLast(_config.AdaptiveLookbackPeriod);
             return recent.DefaultIfEmpty(0m).Average();
         }
 
         private decimal GetRecentVolatility(string symbol)
         {
-            if (!_volatilityHistory.ContainsKey(symbol) || _volatilityHistory[symbol].Count < 2)
+            if (!_volatilityHistory.TryGetValue(symbol, out var volatilityList) || volatilityList.Count < 2)
                 return 0m;
 
-            var recent = _volatilityHistory[symbol].TakeLast(_config.AdaptiveLookbackPeriod);
+            var recent = volatilityList.TakeLast(_config.AdaptiveLookbackPeriod);
             if (recent.Count() < 2) return 0m;
 
             var mean = recent.Average();

@@ -99,9 +99,13 @@ namespace TradingBot.S7
                             var handler = new Action<string, object>(OnMarketDataReceived);
                             eventInfo.AddEventHandler(_marketDataService, handler);
                             
-                            _logger.LogInformation("[S7-BRIDGE] S7 market data bridge connected to EnhancedMarketDataFlowService");
+                            _logBridgeStarted(_logger, null);
                             _logger.LogInformation("[S7-BRIDGE] Monitoring symbols: {Symbols}", string.Join(", ", _config.Symbols));
                             return Task.CompletedTask;
+                        }
+                        else
+                        {
+                            _logSubscriptionError(_logger, null);
                         }
                     }
                 }
