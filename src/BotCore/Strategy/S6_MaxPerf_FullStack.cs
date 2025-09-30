@@ -183,7 +183,7 @@ namespace TopstepX.S6
     // --- ROLLING INDICATORS (O(1)) ---
     public sealed class Atr
     {
-        private readonly int _n; private double _atr; private bool _seeded; private double _prevClosePx;
+        private readonly int _n; private double _atr; private bool _seeded;
         public Atr(int n){ _n=n; }
         public double Update(double high, double low, double prevClose)
         {

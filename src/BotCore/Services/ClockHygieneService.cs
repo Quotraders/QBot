@@ -151,6 +151,11 @@ namespace TradingBot.BotCore.Services
             return obj is TradingTimestamp other && Equals(other);
         }
 
+        public bool Equals(TradingTimestamp other)
+        {
+            return UtcTime == other.UtcTime && MonotonicTime == other.MonotonicTime;
+        }
+
         public override int GetHashCode()
         {
             return HashCode.Combine(UtcTime, MonotonicTime);
@@ -164,11 +169,6 @@ namespace TradingBot.BotCore.Services
         public static bool operator !=(TradingTimestamp left, TradingTimestamp right)
         {
             return !(left == right);
-        }
-
-        public bool Equals(TradingTimestamp other)
-        {
-            return UtcTime == other.UtcTime && MonotonicTime == other.MonotonicTime;
         }
     }
 
