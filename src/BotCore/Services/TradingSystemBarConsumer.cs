@@ -30,8 +30,8 @@ namespace BotCore.Services
             LoggerMessage.Define<int, int>(LogLevel.Information, new EventId(3, nameof(LogUpdatedReadinessTracker)),
                 "[BAR-CONSUMER] ✅ Updated readiness tracker: +{SeededBarCount} seeded bars, +{BarSeenCount} bars seen");
 
-        private static readonly Action<ILogger, string, Exception?> LogNoReadinessTracker =
-            LoggerMessage.Define<string>(LogLevel.Warning, new EventId(4, nameof(LogNoReadinessTracker)),
+        private static readonly Action<ILogger, Exception?> LogNoReadinessTracker =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(4, nameof(LogNoReadinessTracker)),
                 "[BAR-CONSUMER] ⚠️ No readiness tracker available - bars processed but not counted for readiness");
 
         private static readonly Action<ILogger, int, string, Exception?> LogSuccessfullyProcessed =
@@ -74,7 +74,7 @@ namespace BotCore.Services
                 }
                 else
                 {
-                    LogNoReadinessTracker(_logger, contractId, null);
+                    LogNoReadinessTracker(_logger, null);
                 }
 
                 // Try to feed bars into any available BarAggregator instances

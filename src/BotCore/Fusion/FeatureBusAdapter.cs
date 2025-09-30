@@ -722,9 +722,13 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     var recentBars = history.TakeLast(2).ToList();
                     var avgVolume = recentBars.Average(b => b.Volume);
                     
-                    // Estimate spread based on recent volatility and volume
-                    var priceRange = (double)(recentBars.Max(b => b.High) - recentBars.Min(b => b.Low));
-                    var estimatedSpread = priceRange * (1000.0 / Math.Max(avgVolume, 100.0)) * 0.1;
+                    // Estimate spread based on recent volatility and volume with configuration
+                    var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+                    var spreadEstimateVolumeFactor = configService?.GetValue<double>("Features:SpreadEstimateVolumeFactor", 1000.0) ?? 1000.0;
+                    var spreadEstimateVolumeMin = configService?.GetValue<double>("Features:SpreadEstimateVolumeMin", 100.0) ?? 100.0;
+                    var spreadEstimateMultiplier = configService?.GetValue<double>("Features:SpreadEstimateMultiplier", 0.1) ?? 0.1;
+                    
+                    var estimatedSpread = priceRange * (spreadEstimateVolumeFactor / Math.Max(avgVolume, spreadEstimateVolumeMin)) * spreadEstimateMultiplier;
                     
                     _logger.LogTrace("Estimated spread for {Symbol}: {Spread} (based on bars)", symbol, estimatedSpread);
                     return estimatedSpread;
@@ -763,10 +767,18 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                 if (avgPrice > 0)
                 {
                     var volatilityRatio = (double)(priceRange / avgPrice);
-                    var volumeScore = Math.Min(avgVolume / 1000.0, 10.0); // Normalize volume
-                    var stabilityScore = Math.Max(0.1, 1.0 - volatilityRatio); // Stability bonus
                     
-                    var liquidityScore = Math.Min(10.0, volumeScore * stabilityScore);
+                    // Get configuration values for liquidity calculation
+                    var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+                    var volumeNormalizationFactor = configService?.GetValue<double>("Features:VolumeNormalizationFactor", 1000.0) ?? 1000.0;
+                    var maxVolumeScore = configService?.GetValue<double>("Features:MaxVolumeScore", 10.0) ?? 10.0;
+                    var minStabilityScore = configService?.GetValue<double>("Features:MinStabilityScore", 0.1) ?? 0.1;
+                    var maxLiquidityScore = configService?.GetValue<double>("Features:MaxLiquidityScore", 10.0) ?? 10.0;
+                    
+                    var volumeScore = Math.Min(avgVolume / volumeNormalizationFactor, maxVolumeScore); // Normalize volume
+                    var stabilityScore = Math.Max(minStabilityScore, 1.0 - volatilityRatio); // Stability bonus
+                    
+                    var liquidityScore = Math.Min(maxLiquidityScore, volumeScore * stabilityScore);
                     
                     // Try to enhance with order book data if available
                     var enhancedScore = EnhanceWithOrderBookData(symbol, liquidityScore);
