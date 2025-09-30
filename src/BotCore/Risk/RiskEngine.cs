@@ -120,6 +120,7 @@ namespace BotCore.Risk
         private const decimal ReduceSize75TriggerLevel = 750m;        // $750 drawdown - reduce size by 75%
         private const decimal StrategyRotationTriggerLevel = 1000m;   // $1000 drawdown - switch to conservative
         private const decimal HaltNewTradesTriggerLevel = 1500m;      // $1500 drawdown - halt new trades
+        private const decimal EmergencyDrawdownThresholdDollars = 2000m; // $2000 drawdown - close all positions
         
         // Position size multiplier constants
         private const decimal PositionSizeReduction25Percent = 0.75m; // Reduce to 75% of original size
@@ -201,7 +202,7 @@ namespace BotCore.Risk
                 },
                 new DrawdownAction { 
                     ActionType = "CLOSE_ALL", 
-                    TriggerLevel = 2000m, 
+                    TriggerLevel = EmergencyDrawdownThresholdDollars, 
                     Description = "Close all positions and halt",
                     Action = async () => await EmergencyCloseAll().ConfigureAwait(false)
                 }

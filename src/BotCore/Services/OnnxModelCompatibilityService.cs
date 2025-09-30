@@ -166,15 +166,21 @@ namespace TradingBot.BotCore.Services
             }
         }
 
-        private static string GetCurrentOnnxRuntimeVersion()
+        private string GetCurrentOnnxRuntimeVersion()
         {
             try
             {
                 // Get ONNX Runtime version (this is a placeholder - actual implementation would query the runtime)
                 return "1.16.3"; // Pin to specific version for production
             }
-            catch
+            catch (PlatformNotSupportedException ex)
             {
+                _logger.LogWarning(ex, "Platform not supported for ONNX Runtime version detection");
+                return "unknown";
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Invalid operation getting ONNX Runtime version");
                 return "unknown";
             }
         }
@@ -188,9 +194,19 @@ namespace TradingBot.BotCore.Services
                 var hashBytes = sha256.ComputeHash(fileStream);
                 return Convert.ToHexString(hashBytes).ToLowerInvariant();
             }
-            catch (Exception ex)
+            catch (FileNotFoundException ex)
             {
-                _logger.LogError(ex, "Error calculating model hash for {ModelPath}", modelPath);
+                _logger.LogError(ex, "Model file not found: {ModelPath}", modelPath);
+                return "error";
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogError(ex, "Access denied to model file: {ModelPath}", modelPath);
+                return "error";
+            }
+            catch (CryptographicException ex)
+            {
+                _logger.LogError(ex, "Cryptographic error calculating model hash for {ModelPath}", modelPath);
                 return "error";
             }
         }

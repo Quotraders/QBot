@@ -22,7 +22,7 @@ namespace BotCore.Strategy
     /// with complete TopstepX SDK integration, health checks, and audit trails
     /// </summary>
     public class BridgeOrderRouter : TopstepX.S6.IOrderRouter, TopstepX.S11.IOrderRouter
-    {
+    {        
         private readonly RiskEngine _risk;
         private readonly IOrderService _orderService;
         private readonly ILogger<BridgeOrderRouter> _logger;
@@ -595,9 +595,21 @@ namespace BotCore.Strategy
 
         #region Helper Methods
 
+        // Helper method constants
+        private const decimal DefaultAtrValue = 0.25m;          // Default ATR value when insufficient data
+        
+        // Scoring algorithm constants
+        private const decimal AtrThreshold = 0.5m;              // ATR threshold for score calculations
+        private const decimal AtrMultiplier = 0.5m;             // ATR multiplier for score weighting
+        private const decimal VolzMultiplier = 0.3m;            // Volume-Z multiplier for score weighting
+        private const decimal ScoreMinimum = 0.1m;              // Minimum allowed score value
+        private const decimal ScoreMaximum = 5.0m;              // Maximum allowed score value
+        private const decimal DefaultQScore = 0.5m;             // Default Q-score base value
+        private const decimal QScoreBonus = 0.2m;               // Q-score bonus for high ATR
+
         private static decimal CalculateATR(IList<Bar> bars, int period = 14)
         {
-            if (bars.Count < 2) return 0.25m;
+            if (bars.Count < 2) return DefaultAtrValue;
             
             var trs = new List<decimal>();
             for (int i = 1; i < Math.Min(bars.Count, period + 1); i++)
@@ -611,28 +623,28 @@ namespace BotCore.Strategy
                 trs.Add(tr);
             }
             
-            return trs.Count > 0 ? trs.Average() : 0.25m;
+            return trs.Count > 0 ? trs.Average() : DefaultAtrValue;
         }
 
         private static decimal CalculateScore(Env env)
         {
             decimal score = 1.0m;
             
-            if (env.atr.HasValue && env.atr.Value > 0.5m)
-                score += env.atr.Value * 0.5m;
+            if (env.atr.HasValue && env.atr.Value > AtrThreshold)
+                score += env.atr.Value * AtrMultiplier;
                 
             if (env.volz.HasValue)
-                score += Math.Abs(env.volz.Value) * 0.3m;
+                score += Math.Abs(env.volz.Value) * VolzMultiplier;
                 
-            return Math.Max(0.1m, Math.Min(5.0m, score));
+            return Math.Max(ScoreMinimum, Math.Min(ScoreMaximum, score));
         }
 
         private static decimal CalculateQScore(Env env, IList<Bar> bars)
         {
-            decimal qScore = 0.5m;
+            decimal qScore = DefaultQScore;
             
-            if (env.atr.HasValue && env.atr.Value > 0.5m)
-                qScore += 0.2m;
+            if (env.atr.HasValue && env.atr.Value > AtrThreshold)
+                qScore += QScoreBonus;
                 
             if (bars.Count >= 5)
             {

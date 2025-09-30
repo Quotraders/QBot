@@ -465,9 +465,17 @@ namespace TopstepX.Bot.Core.Services
                 _logger.LogInformation("📋 Health report generated: {ReportPath} | Health Score: {HealthScore:F1}%", 
                     reportPath, report.OverallHealth);
             }
-            catch (Exception ex)
+            catch (DirectoryNotFoundException ex)
             {
-                _logger.LogError(ex, "❌ Error generating health report");
+                _logger.LogError(ex, "❌ Directory not found generating health report");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogError(ex, "❌ Access denied generating health report");
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "❌ JSON serialization error generating health report");
             }
         }
         
@@ -491,9 +499,13 @@ namespace TopstepX.Bot.Core.Services
                     _logger.LogDebug("🧹 Cleaned up {Count} old error records", staleErrors.Count);
                 }
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "⚠️ Error during error cleanup");
+                _logger.LogWarning(ex, "⚠️ Invalid operation during error cleanup");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "⚠️ Invalid argument during error cleanup");
             }
         }
         

@@ -22,6 +22,9 @@ namespace BotCore.Strategy
         private const decimal DefaultRsiValue = 50m;            // Default RSI value when insufficient data
         private const decimal RsiMaxValue = 100m;               // Maximum RSI value for calculations
         
+        // Momentum analysis constants
+        private const int MinimumMomentumBars = 10;             // Minimum bars required for momentum calculation
+        
         /// <summary>
         /// Maps S1-S14 strategy IDs to the 4 ML strategy types for data collection
         /// </summary>
@@ -358,12 +361,12 @@ namespace BotCore.Strategy
 
         private static decimal CalculateMomentumStrength(IList<Bar> bars)
         {
-            if (bars.Count < 10) return 0m;
+            if (bars.Count < MinimumMomentumBars) return 0m;
 
-            var recent = bars.TakeLast(10).ToList();
+            var recent = bars.TakeLast(MinimumMomentumBars).ToList();
             var upBars = recent.Count(b => b.Close > b.Open);
 
-            return upBars / 10m;
+            return upBars / (decimal)MinimumMomentumBars;
         }
 
         /// <summary>

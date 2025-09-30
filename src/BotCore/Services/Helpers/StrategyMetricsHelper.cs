@@ -74,6 +74,15 @@ namespace TradingBot.BotCore.Services.Helpers
         private const decimal S11MaxDrawdownExpectation = 0.30m;  // S11 trend following higher drawdown
         private const decimal DefaultMaxDrawdownExpectation = 0.20m; // Default moderate drawdown
         
+        // Strategy multiplier calculation constants
+        private const decimal DefaultStrategyMultiplier = 1.0m;     // Default multiplier when no parameters or strategy not found
+        private const decimal MinimumMultiplierBound = 0.5m;       // Minimum allowed multiplier value for risk management
+        
+        // Parameter impact calculation constants
+        private const decimal MaxParameterImpact = 0.05m;          // Maximum parameter impact on strategy metrics (5%)
+        private const decimal SigmaEnterReferenceTendency = 2.0m;   // Reference sigma_enter value for impact calculation
+        private const decimal ParameterSensitivityFactor = 0.02m;  // Sensitivity factor for parameter impact calculation
+        
         /// <summary>
         /// Get strategy base win rate
         /// Consolidates all strategy-specific win rate logic
@@ -129,7 +138,7 @@ namespace TradingBot.BotCore.Services.Helpers
         {
             if (parameters == null || !parameters.Any())
             {
-                return 1.0m;
+                return DefaultStrategyMultiplier;
             }
 
             return strategyId switch
@@ -138,7 +147,7 @@ namespace TradingBot.BotCore.Services.Helpers
                 "S3" => GetS3StrategyMultiplier(parameters),
                 "S6" => GetS6StrategyMultiplier(parameters),
                 "S11" => GetS11StrategyMultiplier(parameters),
-                _ => 1.0m
+                _ => DefaultStrategyMultiplier
             };
         }
 
@@ -161,7 +170,7 @@ namespace TradingBot.BotCore.Services.Helpers
                 impact += param.Key switch
                 {
                     "sigma_enter" when param.DecimalValue.HasValue => 
-                        Math.Max(-0.05m, Math.Min(0.05m, (2.0m - param.DecimalValue.Value) * 0.02m)),
+                        Math.Max(-MaxParameterImpact, Math.Min(MaxParameterImpact, (SigmaEnterReferenceTendency - param.DecimalValue.Value) * ParameterSensitivityFactor)),
                     "width_rank_threshold" when param.DecimalValue.HasValue => 
                         Math.Max(-0.03m, Math.Min(0.03m, (0.25m - param.DecimalValue.Value) * 0.1m)),
                     _ => 0m
@@ -178,7 +187,7 @@ namespace TradingBot.BotCore.Services.Helpers
         {
             var sigmaEnter = GetParameterValue(parameters, "sigma_enter", 2.0m);
             var widthRank = GetParameterValue(parameters, "width_rank_threshold", 0.25m);
-            return Math.Max(0.5m, Math.Min(2.0m, (sigmaEnter / 2.0m) * (1.0m - widthRank)));
+            return Math.Max(MinimumMultiplierBound, Math.Min(2.0m, (sigmaEnter / 2.0m) * (1.0m - widthRank)));
         }
 
         /// <summary>

@@ -28,6 +28,28 @@ public class NeuralUcbExtended : IDisposable
     private const int PerformanceUpdateDelay = 5;            // Minutes delay for performance updates
     private const decimal HighConfidenceThreshold = 0.7m;    // High confidence threshold for selection
     private const decimal MediumConfidenceThreshold = 0.8m;  // Medium confidence threshold for selection
+    
+    // Volatility calculation weights
+    private const decimal SpreadVolatilityWeight = 0.4m;     // Weight for spread-based volatility (40%)
+    private const decimal AtrVolatilityWeight = 0.5m;        // Weight for ATR-based volatility (50%)
+    private const decimal VolumeVolatilityWeight = 0.1m;     // Weight for volume-based volatility (10%)
+    
+    // Trend analysis constants
+    private const decimal StrongTrendThreshold = 0.8m;       // Threshold for strong trend detection
+    private const decimal TrendWeaknessFactor = 0.5m;        // Factor for weak trend calculation
+    private const decimal SidewaysTrendThreshold = 0.01m;    // Threshold for sideways market detection (1%)
+    
+    // Signal combination weights
+    private const decimal SignalStrengthWeight = 0.4m;       // Weight for signal strength (40%)
+    private const decimal ConfidenceWeight = 0.3m;           // Weight for confidence level (30%)
+    private const decimal RsiMomentumWeight = 0.3m;          // Weight for RSI momentum (30%)
+    
+    // Time-based trading factors
+    private const decimal WeekendActivityFactor = 0.2m;      // Activity factor for weekends (20%)
+    
+    // Risk environment weights
+    private const decimal VixRiskWeight = 0.6m;              // Weight for VIX-based risk (60%)
+    private const decimal EventRiskWeight = 0.4m;            // Weight for event-based risk (40%)
     private const int DefaultBundleLimit = 5;               // Default bundle limit for fallback recommendations
     private const decimal HighVolumeThreshold = 0.8m;       // High volume threshold for market conditions
     private const decimal LowVolumeThreshold = 0.3m;        // Low volume threshold for market conditions  
@@ -490,7 +512,7 @@ public class NeuralUcbExtended : IDisposable
             : 0m;
         
         // Weighted combination favoring spread and ATR
-        return (spreadVolatility * 0.4m) + (atrVolatility * 0.5m) + (volumeVolatility * 0.1m);
+        return (spreadVolatility * SpreadVolatilityWeight) + (atrVolatility * AtrVolatilityWeight) + (volumeVolatility * VolumeVolatilityWeight);
     }
     
     /// <summary>
@@ -509,13 +531,13 @@ public class NeuralUcbExtended : IDisposable
         var trendScore = 0m;
         
         if (currentPrice > ma20 && ma20 > ma50)
-            trendScore = 0.8m; // Strong uptrend
+            trendScore = StrongTrendThreshold; // Strong uptrend
         else if (currentPrice < ma20 && ma20 < ma50)
-            trendScore = -0.8m; // Strong downtrend
-        else if (Math.Abs(currentPrice - ma20) / currentPrice < 0.01m)
+            trendScore = -StrongTrendThreshold; // Strong downtrend
+        else if (Math.Abs(currentPrice - ma20) / currentPrice < SidewaysTrendThreshold)
             trendScore = 0m; // Sideways/ranging
         else
-            trendScore = (currentPrice - ma20) / currentPrice * 0.5m; // Weak trend
+            trendScore = (currentPrice - ma20) / currentPrice * TrendWeaknessFactor; // Weak trend
         
         // Normalize to 0-1 range for bracket selection
         return Math.Abs(trendScore);
@@ -536,7 +558,7 @@ public class NeuralUcbExtended : IDisposable
             : 0.5m;
         
         // Combine signal strength, confidence, and RSI momentum
-        return (signalStrength * 0.4m) + (confidence * 0.3m) + (rsiMomentum * 0.3m);
+        return (signalStrength * SignalStrengthWeight) + (confidence * ConfidenceWeight) + (rsiMomentum * RsiMomentumWeight);
     }
     
     /// <summary>
@@ -560,7 +582,7 @@ public class NeuralUcbExtended : IDisposable
         // Weekend adjustment
         if (dayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
         {
-            timeScore *= 0.2m; // Much lower activity on weekends
+            timeScore *= WeekendActivityFactor; // Much lower activity on weekends
         }
         
         return timeScore;
@@ -585,7 +607,7 @@ public class NeuralUcbExtended : IDisposable
         var eventRisk = (isFomcDay * 0.8m) + (isCpiDay * 0.6m) + (newsIntensity * 0.4m);
         
         // Combine VIX and event risk (0 = low risk, 1 = high risk)
-        return Math.Min((vixLevel * 0.6m) + (eventRisk * 0.4m), 1m);
+        return Math.Min((vixLevel * VixRiskWeight) + (eventRisk * EventRiskWeight), 1m);
     }
     
     /// <summary>

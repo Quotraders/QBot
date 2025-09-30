@@ -23,6 +23,15 @@ namespace BotCore
 
     public class EnhancedTrainingDataService : IEnhancedTrainingDataService
     {
+        // Training data quality constants
+        private const int MinimumRequiredFeatures = 20;
+        
+        // ML feature generation constants
+        private const decimal PriceSimulationUpMultiplier = 1.001m;    // Simulated high price multiplier (0.1% above)
+        private const decimal PriceSimulationDownMultiplier = 0.999m;  // Simulated low price multiplier (0.1% below)
+        private const decimal BollingerBandUpMultiplier = 1.02m;       // Bollinger band upper multiplier (2% above)
+        private const decimal BollingerBandDownMultiplier = 0.98m;     // Bollinger band lower multiplier (2% below)
+        
         private readonly ILogger<EnhancedTrainingDataService> _logger;
         private readonly string _liveDataPath;
         private readonly List<TradeData> _currentSession = new();
@@ -149,14 +158,18 @@ namespace BotCore
                 try
                 {
                     var trade = JsonSerializer.Deserialize<TradeData>(line);
-                    if (trade?.RMultiple != null && trade.Features?.Count >= 20)
+                    if (trade?.RMultiple != null && trade.Features?.Count >= MinimumRequiredFeatures)
                     {
                         csvData.Add(CreateCsvRow(trade));
                     }
                 }
-                catch (Exception ex)
+                catch (JsonException ex)
                 {
-                    _logger.LogWarning(ex, "[EnhancedTrainingData] Failed to parse trade data line");
+                    _logger.LogWarning(ex, "[EnhancedTrainingData] Failed to parse trade data JSON");
+                }
+                catch (ArgumentException ex)
+                {
+                    _logger.LogWarning(ex, "[EnhancedTrainingData] Invalid argument parsing trade data");
                 }
             }
 
@@ -226,8 +239,8 @@ namespace BotCore
 
             // Basic price features (use signal data)
             features.Add(signalData.Entry);
-            features.Add(signalData.Entry * 1.001m); // Simulated high
-            features.Add(signalData.Entry * 0.999m); // Simulated low
+            features.Add(signalData.Entry * PriceSimulationUpMultiplier); // Simulated high
+            features.Add(signalData.Entry * PriceSimulationDownMultiplier); // Simulated low
             features.Add(signalData.Entry);
             features.Add(signalData.Entry); // VWAP approximation
 
@@ -236,8 +249,8 @@ namespace BotCore
             features.Add(signalData.Atr);
             features.Add(signalData.Ema20 ?? signalData.Entry);
             features.Add(signalData.Ema50 ?? signalData.Entry);
-            features.Add(signalData.BbUpper ?? signalData.Entry * 1.02m);
-            features.Add(signalData.BbLower ?? signalData.Entry * 0.98m);
+            features.Add(signalData.BbUpper ?? signalData.Entry * BollingerBandUpMultiplier);
+            features.Add(signalData.BbLower ?? signalData.Entry * BollingerBandDownMultiplier);
 
             // Volume and momentum (simulated for now)
             features.Add(1000000m); // Volume

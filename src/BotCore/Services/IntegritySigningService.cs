@@ -314,9 +314,19 @@ namespace TradingBot.BotCore.Services
                 // Verify signature
                 return VerifySignature(entryJson, logEntry.Signature, logEntry.PublicKey);
             }
-            catch (Exception ex)
+            catch (JsonException ex)
             {
-                _logger.LogError(ex, "🚨 [INTEGRITY] Error verifying log entry");
+                _logger.LogError(ex, "🚨 [INTEGRITY] JSON parsing error verifying log entry");
+                return false;
+            }
+            catch (CryptographicException ex)
+            {
+                _logger.LogError(ex, "🚨 [INTEGRITY] Cryptographic error verifying log entry");
+                return false;
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "🚨 [INTEGRITY] Invalid argument verifying log entry");
                 return false;
             }
         }
@@ -384,9 +394,19 @@ namespace TradingBot.BotCore.Services
 
                 return rsa.VerifyData(contentBytes, signatureBytes, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
             }
-            catch (Exception ex)
+            catch (CryptographicException ex)
             {
-                _logger.LogError(ex, "Error verifying signature");
+                _logger.LogError(ex, "Cryptographic error verifying signature");
+                return false;
+            }
+            catch (FormatException ex)
+            {
+                _logger.LogError(ex, "Format error in signature verification");
+                return false;
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "Invalid argument in signature verification");
                 return false;
             }
         }

@@ -37,6 +37,9 @@ namespace BotCore.Services
     /// </summary>
     public sealed class ZoneTelemetryService : IZoneTelemetryService
     {
+        // Telemetry configuration constants
+        private const int MaxRecentMetricsCount = 1000;
+        
         private readonly ILogger<ZoneTelemetryService> _logger;
         private readonly Dictionary<string, object> _recentMetrics = new();
         private readonly object _metricsLock = new();
@@ -78,9 +81,13 @@ namespace BotCore.Services
                 _logger.LogTrace("[ZONE-TELEMETRY] Emitted zone metrics for {Symbol} from {Source}", 
                     symbol, result.Source);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[ZONE-TELEMETRY] Error emitting zone metrics for {Symbol}", symbol);
+                _logger.LogError(ex, "[ZONE-TELEMETRY] Invalid operation emitting zone metrics for {Symbol}", symbol);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "[ZONE-TELEMETRY] Invalid argument emitting zone metrics for {Symbol}", symbol);
             }
         }
 
@@ -100,9 +107,13 @@ namespace BotCore.Services
                 _logger.LogInformation("[ZONE-TELEMETRY] Emitted disagreement metrics for {Symbol}: {DisagreementTicks} ticks", 
                     symbol, disagreementTicks);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[ZONE-TELEMETRY] Error emitting disagreement metrics for {Symbol}", symbol);
+                _logger.LogError(ex, "[ZONE-TELEMETRY] Invalid operation emitting disagreement metrics for {Symbol}", symbol);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "[ZONE-TELEMETRY] Invalid argument emitting disagreement metrics for {Symbol}", symbol);
             }
         }
 
@@ -166,8 +177,8 @@ namespace BotCore.Services
                     Timestamp = DateTime.UtcNow 
                 };
 
-                // Keep only recent metrics (last 1000 entries)
-                if (_recentMetrics.Count > 1000)
+                // Keep only recent metrics (last entries)
+                if (_recentMetrics.Count > MaxRecentMetricsCount)
                 {
                     var oldestKey = "";
                     var oldestTime = DateTime.MaxValue;
