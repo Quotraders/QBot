@@ -11,7 +11,6 @@ namespace TradingBot.BotCore.Services
     public class MetaCostConfigService : IMetaCostConfig
     {
         private readonly IConfiguration _config;
-        private readonly ILogger<MetaCostConfigService> _logger;
 
         // Default meta-cost configuration constants
         private const double DefaultExecutionCostWeight = 0.3;
@@ -22,10 +21,9 @@ namespace TradingBot.BotCore.Services
         private const double DefaultCostBlendingTemperature = 1.0;
         private const double DefaultAdaptiveWeightRate = 0.01;
 
-        public MetaCostConfigService(IConfiguration config, ILogger<MetaCostConfigService> logger)
+        public MetaCostConfigService(IConfiguration config)
         {
             _config = config;
-            _logger = logger;
         }
 
         public double GetExecutionCostWeight() => 

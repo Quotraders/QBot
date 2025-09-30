@@ -271,8 +271,8 @@ public class TopstepXSignalRHealthCheck : IHealthCheck
             using var httpClient = new HttpClient();
             httpClient.Timeout = TimeSpan.FromSeconds(10);
 
-            var userHubCheck = await CheckEndpoint(httpClient, _config.Value.UserHubUrl, cancellationToken).ConfigureAwait(false);
-            var marketHubCheck = await CheckEndpoint(httpClient, _config.Value.MarketHubUrl, cancellationToken).ConfigureAwait(false);
+            var userHubCheck = await CheckEndpoint(httpClient, _config.Value.UserHubUrl.ToString(), cancellationToken).ConfigureAwait(false);
+            var marketHubCheck = await CheckEndpoint(httpClient, _config.Value.MarketHubUrl.ToString(), cancellationToken).ConfigureAwait(false);
 
             var data = new Dictionary<string, object>
             {

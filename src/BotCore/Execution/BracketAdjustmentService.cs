@@ -119,7 +119,7 @@ namespace BotCore.Execution
             stopDistance *= intervalMultiplier;
             takeDistance *= intervalMultiplier;
 
-            recommendation.Reasoning.Add($"Conformal interval width {intervalWidth:F3} -> bracket multiplier {intervalMultiplier:F2}");
+            recommendation.AddReasoning($"Conformal interval width {intervalWidth:F3} -> bracket multiplier {intervalMultiplier:F2}");
         }
 
         private void ApplyModelUncertaintyAdjustments(ExecutionIntent intent, ref decimal stopDistance, ref decimal takeDistance, BracketRecommendation recommendation)
@@ -132,7 +132,7 @@ namespace BotCore.Execution
                 stopDistance *= uncertaintyMultiplier;
                 takeDistance *= uncertaintyMultiplier;
 
-                recommendation.Reasoning.Add($"Model uncertainty {intent.ModelUncertainty.Value:F3} -> bracket multiplier {uncertaintyMultiplier:F2}");
+                recommendation.AddReasoning($"Model uncertainty {intent.ModelUncertainty.Value:F3} -> bracket multiplier {uncertaintyMultiplier:F2}");
             }
         }
 
@@ -148,7 +148,7 @@ namespace BotCore.Execution
                 stopDistance *= stopMultiplier;
                 takeDistance *= takeMultiplier;
 
-                recommendation.Reasoning.Add($"Pattern reliability {intent.PatternReliability.Value:F3} -> stop x{stopMultiplier:F2}, take x{takeMultiplier:F2}");
+                recommendation.AddReasoning($"Pattern reliability {intent.PatternReliability.Value:F3} -> stop x{stopMultiplier:F2}, take x{takeMultiplier:F2}");
             }
         }
 
@@ -160,7 +160,7 @@ namespace BotCore.Execution
                 stopDistance *= _config.HighVolatilityMultiplier;
                 takeDistance *= _config.HighVolatilityMultiplier;
 
-                recommendation.Reasoning.Add($"High volatility -> bracket multiplier {_config.HighVolatilityMultiplier:F2}");
+                recommendation.AddReasoning($"High volatility -> bracket multiplier {_config.HighVolatilityMultiplier:F2}");
             }
 
             // Apply volatility rank adjustment using configuration
@@ -168,7 +168,7 @@ namespace BotCore.Execution
             stopDistance *= volRankMultiplier;
             takeDistance *= volRankMultiplier;
 
-            recommendation.Reasoning.Add($"Volatility rank {microstructure.VolatilityRank:F2} -> bracket multiplier {volRankMultiplier:F2}");
+            recommendation.AddReasoning($"Volatility rank {microstructure.VolatilityRank:F2} -> bracket multiplier {volRankMultiplier:F2}");
         }
 
         private void CalculateFinalBracketLevels(ExecutionIntent intent, decimal entryPrice, decimal stopDistance, decimal takeDistance, BracketRecommendation recommendation)
@@ -207,13 +207,13 @@ namespace BotCore.Execution
                 var constrainedStopDistance = maxStopDistance;
                 recommendation.StopLossPrice = recommendation.StopLossPrice > entryPrice ? 
                     entryPrice + constrainedStopDistance : entryPrice - constrainedStopDistance;
-                recommendation.Reasoning.Add($"Stop loss constrained to max {_config.MaxStopLossPercentage}%");
+                recommendation.AddReasoning($"Stop loss constrained to max {_config.MaxStopLossPercentage}%");
             }
             else if (currentStopDistance < minStopDistance)
             {
                 recommendation.StopLossPrice = recommendation.StopLossPrice > entryPrice ? 
                     entryPrice + minStopDistance : entryPrice - minStopDistance;
-                recommendation.Reasoning.Add($"Stop loss expanded to min {minStopDistance} points");
+                recommendation.AddReasoning($"Stop loss expanded to min {minStopDistance} points");
             }
 
             // Ensure take profit maintains reasonable risk-reward
@@ -225,7 +225,7 @@ namespace BotCore.Execution
             {
                 recommendation.TakeProfitPrice = recommendation.TakeProfitPrice > entryPrice ? 
                     entryPrice + minTakeDistance : entryPrice - minTakeDistance;
-                recommendation.Reasoning.Add($"Take profit expanded to maintain min R:R {_config.MinRiskRewardRatio:F1}");
+                recommendation.AddReasoning($"Take profit expanded to maintain min R:R {_config.MinRiskRewardRatio:F1}");
             }
         }
     }
@@ -307,8 +307,16 @@ namespace BotCore.Execution
         public decimal EntryPrice { get; set; }
         public decimal StopLossPrice { get; set; }
         public decimal TakeProfitPrice { get; set; }
-        public List<string> Reasoning { get; } = new();
+        
+        private readonly List<string> _reasoning = new();
+        public IReadOnlyList<string> Reasoning => _reasoning;
         public DateTime Timestamp { get; set; }
+
+        public void AddReasoning(string reason)
+        {
+            if (!string.IsNullOrWhiteSpace(reason))
+                _reasoning.Add(reason);
+        }
 
         public void ValidateRecommendation()
         {

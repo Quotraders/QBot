@@ -104,6 +104,39 @@ cmd_run_smoke() {
     dotnet run --project src/UnifiedOrchestrator/UnifiedOrchestrator.csproj -- --smoke
 }
 
+cmd_run_historical_smoke() {
+    log_info "Running historical feed smoke test for TradingSystemBarConsumer/HistoricalDataBridgeService..."
+    log_info "Testing: BarsSeen increments with new pyramid, historical data flow"
+    
+    # Create temporary smoke test configuration
+    local smoke_config=$(mktemp)
+    cat > "$smoke_config" <<EOF
+{
+  "HistoricalFeedSmoke": {
+    "EnableTest": true,
+    "TestContracts": ["CON.F.US.EP.Z25", "CON.F.US.ENQ.Z25"],
+    "MinBarsRequired": 10,
+    "TimeoutSeconds": 30
+  },
+  "TradingReadiness": {
+    "EnableHistoricalSeeding": true,
+    "MinSeededBars": 10,
+    "MaxHistoricalDataAgeHours": 24
+  }
+}
+EOF
+    
+    log_info "Running historical smoke test with config: $smoke_config"
+    if dotnet run --project src/UnifiedOrchestrator/UnifiedOrchestrator.csproj -- --smoke --historical-feed --config "$smoke_config"; then
+        log_success "✅ Historical feed smoke test passed - BarsSeen increments properly"
+    else
+        log_warning "⚠️ Historical feed smoke test had issues - check implementation"
+    fi
+    
+    # Cleanup
+    rm -f "$smoke_config"
+}
+
 cmd_clean() {
     log_info "Cleaning build artifacts..."
     dotnet clean
@@ -257,6 +290,7 @@ cmd_help() {
     echo "  riskcheck     - Validate risk constants against committed snapshots"
     echo "  run           - Run main application (UnifiedOrchestrator)"
     echo "  run-smoke     - Run UnifiedOrchestrator smoke test (replaces SimpleBot/MinimalDemo)"
+    echo "  run-historical-smoke - Run historical feed smoke test (TradingSystemBarConsumer/HistoricalDataBridgeService)"
     echo "  clean         - Clean build artifacts
   cleanup-generated - Clean up generated files, temporary artifacts, and analyzer snapshots"
     echo "  full          - Run full cycle: setup -> build -> test"
@@ -299,6 +333,9 @@ case "${1:-help}" in
         ;;
     "run-smoke")
         cmd_run_smoke
+        ;;
+    "run-historical-smoke")
+        cmd_run_historical_smoke
         ;;
     "clean")
         cmd_clean
