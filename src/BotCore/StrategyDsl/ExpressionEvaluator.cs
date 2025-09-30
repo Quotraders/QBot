@@ -12,6 +12,9 @@ public class ExpressionEvaluator
     private readonly ILogger<ExpressionEvaluator> _logger;
     private readonly Dictionary<string, object> _featureValues = new();
 
+    // Numeric comparison tolerance constant
+    private const double NumericComparisonTolerance = 0.0001;   // Tolerance for floating-point equality comparisons
+
     // Regex patterns for parsing expressions
     private static readonly Regex ComparisonRegex = new(
         @"^(\w+(?:\.\w+)*)\s*(>=|<=|>|<|==|!=)\s*(.+)$", 
@@ -306,8 +309,8 @@ public class ExpressionEvaluator
                 "<=" => featureNumericValue <= numericValue,
                 ">" => featureNumericValue > numericValue,
                 "<" => featureNumericValue < numericValue,
-                "==" => Math.Abs(featureNumericValue - numericValue) < 0.0001,
-                "!=" => Math.Abs(featureNumericValue - numericValue) >= 0.0001,
+                "==" => Math.Abs(featureNumericValue - numericValue) < NumericComparisonTolerance,
+                "!=" => Math.Abs(featureNumericValue - numericValue) >= NumericComparisonTolerance,
                 _ => false
             };
         }

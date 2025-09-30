@@ -229,7 +229,25 @@ namespace TradingBot.BotCore.Services
 
                 return result;
             }
-            catch (Exception ex)
+            catch (FileNotFoundException ex)
+            {
+                result.AddError($"Verification error: {ex.Message}");
+                _logger.LogError(ex, "🚨 [INTEGRITY] Error verifying manifest: {Name}", manifest.Name);
+                return result;
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                result.AddError($"Verification error: {ex.Message}");
+                _logger.LogError(ex, "🚨 [INTEGRITY] Error verifying manifest: {Name}", manifest.Name);
+                return result;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                result.AddError($"Verification error: {ex.Message}");
+                _logger.LogError(ex, "🚨 [INTEGRITY] Error verifying manifest: {Name}", manifest.Name);
+                return result;
+            }
+            catch (IOException ex)
             {
                 result.AddError($"Verification error: {ex.Message}");
                 _logger.LogError(ex, "🚨 [INTEGRITY] Error verifying manifest: {Name}", manifest.Name);

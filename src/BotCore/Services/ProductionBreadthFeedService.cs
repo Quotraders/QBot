@@ -60,7 +60,12 @@ namespace TradingBot.BotCore.Services
                     return false;
                 }
             }
-            catch (Exception ex)
+            catch (NullReferenceException ex)
+            {
+                _logger.LogError(ex, "[BREADTH-AUDIT-VIOLATION] Infrastructure availability check failed - TRIGGERING HOLD + TELEMETRY");
+                return false;
+            }
+            catch (InvalidOperationException ex)
             {
                 _logger.LogError(ex, "[BREADTH-AUDIT-VIOLATION] Infrastructure availability check failed - TRIGGERING HOLD + TELEMETRY");
                 return false;
@@ -100,7 +105,17 @@ namespace TradingBot.BotCore.Services
                 
                 return syntheticRatio;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[BREADTH-AUDIT-VIOLATION] Error computing advance/decline ratio - TRIGGERING HOLD + TELEMETRY");
+                return _config.AdvanceDeclineRatioMin; // Fail-closed: return min safe value from config
+            }
+            catch (ArithmeticException ex)
+            {
+                _logger.LogError(ex, "[BREADTH-AUDIT-VIOLATION] Error computing advance/decline ratio - TRIGGERING HOLD + TELEMETRY");
+                return _config.AdvanceDeclineRatioMin; // Fail-closed: return min safe value from config
+            }
+            catch (ArgumentException ex)
             {
                 _logger.LogError(ex, "[BREADTH-AUDIT-VIOLATION] Error computing advance/decline ratio - TRIGGERING HOLD + TELEMETRY");
                 return _config.AdvanceDeclineRatioMin; // Fail-closed: return min safe value from config
@@ -140,7 +155,17 @@ namespace TradingBot.BotCore.Services
                 
                 return syntheticRatio;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[BREADTH-AUDIT-VIOLATION] Error computing new highs/lows ratio - TRIGGERING HOLD + TELEMETRY");
+                return _config.NewHighsLowsRatioMin; // Fail-closed: return min safe value from config
+            }
+            catch (ArithmeticException ex)
+            {
+                _logger.LogError(ex, "[BREADTH-AUDIT-VIOLATION] Error computing new highs/lows ratio - TRIGGERING HOLD + TELEMETRY");
+                return _config.NewHighsLowsRatioMin; // Fail-closed: return min safe value from config
+            }
+            catch (ArgumentException ex)
             {
                 _logger.LogError(ex, "[BREADTH-AUDIT-VIOLATION] Error computing new highs/lows ratio - TRIGGERING HOLD + TELEMETRY");
                 return _config.NewHighsLowsRatioMin; // Fail-closed: return min safe value from config
@@ -177,7 +202,17 @@ namespace TradingBot.BotCore.Services
                 
                 return sectorData;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[BREADTH-AUDIT-VIOLATION] Error computing sector rotation data - TRIGGERING HOLD + TELEMETRY");
+                return new Dictionary<string, decimal>(); // Fail-closed on any computation error
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "[BREADTH-AUDIT-VIOLATION] Error computing sector rotation data - TRIGGERING HOLD + TELEMETRY");
+                return new Dictionary<string, decimal>(); // Fail-closed on any computation error
+            }
+            catch (KeyNotFoundException ex)
             {
                 _logger.LogError(ex, "[BREADTH-AUDIT-VIOLATION] Error computing sector rotation data - TRIGGERING HOLD + TELEMETRY");
                 return new Dictionary<string, decimal>(); // Fail-closed on any computation error

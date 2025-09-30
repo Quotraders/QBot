@@ -20,7 +20,52 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ## 🚨 PHASE 2 - ANALYZER VIOLATION ELIMINATION (IN PROGRESS)
 
-### Round 28 - Continued Priority 1 Focus: CA1062 & S109 Systematic Fixes (Current Session)
+### Round 29 - Priority 1 Continued: CA1031 & S109 Systematic Fixes (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 1028 | 1018 | ProductionBreadthFeedService.cs, IntegritySigningService.cs | Specific exception types for computation errors, file operations (10 violations fixed) |
+| S109 | 2862 | 2858 | FeatureBusMapper.cs, ExpressionEvaluator.cs | Named constants for default feature values, numeric comparison tolerance (4 violations fixed) |
+
+**Pattern Examples Applied:**
+
+**CA1031 Specific Exception Handling:**
+```csharp
+// Before (Violation)
+catch (Exception ex)
+{
+    _logger.LogError(ex, "Error computing advance/decline ratio");
+    return _config.AdvanceDeclineRatioMin;
+}
+
+// After (Compliant)
+catch (InvalidOperationException ex)
+{
+    _logger.LogError(ex, "Error computing advance/decline ratio");
+    return _config.AdvanceDeclineRatioMin;
+}
+catch (ArithmeticException ex)
+{
+    _logger.LogError(ex, "Error computing advance/decline ratio");
+    return _config.AdvanceDeclineRatioMin;
+}
+```
+
+**S109 Feature Constants:**
+```csharp
+// Before (Violation)
+var id when id.Contains("minutes") => 60,
+var id when id.Contains("strength") => 0.5,
+Math.Abs(featureNumericValue - numericValue) < 0.0001
+
+// After (Compliant)
+private const int DefaultMinutesValue = 60;
+private const double DefaultStrengthValue = 0.5;
+private const double NumericComparisonTolerance = 0.0001;
+var id when id.Contains("minutes") => DefaultMinutesValue,
+Math.Abs(featureNumericValue - numericValue) < NumericComparisonTolerance
+```
+
+### Round 28 - Continued Priority 1 Focus: CA1062 & S109 Systematic Fixes (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA1062 | ~200 | ~195 | FeatureBusMapper.cs, ExpressionEvaluator.cs, YamlSchemaValidator.cs, ExecutionAnalyticsService.cs | ArgumentNullException guards for public method parameters (5 violations fixed) |
