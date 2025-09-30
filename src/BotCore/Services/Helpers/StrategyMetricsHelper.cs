@@ -60,6 +60,20 @@ namespace TradingBot.BotCore.Services.Helpers
         private const decimal S11WinRate = 0.48m;  // Trend following strategy
         private const decimal DefaultWinRate = 0.50m; // Default balanced win rate
         
+        // Strategy risk-reward ratio constants
+        private const decimal S2RiskRewardRatio = 1.3m;          // S2 mean reversion modest R:R
+        private const decimal S3RiskRewardRatio = 1.8m;          // S3 breakout higher R:R  
+        private const decimal S6RiskRewardRatio = 1.5m;          // S6 momentum moderate R:R
+        private const decimal S11RiskRewardRatio = 2.2m;         // S11 trend following highest R:R
+        private const decimal DefaultRiskRewardRatio = 1.5m;     // Default moderate R:R
+        
+        // Strategy maximum drawdown expectation constants
+        private const decimal S2MaxDrawdownExpectation = 0.15m;   // S2 mean reversion lower drawdown
+        private const decimal S3MaxDrawdownExpectation = 0.25m;   // S3 breakout moderate drawdown
+        private const decimal S6MaxDrawdownExpectation = 0.20m;   // S6 momentum moderate drawdown
+        private const decimal S11MaxDrawdownExpectation = 0.30m;  // S11 trend following higher drawdown
+        private const decimal DefaultMaxDrawdownExpectation = 0.20m; // Default moderate drawdown
+        
         /// <summary>
         /// Get strategy base win rate
         /// Consolidates all strategy-specific win rate logic
@@ -84,11 +98,11 @@ namespace TradingBot.BotCore.Services.Helpers
         {
             return strategyId switch
             {
-                "S2" => 1.3m,   // Mean reversion modest R:R
-                "S3" => 1.8m,   // Breakout higher R:R
-                "S6" => 1.5m,   // Momentum moderate R:R
-                "S11" => 2.2m,  // Trend following highest R:R
-                _ => 1.5m       // Default moderate R:R
+                "S2" => S2RiskRewardRatio,
+                "S3" => S3RiskRewardRatio,
+                "S6" => S6RiskRewardRatio,
+                "S11" => S11RiskRewardRatio,
+                _ => DefaultRiskRewardRatio
             };
         }
 
@@ -100,11 +114,11 @@ namespace TradingBot.BotCore.Services.Helpers
         {
             return strategyId switch
             {
-                "S2" => 0.15m,  // Mean reversion lower drawdown
-                "S3" => 0.25m,  // Breakout moderate drawdown
-                "S6" => 0.20m,  // Momentum moderate drawdown
-                "S11" => 0.30m, // Trend following higher drawdown
-                _ => 0.20m      // Default moderate drawdown
+                "S2" => S2MaxDrawdownExpectation,
+                "S3" => S3MaxDrawdownExpectation,
+                "S6" => S6MaxDrawdownExpectation,
+                "S11" => S11MaxDrawdownExpectation,
+                _ => DefaultMaxDrawdownExpectation
             };
         }
 

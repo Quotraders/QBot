@@ -262,7 +262,15 @@ namespace TopstepX.Bot.Core.Services
                     _orderTracking.TryRemove(staleRecord.ClientOrderId, out _);
                 }
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "❌ Error during order verification");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "❌ Error during order verification");
+            }
+            catch (KeyNotFoundException ex)
             {
                 _logger.LogError(ex, "❌ Error during order verification");
             }
@@ -291,7 +299,19 @@ namespace TopstepX.Bot.Core.Services
                     }
                 }
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
+            {
+                _logger.LogWarning(ex, "⚠️ Failed to verify order {OrderId} via API", order.GatewayOrderId);
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogWarning(ex, "⚠️ Failed to verify order {OrderId} via API", order.GatewayOrderId);
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "⚠️ Failed to verify order {OrderId} via API", order.GatewayOrderId);
+            }
+            catch (ArgumentException ex)
             {
                 _logger.LogWarning(ex, "⚠️ Failed to verify order {OrderId} via API", order.GatewayOrderId);
             }
@@ -329,7 +349,27 @@ namespace TopstepX.Bot.Core.Services
                 
                 return false;
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "❌ Error cancelling order {ClientOrderId}", clientOrderId);
+                return false;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ Error cancelling order {ClientOrderId}", clientOrderId);
+                return false;
+            }
+            catch (FormatException ex)
+            {
+                _logger.LogError(ex, "❌ Error cancelling order {ClientOrderId}", clientOrderId);
+                return false;
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "❌ Error cancelling order {ClientOrderId}", clientOrderId);
+                return false;
+            }
+            catch (ArgumentException ex)
             {
                 _logger.LogError(ex, "❌ Error cancelling order {ClientOrderId}", clientOrderId);
                 return false;

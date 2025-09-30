@@ -20,7 +20,54 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ## 🚨 PHASE 2 - ANALYZER VIOLATION ELIMINATION (IN PROGRESS)
 
-### Round 30 - Priority 1 Continued: CA1031 & S109 Expression/Trading System Fixes (Current Session)
+### Round 31 - Priority 1 Continued: CA1031 & S109 API/Strategy Metrics Fixes (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 1010 | 1007 | OrderFillConfirmationSystem.cs | Specific exception types for API operations, order verification (3 violations fixed) |
+| S109 | 2840 | 2828 | StrategyMetricsHelper.cs, TradingSystemIntegrationService.cs | Named constants for strategy metrics, score multipliers (12 violations fixed) |
+
+**Pattern Examples Applied:**
+
+**CA1031 API Operations Specific Exceptions:**
+```csharp
+// Before (Violation)
+catch (Exception ex)
+{
+    _logger.LogWarning(ex, "Failed to verify order via API");
+}
+
+// After (Compliant)
+catch (HttpRequestException ex)
+{
+    _logger.LogWarning(ex, "Failed to verify order via API");
+}
+catch (TaskCanceledException ex)
+{
+    _logger.LogWarning(ex, "Failed to verify order via API");
+}
+catch (JsonException ex)
+{
+    _logger.LogWarning(ex, "Failed to verify order via API");
+}
+```
+
+**S109 Strategy Metrics Constants:**
+```csharp
+// Before (Violation)
+"S2" => 1.3m,   // Mean reversion modest R:R
+"S3" => 1.8m,   // Breakout higher R:R
+score *= 0.5;   // Stale data multiplier
+
+// After (Compliant)
+private const decimal S2RiskRewardRatio = 1.3m;
+private const decimal S3RiskRewardRatio = 1.8m;
+private const double StaleDataScoreMultiplier = 0.5;
+"S2" => S2RiskRewardRatio,
+"S3" => S3RiskRewardRatio,
+score *= StaleDataScoreMultiplier;
+```
+
+### Round 30 - Priority 1 Continued: CA1031 & S109 Expression/Trading System Fixes (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA1031 | 1018 | 1014 | ExpressionEvaluator.cs, PositionTrackingSystem.cs | Specific exception types for DSL evaluation, position calculations (4 violations fixed) |

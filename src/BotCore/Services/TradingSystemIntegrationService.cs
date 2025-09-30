@@ -86,6 +86,8 @@ namespace TopstepX.Bot.Core.Services
         private const double PartialReadinessScore = 0.9;               // Score for partial readiness
         private const double LowConfidenceScore = 0.3;                  // Score for low confidence scenarios
         private const double MediumConfidenceScore = 0.5;               // Score for medium confidence scenarios
+        private const double StaleDataScoreMultiplier = 0.5;            // Score multiplier for stale data
+        private const double DisconnectedHubsScoreMultiplier = 0.3;     // Score multiplier for disconnected hubs
         
         // Market Data Cache - ENHANCED IMPLEMENTATION
         private readonly ConcurrentDictionary<string, MarketData> _priceCache = new();
@@ -2029,7 +2031,7 @@ namespace TopstepX.Bot.Core.Services
             {
                 result.IsReady = false;
                 result.Reason += " (stale data)";
-                score *= 0.5;
+                score *= StaleDataScoreMultiplier;
                 recommendations.Add("Check market data flow");
             }
 
@@ -2037,7 +2039,7 @@ namespace TopstepX.Bot.Core.Services
             {
                 result.IsReady = false;
                 result.Reason += " (hubs disconnected)";
-                score *= 0.3;
+                score *= DisconnectedHubsScoreMultiplier;
                 recommendations.Add("Check SDK connections");
             }
 
