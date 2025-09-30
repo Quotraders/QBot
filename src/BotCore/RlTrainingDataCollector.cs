@@ -113,9 +113,17 @@ namespace BotCore
                 log.LogDebug("[RL-{Symbol}] Logged features for signal {SignalId}",
                     features.Symbol, features.SignalId);
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                log.LogError(ex, "[RL-{Symbol}] Failed to log feature snapshot", features?.Symbol ?? "Unknown");
+                log.LogError(ex, "[RL-{Symbol}] IO error logging feature snapshot", features?.Symbol ?? "Unknown");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                log.LogError(ex, "[RL-{Symbol}] Access denied logging feature snapshot", features?.Symbol ?? "Unknown");
+            }
+            catch (JsonException ex)
+            {
+                log.LogError(ex, "[RL-{Symbol}] JSON serialization error logging feature snapshot", features?.Symbol ?? "Unknown");
             }
         }
 

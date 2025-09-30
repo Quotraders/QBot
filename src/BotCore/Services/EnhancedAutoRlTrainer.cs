@@ -122,9 +122,17 @@ namespace BotCore
                     count += lines.Length;
                 }
             }
-            catch (Exception ex)
+            catch (FileNotFoundException ex)
             {
-                _logger.LogDebug(ex, "[EnhancedAutoRlTrainer] Error counting emergency data");
+                _logger.LogDebug(ex, "[EnhancedAutoRlTrainer] Emergency data file not found");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogDebug(ex, "[EnhancedAutoRlTrainer] Access denied to emergency data file");
+            }
+            catch (IOException ex)
+            {
+                _logger.LogDebug(ex, "[EnhancedAutoRlTrainer] IO error counting emergency data");
             }
 
             return count;
