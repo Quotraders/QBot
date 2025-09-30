@@ -10,9 +10,6 @@ namespace BotCore.Risk
 {
     public sealed class RiskEngine
     {
-        // Risk management constants
-        private const decimal EmergencyDrawdownThresholdDollars = 2000m;
-        
         public RiskConfig cfg { get; set; } = new RiskConfig();
         private readonly DrawdownProtectionSystem _drawdownProtection;
 
@@ -123,6 +120,7 @@ namespace BotCore.Risk
         private const decimal ReduceSize75TriggerLevel = 750m;        // $750 drawdown - reduce size by 75%
         private const decimal StrategyRotationTriggerLevel = 1000m;   // $1000 drawdown - switch to conservative
         private const decimal HaltNewTradesTriggerLevel = 1500m;      // $1500 drawdown - halt new trades
+        private const decimal EmergencyDrawdownThresholdDollars = 2000m; // $2000 drawdown - close all positions
         
         // Position size multiplier constants
         private const decimal PositionSizeReduction25Percent = 0.75m; // Reduce to 75% of original size
