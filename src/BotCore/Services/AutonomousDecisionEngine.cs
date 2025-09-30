@@ -126,6 +126,40 @@ public class AutonomousDecisionEngine : BackgroundService
     private const int WinsOffsetForCalculation = 2;      // Offset wins for size calculation
     private const int LossesOffsetForCalculation = 2;    // Offset losses for size calculation
     
+    // Volatility-based position sizing constants
+    private const decimal VeryHighVolatilityMultiplier = 0.6m;  // Very high volatility - reduce position size
+    private const decimal HighVolatilityMultiplier = 0.8m;      // High volatility - reduce position size
+    private const decimal NormalVolatilityMultiplier = 1.0m;    // Normal volatility - standard position size
+    private const decimal LowVolatilityMultiplier = 1.2m;       // Low volatility - increase position size
+    private const decimal VeryLowVolatilityMultiplier = 1.3m;   // Very low volatility - increase position size
+    
+    // Time-based position sizing constants
+    private const decimal MorningSessionMultiplier = 1.2m;      // Morning session - high volume
+    private const decimal CloseSessionMultiplier = 1.2m;        // Close session - high volume  
+    private const decimal AfternoonSessionMultiplier = 1.1m;    // Afternoon session - regular volume
+    private const decimal LunchSessionMultiplier = 0.8m;        // Lunch session - lower volume
+    private const decimal OvernightMultiplier = 0.7m;           // Overnight - higher risk
+    private const decimal PreMarketMultiplier = 0.8m;           // Pre-market - lower volume
+    private const decimal DefaultTimeMultiplier = 1.0m;         // Default time multiplier
+    
+    // Learning and performance tracking constants
+    private const int MaxRecentTradesCount = 100;               // Maximum recent trades to keep for learning
+    private const decimal GoodWinRateThreshold = 0.6m;          // Win rate threshold for risk increase
+    private const decimal PoorWinRateThreshold = 0.4m;          // Win rate threshold for risk decrease
+    private const decimal RiskIncreaseMultiplier = 1.05m;       // Multiplier for risk increase (5% increase)
+    private const decimal RiskDecreaseMultiplier = 0.95m;       // Multiplier for risk decrease (5% decrease)
+    
+    // Daily reporting schedule constants
+    private const int DailyReportHour = 17;                     // Daily report at 5 PM ET
+    private const int DailyReportMinuteThreshold = 5;           // Report within first 5 minutes of hour
+    
+    // Fallback pricing constants
+    private const decimal ESFallbackPrice = 4500m;              // Fallback price for ES contracts
+    private const decimal NQFallbackPrice = 15000m;             // Fallback price for NQ contracts
+    
+    // Performance tracking constants
+    private const int MaxTradesForPerformanceHistory = 20;      // Maximum trades for performance history
+    
     public AutonomousDecisionEngine(
         ILogger<AutonomousDecisionEngine> logger,
         IServiceProvider serviceProvider,
@@ -493,12 +527,12 @@ public class AutonomousDecisionEngine : BackgroundService
         // Reduce position size in high volatility, increase in low volatility
         return volatility switch
         {
-            MarketVolatility.VeryHigh => 0.6m,
-            MarketVolatility.High => 0.8m,
-            MarketVolatility.Normal => 1.0m,
-            MarketVolatility.Low => 1.2m,
-            MarketVolatility.VeryLow => 1.3m,
-            _ => 1.0m
+            MarketVolatility.VeryHigh => VeryHighVolatilityMultiplier,
+            MarketVolatility.High => HighVolatilityMultiplier,
+            MarketVolatility.Normal => NormalVolatilityMultiplier,
+            MarketVolatility.Low => LowVolatilityMultiplier,
+            MarketVolatility.VeryLow => VeryLowVolatilityMultiplier,
+            _ => NormalVolatilityMultiplier
         };
     }
     
@@ -509,13 +543,13 @@ public class AutonomousDecisionEngine : BackgroundService
         // Increase position size during high-probability periods
         return session switch
         {
-            "MORNING_SESSION" => 1.2m,    // First hour - high volume
-            "CLOSE_SESSION" => 1.2m,      // Last hour - high volume
-            "AFTERNOON_SESSION" => 1.1m,  // Regular session
-            "LUNCH_SESSION" => 0.8m,      // Lunch time - lower volume
-            "OVERNIGHT" => 0.7m,          // Overnight - higher risk
-            "PRE_MARKET" => 0.8m,         // Pre-market - lower volume
-            _ => 1.0m
+            "MORNING_SESSION" => MorningSessionMultiplier,    // First hour - high volume
+            "CLOSE_SESSION" => CloseSessionMultiplier,        // Last hour - high volume
+            "AFTERNOON_SESSION" => AfternoonSessionMultiplier, // Regular session
+            "LUNCH_SESSION" => LunchSessionMultiplier,        // Lunch time - lower volume
+            "OVERNIGHT" => OvernightMultiplier,               // Overnight - higher risk
+            "PRE_MARKET" => PreMarketMultiplier,              // Pre-market - lower volume
+            _ => DefaultTimeMultiplier
         };
     }
     
@@ -699,7 +733,7 @@ public class AutonomousDecisionEngine : BackgroundService
             _recentTrades.Enqueue(tradeOutcome);
             
             // Keep only recent trades for learning
-            while (_recentTrades.Count > 100)
+            while (_recentTrades.Count > MaxRecentTradesCount)
             {
                 _recentTrades.Dequeue();
             }
@@ -756,15 +790,15 @@ public class AutonomousDecisionEngine : BackgroundService
         var recentPnL = _performanceTracker.GetRecentPnL(TimeSpan.FromDays(7));
         var recentWinRate = _performanceTracker.GetRecentWinRate(TimeSpan.FromDays(7));
         
-        if (recentPnL > 0 && recentWinRate > 0.6m)
+        if (recentPnL > 0 && recentWinRate > GoodWinRateThreshold)
         {
             // Increase risk during profitable periods
-            _currentRiskPerTrade = Math.Min(MaxRiskPerTrade, _currentRiskPerTrade * 1.05m);
+            _currentRiskPerTrade = Math.Min(MaxRiskPerTrade, _currentRiskPerTrade * RiskIncreaseMultiplier);
         }
-        else if (recentPnL < 0 || recentWinRate < 0.4m)
+        else if (recentPnL < 0 || recentWinRate < PoorWinRateThreshold)
         {
             // Decrease risk during losing periods
-            _currentRiskPerTrade = Math.Max(MinRiskPerTrade, _currentRiskPerTrade * 0.95m);
+            _currentRiskPerTrade = Math.Max(MinRiskPerTrade, _currentRiskPerTrade * RiskDecreaseMultiplier);
         }
         
         _logger.LogDebug("⚖️ [AUTONOMOUS-ENGINE] Risk updated: {Risk:P} (PnL: ${PnL:F0}, WinRate: {WinRate:P})",
@@ -851,7 +885,7 @@ public class AutonomousDecisionEngine : BackgroundService
     {
         // Generate daily performance reports
         var now = DateTime.UtcNow;
-        if (now.Hour == 17 && now.Minute < 5 && _lastPerformanceReport.Date != now.Date) // 5 PM ET
+        if (now.Hour == DailyReportHour && now.Minute < DailyReportMinuteThreshold && _lastPerformanceReport.Date != now.Date) // 5 PM ET
         {
             await GenerateDailyPerformanceReportAsync(cancellationToken).ConfigureAwait(false);
             _lastPerformanceReport = now;
@@ -934,7 +968,7 @@ public class AutonomousDecisionEngine : BackgroundService
             {
                 _logger.LogDebug("💰 [AUTONOMOUS-ENGINE] TopstepX adapter connected, using fallback price for {Symbol}", symbol);
                 // Use fallback price since GetPriceAsync is not available in the interface
-                return symbol == "ES" ? 4500m : 15000m; // Realistic ES/NQ prices
+                return symbol == "ES" ? ESFallbackPrice : NQFallbackPrice; // Realistic ES/NQ prices
             }
             
             _logger.LogWarning("⚠️ [AUTONOMOUS-ENGINE] TopstepX adapter not available or not connected for {Symbol}", symbol);
@@ -1688,7 +1722,7 @@ public class AutonomousDecisionEngine : BackgroundService
             _recentTrades.Enqueue(tradeOutcome);
             
             // Keep only recent trades for learning
-            while (_recentTrades.Count > 100)
+            while (_recentTrades.Count > MaxRecentTradesCount)
             {
                 _recentTrades.Dequeue();
             }
