@@ -538,13 +538,10 @@ namespace TradingBot.S7
 
         public Dictionary<string, object> GetAllFeatures()
         {
-            var features = new Dictionary<string, object>();
-            
-            foreach (var kvp in _currentStates)
-            {
-                var featureTuple = GetFeatureTuple(kvp.Key);
-                features[$"{kvp.Key.ToLowerInvariant()}_features"] = featureTuple;
-            }
+            var features = _currentStates.ToDictionary(
+                kvp => $"{kvp.Key.ToUpperInvariant()}_features", 
+                kvp => (object)GetFeatureTuple(kvp.Key)
+            );
 
             features["snapshot"] = _lastSnapshot;
             return features;
@@ -673,16 +670,16 @@ namespace TradingBot.S7
 
                 return (dispersion, adRatio);
             }
-            catch (ArgumentException)
+            catch (ArgumentException ex)
             {
-                _logger.LogWarning("[S7-DISPERSION] Invalid breadth feed arguments");
+                _logger.LogWarning(ex, "[S7-DISPERSION] Invalid breadth feed arguments");
                 if (_config.FailOnMissingData)
                     return (0m, 0m); // Fail-closed
                 return (_config.BaseBreadthScore, _config.BaseBreadthScore); // Config neutral fallback
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogWarning("[S7-DISPERSION] Breadth feed operation failed");
+                _logger.LogWarning(ex, "[S7-DISPERSION] Breadth feed operation failed");
                 if (_config.FailOnMissingData)
                     return (0m, 0m); // Fail-closed
                 return (_config.BaseBreadthScore, _config.BaseBreadthScore); // Config neutral fallback
@@ -735,14 +732,14 @@ namespace TradingBot.S7
                 var maxSizeTilt = _config.MaxSizeTiltMultiplier + 1.0m; // Use config maximum  
                 state.DispersionAdjustedSizeTilt = Math.Max(minSizeTilt, Math.Min(maxSizeTilt, adjustedSizeTilt));
             }
-            catch (ArgumentException)
+            catch (ArgumentException ex)
             {
-                _logger.LogWarning("[S7-DISPERSION] Invalid dispersion adjustment arguments for {Symbol}", state.Symbol);
+                _logger.LogWarning(ex, "[S7-DISPERSION] Invalid dispersion adjustment arguments for {Symbol}", state.Symbol);
                 state.DispersionAdjustedSizeTilt = state.SizeTilt; // Safe fallback
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogWarning("[S7-DISPERSION] Failed to apply size adjustments for {Symbol}", state.Symbol);
+                _logger.LogWarning(ex, "[S7-DISPERSION] Failed to apply size adjustments for {Symbol}", state.Symbol);
                 state.DispersionAdjustedSizeTilt = state.SizeTilt; // Safe fallback
             }
         }

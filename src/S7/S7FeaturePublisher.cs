@@ -225,7 +225,14 @@ namespace TradingBot.S7
                     _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.rsz", (double)featureTuple.ZScore);
                     _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.coherence", (double)featureTuple.Coherence);
                     _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.size_tilt", (double)featureTuple.SizeTilt);
-                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.leader", featureTuple.Leader == "ES" ? 1.0 : (featureTuple.Leader == "NQ" ? -1.0 : 0.0));
+                    double leaderValue;
+                    if (featureTuple.Leader == "ES")
+                        leaderValue = 1.0;
+                    else if (featureTuple.Leader == "NQ")
+                        leaderValue = -1.0;
+                    else
+                        leaderValue = 0.0;
+                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.leader", leaderValue);
                     _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.signal_active", featureTuple.IsSignalActive ? 1.0 : 0.0);
                     
                     // AUDIT-CLEAN: Publish enhanced adaptive and dispersion features
