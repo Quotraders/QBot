@@ -20,7 +20,89 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ## 🚨 PHASE 2 - ANALYZER VIOLATION ELIMINATION (IN PROGRESS)
 
-### Round 32 - Priority 1 Continued: CA1031 & S109 Critical Systems/Risk Fixes (Current Session)
+### Round 33 - Phase 2 Systematic Cross-Module Cleanup (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| **S1144** | Multiple | 11 fixed | S7MarketDataBridge.cs, ErrorHandlingMonitoringSystem.cs, SuppressionLedgerService.cs (partial) | Removed unused private fields and LoggerMessage delegates |
+| **S4487** | Multiple | 8 fixed | EventTemperingConfigService.cs, ExecutionCostConfigService.cs, ExecutionGuardsConfigService.cs, UnifiedDataIntegrationService.cs (partial) | Removed unused logger fields and service references |
+| **CA1854** | 3 | 0 | S7Service.cs (3 methods) | Dictionary TryGetValue optimization to avoid double lookups |
+| **AsyncFixer03** | 1 | 0 | S7MarketDataBridge.cs | **CRITICAL**: Fixed async-void to Task.Run pattern to prevent crashes |
+| **S3358** | 1 | 0 | S7FeaturePublisher.cs | Extracted nested ternary operation to clear if-else structure |
+| **S3267** | 1 | 0 | S7Service.cs | Simplified foreach loop with LINQ ToDictionary |
+| **S6608** | 2 | 0 | S7Service.cs | Array indexing instead of LINQ .First()/.Last() methods |
+| **S6667** | 4 | 0 | S7Service.cs | Added exception parameter to logging in catch clauses |
+| **CA1308** | 1 | 0 | S7Service.cs | ToLowerInvariant → ToUpperInvariant for security |
+| **S2325** | 1 | 0 | S7Service.cs | Made BuildFeatureBusData static method |
+| **CA1822** | 1 | 0 | S7Service.cs | Made CloneState static method |
+| **S1481** | 1 | 0 | S7Service.cs | Removed unused maxZScore variable |
+| **S125** | 4+ | 0 | EnhancedTradingBotServiceExtensions.cs | Removed large commented code blocks |
+| **S1135** | 4+ | 0 | EnhancedTradingBotServiceExtensions.cs | Completed/removed TODO comments |
+
+**Total Solution Impact: 14,649 → 14,583 violations (66 violations eliminated)**
+
+**Critical Pattern Examples Applied:**
+
+**AsyncFixer03 - Critical Safety Fix (Prevents Process Crashes):**
+```csharp
+// Before (Violation - async-void can crash process)
+private async void OnMarketDataReceived(string symbol, object data)
+{
+    await _s7Service.UpdateAsync(symbol, closePrice.Value, timestamp).ConfigureAwait(false);
+}
+
+// After (Compliant - Safe Task.Run wrapper)
+private void OnMarketDataReceived(string symbol, object data)
+{
+    _ = Task.Run(async () =>
+    {
+        try
+        {
+            await OnMarketDataReceivedAsync(symbol, data).ConfigureAwait(false);
+        }
+        catch (ArgumentException ex) { _logger.LogError(ex, "..."); }
+        catch (InvalidOperationException ex) { _logger.LogError(ex, "..."); }
+        // ... specific exception types
+    });
+}
+```
+
+**CA1854 - Performance Optimization Pattern:**
+```csharp
+// Before (Violation - double dictionary lookup)
+if (!_priceHistory.ContainsKey(symbol))
+{
+    _logUnknownSymbol(_logger, symbol, null);
+    return;
+}
+_priceHistory[symbol].Add(new PricePoint { Close = close, Timestamp = timestamp });
+
+// After (Compliant - single lookup with TryGetValue)
+if (!_priceHistory.TryGetValue(symbol, out var priceList))
+{
+    _logUnknownSymbol(_logger, symbol, null);
+    return;
+}
+priceList.Add(new PricePoint { Close = close, Timestamp = timestamp });
+```
+
+**S3358 - Code Clarity Pattern:**
+```csharp
+// Before (Violation - nested ternary)
+_featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.leader", 
+    featureTuple.Leader == "ES" ? 1.0 : (featureTuple.Leader == "NQ" ? -1.0 : 0.0));
+
+// After (Compliant - clear if-else structure)
+double leaderValue;
+if (featureTuple.Leader == "ES")
+    leaderValue = 1.0;
+else if (featureTuple.Leader == "NQ")
+    leaderValue = -1.0;
+else
+    leaderValue = 0.0;
+_featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.leader", leaderValue);
+```
+
+### Round 32 - Priority 1 Continued: CA1031 & S109 Critical Systems/Risk Fixes (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA1031 | 1004 | 1001 | CriticalSystemComponents.cs | Specific exception types for emergency systems, crash dumps (3 violations fixed) |
