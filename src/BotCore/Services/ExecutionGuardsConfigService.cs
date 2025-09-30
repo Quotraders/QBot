@@ -12,12 +12,10 @@ namespace TradingBot.BotCore.Services
     public class ExecutionGuardsConfigService : IExecutionGuardsConfig
     {
         private readonly IConfiguration _config;
-        private readonly ILogger<ExecutionGuardsConfigService> _logger;
 
         public ExecutionGuardsConfigService(IConfiguration config, ILogger<ExecutionGuardsConfigService> logger)
         {
             _config = config;
-            _logger = logger;
         }
 
         public double GetMaxSpreadTicks() => 

@@ -11,12 +11,10 @@ namespace TradingBot.BotCore.Services
     public class ExecutionCostConfigService : IExecutionCostConfig
     {
         private readonly IConfiguration _config;
-        private readonly ILogger<ExecutionCostConfigService> _logger;
 
         public ExecutionCostConfigService(IConfiguration config, ILogger<ExecutionCostConfigService> logger)
         {
             _config = config;
-            _logger = logger;
         }
 
         public decimal GetMaxSlippageUsd() => 

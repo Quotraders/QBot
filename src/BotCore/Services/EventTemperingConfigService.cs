@@ -11,12 +11,10 @@ namespace TradingBot.BotCore.Services
     public class EventTemperingConfigService : IEventTemperingConfig
     {
         private readonly IConfiguration _config;
-        private readonly ILogger<EventTemperingConfigService> _logger;
 
         public EventTemperingConfigService(IConfiguration config, ILogger<EventTemperingConfigService> logger)
         {
             _config = config;
-            _logger = logger;
         }
 
         public int GetNewsLockoutMinutesBefore() => 

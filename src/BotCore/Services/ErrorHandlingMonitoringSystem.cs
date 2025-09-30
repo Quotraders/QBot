@@ -87,9 +87,6 @@ namespace TopstepX.Bot.Core.Services
         
         // Error handling constants
         private const int ErrorEscalationThreshold = 5;
-        private const int MaxHistoryHours = 12;
-        private const int MaxErrorHistorySize = 100;
-        private const int SessionTimeoutMinutes = 10;
         private const int ErrorIdLength = 12;
         private const double MaxSuccessRate = 100.0;
         private const double WarningHealthScore = 70.0;
