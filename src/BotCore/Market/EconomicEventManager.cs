@@ -24,6 +24,7 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
     private bool _initialized;
 
     // Configuration
+    private const int SimulatedApiCallDelayMs = 100;
     private static readonly TimeSpan DEFAULT_LOOKHEAD = TimeSpan.FromHours(2);
     private static readonly TimeSpan CRITICAL_EVENT_BUFFER = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan HIGH_EVENT_BUFFER = TimeSpan.FromMinutes(15);
@@ -247,7 +248,7 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
         // This would integrate with real economic calendar APIs
         // For production readiness, implement actual API integration
         _logger.LogInformation("[EconomicEventManager] Loading from external source: {Source}", dataSource);
-        await Task.Delay(100).ConfigureAwait(false); // Simulate async API call
+        await Task.Delay(SimulatedApiCallDelayMs).ConfigureAwait(false); // Simulate async API call
         return GetKnownScheduledEvents();
     }
 
