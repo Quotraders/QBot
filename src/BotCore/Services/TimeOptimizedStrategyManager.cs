@@ -79,6 +79,26 @@ namespace BotCore.Services
             }
         };
 
+        // Time-Optimized Strategy Manager Constants
+        // Performance thresholds
+        private const double MinTimePerformanceThreshold = 0.70;    // Minimum time performance to consider strategy
+        private const double HighConfidenceThreshold = 0.75;        // High confidence threshold for strategy selection
+        
+        // ML prediction and market regime classification thresholds
+        private const decimal TrendingUpThreshold = 0.7m;           // ML prediction threshold for trending up
+        private const decimal TrendingDownThreshold = 0.3m;         // ML prediction threshold for trending down
+        private const double HighVolatilityThreshold = 1.5;         // High volatility classification threshold
+        private const double LowVolatilityThreshold = 0.5;          // Low volatility classification threshold
+        
+        // Performance analysis constants
+        private const int MinimumTradesForAnalysis = 50;            // Minimum trades needed for performance analysis
+        private const decimal MinimumAccountBalance = 5000m;        // Minimum account balance for strategy execution
+        
+        // Time-based optimization constants
+        private const double ConfidenceScoreMultiplier = 1.5;       // Multiplier for confidence score calculation
+        private const double NeutralRSIValue = 50.0;                // Neutral RSI value (midpoint)
+        private const decimal NeutralRSIValueDecimal = 50.0m;       // Neutral RSI value as decimal
+
         public TimeOptimizedStrategyManager(ILogger<TimeOptimizedStrategyManager> logger, TradingBot.Abstractions.IS7Service? s7Service = null, OnnxModelLoader? onnxLoader = null)
         {
             _logger = logger;
@@ -132,7 +152,7 @@ namespace BotCore.Services
                 var timePerformance = GetTimePerformance(strategyId, currentTime.Hours);
 
                 // Skip if performance too low for this time
-                if (timePerformance < 0.70)
+                if (timePerformance < MinTimePerformanceThreshold)
                 {
                     _logger.LogDebug($"{strategyId} skipped - low time performance: {timePerformance:P0} at hour {currentTime.Hours}");
                     continue;
@@ -198,7 +218,7 @@ namespace BotCore.Services
         private double GetTimePerformance(string strategyId, int hour)
         {
             if (!_strategyTimePerformance.ContainsKey(strategyId))
-                return 0.75; // Default performance
+                return HighConfidenceThreshold; // Default performance
 
             var performanceMap = _strategyTimePerformance[strategyId];
 
@@ -207,7 +227,7 @@ namespace BotCore.Services
                 .OrderBy(h => Math.Abs(h - hour))
                 .FirstOrDefault();
 
-            return performanceMap.ContainsKey(closestHour) ? performanceMap[closestHour] : 0.75;
+            return performanceMap.ContainsKey(closestHour) ? performanceMap[closestHour] : HighConfidenceThreshold;
         }
 
         private async Task<MarketRegime> GetMarketRegimeAsync(string instrument, TradingBot.Abstractions.MarketData data, IReadOnlyList<Bar> bars)
@@ -240,7 +260,7 @@ namespace BotCore.Services
 
         private decimal[] ExtractRegimeFeatures(TradingBot.Abstractions.MarketData data, IReadOnlyList<Bar> bars)
         {
-            if (bars.Count < 50) return CreateDefaultFeatures();
+            if (bars.Count < MinimumTradesForAnalysis) return CreateDefaultFeatures();
 
             var features = new List<decimal>();
             
@@ -265,7 +285,7 @@ namespace BotCore.Services
                 (decimal)volatility, (decimal)trend, (decimal)momentum, (decimal)rsi,
                 (decimal)volume.AverageVolume, bidAskSpread, imbalance,
                 hourOfDay, timeToClose,
-                (decimal)data.Close / 5000m, // Normalized price
+                (decimal)data.Close / MinimumAccountBalance, // Normalized price
                 CalculateATRNormalized(bars), CalculateBollingerPosition(bars),
                 CalculateVWAP(bars), CalculateMarketStress(bars)
             });
@@ -305,10 +325,10 @@ namespace BotCore.Services
             
             // Classify based on ML prediction and features
             string regimeName;
-            if (prediction > 0.7m) regimeName = "trending_up";
-            else if (prediction < 0.3m) regimeName = "trending_down";
-            else if (volatility > 1.5) regimeName = "high_vol";
-            else if (volatility < 0.5) regimeName = "low_vol";
+            if (prediction > TrendingUpThreshold) regimeName = "trending_up";
+            else if (prediction < TrendingDownThreshold) regimeName = "trending_down";
+            else if (volatility > HighVolatilityThreshold) regimeName = "high_vol";
+            else if (volatility < LowVolatilityThreshold) regimeName = "low_vol";
             else regimeName = "sideways";
 
             return new MarketRegime
@@ -327,7 +347,7 @@ namespace BotCore.Services
 
             return new MarketRegime
             {
-                Name = volatility > 1.5 ? "high_vol" : volatility < 0.5 ? "low_vol" : "mid_vol",
+                Name = volatility > HighVolatilityThreshold ? "high_vol" : volatility < LowVolatilityThreshold ? "low_vol" : "mid_vol",
                 TrendStrength = Math.Abs(trend),
                 Volatility = volatility,
                 MLConfidence = 0.5 // No ML confidence in fallback
@@ -597,7 +617,7 @@ namespace BotCore.Services
 
         private double CalculateRSI(IReadOnlyList<Bar> bars, int period)
         {
-            if (bars.Count < period + 1) return 50.0; // Neutral RSI
+            if (bars.Count < period + 1) return NeutralRSIValue; // Neutral RSI
 
             var gains = new List<double>();
             var losses = new List<double>();
@@ -854,7 +874,7 @@ namespace BotCore.Services
                 1.0m,   // volatility
                 0.0m,   // trend
                 0.0m,   // momentum
-                50.0m,  // RSI
+                NeutralRSIValueDecimal,  // RSI
                 1.0m,   // volume
                 0.001m, // bid-ask spread
                 0.0m,   // imbalance
@@ -863,7 +883,7 @@ namespace BotCore.Services
                 1.0m,   // normalized price
                 0.01m,  // ATR
                 0.5m,   // Bollinger position
-                5000m,  // VWAP
+                MinimumAccountBalance,  // VWAP
                 0.5m    // market stress
             };
         }
