@@ -73,7 +73,7 @@ namespace TradingBot.BotCore.Services
         /// </summary>
         public TimeSpan MeasureExecution(Action action)
         {
-            if (action is null) throw new ArgumentNullException(nameof(action));
+            ArgumentNullException.ThrowIfNull(action);
             
             var start = _monotonicTimer.Elapsed;
             action();

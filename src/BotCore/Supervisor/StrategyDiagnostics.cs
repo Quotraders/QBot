@@ -11,8 +11,8 @@ namespace BotCore.Supervisor
 
         public static Report Explain(TradingProfileConfig cfg, StrategyDef def, BotCore.Models.MarketSnapshot snap)
         {
-            if (def is null) throw new ArgumentNullException(nameof(def));
-            if (snap is null) throw new ArgumentNullException(nameof(snap));
+            ArgumentNullException.ThrowIfNull(def);
+            ArgumentNullException.ThrowIfNull(snap);
             
             var checks = new List<Check>
             {
