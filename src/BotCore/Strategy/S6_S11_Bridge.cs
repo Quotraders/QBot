@@ -64,12 +64,12 @@ namespace BotCore.Strategy
 
         public double GetTickSize(TopstepX.S6.Instrument instr)
         {
-            return instr == TopstepX.S6.Instrument.ES ? 0.25 : 0.25; // Both ES and NQ use 0.25 tick size
+            return instr == TopstepX.S6.Instrument.ES ? EsTickSize : NqTickSize; // Both ES and NQ use 0.25 tick size
         }
 
         public double GetPointValue(TopstepX.S6.Instrument instr)
         {
-            return instr == TopstepX.S6.Instrument.ES ? 50.0 : 20.0; // ES $50/pt, NQ $20/pt
+            return instr == TopstepX.S6.Instrument.ES ? EsPointValue : NqPointValue; // ES $50/pt, NQ $20/pt
         }
 
         #endregion
@@ -90,12 +90,12 @@ namespace BotCore.Strategy
 
         public double GetTickSize(TopstepX.S11.Instrument instr)
         {
-            return instr == TopstepX.S11.Instrument.ES ? 0.25 : 0.25; // Both ES and NQ use 0.25 tick size
+            return instr == TopstepX.S11.Instrument.ES ? EsTickSize : NqTickSize; // Both ES and NQ use 0.25 tick size
         }
 
         public double GetPointValue(TopstepX.S11.Instrument instr)
         {
-            return instr == TopstepX.S11.Instrument.ES ? 50.0 : 20.0; // ES $50/pt, NQ $20/pt
+            return instr == TopstepX.S11.Instrument.ES ? EsPointValue : NqPointValue; // ES $50/pt, NQ $20/pt
         }
 
         #endregion
@@ -345,7 +345,7 @@ namespace BotCore.Strategy
             try
             {
                 // Production risk validation implementation
-                if (qty <= 0 || qty > 1000)
+                if (qty <= 0 || qty > MaxQuantityLimit)
                 {
                     _logger.LogWarning("[S6S11_BRIDGE] Risk limit violation: Invalid quantity {Qty} for {Instrument}", qty, instrument);
                     return Task.FromResult(false);
@@ -598,6 +598,12 @@ namespace BotCore.Strategy
         // Helper method constants
         private const decimal DefaultAtrValue = 0.25m;          // Default ATR value when insufficient data
         
+        // Instrument specifications constants
+        private const double EsTickSize = 0.25;                 // ES futures tick size
+        private const double NqTickSize = 0.25;                 // NQ futures tick size
+        private const double EsPointValue = 50.0;               // ES point value in dollars
+        private const double NqPointValue = 20.0;               // NQ point value in dollars
+        
         // Scoring algorithm constants
         private const decimal AtrThreshold = 0.5m;              // ATR threshold for score calculations
         private const decimal AtrMultiplier = 0.5m;             // ATR multiplier for score weighting
@@ -606,6 +612,20 @@ namespace BotCore.Strategy
         private const decimal ScoreMaximum = 5.0m;              // Maximum allowed score value
         private const decimal DefaultQScore = 0.5m;             // Default Q-score base value
         private const decimal QScoreBonus = 0.2m;               // Q-score bonus for high ATR
+        
+        // Q-score calculation constants  
+        private const decimal VolumeBoostThreshold = 1.2m;      // Volume threshold for Q-score boost
+        private const decimal VolumeBoostAmount = 0.2m;         // Amount to boost Q-score for high volume
+        private const decimal VolzMinThreshold = 0.5m;          // Minimum volz threshold
+        private const decimal VolzMaxThreshold = 2.0m;          // Maximum volz threshold
+        private const decimal VolzBoostAmount = 0.1m;           // Amount to boost Q-score for volz range
+        private const decimal QScoreMinBound = 0.0m;            // Minimum Q-score bound
+        private const decimal QScoreMaxBound = 1.0m;            // Maximum Q-score bound
+        
+        // Volume calculation constants
+        private const int RecentVolumeBarCount = 5;             // Number of bars for recent volume average
+        private const int MillisecondsMultiplier = 1000;        // Multiplier for milliseconds conversion
+        private const int MaxQuantityLimit = 1000;              // Maximum allowed quantity for risk validation
 
         private static decimal CalculateATR(IList<Bar> bars, int period = 14)
         {
@@ -646,20 +666,20 @@ namespace BotCore.Strategy
             if (env.atr.HasValue && env.atr.Value > AtrThreshold)
                 qScore += QScoreBonus;
                 
-            if (bars.Count >= 5)
+            if (bars.Count >= RecentVolumeBarCount)
             {
-                var recentAvgVol = bars.Skip(bars.Count - 5).Average(b => b.Volume);
+                var recentAvgVol = bars.Skip(bars.Count - RecentVolumeBarCount).Average(b => b.Volume);
                 var lastVol = bars.Last().Volume;
-                if (lastVol > recentAvgVol * 1.2) qScore += 0.2m;
+                if (lastVol > recentAvgVol * VolumeBoostThreshold) qScore += VolumeBoostAmount;
             }
             
             if (env.volz.HasValue)
             {
                 var absVolz = Math.Abs(env.volz.Value);
-                if (absVolz >= 0.5m && absVolz <= 2.0m) qScore += 0.1m;
+                if (absVolz >= VolzMinThreshold && absVolz <= VolzMaxThreshold) qScore += VolzBoostAmount;
             }
             
-            return Math.Max(0.0m, Math.Min(1.0m, qScore));
+            return Math.Max(QScoreMinBound, Math.Min(QScoreMaxBound, qScore));
         }
 
         #endregion
