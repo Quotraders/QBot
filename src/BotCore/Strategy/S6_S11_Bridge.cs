@@ -23,6 +23,9 @@ namespace BotCore.Strategy
     /// </summary>
     public class BridgeOrderRouter : TopstepX.S6.IOrderRouter, TopstepX.S11.IOrderRouter
     {
+        // ATR calculation constants
+        private const decimal DefaultAtrValue = 0.25m;          // Default ATR value when insufficient data
+        
         private readonly RiskEngine _risk;
         private readonly IOrderService _orderService;
         private readonly ILogger<BridgeOrderRouter> _logger;
@@ -597,7 +600,7 @@ namespace BotCore.Strategy
 
         private static decimal CalculateATR(IList<Bar> bars, int period = 14)
         {
-            if (bars.Count < 2) return 0.25m;
+            if (bars.Count < 2) return DefaultAtrValue;
             
             var trs = new List<decimal>();
             for (int i = 1; i < Math.Min(bars.Count, period + 1); i++)
@@ -611,7 +614,7 @@ namespace BotCore.Strategy
                 trs.Add(tr);
             }
             
-            return trs.Count > 0 ? trs.Average() : 0.25m;
+            return trs.Count > 0 ? trs.Average() : DefaultAtrValue;
         }
 
         private static decimal CalculateScore(Env env)

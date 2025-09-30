@@ -157,9 +157,13 @@ namespace BotCore
                         csvData.Add(CreateCsvRow(trade));
                     }
                 }
-                catch (Exception ex)
+                catch (JsonException ex)
                 {
-                    _logger.LogWarning(ex, "[EnhancedTrainingData] Failed to parse trade data line");
+                    _logger.LogWarning(ex, "[EnhancedTrainingData] Failed to parse trade data JSON");
+                }
+                catch (ArgumentException ex)
+                {
+                    _logger.LogWarning(ex, "[EnhancedTrainingData] Invalid argument parsing trade data");
                 }
             }
 
