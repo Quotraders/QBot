@@ -25,6 +25,7 @@ namespace BotCore.Services
         Task<bool> VerifyDataFlowAsync(string symbol, TimeSpan timeout);
         Task StartHealthMonitoringAsync(CancellationToken cancellationToken);
         Task ProcessMarketDataAsync(TradingBot.Abstractions.MarketData marketData, CancellationToken cancellationToken);
+        Task ProcessHistoricalBarsAsync(string contractId, IEnumerable<BotCore.Models.Bar> historicalBars, CancellationToken cancellationToken = default);
         event Action<string, object> OnMarketDataReceived;
         event Action<string> OnDataFlowRestored;
         event Action<string> OnDataFlowInterrupted;
@@ -39,6 +40,8 @@ namespace BotCore.Services
         private readonly ILogger<EnhancedMarketDataFlowService> _logger;
         private readonly DataFlowEnhancementConfiguration _config;
         private readonly HttpClient _httpClient;
+        private readonly BotCore.Market.BarPyramid? _barPyramid;
+        private readonly IServiceProvider _serviceProvider;
         private readonly ConcurrentDictionary<string, DateTime> _lastDataReceived = new();
         private readonly ConcurrentDictionary<string, int> _dataReceivedCount = new();
         private readonly ConcurrentDictionary<string, DataFlowMetrics> _flowMetrics = new();
@@ -57,12 +60,25 @@ namespace BotCore.Services
         public EnhancedMarketDataFlowService(
             ILogger<EnhancedMarketDataFlowService> logger,
             IOptions<DataFlowEnhancementConfiguration> config,
-            HttpClient httpClient)
+            HttpClient httpClient,
+            IServiceProvider serviceProvider,
+            BotCore.Market.BarPyramid? barPyramid = null)
         {
             _logger = logger;
             ArgumentNullException.ThrowIfNull(config);
             _config = config.Value;
             _httpClient = httpClient;
+            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            _barPyramid = barPyramid;
+
+            if (_barPyramid != null)
+            {
+                _logger.LogInformation("[ENHANCED-DATA-FLOW] BarPyramid injection successful - historical bar seeding enabled");
+            }
+            else
+            {
+                _logger.LogWarning("[ENHANCED-DATA-FLOW] BarPyramid not available - historical bar seeding disabled");
+            }
 
             // Initialize health check timer
             _healthCheckTimer = new Timer(
@@ -616,6 +632,134 @@ namespace BotCore.Services
                 _logger.LogError(ex, "[MARKET-DATA-FLOW] Failed to process market data for {Symbol}", marketData.Symbol);
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Process and forward historical bars to the BarPyramid for feature computation
+        /// Extends the seeding capability to ensure BarAggregators have historical data
+        /// </summary>
+        public async Task ProcessHistoricalBarsAsync(string contractId, IEnumerable<BotCore.Models.Bar> historicalBars, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(contractId))
+            {
+                _logger.LogError("[ENHANCED-DATA-FLOW] [AUDIT-VIOLATION] Empty contract ID for historical bars - FAIL-CLOSED + TELEMETRY");
+                return;
+            }
+
+            if (historicalBars == null)
+            {
+                _logger.LogError("[ENHANCED-DATA-FLOW] [AUDIT-VIOLATION] Null historical bars for {ContractId} - FAIL-CLOSED + TELEMETRY", contractId);
+                return;
+            }
+
+            try
+            {
+                var barList = historicalBars.ToList();
+                if (barList.Count == 0)
+                {
+                    _logger.LogWarning("[ENHANCED-DATA-FLOW] No historical bars provided for {ContractId}", contractId);
+                    return;
+                }
+
+                _logger.LogInformation("[ENHANCED-DATA-FLOW] Processing {BarCount} historical bars for {ContractId}", barList.Count, contractId);
+
+                // Forward to BarPyramid if available
+                if (_barPyramid != null)
+                {
+                    await ForwardHistoricalBarsToBarPyramid(contractId, barList, cancellationToken).ConfigureAwait(false);
+                }
+
+                // Also forward to TradingSystemBarConsumer if available
+                var barConsumer = _serviceProvider.GetService(typeof(IHistoricalBarConsumer)) as IHistoricalBarConsumer;
+                if (barConsumer != null)
+                {
+                    barConsumer.ConsumeHistoricalBars(contractId, barList);
+                    _logger.LogDebug("[ENHANCED-DATA-FLOW] Forwarded {BarCount} bars to TradingSystemBarConsumer for {ContractId}", 
+                        barList.Count, contractId);
+                }
+
+                _logger.LogInformation("[ENHANCED-DATA-FLOW] ✅ Successfully processed {BarCount} historical bars for {ContractId}", 
+                    barList.Count, contractId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[ENHANCED-DATA-FLOW] [AUDIT-VIOLATION] Failed to process historical bars for {ContractId} - FAIL-CLOSED + TELEMETRY", contractId);
+                throw; // Fail-closed behavior
+            }
+        }
+
+        /// <summary>
+        /// Forward historical bars to BarPyramid aggregators for real-time feature computation
+        /// </summary>
+        private async Task ForwardHistoricalBarsToBarPyramid(string contractId, List<BotCore.Models.Bar> bars, CancellationToken cancellationToken)
+        {
+            if (_barPyramid == null) return;
+
+            try
+            {
+                // Convert BotCore.Models.Bar to BotCore.Market.Bar format
+                var marketBars = bars.Select(b => new BotCore.Market.Bar(
+                    DateTime.UnixEpoch.AddMilliseconds(b.Ts), // Start time
+                    DateTime.UnixEpoch.AddMilliseconds(b.Ts).AddMinutes(1), // End time (assuming 1min bars)
+                    b.Open,
+                    b.High,
+                    b.Low,
+                    b.Close,
+                    b.Volume
+                )).ToList();
+
+                // Seed the M1 aggregator with historical bars
+                _barPyramid.M1.Seed(contractId, marketBars);
+                
+                _logger.LogInformation("[ENHANCED-DATA-FLOW] ✅ Seeded BarPyramid M1 aggregator with {BarCount} bars for {ContractId}", 
+                    marketBars.Count, contractId);
+
+                // Optionally seed M5 and M30 if they need direct historical data
+                // Note: BarPyramid should automatically collapse M1 into M5/M30, but we can also seed them directly
+                if (marketBars.Count >= 5)
+                {
+                    // Create 5-minute bars from 1-minute bars for better seeding
+                    var m5Bars = ConvertToTimeframe(marketBars, TimeSpan.FromMinutes(5));
+                    _barPyramid.M5.Seed(contractId, m5Bars);
+                    
+                    _logger.LogDebug("[ENHANCED-DATA-FLOW] ✅ Seeded BarPyramid M5 aggregator with {BarCount} bars for {ContractId}", 
+                        m5Bars.Count, contractId);
+                }
+
+                await Task.CompletedTask.ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[ENHANCED-DATA-FLOW] Failed to forward historical bars to BarPyramid for {ContractId}", contractId);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Convert 1-minute bars to a larger timeframe for seeding
+        /// </summary>
+        private static List<BotCore.Market.Bar> ConvertToTimeframe(List<BotCore.Market.Bar> minuteBars, TimeSpan timeframe)
+        {
+            var result = new List<BotCore.Market.Bar>();
+            var timeframeMinutes = (int)timeframe.TotalMinutes;
+            
+            for (int i = 0; i < minuteBars.Count; i += timeframeMinutes)
+            {
+                var chunk = minuteBars.Skip(i).Take(timeframeMinutes).ToList();
+                if (chunk.Count == 0) continue;
+                
+                var start = chunk.First().Start;
+                var end = start.Add(timeframe);
+                var open = chunk.First().Open;
+                var close = chunk.Last().Close;
+                var high = chunk.Max(b => b.High);
+                var low = chunk.Min(b => b.Low);
+                var volume = chunk.Sum(b => b.Volume);
+                
+                result.Add(new BotCore.Market.Bar(start, end, open, high, low, close, volume));
+            }
+            
+            return result;
         }
 
         #endregion

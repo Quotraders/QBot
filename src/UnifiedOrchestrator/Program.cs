@@ -610,9 +610,6 @@ Please check the configuration and ensure all required services are registered.
         // Register feature publisher hosted service for automated feature publishing
         services.AddHostedService<BotCore.Features.FeaturePublisher>();
         
-        // Register bar dispatcher hook for real-time feature extraction
-        services.AddHostedService<BotCore.Features.BarDispatcherHook>();
-        
         // ================================================================================
         // EXECUTION ALPHA UPGRADES - S7 Execution Path Enhancement
         // Advanced execution services for intelligent order type selection and management
@@ -964,6 +961,18 @@ Please check the configuration and ensure all required services are registered.
         // Register production readiness services including IHistoricalDataBridgeService and IEnhancedMarketDataFlowService
         services.AddProductionReadinessServices(configuration);
         services.AddDefaultTradingReadinessConfiguration();
+        
+        // ================================================================================
+        // BAR INFRASTRUCTURE - Register BarPyramid and underlying BarAggregators
+        // ================================================================================
+        
+        // Register BarPyramid as singleton after production readiness services
+        services.AddSingleton<BotCore.Market.BarPyramid>();
+        
+        // Register bar dispatcher hook AFTER bar infrastructure is available
+        services.AddHostedService<BotCore.Features.BarDispatcherHook>();
+        
+        Console.WriteLine("✅ [BAR-INFRASTRUCTURE] BarPyramid and BarDispatcherHook registered - bar aggregation and dispatching ready");
         
         // Register pattern recognition and strategy DSL services - production ready pattern analysis and strategy reasoning
         services.AddPatternAndStrategyServices(configuration);
