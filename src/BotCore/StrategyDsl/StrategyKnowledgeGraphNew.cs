@@ -233,6 +233,9 @@ public enum RegimeType
 /// </summary>
 public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
 {
+    // Evaluation threshold constants for expression evaluation
+    private const double DefaultEvaluationThreshold = 0.5; // Threshold for boolean-like evaluations
+    
     private readonly IReadOnlyList<DslStrategy> _cards;
     private readonly IFeatureProbe _probe;
     private readonly IRegimeService _regimes;

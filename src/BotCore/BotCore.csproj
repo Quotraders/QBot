@@ -33,6 +33,10 @@
     <ProjectReference Include="..\\IntelligenceStack\\IntelligenceStack.csproj" />
     <ProjectReference Include="..\\RLAgent\\RLAgent.csproj" />
     <ProjectReference Include="..\\Zones\\Zones.csproj" />
+    <!-- TODO: Re-enable when circular dependencies are resolved -->
+    <!-- <ProjectReference Include="..\\Backtest\\Backtest.csproj" /> -->
+    <!-- <ProjectReference Include="..\\Safety\\Safety.csproj" /> -->
+    <!-- <ProjectReference Include="..\\Monitoring\\Monitoring.csproj" /> -->
   </ItemGroup>
 
   <ItemGroup>

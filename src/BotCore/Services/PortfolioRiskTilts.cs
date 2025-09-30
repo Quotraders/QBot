@@ -355,7 +355,6 @@ namespace BotCore.Services
         private static int GetConfiguredMinCorrelationPoints() =>
             int.TryParse(Environment.GetEnvironmentVariable("CORRELATION_MIN_POINTS"), out var points) && points > 0 
                 ? points : 2; // Minimal requirement fallback
-        }
 
         private double CalculateReductionFactor(double correlation)
         {
@@ -492,7 +491,6 @@ namespace BotCore.Services
         private static double GetConfiguredSafeVolOfVol() =>
             double.TryParse(Environment.GetEnvironmentVariable("VOL_OF_VOL_SAFE_VALUE"), out var val) 
                 ? val : 0.0; // Explicit zero fallback for no volatility data
-        }
     }
 
     // Configuration classes - NO HARDCODED DEFAULTS (fail-closed requirement)

@@ -136,9 +136,10 @@ namespace BotCore.Execution
             }
 
             // Near zone boundaries requires careful consideration
-            if (microstructure.DistanceToZoneAtr.HasValue && microstructure.DistanceToZoneAtr.Value < _config.ZoneProximityThresholdAtr)
+            if (microstructure.DistanceToZoneAtr.HasValue && (double)microstructure.DistanceToZoneAtr.Value < _config.ZoneProximityThresholdAtr)
             {
-                recommendation.Reasoning.Add($"Near zone boundary (distance: {microstructure.DistanceToZoneAtr.Value:F2} ATR)");
+                var distance = microstructure.DistanceToZoneAtr.Value;
+                recommendation.Reasoning.Add($"Near zone boundary (distance: {distance:F2} ATR)");
             }
         }
 

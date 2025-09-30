@@ -45,5 +45,112 @@ namespace TradingBot.Abstractions
         /// Maximum market impact in basis points
         /// </summary>
         decimal GetMaxMarketImpactBps();
+
+        /// <summary>
+        /// Execution cost adjustment for opening auction
+        /// </summary>
+        decimal GetOpeningAuctionAdjustment();
+
+        /// <summary>
+        /// Execution cost adjustment for closing auction
+        /// </summary>
+        decimal GetClosingAuctionAdjustment();
+
+        /// <summary>
+        /// Execution cost adjustment for after-hours trading
+        /// </summary>
+        decimal GetAfterHoursAdjustment();
+
+        /// <summary>
+        /// Imbalance adjustment multiplier
+        /// </summary>
+        decimal GetImbalanceAdjustmentMultiplier();
+
+        /// <summary>
+        /// Minimum slippage in basis points
+        /// </summary>
+        decimal GetMinSlippageBps();
+
+        /// <summary>
+        /// Maximum time multiplier for execution cost calculation
+        /// </summary>
+        decimal GetMaxTimeMultiplier();
+
+        /// <summary>
+        /// Time multiplier baseline for execution cost calculation
+        /// </summary>
+        decimal GetTimeMultiplierBaseline();
+
+        /// <summary>
+        /// Volatility boost factor for execution cost calculation
+        /// </summary>
+        decimal GetVolatilityBoost();
+
+        /// <summary>
+        /// Volume threshold for volume-based adjustments
+        /// </summary>
+        decimal GetVolumeThreshold();
+
+        /// <summary>
+        /// Volume boost factor for high-volume scenarios
+        /// </summary>
+        decimal GetVolumeBoost();
+
+        /// <summary>
+        /// Maximum fill probability threshold
+        /// </summary>
+        decimal GetMaxFillProbability();
+
+        /// <summary>
+        /// Minimum fill probability threshold
+        /// </summary>
+        decimal GetMinFillProbability();
+
+        /// <summary>
+        /// Default spread penetration factor
+        /// </summary>
+        decimal GetDefaultSpreadPenetration();
+
+        /// <summary>
+        /// Maximum slippage cap
+        /// </summary>
+        decimal GetMaxSlippageCap();
+
+        /// <summary>
+        /// Fill probability thresholds for different scenarios
+        /// </summary>
+        FillProbabilityThresholds GetFillProbabilityThresholds();
+    }
+
+    /// <summary>
+    /// Fill probability configuration data
+    /// </summary>
+    public class FillProbabilityThresholds
+    {
+        private readonly List<DistanceThreshold> _distanceThresholds = new();
+        
+        public decimal AtMarketProbability { get; set; } = 0.9m;
+        public decimal PassiveFallbackProbability { get; set; } = 0.2m;
+        public IReadOnlyList<DistanceThreshold> DistanceThresholds => _distanceThresholds;
+        
+        public void AddDistanceThreshold(DistanceThreshold threshold)
+        {
+            _distanceThresholds.Add(threshold);
+        }
+        
+        public void SetDistanceThresholds(IEnumerable<DistanceThreshold> thresholds)
+        {
+            _distanceThresholds.Clear();
+            _distanceThresholds.AddRange(thresholds);
+        }
+    }
+
+    /// <summary>
+    /// Distance threshold for fill probability calculation
+    /// </summary>
+    public class DistanceThreshold
+    {
+        public double MaxDistance { get; set; }
+        public decimal FillProbability { get; set; }
     }
 }

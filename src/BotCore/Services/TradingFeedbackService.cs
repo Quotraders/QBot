@@ -16,7 +16,7 @@ public class TradingFeedbackService : BackgroundService
     private readonly CloudModelSynchronizationService _cloudSync;
     private readonly ModelEnsembleService _ensemble;
     private readonly ConcurrentQueue<TradingOutcome> _feedbackQueue = new();
-    private readonly ConcurrentDictionary<string, PerformanceMetrics> _performanceMetrics = new();
+    private readonly ConcurrentDictionary<string, TradingPerformanceMetrics> _performanceMetrics = new();
     
     // Configuration
     private readonly TimeSpan _processingInterval = TimeSpan.FromMinutes(5);
@@ -169,7 +169,7 @@ public class TradingFeedbackService : BackgroundService
         
         if (!_performanceMetrics.TryGetValue(key, out var metrics))
         {
-            metrics = new PerformanceMetrics
+            metrics = new TradingPerformanceMetrics
             {
                 Strategy = outcome.Strategy,
                 Symbol = outcome.Symbol,
@@ -585,7 +585,7 @@ public class PredictionFeedback
     public Dictionary<string, object> TradingContext { get; } = new();
 }
 
-public class PerformanceMetrics
+public class TradingPerformanceMetrics
 {
     public string Strategy { get; set; } = string.Empty;
     public string Symbol { get; set; } = string.Empty;
@@ -608,7 +608,7 @@ public class PerformanceIssue
     public string Symbol { get; set; } = string.Empty;
     public string Severity { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public PerformanceMetrics Metrics { get; set; } = null!;
+    public TradingPerformanceMetrics Metrics { get; set; } = null!;
 }
 
 public class ModelRetrainingRequest
@@ -616,7 +616,7 @@ public class ModelRetrainingRequest
     public DateTime Timestamp { get; set; }
     public List<string> Strategies { get; } = new();
     public string Reason { get; set; } = string.Empty;
-    public List<PerformanceMetrics> PerformanceMetrics { get; } = new();
+    public List<TradingPerformanceMetrics> PerformanceMetrics { get; } = new();
     public double TriggerThreshold { get; set; }
     public int MinSamples { get; set; }
 }
@@ -626,7 +626,7 @@ public class EnsembleRetrainingRequest
     public DateTime Timestamp { get; set; }
     public string Reason { get; set; } = string.Empty;
     public Dictionary<string, ModelPerformance> ModelPerformance { get; } = new();
-    public List<PerformanceMetrics> OverallPerformance { get; } = new();
+    public List<TradingPerformanceMetrics> OverallPerformance { get; } = new();
     public double TriggerThreshold { get; set; }
 }
 
@@ -637,7 +637,7 @@ public class PerformanceSummary
     public int TotalTrades { get; set; }
     public double OverallAccuracy { get; set; }
     public decimal OverallPnL { get; set; }
-    public List<PerformanceMetrics> StrategyMetrics { get; } = new();
+    public List<TradingPerformanceMetrics> StrategyMetrics { get; } = new();
     public Dictionary<string, ModelPerformance> ModelMetrics { get; } = new();
     public DateTime LastRetrainingTrigger { get; set; }
 }

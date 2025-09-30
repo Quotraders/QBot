@@ -78,6 +78,32 @@ namespace BotCore.Brain
         private readonly List<TradingDecision> _decisionHistory = new();
         private DateTime _lastModelUpdate = DateTime.MinValue;
         
+        // Unified Trading Brain Constants
+        // Learning system constants
+        private const int MinDecisionsForLearningUpdate = 50;        // Minimum decisions for learning update
+        private const int MinDecisionsForModelRetraining = 200;      // Minimum decisions for model retraining
+        private const int LearningUpdateIntervalHours = 2;           // Hours between learning updates  
+        private const int ModelRetrainingIntervalHours = 8;          // Hours between model retraining
+        
+        // Market condition analysis constants  
+        private const decimal LowVolatilityThreshold = 0.15m;        // Low volatility threshold
+        private const decimal HighVolatilityThreshold = 0.4m;        // High volatility threshold
+        private const decimal HighVolumeRatioThreshold = 1.5m;       // High volume ratio threshold
+        private const decimal StrongTrendThreshold = 0.7m;           // Strong trend threshold
+        private const decimal WeakTrendThreshold = 0.3m;             // Weak trend threshold
+        private const double OverboughtRSILevel = 70;                // RSI overbought level
+        private const double OversoldRSILevel = 30;                  // RSI oversold level
+        private const decimal BaseConfidenceThreshold = 0.5m;        // Base confidence threshold
+        private const decimal MinConfidenceAdjustment = 0.1m;        // Minimum confidence adjustment
+        
+        // Trading session hour constants
+        private const int OpeningDriveStartHour = 9;                 // Opening drive start hour (9 AM)
+        private const int OpeningDriveEndHour = 10;                  // Opening drive end hour (10 AM)
+        private const int LunchStartHour = 11;                       // Lunch session start hour (11 AM)
+        private const int LunchEndHour = 13;                         // Lunch session end hour (1 PM)
+        private const int AfternoonFadeStartHour = 13;               // Afternoon fade start hour (1 PM)
+        private const int AfternoonFadeEndHour = 16;                 // Afternoon fade end hour (4 PM)
+        
         // Multi-strategy learning state
         private readonly Dictionary<string, StrategyPerformance> _strategyPerformance = new();
         private readonly Dictionary<string, List<MarketCondition>> _strategyOptimalConditions = new();
@@ -325,14 +351,14 @@ namespace BotCore.Brain
                 }
 
                 // Enhanced model retraining with multi-strategy learning
-                if (DateTime.UtcNow - _lastUnifiedLearningUpdate > TimeSpan.FromHours(2) && _decisionHistory.Count > 50)
+                if (DateTime.UtcNow - _lastUnifiedLearningUpdate > TimeSpan.FromHours(LearningUpdateIntervalHours) && _decisionHistory.Count > MinDecisionsForLearningUpdate)
                 {
                     _ = Task.Run(() => UpdateUnifiedLearningAsync(cancellationToken), cancellationToken);
                     _lastUnifiedLearningUpdate = DateTime.UtcNow;
                 }
 
                 // Periodic full model retraining
-                if (DateTime.UtcNow - _lastModelUpdate > TimeSpan.FromHours(8) && _decisionHistory.Count > 200)
+                if (DateTime.UtcNow - _lastModelUpdate > TimeSpan.FromHours(ModelRetrainingIntervalHours) && _decisionHistory.Count > MinDecisionsForModelRetraining)
                 {
                     _ = Task.Run(() => RetrainModelsAsync(cancellationToken), cancellationToken);
                     _lastModelUpdate = DateTime.UtcNow;
@@ -376,7 +402,7 @@ namespace BotCore.Brain
                     await _strategySelector.UpdateArmAsync(strategy, contextVector, crossLearningReward, cancellationToken).ConfigureAwait(false);
                     
                     // Update strategy-specific learning patterns
-                    UpdateStrategyOptimalConditions(strategy, context, crossLearningReward > 0.5m);
+                    UpdateStrategyOptimalConditions(strategy, context, crossLearningReward > BaseConfidenceThreshold);
                 }
                 
                 _logger.LogDebug("🧠 [CROSS-LEARNING] Updated all strategies from {ExecutedStrategy} outcome: {Reward:F3}", 
@@ -404,7 +430,7 @@ namespace BotCore.Brain
             var executedSpec = _strategySpecializations.GetValueOrDefault(executedStrategy);
             
             if (learningSpec == null || executedSpec == null)
-                return executedReward * 0.1m; // Minimal learning if no specialization
+                return executedReward * MinConfidenceAdjustment; // Minimal learning if no specialization
             
             // Calculate similarity in optimal conditions
             var conditionSimilarity = learningSpec.OptimalConditions
@@ -434,20 +460,20 @@ namespace BotCore.Brain
         {
             var conditions = new List<string>();
             
-            if (context.Volatility < 0.15m) conditions.Add("low_volatility");
-            else if (context.Volatility > 0.4m) conditions.Add("high_volatility");
+            if (context.Volatility < LowVolatilityThreshold) conditions.Add("low_volatility");
+            else if (context.Volatility > HighVolatilityThreshold) conditions.Add("high_volatility");
             
-            if (context.VolumeRatio > 1.5m) conditions.Add("high_volume");
-            if (context.TrendStrength > 0.7m) conditions.Add("trending");
-            else if (context.TrendStrength < 0.3m) conditions.Add("ranging");
+            if (context.VolumeRatio > HighVolumeRatioThreshold) conditions.Add("high_volume");
+            if (context.TrendStrength > StrongTrendThreshold) conditions.Add("trending");
+            else if (context.TrendStrength < WeakTrendThreshold) conditions.Add("ranging");
             
-            if (context.RSI > 70) conditions.Add("overbought");
-            else if (context.RSI < 30) conditions.Add("oversold");
+            if (context.RSI > OverboughtRSILevel) conditions.Add("overbought");
+            else if (context.RSI < OversoldRSILevel) conditions.Add("oversold");
             
             var hour = context.TimeOfDay.Hours;
-            if (hour >= 9 && hour <= 10) conditions.Add("opening_drive");
-            else if (hour >= 11 && hour <= 13) conditions.Add("lunch");
-            else if (hour >= 13 && hour <= 16) conditions.Add("afternoon_fade");
+            if (hour >= OpeningDriveStartHour && hour <= OpeningDriveEndHour) conditions.Add("opening_drive");
+            else if (hour >= LunchStartHour && hour <= LunchEndHour) conditions.Add("lunch");
+            else if (hour >= AfternoonFadeStartHour && hour <= AfternoonFadeEndHour) conditions.Add("afternoon_fade");
             
             return conditions.ToArray();
         }
@@ -459,8 +485,8 @@ namespace BotCore.Brain
             if (_metaClassifier == null || !IsInitialized)
             {
                 // Fallback: use volatility-based regime detection
-                return Task.FromResult(context.Volatility > 0.3m ? MarketRegime.HighVolatility :
-                       context.Volatility < 0.15m ? MarketRegime.LowVolatility : MarketRegime.Normal);
+                return Task.FromResult(context.Volatility > WeakTrendThreshold ? MarketRegime.HighVolatility :
+                       context.Volatility < LowVolatilityThreshold ? MarketRegime.LowVolatility : MarketRegime.Normal);
             }
 
             try
