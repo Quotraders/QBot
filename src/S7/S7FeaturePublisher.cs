@@ -69,6 +69,46 @@ namespace TradingBot.S7
             LoggerMessage.Define(LogLevel.Error, new EventId(1011, "InvalidOperationStartup"), 
                 "[S7-FEATURE-PUBLISHER] Invalid operation during S7 feature publisher startup");
 
+        private static readonly Action<ILogger, Exception?> _logMissingDependencies = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(1012, "MissingDependencies"), 
+                "[S7-FEATURE-PUBLISHER] Missing dependencies in publish callback - TRIGGERING HOLD + TELEMETRY");
+
+        private static readonly Action<ILogger, Exception?> _logServiceNotReadyRequired = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(1013, "ServiceNotReadyRequired"), 
+                "[S7-FEATURE-PUBLISHER] S7 service not ready but required - TRIGGERING HOLD + TELEMETRY");
+
+        private static readonly Action<ILogger, Exception?> _logServiceNotReadySkipping = 
+            LoggerMessage.Define(LogLevel.Debug, new EventId(1014, "ServiceNotReadySkipping"), 
+                "[S7-FEATURE-PUBLISHER] S7 service not ready, skipping feature publishing");
+
+        private static readonly Action<ILogger, int, Exception?> _logPublishedFeatures = 
+            LoggerMessage.Define<int>(LogLevel.Debug, new EventId(1015, "PublishedFeatures"), 
+                "[S7-FEATURE-PUBLISHER] Published S7 features for {SymbolCount} symbols");
+
+        private static readonly Action<ILogger, Exception?> _logObjectDisposedError = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(1016, "ObjectDisposedError"), 
+                "[S7-FEATURE-PUBLISHER] Object disposed during feature publishing - TRIGGERING HOLD + TELEMETRY");
+
+        private static readonly Action<ILogger, Exception?> _logObjectDisposedWarning = 
+            LoggerMessage.Define(LogLevel.Warning, new EventId(1017, "ObjectDisposedWarning"), 
+                "[S7-FEATURE-PUBLISHER] Object disposed publishing S7 features");
+
+        private static readonly Action<ILogger, Exception?> _logInvalidArgumentError = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(1018, "InvalidArgumentError"), 
+                "[S7-FEATURE-PUBLISHER] Invalid argument during feature publishing - TRIGGERING HOLD + TELEMETRY");
+
+        private static readonly Action<ILogger, Exception?> _logInvalidArgumentWarning = 
+            LoggerMessage.Define(LogLevel.Warning, new EventId(1019, "InvalidArgumentWarning"), 
+                "[S7-FEATURE-PUBLISHER] Invalid argument publishing S7 features");
+
+        private static readonly Action<ILogger, Exception?> _logInvalidOperationError = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(1020, "InvalidOperationError"), 
+                "[S7-FEATURE-PUBLISHER] Invalid operation during feature publishing - TRIGGERING HOLD + TELEMETRY");
+
+        private static readonly Action<ILogger, Exception?> _logInvalidOperationWarning = 
+            LoggerMessage.Define(LogLevel.Warning, new EventId(1021, "InvalidOperationWarning"), 
+                "[S7-FEATURE-PUBLISHER] Invalid operation publishing S7 features");
+
         public S7FeaturePublisher(
             ILogger<S7FeaturePublisher> logger,
             IServiceProvider serviceProvider)
@@ -162,7 +202,7 @@ namespace TradingBot.S7
             {
                 if (_s7Service == null || _featureBus == null || _config == null)
                 {
-                    _logger.LogError("[S7-FEATURE-PUBLISHER] Missing dependencies in publish callback - TRIGGERING HOLD + TELEMETRY");
+                    _logMissingDependencies(_logger, null);
                     return;
                 }
 
@@ -171,10 +211,10 @@ namespace TradingBot.S7
                 {
                     if (_config.FailOnMissingData)
                     {
-                        _logger.LogError("[S7-FEATURE-PUBLISHER] S7 service not ready but required - TRIGGERING HOLD + TELEMETRY");
+                        _logServiceNotReadyRequired(_logger, null);
                         return;
                     }
-                    _logger.LogDebug("[S7-FEATURE-PUBLISHER] S7 service not ready, skipping feature publishing");
+                    _logServiceNotReadySkipping(_logger, null);
                     return;
                 }
 
@@ -246,39 +286,39 @@ namespace TradingBot.S7
                     _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.adaptive_volatility_measure", (double)featureTuple.AdaptiveVolatilityMeasure);
                 }
 
-                _logger.LogDebug("[S7-FEATURE-PUBLISHER] Published S7 features for {SymbolCount} symbols", _config.Symbols.Count);
+                _logPublishedFeatures(_logger, _config.Symbols.Count, null);
             }
             catch (ObjectDisposedException ex)
             {
                 if (_config?.FailOnMissingData == true)
                 {
-                    _logger.LogError(ex, "[S7-FEATURE-PUBLISHER] Object disposed during feature publishing - TRIGGERING HOLD + TELEMETRY");
+                    _logObjectDisposedError(_logger, ex);
                 }
                 else
                 {
-                    _logger.LogWarning(ex, "[S7-FEATURE-PUBLISHER] Object disposed publishing S7 features");
+                    _logObjectDisposedWarning(_logger, ex);
                 }
             }
             catch (ArgumentException ex)
             {
                 if (_config?.FailOnMissingData == true)
                 {
-                    _logger.LogError(ex, "[S7-FEATURE-PUBLISHER] Invalid argument during feature publishing - TRIGGERING HOLD + TELEMETRY");
+                    _logInvalidArgumentError(_logger, ex);
                 }
                 else
                 {
-                    _logger.LogWarning(ex, "[S7-FEATURE-PUBLISHER] Invalid argument publishing S7 features");
+                    _logInvalidArgumentWarning(_logger, ex);
                 }
             }
             catch (InvalidOperationException ex)
             {
                 if (_config?.FailOnMissingData == true)
                 {
-                    _logger.LogError(ex, "[S7-FEATURE-PUBLISHER] Invalid operation during feature publishing - TRIGGERING HOLD + TELEMETRY");
+                    _logInvalidOperationError(_logger, ex);
                 }
                 else
                 {
-                    _logger.LogWarning(ex, "[S7-FEATURE-PUBLISHER] Invalid operation publishing S7 features");
+                    _logInvalidOperationWarning(_logger, ex);
                 }
             }
         }

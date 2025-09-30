@@ -52,6 +52,26 @@ namespace TradingBot.S7
             LoggerMessage.Define<string>(LogLevel.Warning, new EventId(2002, "UnknownSymbol"), 
                 "Received price update for unknown symbol: {Symbol}");
 
+        private static readonly Action<ILogger, Exception?> _logZeroZScoreAuditViolation = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(2003, "ZeroZScoreAuditViolation"), 
+                "[S7-AUDIT-VIOLATION] Zero Z-scores detected - TRIGGERING HOLD + TELEMETRY");
+
+        private static readonly Action<ILogger, Exception?> _logInvalidZScoreAuditViolation = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(2004, "InvalidZScoreAuditViolation"), 
+                "[S7-AUDIT-VIOLATION] Invalid Z-score data - TRIGGERING HOLD + TELEMETRY");
+
+        private static readonly Action<ILogger, Exception?> _logMissingStateAuditViolation = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(2005, "MissingStateAuditViolation"), 
+                "[S7-AUDIT-VIOLATION] Missing state data for leader calculation - TRIGGERING HOLD + TELEMETRY");
+
+        private static readonly Action<ILogger, Exception?> _logBreadthUnavailableError = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(2006, "BreadthUnavailableError"), 
+                "[S7-AUDIT-VIOLATION] Breadth feed unavailable but required - TRIGGERING HOLD + TELEMETRY");
+
+        private static readonly Action<ILogger, Exception?> _logBreadthUnavailableWarning = 
+            LoggerMessage.Define(LogLevel.Warning, new EventId(2007, "BreadthUnavailableWarning"), 
+                "[S7-AUDIT-VIOLATION] Breadth feed unavailable, using configured base score");
+
         public S7Service(
             ILogger<S7Service> logger,
             IOptions<S7Configuration> config,
@@ -284,7 +304,7 @@ namespace TradingBot.S7
             // FAIL-CLOSED: Check for missing data or invalid states
             if (Math.Abs(esState.ZScore) < DefaultMinZScoreThreshold && Math.Abs(nqState.ZScore) < DefaultMinZScoreThreshold)
             {
-                _logger.LogError("[S7-AUDIT-VIOLATION] Zero Z-scores detected - TRIGGERING HOLD + TELEMETRY");
+                _logZeroZScoreAuditViolation(_logger, null);
                 return 0m; // Fail-closed: no safe default, force hold
             }
 
@@ -292,7 +312,7 @@ namespace TradingBot.S7
             var maxZScore = Math.Max(Math.Abs(esState.ZScore), Math.Abs(nqState.ZScore));
             if (maxZScore == 0)
             {
-                _logger.LogError("[S7-AUDIT-VIOLATION] Invalid Z-score data - TRIGGERING HOLD + TELEMETRY");
+                _logInvalidZScoreAuditViolation(_logger, null);
                 return 0m; // Fail-closed
             }
             
@@ -338,7 +358,7 @@ namespace TradingBot.S7
             // FAIL-CLOSED: Check for invalid data
             if (esState == null || nqState == null)
             {
-                _logger.LogError("[S7-AUDIT-VIOLATION] Missing state data for leader calculation - TRIGGERING HOLD + TELEMETRY");
+                _logMissingStateAuditViolation(_logger, null);
                 return S7Leader.Divergent; // Fail-closed: force divergent to prevent signals
             }
 
@@ -368,10 +388,10 @@ namespace TradingBot.S7
             {
                 if (_config.FailOnMissingData)
                 {
-                    _logger.LogError("[S7-AUDIT-VIOLATION] Breadth feed unavailable but required - TRIGGERING HOLD + TELEMETRY");
+                    _logBreadthUnavailableError(_logger, null);
                     return 0m; // Fail-closed: no safe defaults
                 }
-                _logger.LogWarning("[S7-AUDIT-VIOLATION] Breadth feed unavailable, using configured base score");
+                _logBreadthUnavailableWarning(_logger, null);
                 return _config.BaseBreadthScore; // Configured neutral value instead of hardcoded 1.0m
             }
 
