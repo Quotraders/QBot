@@ -14,12 +14,10 @@ namespace TradingBot.BotCore.Services
         private const int DefaultLimitOrderTimeoutSeconds = 30;
         
         private readonly IConfiguration _config;
-        private readonly ILogger<ExecutionPolicyConfigService> _logger;
 
-        public ExecutionPolicyConfigService(IConfiguration config, ILogger<ExecutionPolicyConfigService> logger)
+        public ExecutionPolicyConfigService(IConfiguration config)
         {
             _config = config;
-            _logger = logger;
         }
 
         public string GetDefaultEntryOrderType() => 

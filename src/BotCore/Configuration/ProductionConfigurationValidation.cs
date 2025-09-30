@@ -187,16 +187,13 @@ public class TopstepXConfiguration
     private const int DEFAULT_SIGNALR_RECONNECT_DELAY_MS = 5000;
 
     [Required]
-    [Url]
-    public string ApiBaseUrl { get; set; } = "https://api.topstepx.com";
+    public Uri ApiBaseUrl { get; set; } = new Uri("https://api.topstepx.com");
 
     [Required]
-    [Url]
-    public string UserHubUrl { get; set; } = "https://rtc.topstepx.com/hubs/user";
+    public Uri UserHubUrl { get; set; } = new Uri("https://rtc.topstepx.com/hubs/user");
 
     [Required]
-    [Url]
-    public string MarketHubUrl { get; set; } = "https://rtc.topstepx.com/hubs/market";
+    public Uri MarketHubUrl { get; set; } = new Uri("https://rtc.topstepx.com/hubs/market");
 
     [Required]
     [Range(MIN_HTTP_TIMEOUT_SECONDS, MAX_HTTP_TIMEOUT_SECONDS)]
@@ -459,17 +456,17 @@ public class TopstepXConfigurationValidator : IValidateOptions<TopstepXConfigura
         var failures = new List<string>();
 
         // Validate URLs are accessible endpoints
-        if (!IsValidUrl(options.ApiBaseUrl) || !options.ApiBaseUrl.StartsWith("https://"))
+        if (options.ApiBaseUrl?.Scheme != "https")
         {
             failures.Add("ApiBaseUrl must be a valid HTTPS URL");
         }
 
-        if (!IsValidUrl(options.UserHubUrl) || !options.UserHubUrl.StartsWith("https://"))
+        if (options.UserHubUrl?.Scheme != "https")
         {
             failures.Add("UserHubUrl must be a valid HTTPS URL");
         }
 
-        if (!IsValidUrl(options.MarketHubUrl) || !options.MarketHubUrl.StartsWith("https://"))
+        if (options.MarketHubUrl?.Scheme != "https")
         {
             failures.Add("MarketHubUrl must be a valid HTTPS URL");
         }

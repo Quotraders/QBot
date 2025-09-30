@@ -18,20 +18,17 @@ public class BasicMicrostructureAnalyzer : IMicrostructureAnalyzer
     private readonly IMarketDataProvider _marketData;
     private readonly IExecutionGuardsConfig _executionConfig;
     private readonly IExecutionCostConfig _costConfig;
-    private readonly ILogger<BasicMicrostructureAnalyzer> _logger;
     private readonly Dictionary<string, List<ExecutionHistory>> _executionHistory = new();
     private readonly object _historyLock = new();
 
     public BasicMicrostructureAnalyzer(
         IMarketDataProvider marketData, 
         IExecutionGuardsConfig executionConfig,
-        IExecutionCostConfig costConfig,
-        ILogger<BasicMicrostructureAnalyzer> logger)
+        IExecutionCostConfig costConfig)
     {
         _marketData = marketData;
         _executionConfig = executionConfig;
         _costConfig = costConfig;
-        _logger = logger;
     }
 
     public async Task<MicrostructureState> AnalyzeCurrentStateAsync(string symbol, CancellationToken ct = default)

@@ -133,7 +133,7 @@ namespace BotCore.Execution
             else
             {
                 // Single order execution
-                plan.ChildOrders.Add(new ChildOrderPlan
+                plan.AddChildOrder(new ChildOrderPlan
                 {
                     ChildId = Guid.NewGuid(),
                     Quantity = intent.Quantity,
@@ -184,7 +184,7 @@ namespace BotCore.Execution
                     TriggerCondition = CreateTriggerCondition(i, intent, microstructure)
                 };
 
-                plan.ChildOrders.Add(child);
+                plan.AddChildOrder(child);
             }
         }
 
@@ -299,9 +299,17 @@ namespace BotCore.Execution
         public string Symbol { get; set; } = string.Empty;
         public decimal TotalQuantity { get; set; }
         public bool RequiresSlicing { get; set; }
-        public List<ChildOrderPlan> ChildOrders { get; } = new();
+        
+        private readonly List<ChildOrderPlan> _childOrders = new();
+        public IReadOnlyList<ChildOrderPlan> ChildOrders => _childOrders;
         public DateTime CreatedAt { get; set; }
         public Dictionary<string, object> Metadata { get; } = new();
+
+        public void AddChildOrder(ChildOrderPlan plan)
+        {
+            ArgumentNullException.ThrowIfNull(plan);
+            _childOrders.Add(plan);
+        }
     }
 
     /// <summary>

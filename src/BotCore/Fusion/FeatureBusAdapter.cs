@@ -722,6 +722,9 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     var recentBars = history.TakeLast(2).ToList();
                     var avgVolume = recentBars.Average(b => b.Volume);
                     
+                    // Calculate price range from recent bars
+                    var priceRange = (double)(recentBars.Max(b => b.High) - recentBars.Min(b => b.Low));
+                    
                     // Estimate spread based on recent volatility and volume with configuration
                     var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
                     var spreadEstimateVolumeFactor = configService?.GetValue<double>("Features:SpreadEstimateVolumeFactor", 1000.0) ?? 1000.0;
