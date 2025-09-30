@@ -77,6 +77,16 @@ namespace TopstepX.Bot.Core.Services
         private const double InsufficientBarsScorePenalty = 0.2; // Score penalty for insufficient bars
         private const int TicksPerBarSimulation = 60; // Number of ticks to simulate one bar
         
+        // Trading readiness state score constants
+        private const double InitializingStateScore = 0.1;              // Score for initializing state
+        private const double InsufficientSeededBarsScore = 0.2;         // Score for insufficient seeded bars
+        private const double SeededCompleteScore = 0.4;                 // Score for seeded state complete
+        private const double InsufficientLiveTicksScore = 0.6;          // Score for insufficient live ticks
+        private const double InsufficientTotalBarsScore = 0.7;          // Score for insufficient total bars
+        private const double PartialReadinessScore = 0.9;               // Score for partial readiness
+        private const double LowConfidenceScore = 0.3;                  // Score for low confidence scenarios
+        private const double MediumConfidenceScore = 0.5;               // Score for medium confidence scenarios
+        
         // Market Data Cache - ENHANCED IMPLEMENTATION
         private readonly ConcurrentDictionary<string, MarketData> _priceCache = new();
         private volatile int _barsSeen;
@@ -1956,7 +1966,7 @@ namespace TopstepX.Bot.Core.Services
                 case TradingReadinessState.Initializing:
                     result.Reason = "System initializing";
                     recommendations.Add("Wait for historical data seeding to complete");
-                    score = 0.1;
+                    score = InitializingStateScore;
                     break;
 
                 case TradingReadinessState.Seeded:
@@ -1964,13 +1974,13 @@ namespace TopstepX.Bot.Core.Services
                     {
                         result.Reason = $"Insufficient seeded bars: {context.SeededBars}/{minSeeded}";
                         recommendations.Add("Wait for more historical data to seed");
-                        score = 0.2;
+                        score = InsufficientSeededBarsScore;
                     }
                     else
                     {
                         result.Reason = "Waiting for live market data";
                         recommendations.Add("Live data subscriptions should start flowing soon");
-                        score = 0.4;
+                        score = SeededCompleteScore;
                     }
                     break;
 
@@ -1979,19 +1989,19 @@ namespace TopstepX.Bot.Core.Services
                     {
                         result.Reason = $"Insufficient live ticks: {context.LiveTicks}/{minLiveTicks}";
                         recommendations.Add("Wait for more live market data");
-                        score = 0.6;
+                        score = InsufficientLiveTicksScore;
                     }
                     else if (context.TotalBarsSeen < minBars)
                     {
                         result.Reason = $"Insufficient total bars: {context.TotalBarsSeen}/{minBars}";
                         recommendations.Add("Wait for more bars to accumulate");
-                        score = 0.7;
+                        score = InsufficientTotalBarsScore;
                     }
                     else
                     {
                         result.IsReady = true;
                         result.Reason = "All readiness criteria met";
-                        score = 0.9;
+                        score = PartialReadinessScore;
                     }
                     break;
 
@@ -2004,13 +2014,13 @@ namespace TopstepX.Bot.Core.Services
                 case TradingReadinessState.Degraded:
                     result.Reason = "System degraded - data flow interrupted";
                     recommendations.Add("Check market data connections");
-                    score = 0.3;
+                    score = LowConfidenceScore;
                     break;
 
                 case TradingReadinessState.Emergency:
                     result.Reason = "Emergency state - trading disabled";
                     recommendations.Add("Check system logs and resolve errors");
-                    score = 0.0;
+                    score = 0.0; // Emergency state - explicitly zero
                     break;
             }
 

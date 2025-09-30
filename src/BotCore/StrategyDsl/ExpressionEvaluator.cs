@@ -82,7 +82,22 @@ public class ExpressionEvaluator
             // Handle single condition
             return EvaluateSingleCondition(expression);
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Error evaluating expression: {Expression}", expression);
+            return false;
+        }
+        catch (FormatException ex)
+        {
+            _logger.LogWarning(ex, "Error evaluating expression: {Expression}", expression);
+            return false;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Error evaluating expression: {Expression}", expression);
+            return false;
+        }
+        catch (KeyNotFoundException ex)
         {
             _logger.LogWarning(ex, "Error evaluating expression: {Expression}", expression);
             return false;
@@ -140,7 +155,22 @@ public class ExpressionEvaluator
                 var result = EvaluateExpression(expression);
                 return new ExpressionResult { IsSuccess = true, Value = result };
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "Failed to evaluate expression: {Expression}", expression);
+                return new ExpressionResult { IsSuccess = false, ErrorMessage = ex.Message };
+            }
+            catch (FormatException ex)
+            {
+                _logger.LogError(ex, "Failed to evaluate expression: {Expression}", expression);
+                return new ExpressionResult { IsSuccess = false, ErrorMessage = ex.Message };
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Failed to evaluate expression: {Expression}", expression);
+                return new ExpressionResult { IsSuccess = false, ErrorMessage = ex.Message };
+            }
+            catch (KeyNotFoundException ex)
             {
                 _logger.LogError(ex, "Failed to evaluate expression: {Expression}", expression);
                 return new ExpressionResult { IsSuccess = false, ErrorMessage = ex.Message };

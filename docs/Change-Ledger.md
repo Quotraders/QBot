@@ -20,7 +20,53 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ## 🚨 PHASE 2 - ANALYZER VIOLATION ELIMINATION (IN PROGRESS)
 
-### Round 29 - Priority 1 Continued: CA1031 & S109 Systematic Fixes (Current Session)
+### Round 30 - Priority 1 Continued: CA1031 & S109 Expression/Trading System Fixes (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 1018 | 1014 | ExpressionEvaluator.cs, PositionTrackingSystem.cs | Specific exception types for DSL evaluation, position calculations (4 violations fixed) |
+| S109 | 2854 | 2845 | TradingSystemIntegrationService.cs | Named constants for trading readiness state scores (9 violations fixed) |
+
+**Pattern Examples Applied:**
+
+**CA1031 DSL Expression Evaluation:**
+```csharp
+// Before (Violation)
+catch (Exception ex)
+{
+    _logger.LogWarning(ex, "Error evaluating expression");
+    return false;
+}
+
+// After (Compliant)
+catch (ArgumentException ex)
+{
+    _logger.LogWarning(ex, "Error evaluating expression");
+    return false;
+}
+catch (FormatException ex)
+{
+    _logger.LogWarning(ex, "Error evaluating expression");
+    return false;
+}
+```
+
+**S109 Trading Readiness Score Constants:**
+```csharp
+// Before (Violation)
+score = 0.1; // Initializing state
+score = 0.6; // Insufficient live ticks
+score = 0.9; // Partial readiness
+
+// After (Compliant)
+private const double InitializingStateScore = 0.1;
+private const double InsufficientLiveTicksScore = 0.6;
+private const double PartialReadinessScore = 0.9;
+score = InitializingStateScore;
+score = InsufficientLiveTicksScore;
+score = PartialReadinessScore;
+```
+
+### Round 29 - Priority 1 Continued: CA1031 & S109 Systematic Fixes (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA1031 | 1028 | 1018 | ProductionBreadthFeedService.cs, IntegritySigningService.cs | Specific exception types for computation errors, file operations (10 violations fixed) |
