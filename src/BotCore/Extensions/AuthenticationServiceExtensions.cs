@@ -110,6 +110,13 @@ internal sealed class FuncTopstepAuthWrapper : ITopstepAuth
 /// </summary>
 public static class AuthenticationServiceExtensions
 {
+    // LoggerMessage delegates for high-performance logging
+    private static readonly Action<ILogger, Exception?> LogTopstepAuthenticationFailed =
+        LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(1, "TopstepAuthenticationFailed"),
+            "Failed to authenticate with TopstepX API");
+
     /// <summary>
     /// Register authentication and HTTP client services as singletons
     /// </summary>
@@ -155,7 +162,7 @@ public static class AuthenticationServiceExtensions
                     catch (Exception ex)
                     {
                         var logger = serviceProvider.GetRequiredService<ILogger<TopstepXHttpClient>>();
-                        logger.LogError(ex, "Failed to authenticate with TopstepX API");
+                        LogTopstepAuthenticationFailed(logger, ex);
                         throw;
                     }
                 }

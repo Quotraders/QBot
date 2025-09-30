@@ -19,6 +19,9 @@ namespace BotCore
     /// </summary>
     public sealed class CloudDataUploader : IDisposable
     {
+        // Configuration constants
+        private const int MaxLogMessageLength = 100;
+        
         private readonly ILogger<CloudDataUploader> _log;
         private readonly Timer? _timer;
         private readonly string _dataDir;
@@ -260,7 +263,7 @@ namespace BotCore
                 }
                 catch (Exception ex)
                 {
-                    _log.LogWarning(ex, "[CloudDataUploader] Failed to parse JSONL line: {Line}", line.Substring(0, Math.Min(100, line.Length)));
+                    _log.LogWarning(ex, "[CloudDataUploader] Failed to parse JSONL line: {Line}", line.Substring(0, Math.Min(MaxLogMessageLength, line.Length)));
                 }
             }
 

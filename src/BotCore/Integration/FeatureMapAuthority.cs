@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -131,9 +132,9 @@ public sealed class FeatureMapAuthority
         RegisterResolver("keltner.touch", new BandTouchResolver(_serviceProvider, "keltner"));
         RegisterResolver("bollinger.touch", new BandTouchResolver(_serviceProvider, "bollinger"));
         
-        // Multi-timeframe structure features from MtfStructureResolver
-        RegisterResolver("mtf.align", new MtfStructureResolver(_serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<BotCore.Features.MtfStructureResolver>>(), _serviceProvider));
-        RegisterResolver("mtf.bias", new MtfStructureResolver(_serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<BotCore.Features.MtfStructureResolver>>(), _serviceProvider));
+        // Multi-timeframe structure features using adapter pattern
+        RegisterResolver("mtf.align", new MtfFeatureResolver(_serviceProvider, "mtf.align"));
+        RegisterResolver("mtf.bias", new MtfFeatureResolver(_serviceProvider, "mtf.bias"));
     }
     
     /// <summary>
@@ -438,6 +439,48 @@ public sealed class FeatureManifestReport
 public interface IFeatureResolver
 {
     Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// MTF Feature Resolver adapter - bridges MtfStructureResolver to Integration interface
+/// </summary>
+public sealed class MtfFeatureResolver : IFeatureResolver
+{
+    private readonly IServiceProvider _serviceProvider;
+    private readonly string _featureKey;
+    private readonly ILogger<MtfFeatureResolver> _logger;
+    
+    public MtfFeatureResolver(IServiceProvider serviceProvider, string featureKey)
+    {
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _featureKey = featureKey ?? throw new ArgumentNullException(nameof(featureKey));
+        _logger = serviceProvider.GetRequiredService<ILogger<MtfFeatureResolver>>();
+    }
+    
+    public async Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var mtfResolver = _serviceProvider.GetRequiredService<BotCore.Features.MtfStructureResolver>();
+            var value = await mtfResolver.TryGetAsync(symbol, _featureKey, cancellationToken).ConfigureAwait(false);
+            
+            if (value.HasValue)
+            {
+                _logger.LogTrace("MTF feature {FeatureKey} for {Symbol}: {Value}", _featureKey, symbol, value.Value);
+            }
+            else
+            {
+                _logger.LogTrace("MTF feature {FeatureKey} for {Symbol}: no value available", _featureKey, symbol);
+            }
+            
+            return value;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to resolve MTF feature {FeatureKey} for symbol {Symbol}", _featureKey, symbol);
+            throw new InvalidOperationException($"Production MTF feature resolution failed for '{symbol}.{_featureKey}': {ex.Message}", ex);
+        }
+    }
 }
 
 // Base resolver implementations would go here - keeping this file focused on the authority

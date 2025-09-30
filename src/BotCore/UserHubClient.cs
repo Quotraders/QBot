@@ -36,6 +36,10 @@ namespace BotCore
         private static readonly Action<ILogger, Exception> LogOutOfMemory =
             LoggerMessage.Define(LogLevel.Critical, new EventId(3006), 
                 "Critical: Out of memory during event handler execution");
+                
+        private static readonly Action<ILogger, string, Exception> LogUnexpectedApplicationError =
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(3007), 
+                "Unexpected application error in {EventName} handler - continuing");
 
         public event Action<JsonElement>? OnOrder;
         public event Action<JsonElement>? OnTrade;
@@ -88,7 +92,7 @@ namespace BotCore
             }
             catch (Exception ex) when (!(ex is SystemException))
             {
-                _logger.LogError(ex, "Unexpected application error in {EventName} handler - continuing", eventName);
+                LogUnexpectedApplicationError(_logger, eventName, ex);
             }
         }
     }

@@ -13,6 +13,13 @@ namespace BotCore.Services
         private readonly ILogger<HybridZoneProvider> _logger;
         private readonly ZoneProviderMetrics _metrics = new();
 
+        // LoggerMessage delegates for high-performance logging
+        private static readonly Action<ILogger, string, Exception?> LogModernZoneProviderError =
+            LoggerMessage.Define<string>(
+                LogLevel.Error,
+                new EventId(1, nameof(GetZoneSnapshotAsync)),
+                "[MODERN-ZONE-PROVIDER] Error in modern zone provider for {Symbol}");
+
         public HybridZoneProvider(
             ModernZoneProvider modernProvider,
             ILogger<HybridZoneProvider> logger)
@@ -38,7 +45,7 @@ namespace BotCore.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[MODERN-ZONE-PROVIDER] Error in modern zone provider for {Symbol}", symbol);
+                LogModernZoneProviderError(_logger, symbol, ex);
                 return new ZoneProviderResult
                 {
                     Source = ZoneSource.Unavailable,

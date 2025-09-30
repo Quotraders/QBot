@@ -19,6 +19,7 @@ namespace BotCore.Features
         private readonly ConcurrentDictionary<string, OfiProxyState> _symbolStates = new(StringComparer.OrdinalIgnoreCase);
         
         // Configuration-driven constants (fail-closed requirement)
+        private const int DefaultMinDataPoints = 2; // Minimal requirement fallback
         private static readonly double SafeZeroValue = GetConfiguredSafeValue();
         private static readonly int MinDataPointsRequired = GetConfiguredMinDataPoints();
         
@@ -28,7 +29,7 @@ namespace BotCore.Features
         
         private static int GetConfiguredMinDataPoints() =>
             int.TryParse(Environment.GetEnvironmentVariable("OFI_MIN_DATA_POINTS"), out var points) && points > 0 
-                ? points : 2; // Minimal requirement fallback
+                ? points : DefaultMinDataPoints; // Minimal requirement fallback
         
         private const int LookbackBars = 20; // Config-driven value should come from configuration
         

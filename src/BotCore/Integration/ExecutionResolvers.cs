@@ -9,6 +9,9 @@ namespace BotCore.Integration;
 // Execution Analytics and Performance Resolvers
 public sealed class ExecutionSlippageResolver : IFeatureResolver
 {
+    // Trading metrics constants
+    private const double BasisPointsMultiplier = 10000.0;
+    
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ExecutionSlippageResolver> _logger;
     
@@ -26,7 +29,7 @@ public sealed class ExecutionSlippageResolver : IFeatureResolver
             var executionAnalytics = _serviceProvider.GetRequiredService<BotCore.Services.ExecutionAnalyticsService>();
             var avgSlippage = await executionAnalytics.GetAverageSlippageAsync(symbol, cancellationToken).ConfigureAwait(false);
             
-            _logger.LogTrace("Average execution slippage for {Symbol}: {Slippage:F4} bps", symbol, avgSlippage * 10000);
+            _logger.LogTrace("Average execution slippage for {Symbol}: {Slippage:F4} bps", symbol, avgSlippage * BasisPointsMultiplier);
             return avgSlippage;
         }
         catch (Exception ex)

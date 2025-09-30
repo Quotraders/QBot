@@ -13,6 +13,9 @@ namespace TradingBot.BotCore.Services
     /// </summary>
     public class DeterminismService
     {
+        // GUID generation constants
+        private const int GuidByteLength = 16;
+        
         private readonly ILogger<DeterminismService> _logger;
         private readonly IConfiguration _config;
         private readonly Dictionary<string, Random> _seededRandoms = new();
@@ -198,8 +201,8 @@ namespace TradingBot.BotCore.Services
             var hash = SHA256.HashData(seedInput);
             
             // Take first 16 bytes for GUID
-            var guidBytes = new byte[16];
-            Array.Copy(hash, 0, guidBytes, 0, 16);
+            var guidBytes = new byte[GuidByteLength];
+            Array.Copy(hash, 0, guidBytes, 0, GuidByteLength);
             
             return new Guid(guidBytes);
         }
