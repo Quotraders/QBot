@@ -16,6 +16,13 @@ public sealed class ServiceInventory
     private readonly ILogger<ServiceInventory> _logger;
     private readonly IServiceProvider _serviceProvider;
     
+    // LoggerMessage delegates for high-performance logging
+    private static readonly Action<ILogger, int, int, Exception?> LogServiceInventoryGenerated =
+        LoggerMessage.Define<int, int>(
+            LogLevel.Information,
+            new EventId(1, nameof(GenerateInventoryReport)),
+            "Service inventory generated with {CategoryCount} categories and {ServiceCount} services");
+    
     public ServiceInventory(ILogger<ServiceInventory> logger, IServiceProvider serviceProvider)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -98,8 +105,7 @@ public sealed class ServiceInventory
             new() { Name = "RealTradingMetricsService", Type = "BotCore.Services.RealTradingMetricsService", IsRegistered = IsServiceRegistered("BotCore.Services.RealTradingMetricsService") }
         };
         
-        _logger.LogInformation("Service inventory generated with {CategoryCount} categories and {ServiceCount} services",
-            report.Services.Count, report.Services.Values.Sum(s => s.Count));
+        LogServiceInventoryGenerated(_logger, report.Services.Count, report.Services.Values.Sum(s => s.Count), null);
             
         return report;
     }
