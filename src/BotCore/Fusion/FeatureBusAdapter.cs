@@ -10,6 +10,7 @@ using TradingBot.IntelligenceStack;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Threading;
+using System.Collections.Concurrent;
 
 namespace BotCore.Fusion;
 
@@ -31,6 +32,9 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
     private readonly ILogger<FeatureBusAdapter> _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly Dictionary<string, Func<string, double?>> _featureCalculators;
+    
+    // Pattern score cache for truly async execution
+    private readonly ConcurrentDictionary<string, PatternScoreCache> _patternScoreCache = new();
 
     public FeatureBusAdapter(Zones.IFeatureBus featureBus, ILogger<FeatureBusAdapter> logger, IServiceProvider serviceProvider)
     {
@@ -1048,8 +1052,8 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
     }
 
     /// <summary>
-    /// Get pattern score from real pattern engine using proper async calls
-    /// PRODUCTION SAFETY: Optimized async execution with Task.Run to prevent thread-pool starvation
+    /// Get pattern score from real pattern engine using truly async execution
+    /// PRODUCTION SAFETY: Non-blocking async execution - returns cached value or triggers background update
     /// </summary>
     private double? GetPatternScoreFromEngine(string symbol, bool bullish)
     {
@@ -1060,43 +1064,86 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             {
                 try
                 {
-                    // REFACTORED: Use Task.Run to execute async work on thread pool thread without blocking
-                    // This prevents deadlocks while maintaining synchronous interface requirements
-                    using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
-                    var task = Task.Run(async () => await patternEngine.GetCurrentScoresAsync(symbol, cts.Token).ConfigureAwait(false), cts.Token);
-                    var patternScores = task.GetAwaiter().GetResult();
+                    // REFACTORED: Truly async execution - try to get cached result first, schedule async work if needed
+                    // This ensures the feature bus stays non-blocking while waiting for pattern data
+                    var cacheKey = $"{symbol}_{(bullish ? "bull" : "bear")}_pattern";
                     
-                    if (patternScores?.DetectedPatterns != null && patternScores.DetectedPatterns.Any())
+                    // Check if we have a recent cached value (within last 30 seconds)
+                    if (_patternScoreCache.TryGetValue(cacheKey, out var cachedScore) && 
+                        (DateTime.UtcNow - cachedScore.Timestamp).TotalSeconds < 30)
                     {
-                        // Get the appropriate pattern score based on bullish/bearish request
-                        var relevantPatterns = patternScores.DetectedPatterns
-                            .Where(p => bullish ? p.IsBullish : p.IsBearish)
-                            .ToList();
-                        
-                        if (relevantPatterns.Any())
-                        {
-                            var avgConfidence = relevantPatterns.Average(p => p.Confidence);
-                            _logger.LogTrace("[PATTERN-ENGINE] Found {PatternCount} {Direction} patterns for {Symbol}, avg confidence: {Confidence:F4}", 
-                                relevantPatterns.Count, bullish ? "bullish" : "bearish", symbol, avgConfidence);
-                            return avgConfidence;
-                        }
+                        _logger.LogTrace("[PATTERN-ENGINE] Using cached {Direction} pattern score for {Symbol}: {Score:F4}", 
+                            bullish ? "bullish" : "bearish", symbol, cachedScore.Score);
+                        return cachedScore.Score;
                     }
                     
-                    _logger.LogDebug("[PATTERN-ENGINE] No {Direction} patterns found for {Symbol}", 
-                        bullish ? "bullish" : "bearish", symbol);
-                    return 0.0; // No patterns found
-                }
-                catch (OperationCanceledException)
-                {
-                    _logger.LogWarning("[PATTERN-ENGINE] GetCurrentScoresAsync timed out for {Symbol} - falling back to config", symbol);
-                }
-                catch (NotImplementedException)
-                {
-                    _logger.LogDebug("[PATTERN-ENGINE] GetCurrentScoresAsync not implemented yet for {Symbol} - using configuration fallback", symbol);
+                    // Schedule async pattern analysis in background without blocking
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+                            var patternScores = await patternEngine.GetCurrentScoresAsync(symbol, cts.Token).ConfigureAwait(false);
+                            
+                            if (patternScores?.DetectedPatterns != null && patternScores.DetectedPatterns.Any())
+                            {
+                                // Get the appropriate pattern score based on bullish/bearish request
+                                var relevantPatterns = patternScores.DetectedPatterns
+                                    .Where(p => bullish ? p.IsBullish : p.IsBearish)
+                                    .ToList();
+                                
+                                if (relevantPatterns.Any())
+                                {
+                                    var avgConfidence = relevantPatterns.Average(p => p.Confidence);
+                                    
+                                    // Cache the result for future non-blocking access
+                                    _patternScoreCache[cacheKey] = new PatternScoreCache 
+                                    { 
+                                        Score = avgConfidence, 
+                                        Timestamp = DateTime.UtcNow 
+                                    };
+                                    
+                                    _logger.LogTrace("[PATTERN-ENGINE] Updated cached {Direction} pattern score for {Symbol}: {Score:F4}", 
+                                        bullish ? "bullish" : "bearish", symbol, avgConfidence);
+                                }
+                                else
+                                {
+                                    // Cache neutral score when no patterns found
+                                    _patternScoreCache[cacheKey] = new PatternScoreCache 
+                                    { 
+                                        Score = 0.0, 
+                                        Timestamp = DateTime.UtcNow 
+                                    };
+                                    
+                                    _logger.LogDebug("[PATTERN-ENGINE] No {Direction} patterns found for {Symbol}, cached neutral score", 
+                                        bullish ? "bullish" : "bearish", symbol);
+                                }
+                            }
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            _logger.LogWarning("[PATTERN-ENGINE] Background pattern analysis timed out for {Symbol}", symbol);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "[PATTERN-ENGINE] Background pattern analysis failed for {Symbol}", symbol);
+                        }
+                    });
+                    
+                    // Return cached value if available, otherwise return null (non-blocking)
+                    if (_patternScoreCache.TryGetValue(cacheKey, out var existingScore))
+                    {
+                        _logger.LogTrace("[PATTERN-ENGINE] Returning existing cached {Direction} pattern score for {Symbol}: {Score:F4}", 
+                            bullish ? "bullish" : "bearish", symbol, existingScore.Score);
+                        return existingScore.Score;
+                    }
+                    
+                    _logger.LogDebug("[PATTERN-ENGINE] No cached pattern score available for {Symbol}, pattern analysis scheduled in background", symbol);
+                    return null; // No cached value available yet - will be populated by background task
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "[PATTERN-ENGINE] Error calling GetCurrentScoresAsync for {Symbol} - falling back to config", symbol);
+                    _logger.LogWarning(ex, "[PATTERN-ENGINE] Error during non-blocking pattern analysis setup for {Symbol}", symbol);
                 }
                 
                 // Fallback to configuration values only on real failures
@@ -1265,4 +1312,13 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             return defaultValue;
         }
     }
+}
+
+/// <summary>
+/// Cache entry for pattern scores to enable truly async execution
+/// </summary>
+internal sealed class PatternScoreCache
+{
+    public double Score { get; set; }
+    public DateTime Timestamp { get; set; }
 }
