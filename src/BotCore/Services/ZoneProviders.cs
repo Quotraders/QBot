@@ -58,6 +58,13 @@ namespace BotCore.Services
         private readonly Zones.IZoneService _modernZoneService;
         private readonly ILogger<ModernZoneProvider> _logger;
         private readonly ZoneProviderMetrics _metrics = new();
+        
+        // LoggerMessage delegates for high-performance logging
+        private static readonly Action<ILogger, string, Exception?> LogModernZoneDataError =
+            LoggerMessage.Define<string>(
+                LogLevel.Error,
+                new EventId(1, nameof(GetZoneSnapshotAsync)),
+                "[MODERN-ZONE-PROVIDER] Error getting modern zone data for {Symbol}");
 
         public ModernZoneProvider(Zones.IZoneService modernZoneService, ILogger<ModernZoneProvider> logger)
         {
@@ -88,7 +95,7 @@ namespace BotCore.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[MODERN-ZONE-PROVIDER] Error getting modern zone data for {Symbol}", symbol);
+                LogModernZoneDataError(_logger, symbol, ex);
                 return new ZoneProviderResult
                 {
                     Source = ZoneSource.Modern,

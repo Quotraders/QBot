@@ -11,6 +11,9 @@ namespace BotCore.Config;
 /// </summary>
 public static class EnvConfig
 {
+    // Configuration constants for validation checks
+    private const int MinimumBarsForAutoExecute = 10;
+    
     private static readonly ILogger _logger = CreateLogger();
     private static readonly Dictionary<string, string> _envCache = new();
     private static readonly object _lock = new();
@@ -239,13 +242,13 @@ public static class EnvConfig
     /// </summary>
     private static PrecheckResult ValidateAutoExecutePrechecks(ExecutionContext context)
     {
-        // Check BarsSeen ≥ 10
-        if (context.BarsSeen < 10)
+        // Check BarsSeen ≥ MinimumBarsForAutoExecute
+        if (context.BarsSeen < MinimumBarsForAutoExecute)
         {
             return new PrecheckResult 
             { 
                 IsValid = false, 
-                FailureReason = $"BarsSeen ({context.BarsSeen}) < 10" 
+                FailureReason = $"BarsSeen ({context.BarsSeen}) < {MinimumBarsForAutoExecute}" 
             };
         }
 
