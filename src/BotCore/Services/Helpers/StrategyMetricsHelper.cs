@@ -53,6 +53,13 @@ namespace TradingBot.BotCore.Services.Helpers
     /// </summary>
     internal static class StrategyMetricsHelper
     {
+        // Strategy base win rate constants
+        private const decimal S2WinRate = 0.58m;   // Mean reversion strategy
+        private const decimal S3WinRate = 0.45m;   // Volatility breakout strategy
+        private const decimal S6WinRate = 0.52m;   // Momentum strategy
+        private const decimal S11WinRate = 0.48m;  // Trend following strategy
+        private const decimal DefaultWinRate = 0.50m; // Default balanced win rate
+        
         /// <summary>
         /// Get strategy base win rate
         /// Consolidates all strategy-specific win rate logic
@@ -61,11 +68,11 @@ namespace TradingBot.BotCore.Services.Helpers
         {
             return strategyId switch
             {
-                "S2" => 0.58m,  // Mean reversion strategy
-                "S3" => 0.45m,  // Volatility breakout strategy  
-                "S6" => 0.52m,  // Momentum strategy
-                "S11" => 0.48m, // Trend following strategy
-                _ => 0.50m      // Default balanced win rate
+                "S2" => S2WinRate,
+                "S3" => S3WinRate,
+                "S6" => S6WinRate,
+                "S11" => S11WinRate,
+                _ => DefaultWinRate
             };
         }
 
