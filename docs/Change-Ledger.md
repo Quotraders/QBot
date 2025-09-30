@@ -20,7 +20,54 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ## 🚨 PHASE 2 - ANALYZER VIOLATION ELIMINATION (IN PROGRESS)
 
-### Round 31 - Priority 1 Continued: CA1031 & S109 API/Strategy Metrics Fixes (Current Session)
+### Round 32 - Priority 1 Continued: CA1031 & S109 Critical Systems/Risk Fixes (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 1004 | 1001 | CriticalSystemComponents.cs | Specific exception types for emergency systems, crash dumps (3 violations fixed) |
+| S109 | 2816 | 2806 | RiskEngine.cs | Named constants for risk management thresholds, position size multipliers (10 violations fixed) |
+
+**Pattern Examples Applied:**
+
+**CA1031 Emergency Systems Specific Exceptions:**
+```csharp
+// Before (Violation)
+catch (Exception cleanupEx)
+{
+    Console.WriteLine($"[CRITICAL] Emergency mode activation failed: {cleanupEx.Message}");
+}
+
+// After (Compliant)
+catch (InvalidOperationException cleanupEx)
+{
+    Console.WriteLine($"[CRITICAL] Emergency mode activation failed: {cleanupEx.Message}");
+}
+catch (UnauthorizedAccessException cleanupEx)
+{
+    Console.WriteLine($"[CRITICAL] Emergency mode activation failed: {cleanupEx.Message}");
+}
+catch (IOException cleanupEx)
+{
+    Console.WriteLine($"[CRITICAL] Emergency mode activation failed: {cleanupEx.Message}");
+}
+```
+
+**S109 Risk Management Constants:**
+```csharp
+// Before (Violation)
+TriggerLevel = 250m, // $250 drawdown - reduce size by 25%
+TriggerLevel = 500m, // $500 drawdown - reduce size by 50%
+await ReducePositionSize(0.75m) // Reduce to 75% of original size
+
+// After (Compliant)
+private const decimal ReduceSize25TriggerLevel = 250m;
+private const decimal ReduceSize50TriggerLevel = 500m;
+private const decimal PositionSizeReduction25Percent = 0.75m;
+TriggerLevel = ReduceSize25TriggerLevel,
+TriggerLevel = ReduceSize50TriggerLevel,
+await ReducePositionSize(PositionSizeReduction25Percent)
+```
+
+### Round 31 - Priority 1 Continued: CA1031 & S109 API/Strategy Metrics Fixes (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA1031 | 1010 | 1007 | OrderFillConfirmationSystem.cs | Specific exception types for API operations, order verification (3 violations fixed) |

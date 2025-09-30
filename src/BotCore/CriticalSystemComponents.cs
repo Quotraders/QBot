@@ -1330,7 +1330,19 @@ namespace TradingBot.Critical
                 
                 await Task.Delay(EmergencyCleanupDelayMs).ConfigureAwait(false); // Brief delay to ensure cleanup
             }
-            catch (Exception cleanupEx)
+            catch (InvalidOperationException cleanupEx)
+            {
+                Console.WriteLine($"[CRITICAL] Emergency mode activation failed: {cleanupEx.Message}");
+            }
+            catch (UnauthorizedAccessException cleanupEx)
+            {
+                Console.WriteLine($"[CRITICAL] Emergency mode activation failed: {cleanupEx.Message}");
+            }
+            catch (IOException cleanupEx)
+            {
+                Console.WriteLine($"[CRITICAL] Emergency mode activation failed: {cleanupEx.Message}");
+            }
+            catch (TaskCanceledException cleanupEx)
             {
                 Console.WriteLine($"[CRITICAL] Emergency mode activation failed: {cleanupEx.Message}");
             }
@@ -1345,7 +1357,11 @@ namespace TradingBot.Critical
                 // Close any disposable resources
                 _logger?.LogWarning("[Emergency] System shutdown initiated - all connections closed");
             }
-            catch (Exception ex)
+            catch (ObjectDisposedException ex)
+            {
+                Console.WriteLine($"[CRITICAL] CloseAllConnections failed: {ex.Message}");
+            }
+            catch (InvalidOperationException ex)
             {
                 Console.WriteLine($"[CRITICAL] CloseAllConnections failed: {ex.Message}");
             }
@@ -1385,7 +1401,23 @@ namespace TradingBot.Critical
                 File.WriteAllText(dumpFile, System.Text.Json.JsonSerializer.Serialize(crashData, new JsonSerializerOptions { WriteIndented = true }));
                 _logger?.LogError("[Emergency] Crash dump saved to {DumpFile}", dumpFile);
             }
-            catch (Exception ex)
+            catch (UnauthorizedAccessException ex)
+            {
+                Console.WriteLine($"[CRITICAL] SaveCrashDump failed: {ex.Message}");
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                Console.WriteLine($"[CRITICAL] SaveCrashDump failed: {ex.Message}");
+            }
+            catch (IOException ex)
+            {
+                Console.WriteLine($"[CRITICAL] SaveCrashDump failed: {ex.Message}");
+            }
+            catch (JsonException ex)
+            {
+                Console.WriteLine($"[CRITICAL] SaveCrashDump failed: {ex.Message}");
+            }
+            catch (ArgumentException ex)
             {
                 Console.WriteLine($"[CRITICAL] SaveCrashDump failed: {ex.Message}");
             }
