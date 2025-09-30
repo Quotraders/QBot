@@ -434,6 +434,8 @@ public sealed class YamlSchemaValidator
     /// </summary>
     public string GenerateValidationReport(YamlDirectoryValidationResult result)
     {
+        ArgumentNullException.ThrowIfNull(result);
+        
         var report = new StringBuilder();
         
         report.AppendLine("=== YAML SCHEMA VALIDATION REPORT ===");

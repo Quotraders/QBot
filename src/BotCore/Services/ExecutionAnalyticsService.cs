@@ -28,6 +28,8 @@ namespace BotCore.Services
         /// </summary>
         public async Task<double> GetAverageSlippageAsync(string symbol, CancellationToken cancellationToken = default)
         {
+            ArgumentNullException.ThrowIfNull(symbol);
+            
             await Task.CompletedTask.ConfigureAwait(false); // For async compliance
             
             lock (_executionLock)

@@ -35,6 +35,8 @@ public class ExpressionEvaluator
     /// </summary>
     public void UpdateFeatures(Dictionary<string, object> features)
     {
+        ArgumentNullException.ThrowIfNull(features);
+        
         lock (_featureValues)
         {
             _featureValues.Clear();

@@ -12,6 +12,12 @@ namespace BotCore
     /// </summary>
     public static class RlTrainingDataCollector
     {
+        // RL training data constants for market feature approximation
+        private const decimal AtrPercentageApproximation = 0.01m;     // 1% ATR approximation
+        private const int BaselineRsiValue = 50;                      // RSI baseline value  
+        private const int RsiVariationRange = 40;                     // RSI variation range (±20)
+        private const int RsiVariationOffset = 20;                    // RSI variation offset
+        
         public class FeatureSnapshot
         {
             public DateTime Timestamp { get; set; }
@@ -193,8 +199,8 @@ namespace BotCore
                 BaselineMultiplier = baselineMultiplier,
 
                 // Professional market data extraction with realistic fallback values
-                Atr = price * 0.01m, // 1% ATR approximation
-                Rsi = 50m + (decimal)(signalId.GetHashCode() % 40 - 20), // RSI between 30-70
+                Atr = price * AtrPercentageApproximation,
+                Rsi = BaselineRsiValue + (decimal)(signalId.GetHashCode() % RsiVariationRange - RsiVariationOffset), // RSI between 30-70
                 Ema20 = price * (1 + (decimal)(Math.Sin(DateTime.UtcNow.Minute) * 0.005)),
                 Ema50 = price * (1 + (decimal)(Math.Sin(DateTime.UtcNow.Hour) * 0.008)),
                 Volume = 1000m + (decimal)(signalId.GetHashCode() % 5000), // Variable volume

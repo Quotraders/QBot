@@ -72,6 +72,10 @@ namespace TopstepX.Bot.Core.Services
         private const double MinimumHealthScore = 80.0; // Minimum adapter health score for trading
         private const double FeatureActivityThreshold = 0.5; // Feature vector activity threshold
         private const int PositionSizeMultiplierBase = 200; // Base multiplier for position sizing
+        private const int MaxDataStaleMinutes = 5; // Maximum minutes before data is considered stale
+        private const double StaleDataScorePenalty = 0.2; // Score penalty for stale data
+        private const double InsufficientBarsScorePenalty = 0.2; // Score penalty for insufficient bars
+        private const int TicksPerBarSimulation = 60; // Number of ticks to simulate one bar
         
         // Market Data Cache - ENHANCED IMPLEMENTATION
         private readonly ConcurrentDictionary<string, MarketData> _priceCache = new();
@@ -1770,10 +1774,10 @@ namespace TopstepX.Bot.Core.Services
                 score -= (double)VolatilityFilterThreshold;
             
             // Reduce score for stale data
-            if ((DateTime.UtcNow - _lastMarketDataUpdate).TotalMinutes > 5) score -= 0.2;
+            if ((DateTime.UtcNow - _lastMarketDataUpdate).TotalMinutes > MaxDataStaleMinutes) score -= StaleDataScorePenalty;
             
             // Reduce score for insufficient bars
-            if (_barsSeen < MinimumBarsForTrading) score -= 0.2;
+            if (_barsSeen < MinimumBarsForTrading) score -= InsufficientBarsScorePenalty;
             
             return Math.Max(0, score);
         }
@@ -1880,7 +1884,7 @@ namespace TopstepX.Bot.Core.Services
                 }
 
                 // Simulate bar reception for demonstration
-                if (_liveTicks % 60 == 0) // Every 60 ticks simulate a bar
+                if (_liveTicks % TicksPerBarSimulation == 0) // Every 60 ticks simulate a bar
                 {
                     Interlocked.Increment(ref _barsSeen);
                     var totalBarsSeen = _barsSeen + _seededBars;

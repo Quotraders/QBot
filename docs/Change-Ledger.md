@@ -20,7 +20,43 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ## 🚨 PHASE 2 - ANALYZER VIOLATION ELIMINATION (IN PROGRESS)
 
-### Round 26 - Phase 1 Complete + Phase 2 Systematic Priority Fixes (Current Session)
+### Round 28 - Continued Priority 1 Focus: CA1062 & S109 Systematic Fixes (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1062 | ~200 | ~195 | FeatureBusMapper.cs, ExpressionEvaluator.cs, YamlSchemaValidator.cs, ExecutionAnalyticsService.cs | ArgumentNullException guards for public method parameters (5 violations fixed) |
+| S109 | 2878 | 2870 | RlTrainingDataCollector.cs, TradingSystemIntegrationService.cs | Named constants for RL training data features, market data timing (8 violations fixed) |
+
+**Pattern Examples Applied:**
+
+**CA1062 Null Guard Pattern:**
+```csharp
+// Before (Violation)
+public HashSet<string> ExtractIdentifiers(IEnumerable<string> expressions)
+{
+    foreach (var expression in expressions) // CA1062: expressions could be null
+
+// After (Compliant)
+public HashSet<string> ExtractIdentifiers(IEnumerable<string> expressions)
+{
+    ArgumentNullException.ThrowIfNull(expressions);
+    foreach (var expression in expressions)
+```
+
+**S109 RL Training Constants:**
+```csharp
+// Before (Violation)
+Atr = price * 0.01m, // 1% ATR approximation
+Rsi = 50m + (decimal)(signalId.GetHashCode() % 40 - 20)
+
+// After (Compliant)
+private const decimal AtrPercentageApproximation = 0.01m;
+private const int BaselineRsiValue = 50;
+private const int RsiVariationRange = 40;
+Atr = price * AtrPercentageApproximation,
+Rsi = BaselineRsiValue + (decimal)(signalId.GetHashCode() % RsiVariationRange - RsiVariationOffset)
+```
+
+### Round 27 - Continued Systematic High-Priority Violations Fixed (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CS0019 | 4 | 0 | UnifiedTradingBrain.cs | Fixed decimal/double type mismatch (Phase 1 COMPLETE) |

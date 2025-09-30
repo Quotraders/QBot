@@ -195,6 +195,8 @@ public class FeatureBusMapper
     /// </summary>
     public HashSet<string> ExtractIdentifiers(IEnumerable<string> expressions)
     {
+        ArgumentNullException.ThrowIfNull(expressions);
+        
         var allIdentifiers = new HashSet<string>();
         
         foreach (var expression in expressions)
@@ -215,6 +217,9 @@ public class FeatureBusMapper
     public Dictionary<string, object> CreateFeatureDictionary(IEnumerable<string> expressions, 
                                                               Dictionary<string, object> rawFeatureValues)
     {
+        ArgumentNullException.ThrowIfNull(expressions);
+        ArgumentNullException.ThrowIfNull(rawFeatureValues);
+        
         var identifiers = ExtractIdentifiers(expressions);
         var featureDict = new Dictionary<string, object>();
 
