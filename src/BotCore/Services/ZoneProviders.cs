@@ -52,6 +52,9 @@ namespace BotCore.Services
     /// </summary>
     public sealed class ModernZoneProvider : IZoneProvider
     {
+        // Latency averaging constants
+        private const double LatencyAveragingFactor = 2.0;
+        
         private readonly Zones.IZoneService _modernZoneService;
         private readonly ILogger<ModernZoneProvider> _logger;
         private readonly ZoneProviderMetrics _metrics = new();
@@ -107,7 +110,7 @@ namespace BotCore.Services
 
         private void UpdateMetrics(double latencyMs)
         {
-            _metrics.AverageLatencyMs = (_metrics.AverageLatencyMs + latencyMs) / 2.0;
+            _metrics.AverageLatencyMs = (_metrics.AverageLatencyMs + latencyMs) / LatencyAveragingFactor;
             _metrics.LastUpdate = DateTime.UtcNow;
         }
     }

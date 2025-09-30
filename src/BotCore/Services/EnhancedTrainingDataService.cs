@@ -23,6 +23,9 @@ namespace BotCore
 
     public class EnhancedTrainingDataService : IEnhancedTrainingDataService
     {
+        // Training data quality constants
+        private const int MinimumRequiredFeatures = 20;
+        
         private readonly ILogger<EnhancedTrainingDataService> _logger;
         private readonly string _liveDataPath;
         private readonly List<TradeData> _currentSession = new();
@@ -149,7 +152,7 @@ namespace BotCore
                 try
                 {
                     var trade = JsonSerializer.Deserialize<TradeData>(line);
-                    if (trade?.RMultiple != null && trade.Features?.Count >= 20)
+                    if (trade?.RMultiple != null && trade.Features?.Count >= MinimumRequiredFeatures)
                     {
                         csvData.Add(CreateCsvRow(trade));
                     }
