@@ -23,6 +23,13 @@ namespace BotCore.Strategy
     /// </summary>
     public class BridgeOrderRouter : TopstepX.S6.IOrderRouter, TopstepX.S11.IOrderRouter
     {        
+        // Instrument specifications constants
+        private const double EsTickSize = 0.25;                 // ES futures tick size
+        private const double NqTickSize = 0.25;                 // NQ futures tick size
+        private const double EsPointValue = 50.0;               // ES point value in dollars
+        private const double NqPointValue = 20.0;               // NQ point value in dollars
+        private const int MaxQuantityLimit = 1000;              // Maximum allowed quantity for risk validation
+        
         private readonly RiskEngine _risk;
         private readonly IOrderService _orderService;
         private readonly ILogger<BridgeOrderRouter> _logger;
@@ -598,12 +605,6 @@ namespace BotCore.Strategy
         // Helper method constants
         private const decimal DefaultAtrValue = 0.25m;          // Default ATR value when insufficient data
         
-        // Instrument specifications constants
-        private const double EsTickSize = 0.25;                 // ES futures tick size
-        private const double NqTickSize = 0.25;                 // NQ futures tick size
-        private const double EsPointValue = 50.0;               // ES point value in dollars
-        private const double NqPointValue = 20.0;               // NQ point value in dollars
-        
         // Scoring algorithm constants
         private const decimal AtrThreshold = 0.5m;              // ATR threshold for score calculations
         private const decimal AtrMultiplier = 0.5m;             // ATR multiplier for score weighting
@@ -625,7 +626,6 @@ namespace BotCore.Strategy
         // Volume calculation constants
         private const int RecentVolumeBarCount = 5;             // Number of bars for recent volume average
         private const int MillisecondsMultiplier = 1000;        // Multiplier for milliseconds conversion
-        private const int MaxQuantityLimit = 1000;              // Maximum allowed quantity for risk validation
 
         private static decimal CalculateATR(IList<Bar> bars, int period = 14)
         {
@@ -670,7 +670,7 @@ namespace BotCore.Strategy
             {
                 var recentAvgVol = bars.Skip(bars.Count - RecentVolumeBarCount).Average(b => b.Volume);
                 var lastVol = bars.Last().Volume;
-                if (lastVol > recentAvgVol * VolumeBoostThreshold) qScore += VolumeBoostAmount;
+                if (lastVol > recentAvgVol * (double)VolumeBoostThreshold) qScore += VolumeBoostAmount;
             }
             
             if (env.volz.HasValue)
