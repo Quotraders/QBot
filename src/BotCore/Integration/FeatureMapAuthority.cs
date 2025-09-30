@@ -32,7 +32,15 @@ public sealed class FeatureMapAuthority
         ["momentum.acceleration"] = "momentum.zscore", // Acceleration approximated via Z-score
         ["pullback.risk"] = "pullback.risk",
         ["liquidity_score"] = "liquidity.score",
-        ["spread"] = "spread.current"
+        ["spread"] = "spread.current",
+        
+        // Liquidity absorption feature aliases for DSL usage
+        ["liquidity.absorb_bull"] = "liquidity.absorb_bull",
+        ["liquidity.absorb_bear"] = "liquidity.absorb_bear", 
+        ["liquidity.vpr"] = "liquidity.vpr",
+        
+        // Order Flow Imbalance proxy alias
+        ["ofi.proxy"] = "ofi.proxy"
     };
     
     // Telemetry tracking for missing features
