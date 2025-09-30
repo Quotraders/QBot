@@ -75,6 +75,18 @@ namespace BotCore.Services
         {
             try
             {
+                // CRITICAL FIX: Seed BarPyramid for historical bar propagation
+                var barPyramid = _serviceProvider.GetService<BotCore.Market.BarPyramid>();
+                if (barPyramid != null)
+                {
+                    barPyramid.SeedFromHistoricalBars(contractId, bars);
+                    _logger.LogInformation("[BAR-CONSUMER] ✅ Seeded {BarCount} bars into BarPyramid (M1/M5/M30) for {ContractId}", bars.Count, contractId);
+                }
+                else
+                {
+                    _logger.LogWarning("[BAR-CONSUMER] ⚠️ BarPyramid not available - falling back to individual aggregators");
+                }
+
                 // Look for any registered BarAggregator services in the DI container
                 // This is a flexible approach that works with different aggregator implementations
 
