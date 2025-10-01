@@ -18,6 +18,17 @@ trading-bot-c--1/
 **/bin/
 **/obj/
 
+# ONNX models and ML artifacts (prevent accidental commits)
+*.onnx
+artifacts/
+artifacts/*/
+models/
+
+# Test fixtures and temp manifests (should be generated in temp dirs)
+test_manifest.json
+**/test_*.json
+temp_manifest.json
+
 # Test and demo scripts
 test_pipeline_integration.py
 demonstrate_fixes.py

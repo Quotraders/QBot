@@ -251,6 +251,16 @@ cmd_analyzer_check() {
     log_info "Running analyzer check (treating warnings as errors)..."
     log_warning "This will fail if any new analyzer warnings are introduced"
     
+    # Check for tracked build artifacts that should not be in git
+    log_info "Checking for tracked build artifacts..."
+    tracked_artifacts=$(git ls-files bin/ obj/ artifacts/ 2>/dev/null | wc -l)
+    if [ "$tracked_artifacts" -gt 0 ]; then
+        log_error "❌ Build artifacts are tracked in git:"
+        git ls-files bin/ obj/ artifacts/ 2>/dev/null | head -5
+        log_error "Remove these files with 'git rm' and update .gitignore"
+        return 1
+    fi
+    
     # Ensure packages are restored first
     log_info "Ensuring packages are restored..."
     if ! dotnet restore --verbosity quiet > /dev/null 2>&1; then
