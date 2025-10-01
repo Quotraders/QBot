@@ -12,25 +12,32 @@ namespace TradingBot.BotCore.Services
     {
         private readonly IConfiguration _config;
 
+        // Default event tempering constants
+        private const int DefaultNewsLockoutMinutesBefore = 5;
+        private const int DefaultNewsLockoutMinutesAfter = 2;
+        private const int DefaultHighImpactEventLockoutMinutes = 15;
+        private const double DefaultEventPositionSizeReduction = 0.5;
+        private const int DefaultPreMarketTradingMinutes = 30;
+
         public EventTemperingConfigService(IConfiguration config, ILogger<EventTemperingConfigService> logger)
         {
             _config = config;
         }
 
         public int GetNewsLockoutMinutesBefore() => 
-            _config.GetValue("EventTempering:NewsLockoutMinutesBefore", 5);
+            _config.GetValue("EventTempering:NewsLockoutMinutesBefore", DefaultNewsLockoutMinutesBefore);
 
         public int GetNewsLockoutMinutesAfter() => 
-            _config.GetValue("EventTempering:NewsLockoutMinutesAfter", 2);
+            _config.GetValue("EventTempering:NewsLockoutMinutesAfter", DefaultNewsLockoutMinutesAfter);
 
         public int GetHighImpactEventLockoutMinutes() => 
-            _config.GetValue("EventTempering:HighImpactEventLockoutMinutes", 15);
+            _config.GetValue("EventTempering:HighImpactEventLockoutMinutes", DefaultHighImpactEventLockoutMinutes);
 
         public bool ReducePositionSizesBeforeEvents() => 
             _config.GetValue("EventTempering:ReducePositionSizesBeforeEvents", true);
 
         public double GetEventPositionSizeReduction() => 
-            _config.GetValue("EventTempering:EventPositionSizeReduction", 0.5);
+            _config.GetValue("EventTempering:EventPositionSizeReduction", DefaultEventPositionSizeReduction);
 
         public bool EnableHolidayTradingLockout() => 
             _config.GetValue("EventTempering:EnableHolidayTradingLockout", true);
@@ -42,6 +49,6 @@ namespace TradingBot.BotCore.Services
             _config.GetValue("EventTempering:EnableFomcLockout", true);
 
         public int GetPreMarketTradingMinutes() => 
-            _config.GetValue("EventTempering:PreMarketTradingMinutes", 30);
+            _config.GetValue("EventTempering:PreMarketTradingMinutes", DefaultPreMarketTradingMinutes);
     }
 }
