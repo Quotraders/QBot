@@ -95,10 +95,10 @@ public sealed class DecisionFusionCoordinator
         {
             // Get configuration data instead of non-existent GetFusionRailsAsync
             var config = await _cfg.GetConfigurationAsync(cancellationToken).ConfigureAwait(false);
-            var minConfidence = config.TryGetValue("fusion_min_confidence", out var minConfObj) && minConfObj is double minConf ? minConf : 0.6;
-            var maxRecommendations = config.TryGetValue("fusion_max_recommendations", out var maxRecObj) && maxRecObj is int maxRec ? maxRec : 5;
-            var knowledgeWeight = config.TryGetValue("fusion_knowledge_weight", out var knowledgeWeightObj) && knowledgeWeightObj is double kWeight ? kWeight : 0.6;
-            var ucbWeight = config.TryGetValue("fusion_ucb_weight", out var ucbWeightObj) && ucbWeightObj is double uWeight ? uWeight : 0.4;
+            var minConfidence = config.TryGetValue("fusion_min_confidence", out var minConfObj) && minConfObj is double minConf ? minConf : GetConfigValue("Fusion:DefaultMinConfidence", 0.6);
+            var maxRecommendations = config.TryGetValue("fusion_max_recommendations", out var maxRecObj) && maxRecObj is int maxRec ? maxRec : GetConfigValue("Fusion:DefaultMaxRecommendations", 5);
+            var knowledgeWeight = config.TryGetValue("fusion_knowledge_weight", out var knowledgeWeightObj) && knowledgeWeightObj is double kWeight ? kWeight : GetConfigValue("Fusion:DefaultKnowledgeWeight", 0.6);
+            var ucbWeight = config.TryGetValue("fusion_ucb_weight", out var ucbWeightObj) && ucbWeightObj is double uWeight ? uWeight : GetConfigValue("Fusion:DefaultUcbWeight", 0.4);
             
             // Get Knowledge Graph recommendation
             var knowledgeRecommendations = await _graph.EvaluateAsync(symbol, DateTime.UtcNow, cancellationToken).ConfigureAwait(false);
@@ -270,6 +270,36 @@ public sealed class DecisionFusionCoordinator
                 
             // Fail-closed behavior: Return null to prevent trading on corrupted decisions
             return null;
+        }
+    }
+    
+    /// <summary>
+    /// Get integer configuration value with fallback - ensures fail-closed behavior for missing config
+    /// </summary>
+    private int GetConfigValue(string key, int defaultValue)
+    {
+        try
+        {
+            var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+            if (configuration == null)
+            {
+                _logger.LogWarning("🚨 [AUDIT-FAIL-CLOSED] Configuration service unavailable for key {Key} - using safe default {Default}", key, defaultValue);
+                return defaultValue;
+            }
+            
+            var value = configuration.GetValue<int>(key);
+            if (value == 0 && !configuration.GetSection(key).Exists())
+            {
+                _logger.LogTrace("Configuration key {Key} not found - using default {Default}", key, defaultValue);
+                return defaultValue;
+            }
+            
+            return value;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "🚨 [AUDIT-FAIL-CLOSED] Error reading configuration key {Key} - using safe default {Default}", key, defaultValue);
+            return defaultValue;
         }
     }
     
