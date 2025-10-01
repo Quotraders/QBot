@@ -35,6 +35,14 @@ namespace TradingBot.BotCore.Services
         private const double DefaultRsiMaxValue = 100.0;
         private const double DefaultMomentumScaleFactor = 0.05;
         
+        // Market impact and volatility constants  
+        private const double DefaultVolatilityMaxValue = 5.0;           // Maximum volatility threshold
+        private const double DefaultVixNeutralLevel = 0.3;              // VIX neutral impact level
+        private const double DefaultVixImpactFactor = 0.3;              // VIX impact scaling factor
+        private const double DefaultVolumeImpactFactor = 0.2;           // Volume impact scaling factor
+        private const double DefaultMomentumImpactFactor = 0.25;        // Momentum impact scaling factor
+        private const double DefaultNoiseAmplitude = 0.05;              // Market noise amplitude
+        
         private readonly IConfiguration _config;
 
         public ControllerOptionsService(IConfiguration config)
@@ -101,21 +109,21 @@ namespace TradingBot.BotCore.Services
             _config.GetValue("Controller:MomentumScaleFactor", DefaultMomentumScaleFactor);
 
         public double GetVolatilityMaxValue() => 
-            _config.GetValue("Controller:VolatilityMaxValue", 5.0);
+            _config.GetValue("Controller:VolatilityMaxValue", DefaultVolatilityMaxValue);
 
         public double GetVixNeutralLevel() => 
-            _config.GetValue("Controller:VixNeutralLevel", 0.3);
+            _config.GetValue("Controller:VixNeutralLevel", DefaultVixNeutralLevel);
 
         public double GetVixImpactFactor() => 
-            _config.GetValue("Controller:VixImpactFactor", 0.3);
+            _config.GetValue("Controller:VixImpactFactor", DefaultVixImpactFactor);
 
         public double GetVolumeImpactFactor() => 
-            _config.GetValue("Controller:VolumeImpactFactor", 0.2);
+            _config.GetValue("Controller:VolumeImpactFactor", DefaultVolumeImpactFactor);
 
         public double GetMomentumImpactFactor() => 
-            _config.GetValue("Controller:MomentumImpactFactor", 0.25);
+            _config.GetValue("Controller:MomentumImpactFactor", DefaultMomentumImpactFactor);
 
         public double GetNoiseAmplitude() => 
-            _config.GetValue("Controller:NoiseAmplitude", 0.05);
+            _config.GetValue("Controller:NoiseAmplitude", DefaultNoiseAmplitude);
     }
 }

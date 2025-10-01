@@ -41,7 +41,20 @@ namespace BotCore.Strategy
             
             var cands = new List<Candidate>();
             // Ensure env.volz is computed from history (regime proxy)
-            try { env.volz = VolZ(bars); } catch { env.volz ??= 0m; }
+            try 
+            { 
+                env.volz = VolZ(bars); 
+            } 
+            catch (ArgumentException)
+            {
+                // Invalid bars data, use fallback
+                env.volz ??= 0m; 
+            }
+            catch (InvalidOperationException)
+            {
+                // Computation failed, use fallback
+                env.volz ??= 0m;
+            }
             var attemptCaps = HighWinRateProfile.AttemptCaps;
             bool noAttemptCaps = (Environment.GetEnvironmentVariable("NO_ATTEMPT_CAPS") ?? "0").Trim().ToLowerInvariant() is "1" or "true" or "yes";
 
@@ -176,7 +189,21 @@ namespace BotCore.Strategy
                 var lastUtc = last.Kind == DateTimeKind.Utc ? last : DateTime.SpecifyKind(last, DateTimeKind.Utc);
                 lastEt = TimeZoneInfo.ConvertTimeFromUtc(lastUtc, Et);
             }
-            catch { lastEt = DateTime.UtcNow; }
+            catch (ArgumentException)
+            {
+                // Invalid time conversion, use current UTC
+                lastEt = DateTime.UtcNow; 
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                // Time zone not found, use current UTC
+                lastEt = DateTime.UtcNow;
+            }
+            catch (InvalidTimeZoneException)
+            {
+                // Invalid time zone, use current UTC  
+                lastEt = DateTime.UtcNow;
+            }
             var tod = lastEt.TimeOfDay;
             decimal qTh = qThRth;
             if (tod >= new TimeSpan(20, 0, 0) || tod < new TimeSpan(8, 0, 0)) qTh = qThNight; // 20:00–08:00
@@ -265,7 +292,21 @@ namespace BotCore.Strategy
                         var lastUtc = last.Kind == DateTimeKind.Utc ? last : DateTime.SpecifyKind(last, DateTimeKind.Utc);
                         lastEt = TimeZoneInfo.ConvertTimeFromUtc(lastUtc, Et);
                     }
-                    catch { lastEt = DateTime.UtcNow; }
+                    catch (ArgumentException)
+                    {
+                        // Invalid time conversion, use current UTC
+                        lastEt = DateTime.UtcNow; 
+                    }
+                    catch (TimeZoneNotFoundException)
+                    {
+                        // Time zone not found, use current UTC
+                        lastEt = DateTime.UtcNow;
+                    }
+                    catch (InvalidTimeZoneException)
+                    {
+                        // Invalid time zone, use current UTC  
+                        lastEt = DateTime.UtcNow;
+                    }
                     var tod = lastEt.TimeOfDay; decimal qTh = qThRth;
                     if (tod >= new TimeSpan(20, 0, 0) || tod < new TimeSpan(8, 0, 0)) qTh = qThNight; else if (tod >= new TimeSpan(9, 28, 0) && tod <= new TimeSpan(10, 30, 0)) qTh = qThOpen;
                     if (c.QScore < qTh) continue;
@@ -533,7 +574,21 @@ namespace BotCore.Strategy
                         : (b.Start.Kind == DateTimeKind.Utc ? b.Start : DateTime.SpecifyKind(b.Start, DateTimeKind.Utc));
                     return TimeZoneInfo.ConvertTimeFromUtc(utc, et);
                 }
-                catch { return b.Start; }
+                catch (ArgumentException)
+                {
+                    // Invalid time conversion, return original bar start time
+                    return b.Start; 
+                }
+                catch (TimeZoneNotFoundException)
+                {
+                    // Time zone not found, return original bar start time
+                    return b.Start;
+                }
+                catch (InvalidTimeZoneException)
+                {
+                    // Invalid time zone, return original bar start time
+                    return b.Start;
+                }
             }
             var barsEt = new List<Bar>(bars.Count);
             foreach (var b in bars)
@@ -568,7 +623,18 @@ namespace BotCore.Strategy
             var d = px - vwap;
             var z = sigma > 0 ? d / sigma : 0m;
             var a = atr > 0 ? d / atr : 0m;
-            try { S2Quantiles.Observe(symbol, nowLocal, Math.Abs(z)); } catch { }
+            try 
+            { 
+                S2Quantiles.Observe(symbol, nowLocal, Math.Abs(z)); 
+            } 
+            catch (ArgumentException)
+            {
+                // Invalid quantile observation parameters, continue without logging
+            }
+            catch (InvalidOperationException)
+            {
+                // Quantile observation failed, continue without logging
+            }
 
             // ADR guards: compute simple rolling ADR and today's realized range
             decimal adr = 0m;
@@ -640,7 +706,14 @@ namespace BotCore.Strategy
                 if (isRoll && S2RuntimeConfig.RollWeekSigmaBump > 0m)
                     needSigma += S2RuntimeConfig.RollWeekSigmaBump;
             }
-            catch { }
+            catch (ArgumentOutOfRangeException)
+            {
+                // Date calculation failed, skip roll week adjustment
+            }
+            catch (InvalidOperationException)  
+            {
+                // Date operation failed, skip roll week adjustment
+            }
 
             // Curfew: optional no-new window (Patch C)
             if (S2RuntimeConfig.CurfewEnabled && !string.IsNullOrWhiteSpace(S2RuntimeConfig.CurfewNoNewHHMM))
@@ -693,7 +766,18 @@ namespace BotCore.Strategy
                     }
                 }
             }
-            catch { }
+            catch (ArgumentException)
+            {
+                // Peer data or calculation failed, skip RS peer filter
+            }
+            catch (InvalidOperationException)
+            {
+                // EMA or slope calculation failed, skip RS peer filter  
+            }
+            catch (DivideByZeroException)
+            {
+                // Tick size division failed, skip RS peer filter
+            }
 
             // IB continuation filter after 10:30: avoid small fades unless extreme (use last bar's clock)
             var now = nowLocal; var nowMin = now.Hour * 60 + now.Minute;
@@ -742,7 +826,18 @@ namespace BotCore.Strategy
                         return lst;
                 }
             }
-            catch { }
+            catch (ArgumentException)
+            {
+                // Prior day calculation failed, skip magnet veto
+            }
+            catch (InvalidOperationException)
+            {
+                // VWAP/Close calculation failed, skip magnet veto
+            }
+            catch (DivideByZeroException)
+            {
+                // ATR calculation failed, skip magnet veto
+            }
 
             // LONG: fade below VWAP
             if ((z <= -dynSigma || a <= -baseAtr) && imb >= 0.9m && pivotOKLong && roomLong && decel)

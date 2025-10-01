@@ -24,9 +24,6 @@ namespace TradingBot.BotCore.Services
         private readonly SafeHoldDecisionPolicy? _neutralBandService;
         private readonly ILogger<TradingBotSymbolSessionManager> _logger;
 
-        // Statistical analysis constants
-        private const int MinimumTradesForConfidenceInterval = 10;
-
         // Trading Session Multipliers
         private const decimal RegularHoursMultiplier = 1.0m;
         private const decimal PostMarketMultiplier = 1.15m;
@@ -240,7 +237,7 @@ namespace TradingBot.BotCore.Services
         /// Create default configuration for symbol-session combination
         /// All values come from configuration service, not hardcoded
         /// </summary>
-        private SymbolSessionConfiguration CreateDefaultConfiguration(string symbol, MarketSession sessionType)
+        private static SymbolSessionConfiguration CreateDefaultConfiguration(string symbol, MarketSession sessionType)
         {
             // Get base parameters from TradingBotParameterProvider (configuration-driven)
             var baseConfidence = (decimal)TradingBotParameterProvider.GetAIConfidenceThreshold();

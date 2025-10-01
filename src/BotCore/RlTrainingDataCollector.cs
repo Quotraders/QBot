@@ -18,6 +18,13 @@ namespace BotCore
         private const int RsiVariationRange = 40;                     // RSI variation range (±20)
         private const int RsiVariationOffset = 20;                    // RSI variation offset
         
+        // Trading session hours (Eastern Time)
+        private const int RegularTradingHoursStart = 9;               // 9:30 AM ET start hour
+        private const int RegularTradingHoursEnd = 16;                // 4:00 PM ET end hour
+        
+        // Technical analysis approximation constants
+        private const double TechnicalAnalysisSmallVariation = 0.005; // Small price variation for EMA approximation
+        
         public class FeatureSnapshot
         {
             public DateTime Timestamp { get; set; }
@@ -217,7 +224,7 @@ namespace BotCore
                 // Professional market data extraction with realistic fallback values
                 Atr = price * AtrPercentageApproximation,
                 Rsi = BaselineRsiValue + (decimal)(signalId.GetHashCode() % RsiVariationRange - RsiVariationOffset), // RSI between 30-70
-                Ema20 = price * (1 + (decimal)(Math.Sin(DateTime.UtcNow.Minute) * 0.005)),
+                Ema20 = price * (1 + (decimal)(Math.Sin(DateTime.UtcNow.Minute) * TechnicalAnalysisSmallVariation)),
                 Ema50 = price * (1 + (decimal)(Math.Sin(DateTime.UtcNow.Hour) * 0.008)),
                 Volume = 1000m + (decimal)(signalId.GetHashCode() % 5000), // Variable volume
                 Spread = Math.Max(defaultSpread, price * 0.0001m), // Minimum 0.01% spread
@@ -241,7 +248,7 @@ namespace BotCore
             var hour = et.Hour;
 
             // RTH: 9:30 AM - 4:00 PM ET
-            return (hour >= 9 && hour < 16) ? "RTH" : "ETH";
+            return (hour >= RegularTradingHoursStart && hour < RegularTradingHoursEnd) ? "RTH" : "ETH";
         }
 
         /// <summary>

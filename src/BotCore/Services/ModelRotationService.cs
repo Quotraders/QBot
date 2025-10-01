@@ -99,7 +99,7 @@ namespace BotCore.Services
                     {
                         _logger.LogTrace("[MODEL-ROTATION] No rotation needed - Current: {CurrentRegime}, New: {NewRegime}, Cooldown: {CooldownRemaining} bars", 
                             _currentRegime, newRegime, Math.Max(0, _config.CooldownBars - _cooldownBars));
-                        return Task.CompletedTask;
+                        return;
                     }
 
                     _logger.LogInformation("[MODEL-ROTATION] [AUDIT-VIOLATION] Initiating model rotation: {CurrentRegime} -> {NewRegime} - AUDIT + TELEMETRY", 
@@ -133,7 +133,7 @@ namespace BotCore.Services
                     EmitRotationTelemetry(newRegime);
 
                     _logger.LogInformation("[MODEL-ROTATION] Model rotation completed successfully: {NewRegime}", newRegime);
-                    return Task.CompletedTask;
+                    return;
                 }
                 catch (Exception ex)
                 {

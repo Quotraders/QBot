@@ -25,6 +25,7 @@ namespace BotCore
     {
         // Training data quality constants
         private const int MinimumRequiredFeatures = 20;
+        private const int ExportFeatureCount = 20;
         
         // ML feature generation constants
         private const decimal PriceSimulationUpMultiplier = 1.001m;    // Simulated high price multiplier (0.1% above)
@@ -322,7 +323,7 @@ namespace BotCore
             };
 
             // Add feature columns
-            for (int i = 1; i <= 20; i++)
+            for (int i = 1; i <= ExportFeatureCount; i++)
             {
                 headers.Add($"feature_{i}");
             }
@@ -344,7 +345,7 @@ namespace BotCore
 
             // Add first 20 features
             var features = trade.Features ?? new List<decimal>();
-            for (int i = 0; i < 20; i++)
+            for (int i = 0; i < ExportFeatureCount; i++)
             {
                 values.Add(i < features.Count ? features[i].ToString("F6") : "0");
             }

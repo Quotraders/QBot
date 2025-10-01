@@ -27,6 +27,11 @@ namespace BotCore.Strategy
         private const decimal PostOpenTighteningAdjustment = 0.02m; // Amount to tighten rank after RTH open
         private const int VwapHoldBarsCount = 2; // Number of bars to check for VWAP hold validation
         
+        // Calculation constants
+        private const decimal MidPriceEpsilon = 1e-9m; // Minimum denominator to prevent division by zero
+        private const int DefaultRsRequiredBars = 2; // Additional bars required for RS calculation  
+        private const int DefaultKeltnerLookbackBars = 60; // Lookback period for Keltner channel calculations
+        
         private static readonly ConcurrentDictionary<string, SegmentState> _segState = new(StringComparer.OrdinalIgnoreCase);
         private static readonly ConcurrentDictionary<(string Sym, DateOnly Day, string Sess, Side Side), int> _attempts = new();
         private static readonly TimeSpan OvernightWinStart = new(2, 55, 0);
@@ -259,7 +264,7 @@ namespace BotCore.Strategy
                 if (!string.IsNullOrEmpty(peer))
                 {
                     var peerBars = AllStrategies.ExternalGetBars(peer!);
-                    if (peerBars != null && peerBars.Count >= cfg.RsWindowBars + 2)
+                    if (peerBars != null && peerBars.Count >= cfg.RsWindowBars + DefaultRsRequiredBars)
                     {
                         var rs = RelativeStrength(bars, [.. peerBars], cfg.RsWindowBars);
                         if (cfg.RsDirectionalOnly)
@@ -439,9 +444,9 @@ namespace BotCore.Strategy
                 var ema = EMA(arr, bbLen);
                 var mid = ema[^1]; var sd = Stdev(arr, bbLen);
                 var up = mid + bbMult * sd; var dn = mid - bbMult * sd;
-                list.Add((up - dn) / Math.Max(1e-9m, Math.Abs(mid)));
+                list.Add((up - dn) / Math.Max(MidPriceEpsilon, Math.Abs(mid)));
             }
-            if (list.Count < look + 2) return false;
+            if (list.Count < look + DefaultRsRequiredBars) return false;
             int desc = 0;
             for (int i = list.Count - look + 1; i < list.Count; i++) if (list[i] <= list[i - 1] + tol) desc++;
             return desc >= look - 1;
@@ -469,7 +474,7 @@ namespace BotCore.Strategy
         {
             int run = 0;
             var closes = bars.Select(b => b.Close).ToArray();
-            for (int i = bars.Count - 1; i >= Math.Max(0, bars.Count - 60); i--)
+            for (int i = bars.Count - 1; i >= Math.Max(0, bars.Count - DefaultKeltnerLookbackBars); i--)
             {
                 var arr = closes.Take(i + 1).ToArray();
                 var ema = EMA(arr, kcEma); var mid = ema[^1];
@@ -631,7 +636,22 @@ namespace BotCore.Strategy
             }
         }
         private static decimal GuessTickSize(string sym)
-        { try { return InstrumentMeta.Tick(sym); } catch { return 0.25m; } }
+        { 
+            try 
+            { 
+                return InstrumentMeta.Tick(sym); 
+            } 
+            catch (ArgumentException)
+            {
+                // Unknown symbol, use ES default
+                return 0.25m;
+            }
+            catch (InvalidOperationException)
+            {
+                // Instrument metadata unavailable, use ES default  
+                return 0.25m;
+            }
+        }
         private static bool CanAttempt(string sym, string sess, Side side, int cap)
         {
             var key = (sym, DateOnly.FromDateTime(DateTime.Now), sess, side);
@@ -947,7 +967,16 @@ namespace BotCore.Strategy
                         return cfg;
                     }
                 }
-                catch { }
+                catch (JsonException ex)
+                {
+                    // Log JSON parsing error but continue with defaults
+                    System.Diagnostics.Debug.WriteLine($"[S3] Config load failed: {ex.Message}");
+                }
+                catch (System.IO.IOException ex)
+                {
+                    // Log file access error but continue with defaults
+                    System.Diagnostics.Debug.WriteLine($"[S3] Config file access failed: {ex.Message}");
+                }
                 return new S3RuntimeConfig();
             }
 
@@ -1036,7 +1065,14 @@ namespace BotCore.Strategy
                         };
                     }
                 }
-                catch { /* keep prior config on parse errors */ }
+                catch (JsonException)
+                {
+                    // Keep prior config on JSON parse errors - fail gracefully
+                }
+                catch (ArgumentException)
+                {
+                    // Keep prior config on invalid argument errors - fail gracefully
+                }
             }
         }
 

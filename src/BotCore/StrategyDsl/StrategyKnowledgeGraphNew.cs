@@ -396,7 +396,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
         return EvaluateAsync(symbol, utc, CancellationToken.None).GetAwaiter().GetResult();
     }
 
-    private bool EvaluateRegimeFilter(DslStrategy card, RegimeType regime)
+    private static bool EvaluateRegimeFilter(DslStrategy card, RegimeType regime)
     {
         if (card.When?.Regime == null || !card.When.Regime.Any())
             return true; // No regime filter
@@ -623,7 +623,7 @@ public sealed class ProductionRegimeService : IRegimeService
         }
     }
 
-    private RegimeType MapToStrategyRegimeType(TradingBot.Abstractions.RegimeType detectedRegime)
+    private static RegimeType MapToStrategyRegimeType(TradingBot.Abstractions.RegimeType detectedRegime)
     {
         return detectedRegime switch
         {
