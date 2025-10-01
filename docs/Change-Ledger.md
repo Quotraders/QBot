@@ -34,7 +34,17 @@ var estimatedSpread = priceRange * (spreadEstimateVolumeFactor / Math.Max(avgVol
 
 ## 🚨 PHASE 2 - ANALYZER VIOLATION ELIMINATION (IN PROGRESS)
 
-### Round 43 - Continued Priority 1 Systematic Fixes: Config Services + Exception Handling (Current Session)
+### Round 44 - Priority 1 Systematic Fixes: Core Trading Components (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| **Trading/Mathematical Constants - COMPLETED** | | | | |
+| S109 | 6+ | 0 | StrategyGates.cs, LinUcbBandit.cs, NeuralUcbBandit.cs, UnifiedTradingBrain.cs | Magic numbers → Named constants (WideSpreadPenalty=0.70m, BoxMullerMultiplier=-2.0, HighVolumeRatioThreshold=1.5m, etc.) |
+| **Exception Handling - COMPLETED** | | | | |
+| CA1031 | 5+ | 0 | UnifiedTradingBrain.cs, CloudRlTrainer.cs, CloudDataUploader.cs | Generic Exception catches → Specific exceptions (InvalidOperationException, ArgumentException, HttpRequestException, JsonException) |
+
+**Rationale**: Continued systematic Priority 1 fixes (Correctness & Invariants) per Analyzer-Fix-Guidebook. Trading algorithms now use descriptive constants for position sizing penalties, mathematical transforms, and market regime thresholds. Cloud operations catch specific exceptions for better error handling and debugging.
+
+### Round 43 - Continued Priority 1 Systematic Fixes: Config Services + Exception Handling (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | **Config Services - COMPLETED** | | | | |

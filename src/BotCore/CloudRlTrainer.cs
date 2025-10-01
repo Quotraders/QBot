@@ -138,9 +138,21 @@ public sealed class CloudRlTrainer : IDisposable
                 }
             }
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            _log.LogError(ex, "[CloudRlTrainer] Failed to download models");
+            _log.LogError(ex, "[CloudRlTrainer] HTTP error downloading models");
+        }
+        catch (TaskCanceledException ex)
+        {
+            _log.LogError(ex, "[CloudRlTrainer] Request timeout downloading models");
+        }
+        catch (IOException ex)
+        {
+            _log.LogError(ex, "[CloudRlTrainer] I/O error downloading models");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _log.LogError(ex, "[CloudRlTrainer] Access denied downloading models");
         }
     }
 

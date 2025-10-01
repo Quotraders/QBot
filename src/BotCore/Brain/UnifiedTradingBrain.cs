@@ -95,6 +95,8 @@ namespace BotCore.Brain
         private const decimal OversoldRSILevel = 30m;               // RSI oversold level
         private const decimal BaseConfidenceThreshold = 0.5m;        // Base confidence threshold
         private const decimal MinConfidenceAdjustment = 0.1m;        // Minimum confidence adjustment
+        private const decimal TrendingVolatilityThreshold = 0.25m;   // Volatility threshold for trending regime
+        private const decimal RangingPriceChangeThreshold = 0.5m;    // Price change threshold for ranging regime
         
         // Trading session hour constants
         private const int OpeningDriveStartHour = 9;                 // Opening drive start hour (9 AM)
@@ -534,11 +536,11 @@ namespace BotCore.Brain
             {
                 // Analyze market regime using technical indicators and volatility
                 // ONNX model integration planned for future enhancement
-                if (context.VolumeRatio > 1.5m && context.Volatility > 0.25m)
+                if (context.VolumeRatio > HighVolumeRatioThreshold && context.Volatility > TrendingVolatilityThreshold)
                     return Task.FromResult(MarketRegime.Trending);
-                if (context.Volatility < 0.15m && Math.Abs(context.PriceChange) < 0.5m)
+                if (context.Volatility < LowVolatilityThreshold && Math.Abs(context.PriceChange) < RangingPriceChangeThreshold)
                     return Task.FromResult(MarketRegime.Ranging);
-                if (context.Volatility > 0.4m)
+                if (context.Volatility > HighVolatilityThreshold)
                     return Task.FromResult(MarketRegime.HighVolatility);
                 
                 return Task.FromResult(MarketRegime.Normal);
