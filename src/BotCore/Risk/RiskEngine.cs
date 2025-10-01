@@ -112,7 +112,7 @@ namespace BotCore.Risk
         private int _consecutiveLosses;
         private decimal _peakBalance;
         private bool _tradingHalted;
-        private decimal _positionSizeMultiplier = 1.0m;
+        private decimal _positionSizeMultiplier = DefaultPositionSizeMultiplier;
 
         // Risk management threshold constants
         private const decimal ReduceSize25TriggerLevel = 250m;        // $250 drawdown - reduce size by 25%
@@ -126,6 +126,7 @@ namespace BotCore.Risk
         private const decimal PositionSizeReduction25Percent = 0.75m; // Reduce to 75% of original size
         private const decimal PositionSizeReduction50Percent = 0.5m;  // Reduce to 50% of original size
         private const decimal PositionSizeReduction75Percent = 0.25m; // Reduce to 25% of original size
+        private const decimal DefaultPositionSizeMultiplier = 1.0m;   // Default position size multiplier
         
         /// <summary>
         /// Gets whether trading is currently halted due to risk management
@@ -241,7 +242,7 @@ namespace BotCore.Risk
                 tracker.PeakTime = DateTime.UtcNow;
                 _peakBalance = currentBalance;
                 _consecutiveLosses = 0; // Reset on new peak
-                _positionSizeMultiplier = 1.0m; // Reset position sizing
+                _positionSizeMultiplier = DefaultPositionSizeMultiplier; // Reset position sizing
             }
             
             // Calculate drawdown

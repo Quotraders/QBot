@@ -17,6 +17,8 @@ namespace BotCore
         // Training configuration constants
         private const int MinimumTrainingSamples = 100;
         private const int TrainingDataRetentionDays = 7;
+        private const int TrainingLogTailLines = 20;              // Number of lines to show from training log tail
+        private const int PythonExecutableTimeoutMs = 5000;      // Timeout for Python executable check
         
         private readonly ILogger<EnhancedAutoRlTrainer> _logger;
         private readonly IEnhancedTrainingDataService _trainingDataService;
@@ -237,9 +239,19 @@ namespace BotCore
                     return false;
                 }
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[EnhancedAutoRlTrainer] Exception during model training");
+                _logger.LogError(ex, "[EnhancedAutoRlTrainer] Invalid operation during model training");
+                return false;
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogError(ex, "[EnhancedAutoRlTrainer] Timeout during model training");
+                return false;
+            }
+            catch (IOException ex)
+            {
+                _logger.LogError(ex, "[EnhancedAutoRlTrainer] I/O error during model training");
                 return false;
             }
         }
@@ -247,7 +259,7 @@ namespace BotCore
         private void LogTrainingSummary(List<string> outputLines)
         {
             // Extract key metrics from training output
-            foreach (var line in outputLines.TakeLast(20))
+            foreach (var line in outputLines.TakeLast(TrainingLogTailLines))
             {
                 if (line.Contains("Final average return") ||
                     line.Contains("CVaR") ||
@@ -286,14 +298,18 @@ namespace BotCore
                         CreateNoWindow = true
                     });
 
-                    if (process != null && process.WaitForExit(5000) && process.ExitCode == 0)
+                    if (process != null && process.WaitForExit(PythonExecutableTimeoutMs) && process.ExitCode == 0)
                     {
                         return path;
                     }
                 }
-                catch
+                catch (InvalidOperationException)
                 {
-                    // Continue to next path
+                    // Process creation failed, continue to next path
+                }
+                catch (IOException)
+                {
+                    // I/O error checking Python executable, continue to next path
                 }
             }
 

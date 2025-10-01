@@ -154,9 +154,17 @@ namespace BotCore
                 log.LogDebug("[RL-{Symbol}] Logged outcome for signal {SignalId}: R={R:F2}",
                     symbol, outcome.SignalId, outcome.RMultiple);
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                log.LogError(ex, "[RL] Failed to log trade outcome");
+                log.LogError(ex, "[RL] I/O error logging trade outcome");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                log.LogError(ex, "[RL] Access denied logging trade outcome");
+            }
+            catch (JsonException ex)
+            {
+                log.LogError(ex, "[RL] JSON serialization error logging trade outcome");
             }
         }
 

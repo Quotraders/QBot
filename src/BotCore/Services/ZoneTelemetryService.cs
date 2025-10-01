@@ -137,9 +137,13 @@ namespace BotCore.Services
                 _logger.LogTrace("[ZONE-TELEMETRY] Emitted freshness metrics for {Symbol}: {FreshnessSeconds}s", 
                     symbol, freshnessSeconds);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[ZONE-TELEMETRY] Error emitting freshness metrics for {Symbol}", symbol);
+                _logger.LogError(ex, "[ZONE-TELEMETRY] Invalid operation emitting freshness metrics for {Symbol}", symbol);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "[ZONE-TELEMETRY] Invalid argument emitting freshness metrics for {Symbol}", symbol);
             }
         }
 
@@ -159,9 +163,13 @@ namespace BotCore.Services
                 _logger.LogInformation("[ZONE-TELEMETRY] Emitted rejected entry for {Symbol}: {Reason}", 
                     symbol, reason);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[ZONE-TELEMETRY] Error emitting rejected entry metrics for {Symbol}", symbol);
+                _logger.LogError(ex, "[ZONE-TELEMETRY] Invalid operation emitting rejected entry metrics for {Symbol}", symbol);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "[ZONE-TELEMETRY] Invalid argument emitting rejected entry metrics for {Symbol}", symbol);
             }
         }
 
