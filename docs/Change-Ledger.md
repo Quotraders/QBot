@@ -34,7 +34,45 @@ var estimatedSpread = priceRange * (spreadEstimateVolumeFactor / Math.Max(avgVol
 
 ## 🚨 PHASE 2 - ANALYZER VIOLATION ELIMINATION (IN PROGRESS)
 
-### Round 46 - Priority 1 Exception Handling: Correctness & Invariants (Current Session)
+### Round 47 - Priority 3 Complex Method Refactoring: Strategy DSL Components (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| **Phase 1 Final Cleanup - COMPLETED** | | | | |
+| CS0160 | 2 | 0 | CloudRlTrainerEnhanced.cs | Duplicate HttpRequestException catch clauses → Single specific catch |
+| **Strategy DSL Complex Methods - COMPLETED** | | | | |
+| S1541 | 30 | <10 | StrategyKnowledgeGraphNew.cs (Get method) | Large switch expression → Feature category routing with 4 extracted helper methods |
+| S138 | 81 lines | <20 lines | FeatureBusMapper.cs (InitializeDefaultMappings) | Monolithic initialization → 10 specialized category methods |
+
+**Example Pattern - Feature Routing Refactoring:**
+```csharp
+// Before: S1541 violation (complexity 30, large switch with 30+ arms)
+public double Get(string symbol, string key) {
+    return key switch {
+        "zone.dist_to_demand_atr" => GetZoneFeature(symbol, "dist_to_demand_atr"),
+        "zone.dist_to_supply_atr" => GetZoneFeature(symbol, "dist_to_supply_atr"),
+        "pattern.bull_score" => GetPatternScore(symbol, true),
+        "pattern.bear_score" => GetPatternScore(symbol, false),
+        "vdc" => _featureBus.Probe(symbol, "volatility.contraction") ?? DefaultValue,
+        // ... 25+ more explicit cases
+    };
+}
+
+// After: Compliant (complexity <10, clean routing)
+public double Get(string symbol, string key) {
+    return key switch {
+        string k when k.StartsWith("zone.") => GetZoneBasedFeature(symbol, key),
+        string k when k.StartsWith("pattern.") => GetPatternBasedFeature(symbol, key),
+        string k when IsMarketMicrostructureFeature(k) => GetMarketMicrostructureFeature(symbol, key),
+        string k when k.StartsWith("breadth.") => BreadthNeutralScore,
+        _ => 0.0
+    };
+}
+// + GetZoneBasedFeature(), GetPatternBasedFeature(), GetMarketMicrostructureFeature(), IsMarketMicrostructureFeature() helpers
+```
+
+**Rationale**: Applied systematic Priority 3 fixes (Logging & diagnosability) per Analyzer-Fix-Guidebook. Complex feature routing now uses category-based delegation instead of large switch expressions, improving maintainability and reducing cyclomatic complexity. Feature mapping initialization split into logical groupings by domain (zone, pattern, momentum, etc.) for better organization.
+
+### Round 46 - Priority 1 Exception Handling: Correctness & Invariants (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | **Core Exception Handling - MAJOR PROGRESS** | | | | |
