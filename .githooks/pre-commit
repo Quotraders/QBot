@@ -92,6 +92,17 @@ check_pattern "(learningRate|batchSize|epochs|hiddenSize|dropout|momentum|decay|
 echo "Checking for performance and optimization hardcoded values..."
 check_pattern "(bufferSize|cacheSize|poolSize|maxRetries|timeoutMs|intervalMs|windowSize|chunkSize)\s*[=:]\s*[0-9]+" "Hardcoded performance optimization values"
 
+# Check for reintroduction of legacy projects
+echo "Checking for prohibited legacy project reintroduction..."
+if find . -name "TradingBot" -type d -o -name "TradingBot.Orchestrators" -type d | grep -q .; then
+    report_violation "Legacy TradingBot projects detected - these were removed per audit requirements"
+fi
+
+# Check for legacy project references in solution files
+if grep -r "TradingBot\|TradingBot\.Orchestrators" *.sln *.props 2>/dev/null | grep -v "TradingBotBusinessLogicValidation"; then
+    report_violation "Legacy TradingBot project references found in solution files"
+fi
+
 # Run the actual build to catch analyzer violations
 echo "Running build with analyzer checks..."
 if ! dotnet build --verbosity quiet --no-restore 2>/dev/null; then

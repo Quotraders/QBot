@@ -12,7 +12,7 @@ The repository has been systematically cleaned and organized while preserving al
 
 ### 📁 Core Directories (Active)
 - **`/src`** - All active production code and main application components
-- **`/MinimalDemo`** - Smoke test application (preserved until full migration)
+- **Archive directories** - Historical demos and inactive components
 - **`/tests`** - Test suites and validation projects
 - **`/scripts`** - Operational, monitoring, and utility scripts (organized)
 - **`/docs`** - Organized documentation, reports, and guides
@@ -20,7 +20,7 @@ The repository has been systematically cleaned and organized while preserving al
 
 ### 📦 Archive & Legacy (Preserved but Inactive)
 - **`/archive`** - Historical demos and inactive components
-- **`/legacy-projects`** - Legacy TradingBot projects (not in solution)
+- **Legacy projects removed** - Legacy TradingBot projects deleted per audit requirements
 
 ### 📂 Reorganized Structure
 - **`/scripts/operations/`** - Production deployment and verification scripts
@@ -191,8 +191,8 @@ The repository has been systematically cleaned and organized:
 - Empty `app/` and `samples/` directories
 
 #### 📦 Moved to Archive & Legacy
-- `TradingBot.Orchestrators/` → `legacy-projects/TradingBot.Orchestrators/`
-- `app/TradingBot/` → `legacy-projects/TradingBot/`
+- `TradingBot.Orchestrators/` → **DELETED** (per audit requirements)
+- `app/TradingBot/` → **DELETED** (per audit requirements)
 - `demo_full_automation/` → `archive/demos/full-automation/`
 - `samples/DemoRunner/` → `archive/demos/DemoRunner/`
 
@@ -225,8 +225,8 @@ The project is now clean, organized, and ready for production deployment!
 # Main application (pre-existing build errors expected in BotCore)
 dotnet build TopstepX.Bot.sln -p:TreatWarningsAsErrors=false
 
-# Smoke test (works perfectly)
-dotnet run --project MinimalDemo/MinimalDemo.csproj
+# Smoke test (replaces legacy demo projects)
+dotnet run --project src/UnifiedOrchestrator/UnifiedOrchestrator.csproj --smoke
 
 # Alternative main entry
 dotnet run --project src/UnifiedOrchestrator/UnifiedOrchestrator.csproj

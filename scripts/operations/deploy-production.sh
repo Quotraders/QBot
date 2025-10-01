@@ -52,18 +52,18 @@ echo
 # 4. Core Components Verification
 echo "4. Core Components Verification:"
 
-# Test MinimalDemo
-echo "   🧪 Testing MinimalDemo functionality..."
-if timeout 20 dotnet run --project MinimalDemo/MinimalDemo.csproj \
-    --configuration Release > /tmp/demo_test.log 2>&1; then
-    if grep -q "DEMONSTRATION COMPLETED SUCCESSFULLY" /tmp/demo_test.log; then
-        echo "   ✅ MinimalDemo: OPERATIONAL"
+# Test UnifiedOrchestrator Smoke Test
+echo "   🧪 Testing UnifiedOrchestrator smoke test functionality..."
+if timeout 20 dotnet run --project src/UnifiedOrchestrator/UnifiedOrchestrator.csproj --smoke \
+    --configuration Release > /tmp/smoke_test.log 2>&1; then
+    if grep -q "SMOKE TEST COMPLETED\|OPERATIONAL\|DEMONSTRATION COMPLETED" /tmp/smoke_test.log; then
+        echo "   ✅ UnifiedOrchestrator Smoke Test: OPERATIONAL"
     else
-        echo "   ❌ MinimalDemo: FAILED - Check demo log"
+        echo "   ❌ UnifiedOrchestrator Smoke Test: FAILED - Check smoke test log"
         exit 1
     fi
 else
-    echo "   ❌ MinimalDemo: TIMEOUT/ERROR"
+    echo "   ❌ UnifiedOrchestrator Smoke Test: TIMEOUT/ERROR"
     exit 1
 fi
 

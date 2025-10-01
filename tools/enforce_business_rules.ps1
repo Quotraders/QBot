@@ -10,7 +10,7 @@ function Get-CodeFiles {
         [string]$ExcludePattern
     )
     Get-ChildItem -Path . -Recurse -Include *.cs | Where-Object {
-        $_.FullName -notmatch '[\\/]archive[\\/]|[\\/]legacy-projects[\\/]|[\\/]bin[\\/]|[\\/]obj[\\/]|[\\/]packages[\\/]|[\\/]test[^\\/]*[\\/]|[\\/]Test[^\\/]*[\\/]|[\\/]mock[^\\/]*[\\/]|[\\/]Mock[^\\/]*[\\/]|[\\/]simulation[^\\/]*[\\/]|[\\/]Simulation[^\\/]*[\\/]' -and
+        $_.FullName -notmatch '[\\/]archive[\\/]|[\\/]bin[\\/]|[\\/]obj[\\/]|[\\/]packages[\\/]|[\\/]test[^\\/]*[\\/]|[\\/]Test[^\\/]*[\\/]|[\\/]mock[^\\/]*[\\/]|[\\/]Mock[^\\/]*[\\/]|[\\/]simulation[^\\/]*[\\/]|[\\/]Simulation[^\\/]*[\\/]' -and
         ($ExcludePattern -eq '' -or $_.FullName -notmatch $ExcludePattern)
     }
 }

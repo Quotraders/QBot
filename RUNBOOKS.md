@@ -1,5 +1,25 @@
 # Trading Bot Runbooks
 
+## Intelligence Pipeline Ownership & Review
+
+### Intelligence Data & Scripts
+- **Maintainer:** TBD (assign before any intelligence data/scripts land)
+- **Review Process:** All intelligence artefacts require sign-off in `AUDIT_LEDGER_UPDATE.md`
+- **Escalation:** Intelligence failures escalate to maintainer within 2 hours
+
+### Intelligence Artefact Requirements
+Before committing any intelligence data or scripts:
+1. **Manifest Creation:** Generate hash, source timestamp, and owner
+2. **Documentation:** Update ownership in this file
+3. **Sign-off:** Record approval in `AUDIT_LEDGER_UPDATE.md`
+4. **Review:** Two-person review for any new intelligence assets
+
+### Intelligence Data Management
+- **No bulk commits** of news articles or market snapshots
+- **External storage** for large datasets with retrieval instructions
+- **Sanitized inputs only** - no third-party content in git history
+- **Configuration-driven** processing from `config/` directory
+
 ## 🚀 Quick Start Guide
 
 ### Verified Working Command
