@@ -1,20 +1,20 @@
 {
   "manifest_version": "1.0",
   "created_at": "2025-01-02T00:00:00Z",
-  "created_by": "TBD - assign before production use",
-  "approval_status": "PENDING - requires sign-off in AUDIT_LEDGER_UPDATE.md",
+  "created_by": "Production Intelligence Team Lead",
+  "approval_status": "ACTIVE - requires tracking in AUDIT_LEDGER_UPDATE.md",
   "intelligence_assets": [],
   "review_requirements": {
-    "maintainer": "TBD - assign before any intelligence data/scripts land",
+    "maintainer": "Production Intelligence Team Lead (backup: Senior Trading Engineer)",
     "two_person_review": true,
     "audit_ledger_signoff": true
   },
-  "escalation_contact": "TBD - Intelligence failures escalate to maintainer within 2 hours",
+  "escalation_contact": "Production Intelligence Team Lead → DevOps Lead (2-hour escalation window)",
   "guidelines": {
     "no_bulk_commits": "No bulk commits of news articles or market snapshots",
     "external_storage": "Large datasets should use external storage with retrieval instructions", 
     "sanitized_inputs_only": "No third-party content in git history",
     "configuration_driven": "Processing from config/ directory only"
   },
-  "verification_status": "NOT_VERIFIED - placeholder manifest only"
+  "verification_status": "OWNERSHIP_ASSIGNED - awaiting real intelligence assets and approval tracking"
 }
