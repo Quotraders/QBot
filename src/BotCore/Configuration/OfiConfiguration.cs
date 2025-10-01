@@ -44,16 +44,16 @@ namespace BotCore.Configuration
         public void Validate()
         {
             if (LookbackBars <= 0)
-                throw new ArgumentOutOfRangeException(nameof(LookbackBars), "LookbackBars must be greater than 0");
+                throw new InvalidOperationException("LookbackBars must be greater than 0");
                 
             if (MinDataPointsRequired <= 0)
-                throw new ArgumentOutOfRangeException(nameof(MinDataPointsRequired), "MinDataPointsRequired must be greater than 0");
+                throw new InvalidOperationException("MinDataPointsRequired must be greater than 0");
                 
             if (HistoryBufferSize < 0)
-                throw new ArgumentOutOfRangeException(nameof(HistoryBufferSize), "HistoryBufferSize must be non-negative");
+                throw new InvalidOperationException("HistoryBufferSize must be non-negative");
                 
             if (string.IsNullOrWhiteSpace(TelemetryPrefix))
-                throw new ArgumentException("TelemetryPrefix cannot be null or empty", nameof(TelemetryPrefix));
+                throw new InvalidOperationException("TelemetryPrefix cannot be null or empty");
         }
     }
 }
