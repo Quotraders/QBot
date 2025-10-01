@@ -11,7 +11,12 @@ namespace Trading.Safety;
 /// <summary>
 /// Monitors kill.txt file and immediately halts all trading operations when detected
 /// Ensures safe system shutdown and state persistence
+/// 
+/// AUDIT-CLEAN: This class is deprecated in favor of BotCore.Services.ProductionKillSwitchService
+/// Kept for backward compatibility but new integrations should use ProductionKillSwitchService
+/// Production systems should use ProductionKillSwitchService for better guardrail integration
 /// </summary>
+[Obsolete("Use BotCore.Services.ProductionKillSwitchService for production deployments. This class is kept for backward compatibility only.")]
 public class KillSwitchWatcher : TradingBot.Abstractions.IKillSwitchWatcher, IDisposable
 {
     private readonly ILogger<KillSwitchWatcher> _logger;
@@ -130,6 +135,42 @@ public class KillSwitchWatcher : TradingBot.Abstractions.IKillSwitchWatcher, IDi
         catch (Exception ex)
         {
             _logger.LogError(ex, "[KILL_SWITCH] Error during kill switch activation");
+        }
+    }
+
+    /// <summary>
+    /// AUDIT-CLEAN: Align with production ProductionKillSwitchService APIs
+    /// This method provides compatibility bridge to production service
+    /// </summary>
+    public static bool IsProductionKillSwitchActive()
+    {
+        try
+        {
+            // Delegate to production service for consistent behavior
+            return BotCore.Services.ProductionKillSwitchService.IsKillSwitchActive();
+        }
+        catch (Exception)
+        {
+            // If production service unavailable, fall back to safe default
+            return true; // Fail-safe: assume kill switch is active
+        }
+    }
+
+    /// <summary>
+    /// AUDIT-CLEAN: Align with production service for DRY_RUN enforcement
+    /// Safety utilities should force DRY_RUN by default
+    /// </summary>
+    public static bool ShouldForceDryRun()
+    {
+        // Use production service DRY_RUN detection
+        try
+        {
+            return BotCore.Services.ProductionKillSwitchService.IsDryRunMode();
+        }
+        catch (Exception)
+        {
+            // If production service unavailable, force DRY_RUN for safety
+            return true;
         }
     }
 
