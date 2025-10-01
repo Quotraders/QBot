@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using BotCore.ML;
 using BotCore.Brain;
-using MarketContext = BotCore.Brain.MarketContext;
+using BotCore.Brain.Models;
+using MarketContext = BotCore.Brain.Models.MarketContext;
 
 namespace BotCore.Bandits;
 
