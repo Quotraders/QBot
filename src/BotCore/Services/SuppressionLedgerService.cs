@@ -48,30 +48,6 @@ namespace TradingBot.BotCore.Services
             LoggerMessage.Define<Guid, DateTime, string>(LogLevel.Information, new EventId(2004, "SuppressionExpiration"), 
                 "⏰ [SUPPRESSION] Set expiration for suppression {Id}: {Date} - {Reason}");
                 
-        private static readonly Action<ILogger, Exception?> _logAllSuppressionsValid = 
-            LoggerMessage.Define(LogLevel.Information, new EventId(2005, "AllSuppressionsValid"), 
-                "✅ [SUPPRESSION] All code suppressions have ledger entries");
-                
-        private static readonly Action<ILogger, int, Exception?> _logMissingEntries = 
-            LoggerMessage.Define<int>(LogLevel.Warning, new EventId(2006, "MissingEntries"), 
-                "⚠️ [SUPPRESSION] {Count} suppressions missing ledger entries");
-                
-        private static readonly Action<ILogger, Exception?> _logValidationError = 
-            LoggerMessage.Define(LogLevel.Error, new EventId(2007, "ValidationError"), 
-                "🚨 [SUPPRESSION] Error validating code suppressions");
-                
-        private static readonly Action<ILogger, Exception?> _logLoadError = 
-            LoggerMessage.Define(LogLevel.Error, new EventId(2008, "LoadError"), 
-                "Error loading existing suppression ledger");
-                
-        private static readonly Action<ILogger, Exception?> _logSaveError = 
-            LoggerMessage.Define(LogLevel.Error, new EventId(2009, "SaveError"), 
-                "Error saving suppression ledger");
-                
-        private static readonly Action<ILogger, string, Exception?> _logAlertCreated = 
-            LoggerMessage.Define<string>(LogLevel.Warning, new EventId(2010, "AlertCreated"), 
-                "🚨 [SUPPRESSION] Alert created: {AlertPath}");
-                
         private static readonly Action<ILogger, Exception?> _logAlertError = 
             LoggerMessage.Define(LogLevel.Error, new EventId(2011, "AlertError"), 
                 "Error creating suppression alert");

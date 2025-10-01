@@ -583,6 +583,7 @@ Please check the configuration and ensure all required services are registered.
         // Configure S7 strategy options
         services.Configure<TradingBot.Abstractions.S7Configuration>(configuration.GetSection("S7"));
         services.Configure<TradingBot.Abstractions.BreadthConfiguration>(configuration.GetSection("Breadth"));
+        services.Configure<TradingBot.S7.S7MarketDataBridgeConfiguration>(configuration.GetSection("S7:MarketDataBridge"));
         
         // Register S7 service with full DSL implementation
         services.AddSingleton<TradingBot.Abstractions.IS7Service, TradingBot.S7.S7Service>();
@@ -604,6 +605,9 @@ Please check the configuration and ensure all required services are registered.
         // ================================================================================
         // AUTOMATION-FIRST UPGRADE SCOPE - Feature Engineering Pipeline
         // Register feature resolvers as singletons for fail-closed feature extraction
+        
+        services.Configure<BotCore.Configuration.OfiConfiguration>(configuration.GetSection("Features:Ofi"));
+        services.Configure<BotCore.Configuration.BarDispatcherConfiguration>(configuration.GetSection("Features:BarDispatcher"));
         
         services.AddSingleton<BotCore.Features.IFeatureResolver, BotCore.Features.LiquidityAbsorptionResolver>();
         services.AddSingleton<BotCore.Features.IFeatureResolver, BotCore.Features.MtfStructureResolver>();
@@ -1329,9 +1333,25 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<TradingBot.BotCore.Services.IntegritySigningService>();
         services.AddSingleton<TradingBot.BotCore.Services.SuppressionLedgerService>();
         
+        // Register Production Guardrail configurations
+        services.Configure<BotCore.Configuration.ProductionGuardrailConfiguration>(configuration.GetSection("Guardrails"));
+        services.Configure<BotCore.Configuration.KillSwitchConfiguration>(configuration.GetSection("KillSwitch"));
+        services.Configure<BotCore.Configuration.EmergencyStopConfiguration>(configuration.GetSection("EmergencyStop"));
+        
+        // Note: ResilienceConfiguration is already configured by ProductionConfigurationExtensions
+        
         // Register Production Resilience Service - Retry logic, circuit breakers, graceful degradation
-        services.Configure<BotCore.Services.ResilienceConfig>(configuration.GetSection("Resilience"));
         services.AddSingleton<BotCore.Services.ProductionResilienceService>();
+        
+        // Register Production Guardrail Services - Live trading gates, order evidence, kill switch monitoring
+        services.AddSingleton<BotCore.Services.ProductionKillSwitchService>();
+        services.AddSingleton<BotCore.Services.ProductionOrderEvidenceService>();
+        services.AddSingleton<BotCore.Services.ProductionGuardrailOrchestrator>();
+        services.AddHostedService<BotCore.Services.ProductionKillSwitchService>();
+        
+        // Register Emergency Stop System with proper namespace and dependencies
+        services.AddSingleton<BotCore.Services.EmergencyStopSystem>();
+        services.AddHostedService<BotCore.Services.EmergencyStopSystem>();
         
         // Register Production Monitoring Service - Health checks, metrics, performance tracking
         services.AddSingleton<BotCore.Services.ProductionMonitoringService>();

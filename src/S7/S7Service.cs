@@ -22,7 +22,6 @@ namespace TradingBot.S7
         // S7 Configuration Constants
         private const int PriceHistoryBufferSize = 10;
         private const int PriceHistoryCleanupSize = 10;
-        private const decimal DefaultMinZScoreThreshold = 0.001m;
         private const decimal AveragingDivisor = 2m;
 
         // Price history storage for ES and NQ
@@ -378,7 +377,7 @@ namespace TradingBot.S7
             var nqSignalDirection = GetSignalDirection(nqState);
 
             // FAIL-CLOSED: Check for missing data or invalid states
-            if (Math.Abs(esState.ZScore) < DefaultMinZScoreThreshold && Math.Abs(nqState.ZScore) < DefaultMinZScoreThreshold)
+            if (Math.Abs(esState.ZScore) < _config.DefaultMinZScoreThreshold && Math.Abs(nqState.ZScore) < _config.DefaultMinZScoreThreshold)
             {
                 _logZeroZScoreAuditViolation(_logger, null);
                 return 0m; // Fail-closed: no safe default, force hold

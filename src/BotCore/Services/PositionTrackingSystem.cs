@@ -15,7 +15,7 @@ namespace TopstepX.Bot.Core.Services
     /// Real-time Position Tracking and Risk Management System
     /// Critical component for live trading safety
     /// </summary>
-    public class PositionTrackingSystem : IDisposable
+    public sealed class PositionTrackingSystem : IDisposable
     {
         private readonly ILogger<PositionTrackingSystem> _logger;
         private readonly ConcurrentDictionary<string, Position> _positions = new();
@@ -23,10 +23,7 @@ namespace TopstepX.Bot.Core.Services
         private readonly RiskLimits _riskLimits;
         private readonly Timer _reconciliationTimer;
         private readonly object _lockObject = new();
-        
-        // Risk management constants (S109 compliance) - Only used constants kept
-        private const decimal DEFAULT_ACCOUNT_BALANCE = 50000m; // Account size
-        private const decimal DEFAULT_MAX_RISK_PER_TRADE = 200m; // $200 max per trade
+        private bool _disposed;
         
         public event EventHandler<PositionUpdateEventArgs>? PositionUpdated;
         public event EventHandler<RiskViolationEventArgs>? RiskViolationDetected;
@@ -223,7 +220,6 @@ namespace TopstepX.Bot.Core.Services
         {
             var totalDailyPnL = _positions.Values.Sum(p => p.DailyPnL);
             var totalUnrealizedPnL = _positions.Values.Sum(p => p.UnrealizedPnL);
-            var totalRealizedPnL = _positions.Values.Sum(p => p.RealizedPnL);
             
             var violations = new List<string>();
             
@@ -337,7 +333,17 @@ namespace TopstepX.Bot.Core.Services
         
         public void Dispose()
         {
-            _reconciliationTimer?.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (!_disposed && disposing)
+            {
+                _reconciliationTimer?.Dispose();
+                _disposed = true;
+            }
         }
     }
     

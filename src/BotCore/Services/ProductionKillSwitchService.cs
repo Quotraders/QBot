@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using BotCore.Configuration;
 using System;
 using System.IO;
 using System.Threading;
@@ -14,19 +16,32 @@ namespace BotCore.Services;
 public class ProductionKillSwitchService : IHostedService, IDisposable
 {
     private readonly ILogger<ProductionKillSwitchService> _logger;
+    private readonly KillSwitchConfiguration _config;
     private readonly FileSystemWatcher _fileWatcher;
     private readonly Timer _periodicCheck;
     private volatile bool _disposed;
     
-    private const string KILL_FILE_NAME = "kill.txt";
-    private const int CHECK_INTERVAL_MS = 1000; // Check every second
+    private static KillSwitchConfiguration? _staticConfig;
 
-    public ProductionKillSwitchService(ILogger<ProductionKillSwitchService> logger)
+    public ProductionKillSwitchService(ILogger<ProductionKillSwitchService> logger, IOptions<KillSwitchConfiguration> config)
     {
         _logger = logger;
+        _config = config?.Value ?? throw new ArgumentNullException(nameof(config));
+        _staticConfig = _config; // Store for static methods
         
-        // Watch current directory for kill.txt
-        _fileWatcher = new FileSystemWatcher(".", KILL_FILE_NAME)
+        // Validate configuration
+        _config.Validate();
+        
+        // Resolve kill file path (support relative and absolute paths)
+        var killFilePath = ResolveKillFilePath(_config.FilePath);
+        var killFileDirectory = Path.GetDirectoryName(killFilePath) ?? Directory.GetCurrentDirectory();
+        var killFileName = Path.GetFileName(killFilePath);
+        
+        // Ensure directory exists
+        Directory.CreateDirectory(killFileDirectory);
+        
+        // Watch for kill file
+        _fileWatcher = new FileSystemWatcher(killFileDirectory, killFileName)
         {
             NotifyFilter = NotifyFilters.CreationTime | NotifyFilters.LastWrite | NotifyFilters.FileName,
             EnableRaisingEvents = true
@@ -36,9 +51,9 @@ public class ProductionKillSwitchService : IHostedService, IDisposable
         _fileWatcher.Changed += OnKillFileDetected;
         
         // Periodic check as backup in case file watcher fails
-        _periodicCheck = new Timer(PeriodicKillFileCheck, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(CHECK_INTERVAL_MS));
+        _periodicCheck = new Timer(PeriodicKillFileCheck, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(_config.CheckIntervalMs));
         
-        _logger.LogInformation("🛡️ [KILL-SWITCH] Production kill switch service initialized - monitoring for {File}", KILL_FILE_NAME);
+        _logger.LogInformation("🛡️ [KILL-SWITCH] Production kill switch service initialized - monitoring for {File}", killFilePath);
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -56,7 +71,8 @@ public class ProductionKillSwitchService : IHostedService, IDisposable
 
     private void CheckKillFileOnStartup()
     {
-        if (File.Exists(KILL_FILE_NAME))
+        var killFilePath = ResolveKillFilePath(_config.FilePath);
+        if (File.Exists(killFilePath))
         {
             _logger.LogCritical("🔴 [KILL-SWITCH] KILL FILE DETECTED ON STARTUP - Forcing DRY_RUN mode");
             EnforceDryRunMode("Startup detection");
@@ -73,7 +89,8 @@ public class ProductionKillSwitchService : IHostedService, IDisposable
     {
         try
         {
-            if (File.Exists(KILL_FILE_NAME))
+            var killFilePath = ResolveKillFilePath(_config.FilePath);
+            if (File.Exists(killFilePath))
             {
                 _logger.LogCritical("🔴 [KILL-SWITCH] KILL FILE DETECTED (periodic check) - Forcing DRY_RUN mode");
                 EnforceDryRunMode("Periodic check");
@@ -85,7 +102,7 @@ public class ProductionKillSwitchService : IHostedService, IDisposable
         }
     }
 
-    private void EnforceDryRunMode(string detectionMethod)
+    public void EnforceDryRunMode(string detectionMethod)
     {
         try
         {
@@ -97,6 +114,12 @@ public class ProductionKillSwitchService : IHostedService, IDisposable
             _logger.LogCritical("🛡️ [KILL-SWITCH] DRY_RUN MODE ENFORCED - Detection: {Method}", detectionMethod);
             _logger.LogCritical("🛡️ [KILL-SWITCH] All execution flags disabled for safety");
             
+            // Create DRY_RUN marker file if enabled
+            if (_config.CreateDryRunMarker)
+            {
+                CreateDryRunMarker(detectionMethod);
+            }
+            
             // Log kill file contents if available for debugging
             LogKillFileContents();
         }
@@ -106,19 +129,49 @@ public class ProductionKillSwitchService : IHostedService, IDisposable
         }
     }
 
+    private void CreateDryRunMarker(string reason)
+    {
+        try
+        {
+            var markerPath = ResolveKillFilePath(_config.DryRunMarkerPath);
+            var markerDirectory = Path.GetDirectoryName(markerPath);
+            if (!string.IsNullOrEmpty(markerDirectory))
+            {
+                Directory.CreateDirectory(markerDirectory);
+            }
+            
+            var markerContent = $"""
+                DRY_RUN MODE ENFORCED
+                =====================
+                Timestamp: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC
+                Reason: {reason}
+                Process ID: {Environment.ProcessId}
+                Kill File: {ResolveKillFilePath(_config.FilePath)}
+                """;
+                
+            File.WriteAllText(markerPath, markerContent);
+            _logger.LogInformation("📝 [KILL-SWITCH] DRY_RUN marker created: {MarkerPath}", markerPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "⚠️ [KILL-SWITCH] Could not create DRY_RUN marker file");
+        }
+    }
+
     private void LogKillFileContents()
     {
         try
         {
-            if (File.Exists(KILL_FILE_NAME))
+            var killFilePath = ResolveKillFilePath(_config.FilePath);
+            if (File.Exists(killFilePath))
             {
-                var contents = File.ReadAllText(KILL_FILE_NAME);
+                var contents = File.ReadAllText(killFilePath);
                 if (!string.IsNullOrWhiteSpace(contents))
                 {
                     _logger.LogInformation("📝 [KILL-SWITCH] Kill file contents: {Contents}", contents.Trim());
                 }
                 
-                var fileInfo = new FileInfo(KILL_FILE_NAME);
+                var fileInfo = new FileInfo(killFilePath);
                 _logger.LogInformation("📅 [KILL-SWITCH] Kill file created: {Created}, modified: {Modified}", 
                     fileInfo.CreationTime, fileInfo.LastWriteTime);
             }
@@ -130,11 +183,31 @@ public class ProductionKillSwitchService : IHostedService, IDisposable
     }
 
     /// <summary>
-    /// Check if kill.txt exists (for use by other services)
+    /// Resolve kill file path (support relative and absolute paths)
+    /// </summary>
+    private static string ResolveKillFilePath(string configuredPath)
+    {
+        if (Path.IsPathRooted(configuredPath))
+        {
+            return configuredPath;
+        }
+        return Path.Combine(Directory.GetCurrentDirectory(), configuredPath);
+    }
+
+    /// <summary>
+    /// Check if kill file exists (for use by other services)
     /// </summary>
     public static bool IsKillSwitchActive()
     {
-        return File.Exists(KILL_FILE_NAME);
+        var config = _staticConfig;
+        if (config == null)
+        {
+            // Fallback to default behavior if config not available
+            return File.Exists("kill.txt");
+        }
+        
+        var killFilePath = ResolveKillFilePath(config.FilePath);
+        return File.Exists(killFilePath);
     }
 
     /// <summary>

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using System;
 using System.Linq;
 using System.Net.Http;
@@ -19,6 +20,7 @@ namespace TradingBot.S7
     {
         private readonly ILogger<S7MarketDataBridge> _logger;
         private readonly IServiceProvider _serviceProvider;
+        private readonly S7MarketDataBridgeConfiguration _bridgeConfig;
         private object? _marketDataService;  // Will resolve to IEnhancedMarketDataFlowService
         private IS7Service? _s7Service;
         private S7Configuration? _config;
@@ -50,8 +52,8 @@ namespace TradingBot.S7
                 "[S7-BRIDGE] Error subscribing to market data events");
                 
         private static readonly Action<ILogger, Exception?> _logMarketDataServiceNotAvailable = 
-            LoggerMessage.Define(LogLevel.Warning, new EventId(2007, "MarketDataServiceNotAvailable"), 
-                "[S7-BRIDGE] Market data service not available - S7 bridge disabled");
+            LoggerMessage.Define(LogLevel.Error, new EventId(2007, "MarketDataServiceNotAvailable"), 
+                "[S7-BRIDGE] [S7-AUDIT-VIOLATION] Enhanced market data service not available - FAIL-CLOSED + TELEMETRY");
 
         private static readonly Action<ILogger, string, Exception?> _logMonitoringSymbols = 
             LoggerMessage.Define<string>(LogLevel.Information, new EventId(2008, "MonitoringSymbols"), 
@@ -137,16 +139,25 @@ namespace TradingBot.S7
             LoggerMessage.Define<string>(LogLevel.Error, new EventId(2028, "TimeoutAuditViolation"), 
                 "[S7-BRIDGE] [S7-AUDIT-VIOLATION] Timeout processing market data for {Symbol} - FAIL-CLOSED + TELEMETRY");
 
+        private static readonly Action<ILogger, string, Exception?> _logReflectionFallbackTelemetry = 
+            LoggerMessage.Define<string>(LogLevel.Warning, new EventId(2030, "ReflectionFallbackTelemetry"), 
+                "[S7-BRIDGE] [S7-AUDIT-VIOLATION] Price extraction falling back to reflection for {Symbol} - TELEMETRY");
+
         private static readonly Action<ILogger, string, Exception?> _logArgumentAuditViolation = 
-            LoggerMessage.Define<string>(LogLevel.Error, new EventId(2029, "ArgumentAuditViolation"), 
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(2031, "ArgumentAuditViolation"), 
                 "[S7-BRIDGE] [S7-AUDIT-VIOLATION] Invalid argument processing market data for {Symbol} - FAIL-CLOSED + TELEMETRY");
 
         public S7MarketDataBridge(
             ILogger<S7MarketDataBridge> logger,
-            IServiceProvider serviceProvider)
+            IServiceProvider serviceProvider,
+            IOptions<S7MarketDataBridgeConfiguration> bridgeConfig)
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
+            _bridgeConfig = bridgeConfig?.Value ?? throw new ArgumentNullException(nameof(bridgeConfig));
+            
+            // Validate configuration on construction
+            _bridgeConfig.Validate();
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -173,7 +184,7 @@ namespace TradingBot.S7
                 // Using reflection to avoid direct BotCore dependency
                 var marketDataServiceType = AppDomain.CurrentDomain.GetAssemblies()
                     .SelectMany(a => a.GetTypes())
-                    .FirstOrDefault(t => t.Name == "IEnhancedMarketDataFlowService");
+                    .FirstOrDefault(t => t.Name == _bridgeConfig.EnhancedServiceTypeName);
 
                 if (marketDataServiceType != null)
                 {
@@ -181,7 +192,7 @@ namespace TradingBot.S7
                     if (_marketDataService != null)
                     {
                         // Use reflection to subscribe to the OnMarketDataReceived event
-                        var eventInfo = marketDataServiceType.GetEvent("OnMarketDataReceived");
+                        var eventInfo = marketDataServiceType.GetEvent(_bridgeConfig.MarketDataEventName);
                         if (eventInfo != null)
                         {
                             var handler = new Action<string, object>(OnMarketDataReceived);
@@ -194,11 +205,31 @@ namespace TradingBot.S7
                         else
                         {
                             _logSubscriptionError(_logger, null);
+                            
+                            if (_bridgeConfig.FailOnMissingEnhancedService)
+                            {
+                                throw new InvalidOperationException($"[S7-BRIDGE] [S7-AUDIT-VIOLATION] Event {_bridgeConfig.MarketDataEventName} not found on enhanced market data service - FAIL-CLOSED + TELEMETRY");
+                            }
                         }
                     }
+                    else if (_bridgeConfig.FailOnMissingEnhancedService)
+                    {
+                        _logMarketDataServiceNotAvailable(_logger, null);
+                        throw new InvalidOperationException($"[S7-BRIDGE] [S7-AUDIT-VIOLATION] Enhanced market data service {_bridgeConfig.EnhancedServiceTypeName} not registered in DI - FAIL-CLOSED + TELEMETRY");
+                    }
+                }
+                else if (_bridgeConfig.FailOnMissingEnhancedService)
+                {
+                    _logMarketDataServiceNotAvailable(_logger, null);
+                    throw new InvalidOperationException($"[S7-BRIDGE] [S7-AUDIT-VIOLATION] Enhanced market data service type {_bridgeConfig.EnhancedServiceTypeName} not found - FAIL-CLOSED + TELEMETRY");
                 }
 
+                // AUDIT-CLEAN: Configuration gating - only proceed if explicitly allowed
+                if (!_bridgeConfig.EnableConfigurationGating)
+                {
                     _logMarketDataServiceNotAvailable(_logger, null);
+                }
+                
                 return Task.CompletedTask;
             }
             catch (ReflectionTypeLoadException ex)
@@ -337,6 +368,12 @@ namespace TradingBot.S7
                 else
                 {
                     // Try to extract price using reflection as fallback
+                    // AUDIT-CLEAN: Surface telemetry when falling back to reflection
+                    if (_bridgeConfig.EnableReflectionFallbackTelemetry)
+                    {
+                        _logReflectionFallbackTelemetry(_logger, symbol, null);
+                    }
+                    
                     var type = data.GetType();
                     var closeProperty = type.GetProperty("Close") ?? type.GetProperty("Last") ?? type.GetProperty("Price");
                     if (closeProperty != null && closeProperty.PropertyType == typeof(decimal))

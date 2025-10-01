@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using BotCore.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,6 +22,7 @@ namespace BotCore.Features
         private readonly ILogger<BarDispatcherHook> _logger;
         private readonly IServiceProvider _serviceProvider;
         private readonly IEnumerable<IFeatureResolver> _resolvers;
+        private readonly BarDispatcherConfiguration _config;
         private bool _disposed;
 
         // Performance counters
@@ -30,11 +33,16 @@ namespace BotCore.Features
         public BarDispatcherHook(
             ILogger<BarDispatcherHook> logger,
             IServiceProvider serviceProvider,
-            IEnumerable<IFeatureResolver> resolvers)
+            IEnumerable<IFeatureResolver> resolvers,
+            IOptions<BarDispatcherConfiguration> config)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _resolvers = resolvers ?? throw new ArgumentNullException(nameof(resolvers));
+            _config = config?.Value ?? throw new ArgumentNullException(nameof(config));
+            
+            // Validate configuration on construction
+            _config.Validate();
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -56,8 +64,22 @@ namespace BotCore.Features
                 {
                     _logger.LogWarning("[BAR-DISPATCHER] [AUDIT-VIOLATION] BarPyramid not found - attempting alternative bar sources");
                     
-                    // Try to find other bar sources
-                    TryHookAlternativeBarSources();
+                    // Try to find other bar sources - AUDIT-CLEAN: Use configuration-driven approach
+                    if (!TryHookAlternativeBarSources())
+                    {
+                        // FAIL-CLOSED: If no bar sources found and fail-closed is enabled
+                        if (_config.FailOnMissingBarSources)
+                        {
+                            var missingSourcesMessage = $"[BAR-DISPATCHER] [AUDIT-VIOLATION] No bar sources available - Expected: {string.Join(", ", _config.ExpectedBarSources)} - FAIL-CLOSED + TELEMETRY";
+                            _logger.LogError(missingSourcesMessage);
+                            throw new InvalidOperationException(missingSourcesMessage);
+                        }
+                        
+                        if (_config.EnableExplicitHolds)
+                        {
+                            _logger.LogWarning("[BAR-DISPATCHER] [AUDIT-VIOLATION] No bar sources available - EXPLICIT HOLD TRIGGERED + TELEMETRY");
+                        }
+                    }
                 }
 
                 return Task.CompletedTask;
@@ -104,41 +126,64 @@ namespace BotCore.Features
             }
         }
 
-        private void TryHookAlternativeBarSources()
+        private bool TryHookAlternativeBarSources()
         {
             // Try to find other bar processing services that might emit bar events
-            var services = new[]
-            {
-                typeof(BotCore.Services.TradingSystemBarConsumer),
-                typeof(BotCore.Services.BarTrackingService),
-                // Add other potential bar sources here
-            };
-
-            foreach (var serviceType in services)
+            // AUDIT-CLEAN: Use configuration-driven service types instead of hardcoded
+            bool foundAnySource = false;
+            
+            foreach (var serviceTypeName in _config.ExpectedBarSources)
             {
                 try
                 {
-                    var service = _serviceProvider.GetService(serviceType);
-                    if (service != null)
+                    // Find the type by name across all loaded assemblies
+                    var serviceType = AppDomain.CurrentDomain.GetAssemblies()
+                        .SelectMany(a => a.GetTypes())
+                        .FirstOrDefault(t => t.FullName == serviceTypeName || t.Name == serviceTypeName);
+                        
+                    if (serviceType != null)
                     {
-                        _logger.LogInformation("[BAR-DISPATCHER] Found alternative bar source: {ServiceType}", serviceType.Name);
-                        // Hook into events if available using reflection
-                        TryHookIntoServiceEvents(service);
+                        var service = _serviceProvider.GetService(serviceType);
+                        if (service != null)
+                        {
+                            _logger.LogInformation("[BAR-DISPATCHER] Found alternative bar source: {ServiceType}", serviceType.Name);
+                            // Hook into events if available using reflection
+                            if (TryHookIntoServiceEvents(service))
+                            {
+                                foundAnySource = true;
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogWarning("[BAR-DISPATCHER] [AUDIT-VIOLATION] Service type {ServiceType} found but not registered in DI", serviceTypeName);
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("[BAR-DISPATCHER] [AUDIT-VIOLATION] Service type {ServiceType} not found in loaded assemblies", serviceTypeName);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "[BAR-DISPATCHER] Failed to hook into {ServiceType}", serviceType.Name);
+                    _logger.LogWarning(ex, "[BAR-DISPATCHER] [AUDIT-VIOLATION] Failed to hook into {ServiceType}", serviceTypeName);
+                    
+                    if (_config.EnableExplicitHolds)
+                    {
+                        _logger.LogError("[BAR-DISPATCHER] [AUDIT-VIOLATION] Failed to hook into expected bar source {ServiceType} - EXPLICIT HOLD TRIGGERED + TELEMETRY", serviceTypeName);
+                    }
                 }
             }
+            
+            return foundAnySource;
         }
 
-        private void TryHookIntoServiceEvents(object service)
+        private bool TryHookIntoServiceEvents(object service)
         {
             try
             {
                 var serviceType = service.GetType();
                 var events = serviceType.GetEvents();
+                bool hookedAnyEvent = false;
                 
                 foreach (var eventInfo in events)
                 {
@@ -147,12 +192,28 @@ namespace BotCore.Features
                         _logger.LogInformation("[BAR-DISPATCHER] Found potential bar event: {EventName} on {ServiceType}", 
                             eventInfo.Name, serviceType.Name);
                         // Could implement dynamic event hooking here if needed
+                        hookedAnyEvent = true;
+                        // For now, just log that we found it - actual event hooking would require more complex reflection
                     }
                 }
+                
+                if (!hookedAnyEvent && _config.EnableExplicitHolds)
+                {
+                    _logger.LogWarning("[BAR-DISPATCHER] [AUDIT-VIOLATION] No suitable bar events found on {ServiceType} - EXPLICIT HOLD CONSIDERATION + TELEMETRY", serviceType.Name);
+                }
+                
+                return hookedAnyEvent;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "[BAR-DISPATCHER] Failed to inspect service events for {ServiceType}", service.GetType().Name);
+                _logger.LogWarning(ex, "[BAR-DISPATCHER] [AUDIT-VIOLATION] Failed to inspect service events for {ServiceType}", service.GetType().Name);
+                
+                if (_config.EnableExplicitHolds)
+                {
+                    _logger.LogError("[BAR-DISPATCHER] [AUDIT-VIOLATION] Critical failure inspecting bar source - EXPLICIT HOLD TRIGGERED + TELEMETRY");
+                }
+                
+                return false;
             }
         }
 

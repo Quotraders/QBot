@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using BotCore.Configuration;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
@@ -14,15 +16,17 @@ namespace BotCore.Services;
 public class ProductionResilienceService
 {
     private readonly ILogger<ProductionResilienceService> _logger;
-    private readonly ResilienceConfig _config;
-    private readonly Dictionary<string, CircuitBreakerState> _circuitBreakers = new();
+    private readonly ResilienceConfiguration _config;
+    private readonly ConcurrentDictionary<string, CircuitBreakerState> _circuitBreakers = new();
 
-    public ProductionResilienceService(ILogger<ProductionResilienceService> logger, IOptions<ResilienceConfig> config)
+    public ProductionResilienceService(ILogger<ProductionResilienceService> logger, IOptions<ResilienceConfiguration> config)
     {
         if (config is null) throw new ArgumentNullException(nameof(config));
         
         _logger = logger;
         _config = config.Value;
+        
+        // Note: Configuration validation is handled by ResilienceConfigurationValidator in DI
     }
 
     /// <summary>
@@ -40,7 +44,7 @@ public class ProductionResilienceService
         // Check circuit breaker state
         if (circuitBreaker.State == CircuitState.Open)
         {
-            if (DateTime.UtcNow - circuitBreaker.LastFailure < _config.CircuitBreakerTimeout)
+            if (DateTime.UtcNow - circuitBreaker.LastFailure < TimeSpan.FromMilliseconds(_config.CircuitBreakerTimeoutMs))
             {
                 _logger.LogWarning("🚫 [RESILIENCE] Circuit breaker OPEN for {Operation}, falling back to default", operationName);
                 throw new CircuitBreakerOpenException($"Circuit breaker is open for {operationName}");
@@ -93,6 +97,10 @@ public class ProductionResilienceService
                     circuitBreaker.LastFailure = DateTime.UtcNow;
                     _logger.LogError("🚫 [RESILIENCE] Circuit breaker OPENED for {Operation} after {Failures} failures", 
                         operationName, circuitBreaker.FailureCount);
+                        
+                    // Emit structured telemetry for circuit breaker open (always enabled for production compliance)
+                    _logger.LogError("🚫 [RESILIENCE][CIRCUIT-OPEN] Operation: {Operation}, Failures: {Failures}, Timestamp: {Timestamp}", 
+                        operationName, circuitBreaker.FailureCount, DateTime.UtcNow);
                 }
                 
                 if (attempt < _config.MaxRetries)
@@ -127,7 +135,7 @@ public class ProductionResilienceService
         return ExecuteWithResilienceAsync(operationName, async (ct) =>
         {
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeoutCts.CancelAfter(_config.HttpTimeout);
+            timeoutCts.CancelAfter(TimeSpan.FromMilliseconds(_config.HttpTimeoutMs));
             
             return await httpOperation(httpClient, timeoutCts.Token).ConfigureAwait(false);
         }, cancellationToken);
@@ -173,12 +181,7 @@ public class ProductionResilienceService
 
     private CircuitBreakerState GetOrCreateCircuitBreaker(string operationName)
     {
-        if (!_circuitBreakers.TryGetValue(operationName, out var state))
-        {
-            state = new CircuitBreakerState();
-            _circuitBreakers[operationName] = state;
-        }
-        return state;
+        return _circuitBreakers.GetOrAdd(operationName, _ => new CircuitBreakerState());
     }
 
     private bool IsRetriableException(Exception ex)
@@ -198,48 +201,40 @@ public class ProductionResilienceService
 
     private bool IsRetriableHttpError(HttpRequestException httpEx)
     {
-        // Retry on server errors, not client errors
-        var statusCode = GetHttpStatusCode(httpEx);
-        return statusCode >= HttpStatusCode.InternalServerError || 
-               statusCode == HttpStatusCode.RequestTimeout ||
-               statusCode == HttpStatusCode.TooManyRequests;
+        // Use HttpRequestException.Data or try to extract status code
+        if (httpEx.Data.Contains("StatusCode") && httpEx.Data["StatusCode"] is HttpStatusCode statusCode)
+        {
+            return statusCode >= HttpStatusCode.InternalServerError || 
+                   statusCode == HttpStatusCode.RequestTimeout ||
+                   statusCode == HttpStatusCode.TooManyRequests;
+        }
+        
+        // Fallback to message parsing if status code not available
+        return GetHttpStatusCodeFromMessage(httpEx);
     }
 
-    private HttpStatusCode GetHttpStatusCode(HttpRequestException httpEx)
+    private bool GetHttpStatusCodeFromMessage(HttpRequestException httpEx)
     {
         // Extract status code from HTTP exception message if available
-        // This is a simplified implementation
-        if (httpEx.Message.Contains("500")) return HttpStatusCode.InternalServerError;
-        if (httpEx.Message.Contains("502")) return HttpStatusCode.BadGateway;
-        if (httpEx.Message.Contains("503")) return HttpStatusCode.ServiceUnavailable;
-        if (httpEx.Message.Contains("504")) return HttpStatusCode.GatewayTimeout;
-        if (httpEx.Message.Contains("408")) return HttpStatusCode.RequestTimeout;
-        if (httpEx.Message.Contains("429")) return HttpStatusCode.TooManyRequests;
-        
-        return HttpStatusCode.InternalServerError; // Default to retryable
+        var message = httpEx.Message;
+        return message.Contains("500") || message.Contains("502") || message.Contains("503") || 
+               message.Contains("504") || message.Contains("408") || message.Contains("429");
     }
 
     private TimeSpan CalculateExponentialBackoff(int attempt)
     {
-        var baseDelay = _config.BaseRetryDelay;
+        var baseDelay = TimeSpan.FromMilliseconds(_config.BaseRetryDelayMs);
+        var maxDelay = TimeSpan.FromMilliseconds(_config.MaxRetryDelayMs);
         var exponentialDelay = TimeSpan.FromMilliseconds(baseDelay.TotalMilliseconds * Math.Pow(2, attempt - 1));
         var jitteredDelay = TimeSpan.FromMilliseconds(exponentialDelay.TotalMilliseconds * (0.8 + Random.Shared.NextDouble() * 0.4));
         
-        return jitteredDelay > _config.MaxRetryDelay ? _config.MaxRetryDelay : jitteredDelay;
+        return jitteredDelay > maxDelay ? maxDelay : jitteredDelay;
     }
 }
 
 #region Configuration and Data Models
 
-public class ResilienceConfig
-{
-    public int MaxRetries { get; set; } = 3;
-    public TimeSpan BaseRetryDelay { get; set; } = TimeSpan.FromMilliseconds(500);
-    public TimeSpan MaxRetryDelay { get; set; } = TimeSpan.FromSeconds(30);
-    public TimeSpan HttpTimeout { get; set; } = TimeSpan.FromSeconds(30);
-    public int CircuitBreakerThreshold { get; set; } = 5;
-    public TimeSpan CircuitBreakerTimeout { get; set; } = TimeSpan.FromMinutes(1);
-}
+// Note: ResilienceConfiguration is now defined in ProductionGuardrailConfiguration.cs
 
 public class CircuitBreakerState
 {

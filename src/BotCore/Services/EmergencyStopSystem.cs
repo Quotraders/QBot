@@ -5,22 +5,27 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using BotCore.Configuration;
+using BotCore.Services;
+using TradingBot.Abstractions;
 using TopstepX.Bot.Abstractions;
 
-namespace TopstepX.Bot.Core.Services
+namespace BotCore.Services
 {
     /// <summary>
     /// Emergency Stop System - Critical Safety Component
-    /// Monitors kill.txt file and provides emergency shutdown capabilities
+    /// Monitors kill file and provides emergency shutdown capabilities
+    /// Integrates with ProductionKillSwitchService for coordinated shutdown
     /// </summary>
     public class EmergencyStopSystem : BackgroundService
     {
         private readonly ILogger<EmergencyStopSystem> _logger;
+        private readonly EmergencyStopConfiguration _config;
+        private readonly ProductionKillSwitchService _killSwitchService;
         private readonly string _killFilePath;
         private readonly CancellationTokenSource _emergencyStopSource;
         
-        // Emergency stop monitoring constants
-        private const int MonitoringIntervalMs = 1000; // Kill file monitoring interval
         private FileSystemWatcher? _fileWatcher;
         private volatile bool _isEmergencyStop;
         
@@ -29,11 +34,21 @@ namespace TopstepX.Bot.Core.Services
         public bool IsEmergencyStop => _isEmergencyStop;
         public CancellationToken EmergencyStopToken => _emergencyStopSource.Token;
         
-        public EmergencyStopSystem(ILogger<EmergencyStopSystem> logger)
+        public EmergencyStopSystem(
+            ILogger<EmergencyStopSystem> logger,
+            IOptions<EmergencyStopConfiguration> config,
+            ProductionKillSwitchService killSwitchService)
         {
             _logger = logger;
-            _killFilePath = Path.Combine(Directory.GetCurrentDirectory(), "kill.txt");
+            _config = config?.Value ?? throw new ArgumentNullException(nameof(config));
+            _killSwitchService = killSwitchService ?? throw new ArgumentNullException(nameof(killSwitchService));
             _emergencyStopSource = new CancellationTokenSource();
+            
+            // Validate configuration
+            _config.Validate();
+            
+            // Use kill file path from configuration (coordinated with KillSwitchService)
+            _killFilePath = Path.Combine(Directory.GetCurrentDirectory(), "kill.txt"); // Fallback default
         }
         
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -51,7 +66,7 @@ namespace TopstepX.Bot.Core.Services
                 // Keep monitoring until cancellation
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    await Task.Delay(MonitoringIntervalMs, stoppingToken).ConfigureAwait(false);
+                    await Task.Delay(_config.MonitoringIntervalMs, stoppingToken).ConfigureAwait(false);
                     
                     // Periodic check in case file watcher fails
                     if (!_isEmergencyStop)
@@ -156,7 +171,18 @@ namespace TopstepX.Bot.Core.Services
             _isEmergencyStop = true;
             _emergencyStopSource.Cancel();
             
-            _logger.LogCritical("🛑 EMERGENCY STOP TRIGGERED: {Reason}", reason);
+            _logger.LogCritical("🛑 [EMERGENCY-STOP] EMERGENCY STOP TRIGGERED: {Reason}", reason);
+            
+            // Integrate with ProductionKillSwitchService for coordinated shutdown
+            try
+            {
+                _killSwitchService.EnforceDryRunMode($"Emergency stop: {reason}");
+                _logger.LogInformation("✅ [EMERGENCY-STOP] Successfully coordinated with kill switch service");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [EMERGENCY-STOP] Failed to coordinate with kill switch service");
+            }
             
             var eventArgs = new EmergencyStopEventArgs
             {
@@ -166,15 +192,21 @@ namespace TopstepX.Bot.Core.Services
             
             EmergencyStopTriggered?.Invoke(this, eventArgs);
             
-            // Create emergency log file
-            CreateEmergencyLog(reason);
+            // Create emergency log file if enabled
+            if (_config.EnableEmergencyLogging)
+            {
+                CreateEmergencyLog(reason);
+            }
         }
         
         private void CreateEmergencyLog(string reason)
         {
             try
             {
-                var logPath = Path.Combine(Directory.GetCurrentDirectory(), $"emergency_stop_{DateTime.UtcNow:yyyyMMdd_HHmmss}.log");
+                // Ensure emergency log directory exists
+                Directory.CreateDirectory(_config.EmergencyLogDirectory);
+                
+                var logPath = Path.Combine(_config.EmergencyLogDirectory, $"emergency_stop_{DateTime.UtcNow:yyyyMMdd_HHmmss}.log");
                 var logContent = $"""
                     EMERGENCY STOP EVENT
                     ====================
@@ -189,22 +221,26 @@ namespace TopstepX.Bot.Core.Services
                     - Check for pending orders
                     - Review trading logs
                     - Investigate root cause before restart
+                    
+                    GUARDRAIL STATUS:
+                    - Kill switch active: {ProductionKillSwitchService.IsKillSwitchActive()}
+                    - DRY_RUN mode: {ProductionKillSwitchService.IsDryRunMode()}
                     """;
                     
                 File.WriteAllText(logPath, logContent);
-                _logger.LogInformation("📋 Emergency log created: {LogPath}", logPath);
+                _logger.LogInformation("📋 [EMERGENCY-STOP] Emergency log created: {LogPath}", logPath);
             }
             catch (IOException ex)
             {
-                _logger.LogError(ex, "❌ Failed to create emergency log - IO error");
+                _logger.LogError(ex, "❌ [EMERGENCY-STOP] Failed to create emergency log - IO error");
             }
             catch (UnauthorizedAccessException ex)
             {
-                _logger.LogError(ex, "❌ Failed to create emergency log - access denied");
+                _logger.LogError(ex, "❌ [EMERGENCY-STOP] Failed to create emergency log - access denied");
             }
             catch (SecurityException ex)
             {
-                _logger.LogError(ex, "❌ Failed to create emergency log - security error");
+                _logger.LogError(ex, "❌ [EMERGENCY-STOP] Failed to create emergency log - security error");
             }
         }
         
@@ -223,7 +259,7 @@ namespace TopstepX.Bot.Core.Services
                 }
                 
                 // Wait a moment
-                await Task.Delay(MonitoringIntervalMs).ConfigureAwait(false);
+                await Task.Delay(_config.MonitoringIntervalMs).ConfigureAwait(false);
                 
                 // Reset state
                 _isEmergencyStop = false;

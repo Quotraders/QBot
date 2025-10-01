@@ -473,12 +473,6 @@ public class TopstepXConfigurationValidator : IValidateOptions<TopstepXConfigura
 
         return failures.Count > 0 ? ValidateOptionsResult.Fail(failures) : ValidateOptionsResult.Success;
     }
-
-    private static bool IsValidUrl(string url)
-    {
-        return Uri.TryCreate(url, UriKind.Absolute, out var uri) && 
-               (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
-    }
 }
 
 /// <summary>
