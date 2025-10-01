@@ -25,7 +25,6 @@ public class NeuralUcbExtended : IDisposable
     private const decimal EmergencyUcbValue = 0.5m;           // Emergency fallback UCB value
     private const decimal EmergencyPrediction = 0.5m;        // Emergency fallback prediction  
     private const decimal EmergencyUncertainty = 1.0m;       // Emergency fallback uncertainty (maximum)
-    private const int PerformanceUpdateDelay = 5;            // Minutes delay for performance updates
     private const decimal HighConfidenceThreshold = 0.7m;    // High confidence threshold for selection
     private const decimal MediumConfidenceThreshold = 0.8m;  // Medium confidence threshold for selection
     

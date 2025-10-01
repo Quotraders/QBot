@@ -34,7 +34,33 @@ var estimatedSpread = priceRange * (spreadEstimateVolumeFactor / Math.Max(avgVol
 
 ## 🚨 PHASE 2 - ANALYZER VIOLATION ELIMINATION (IN PROGRESS)
 
-## 🚨 PHASE 2 - ANALYZER VIOLATION ELIMINATION (IN PROGRESS)
+### Round 41 - Phase 2 Priority 1 Correctness: S1144 Dead Code Elimination (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S1144 | 8 | 3 | TradingSystemIntegrationService.cs, ProductionConfigurationValidation.cs, NeuralUcbExtended.cs, SuppressionLedgerService.cs | Removed unused private fields, constants, methods, and LoggerMessage delegates |
+
+**Fix Applied (S1144 - Unused Private Members):**
+```csharp
+// Before - Unused constants and fields
+private const double MediumConfidenceScore = 0.5m;
+private const int VolatilityDecimalPrecision = 10;
+private const int PerformanceUpdateDelay = 5;
+private static readonly Action<ILogger, Exception?> _logValidationError = // unused logger
+
+// After - Removed all unused members
+// (Clean code with only actively used declarations)
+```
+
+**Fix Applied (S1144 - Unused Methods):**
+```csharp
+// Before - Unused private methods with placeholder implementations
+private Task UpdateMlRlSystemWithFillAsync(...) { /* debug logging only */ }
+private async Task ProcessPostFillPositionManagementAsync(...) { /* simplified impl */ }
+private static bool IsValidUrl(string url) { /* never called */ }
+
+// After - Removed unused methods completely
+// (Following guidebook dead code elimination principles)
+```
 
 ### Round 40 - Phase 2 Priority 1 Correctness & Invariants: Dispose Pattern & Dead Code Elimination
 | Rule | Before | After | Files Affected | Pattern Applied |

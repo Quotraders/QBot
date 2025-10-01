@@ -85,7 +85,6 @@ namespace TopstepX.Bot.Core.Services
         private const double InsufficientTotalBarsScore = 0.7;          // Score for insufficient total bars
         private const double PartialReadinessScore = 0.9;               // Score for partial readiness
         private const double LowConfidenceScore = 0.3;                  // Score for low confidence scenarios
-        private const double MediumConfidenceScore = 0.5;               // Score for medium confidence scenarios
         private const double StaleDataScoreMultiplier = 0.5;            // Score multiplier for stale data
         private const double DisconnectedHubsScoreMultiplier = 0.3;     // Score multiplier for disconnected hubs
         
@@ -124,7 +123,6 @@ namespace TopstepX.Bot.Core.Services
         private const int SundayMarketOpenHourEt = 18;           // Sunday market opens at 6 PM ET
         private const int FridayMarketCloseHourEt = 17;          // Friday market closes at 5 PM ET  
         private const int MaintenanceBreakHourEt = 17;           // Daily maintenance break at 5 PM ET
-        private const int VolatilityDecimalPrecision = 10;       // Decimal precision for volatility calculations
         private const int MinimumBarsForTrading = 10;            // Minimum bars required before trading
 
         public class TradingSystemConfiguration
@@ -1380,98 +1378,6 @@ namespace TopstepX.Bot.Core.Services
             catch (ArgumentException ex)
             {
                 _logger.LogError(ex, "[BAR_CACHE] Invalid argument updating bar cache for {Symbol}", symbol);
-            }
-        }
-
-        /// <summary>
-        /// Update ML/RL system with execution data for continuous learning
-        /// </summary>
-        private Task UpdateMlRlSystemWithFillAsync(string orderId, string symbol, decimal fillPrice, decimal quantity, string side)
-        {
-            try
-            {
-                // Create execution data point for ML learning
-                var executionData = new
-                {
-                    OrderId = orderId,
-                    Symbol = symbol,
-                    FillPrice = fillPrice,
-                    Quantity = quantity,
-                    Side = side,
-                    ExecutionTime = DateTime.UtcNow,
-                    // Additional ML features for execution quality analysis
-                    MarketData = _priceCache.TryGetValue(symbol, out var md) ? md : null
-                };
-
-                // Update StrategyMlModelManager with execution results (simplified)
-                // Note: UpdateExecutionDataAsync method simplified for now
-                _logger.LogDebug("[ML/RL-EXECUTION-UPDATE] Would update ML models with execution data for {Symbol} - {OrderId}", symbol, orderId);
-                
-                _logger.LogDebug("[ML/RL-EXECUTION-UPDATE] Updated ML models with execution data for {Symbol}", symbol);
-                
-                return Task.CompletedTask;
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogError(ex, "[ML/RL-EXECUTION-UPDATE] Invalid operation updating ML system with fill data for {Symbol}", symbol);
-                return Task.CompletedTask;
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogError(ex, "[ML/RL-EXECUTION-UPDATE] Invalid argument updating ML system with fill data for {Symbol}", symbol);
-                return Task.CompletedTask;
-            }
-        }
-
-        /// <summary>
-        /// Process post-fill position management using ML/RL strategies
-        /// </summary>
-        private async Task ProcessPostFillPositionManagementAsync(string symbol)
-        {
-            try
-            {
-                // Get current market data and bars for analysis
-                if (!_priceCache.TryGetValue(symbol, out var marketData) || 
-                    !_barCache.TryGetValue(symbol, out var bars) || bars.Count < MinimumBarsForTrading)
-                    return;
-
-                // Generate features for position management decision
-                var featureVector = await GenerateEnhancedFeaturesAsync(symbol, marketData).ConfigureAwait(false);
-                if (featureVector == null)
-                    return;
-
-                // Use TimeOptimizedStrategyManager basic functionality for position management
-                // (Simplified implementation for now)
-                
-                // Get position management signals from AllStrategies instead of StrategyAgent
-                var env = new Env
-                {
-                    Symbol = symbol,
-                    atr = CalculateATR(bars),
-                    volz = CalculateVolZ(bars)
-                };
-                
-                var levels = new Levels();
-                var positionManagementCandidates = new List<Candidate>(); // Simplified - no position management candidates for now
-                
-                var positionSignals = ConvertCandidatesToSignals(positionManagementCandidates);
-
-                // Process any immediate position management actions (stops, targets, scaling)
-                foreach (var signal in positionSignals.Where(s => s.Score > HighConfidenceSignalScore))
-                {
-                    await ProcessPositionManagementSignalAsync(signal, featureVector).ConfigureAwait(false);
-                }
-
-                _logger.LogInformation("[ML/RL-POSITION-MGMT] Processed post-fill position management for {Symbol}, generated {SignalCount} position management signals", 
-                    symbol, positionSignals.Count);
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogError(ex, "[ML/RL-POSITION-MGMT] Invalid operation in post-fill position management for {Symbol}", symbol);
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogError(ex, "[ML/RL-POSITION-MGMT] Invalid argument in post-fill position management for {Symbol}", symbol);
             }
         }
 
