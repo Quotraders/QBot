@@ -44,8 +44,19 @@ namespace BotCore.Features
             _featureBus = featureBus ?? throw new ArgumentNullException(nameof(featureBus));
             _resolvers = resolvers ?? throw new ArgumentNullException(nameof(resolvers));
 
-            // Initialize timer for periodic feature publishing (config-driven interval)
-            var publishInterval = TimeSpan.FromSeconds(30); // Should come from configuration
+            // Get publish interval from configuration with validation
+            var publishIntervalSeconds = _s7Config.Value?.FeaturePublishIntervalSeconds ?? 30;
+            
+            // Reject zero/negative intervals per audit requirements
+            if (publishIntervalSeconds <= 0)
+            {
+                _logger.LogError("[FEATURE-PUBLISHER] Invalid publish interval {Interval}s - must be positive. Using default 30s", publishIntervalSeconds);
+                publishIntervalSeconds = 30;
+            }
+            
+            var publishInterval = TimeSpan.FromSeconds(publishIntervalSeconds);
+            _logger.LogInformation("[FEATURE-PUBLISHER] Configured publish interval: {Interval}s", publishIntervalSeconds);
+            
             _publishTimer = new Timer(PublishFeaturesCallback, null, publishInterval, publishInterval);
         }
 
@@ -94,6 +105,8 @@ namespace BotCore.Features
 
         private async Task PublishFeaturesAsync(CancellationToken cancellationToken)
         {
+            var startTime = DateTime.UtcNow;
+            
             lock (_publishLock)
             {
                 _publishCycles++;
@@ -164,6 +177,9 @@ namespace BotCore.Features
                 }
             }
 
+            // Calculate and log publish latency telemetry per audit requirements
+            var publishLatency = DateTime.UtcNow - startTime;
+            
             // Update performance counters
             lock (_publishLock)
             {
@@ -172,8 +188,8 @@ namespace BotCore.Features
                 _missingFeatures += missingCount;
             }
 
-            _logger.LogDebug("[FEATURE-PUBLISHER] Publish cycle complete: Published={Published}, Errors={Errors}, Missing={Missing}", 
-                publishedCount, errorCount, missingCount);
+            _logger.LogDebug("[FEATURE-PUBLISHER] Publish cycle complete: Published={Published}, Errors={Errors}, Missing={Missing}, Latency={Latency}ms", 
+                publishedCount, errorCount, missingCount, publishLatency.TotalMilliseconds);
         }
 
         public void Dispose()
