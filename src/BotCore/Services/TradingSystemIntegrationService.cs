@@ -147,7 +147,7 @@ namespace TopstepX.Bot.Core.Services
         /// <summary>
         /// Market data structure for price cache
         /// </summary>
-        public class MarketData
+        internal class MarketData
         {
             public string Symbol { get; set; } = string.Empty;
             public decimal BidPrice { get; set; }
