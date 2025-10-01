@@ -4,11 +4,15 @@ using BotCore.ML;
 using TradingBot.RLAgent;
 using BotCore.Services;
 using BotCore.Brain;
+using BotCore.Brain.Models;
 using BotCore.Models;
 using BotCore.Risk;
 using System.Text.Json;
 using TradingBot.Abstractions;
 using static BotCore.Brain.UnifiedTradingBrain;
+
+// Type alias to resolve namespace conflict  
+using BrainMarketContext = BotCore.Brain.Models.MarketContext;
 
 namespace BotCore.Services;
 
@@ -88,7 +92,7 @@ public class EnhancedTradingBrainIntegration
             }
             
             // Step 2: Get ensemble predictions to enhance the decision
-            // Convert dictionary marketContext to proper MarketContext object
+            // Convert dictionary marketContext to proper BrainMarketContext object
             var brainMarketContext = ConvertToMarketContext(marketContext);
             var contextVector = ExtractContextVector(brainMarketContext);
             var marketFeatures = ExtractMarketFeatures(brainMarketContext);
@@ -172,12 +176,12 @@ public class EnhancedTradingBrainIntegration
     /// This preserves the original logic while adding intelligent enhancements
     /// </summary>
     private EnhancedTradingDecision EnhanceDecision(
-        BotCore.Brain.TradingDecision originalDecision,
+        TradingDecision originalDecision,
         EnsemblePrediction strategyPrediction,
         EnsemblePrediction pricePrediction,
         EnsembleActionResult ensembleAction,
         string symbol,
-        BotCore.Brain.MarketContext marketContext)
+        BrainMarketContext marketContext)
     {
         var enhancedDecision = new EnhancedTradingDecision
         {
@@ -202,14 +206,14 @@ public class EnhancedTradingBrainIntegration
         
         // Enhancement 3: Position Sizing
         enhancedDecision.EnhancedPositionSize = EnhancePositionSizing(
-            1.0m, // Default position size since BotCore.Brain.TradingDecision doesn't have PositionSize
+            1.0m, // Default position size since TradingDecision doesn't have PositionSize
             ensembleAction,
             enhancedDecision.EnhancedConfidence,
             pricePrediction);
         
         // Enhancement 4: Risk Adjustment
         enhancedDecision.EnhancedRiskLevel = EnhanceRiskLevel(
-            0.5m, // Default risk level since BotCore.Brain.TradingDecision doesn't have RiskLevel
+            0.5m, // Default risk level since TradingDecision doesn't have RiskLevel
             ensembleAction.CVaREstimate,
             pricePrediction);
         
@@ -325,7 +329,7 @@ public class EnhancedTradingBrainIntegration
     /// <summary>
     /// Calculate market timing signal
     /// </summary>
-    private string CalculateMarketTiming(EnsemblePrediction pricePrediction, EnsembleActionResult ensembleAction, BotCore.Brain.MarketContext marketContext)
+    private string CalculateMarketTiming(EnsemblePrediction pricePrediction, EnsembleActionResult ensembleAction, BrainMarketContext marketContext)
     {
         if (pricePrediction.Result is PriceDirectionPrediction pricePred)
         {
@@ -351,7 +355,7 @@ public class EnhancedTradingBrainIntegration
     /// Generate human-readable enhancement reason
     /// </summary>
     private string GenerateEnhancementReason(
-        BotCore.Brain.TradingDecision originalDecision,
+        TradingDecision originalDecision,
         EnsemblePrediction strategyPred, 
         EnsemblePrediction pricePred, 
         EnsembleActionResult action)
@@ -514,7 +518,7 @@ public class EnhancedTradingBrainIntegration
     /// <summary>
     /// Track prediction for feedback analysis
     /// </summary>
-    private void TrackPredictionForFeedback(EnhancedTradingDecision decision, string symbol, BotCore.Brain.MarketContext marketContext)
+    private void TrackPredictionForFeedback(EnhancedTradingDecision decision, string symbol, BrainMarketContext marketContext)
     {
         try
         {
@@ -533,7 +537,7 @@ public class EnhancedTradingBrainIntegration
     /// <summary>
     /// Log decision enhancement details
     /// </summary>
-    private void LogDecisionEnhancement(BotCore.Brain.TradingDecision original, EnhancedTradingDecision enhanced, string symbol)
+    private void LogDecisionEnhancement(TradingDecision original, EnhancedTradingDecision enhanced, string symbol)
     {
         _logger.LogInformation("🧠 [ENHANCED-BRAIN] Decision enhanced for {Symbol}: {OriginalStrategy} → {EnhancedStrategy} " +
                              "(confidence: {OriginalConf:P1} → {EnhancedConf:P1})",
@@ -546,7 +550,7 @@ public class EnhancedTradingBrainIntegration
 
     #region Helper Methods
 
-    private double[] ExtractContextVector(BotCore.Brain.MarketContext marketContext)
+    private double[] ExtractContextVector(BrainMarketContext marketContext)
     {
         // Extract and normalize market context into feature vector
         return new double[] { 
@@ -558,7 +562,7 @@ public class EnhancedTradingBrainIntegration
         };
     }
 
-    private double[] ExtractMarketFeatures(BotCore.Brain.MarketContext marketContext)
+    private double[] ExtractMarketFeatures(BrainMarketContext marketContext)
     {
         // Extract market features for price prediction
         return new double[] { 
@@ -571,7 +575,7 @@ public class EnhancedTradingBrainIntegration
         };
     }
 
-    private double[] CreateStateVector(BotCore.Brain.TradingDecision decision, BotCore.Brain.MarketContext marketContext)
+    private double[] CreateStateVector(TradingDecision decision, BrainMarketContext marketContext)
     {
         // Create state vector for CVaR-PPO using available properties
         return new double[] { 
@@ -586,11 +590,11 @@ public class EnhancedTradingBrainIntegration
     }
 
     /// <summary>
-    /// Convert Dictionary marketContext to BotCore.Brain.MarketContext
+    /// Convert Dictionary marketContext to MarketContext
     /// </summary>
-    private BotCore.Brain.MarketContext ConvertToMarketContext(Dictionary<string, object> marketContext)
+    private BrainMarketContext ConvertToMarketContext(Dictionary<string, object> marketContext)
     {
-        var brainContext = new BotCore.Brain.MarketContext();
+        var brainContext = new BrainMarketContext();
         
         if (marketContext.TryGetValue("Symbol", out var symbol) && symbol is string symbolStr)
             brainContext.Symbol = symbolStr;
@@ -689,12 +693,12 @@ public class EnhancedTradingBrainIntegration
         return riskEngine;
     }
 
-    private BotCore.Brain.TradingDecision ConvertBrainToTradingDecision(object brainDecision)
+    private TradingDecision ConvertBrainToTradingDecision(object brainDecision)
     {
         // Convert UnifiedTradingBrain decision format to BotCore TradingDecision
         if (brainDecision == null)
         {
-            return new BotCore.Brain.TradingDecision
+            return new TradingDecision
             {
                 Symbol = "UNKNOWN",
                 Strategy = "none",
@@ -703,10 +707,10 @@ public class EnhancedTradingBrainIntegration
             };
         }
 
-        // If it's a BrainDecision, convert it to BotCore.Brain.TradingDecision
+        // If it's a BrainDecision, convert it to TradingDecision
         if (brainDecision is BrainDecision brain)
         {
-            return new BotCore.Brain.TradingDecision
+            return new TradingDecision
             {
                 Symbol = brain.Symbol,
                 Strategy = brain.RecommendedStrategy,
@@ -716,13 +720,13 @@ public class EnhancedTradingBrainIntegration
         }
 
         // If it's already a TradingDecision, return as-is
-        if (brainDecision is BotCore.Brain.TradingDecision decision)
+        if (brainDecision is TradingDecision decision)
         {
             return decision;
         }
 
         // Fallback for unknown types
-        return new BotCore.Brain.TradingDecision
+        return new TradingDecision
         {
             Symbol = "FALLBACK",
             Strategy = "unknown",
@@ -731,9 +735,9 @@ public class EnhancedTradingBrainIntegration
         };
     }
 
-    private BotCore.Brain.TradingDecision CreateFallbackTradingDecision()
+    private TradingDecision CreateFallbackTradingDecision()
     {
-        return new BotCore.Brain.TradingDecision
+        return new TradingDecision
         {
             Symbol = "FALLBACK",
             Strategy = "fallback",
@@ -749,7 +753,7 @@ public class EnhancedTradingBrainIntegration
 
 public class EnhancedTradingDecision
 {
-    public BotCore.Brain.TradingDecision OriginalDecision { get; set; } = null!;
+    public TradingDecision OriginalDecision { get; set; } = null!;
     public string EnhancedStrategy { get; set; } = string.Empty;
     public decimal EnhancedConfidence { get; set; }
     public decimal EnhancedPositionSize { get; set; }

@@ -5,6 +5,7 @@ using BotCore.Risk;
 using BotCore.Models;
 using BotCore.ML;
 using BotCore.Bandits;
+using BotCore.Brain.Models;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Text.Json;
@@ -108,7 +109,7 @@ namespace BotCore.Brain
         
         // Multi-strategy learning state
         private readonly Dictionary<string, StrategyPerformance> _strategyPerformance = new();
-        private readonly Dictionary<string, List<MarketCondition>> _strategyOptimalConditions = new();
+        private readonly Dictionary<string, List<BotCore.Brain.Models.MarketCondition>> _strategyOptimalConditions = new();
         private DateTime _lastUnifiedLearningUpdate = DateTime.MinValue;
         
         // Primary strategies for focused learning
@@ -1209,9 +1210,9 @@ namespace BotCore.Brain
             }
         }
         
-        private Dictionary<string, PerformanceMetrics> AnalyzeStrategyPerformance()
+        private Dictionary<string, BotCore.Brain.Models.PerformanceMetrics> AnalyzeStrategyPerformance()
         {
-            var analysis = new Dictionary<string, PerformanceMetrics>();
+            var analysis = new Dictionary<string, BotCore.Brain.Models.PerformanceMetrics>();
             
             foreach (var strategy in PrimaryStrategies)
             {
@@ -1234,7 +1235,7 @@ namespace BotCore.Brain
             return analysis;
         }
         
-        private void UpdateOptimalConditionsFromPerformance(Dictionary<string, PerformanceMetrics> analysis)
+        private void UpdateOptimalConditionsFromPerformance(Dictionary<string, BotCore.Brain.Models.PerformanceMetrics> analysis)
         {
             foreach (var (strategy, metrics) in analysis)
             {
@@ -1724,164 +1725,4 @@ namespace BotCore.Brain
             GC.SuppressFinalize(this);
         }
     }
-
-    #region Supporting Models
-
-    public class StrategySpecialization
-    {
-        public string Name { get; set; } = string.Empty;
-        public string[] OptimalConditions { get; set; } = Array.Empty<string>();
-        public string LearningFocus { get; set; } = string.Empty;
-        public string[] TimeWindows { get; set; } = Array.Empty<string>();
-    }
-
-    public class StrategyPerformance
-    {
-        public int TotalTrades { get; set; }
-        public int WinningTrades { get; set; }
-        public decimal TotalPnL { get; set; }
-        public decimal WinRate { get; set; }
-        private readonly List<long> _holdTimes = new();
-        public IReadOnlyList<long> HoldTimes => _holdTimes;
-        
-        public void AddHoldTime(long holdTimeMs)
-        {
-            _holdTimes.Add(holdTimeMs);
-        }
-        
-        public void ReplaceHoldTimes(IEnumerable<long> holdTimes)
-        {
-            _holdTimes.Clear();
-            if (holdTimes != null) _holdTimes.AddRange(holdTimes);
-        }
-    }
-
-    public class MarketCondition
-    {
-        public string ConditionName { get; set; } = string.Empty;
-        public decimal SuccessCount { get; set; }
-        public decimal TotalCount { get; set; }
-        public decimal SuccessRate { get; set; }
-    }
-
-    public class PerformanceMetrics
-    {
-        public decimal WinRate { get; set; }
-        public decimal AveragePnL { get; set; }
-        public TimeSpan AverageHoldTime { get; set; }
-        public string[] BestConditions { get; set; } = Array.Empty<string>();
-        public decimal RecentPerformanceTrend { get; set; }
-    }
-
-    public class UnifiedSchedulingRecommendation
-    {
-        public bool IsMarketOpen { get; set; }
-        public string LearningIntensity { get; set; } = string.Empty; // INTENSIVE, LIGHT, BACKGROUND
-        public int HistoricalLearningIntervalMinutes { get; set; }
-        public bool LiveTradingActive { get; set; }
-        public string[] RecommendedStrategies { get; set; } = Array.Empty<string>();
-        public string Reasoning { get; set; } = string.Empty;
-    }
-
-    public class BrainDecision
-    {
-        public string Symbol { get; set; } = string.Empty;
-        public string RecommendedStrategy { get; set; } = string.Empty;
-        public decimal StrategyConfidence { get; set; }
-        public PriceDirection PriceDirection { get; set; }
-        public decimal PriceProbability { get; set; }
-        public decimal OptimalPositionMultiplier { get; set; }
-        public MarketRegime MarketRegime { get; set; }
-        public IReadOnlyList<Candidate> EnhancedCandidates { get; set; } = new List<Candidate>();
-        public DateTime DecisionTime { get; set; }
-        public double ProcessingTimeMs { get; set; }
-        public decimal ModelConfidence { get; set; }
-        public string RiskAssessment { get; set; } = string.Empty;
-    }
-
-    public class MarketContext
-    {
-        public string Symbol { get; set; } = string.Empty;
-        public decimal CurrentPrice { get; set; }
-        public decimal Volume { get; set; }
-        public decimal? Atr { get; set; }
-        public decimal Volatility { get; set; }
-        public TimeSpan TimeOfDay { get; set; }
-        public DayOfWeek DayOfWeek { get; set; }
-        public decimal VolumeRatio { get; set; }
-        public decimal PriceChange { get; set; }
-        public decimal RSI { get; set; }
-        public decimal TrendStrength { get; set; }
-        public decimal DistanceToSupport { get; set; }
-        public decimal DistanceToResistance { get; set; }
-        public decimal VolatilityRank { get; set; }
-        public decimal Momentum { get; set; }
-        public int MarketRegime { get; set; }
-        
-        // Additional properties needed by NeuralUcbExtended
-        public Dictionary<string, double> Features { get; } = new();
-        public double Price { get; set; }
-        public double Bid { get; set; }
-        public double Ask { get; set; }
-        public double SignalStrength { get; set; }
-        public double ConfidenceLevel { get; set; }
-        public double ModelConfidence { get; set; }
-        public double NewsIntensity { get; set; }
-        public Dictionary<string, double> TechnicalIndicators { get; } = new();
-        public bool IsFomcDay { get; set; }
-        public bool IsCpiDay { get; set; }
-    }
-
-    public class StrategySelection
-    {
-        public string SelectedStrategy { get; set; } = string.Empty;
-        public decimal Confidence { get; set; }
-        public decimal UcbValue { get; set; }
-        public string Reasoning { get; set; } = string.Empty;
-    }
-
-    public class PricePrediction
-    {
-        public PriceDirection Direction { get; set; }
-        public decimal Probability { get; set; }
-        public decimal ExpectedMove { get; set; }
-        public TimeSpan TimeHorizon { get; set; }
-    }
-
-    public class TradingDecision
-    {
-        public string Symbol { get; set; } = string.Empty;
-        public string Strategy { get; set; } = string.Empty;
-        public decimal Confidence { get; set; }
-        public MarketContext Context { get; set; } = new();
-        public DateTime Timestamp { get; set; }
-        public bool WasCorrect { get; set; }
-        public decimal PnL { get; set; }
-    }
-
-    public class TradingPerformance
-    {
-        public int TotalTrades { get; set; }
-        public int WinningTrades { get; set; }
-        public decimal TotalPnL { get; set; }
-        public decimal WinRate => TotalTrades > 0 ? (decimal)WinningTrades / TotalTrades : 0;
-    }
-
-    public enum PriceDirection
-    {
-        Up,
-        Down,
-        Sideways
-    }
-
-    public enum MarketRegime
-    {
-        Normal = 0,
-        Trending = 1,
-        Ranging = 2,
-        HighVolatility = 3,
-        LowVolatility = 4
-    }
-
-    #endregion
 }
