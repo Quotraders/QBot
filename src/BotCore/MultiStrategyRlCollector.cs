@@ -212,9 +212,17 @@ namespace BotCore
                 log.LogDebug("[RL-{Strategy}] Logged comprehensive features for signal {SignalId}",
                     features.Strategy, features.SignalId);
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                log.LogError(ex, "[RL-{Strategy}] Failed to log comprehensive features", features.Strategy);
+                log.LogError(ex, "[RL-{Strategy}] I/O error logging comprehensive features", features.Strategy);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                log.LogError(ex, "[RL-{Strategy}] Access denied logging comprehensive features", features.Strategy);
+            }
+            catch (JsonException ex)
+            {
+                log.LogError(ex, "[RL-{Strategy}] JSON serialization error logging comprehensive features", features.Strategy);
             }
         }
 
@@ -247,9 +255,17 @@ namespace BotCore
                 log.LogDebug("[RL-{Strategy}] Logged enhanced outcome for {SignalId}: R={R:F2} Exit={Exit}",
                     outcome.Strategy, outcome.SignalId, outcome.ActualRMultiple, outcome.ExitReason);
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                log.LogError(ex, "[RL-{Strategy}] Failed to log enhanced outcome", outcome.Strategy);
+                log.LogError(ex, "[RL-{Strategy}] I/O error logging enhanced outcome", outcome.Strategy);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                log.LogError(ex, "[RL-{Strategy}] Access denied logging enhanced outcome", outcome.Strategy);
+            }
+            catch (JsonException ex)
+            {
+                log.LogError(ex, "[RL-{Strategy}] JSON serialization error logging enhanced outcome", outcome.Strategy);
             }
         }
 

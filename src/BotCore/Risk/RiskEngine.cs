@@ -128,6 +128,9 @@ namespace BotCore.Risk
         private const decimal PositionSizeReduction75Percent = 0.25m; // Reduce to 25% of original size
         private const decimal DefaultPositionSizeMultiplier = 1.0m;   // Default position size multiplier
         
+        // Calculation constants
+        private const double PercentageConversionFactor = 100.0;      // Convert decimal to percentage
+        
         /// <summary>
         /// Gets whether trading is currently halted due to risk management
         /// </summary>
@@ -248,7 +251,7 @@ namespace BotCore.Risk
             // Calculate drawdown
             tracker.DrawdownAmount = tracker.PeakValue - currentBalance;
             tracker.DrawdownPercent = tracker.PeakValue > 0 
-                ? (double)(tracker.DrawdownAmount / tracker.PeakValue) * 100 
+                ? (double)(tracker.DrawdownAmount / tracker.PeakValue) * PercentageConversionFactor 
                 : 0;
             
             // Track consecutive losses

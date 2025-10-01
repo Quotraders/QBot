@@ -227,6 +227,10 @@ public class ResilienceConfiguration
     private const int DefaultCircuitBreakerTimeoutMs = 60000;
     private const int DefaultBulkheadMaxConcurrency = 20;
     
+    // Retry policy constants
+    private const double ExponentialBackoffBase = 2.0;            // Base for exponential backoff calculation
+    private const int JitterMaxDelayMs = 1000;                   // Maximum jitter delay in milliseconds
+    
     [Required]
     [Range(MinRetries, MaxRetriesLimit)]
     public int MaxRetries { get; set; } = 3;
@@ -291,7 +295,7 @@ public static class ResilienceExtensions
             .HandleTransientHttpError()
             .WaitAndRetryAsync(
                 retryCount: 3,
-                sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)) + TimeSpan.FromMilliseconds(Random.Shared.Next(0, 1000)),
+                sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(ExponentialBackoffBase, retryAttempt)) + TimeSpan.FromMilliseconds(Random.Shared.Next(0, JitterMaxDelayMs)),
                 onRetry: (outcome, timespan, retryCount, context) =>
                 {
                     // Simple logging without context dependency

@@ -19,6 +19,9 @@ namespace BotCore
     /// </summary>
     public sealed class ModelUpdaterService
     {
+        // Model update constants
+        private const int MaxConsecutiveFailuresBeforeBackoff = 3;   // Threshold for exponential backoff
+        
         private readonly ILogger<ModelUpdaterService> _log;
         private readonly HttpClient _http;
         private readonly IConfiguration _config;
@@ -99,13 +102,45 @@ namespace BotCore
                 _consecutiveFailures = 0;
                 _lastSuccessfulCheck = DateTime.UtcNow;
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
             {
                 _consecutiveFailures++;
-                _log.LogError(ex, "[ModelUpdater] Check failed (attempt {Attempt})", _consecutiveFailures);
+                _log.LogError(ex, "[ModelUpdater] HTTP error during model check (attempt {Attempt})", _consecutiveFailures);
 
                 // Exponential backoff on repeated failures
-                if (_consecutiveFailures >= 3)
+                if (_consecutiveFailures >= MaxConsecutiveFailuresBeforeBackoff)
+                {
+                    var backoffMinutes = Math.Min(_consecutiveFailures * 2, 30);
+                    _log.LogWarning("[ModelUpdater] Multiple failures, backing off for {Minutes} minutes", backoffMinutes);
+
+                    // Adjust timer interval for backoff
+                    _updateTimer?.Change(TimeSpan.FromMinutes(backoffMinutes), TimeSpan.FromSeconds(_pollIntervalSeconds));
+                    return;
+                }
+            }
+            catch (TaskCanceledException ex)
+            {
+                _consecutiveFailures++;
+                _log.LogError(ex, "[ModelUpdater] Timeout during model check (attempt {Attempt})", _consecutiveFailures);
+
+                // Exponential backoff on repeated failures
+                if (_consecutiveFailures >= MaxConsecutiveFailuresBeforeBackoff)
+                {
+                    var backoffMinutes = Math.Min(_consecutiveFailures * 2, 30);
+                    _log.LogWarning("[ModelUpdater] Multiple failures, backing off for {Minutes} minutes", backoffMinutes);
+
+                    // Adjust timer interval for backoff
+                    _updateTimer?.Change(TimeSpan.FromMinutes(backoffMinutes), TimeSpan.FromSeconds(_pollIntervalSeconds));
+                    return;
+                }
+            }
+            catch (IOException ex)
+            {
+                _consecutiveFailures++;
+                _log.LogError(ex, "[ModelUpdater] I/O error during model check (attempt {Attempt})", _consecutiveFailures);
+
+                // Exponential backoff on repeated failures
+                if (_consecutiveFailures >= MaxConsecutiveFailuresBeforeBackoff)
                 {
                     var backoffMinutes = Math.Min(_consecutiveFailures * 2, 30);
                     _log.LogWarning("[ModelUpdater] Multiple failures, backing off for {Minutes} minutes", backoffMinutes);
