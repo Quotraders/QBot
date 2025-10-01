@@ -1,4 +1,5 @@
-using TradingBot.RLAgent; // For Candidate type
+using TradingBot.RLAgent; // For other types
+using BotCore.Models; // For Candidate type
 
 namespace BotCore.Brain.Models
 {
@@ -14,7 +15,7 @@ namespace BotCore.Brain.Models
         public decimal PriceProbability { get; set; }
         public decimal OptimalPositionMultiplier { get; set; }
         public MarketRegime MarketRegime { get; set; }
-        public IReadOnlyList<TradingBot.RLAgent.Candidate> EnhancedCandidates { get; set; } = new List<TradingBot.RLAgent.Candidate>();
+        public IReadOnlyList<Candidate> EnhancedCandidates { get; set; } = new List<Candidate>();
         public DateTime DecisionTime { get; set; }
         public double ProcessingTimeMs { get; set; }
         public decimal ModelConfidence { get; set; }

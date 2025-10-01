@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using BotCore.Brain;
+using BotCore.Brain.Models;
 using BotCore.Services;
 using BotCore.Risk;
 using BotCore.Models;

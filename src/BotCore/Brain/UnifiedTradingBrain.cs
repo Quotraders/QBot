@@ -1210,9 +1210,9 @@ namespace BotCore.Brain
             }
         }
         
-        private Dictionary<string, PerformanceMetrics> AnalyzeStrategyPerformance()
+        private Dictionary<string, BotCore.Brain.Models.PerformanceMetrics> AnalyzeStrategyPerformance()
         {
-            var analysis = new Dictionary<string, PerformanceMetrics>();
+            var analysis = new Dictionary<string, BotCore.Brain.Models.PerformanceMetrics>();
             
             foreach (var strategy in PrimaryStrategies)
             {
@@ -1235,7 +1235,7 @@ namespace BotCore.Brain
             return analysis;
         }
         
-        private void UpdateOptimalConditionsFromPerformance(Dictionary<string, PerformanceMetrics> analysis)
+        private void UpdateOptimalConditionsFromPerformance(Dictionary<string, BotCore.Brain.Models.PerformanceMetrics> analysis)
         {
             foreach (var (strategy, metrics) in analysis)
             {
