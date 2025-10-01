@@ -446,7 +446,7 @@ namespace TradingBot.S7
             return (closePrice, timestamp);
         }
 
-        private decimal? ExtractPriceFromJson(System.Text.Json.JsonElement jsonElement)
+        private static decimal? ExtractPriceFromJson(System.Text.Json.JsonElement jsonElement)
         {
             // Handle JSON market data format
             if (jsonElement.TryGetProperty("close", out var closeProp) && closeProp.TryGetDecimal(out var close))
@@ -465,7 +465,7 @@ namespace TradingBot.S7
             return null;
         }
 
-        private DateTime ExtractTimestampFromJson(System.Text.Json.JsonElement jsonElement)
+        private static DateTime ExtractTimestampFromJson(System.Text.Json.JsonElement jsonElement)
         {
             if (jsonElement.TryGetProperty("timestamp", out var timestampProp))
             {

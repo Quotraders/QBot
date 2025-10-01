@@ -5,9 +5,46 @@ namespace TradingBot.Safety
     /// <summary>
     /// Centralized risk management defaults for the trading system
     /// Replaces scattered risk configuration throughout the codebase
+    /// AUDIT-CLEAN: Safety utilities must force DRY_RUN by default per audit requirements
     /// </summary>
     public static class RiskDefaults
     {
+        /// <summary>
+        /// AUDIT-CLEAN: Safety utilities force DRY_RUN mode by default unless explicitly overridden
+        /// This ensures fail-safe behavior and prevents accidental live trading
+        /// </summary>
+        public static readonly bool ForceDryRunByDefault = 
+            Environment.GetEnvironmentVariable("SAFETY_ALLOW_LIVE_TRADING")?.ToLowerInvariant() != "true";
+
+        /// <summary>
+        /// Safety check to determine if live trading should be allowed
+        /// Returns true only if explicitly enabled AND kill switch is not active
+        /// </summary>
+        public static bool IsLiveTradingAllowed()
+        {
+            // Force DRY_RUN if safety override not explicitly set
+            if (ForceDryRunByDefault)
+            {
+                return false;
+            }
+
+            // Additional safety checks - must pass all conditions for live trading
+            var dryRunEnv = Environment.GetEnvironmentVariable("DRY_RUN");
+            if (dryRunEnv?.ToLowerInvariant() == "true")
+            {
+                return false;
+            }
+
+            // Check if kill switch is active
+            if (BotCore.Services.ProductionKillSwitchService.IsKillSwitchActive())
+            {
+                return false;
+            }
+
+            // Only allow live trading if explicitly enabled
+            var allowLive = Environment.GetEnvironmentVariable("ALLOW_LIVE_TRADING");
+            return allowLive?.ToLowerInvariant() == "true";
+        }
         /// <summary>
         /// Default maximum daily loss limit
         /// </summary>

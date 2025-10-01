@@ -158,6 +158,47 @@ namespace TradingBot.Monitoring.Alerts
                 Tags = new Dictionary<string, string> { ["category"] = "model_tranche", ["criticality"] = "high" }
             };
 
+            // AUDIT-CLEAN: Add alerts for kill-switch activation, analyzer failures, and DRY_RUN toggles per audit requirements
+            
+            // Kill-switch activation alert
+            _alertRules["kill_switch_activated"] = new AlertRule
+            {
+                Name = "Kill Switch Activated",
+                MetricName = "guardrail.kill_switch_activated",
+                Threshold = _config.KillSwitchActivatedThreshold,
+                Comparison = AlertComparison.GreaterThan,
+                EvaluationWindow = TimeSpan.FromSeconds(_config.KillSwitchActivatedWindowSeconds),
+                Severity = AlertSeverity.Critical,
+                Description = "Emergency kill switch has been activated - all trading operations halted",
+                Tags = new Dictionary<string, string> { ["category"] = "guardrail", ["criticality"] = "critical", ["type"] = "kill_switch" }
+            };
+
+            // Analyzer failures alert
+            _alertRules["analyzer_failure"] = new AlertRule
+            {
+                Name = "Analyzer Failure",
+                MetricName = "guardrail.analyzer_failure",
+                Threshold = _config.AnalyzerFailureThreshold,
+                Comparison = AlertComparison.GreaterThan,
+                EvaluationWindow = TimeSpan.FromMinutes(_config.AnalyzerFailureWindowMinutes),
+                Severity = AlertSeverity.High,
+                Description = "Code analyzer failure detected - build or quality gate failed",
+                Tags = new Dictionary<string, string> { ["category"] = "guardrail", ["criticality"] = "high", ["type"] = "analyzer" }
+            };
+
+            // DRY_RUN toggle alert
+            _alertRules["dry_run_toggle"] = new AlertRule
+            {
+                Name = "DRY_RUN Mode Toggle",
+                MetricName = "guardrail.dry_run_toggle",
+                Threshold = _config.DryRunToggleThreshold,
+                Comparison = AlertComparison.GreaterThan,
+                EvaluationWindow = TimeSpan.FromSeconds(_config.DryRunToggleWindowSeconds),
+                Severity = AlertSeverity.Medium,
+                Description = "DRY_RUN mode has been toggled - trading mode changed",
+                Tags = new Dictionary<string, string> { ["category"] = "guardrail", ["criticality"] = "medium", ["type"] = "dry_run" }
+            };
+
             // Initialize alert states
             foreach (var rule in _alertRules.Values)
             {
@@ -404,6 +445,20 @@ namespace TradingBot.Monitoring.Alerts
         // Tranche performance degradation thresholds
         public double TranchePerformanceDegradationThreshold { get; set; } = -0.2;
         public int TranchePerformanceDegradationWindowMinutes { get; set; } = 30;
+
+        // AUDIT-CLEAN: Guardrail alert thresholds per audit requirements
+        
+        // Kill switch activation alert configuration
+        public double KillSwitchActivatedThreshold { get; set; } = 0.5;
+        public int KillSwitchActivatedWindowSeconds { get; set; } = 30;
+
+        // Analyzer failure alert configuration
+        public double AnalyzerFailureThreshold { get; set; } = 0.5;
+        public int AnalyzerFailureWindowMinutes { get; set; } = 1;
+
+        // DRY_RUN toggle alert configuration
+        public double DryRunToggleThreshold { get; set; } = 0.5;
+        public int DryRunToggleWindowSeconds { get; set; } = 30;
     }
 
     /// <summary>

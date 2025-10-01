@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using TradingBot.Abstractions;
 using TopstepX.Bot.Authentication;
+using BotCore.Services;
 using System.Globalization;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
@@ -19,19 +20,22 @@ internal class EnhancedAuthenticationService : IHostedService
     private readonly ITokenProvider _tokenProvider;
     private readonly /* Legacy removed: TopstepXCredentialManager */object _credentialManager;
     private readonly TopstepAuthAgent _authAgent;
+    private readonly EmergencyStopSystem _emergencyStopSystem;
     
     public EnhancedAuthenticationService(
         ILogger<EnhancedAuthenticationService> logger,
         ITradingLogger tradingLogger,
         ITokenProvider tokenProvider,
         /* Legacy removed: TopstepXCredentialManager */object credentialManager,
-        TopstepAuthAgent authAgent)
+        TopstepAuthAgent authAgent,
+        EmergencyStopSystem emergencyStopSystem)
     {
         _logger = logger;
         _tradingLogger = tradingLogger;
         _tokenProvider = tokenProvider;
         _credentialManager = credentialManager;
         _authAgent = authAgent;
+        _emergencyStopSystem = emergencyStopSystem;
         
         // Subscribe to token refresh events
         _tokenProvider.TokenRefreshed += OnTokenRefreshed;
@@ -86,6 +90,9 @@ internal class EnhancedAuthenticationService : IHostedService
             {
                 await _tradingLogger.LogSystemAsync(TradingLogLevel.ERROR, "AuthService", 
                     "Authentication failed - no valid JWT token available").ConfigureAwait(false);
+                
+                // AUDIT-CLEAN: Auth failures trigger guardrail halt per audit requirements
+                await TriggerAuthenticationFailureGuardrailHalt("No valid JWT token available").ConfigureAwait(false);
                 return;
             }
 
@@ -110,6 +117,9 @@ internal class EnhancedAuthenticationService : IHostedService
                     exceptionType = ex.GetType().Name,
                     stackTrace = ex.StackTrace
                 }).ConfigureAwait(false);
+                
+            // AUDIT-CLEAN: Auth failures trigger guardrail halt per audit requirements
+            await TriggerAuthenticationFailureGuardrailHalt($"Authentication exception: {ex.GetType().Name}").ConfigureAwait(false);
         }
     }
 
@@ -171,5 +181,32 @@ internal class EnhancedAuthenticationService : IHostedService
                 tokenLength = newToken.Length,
                 refreshTime = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss UTC", CultureInfo.InvariantCulture)
             });
+    }
+    
+    /// <summary>
+    /// Triggers guardrail halt on authentication failures per audit requirements
+    /// AUDIT-CLEAN: Ensure auth failures trigger guardrail halts
+    /// </summary>
+    private async Task TriggerAuthenticationFailureGuardrailHalt(string reason)
+    {
+        try
+        {
+            await _tradingLogger.LogSystemAsync(TradingLogLevel.CRITICAL, "AuthService", 
+                "TRIGGERING GUARDRAIL HALT due to authentication failure", new
+                {
+                    reason,
+                    timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss UTC", CultureInfo.InvariantCulture),
+                    action = "Emergency stop initiated"
+                }).ConfigureAwait(false);
+                
+            // Trigger emergency stop to halt all trading operations
+            _emergencyStopSystem.TriggerEmergencyStop($"Authentication failure: {reason}");
+            
+            _logger.LogCritical("🔴 [AUTH-GUARDRAIL] Emergency stop triggered due to authentication failure: {Reason}", reason);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ [AUTH-GUARDRAIL] Failed to trigger authentication failure guardrail halt");
+        }
     }
 }

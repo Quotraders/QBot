@@ -4,8 +4,10 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using TradingBot.UnifiedOrchestrator.Interfaces;
 using TradingBot.UnifiedOrchestrator.Models;
+using TradingBot.UnifiedOrchestrator.Configuration;
 using TradingBot.Abstractions; // For TradingAction
 using BotCore.Brain;
 using BotCore.Models;
@@ -30,6 +32,7 @@ internal class TradingBrainAdapter : ITradingBrainAdapter
     private readonly IInferenceBrain _inferenceBrain; // Challenger - new architecture
     private readonly IShadowTester _shadowTester;
     private readonly IPromotionService _promotionService;
+    private readonly TradingBrainAdapterConfiguration _config;
 
     // Decision routing and comparison tracking
     private readonly List<DecisionComparison> _recentComparisons = new();
@@ -48,13 +51,15 @@ internal class TradingBrainAdapter : ITradingBrainAdapter
         UnifiedTradingBrain unifiedBrain,
         IInferenceBrain inferenceBrain,
         IShadowTester shadowTester,
-        IPromotionService promotionService)
+        IPromotionService promotionService,
+        IOptions<TradingBrainAdapterConfiguration> config)
     {
         _logger = logger;
         _unifiedBrain = unifiedBrain;
         _inferenceBrain = inferenceBrain;
         _shadowTester = shadowTester;
         _promotionService = promotionService;
+        _config = config.Value;
         
         _logger.LogInformation("TradingBrainAdapter initialized - UnifiedTradingBrain as champion, InferenceBrain as challenger");
     }
@@ -190,15 +195,16 @@ internal class TradingBrainAdapter : ITradingBrainAdapter
 
     /// <summary>
     /// Convert PriceDirection and position multiplier to TradingAction
+    /// AUDIT-CLEAN: Configuration-driven thresholds instead of hardcoded values
     /// </summary>
     private TradingAction ConvertPriceDirectionToTradingAction(PriceDirection priceDirection, decimal positionMultiplier)
     {
         return priceDirection switch
         {
-            PriceDirection.Up when positionMultiplier > 0.5m => TradingAction.Buy,
-            PriceDirection.Up when positionMultiplier > 0.1m => TradingAction.BuySmall,
-            PriceDirection.Down when positionMultiplier > 0.5m => TradingAction.Sell,
-            PriceDirection.Down when positionMultiplier > 0.1m => TradingAction.SellSmall,
+            PriceDirection.Up when positionMultiplier > _config.FullPositionThreshold => TradingAction.Buy,
+            PriceDirection.Up when positionMultiplier > _config.SmallPositionThreshold => TradingAction.BuySmall,
+            PriceDirection.Down when positionMultiplier > _config.FullPositionThreshold => TradingAction.Sell,
+            PriceDirection.Down when positionMultiplier > _config.SmallPositionThreshold => TradingAction.SellSmall,
             PriceDirection.Sideways => TradingAction.Hold,
             _ => TradingAction.Hold
         };
@@ -332,12 +338,13 @@ internal class TradingBrainAdapter : ITradingBrainAdapter
 
     /// <summary>
     /// Check if two unified decisions are equivalent
+    /// AUDIT-CLEAN: Configuration-driven tolerances instead of hardcoded values
     /// </summary>
     private bool AreUnifiedDecisionsEquivalent(UnifiedTradingDecision decision1, UnifiedTradingDecision decision2)
     {
         return decision1.Action == decision2.Action && 
-               Math.Abs(decision1.Size - decision2.Size) < 0.01m &&
-               Math.Abs(decision1.Confidence - decision2.Confidence) < 0.1m;
+               Math.Abs(decision1.Size - decision2.Size) < _config.SizeComparisonTolerance &&
+               Math.Abs(decision1.Confidence - decision2.Confidence) < _config.ConfidenceComparisonTolerance;
     }
 
     /// <summary>
@@ -406,11 +413,11 @@ internal class TradingBrainAdapter : ITradingBrainAdapter
                 return;
 
             // Check if promotion criteria are met based on recent comparisons
-            var recentAgreements = _recentComparisons.TakeLast(100).Count(c => c.Agreement);
-            var agreementRate = (double)recentAgreements / Math.Min(100, _recentComparisons.Count);
+            var recentAgreements = _recentComparisons.TakeLast(_config.PromotionEvaluationWindow).Count(c => c.Agreement);
+            var agreementRate = (double)recentAgreements / Math.Min(_config.PromotionEvaluationWindow, _recentComparisons.Count);
             
             // Simple promotion criteria: high agreement rate suggests challenger is performing similarly
-            if (agreementRate > 0.8) // 80% agreement threshold
+            if (agreementRate > _config.PromotionAgreementThreshold) // Configuration-driven agreement threshold
             {
                 _logger.LogInformation(
                     "[ADAPTER] High agreement rate detected ({AgreementRate:P2}) - InferenceBrain may be ready for promotion",

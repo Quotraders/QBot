@@ -35,8 +35,8 @@ namespace TopstepX.Bot.Authentication
             using var resp = await _http.SendAsync(req, ct).ConfigureAwait(false);
             if (!resp.IsSuccessStatusCode)
             {
-                var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                throw new HttpRequestException($"Auth {(int)resp.StatusCode} {resp.StatusCode}: {body}", null, resp.StatusCode);
+                // AUDIT-CLEAN: Don't log response body as it may contain sensitive authentication details
+                throw new HttpRequestException($"Auth {(int)resp.StatusCode} {resp.StatusCode}: Authentication failed", null, resp.StatusCode);
             }
 
             using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false));

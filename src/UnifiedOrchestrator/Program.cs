@@ -779,8 +779,9 @@ Please check the configuration and ensure all required services are registered.
         // Register the CENTRAL MESSAGE BUS - The "ONE BRAIN" communication system
         services.AddSingleton<ICentralMessageBus, CentralMessageBus>();
 
-        // Register required interfaces with REAL Safety implementations
-        services.AddSingleton<IKillSwitchWatcher, Trading.Safety.KillSwitchWatcher>();
+        // Register required interfaces with PRODUCTION Safety implementations (aligned with guardrail orchestrator)
+        services.AddSingleton<IKillSwitchWatcher>(serviceProvider => 
+            serviceProvider.GetRequiredService<BotCore.Services.ProductionKillSwitchService>());
         services.AddSingleton<IRiskManager, Trading.Safety.RiskManager>();
         services.AddSingleton<IHealthMonitor, Trading.Safety.HealthMonitor>();
 
@@ -874,6 +875,18 @@ Please check the configuration and ensure all required services are registered.
         
         // Register Rollback Drill Service for rollback evidence under load
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IRollbackDrillService, TradingBot.UnifiedOrchestrator.Services.RollbackDrillService>();
+        
+        // AUDIT-CLEAN: Configure TradingBrainAdapter with configuration-driven thresholds instead of hardcoded values
+        services.Configure<TradingBot.UnifiedOrchestrator.Configuration.TradingBrainAdapterConfiguration>(options =>
+        {
+            // Configuration-driven thresholds - can be overridden via appsettings.json or environment variables
+            options.FullPositionThreshold = decimal.Parse(Environment.GetEnvironmentVariable("BRAIN_ADAPTER_FULL_POSITION_THRESHOLD") ?? "0.5");
+            options.SmallPositionThreshold = decimal.Parse(Environment.GetEnvironmentVariable("BRAIN_ADAPTER_SMALL_POSITION_THRESHOLD") ?? "0.1");
+            options.SizeComparisonTolerance = decimal.Parse(Environment.GetEnvironmentVariable("BRAIN_ADAPTER_SIZE_TOLERANCE") ?? "0.01");
+            options.ConfidenceComparisonTolerance = decimal.Parse(Environment.GetEnvironmentVariable("BRAIN_ADAPTER_CONFIDENCE_TOLERANCE") ?? "0.1");
+            options.PromotionAgreementThreshold = double.Parse(Environment.GetEnvironmentVariable("BRAIN_ADAPTER_PROMOTION_THRESHOLD") ?? "0.8");
+            options.PromotionEvaluationWindow = int.Parse(Environment.GetEnvironmentVariable("BRAIN_ADAPTER_EVALUATION_WINDOW") ?? "100");
+        });
         
         // Register Trading Brain Adapter for UnifiedTradingBrain parity
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.ITradingBrainAdapter, TradingBot.UnifiedOrchestrator.Brains.TradingBrainAdapter>();

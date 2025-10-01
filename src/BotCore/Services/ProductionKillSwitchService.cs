@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using BotCore.Configuration;
+using TradingBot.Abstractions;
 using System;
 using System.IO;
 using System.Threading;
@@ -12,8 +13,9 @@ namespace BotCore.Services;
 /// <summary>
 /// Production-ready kill switch service that enforces DRY_RUN mode when kill.txt exists
 /// Following agent guardrails: "kill.txt always forces DRY_RUN"
+/// Implements IKillSwitchWatcher for compatibility with legacy Safety module integrations
 /// </summary>
-public class ProductionKillSwitchService : IHostedService, IDisposable
+public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, IDisposable
 {
     private readonly ILogger<ProductionKillSwitchService> _logger;
     private readonly KillSwitchConfiguration _config;
@@ -22,6 +24,13 @@ public class ProductionKillSwitchService : IHostedService, IDisposable
     private volatile bool _disposed;
     
     private static KillSwitchConfiguration? _staticConfig;
+
+    // IKillSwitchWatcher implementation - for compatibility with legacy Safety module integrations
+    public event EventHandler<KillSwitchToggledEventArgs>? KillSwitchToggled;
+    public event EventHandler? OnKillSwitchActivated;
+    
+    // IKillSwitchWatcher property implementation (explicit to avoid conflict with static method)
+    bool IKillSwitchWatcher.IsKillSwitchActive => IsKillSwitchActive();
 
     public ProductionKillSwitchService(ILogger<ProductionKillSwitchService> logger, IOptions<KillSwitchConfiguration> config)
     {
@@ -122,6 +131,20 @@ public class ProductionKillSwitchService : IHostedService, IDisposable
             
             // Log kill file contents if available for debugging
             LogKillFileContents();
+            
+            // AUDIT-CLEAN: Publish guardrail metric for monitoring alerting per audit requirements
+            PublishGuardrailMetric("kill_switch_activated", 1.0, detectionMethod);
+            
+            // Fire IKillSwitchWatcher events for compatibility with legacy Safety module integrations
+            try
+            {
+                KillSwitchToggled?.Invoke(this, new KillSwitchToggledEventArgs(true));
+                OnKillSwitchActivated?.Invoke(this, EventArgs.Empty);
+            }
+            catch (Exception eventEx)
+            {
+                _logger.LogError(eventEx, "❌ [KILL-SWITCH] Error firing kill switch events");
+            }
         }
         catch (Exception ex)
         {
@@ -234,6 +257,40 @@ public class ProductionKillSwitchService : IHostedService, IDisposable
         
         // Default to DRY_RUN if execution flags are not explicitly true
         return execute?.ToLowerInvariant() != "true" && autoExecute?.ToLowerInvariant() != "true";
+    }
+
+    // IKillSwitchWatcher interface implementation
+    public Task<bool> IsKillSwitchActiveAsync()
+    {
+        return Task.FromResult(IsKillSwitchActive());
+    }
+
+    public Task StartWatchingAsync()
+    {
+        // Already started in StartAsync, this is for interface compatibility
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Publish guardrail metrics for monitoring and alerting per audit requirements
+    /// AUDIT-CLEAN: Ensure metrics push to central observability stack
+    /// </summary>
+    private void PublishGuardrailMetric(string metricName, double value, string context)
+    {
+        try
+        {
+            // Use structured logging with metric tags for observability systems to pick up
+            _logger.LogCritical("📊 [GUARDRAIL-METRIC] {MetricName}={Value} Context={Context} Timestamp={Timestamp}", 
+                $"guardrail.{metricName}", value, context, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                
+            // Additional structured log for time-series systems
+            _logger.LogInformation("METRIC: guardrail.{MetricName} {Value} {UnixTimestamp} tags=context:{Context},component:kill_switch", 
+                metricName, value, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), context);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ [GUARDRAIL-METRIC] Failed to publish metric {MetricName}", metricName);
+        }
     }
 
     protected virtual void Dispose(bool disposing)
