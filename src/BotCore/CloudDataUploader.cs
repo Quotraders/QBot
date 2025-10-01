@@ -139,7 +139,7 @@ namespace BotCore
             catch (Exception ex)
             {
                 _log.LogError(ex, "[CloudDataUploader] Error uploading training data");
-                throw;
+                throw new InvalidOperationException("Cloud data upload operation failed", ex);
             }
         }
 

@@ -356,7 +356,7 @@ public abstract class ResilientBackgroundService : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ [SERVICE] {ServiceName} failed with unexpected error", _serviceName);
-            throw; // Re-throw to trigger host shutdown
+            throw new InvalidOperationException($"Service {_serviceName} execution failed unexpectedly", ex);
         }
         finally
         {
@@ -391,7 +391,7 @@ public abstract class ResilientBackgroundService : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ [SERVICE] {ServiceName} {Operation} failed", _serviceName, operationName);
-            throw;
+            throw new InvalidOperationException($"Service {_serviceName} operation {operationName} failed", ex);
         }
     }
 }

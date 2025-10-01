@@ -106,7 +106,7 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error retrieving feature {Key} for {Symbol}", key, symbol);
-            throw; // Rethrow unexpected exceptions
+            throw new InvalidOperationException($"Feature retrieval failed for {key} on {symbol}", ex);
         }
     }
 

@@ -106,7 +106,7 @@ namespace TradingBot.BotCore.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "🚨 [SCHEMA] Failed to save configuration: {FilePath}", filePath);
-                throw;
+                throw new InvalidOperationException($"Failed to save configuration schema to {filePath}", ex);
             }
         }
 

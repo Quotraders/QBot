@@ -54,7 +54,7 @@ namespace TradingBot.BotCore.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "🚨 [INTEGRITY] Error calculating file hash: {File}", filePath);
-                throw;
+                throw new InvalidOperationException($"File hash calculation failed for {filePath}", ex);
             }
         }
 

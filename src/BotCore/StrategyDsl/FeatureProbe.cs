@@ -100,7 +100,7 @@ public sealed class FeatureProbe
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to probe features for symbol {Symbol}", symbol);
-            throw;
+            throw new InvalidOperationException($"Feature probing failed for symbol {symbol}", ex);
         }
     }
 

@@ -1620,22 +1620,22 @@ namespace TopstepX.Bot.Core.Services
             catch (HttpRequestException ex)
             {
                 _logger.LogError(ex, "❌ HTTP error during TopstepX adapter setup");
-                throw;
+                throw new InvalidOperationException("TopstepX adapter setup failed due to HTTP request error", ex);
             }
             catch (TaskCanceledException ex)
             {
                 _logger.LogError(ex, "❌ Task cancelled during TopstepX adapter setup");
-                throw;
+                throw new OperationCanceledException("TopstepX adapter setup was cancelled", ex);
             }
             catch (OperationCanceledException ex)
             {
                 _logger.LogError(ex, "❌ Operation cancelled during TopstepX adapter setup");
-                throw;
+                throw new OperationCanceledException("TopstepX adapter setup operation was cancelled", ex);
             }
             catch (InvalidOperationException ex)
             {
                 _logger.LogError(ex, "❌ Invalid operation during TopstepX adapter setup");
-                throw;
+                throw new InvalidOperationException("TopstepX adapter setup failed due to invalid operation", ex);
             }
         }
 

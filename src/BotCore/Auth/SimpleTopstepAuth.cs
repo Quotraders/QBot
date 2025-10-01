@@ -130,7 +130,7 @@ namespace BotCore.Auth
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to refresh JWT token");
-                throw;
+                throw new InvalidOperationException("JWT token refresh failed during authentication", ex);
             }
         }
 
