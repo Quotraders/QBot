@@ -34,7 +34,39 @@ var estimatedSpread = priceRange * (spreadEstimateVolumeFactor / Math.Max(avgVol
 
 ## 🚨 PHASE 2 - ANALYZER VIOLATION ELIMINATION (IN PROGRESS)
 
-### Round 45 - Major Complex Method Refactoring: S7 Component Compliance (Current Session)
+### Round 46 - Priority 1 Exception Handling: Correctness & Invariants (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| **Core Exception Handling - MAJOR PROGRESS** | | | | |
+| CA1031 | 3 | 0 | PatternEngine.cs (2 methods), StrategyGates.cs | Generic Exception catches → Specific exceptions (InvalidOperationException, ArgumentException, HttpRequestException, IOException) |
+| S2139 | 12+ | 0 | ConfigurationSchemaService, SimpleTopstepAuth, EnhancedProductionResilienceService, TradingSystemIntegrationService, CloudDataUploader, CloudRlTrainerEnhanced, StrategyKnowledgeGraphNew, FeatureProbe, StateDurabilityService, IntegritySigningService | Bare rethrows → Contextual exception wrapping with InvalidOperationException |
+
+**Example Pattern - Exception Handling Compliance:**
+```csharp
+// Before: S2139 violation (bare rethrow without context)
+catch (Exception ex) {
+    _logger.LogError(ex, "Failed operation");
+    throw;
+}
+
+// After: Compliant (contextual rethrow)
+catch (Exception ex) {
+    _logger.LogError(ex, "Failed operation");
+    throw new InvalidOperationException("Operation failed with specific context", ex);
+}
+
+// Before: CA1031 violation (generic Exception catch)
+catch (Exception ex) { /* handle */ }
+
+// After: Compliant (specific exceptions)
+catch (HttpRequestException ex) { /* handle HTTP errors */ }
+catch (IOException ex) { /* handle IO errors */ }
+catch (InvalidOperationException ex) { /* handle operation errors */ }
+```
+
+**Rationale**: Applied systematic Priority 1 fixes (Correctness & Invariants) per Analyzer-Fix-Guidebook. Exception handling now follows proper patterns: catch specific exception types and rethrow with contextual information. This improves debuggability and error handling across core services, authentication, resilience, trading systems, and data management components.
+
+### Round 45 - Major Complex Method Refactoring: S7 Component Compliance (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | **S7 Component Complex Methods - COMPLETED** | | | | |
