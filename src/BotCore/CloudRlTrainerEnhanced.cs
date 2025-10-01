@@ -165,11 +165,6 @@ namespace BotCore
             }
             catch (HttpRequestException ex)
             {
-                _log.LogWarning("[CloudRlTrainerEnhanced] Failed to download manifest: {Error}", ex.Message);
-                return null;
-            }
-            catch (HttpRequestException ex)
-            {
                 _log.LogError(ex, "[CloudRlTrainerEnhanced] HTTP error downloading manifest");
                 return null;
             }

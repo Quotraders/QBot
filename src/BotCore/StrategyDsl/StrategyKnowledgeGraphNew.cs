@@ -60,35 +60,19 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
             // Route feature requests to appropriate real sources
             return key switch
             {
-                // Zone-based features - from real zone analysis
-                "zone.dist_to_demand_atr" => GetZoneFeature(symbol, "dist_to_demand_atr"),
-                "zone.dist_to_supply_atr" => GetZoneFeature(symbol, "dist_to_supply_atr"),
-                "zone.breakout_score" => GetZoneFeature(symbol, "breakout_score"),
-                "zone.pressure" => GetZoneFeature(symbol, "pressure"),
-                "zone.test_count" => GetZoneFeature(symbol, "test_count"),
-                "zone.dist_to_opposing_atr" => GetZoneFeature(symbol, "dist_to_opposing_atr"),
-
-                // Pattern-based features - from real pattern recognition
-                "pattern.bull_score" => GetPatternScore(symbol, true),
-                "pattern.bear_score" => GetPatternScore(symbol, false),
-
-                // Market microstructure features - from feature bus
-                "vdc" => _featureBus.Probe(symbol, "volatility.contraction") ?? DefaultVolatilityContractionFallback,
-                "mom.zscore" => _featureBus.Probe(symbol, "momentum.zscore") ?? 0.0,
-                "pullback.at_risk" => _featureBus.Probe(symbol, "pullback.risk") ?? DefaultPullbackRiskFallback,
-                "climax.volume_thrust" => _featureBus.Probe(symbol, "volume.thrust") ?? 1.0,
-                "inside_bars_lookback" => _featureBus.Probe(symbol, "inside_bars") ?? 0.0,
-                "vwap.distance_atr" => _featureBus.Probe(symbol, "vwap.distance_atr") ?? DefaultVwapDistanceFallback,
-                "keltner.band_touch" => _featureBus.Probe(symbol, "keltner.touch") ?? 0.0,
-                "boll.band_touch" => _featureBus.Probe(symbol, "bollinger.touch") ?? 0.0,
-
+                // Zone-based features
+                string k when k.StartsWith("zone.", StringComparison.OrdinalIgnoreCase) => GetZoneBasedFeature(symbol, key),
+                
+                // Pattern-based features
+                string k when k.StartsWith("pattern.", StringComparison.OrdinalIgnoreCase) => GetPatternBasedFeature(symbol, key),
+                
+                // Market microstructure features
+                string k when IsMarketMicrostructureFeature(k) => GetMarketMicrostructureFeature(symbol, key),
+                
                 // BREADTH FEATURES INTENTIONALLY DISABLED: Short-circuit to neutral scores
                 // Breadth feed subscription not active - return neutral values to avoid risk check bypass
-                string k when k.StartsWith("breadth.", StringComparison.OrdinalIgnoreCase) => BreadthNeutralScore, // Neutral score
-                "breadth.advance_decline" => BreadthNeutralScore, // Neutral advance/decline ratio
-                "breadth.highs_lows" => BreadthNeutralScore, // Neutral highs/lows ratio  
-                "breadth.sector_rotation" => BreadthNeutralScore, // Neutral sector rotation
-
+                string k when k.StartsWith("breadth.", StringComparison.OrdinalIgnoreCase) => BreadthNeutralScore,
+                
                 // Default fallback
                 _ => 0.0
             };
@@ -108,6 +92,52 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
             _logger.LogError(ex, "Unexpected error retrieving feature {Key} for {Symbol}", key, symbol);
             throw new InvalidOperationException($"Feature retrieval failed for {key} on {symbol}", ex);
         }
+    }
+
+    private double GetZoneBasedFeature(string symbol, string key)
+    {
+        return key switch
+        {
+            "zone.dist_to_demand_atr" => GetZoneFeature(symbol, "dist_to_demand_atr"),
+            "zone.dist_to_supply_atr" => GetZoneFeature(symbol, "dist_to_supply_atr"),
+            "zone.breakout_score" => GetZoneFeature(symbol, "breakout_score"),
+            "zone.pressure" => GetZoneFeature(symbol, "pressure"),
+            "zone.test_count" => GetZoneFeature(symbol, "test_count"),
+            "zone.dist_to_opposing_atr" => GetZoneFeature(symbol, "dist_to_opposing_atr"),
+            _ => 0.0
+        };
+    }
+
+    private double GetPatternBasedFeature(string symbol, string key)
+    {
+        return key switch
+        {
+            "pattern.bull_score" => GetPatternScore(symbol, true),
+            "pattern.bear_score" => GetPatternScore(symbol, false),
+            _ => 0.0
+        };
+    }
+
+    private static bool IsMarketMicrostructureFeature(string key)
+    {
+        return key is "vdc" or "mom.zscore" or "pullback.at_risk" or "climax.volume_thrust" or 
+               "inside_bars_lookback" or "vwap.distance_atr" or "keltner.band_touch" or "boll.band_touch";
+    }
+
+    private double GetMarketMicrostructureFeature(string symbol, string key)
+    {
+        return key switch
+        {
+            "vdc" => _featureBus.Probe(symbol, "volatility.contraction") ?? DefaultVolatilityContractionFallback,
+            "mom.zscore" => _featureBus.Probe(symbol, "momentum.zscore") ?? 0.0,
+            "pullback.at_risk" => _featureBus.Probe(symbol, "pullback.risk") ?? DefaultPullbackRiskFallback,
+            "climax.volume_thrust" => _featureBus.Probe(symbol, "volume.thrust") ?? 1.0,
+            "inside_bars_lookback" => _featureBus.Probe(symbol, "inside_bars") ?? 0.0,
+            "vwap.distance_atr" => _featureBus.Probe(symbol, "vwap.distance_atr") ?? DefaultVwapDistanceFallback,
+            "keltner.band_touch" => _featureBus.Probe(symbol, "keltner.touch") ?? 0.0,
+            "boll.band_touch" => _featureBus.Probe(symbol, "bollinger.touch") ?? 0.0,
+            _ => 0.0
+        };
     }
 
     private double GetZoneFeature(string symbol, string featureName)
