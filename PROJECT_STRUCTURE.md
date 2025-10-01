@@ -12,11 +12,10 @@ The repository has been systematically cleaned and organized while preserving al
 
 ### 📁 Core Directories (Active)
 - **`/src`** - All active production code and main application components
-- **`/MinimalDemo`** - Smoke test application (preserved until full migration)
 - **`/tests`** - Test suites and validation projects
 - **`/scripts`** - Operational, monitoring, and utility scripts (organized)
 - **`/docs`** - Organized documentation, reports, and guides
-- **`/data`**, `/state`, `/models`, `/ml` - Runtime data directories (preserved)
+- **`/data`**, `/state` - Runtime data directories (preserved)
 
 ### 📦 Archive & Legacy (Preserved but Inactive)
 - **`/archive`** - Historical demos and inactive components
@@ -225,10 +224,7 @@ The project is now clean, organized, and ready for production deployment!
 # Main application (pre-existing build errors expected in BotCore)
 dotnet build TopstepX.Bot.sln -p:TreatWarningsAsErrors=false
 
-# Smoke test (works perfectly)
-dotnet run --project MinimalDemo/MinimalDemo.csproj
-
-# Alternative main entry
+# Main entry point - UnifiedOrchestrator
 dotnet run --project src/UnifiedOrchestrator/UnifiedOrchestrator.csproj
 ```
 
