@@ -289,7 +289,7 @@ cmd_help() {
     echo "  backtest      - Run backtest with local sample data (no live API)"
     echo "  riskcheck     - Validate risk constants against committed snapshots"
     echo "  run           - Run main application (UnifiedOrchestrator)"
-    echo "  run-smoke     - Run UnifiedOrchestrator smoke test (replaces SimpleBot/MinimalDemo)"
+    echo "  run-smoke     - Run UnifiedOrchestrator smoke test"
     echo "  run-historical-smoke - Run historical feed smoke test (TradingSystemBarConsumer/HistoricalDataBridgeService)"
     echo "  clean         - Clean build artifacts
   cleanup-generated - Clean up generated files, temporary artifacts, and analyzer snapshots"
