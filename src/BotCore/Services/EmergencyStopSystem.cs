@@ -173,6 +173,26 @@ namespace BotCore.Services
             
             _logger.LogCritical("🛑 [EMERGENCY-STOP] EMERGENCY STOP TRIGGERED: {Reason}", reason);
             
+            // Create kill file to signal emergency stop to all processes
+            try
+            {
+                var killFilePath = Path.Combine(_config.EmergencyLogDirectory, "kill.txt");
+                var killFileContent = $"""
+                    EMERGENCY STOP ACTIVATED
+                    ========================
+                    Timestamp: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC
+                    Reason: {reason}
+                    Process ID: {Environment.ProcessId}
+                    """;
+                    
+                File.WriteAllText(killFilePath, killFileContent);
+                _logger.LogCritical("🛑 [EMERGENCY-STOP] Kill file created: {KillFilePath}", killFilePath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [EMERGENCY-STOP] Failed to create kill file");
+            }
+            
             // Integrate with ProductionKillSwitchService for coordinated shutdown
             try
             {

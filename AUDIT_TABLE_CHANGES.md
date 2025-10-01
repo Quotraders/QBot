@@ -1,7 +1,12 @@
 ## AUDIT TABLE - FILES TOUCHED AND CHANGES MADE
 
-| File Path | Issue Found | Fix Applied | Before | After |
-|-----------|-------------|-------------|---------|-------|
+| ID | File Path | Issue Found | Fix Applied | Before | After | Production-ready ✅ |
+|----|-----------|-----------|-----------|---------|---------|--------------------|
+| 1 | `src/BotCore/Services/ModelRotationService.cs` | Time-of-day heuristics in regime detection | Replaced with RegimeDetectionService integration | `var hour = DateTime.UtcNow.Hour; return hour switch {...}` | `await _regimeService.GetCurrentRegimeAsync("ES", CancellationToken.None)` | ✅ |
+| 2 | `src/BotCore/Services/ProductionBreadthFeedService.cs` | Configuration-only heuristics for breadth provider | **SKIPPED** - Service not in use (NullBreadthDataSource registered) | Uses config-only heuristics | **NOT APPLICABLE** - Breadth feed intentionally disabled | ⚠️ **SKIPPED** |  
+| 3 | `src/BotCore/Services/ProductionGuardrailOrchestrator.cs` | Missing AllowLiveTrading gate and order evidence | **ALREADY IMPLEMENTED** - All requirements met | N/A | AllowLiveTrading gate + ProductionOrderEvidenceService + structured telemetry | ✅ |
+| 4 | `src/BotCore/Services/ProductionKillSwitchService.cs` | Hardcoded kill-file path and no sibling process broadcasting | **ALREADY IMPLEMENTED** - Configurable path + marker file broadcasting | N/A | `_config.FilePath` + `CreateDryRunMarker()` for sibling processes | ✅ |
+| 5 | `src/BotCore/Services/EmergencyStopSystem.cs` | Missing kill.txt creation and namespace misalignment | Added kill.txt file creation capability | Only had coordination | Creates kill.txt file + coordinates with kill switch service | ✅ |
 | `docs/readiness/PRODUCTION_GUARDRAILS_COMPLETE.md` | Outdated production claims | **DELETED** per audit requirement | File claiming complete production coverage | **REMOVED** - Claims were premature |
 | `docs/readiness/PRODUCTION_ENFORCEMENT_GUIDE.md` | Outdated production claims | **DELETED** per audit requirement | File claiming production enforcement complete | **REMOVED** - Claims were premature |
 | `docs/audits/ML_RL_CLOUD_FINAL_AUDIT_REPORT.md` | False completion claims | **QUARANTINED** with warning headers | Status: ✅ COMPLETE | Status: ⚠️ HISTORICAL |
