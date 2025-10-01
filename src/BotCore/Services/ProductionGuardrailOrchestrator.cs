@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using BotCore.Configuration;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,18 +19,24 @@ public class ProductionGuardrailOrchestrator : IHostedService
     private readonly ILogger<ProductionGuardrailOrchestrator> _logger;
     private readonly ProductionKillSwitchService _killSwitchService;
     private readonly ProductionOrderEvidenceService _orderEvidenceService;
+    private readonly ProductionGuardrailConfiguration _config;
     private readonly IServiceProvider _serviceProvider;
 
     public ProductionGuardrailOrchestrator(
         ILogger<ProductionGuardrailOrchestrator> logger,
         ProductionKillSwitchService killSwitchService,
         ProductionOrderEvidenceService orderEvidenceService,
+        IOptions<ProductionGuardrailConfiguration> config,
         IServiceProvider serviceProvider)
     {
         _logger = logger;
         _killSwitchService = killSwitchService;
         _orderEvidenceService = orderEvidenceService;
+        _config = config?.Value ?? throw new ArgumentNullException(nameof(config));
         _serviceProvider = serviceProvider;
+        
+        // Validate configuration on startup
+        _config.Validate();
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -112,7 +120,7 @@ public class ProductionGuardrailOrchestrator : IHostedService
     }
 
     /// <summary>
-    /// Validate a trade before execution
+    /// Validate a trade before execution with explicit live trading gate
     /// </summary>
     public TradeValidationResult ValidateTradeBeforeExecution(
         string symbol, 
@@ -132,6 +140,17 @@ public class ProductionGuardrailOrchestrator : IHostedService
         _logger.LogInformation("🔍 [GUARDRAILS] Validating trade: {Symbol} {Side} entry={Entry:0.00} stop={Stop:0.00} target={Target:0.00} tag={Tag}",
             symbol, isLong ? "BUY" : "SELL", entry, stop, target, customTag);
 
+        // Guardrail 0: Explicit live trading gate - AUDIT-CLEAN configuration requirement
+        if (!ProductionKillSwitchService.IsDryRunMode() && !_config.AllowLiveTrading)
+        {
+            result.IsValid = false;
+            result.AddValidationError("Live trading not explicitly enabled - Guardrails:AllowLiveTrading must be true");
+            _logger.LogCritical("🔴 [GUARDRAILS] [GUARDRAILS][LIVE-TRADING-GATE] Trade rejected: Live trading not explicitly enabled");
+            
+            // Force DRY_RUN mode for safety
+            throw new InvalidOperationException("[GUARDRAILS][LIVE-TRADING-GATE] Live trading not explicitly enabled - DRY_RUN enforced");
+        }
+
         // Guardrail 1: Force DRY_RUN if kill.txt exists
         if (ProductionKillSwitchService.IsKillSwitchActive())
         {
@@ -148,7 +167,15 @@ public class ProductionGuardrailOrchestrator : IHostedService
             _logger.LogInformation("🧪 [GUARDRAILS] Trade will be DRY_RUN only");
         }
 
-        // Guardrail 3: ES/MES tick rounding and risk validation
+        // Guardrail 3: Order evidence validation if enabled
+        if (_config.EnableOrderEvidenceValidation && !result.IsDryRun)
+        {
+            _logger.LogInformation("📋 [GUARDRAILS] [ORDER-EVIDENCE] Order evidence validation enabled for live trade");
+            // Note: Actual evidence validation happens after order placement
+            result.RequiresOrderEvidence = true;
+        }
+
+        // Guardrail 4: ES/MES tick rounding and risk validation
         var priceValidation = ProductionPriceService.ValidateAndRoundTradeSetup(
             symbol, entry, stop, target, isLong, _logger);
 
@@ -165,8 +192,8 @@ public class ProductionGuardrailOrchestrator : IHostedService
         result.RoundedTarget = priceValidation.RoundedTarget;
         result.RMultiple = priceValidation.RMultiple;
 
-        _logger.LogInformation("✅ [GUARDRAILS] Trade validation passed - R={R:0.00}, DryRun={DryRun}", 
-            result.RMultiple ?? 0, result.IsDryRun);
+        _logger.LogInformation("✅ [GUARDRAILS] Trade validation passed - R={R:0.00}, DryRun={DryRun}, LiveTradingEnabled={LiveTradingEnabled}", 
+            result.RMultiple ?? 0, result.IsDryRun, _config.AllowLiveTrading);
 
         return result;
     }
@@ -204,4 +231,5 @@ public class TradeValidationResult
     public decimal RoundedStop { get; set; }
     public decimal RoundedTarget { get; set; }
     public decimal? RMultiple { get; set; }
+    public bool RequiresOrderEvidence { get; set; }
 }

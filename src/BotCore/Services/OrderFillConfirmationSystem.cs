@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using TradingBot.Abstractions;
 using TopstepX.Bot.Abstractions;
 using BotCore.Models;
+using BotCore.Services;
 
 namespace TopstepX.Bot.Core.Services
 {
