@@ -313,11 +313,19 @@ namespace BotCore.Brain
 
                 return decision;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Error making decision for {Symbol}", symbol);
-                
-                // Fallback to rule-based decision
+                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Invalid operation making decision for {Symbol}", symbol);
+                return CreateFallbackDecision(symbol, env, levels, bars, risk);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Invalid argument making decision for {Symbol}", symbol);
+                return CreateFallbackDecision(symbol, env, levels, bars, risk);
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Timeout making decision for {Symbol}", symbol);
                 return CreateFallbackDecision(symbol, env, levels, bars, risk);
             }
         }
@@ -393,9 +401,13 @@ namespace BotCore.Brain
                     "WinRate={WinRate:P1}, TotalTrades={Total}, AllStrategiesUpdated=True",
                     symbol, strategy, pnl, wasCorrect, WinRateToday, perf.TotalTrades);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Error learning from result");
+                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Invalid operation during learning from result");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Invalid argument during learning from result");
             }
         }
         
@@ -433,9 +445,13 @@ namespace BotCore.Brain
                 _logger.LogDebug("🧠 [CROSS-LEARNING] Updated all strategies from {ExecutedStrategy} outcome: {Reward:F3}", 
                     executedStrategy, reward);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [CROSS-LEARNING] Error updating all strategies");
+                _logger.LogError(ex, "❌ [CROSS-LEARNING] Invalid operation updating all strategies");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "❌ [CROSS-LEARNING] Invalid argument updating all strategies");
             }
         }
         
