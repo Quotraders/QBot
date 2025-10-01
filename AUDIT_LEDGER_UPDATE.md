@@ -2,7 +2,7 @@
 
 ## Current Audit Progress - January 1, 2025
 
-### ✅ COMPLETED AUDIT SECTIONS (29/48 items)
+### ✅ COMPLETED AUDIT SECTIONS (30/48 items)
 
 #### Phase 1 - Top-Level Directory Audits - ALL COMPLETE (24 items)
 - **data/**: Production readiness docs cleanup ✅ 
@@ -11,8 +11,9 @@
 - **Intelligence/**: Data cleanup and script validation ✅
 - **config/**: Safety validation and schema testing ✅
 
-#### Phase 2 - Source Module Audits - BOTCORE COMPLETE (5/24+ modules)
+#### Phase 2 - Source Module Audits - ADAPTERS COMPLETE (6/24+ modules)
 - **BotCore/ ALL 9 ITEMS COMPLETE**: Critical services audit complete ✅
+- **adapters/ ALL 1 ITEMS COMPLETE**: External data adapters audit complete ✅
 
 **Audit Items Completed:**
 1. ✅ **ModelRotationService**: RegimeDetectionService integration
@@ -24,49 +25,55 @@
 7. ✅ **FeaturePublisher**: Configuration-driven interval + latency telemetry
 8. ✅ **OfiProxyResolver**: Already implemented
 9. ✅ **BarDispatcherHook**: Already implemented
+10. ✅ **topstep_x_adapter**: Fail-closed defaults + centralized retry policies
 
-### 🔄 PHASE 2 SOURCE MODULE IMPLEMENTATION - BOTCORE COMPLETE
+### 🔄 PHASE 2 SOURCE MODULE IMPLEMENTATION - ADAPTERS COMPLETE
 
-#### AUDIT ITEM 7 - FeaturePublisher.cs COMPLETED ✅
+#### AUDIT ITEM 10 - src/adapters/topstep_x_adapter.py COMPLETED ✅
 
-**Issue Found**: Hardcoded publish interval and missing latency telemetry
+**Issue Found**: Fail-open integration when upstream data is missing and missing centralized retry policies
 **Fix Applied**: 
-- Externalized publish cadence with validation: `_s7Config.Value.FeaturePublishIntervalSeconds`
-- Added rejection of zero/negative intervals with fallback to safe default
-- Implemented publish latency telemetry logging
+- Implemented `AdapterRetryPolicy` class with exponential backoff and bounded timeouts
+- Added fail-closed behavior requiring ALL instruments to connect successfully
+- Enhanced structured telemetry emission for monitoring and alerting
+- Added retry policies to critical operations (initialization, price retrieval)
 
 **Evidence**:
-```csharp
-// Before: Hardcoded interval
-var publishInterval = TimeSpan.FromSeconds(30); // Should come from configuration
+```python
+# Before: Partial failure allowed
+if connection_failures:
+    self.logger.warning(f"Some instruments failed to connect: {connection_failures}")
+    if len(connection_failures) == len(self.instruments):
+        raise RuntimeError(f"All instruments failed to initialize: {connection_failures}")
 
-// After: Configuration-driven with validation
-var publishIntervalSeconds = _s7Config.Value?.FeaturePublishIntervalSeconds ?? 30;
-if (publishIntervalSeconds <= 0) {
-    _logger.LogError("Invalid publish interval {Interval}s - must be positive. Using default 30s", publishIntervalSeconds);
-    publishIntervalSeconds = 30;
-}
+# After: Fail-closed behavior enforced
+if connection_failures:
+    error_msg = f"FAIL-CLOSED: Instrument connection failures detected: {connection_failures}"
+    self.logger.error(error_msg)
+    self._emit_telemetry("initialization_failed", {"reason": "instrument_connection_failures"})
+    await self._cleanup_resources()
+    raise RuntimeError(error_msg)
 
-// Added latency telemetry
-var publishLatency = DateTime.UtcNow - startTime;
-_logger.LogDebug("Publish cycle complete: Latency={Latency}ms", publishLatency.TotalMilliseconds);
+# Added centralized retry policy
+self.retry_policy = AdapterRetryPolicy(
+    max_retries=int(os.getenv('ADAPTER_MAX_RETRIES', '3')),
+    timeout=float(os.getenv('ADAPTER_TIMEOUT', '60.0'))
+)
 ```
 
-**Production-ready**: ✅ Build verified, no new analyzer violations
+**Production-ready**: ✅ Syntax verified, fail-closed enforcement implemented
 
-#### FINAL BOTCORE AUDIT RESULTS
+#### ADAPTERS MODULE AUDIT RESULTS
 
-**Total BotCore Items**: 9/9 (100% complete)
-- **Implemented fixes**: 3 items (ModelRotationService, EmergencyStopSystem, FeaturePublisher)
-- **Already compliant**: 5 items (most services already production-ready)
-- **Skipped**: 1 item (ProductionBreadthFeedService - guidance obsolete)
+**Total adapters/ Items**: 1/1 (100% complete)
+- **Implemented fixes**: 1 item (topstep_x_adapter.py)
+- **Key improvements**: Fail-closed validation + centralized retry policies + structured telemetry
 
 **Quality Metrics**:
-- ✅ Zero new analyzer violations introduced
-- ✅ All production guardrails preserved
-- ✅ Rigorous relevance validation performed
-- ✅ Configuration-driven implementations maintained
-- ✅ Fail-closed behaviors enhanced
+- ✅ Zero new violations introduced
+- ✅ Fail-closed behavior enforced for all critical operations
+- ✅ Centralized retry policies with bounded timeouts
+- ✅ Structured telemetry for monitoring and alerting
 
 ### 🛡️ PRODUCTION SAFETY MAINTAINED
 
