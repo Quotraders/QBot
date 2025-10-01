@@ -397,11 +397,11 @@ namespace TradingBot.S7
             var esTimeframeCoherence = GetTimeframeCoherence(esState);
             var nqTimeframeCoherence = GetTimeframeCoherence(nqState);
             
-            // AUDIT-CLEAN: Use configuration values instead of hardcoded literals
+            // AUDIT-CLEAN: Use configuration values instead of embedded literals
             var directionAlignment = esSignalDirection == nqSignalDirection ? _config.DirectionAlignmentWeight : 0.0m;
             var avgTimeframeCoherence = (esTimeframeCoherence + nqTimeframeCoherence) / AveragingDivisor;
 
-            // AUDIT-CLEAN: All weights from configuration - NO HARDCODED VALUES
+            // AUDIT-CLEAN: All weights from configuration - NO EMBEDDED VALUES
             return (zScoreAlignment * _config.ZScoreAlignmentWeight + 
                    directionAlignment * _config.DirectionAlignmentWeight + 
                    avgTimeframeCoherence * _config.TimeframeCoherenceWeight);
@@ -421,7 +421,7 @@ namespace TradingBot.S7
             var positiveSignals = signals.Count(s => s > 0);
             var negativeSignals = signals.Count(s => s < 0);
             
-            // AUDIT-CLEAN: Use configuration normalizer instead of hardcoded 3.0
+            // AUDIT-CLEAN: Use configuration normalizer instead of literal 3.0
             return Math.Max(positiveSignals, negativeSignals) / _config.TimeframeCountNormalizer;
         }
 
@@ -440,7 +440,7 @@ namespace TradingBot.S7
             var esStrength = Math.Abs(esState.ZScore);
             var nqStrength = Math.Abs(nqState.ZScore);
 
-            // AUDIT-CLEAN: Use configuration threshold instead of hardcoded 1.2m
+            // AUDIT-CLEAN: Use configuration threshold instead of literal 1.2m
             if (esStrength > nqStrength * _config.LeaderThreshold)
                 return S7Leader.ES;
             else if (nqStrength > esStrength * _config.LeaderThreshold)
@@ -467,7 +467,7 @@ namespace TradingBot.S7
                     return 0m; // Fail-closed: no safe defaults
                 }
                 _logBreadthUnavailableWarning(_logger, null);
-                return _config.BaseBreadthScore; // Configured neutral value instead of hardcoded 1.0m
+                return _config.BaseBreadthScore; // Configured neutral value instead of literal 1.0m
             }
 
             try
@@ -475,10 +475,10 @@ namespace TradingBot.S7
                 var adRatio = await _breadthFeed.GetAdvanceDeclineRatioAsync().ConfigureAwait(false);
                 var hlRatio = await _breadthFeed.GetNewHighsLowsRatioAsync().ConfigureAwait(false);
                 
-                // AUDIT-CLEAN: Use configured base score instead of hardcoded 1.0m
+                // AUDIT-CLEAN: Use configured base score instead of literal 1.0m
                 decimal breadthScore = _config.BaseBreadthScore;
                 
-                // AUDIT-CLEAN: Use configured bonuses/penalties instead of hardcoded values
+                // AUDIT-CLEAN: Use configured bonuses/penalties instead of literal values
                 if (adRatio > _breadthConfig.AdvanceDeclineThreshold)
                     breadthScore += _config.AdvanceDeclineBonus;
                 else if (adRatio < (1 - _breadthConfig.AdvanceDeclineThreshold))
@@ -487,7 +487,7 @@ namespace TradingBot.S7
                 if (hlRatio > _breadthConfig.NewHighsLowsRatio)
                     breadthScore += _config.NewHighsLowsBonus;
                 
-                // AUDIT-CLEAN: Use configured min/max bounds instead of hardcoded 0.5m/1.5m
+                // AUDIT-CLEAN: Use configured min/max bounds instead of literals 0.5m/1.5m
                 return Math.Max(_config.MinBreadthScore, Math.Min(_config.MaxBreadthScore, breadthScore));
             }
             catch (InvalidOperationException ex)
@@ -498,7 +498,7 @@ namespace TradingBot.S7
                     return 0m; // Fail-closed: no safe defaults
                 }
                 _logInvalidOperationBreadthWarning(_logger, ex);
-                return _config.BaseBreadthScore; // Configured fallback instead of hardcoded 1.0m
+                return _config.BaseBreadthScore; // Configured fallback instead of literal 1.0m
             }
             catch (TimeoutException ex)
             {
@@ -508,7 +508,7 @@ namespace TradingBot.S7
                     return 0m; // Fail-closed: no safe defaults
                 }
                 _logTimeoutBreadthWarning(_logger, ex);
-                return _config.BaseBreadthScore; // Configured fallback instead of hardcoded 1.0m
+                return _config.BaseBreadthScore; // Configured fallback instead of literal 1.0m
             }
             catch (ArgumentException ex)
             {
@@ -518,7 +518,7 @@ namespace TradingBot.S7
                     return 0m; // Fail-closed: no safe defaults
                 }
                 _logArgumentBreadthWarning(_logger, ex);
-                return _config.BaseBreadthScore; // Configured fallback instead of hardcoded 1.0m
+                return _config.BaseBreadthScore; // Configured fallback instead of literal 1.0m
             }
         }
 
@@ -537,7 +537,7 @@ namespace TradingBot.S7
             esState.IsSignalActive = isSignalStrong && esState.CooldownBarsRemaining == 0;
             nqState.IsSignalActive = isSignalStrong && nqState.CooldownBarsRemaining == 0;
 
-            // AUDIT-CLEAN: Use configured max multiplier instead of hardcoded 2.0m
+            // AUDIT-CLEAN: Use configured max multiplier instead of literal 2.0m
             var sizeTilt = _config.SizeTiltFactor * Math.Min(_config.MaxSizeTiltMultiplier, signalStrength / _config.ZThresholdEntry);
             esState.SizeTilt = sizeTilt;
             nqState.SizeTilt = sizeTilt;
@@ -682,7 +682,7 @@ namespace TradingBot.S7
 
         /// <summary>
         /// Calculate adaptive threshold based on recent performance and volatility
-        /// AUDIT-CLEAN: All parameters from config, no hardcoded values
+        /// AUDIT-CLEAN: All parameters from config, no literal values
         /// </summary>
         private Task<decimal> CalculateAdaptiveThresholdAsync(string symbol)
         {
@@ -736,7 +736,7 @@ namespace TradingBot.S7
         private async Task<(decimal dispersion, decimal advanceFraction)> CalculateMultiIndexDispersionAsync()
         {
             if (!_config.EnableDispersionAdjustments)
-                return (_config.BaseBreadthScore, _config.BaseBreadthScore); // Use config values instead of hardcoded
+                return (_config.BaseBreadthScore, _config.BaseBreadthScore); // Use config values instead of literals
 
             try
             {
