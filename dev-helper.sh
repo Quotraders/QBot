@@ -251,6 +251,16 @@ cmd_analyzer_check() {
     log_info "Running analyzer check (treating warnings as errors)..."
     log_warning "This will fail if any new analyzer warnings are introduced"
     
+    # Check for tracked build artifacts that should not be in git
+    log_info "Checking for tracked build artifacts..."
+    tracked_artifacts=$(git ls-files bin/ obj/ artifacts/ 2>/dev/null | wc -l)
+    if [ "$tracked_artifacts" -gt 0 ]; then
+        log_error "❌ Build artifacts are tracked in git:"
+        git ls-files bin/ obj/ artifacts/ 2>/dev/null | head -5
+        log_error "Remove these files with 'git rm' and update .gitignore"
+        return 1
+    fi
+    
     # Ensure packages are restored first
     log_info "Ensuring packages are restored..."
     if ! dotnet restore --verbosity quiet > /dev/null 2>&1; then
@@ -275,6 +285,81 @@ cmd_full_cycle() {
     log_success "Full cycle completed"
 }
 
+cmd_verify_guardrails() {
+    log_info "🛡️ Verifying all production guardrails..."
+    
+    local violations=0
+    
+    # Check 1: No tracked build artifacts
+    log_info "Checking for tracked build artifacts..."
+    tracked_count=$(git ls-files bin/ obj/ artifacts/ 2>/dev/null | wc -l)
+    if [ "$tracked_count" -gt 0 ]; then
+        log_error "❌ Build artifacts are tracked in git ($tracked_count files)"
+        violations=$((violations + 1))
+    else
+        log_success "✅ No build artifacts tracked in git"
+    fi
+    
+    # Check 2: .gitignore protections
+    log_info "Checking .gitignore protections..."
+    if grep -q "*.onnx" .gitignore && grep -q "artifacts/" .gitignore; then
+        log_success "✅ .gitignore protects ONNX and artifacts"
+    else
+        log_error "❌ .gitignore missing ONNX/artifacts protection"
+        violations=$((violations + 1))
+    fi
+    
+    # Check 3: Pre-commit hook checks staged files only
+    log_info "Checking pre-commit hook implementation..."
+    if grep -q "git diff --cached --name-only" .githooks/pre-commit; then
+        log_success "✅ Pre-commit hook uses staged-only scanning"
+    else
+        log_error "❌ Pre-commit hook does not use staged-only scanning"
+        violations=$((violations + 1))
+    fi
+    
+    # Check 4: Analyzer check is mandatory in pre-commit
+    if grep -q "analyzer-check" .githooks/pre-commit; then
+        log_success "✅ Pre-commit hook includes mandatory analyzer check"
+    else
+        log_error "❌ Pre-commit hook missing mandatory analyzer check"
+        violations=$((violations + 1))
+    fi
+    
+    # Check 5: Schema validation exists
+    if [ -f "config/schema.json" ]; then
+        log_success "✅ Configuration schema validation exists"
+    else
+        log_error "❌ Configuration schema validation missing"
+        violations=$((violations + 1))
+    fi
+    
+    # Check 6: Intelligence manifests
+    if [ -f "Intelligence/MANIFEST.md" ]; then
+        log_success "✅ Intelligence directory has proper manifest"
+    else
+        log_error "❌ Intelligence directory missing proper manifest"
+        violations=$((violations + 1))
+    fi
+    
+    # Check 7: Archive warnings
+    if grep -q "QUARANTINE" archive/README.md; then
+        log_success "✅ Archive has proper quarantine warnings"
+    else
+        log_error "❌ Archive missing quarantine warnings"
+        violations=$((violations + 1))
+    fi
+    
+    # Final result
+    if [ $violations -eq 0 ]; then
+        log_success "🛡️ All guardrails verified successfully!"
+        return 0
+    else
+        log_error "🚨 Found $violations guardrail violations"
+        return 1
+    fi
+}
+
 cmd_help() {
     echo "Coding Agent Development Helper"
     echo ""
@@ -291,8 +376,9 @@ cmd_help() {
     echo "  run           - Run main application (UnifiedOrchestrator)"
     echo "  run-smoke     - Run UnifiedOrchestrator smoke test (replaces SimpleBot/MinimalDemo)"
     echo "  run-historical-smoke - Run historical feed smoke test (TradingSystemBarConsumer/HistoricalDataBridgeService)"
-    echo "  clean         - Clean build artifacts
-  cleanup-generated - Clean up generated files, temporary artifacts, and analyzer snapshots"
+    echo "  clean         - Clean build artifacts"
+    echo "  cleanup-generated - Clean up generated files, temporary artifacts, and analyzer snapshots"
+    echo "  verify-guardrails - Verify all production guardrails are properly implemented"
     echo "  full          - Run full cycle: setup -> build -> test"
     echo "  help          - Show this help"
     echo ""
@@ -342,6 +428,9 @@ case "${1:-help}" in
         ;;
     "cleanup-generated")
         cmd_cleanup_generated
+        ;;
+    "verify-guardrails")
+        cmd_verify_guardrails
         ;;
     "full")
         cmd_full_cycle
