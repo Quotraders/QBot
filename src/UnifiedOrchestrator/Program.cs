@@ -1337,7 +1337,8 @@ Please check the configuration and ensure all required services are registered.
         services.Configure<BotCore.Configuration.ProductionGuardrailConfiguration>(configuration.GetSection("Guardrails"));
         services.Configure<BotCore.Configuration.KillSwitchConfiguration>(configuration.GetSection("KillSwitch"));
         services.Configure<BotCore.Configuration.EmergencyStopConfiguration>(configuration.GetSection("EmergencyStop"));
-        services.Configure<BotCore.Configuration.ResilienceConfiguration>(configuration.GetSection("Resilience"));
+        
+        // Note: ResilienceConfiguration is already configured by ProductionConfigurationExtensions
         
         // Register Production Resilience Service - Retry logic, circuit breakers, graceful degradation
         services.AddSingleton<BotCore.Services.ProductionResilienceService>();

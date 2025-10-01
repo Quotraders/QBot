@@ -26,8 +26,7 @@ public class ProductionResilienceService
         _logger = logger;
         _config = config.Value;
         
-        // Validate configuration on startup
-        _config.Validate();
+        // Note: Configuration validation is handled by ResilienceConfigurationValidator in DI
     }
 
     /// <summary>
@@ -99,12 +98,9 @@ public class ProductionResilienceService
                     _logger.LogError("🚫 [RESILIENCE] Circuit breaker OPENED for {Operation} after {Failures} failures", 
                         operationName, circuitBreaker.FailureCount);
                         
-                    // Emit structured telemetry for circuit breaker open
-                    if (_config.EnableCircuitBreakerTelemetry)
-                    {
-                        _logger.LogError("🚫 [RESILIENCE][CIRCUIT-OPEN] Operation: {Operation}, Failures: {Failures}, Timestamp: {Timestamp}", 
-                            operationName, circuitBreaker.FailureCount, DateTime.UtcNow);
-                    }
+                    // Emit structured telemetry for circuit breaker open (always enabled for production compliance)
+                    _logger.LogError("🚫 [RESILIENCE][CIRCUIT-OPEN] Operation: {Operation}, Failures: {Failures}, Timestamp: {Timestamp}", 
+                        operationName, circuitBreaker.FailureCount, DateTime.UtcNow);
                 }
                 
                 if (attempt < _config.MaxRetries)

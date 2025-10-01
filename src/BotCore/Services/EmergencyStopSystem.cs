@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using BotCore.Configuration;
 using BotCore.Services;
 using TradingBot.Abstractions;
+using TopstepX.Bot.Abstractions;
 
 namespace BotCore.Services
 {
@@ -284,14 +285,5 @@ namespace BotCore.Services
             _emergencyStopSource?.Dispose();
             base.Dispose();
         }
-    }
-    
-    /// <summary>
-    /// Event arguments for emergency stop events
-    /// </summary>
-    public class EmergencyStopEventArgs : EventArgs
-    {
-        public string Reason { get; set; } = string.Empty;
-        public DateTime Timestamp { get; set; }
     }
 }
