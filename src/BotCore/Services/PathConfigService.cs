@@ -13,12 +13,10 @@ namespace TradingBot.BotCore.Services
     public class PathConfigService : IPathConfig
     {
         private readonly IConfiguration _config;
-        private readonly ILogger<PathConfigService> _logger;
 
-        public PathConfigService(IConfiguration config, ILogger<PathConfigService> logger)
+        public PathConfigService(IConfiguration config)
         {
             _config = config;
-            _logger = logger;
         }
 
         public string GetDataRootPath() => 

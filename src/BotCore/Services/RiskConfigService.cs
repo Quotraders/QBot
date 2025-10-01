@@ -33,12 +33,10 @@ namespace TradingBot.BotCore.Services
         private const decimal DefaultMaxDrawdownPercentage = 0.15m; // Maximum drawdown percentage (15%)
         
         private readonly IConfiguration _config;
-        private readonly ILogger<RiskConfigService> _logger;
 
-        public RiskConfigService(IConfiguration config, ILogger<RiskConfigService> logger)
+        public RiskConfigService(IConfiguration config)
         {
             _config = config;
-            _logger = logger;
         }
 
         public decimal GetMaxDailyLossUsd() => 

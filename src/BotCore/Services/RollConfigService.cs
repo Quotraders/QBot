@@ -18,12 +18,10 @@ namespace TradingBot.BotCore.Services
         private const int DefaultRollNotificationLeadHours = 24;    // Hours advance notice for roll
         
         private readonly IConfiguration _config;
-        private readonly ILogger<RollConfigService> _logger;
 
-        public RollConfigService(IConfiguration config, ILogger<RollConfigService> logger)
+        public RollConfigService(IConfiguration config)
         {
             _config = config;
-            _logger = logger;
         }
 
         public int GetRollDaysBeforeExpiration() => 

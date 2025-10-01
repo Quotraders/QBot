@@ -15,12 +15,10 @@ namespace TradingBot.BotCore.Services
         private const int DefaultMaintenanceWindowDurationMinutes = 30;
         
         private readonly IConfiguration _config;
-        private readonly ILogger<SessionConfigService> _logger;
 
-        public SessionConfigService(IConfiguration config, ILogger<SessionConfigService> logger)
+        public SessionConfigService(IConfiguration config)
         {
             _config = config;
-            _logger = logger;
         }
 
         public string GetPrimaryTimezone() => 

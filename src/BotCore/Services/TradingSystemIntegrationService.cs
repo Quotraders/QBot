@@ -37,15 +37,12 @@ namespace TopstepX.Bot.Core.Services
         private readonly ILogger<TradingSystemIntegrationService> _logger;
         private readonly IServiceProvider _serviceProvider;
         private readonly EmergencyStopSystem _emergencyStop;
-        private readonly PositionTrackingSystem _positionTracker;
         private OrderFillConfirmationSystem? _orderConfirmation;
         private readonly ErrorHandlingMonitoringSystem _errorMonitoring;
         private readonly HttpClient _httpClient;
         
         // ML/RL Strategy Components - Production Ready Integration
-        private readonly TimeOptimizedStrategyManager _timeOptimizedStrategyManager;
         private readonly FeatureEngineering _featureEngineering;
-        private readonly StrategyMlModelManager _strategyMlModelManager;
         private readonly UnifiedTradingBrain _unifiedTradingBrain;
         private readonly ITopstepXAdapterService _topstepXAdapter;
         private readonly TradingBot.Abstractions.IS7Service? _s7Service;
@@ -179,13 +176,10 @@ namespace TopstepX.Bot.Core.Services
             ILogger<TradingSystemIntegrationService> logger,
             IServiceProvider serviceProvider,
             EmergencyStopSystem emergencyStop,
-            PositionTrackingSystem positionTracker,
             ErrorHandlingMonitoringSystem errorMonitoring,
             HttpClient httpClient,
             TradingSystemConfiguration config,
-            TimeOptimizedStrategyManager timeOptimizedStrategyManager,
             FeatureEngineering featureEngineering,
-            StrategyMlModelManager strategyMlModelManager,
             UnifiedTradingBrain unifiedTradingBrain,
             ITopstepXAdapterService topstepXAdapter,
             IHistoricalDataBridgeService historicalBridge,
@@ -197,15 +191,12 @@ namespace TopstepX.Bot.Core.Services
             _logger = logger;
             _serviceProvider = serviceProvider;
             _emergencyStop = emergencyStop;
-            _positionTracker = positionTracker;
             _errorMonitoring = errorMonitoring;
             _httpClient = httpClient;
             _config = config;
             
             // Inject ML/RL Strategy Components
-            _timeOptimizedStrategyManager = timeOptimizedStrategyManager;
             _featureEngineering = featureEngineering;
-            _strategyMlModelManager = strategyMlModelManager;
             _unifiedTradingBrain = unifiedTradingBrain;
             _topstepXAdapter = topstepXAdapter;
             

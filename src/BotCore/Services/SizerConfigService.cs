@@ -33,13 +33,11 @@ namespace TradingBot.BotCore.Services
         private const int DefaultModelRefreshIntervalMinutes = 120;
         
         private readonly IConfiguration _config;
-        private readonly ILogger<SizerConfigService> _logger;
         private readonly IMLConfigurationService _mlConfig;
 
-        public SizerConfigService(IConfiguration config, ILogger<SizerConfigService> logger, IMLConfigurationService mlConfig)
+        public SizerConfigService(IConfiguration config, IMLConfigurationService mlConfig)
         {
             _config = config;
-            _logger = logger;
             _mlConfig = mlConfig ?? throw new ArgumentNullException(nameof(mlConfig));
         }
 
