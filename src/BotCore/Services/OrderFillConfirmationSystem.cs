@@ -19,7 +19,7 @@ namespace TopstepX.Bot.Core.Services
     /// Order Fill Confirmation System - Ensures no trades without proof
     /// Integrates with TopstepX API for order verification
     /// </summary>
-    public class OrderFillConfirmationSystem
+    public class OrderFillConfirmationSystem : IDisposable
     {
         private readonly ILogger<OrderFillConfirmationSystem> _logger;
         private readonly HttpClient _httpClient;
@@ -27,6 +27,7 @@ namespace TopstepX.Bot.Core.Services
         private readonly Timer _verificationTimer;
         private readonly PositionTrackingSystem _positionTracker;
         private readonly EmergencyStopSystem _emergencyStop;
+        private bool _disposed;
         
         // Order type constants for API integration
         private const int LimitOrderType = 1;
@@ -396,7 +397,17 @@ namespace TopstepX.Bot.Core.Services
         
         public void Dispose()
         {
-            _verificationTimer?.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed && disposing)
+            {
+                _verificationTimer?.Dispose();
+                _disposed = true;
+            }
         }
 
         protected virtual void OnOrderConfirmedEvent(OrderConfirmedEventArgs args)

@@ -267,11 +267,6 @@ namespace TopstepX.S6
         // Strategy configuration constants
         private const double TrailingStopRThreshold = 0.8;
         private const double RthSessionHours = 6.5;              // Regular trading hours session length in hours
-        private const int MinuteDataArrayLength = 4;            // Length for minute index array calculations  
-        private const double TinyEpsilon = 1E-09;               // Tiny epsilon for numerical precision
-        private const double MinimumPriceThreshold = 0.01;      // Minimum price threshold for calculations
-        private const int MovingAverageWindow = 8;              // Moving average window size
-        private const int ExtendedMovingAverageWindow = 21;     // Extended moving average window size
         
         private readonly IOrderRouter _router; private readonly S6Config _cfg;
         private readonly State _es; private readonly State _nq;
