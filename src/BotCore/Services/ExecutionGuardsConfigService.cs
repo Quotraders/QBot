@@ -13,39 +13,51 @@ namespace TradingBot.BotCore.Services
     {
         private readonly IConfiguration _config;
 
+        // Default execution guard values
+        private const double DefaultMaxSpreadTicks = 3.0;
+        private const int DefaultMaxLatencyMs = 100;
+        private const long DefaultMinVolumeThreshold = 1000L;
+        private const double DefaultMaxImbalanceRatio = 0.8;
+        private const double DefaultMaxLimitOffsetTicks = 5.0;
+        private const int DefaultCircuitBreakerThreshold = 10;
+        private const int DefaultTradeAnalysisWindowMinutes = 5;
+        private const int DefaultVolumeAnalysisWindowMinutes = 1;
+        private const decimal DefaultMicroVolatilityThreshold = 0.002m;
+        private const decimal DefaultMaxSpreadBps = 2.0m;
+
         public ExecutionGuardsConfigService(IConfiguration config, ILogger<ExecutionGuardsConfigService> logger)
         {
             _config = config;
         }
 
         public double GetMaxSpreadTicks() => 
-            _config.GetValue("ExecutionGuards:MaxSpreadTicks", 3.0);
+            _config.GetValue("ExecutionGuards:MaxSpreadTicks", DefaultMaxSpreadTicks);
 
         public int GetMaxLatencyMs() => 
-            _config.GetValue("ExecutionGuards:MaxLatencyMs", 100);
+            _config.GetValue("ExecutionGuards:MaxLatencyMs", DefaultMaxLatencyMs);
 
         public long GetMinVolumeThreshold() => 
-            _config.GetValue("ExecutionGuards:MinVolumeThreshold", 1000L);
+            _config.GetValue("ExecutionGuards:MinVolumeThreshold", DefaultMinVolumeThreshold);
 
         public double GetMaxImbalanceRatio() => 
-            _config.GetValue("ExecutionGuards:MaxImbalanceRatio", 0.8);
+            _config.GetValue("ExecutionGuards:MaxImbalanceRatio", DefaultMaxImbalanceRatio);
 
         public double GetMaxLimitOffsetTicks() => 
-            _config.GetValue("ExecutionGuards:MaxLimitOffsetTicks", 5.0);
+            _config.GetValue("ExecutionGuards:MaxLimitOffsetTicks", DefaultMaxLimitOffsetTicks);
 
         public int GetCircuitBreakerThreshold() => 
-            _config.GetValue("ExecutionGuards:CircuitBreakerThreshold", 10);
+            _config.GetValue("ExecutionGuards:CircuitBreakerThreshold", DefaultCircuitBreakerThreshold);
 
         public int GetTradeAnalysisWindowMinutes() => 
-            _config.GetValue("ExecutionGuards:TradeAnalysisWindowMinutes", 5);
+            _config.GetValue("ExecutionGuards:TradeAnalysisWindowMinutes", DefaultTradeAnalysisWindowMinutes);
 
         public int GetVolumeAnalysisWindowMinutes() => 
-            _config.GetValue("ExecutionGuards:VolumeAnalysisWindowMinutes", 1);
+            _config.GetValue("ExecutionGuards:VolumeAnalysisWindowMinutes", DefaultVolumeAnalysisWindowMinutes);
 
         public decimal GetMicroVolatilityThreshold() => 
-            _config.GetValue("ExecutionGuards:MicroVolatilityThreshold", 0.002m);
+            _config.GetValue("ExecutionGuards:MicroVolatilityThreshold", DefaultMicroVolatilityThreshold);
 
         public decimal GetMaxSpreadBps() => 
-            _config.GetValue("ExecutionGuards:MaxSpreadBps", 2.0m);
+            _config.GetValue("ExecutionGuards:MaxSpreadBps", DefaultMaxSpreadBps);
     }
 }

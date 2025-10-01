@@ -34,7 +34,30 @@ var estimatedSpread = priceRange * (spreadEstimateVolumeFactor / Math.Max(avgVol
 
 ## 🚨 PHASE 2 - ANALYZER VIOLATION ELIMINATION (IN PROGRESS)
 
-### Round 41 - Phase 2 Priority 1 Correctness: S1144 Dead Code Elimination (Current Session)
+### Round 42 - Systematic High-Priority Fixes: ModelEnsembleService, PerformanceTracker, Config Services (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| **ModelEnsembleService.cs - COMPLETED** | | | | |
+| S109 | 6 | 0 | ModelEnsembleService.cs | Magic numbers → Named constants (FallbackConfidenceScore=0.5, RandomPredictionBase=0.6, RandomPredictionRange=0.3) |
+| CA1822 | 5 | 0 | ModelEnsembleService.cs | Methods made static (IsModelRelevant, CreateFallback*, GetSinglePricePredictionAsync) |
+| CA1307/CA1310 | 9 | 0 | ModelEnsembleService.cs | String operations → StringComparison.Ordinal/OrdinalIgnoreCase |
+| CA1002 | 3 | 0 | ModelEnsembleService.cs | List<string> parameters → IReadOnlyList<string> |
+| CA5394/SCS0005 | 4 | 0 | ModelEnsembleService.cs | new Random() instances → SharedRandom static field |
+| S1172 | 2 | 0 | ModelEnsembleService.cs | Unused parameters → Proper usage with cancellationToken.ThrowIfCancellationRequested() |
+| **PerformanceTracker.cs - MAJOR PROGRESS** | | | | |
+| S109 | 10 | 0 | PerformanceTracker.cs | Magic numbers → Named constants (PercentageConversionFactor=100, ExcellentWinThreshold=2.0, etc.) |
+| CA1822 | 5 | 0 | PerformanceTracker.cs | Methods made static (GetVolumeContext, GetVolatilityContext, GetTrendContext, CalculateRMultiple, ClassifyTradeQuality) |
+| CA1510 | 3 | 0 | PerformanceTracker.cs | if (x is null) throw new ArgumentNullException → ArgumentNullException.ThrowIfNull(x) |
+| CA1854 | 1 | 0 | PerformanceTracker.cs | Dictionary ContainsKey + indexer → TryGetValue pattern |
+| CA1002 | 1 | 0 | PerformanceTracker.cs | List<string> Tags → IReadOnlyList<string> with ReplaceTags method |
+| CA1031 | 6 | 0 | PerformanceTracker.cs | Generic Exception catches → Specific exceptions (IOException, JsonException, FileNotFoundException, UnauthorizedAccessException) |
+| **Config Services - COMPLETED** | | | | |
+| S109 | 12 | 0 | ExecutionGuardsConfigService.cs, ExecutionPolicyConfigService.cs | Magic number default values → Named constants |
+| CA1812 | 5 | 0 | ApiClient.cs, TradingBotTuningRunner.cs | Internal JSON DTO classes → public (ContractDto, AvailableResp, SearchResp, HistoryBarsResponse, BarData) |
+
+**Rationale**: Systematic application of Analyzer-Fix-Guidebook patterns focusing on Priority 1 (Correctness & Invariants) and Priority 2 (API & Encapsulation) violations. All fixes maintain immutable-by-default patterns and zero suppressions while ensuring production readiness.
+
+### Round 41 - Phase 2 Priority 1 Correctness: S1144 Dead Code Elimination (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | S1144 | 8 | 3 | TradingSystemIntegrationService.cs, ProductionConfigurationValidation.cs, NeuralUcbExtended.cs, SuppressionLedgerService.cs | Removed unused private fields, constants, methods, and LoggerMessage delegates |

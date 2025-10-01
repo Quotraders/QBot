@@ -12,6 +12,8 @@ namespace TradingBot.BotCore.Services
     {
         // Default execution policy constants
         private const int DefaultLimitOrderTimeoutSeconds = 30;
+        private const int DefaultMaxIcebergSize = 10;
+        private const int DefaultMinOrderSize = 1;
         
         private readonly IConfiguration _config;
 
@@ -36,9 +38,9 @@ namespace TradingBot.BotCore.Services
             _config.GetValue("ExecutionPolicy:EnableSmartOrderRouting", false);
 
         public int GetMaxIcebergSize() => 
-            _config.GetValue("ExecutionPolicy:MaxIcebergSize", 10);
+            _config.GetValue("ExecutionPolicy:MaxIcebergSize", DefaultMaxIcebergSize);
 
         public int GetMinOrderSize() => 
-            _config.GetValue("ExecutionPolicy:MinOrderSize", 1);
+            _config.GetValue("ExecutionPolicy:MinOrderSize", DefaultMinOrderSize);
     }
 }
