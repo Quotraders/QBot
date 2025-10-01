@@ -13,6 +13,11 @@ namespace TradingBot.BotCore.Services
     {
         private readonly IConfiguration _config;
 
+        // Default endpoint configuration constants
+        private const int DefaultConnectionTimeoutSeconds = 30;
+        private const int DefaultRequestTimeoutSeconds = 60;
+        private const int DefaultMaxRetryAttempts = 3;
+
         public EndpointConfigService(IConfiguration config)
         {
             _config = config;
@@ -37,13 +42,13 @@ namespace TradingBot.BotCore.Services
             _config.GetValue("Endpoints:CloudStorageEndpoint", "https://storage.tradingbot.local");
 
         public int GetConnectionTimeoutSeconds() => 
-            _config.GetValue("Endpoints:ConnectionTimeoutSeconds", 30);
+            _config.GetValue("Endpoints:ConnectionTimeoutSeconds", DefaultConnectionTimeoutSeconds);
 
         public int GetRequestTimeoutSeconds() => 
-            _config.GetValue("Endpoints:RequestTimeoutSeconds", 60);
+            _config.GetValue("Endpoints:RequestTimeoutSeconds", DefaultRequestTimeoutSeconds);
 
         public int GetMaxRetryAttempts() => 
-            _config.GetValue("Endpoints:MaxRetryAttempts", 3);
+            _config.GetValue("Endpoints:MaxRetryAttempts", DefaultMaxRetryAttempts);
 
         public bool UseSecureConnections() => 
             _config.GetValue("Endpoints:UseSecureConnections", true);

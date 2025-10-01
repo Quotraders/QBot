@@ -24,6 +24,17 @@ namespace TradingBot.BotCore.Services
         private const int DefaultMaxTradesPerDay = 20;                // Maximum trades per day limit
         private const int DefaultSafeHoldExtrasMinutes = 15;          // Default safe hold extra minutes
         
+        // UCB and strategy selection constants
+        private const double DefaultUcbExplorationParameter = 1.4;
+        private const double DefaultUcbConfidenceWidth = 0.1;
+        private const int DefaultUcbMinSamples = 10;
+        private const double DefaultStrategySelectionTemperature = 0.5;
+        private const int DefaultConfidenceCalibrationLookbackHours = 24;
+        private const double DefaultVixMaxValue = 100.0;
+        private const double DefaultVolumeRatioMaxValue = 10.0;
+        private const double DefaultRsiMaxValue = 100.0;
+        private const double DefaultMomentumScaleFactor = 0.05;
+        
         private readonly IConfiguration _config;
 
         public ControllerOptionsService(IConfiguration config)
@@ -60,34 +71,34 @@ namespace TradingBot.BotCore.Services
             _config.GetValue("Controller:SafeHoldExtrasMinutes", DefaultSafeHoldExtrasMinutes);
 
         public double GetUcbExplorationParameter() => 
-            _config.GetValue("Controller:UCB:ExplorationParameter", 1.4);
+            _config.GetValue("Controller:UCB:ExplorationParameter", DefaultUcbExplorationParameter);
 
         public double GetUcbConfidenceWidth() => 
-            _config.GetValue("Controller:UCB:ConfidenceWidth", 0.1);
+            _config.GetValue("Controller:UCB:ConfidenceWidth", DefaultUcbConfidenceWidth);
 
         public int GetUcbMinSamples() => 
-            _config.GetValue("Controller:UCB:MinSamples", 10);
+            _config.GetValue("Controller:UCB:MinSamples", DefaultUcbMinSamples);
 
         public double GetStrategySelectionTemperature() => 
-            _config.GetValue("Controller:StrategySelectionTemperature", 0.5);
+            _config.GetValue("Controller:StrategySelectionTemperature", DefaultStrategySelectionTemperature);
 
         public bool EnableDynamicConfidenceAdjustment() => 
             _config.GetValue("Controller:EnableDynamicConfidenceAdjustment", true);
 
         public int GetConfidenceCalibrationLookbackHours() => 
-            _config.GetValue("Controller:ConfidenceCalibrationLookbackHours", 24);
+            _config.GetValue("Controller:ConfidenceCalibrationLookbackHours", DefaultConfidenceCalibrationLookbackHours);
 
         public double GetVixMaxValue() => 
-            _config.GetValue("Controller:VixMaxValue", 100.0);
+            _config.GetValue("Controller:VixMaxValue", DefaultVixMaxValue);
 
         public double GetVolumeRatioMaxValue() => 
-            _config.GetValue("Controller:VolumeRatioMaxValue", 10.0);
+            _config.GetValue("Controller:VolumeRatioMaxValue", DefaultVolumeRatioMaxValue);
 
         public double GetRsiMaxValue() => 
-            _config.GetValue("Controller:RsiMaxValue", 100.0);
+            _config.GetValue("Controller:RsiMaxValue", DefaultRsiMaxValue);
 
         public double GetMomentumScaleFactor() => 
-            _config.GetValue("Controller:MomentumScaleFactor", 0.05);
+            _config.GetValue("Controller:MomentumScaleFactor", DefaultMomentumScaleFactor);
 
         public double GetVolatilityMaxValue() => 
             _config.GetValue("Controller:VolatilityMaxValue", 5.0);

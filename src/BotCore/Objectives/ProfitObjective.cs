@@ -45,7 +45,14 @@ public static class ProfitObjective
                 MaxDrawdownLimitUsd = Parse("OBJ_MAX_DD_LIMIT_USD", w.MaxDrawdownLimitUsd)
             };
         }
-        catch { }
+        catch (FormatException)
+        {
+            // Invalid environment variable format, use defaults
+        }
+        catch (OverflowException)
+        {
+            // Environment variable value out of range, use defaults
+        }
         return w;
     }
 

@@ -345,7 +345,7 @@ internal sealed class LinUcbArm
     private decimal[,] InvertMatrix(decimal[,] matrix)
     {
         var n = _dimension;
-        var augmented = new decimal[n, 2 * n];
+        var augmented = new decimal[n, MatrixMultiplier * n];
 
         // Create augmented matrix [A | I]
         for (int i = 0; i < n; i++)
@@ -373,7 +373,7 @@ internal sealed class LinUcbArm
             // Swap rows
             if (maxRow != i)
             {
-                for (int j = 0; j < 2 * n; j++)
+                for (int j = 0; j < MatrixMultiplier * n; j++)
                 {
                     (augmented[i, j], augmented[maxRow, j]) = (augmented[maxRow, j], augmented[i, j]);
                 }

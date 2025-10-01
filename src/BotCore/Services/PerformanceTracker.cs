@@ -14,6 +14,17 @@ public class PerformanceTracker
     private readonly string _tradesPath;
     private readonly JsonSerializerOptions _jsonOptions;
 
+    // Performance calculation constants
+    private const decimal PercentageConversionFactor = 100;
+    private const decimal DefaultVolumeValue = 100000m;
+    private const double ControlledLossThreshold = 0.5;
+    private const decimal DefaultVolatilityValue = 0.15m;
+    private const double ExcellentWinThreshold = 2.0;
+    private const double GoodWinThreshold = 1.0;
+    private const double AcceptableLossThreshold = 1.0;
+    private const double FallbackProfitFactor = 2.0;
+    private const double FallbackSharpeRatio = 1.5;
+
     public PerformanceTracker(ILogger<PerformanceTracker> logger, string? tradesPath = null)
     {
         _logger = logger;
@@ -33,13 +44,13 @@ public class PerformanceTracker
     /// </summary>
     public async Task LogTradeAsync(TradeRecord trade)
     {
-        if (trade is null) throw new ArgumentNullException(nameof(trade));
+        ArgumentNullException.ThrowIfNull(trade);
         
         try
         {
             // Calculate trade metrics
             var duration = trade.ExitTime - trade.EntryTime;
-            var pnlPercent = trade.EntryPrice != 0 ? ((trade.ExitPrice - trade.EntryPrice) / trade.EntryPrice) * 100 : 0;
+            var pnlPercent = trade.EntryPrice != 0 ? ((trade.ExitPrice - trade.EntryPrice) / trade.EntryPrice) * PercentageConversionFactor : 0;
             var rMultiple = CalculateRMultiple(trade);
 
             var tradeLog = new
@@ -89,7 +100,7 @@ public class PerformanceTracker
             };
 
             _logger.LogInformation("[TRADE_LOG] {Symbol} {Strategy} {Side} pnl={PnLPercent:P2} R={RMultiple:F1} dur={DurationMinutes}m reason={ExitReason}",
-                trade.Symbol, trade.Strategy, trade.Side, pnlPercent / 100, rMultiple, duration.TotalMinutes, trade.ExitReason);
+                trade.Symbol, trade.Strategy, trade.Side, pnlPercent / PercentageConversionFactor, rMultiple, duration.TotalMinutes, trade.ExitReason);
 
             // Save to daily trade log
             await SaveTradeLogAsync(tradeLog).ConfigureAwait(false);
@@ -108,7 +119,7 @@ public class PerformanceTracker
     /// </summary>
     public async Task UpdatePersonalMetricsAsync(TradeRecord trade, double rMultiple)
     {
-        if (trade is null) throw new ArgumentNullException(nameof(trade));
+        ArgumentNullException.ThrowIfNull(trade);
         
         try
         {
@@ -134,12 +145,12 @@ public class PerformanceTracker
             metrics.WinRate = metrics.TotalTrades > 0 ? (double)metrics.WinningTrades / metrics.TotalTrades : 0;
 
             // Track best performing strategies
-            if (!metrics.StrategyPerformance.ContainsKey(trade.Strategy))
+            if (!metrics.StrategyPerformance.TryGetValue(trade.Strategy, out var strategyMetrics))
             {
-                metrics.StrategyPerformance[trade.Strategy] = new StrategyMetrics();
+                strategyMetrics = new StrategyMetrics();
+                metrics.StrategyPerformance[trade.Strategy] = strategyMetrics;
             }
 
-            var strategyMetrics = metrics.StrategyPerformance[trade.Strategy];
             strategyMetrics.TradeCount++;
             strategyMetrics.TotalPnL += trade.PnLDollar;
             strategyMetrics.TotalRMultiple += rMultiple;
@@ -168,7 +179,7 @@ public class PerformanceTracker
     /// </summary>
     public async Task PushToCloudAsync(TradeRecord trade)
     {
-        if (trade is null) throw new ArgumentNullException(nameof(trade));
+        ArgumentNullException.ThrowIfNull(trade);
         
         try
         {
@@ -286,9 +297,9 @@ public class PerformanceTracker
     }
     
     // Helper methods for ML feature extraction
-    private decimal GetVolumeContext(DateTime entryTime, string symbol) => 100000m; // Implement with real volume data
-    private decimal GetVolatilityContext(DateTime entryTime, string symbol) => 0.15m; // Implement with real volatility calculation  
-    private string GetTrendContext(string symbol, DateTime entryTime) => "BULLISH"; // Implement with real trend analysis
+    private static decimal GetVolumeContext(DateTime entryTime, string symbol) => DefaultVolumeValue; // Implement with real volume data
+    private static decimal GetVolatilityContext(DateTime entryTime, string symbol) => DefaultVolatilityValue; // Implement with real volatility calculation  
+    private static string GetTrendContext(string symbol, DateTime entryTime) => "BULLISH"; // Implement with real trend analysis
 
     /// <summary>
     /// Get personal trading metrics
@@ -305,14 +316,24 @@ public class PerformanceTracker
             var json = await File.ReadAllTextAsync(metricsFile).ConfigureAwait(false);
             return JsonSerializer.Deserialize<PersonalMetrics>(json, _jsonOptions);
         }
-        catch (Exception ex)
+        catch (FileNotFoundException)
         {
-            _logger.LogError(ex, "Error loading personal metrics");
+            // File doesn't exist yet, return null
+            return null;
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "IO error loading personal metrics");
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON parsing error loading personal metrics");
             return null;
         }
     }
 
-    private double CalculateRMultiple(TradeRecord trade)
+    private static double CalculateRMultiple(TradeRecord trade)
     {
         if (!trade.StopPrice.HasValue || trade.EntryPrice == 0)
             return 0;
@@ -392,7 +413,7 @@ public class PerformanceTracker
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error calculating profit factor for strategy {Strategy}", strategy);
-            return 2.0; // Fallback value
+            return FallbackProfitFactor; // Fallback value
         }
     }
 
@@ -417,22 +438,22 @@ public class PerformanceTracker
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error calculating Sharpe ratio for strategy {Strategy}", strategy);
-            return 1.5; // Fallback value
+            return FallbackSharpeRatio; // Fallback value
         }
     }
 
-    private string ClassifyTradeQuality(TradeRecord trade, double rMultiple)
+    private static string ClassifyTradeQuality(TradeRecord trade, double rMultiple)
     {
         if (trade.PnLDollar > 0)
         {
-            if (rMultiple >= 2.0) return "excellent_win";
-            if (rMultiple >= 1.0) return "good_win";
+            if (rMultiple >= ExcellentWinThreshold) return "excellent_win";
+            if (rMultiple >= GoodWinThreshold) return "good_win";
             return "small_win";
         }
         else
         {
-            if (Math.Abs(rMultiple) <= 0.5) return "controlled_loss";
-            if (Math.Abs(rMultiple) <= 1.0) return "acceptable_loss";
+            if (Math.Abs(rMultiple) <= ControlledLossThreshold) return "controlled_loss";
+            if (Math.Abs(rMultiple) <= AcceptableLossThreshold) return "acceptable_loss";
             return "large_loss";
         }
     }
@@ -491,9 +512,17 @@ public class PerformanceTracker
 
             await File.WriteAllTextAsync(logFile, JsonSerializer.Serialize(trades, _jsonOptions)).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error saving trade log");
+            _logger.LogError(ex, "IO error saving trade log");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "Access denied saving trade log");
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON serialization error saving trade log");
         }
     }
 }
@@ -535,7 +564,15 @@ public class TradeRecord
     public decimal MaxDrawdown { get; set; }
     public decimal MaxFavorable { get; set; }
 
-    public List<string> Tags { get; } = new();
+    public IReadOnlyList<string> Tags => _tags;
+    private readonly List<string> _tags = new();
+    
+    public void ReplaceTags(IEnumerable<string> tags)
+    {
+        _tags.Clear();
+        if (tags != null) _tags.AddRange(tags);
+    }
+    
     public string? Notes { get; set; }
 }
 

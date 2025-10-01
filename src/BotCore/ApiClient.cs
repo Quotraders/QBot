@@ -35,9 +35,9 @@ namespace BotCore
 
 #nullable enable
         private sealed record AvailableReq(bool live);
-        // These records are used by System.Text.Json for deserialization - CA1812 false positive
-        internal sealed record ContractDto(string id, string name, string? description, string symbolId, bool activeContract);
-        internal sealed record AvailableResp(IReadOnlyList<ContractDto>? contracts, bool success, int errorCode, string? errorMessage);
+        // These records are used by System.Text.Json for deserialization
+        public sealed record ContractDto(string id, string name, string? description, string symbolId, bool activeContract);
+        public sealed record AvailableResp(IReadOnlyList<ContractDto>? contracts, bool success, int errorCode, string? errorMessage);
 
         private static readonly Dictionary<string, string> SymbolRootToSymbolId = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -126,8 +126,8 @@ namespace BotCore
         }
 
         private sealed record SearchReq(string searchText, bool live);
-        // This record is used by System.Text.Json for deserialization - CA1812 false positive  
-        internal sealed record SearchResp(IReadOnlyList<ContractDto>? contracts, bool success, int errorCode, string? errorMessage);
+        // This record is used by System.Text.Json for deserialization
+        public sealed record SearchResp(IReadOnlyList<ContractDto>? contracts, bool success, int errorCode, string? errorMessage);
 
         private async Task<string?> TryResolveViaSearchAsync(string searchText, bool live, CancellationToken ct)
         {

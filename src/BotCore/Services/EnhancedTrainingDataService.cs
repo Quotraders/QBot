@@ -32,6 +32,25 @@ namespace BotCore
         private const decimal BollingerBandUpMultiplier = 1.02m;       // Bollinger band upper multiplier (2% above)
         private const decimal BollingerBandDownMultiplier = 0.98m;     // Bollinger band lower multiplier (2% below)
         
+        // Volume and market data constants
+        private const decimal DefaultVolumeSimulation = 1000000m;      // Default simulated volume
+        private const decimal DefaultVolumeRatio = 1.5m;              // Default volume ratio
+        private const decimal DefaultTrendStrength = 0.5m;            // Default trend strength
+        private const decimal DefaultVixLevel = 20m;                  // Default VIX level
+        
+        // Feature vector constants
+        private const int RequiredFeatureCount = 43;                  // Required number of features for ML model
+        
+        // Trading session constants
+        private const int RegularTradingStartHour = 9;                // Regular trading hours start
+        private const int RegularTradingEndHour = 16;                 // Regular trading hours end
+        
+        // Regime scoring constants
+        private const decimal BullRegimeScore = 1.0m;                 // Bull market regime score
+        private const decimal BearRegimeScore = 0.0m;                 // Bear market regime score
+        private const decimal HighVolatilityRegimeScore = -0.5m;      // High volatility regime score
+        private const decimal LowVolatilityRegimeScore = 0.5m;        // Low volatility regime score
+        
         private readonly ILogger<EnhancedTrainingDataService> _logger;
         private readonly string _liveDataPath;
         private readonly List<TradeData> _currentSession = new();
@@ -253,10 +272,10 @@ namespace BotCore
             features.Add(signalData.BbLower ?? signalData.Entry * BollingerBandDownMultiplier);
 
             // Volume and momentum (simulated for now)
-            features.Add(1000000m); // Volume
-            features.Add(1.5m); // Volume ratio
+            features.Add(DefaultVolumeSimulation); // Volume
+            features.Add(DefaultVolumeRatio); // Volume ratio
             features.Add(signalData.Momentum ?? 0m);
-            features.Add(signalData.TrendStrength ?? 0.5m);
+            features.Add(signalData.TrendStrength ?? DefaultTrendStrength);
 
             // Time-based features
             var now = DateTime.Now;
@@ -266,33 +285,33 @@ namespace BotCore
 
             // Market regime features
             features.Add(GetRegimeScore(signalData.Regime));
-            features.Add(signalData.VixLevel ?? 20m);
+            features.Add(signalData.VixLevel ?? DefaultVixLevel);
 
             // Ensure we have exactly 43 features (pad with zeros if needed)
-            while (features.Count < 43)
+            while (features.Count < RequiredFeatureCount)
             {
                 features.Add(0m);
             }
 
-            return Task.FromResult(features.Take(43).ToList());
+            return Task.FromResult(features.Take(RequiredFeatureCount).ToList());
         }
 
         private static decimal GetRegimeScore(string? regime)
         {
             return regime?.ToLowerInvariant() switch
             {
-                "trend" => 1.0m,
-                "range" => 0.0m,
-                "highvol" => -0.5m,
-                "lowvol" => 0.5m,
-                _ => 0.0m
+                "trend" => BullRegimeScore,
+                "range" => BearRegimeScore,
+                "highvol" => HighVolatilityRegimeScore,
+                "lowvol" => LowVolatilityRegimeScore,
+                _ => BearRegimeScore
             };
         }
 
         private static string DetermineSession(DateTime timestamp)
         {
             var hour = timestamp.Hour;
-            return hour >= 9 && hour <= 16 ? "RTH" : "ETH";
+            return hour >= RegularTradingStartHour && hour <= RegularTradingEndHour ? "RTH" : "ETH";
         }
 
         private static string CreateCsvHeader()

@@ -308,9 +308,14 @@ namespace TradingBot.BotCore.Services.Helpers
                 // Service provider has been disposed
                 return null;
             }
-            catch (Exception)
+            catch (InvalidOperationException)
             {
-                // Any other exception during service resolution
+                // Service resolution failed (circular dependency, etc.)
+                return null;
+            }
+            catch (ArgumentException)
+            {
+                // Invalid service type requested
                 return null;
             }
         }
@@ -338,8 +343,14 @@ namespace TradingBot.BotCore.Services.Helpers
             {
                 return fallbackResult;
             }
-            catch (Exception)
+            catch (InvalidOperationException)
             {
+                // Service resolution failed
+                return fallbackResult;
+            }
+            catch (ArgumentException)
+            {
+                // Invalid service type or action parameter
                 return fallbackResult;
             }
         }

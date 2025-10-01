@@ -261,9 +261,13 @@ namespace BotCore
                     });
                     csvLines.Add(string.Join(",", values));
                 }
-                catch (Exception ex)
+                catch (JsonException ex)
                 {
                     _log.LogWarning(ex, "[CloudDataUploader] Failed to parse JSONL line: {Line}", line.Substring(0, Math.Min(MaxLogMessageLength, line.Length)));
+                }
+                catch (ArgumentException ex)
+                {
+                    _log.LogWarning(ex, "[CloudDataUploader] Invalid JSONL line format: {Line}", line.Substring(0, Math.Min(MaxLogMessageLength, line.Length)));
                 }
             }
 

@@ -7,6 +7,11 @@ public static class StrategyGates
     // per-symbol throttle store (UTC seconds)
     private static readonly ConcurrentDictionary<string, DateTime> _lastEntryUtc = new(StringComparer.OrdinalIgnoreCase);
 
+    // Position sizing scale factors
+    private const decimal WideSpreadPenalty = 0.70m; // very wide spread size reduction
+    private const decimal SlightlyWideSpreadPenalty = 0.85m; // slightly wide spread size reduction
+    private const decimal LowVolumePenalty = 0.85m; // thin tape size reduction
+
     // In AlwaysOn mode, enforce hard spread guard; otherwise use RS gate
     public static bool PassesGlobal(TradingProfileConfig cfg, BotCore.Models.MarketSnapshot snap)
     {
@@ -57,12 +62,12 @@ public static class StrategyGates
         var gf = cfg.GlobalFilters;
         // Soft size penalties: wideness of spread and weak volume
         if (snap.SpreadTicks > gf.SpreadTicksMaxBo)
-            scale *= 0.70m; // very wide → small size
+            scale *= WideSpreadPenalty; // very wide → small size
         else if (snap.SpreadTicks > gf.SpreadTicksMax)
-            scale *= 0.85m; // slightly wide → trim
+            scale *= SlightlyWideSpreadPenalty; // slightly wide → trim
 
         if (snap.VolumePct5m > 0 && snap.VolumePct5m < gf.VolumePctMinMr)
-            scale *= 0.85m; // thin tape → trim size a bit
+            scale *= LowVolumePenalty; // thin tape → trim size a bit
 
         return Math.Clamp(scale, cfg.AlwaysOn.SizeFloor, cfg.AlwaysOn.SizeCap);
     }
