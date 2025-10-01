@@ -157,6 +157,12 @@ namespace TradingBot.Abstractions
         public string FusionDispersionTag { get; set; } = "fusion.s7_dispersion";
         public string FusionAdaptiveTag { get; set; } = "fusion.s7_adaptive";
         
+        // S7Service specific configuration values - MUST come from config
+        public decimal DefaultMinZScoreThreshold { get; set; } = 0.001m;
+        
+        // S7FeaturePublisher configuration - dedicated interval setting  
+        public int FeaturePublishingIntervalMinutes { get; set; } = 5;
+        
         // Fail-closed configuration - unknown keys must trigger holds
         public bool FailOnUnknownKeys { get; set; } = true;
         public bool FailOnMissingData { get; set; } = true;

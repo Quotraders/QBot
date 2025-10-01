@@ -583,6 +583,7 @@ Please check the configuration and ensure all required services are registered.
         // Configure S7 strategy options
         services.Configure<TradingBot.Abstractions.S7Configuration>(configuration.GetSection("S7"));
         services.Configure<TradingBot.Abstractions.BreadthConfiguration>(configuration.GetSection("Breadth"));
+        services.Configure<TradingBot.S7.S7MarketDataBridgeConfiguration>(configuration.GetSection("S7:MarketDataBridge"));
         
         // Register S7 service with full DSL implementation
         services.AddSingleton<TradingBot.Abstractions.IS7Service, TradingBot.S7.S7Service>();
@@ -604,6 +605,9 @@ Please check the configuration and ensure all required services are registered.
         // ================================================================================
         // AUTOMATION-FIRST UPGRADE SCOPE - Feature Engineering Pipeline
         // Register feature resolvers as singletons for fail-closed feature extraction
+        
+        services.Configure<BotCore.Configuration.OfiConfiguration>(configuration.GetSection("Features:Ofi"));
+        services.Configure<BotCore.Configuration.BarDispatcherConfiguration>(configuration.GetSection("Features:BarDispatcher"));
         
         services.AddSingleton<BotCore.Features.IFeatureResolver, BotCore.Features.LiquidityAbsorptionResolver>();
         services.AddSingleton<BotCore.Features.IFeatureResolver, BotCore.Features.MtfStructureResolver>();

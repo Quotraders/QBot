@@ -151,11 +151,17 @@ namespace TradingBot.S7
                     return Task.CompletedTask;
                 }
 
-                // Start publishing timer - AUDIT-CLEAN: Use configured timeframe
-                var publishInterval = TimeSpan.FromMinutes(_config.BarTimeframeMinutes);
+                // Start publishing timer - AUDIT-CLEAN: Use dedicated feature publishing interval
+                if (_config.FeaturePublishingIntervalMinutes <= 0)
+                {
+                    _logInvalidConfiguration(_logger, new ArgumentOutOfRangeException(nameof(_config.FeaturePublishingIntervalMinutes), "FeaturePublishingIntervalMinutes must be greater than 0"));
+                    return Task.CompletedTask;
+                }
+                
+                var publishInterval = TimeSpan.FromMinutes(_config.FeaturePublishingIntervalMinutes);
                 _publishTimer = new Timer(PublishFeaturesCallback, null, TimeSpan.Zero, publishInterval);
 
-                _logFeaturePublisherStarted(_logger, _config.BarTimeframeMinutes, null);
+                _logFeaturePublisherStarted(_logger, _config.FeaturePublishingIntervalMinutes, null);
 
                 return Task.CompletedTask;
             }

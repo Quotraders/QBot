@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using BotCore.Configuration;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -16,33 +18,21 @@ namespace BotCore.Features
     public sealed class OfiProxyResolver : IFeatureResolver
     {
         private readonly ILogger<OfiProxyResolver> _logger;
+        private readonly OfiConfiguration _config;
         private readonly ConcurrentDictionary<string, OfiProxyState> _symbolStates = new(StringComparer.OrdinalIgnoreCase);
-        
-        // Configuration-driven constants (fail-closed requirement)
-        private const int DefaultMinDataPoints = 2; // Minimal requirement fallback
-        private static readonly double SafeZeroValue = GetConfiguredSafeValue();
-        private static readonly int MinDataPointsRequired = GetConfiguredMinDataPoints();
-        
-        private static double GetConfiguredSafeValue() =>
-            double.TryParse(Environment.GetEnvironmentVariable("OFI_SAFE_ZERO_VALUE"), out var val) 
-                ? val : 0.0; // Explicit zero fallback
-        
-        private static int GetConfiguredMinDataPoints() =>
-            int.TryParse(Environment.GetEnvironmentVariable("OFI_MIN_DATA_POINTS"), out var points) && points > 0 
-                ? points : DefaultMinDataPoints; // Minimal requirement fallback
-        
-        private const int LookbackBars = 20; // Config-driven value should come from configuration
-        
-        private const int HistoryBufferSize = 5; // Keep buffer for memory efficiency
         
         private readonly string[] _availableFeatureKeys = new[]
         {
             "ofi.proxy"
         };
 
-        public OfiProxyResolver(ILogger<OfiProxyResolver> logger)
+        public OfiProxyResolver(ILogger<OfiProxyResolver> logger, IOptions<OfiConfiguration> config)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _config = config?.Value ?? throw new ArgumentNullException(nameof(config));
+            
+            // Validate configuration on construction
+            _config.Validate();
         }
 
         public string[] GetAvailableFeatureKeys() => _availableFeatureKeys;
@@ -112,21 +102,21 @@ namespace BotCore.Features
                 state.OfiHistory.Add(new OfiPoint { Value = ofiProxy, Timestamp = timestamp });
                 
                 // Keep only required bars for memory efficiency
-                while (state.OfiHistory.Count > LookbackBars + HistoryBufferSize) // Keep buffer
+                while (state.OfiHistory.Count > _config.LookbackBars + _config.HistoryBufferSize) // Keep buffer
                 {
                     state.OfiHistory.RemoveAt(0);
                 }
 
                 // Calculate rolling OFI proxy if we have sufficient data
-                if (state.OfiHistory.Count >= LookbackBars)
+                if (state.OfiHistory.Count >= _config.LookbackBars)
                 {
                     // Simple moving average of OFI proxy values
-                    var recentOfi = state.OfiHistory.TakeLast(LookbackBars).Select(x => x.Value).ToList();
+                    var recentOfi = state.OfiHistory.TakeLast(_config.LookbackBars).Select(x => x.Value).ToList();
                     var avgOfi = recentOfi.Average();
                     
                     // Normalize by recent volatility to make values comparable across symbols
                     var ofiStdDev = CalculateStandardDeviation(recentOfi);
-                    var normalizedOfi = ofiStdDev > 0 ? avgOfi / ofiStdDev : SafeZeroValue;
+                    var normalizedOfi = ofiStdDev > 0 ? avgOfi / ofiStdDev : _config.SafeZeroValue;
                     
                     state.NormalizedOfiProxy = normalizedOfi;
                     state.LastUpdate = DateTime.UtcNow;
@@ -137,7 +127,7 @@ namespace BotCore.Features
                 else
                 {
                     _logger.LogTrace("[OFI-RESOLVER] Insufficient data for {Symbol}: {Count}/{Required} bars", 
-                        symbol, state.OfiHistory.Count, LookbackBars);
+                        symbol, state.OfiHistory.Count, _config.LookbackBars);
                 }
             }
             catch (Exception ex)
@@ -164,10 +154,10 @@ namespace BotCore.Features
                 return null;
             }
 
-            if (state.OfiHistory.Count < LookbackBars)
+            if (state.OfiHistory.Count < _config.LookbackBars)
             {
                 _logger.LogWarning("[OFI-RESOLVER] [AUDIT-VIOLATION] Insufficient data for {Symbol}: {Count}/{Required} bars - FAIL-CLOSED + TELEMETRY", 
-                    symbol, state.OfiHistory.Count, LookbackBars);
+                    symbol, state.OfiHistory.Count, _config.LookbackBars);
                 return null;
             }
 
@@ -178,9 +168,9 @@ namespace BotCore.Features
             };
         }
 
-        private static double CalculateStandardDeviation(List<double> values)
+        private double CalculateStandardDeviation(List<double> values)
         {
-            if (values.Count < MinDataPointsRequired) return SafeZeroValue;
+            if (values.Count < _config.MinDataPointsRequired) return _config.SafeZeroValue;
             
             var mean = values.Average();
             var sumOfSquares = values.Sum(x => Math.Pow(x - mean, 2));
