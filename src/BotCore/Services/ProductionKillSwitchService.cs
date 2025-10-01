@@ -132,6 +132,9 @@ public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, I
             // Log kill file contents if available for debugging
             LogKillFileContents();
             
+            // AUDIT-CLEAN: Publish guardrail metric for monitoring alerting per audit requirements
+            PublishGuardrailMetric("kill_switch_activated", 1.0, detectionMethod);
+            
             // Fire IKillSwitchWatcher events for compatibility with legacy Safety module integrations
             try
             {
@@ -266,6 +269,28 @@ public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, I
     {
         // Already started in StartAsync, this is for interface compatibility
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Publish guardrail metrics for monitoring and alerting per audit requirements
+    /// AUDIT-CLEAN: Ensure metrics push to central observability stack
+    /// </summary>
+    private void PublishGuardrailMetric(string metricName, double value, string context)
+    {
+        try
+        {
+            // Use structured logging with metric tags for observability systems to pick up
+            _logger.LogCritical("📊 [GUARDRAIL-METRIC] {MetricName}={Value} Context={Context} Timestamp={Timestamp}", 
+                $"guardrail.{metricName}", value, context, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                
+            // Additional structured log for time-series systems
+            _logger.LogInformation("METRIC: guardrail.{MetricName} {Value} {UnixTimestamp} tags=context:{Context},component:kill_switch", 
+                metricName, value, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), context);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ [GUARDRAIL-METRIC] Failed to publish metric {MetricName}", metricName);
+        }
     }
 
     protected virtual void Dispose(bool disposing)
