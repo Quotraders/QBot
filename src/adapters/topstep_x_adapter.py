@@ -29,7 +29,28 @@ except ImportError as e:
 class AdapterRetryPolicy:
     """Centralized retry policy with bounded timeouts for fail-closed behavior."""
     
-    def __init__(self, max_retries: int = 3, base_delay: float = 1.0, max_delay: float = 30.0, timeout: float = 60.0):
+    def __init__(self, max_retries: int = None, base_delay: float = None, max_delay: float = None, timeout: float = None):
+        # All parameters must come from configuration - fail closed if not provided
+        if max_retries is None:
+            max_retries = int(os.getenv('ADAPTER_MAX_RETRIES'))
+            if not max_retries or max_retries <= 0:
+                raise ValueError("ADAPTER_MAX_RETRIES environment variable must be set to positive integer")
+        
+        if base_delay is None:
+            base_delay = float(os.getenv('ADAPTER_BASE_DELAY'))
+            if not base_delay or base_delay <= 0:
+                raise ValueError("ADAPTER_BASE_DELAY environment variable must be set to positive number")
+                
+        if max_delay is None:
+            max_delay = float(os.getenv('ADAPTER_MAX_DELAY'))
+            if not max_delay or max_delay <= 0 or max_delay < base_delay:
+                raise ValueError("ADAPTER_MAX_DELAY environment variable must be set and >= base_delay")
+                
+        if timeout is None:
+            timeout = float(os.getenv('ADAPTER_TIMEOUT'))
+            if not timeout or timeout <= 0:
+                raise ValueError("ADAPTER_TIMEOUT environment variable must be set to positive number")
+        
         self.max_retries = max_retries
         self.base_delay = base_delay
         self.max_delay = max_delay
@@ -131,13 +152,12 @@ class TopstepXAdapter:
             self.logger.addHandler(handler)
             self.logger.setLevel(logging.INFO)
         
-        # Initialize centralized retry policy with fail-closed defaults
-        self.retry_policy = AdapterRetryPolicy(
-            max_retries=int(os.getenv('ADAPTER_MAX_RETRIES', '3')),
-            base_delay=float(os.getenv('ADAPTER_BASE_DELAY', '1.0')),
-            max_delay=float(os.getenv('ADAPTER_MAX_DELAY', '30.0')),
-            timeout=float(os.getenv('ADAPTER_TIMEOUT', '60.0'))
-        )
+        # Initialize centralized retry policy with fail-closed configuration validation
+        try:
+            self.retry_policy = AdapterRetryPolicy()
+        except ValueError as e:
+            self.logger.error(f"FAIL-CLOSED: Adapter configuration invalid: {e}")
+            raise RuntimeError(f"Adapter configuration failure: {e}") from e
         
         self.logger.info(f"🔧 TopstepX adapter initialized for {instruments} with fail-closed retry policy")
         self._emit_telemetry("adapter_initialized", {"instruments": instruments})

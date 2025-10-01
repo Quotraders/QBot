@@ -44,18 +44,19 @@ namespace BotCore.Features
             _featureBus = featureBus ?? throw new ArgumentNullException(nameof(featureBus));
             _resolvers = resolvers ?? throw new ArgumentNullException(nameof(resolvers));
 
-            // Get publish interval from configuration with validation
-            var publishIntervalSeconds = _s7Config.Value?.FeaturePublishIntervalSeconds ?? 30;
+            // Get publish interval from configuration with validation and fail-closed behavior
+            var publishIntervalSeconds = _s7Config.Value?.FeaturePublishIntervalSeconds;
             
-            // Reject zero/negative intervals per audit requirements
-            if (publishIntervalSeconds <= 0)
+            // FAIL-CLOSED: Reject missing/invalid configuration 
+            if (!publishIntervalSeconds.HasValue || publishIntervalSeconds <= 0)
             {
-                _logger.LogError("[FEATURE-PUBLISHER] Invalid publish interval {Interval}s - must be positive. Using default 30s", publishIntervalSeconds);
-                publishIntervalSeconds = 30;
+                var errorMsg = $"[FEATURE-PUBLISHER] FAIL-CLOSED: Invalid/missing FeaturePublishIntervalSeconds configuration: {publishIntervalSeconds}. Must be > 0.";
+                _logger.LogError(errorMsg);
+                throw new InvalidOperationException(errorMsg);
             }
             
-            var publishInterval = TimeSpan.FromSeconds(publishIntervalSeconds);
-            _logger.LogInformation("[FEATURE-PUBLISHER] Configured publish interval: {Interval}s", publishIntervalSeconds);
+            var publishInterval = TimeSpan.FromSeconds(publishIntervalSeconds.Value);
+            _logger.LogInformation("[FEATURE-PUBLISHER] Configured publish interval: {Interval}s", publishIntervalSeconds.Value);
             
             _publishTimer = new Timer(PublishFeaturesCallback, null, publishInterval, publishInterval);
         }
