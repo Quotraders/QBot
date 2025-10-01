@@ -154,7 +154,7 @@ namespace TradingBot.S7
                 // Start publishing timer - AUDIT-CLEAN: Use dedicated feature publishing interval
                 if (_config.FeaturePublishingIntervalMinutes <= 0)
                 {
-                    _logInvalidConfiguration(_logger, new ArgumentOutOfRangeException(nameof(_config.FeaturePublishingIntervalMinutes), "FeaturePublishingIntervalMinutes must be greater than 0"));
+                    _logInvalidConfiguration(_logger, new ArgumentOutOfRangeException("config", "FeaturePublishingIntervalMinutes must be greater than 0"));
                     return Task.CompletedTask;
                 }
                 

@@ -21,7 +21,7 @@ namespace BotCore.Configuration
         /// <summary>
         /// Safe zero value used when calculations result in invalid values
         /// </summary>
-        public double SafeZeroValue { get; set; } = 0.0;
+        public double SafeZeroValue { get; set; }
         
         /// <summary>
         /// Buffer size for history management and memory efficiency

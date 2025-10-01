@@ -49,16 +49,16 @@ namespace TradingBot.S7
         public void Validate()
         {
             if (string.IsNullOrWhiteSpace(EnhancedServiceTypeName))
-                throw new ArgumentException("EnhancedServiceTypeName cannot be null or empty", nameof(EnhancedServiceTypeName));
+                throw new ArgumentException("EnhancedServiceTypeName cannot be null or empty");
                 
             if (string.IsNullOrWhiteSpace(MarketDataEventName))
-                throw new ArgumentException("MarketDataEventName cannot be null or empty", nameof(MarketDataEventName));
+                throw new ArgumentException("MarketDataEventName cannot be null or empty");
                 
             if (string.IsNullOrWhiteSpace(TelemetryPrefix))
-                throw new ArgumentException("TelemetryPrefix cannot be null or empty", nameof(TelemetryPrefix));
+                throw new ArgumentException("TelemetryPrefix cannot be null or empty");
                 
             if (ProcessingTimeoutMs <= 0)
-                throw new ArgumentOutOfRangeException(nameof(ProcessingTimeoutMs), "ProcessingTimeoutMs must be greater than 0");
+                throw new ArgumentOutOfRangeException("ProcessingTimeoutMs", "ProcessingTimeoutMs must be greater than 0");
         }
     }
 }
