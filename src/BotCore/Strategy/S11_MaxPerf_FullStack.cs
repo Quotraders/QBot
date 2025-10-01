@@ -403,8 +403,8 @@ namespace TopstepX.S11
         private sealed class State
         {
             public readonly Instrument Instr; private readonly IOrderRouter R; private readonly S11Config C;
-            public readonly long Tick; public readonly double TickPx;
-            public State(Instrument i, IOrderRouter r, S11Config c){ Instr=i; R=r; C=c; TickPx=r.GetTickSize(i); Tick=(long)Math.Round(1.0/ TickPx); }
+            public readonly double TickPx;
+            public State(Instrument i, IOrderRouter r, S11Config c){ Instr=i; R=r; C=c; TickPx=r.GetTickSize(i); }
 
             // series
             public readonly Ring<Bar1M> Min1 = new Ring<Bar1M>(1200);
@@ -427,7 +427,7 @@ namespace TopstepX.S11
 
             // ADR
             public readonly List<(DateTime dateEt, double high, double low)> DailyForAdr = new();
-            public double Adr=0;
+            public double Adr;
 
             // helpers
             public long LastClose => Min1.Count>0 ? Min1.Last().Close : 0;

@@ -11,7 +11,7 @@ namespace BotCore.Configuration
         /// <summary>
         /// Explicit configuration gate for live trading (default false for safety)
         /// </summary>
-        public bool AllowLiveTrading { get; set; } = false;
+        public bool AllowLiveTrading { get; set; }
         
         /// <summary>
         /// Enable order evidence validation requirements

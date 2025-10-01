@@ -183,13 +183,13 @@ namespace TopstepX.S6
     // --- ROLLING INDICATORS (O(1)) ---
     public sealed class Atr
     {
-        private readonly int _n; private double _atr; private bool _seeded; private double _prevClosePx;
+        private readonly int _n; private double _atr; private bool _seeded;
         public Atr(int n){ _n=n; }
         public double Update(double high, double low, double prevClose)
         {
             double tr = Math.Max(high - low, Math.Max(Math.Abs(high - prevClose), Math.Abs(low - prevClose)));
             if (!_seeded){ _atr = tr; _seeded = true; } else { _atr = (_atr * (_n - 1) + tr) / _n; }
-            _prevClosePx = prevClose; return _atr;
+            return _atr;
         }
         public double Value => _atr;
     }
@@ -396,8 +396,8 @@ namespace TopstepX.S6
         private sealed class State
         {
             public readonly Instrument Instr; private readonly IOrderRouter R; private readonly S6Config C;
-            public readonly long Tick; public readonly double TickPx;
-            public State(Instrument i, IOrderRouter r, S6Config c){ Instr=i; R=r; C=c; TickPx=r.GetTickSize(i); Tick=(long)Math.Round(1.0/ TickPx); }
+            public readonly double TickPx;
+            public State(Instrument i, IOrderRouter r, S6Config c){ Instr=i; R=r; C=c; TickPx=r.GetTickSize(i); }
 
             // series
             public readonly Ring<Bar1M> Min1 = new Ring<Bar1M>(1200);
@@ -409,16 +409,16 @@ namespace TopstepX.S6
             private readonly Adx adx = new Adx(14);
             private readonly Ema ema8 = new Ema(8), ema21 = new Ema(21);
             private readonly RvolBaseline rvolBase = new RvolBaseline(20);
-            public double ATR=0, ADX=0, RVOL=1.0; public int DivergenceBp=0; // Divergence set externally by strategy combining ES/NQ
+            public double ATR, ADX, RVOL=1.0; public int DivergenceBp; // Divergence set externally by strategy combining ES/NQ
 
             // ON/session
             public long ON_High = long.MinValue, ON_Low = long.MaxValue;
-            public long PremarketLast; public bool GapComputed=false; public int GapDir=0; public double GapPts=0; public double RTHOpenPx=0;
+            public long PremarketLast; public bool GapComputed; public int GapDir; public double GapPts; public double RTHOpenPx;
             public DateTime LastResetDay = DateTime.MinValue.Date; public DateTimeOffset LastBarTime;
 
             // ADR
             public readonly List<(DateTime dateEt, double high, double low)> DailyForAdr = new();
-            public double Adr=0;
+            public double Adr;
 
             // helpers
             public long LastClose => Min1.Count>0 ? Min1.Last().Close : 0;
