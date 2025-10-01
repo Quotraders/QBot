@@ -631,7 +631,22 @@ namespace BotCore.Strategy
             }
         }
         private static decimal GuessTickSize(string sym)
-        { try { return InstrumentMeta.Tick(sym); } catch { return 0.25m; } }
+        { 
+            try 
+            { 
+                return InstrumentMeta.Tick(sym); 
+            } 
+            catch (ArgumentException)
+            {
+                // Unknown symbol, use ES default
+                return 0.25m;
+            }
+            catch (InvalidOperationException)
+            {
+                // Instrument metadata unavailable, use ES default  
+                return 0.25m;
+            }
+        }
         private static bool CanAttempt(string sym, string sess, Side side, int cap)
         {
             var key = (sym, DateOnly.FromDateTime(DateTime.Now), sess, side);
@@ -947,7 +962,16 @@ namespace BotCore.Strategy
                         return cfg;
                     }
                 }
-                catch { }
+                catch (JsonException ex)
+                {
+                    // Log JSON parsing error but continue with defaults
+                    System.Diagnostics.Debug.WriteLine($"[S3] Config load failed: {ex.Message}");
+                }
+                catch (System.IO.IOException ex)
+                {
+                    // Log file access error but continue with defaults
+                    System.Diagnostics.Debug.WriteLine($"[S3] Config file access failed: {ex.Message}");
+                }
                 return new S3RuntimeConfig();
             }
 
@@ -1036,7 +1060,14 @@ namespace BotCore.Strategy
                         };
                     }
                 }
-                catch { /* keep prior config on parse errors */ }
+                catch (JsonException)
+                {
+                    // Keep prior config on JSON parse errors - fail gracefully
+                }
+                catch (ArgumentException)
+                {
+                    // Keep prior config on invalid argument errors - fail gracefully
+                }
             }
         }
 

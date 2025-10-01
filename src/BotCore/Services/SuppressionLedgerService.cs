@@ -47,10 +47,6 @@ namespace TradingBot.BotCore.Services
         private static readonly Action<ILogger, Guid, DateTime, string, Exception?> _logSuppressionExpiration = 
             LoggerMessage.Define<Guid, DateTime, string>(LogLevel.Information, new EventId(2004, "SuppressionExpiration"), 
                 "⏰ [SUPPRESSION] Set expiration for suppression {Id}: {Date} - {Reason}");
-                
-        private static readonly Action<ILogger, Exception?> _logAlertError = 
-            LoggerMessage.Define(LogLevel.Error, new EventId(2011, "AlertError"), 
-                "Error creating suppression alert");
 
         public SuppressionLedgerService(ILogger<SuppressionLedgerService> logger)
         {

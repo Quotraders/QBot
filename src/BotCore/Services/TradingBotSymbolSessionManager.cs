@@ -24,9 +24,6 @@ namespace TradingBot.BotCore.Services
         private readonly SafeHoldDecisionPolicy? _neutralBandService;
         private readonly ILogger<TradingBotSymbolSessionManager> _logger;
 
-        // Statistical analysis constants
-        private const int MinimumTradesForConfidenceInterval = 10;
-
         // Trading Session Multipliers
         private const decimal RegularHoursMultiplier = 1.0m;
         private const decimal PostMarketMultiplier = 1.15m;

@@ -599,7 +599,7 @@ namespace TopstepX.Bot.Core.Services
                 }
 
                 // PHASE 1: Feature Engineering - Transform raw market data into ML-ready features
-                var featureVector = await GenerateEnhancedFeaturesAsync(symbol, marketData).ConfigureAwait(false);
+                await GenerateEnhancedFeaturesAsync(symbol, marketData).ConfigureAwait(false);
                 
                 // PHASE 2: Time-Optimized Strategy Selection - Use existing optimization
                 // Note: Simplifying to use available methods
@@ -628,7 +628,7 @@ namespace TopstepX.Bot.Core.Services
                     brainDecision.PriceDirection, brainDecision.PriceProbability, brainDecision.OptimalPositionMultiplier);
                 
                 // PHASE 6: AllStrategies Signal Generation - Generate high-confidence signals using existing sophisticated strategies
-                var marketSnapshot = CreateMarketSnapshot(symbol, marketData);
+                CreateMarketSnapshot(symbol, marketData);
                 
                 // Use AllStrategies for signal generation - this is what the user wants!
                 var allStrategiesSignals = ConvertCandidatesToSignals(mlEnhancedCandidates);
@@ -648,8 +648,7 @@ namespace TopstepX.Bot.Core.Services
                 // Update active signals cache for continuous monitoring
                 if (aggregatedSignals.Count > 0)
                 {
-                    // Convert to a simpler signal format for tracking
-                    var trackingSignal = aggregatedSignals.First();
+                    // Update tracking timestamp
                     _lastFeatureUpdate[symbol] = DateTime.UtcNow;
                 }
             }
@@ -1369,43 +1368,6 @@ namespace TopstepX.Bot.Core.Services
             catch (ArgumentException ex)
             {
                 _logger.LogError(ex, "[BAR_CACHE] Invalid argument updating bar cache for {Symbol}", symbol);
-            }
-        }
-
-        /// <summary>
-        /// Process position management signal (stops, targets, scaling)
-        /// </summary>
-        private async Task ProcessPositionManagementSignalAsync(Signal signal, FeatureVector? featureVector)
-        {
-            try
-            {
-                // Simplified position management logic
-                if (signal.StrategyId.Contains("STOP"))
-                {
-                    // Update stop loss using ML-optimized levels
-                    await UpdateStopLossAsync(signal).ConfigureAwait(false);
-                }
-                else if (signal.StrategyId.Contains("TARGET"))
-                {
-                    // Update take profit using ML-optimized levels
-                    await UpdateTakeProfitAsync(signal).ConfigureAwait(false);
-                }
-                else if (signal.StrategyId.Contains("SCALE"))
-                {
-                    // Handle position scaling (add/reduce) using ML risk management
-                    await ProcessPositionScalingAsync(signal).ConfigureAwait(false);
-                }
-
-                _logger.LogDebug("[ML/RL-POS-MGMT-SIGNAL] Processed position management signal for {Symbol}: {Strategy}", 
-                    signal.Symbol, signal.StrategyId);
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogError(ex, "[ML/RL-POS-MGMT-SIGNAL] Invalid operation processing position management signal for {Symbol}", signal.Symbol);
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogError(ex, "[ML/RL-POS-MGMT-SIGNAL] Invalid argument processing position management signal for {Symbol}", signal.Symbol);
             }
         }
 
