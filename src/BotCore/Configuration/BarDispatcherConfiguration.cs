@@ -49,13 +49,13 @@ namespace BotCore.Configuration
         public void Validate()
         {
             if (string.IsNullOrWhiteSpace(PrimaryBarSource))
-                throw new ArgumentException("PrimaryBarSource cannot be null or empty", nameof(PrimaryBarSource));
+                throw new InvalidOperationException("PrimaryBarSource cannot be null or empty");
                 
             if (string.IsNullOrWhiteSpace(TelemetryPrefix))
-                throw new ArgumentException("TelemetryPrefix cannot be null or empty", nameof(TelemetryPrefix));
+                throw new InvalidOperationException("TelemetryPrefix cannot be null or empty");
                 
             if (ExpectedBarSources.Count == 0)
-                throw new ArgumentException("ExpectedBarSources must contain at least one entry", nameof(ExpectedBarSources));
+                throw new InvalidOperationException("ExpectedBarSources must contain at least one entry");
         }
     }
 }

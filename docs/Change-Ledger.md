@@ -34,7 +34,110 @@ var estimatedSpread = priceRange * (spreadEstimateVolumeFactor / Math.Max(avgVol
 
 ## 🚨 PHASE 2 - ANALYZER VIOLATION ELIMINATION (IN PROGRESS)
 
-### Round 44 - Priority 1 Systematic Fixes: Core Trading Components (Current Session)
+### Round 47 - Priority 3 Complex Method Refactoring: Strategy DSL Components (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| **Phase 1 Final Cleanup - COMPLETED** | | | | |
+| CS0160 | 2 | 0 | CloudRlTrainerEnhanced.cs | Duplicate HttpRequestException catch clauses → Single specific catch |
+| **Strategy DSL Complex Methods - COMPLETED** | | | | |
+| S1541 | 30 | <10 | StrategyKnowledgeGraphNew.cs (Get method) | Large switch expression → Feature category routing with 4 extracted helper methods |
+| S138 | 81 lines | <20 lines | FeatureBusMapper.cs (InitializeDefaultMappings) | Monolithic initialization → 10 specialized category methods |
+
+**Example Pattern - Feature Routing Refactoring:**
+```csharp
+// Before: S1541 violation (complexity 30, large switch with 30+ arms)
+public double Get(string symbol, string key) {
+    return key switch {
+        "zone.dist_to_demand_atr" => GetZoneFeature(symbol, "dist_to_demand_atr"),
+        "zone.dist_to_supply_atr" => GetZoneFeature(symbol, "dist_to_supply_atr"),
+        "pattern.bull_score" => GetPatternScore(symbol, true),
+        "pattern.bear_score" => GetPatternScore(symbol, false),
+        "vdc" => _featureBus.Probe(symbol, "volatility.contraction") ?? DefaultValue,
+        // ... 25+ more explicit cases
+    };
+}
+
+// After: Compliant (complexity <10, clean routing)
+public double Get(string symbol, string key) {
+    return key switch {
+        string k when k.StartsWith("zone.") => GetZoneBasedFeature(symbol, key),
+        string k when k.StartsWith("pattern.") => GetPatternBasedFeature(symbol, key),
+        string k when IsMarketMicrostructureFeature(k) => GetMarketMicrostructureFeature(symbol, key),
+        string k when k.StartsWith("breadth.") => BreadthNeutralScore,
+        _ => 0.0
+    };
+}
+// + GetZoneBasedFeature(), GetPatternBasedFeature(), GetMarketMicrostructureFeature(), IsMarketMicrostructureFeature() helpers
+```
+
+**Rationale**: Applied systematic Priority 3 fixes (Logging & diagnosability) per Analyzer-Fix-Guidebook. Complex feature routing now uses category-based delegation instead of large switch expressions, improving maintainability and reducing cyclomatic complexity. Feature mapping initialization split into logical groupings by domain (zone, pattern, momentum, etc.) for better organization.
+
+### Round 46 - Priority 1 Exception Handling: Correctness & Invariants (Previous Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| **Core Exception Handling - MAJOR PROGRESS** | | | | |
+| CA1031 | 3 | 0 | PatternEngine.cs (2 methods), StrategyGates.cs | Generic Exception catches → Specific exceptions (InvalidOperationException, ArgumentException, HttpRequestException, IOException) |
+| S2139 | 12+ | 0 | ConfigurationSchemaService, SimpleTopstepAuth, EnhancedProductionResilienceService, TradingSystemIntegrationService, CloudDataUploader, CloudRlTrainerEnhanced, StrategyKnowledgeGraphNew, FeatureProbe, StateDurabilityService, IntegritySigningService | Bare rethrows → Contextual exception wrapping with InvalidOperationException |
+
+**Example Pattern - Exception Handling Compliance:**
+```csharp
+// Before: S2139 violation (bare rethrow without context)
+catch (Exception ex) {
+    _logger.LogError(ex, "Failed operation");
+    throw;
+}
+
+// After: Compliant (contextual rethrow)
+catch (Exception ex) {
+    _logger.LogError(ex, "Failed operation");
+    throw new InvalidOperationException("Operation failed with specific context", ex);
+}
+
+// Before: CA1031 violation (generic Exception catch)
+catch (Exception ex) { /* handle */ }
+
+// After: Compliant (specific exceptions)
+catch (HttpRequestException ex) { /* handle HTTP errors */ }
+catch (IOException ex) { /* handle IO errors */ }
+catch (InvalidOperationException ex) { /* handle operation errors */ }
+```
+
+**Rationale**: Applied systematic Priority 1 fixes (Correctness & Invariants) per Analyzer-Fix-Guidebook. Exception handling now follows proper patterns: catch specific exception types and rethrow with contextual information. This improves debuggability and error handling across core services, authentication, resilience, trading systems, and data management components.
+
+### Round 45 - Major Complex Method Refactoring: S7 Component Compliance (Previous Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| **S7 Component Complex Methods - COMPLETED** | | | | |
+| S1541 | 25 | <10 | S7FeaturePublisher.cs (PublishFeaturesCallback) | Complex method → 8 extracted helper methods (ValidateServicesForPublishing, PublishCrossSymbolFeatures, etc.) |
+| S138 | 107 lines | <20 lines | S7FeaturePublisher.cs (PublishFeaturesCallback) | Monolithic method → Clean orchestration pattern with single-responsibility helpers |
+| S1541 | 24 | <10 | S7MarketDataBridge.cs (OnMarketDataReceivedAsync) | Complex data processing → 6 extracted methods (ExtractPriceAndTimestamp, ExtractPriceFromJson, etc.) |
+| S138 | 95 lines | <20 lines | S7MarketDataBridge.cs (OnMarketDataReceivedAsync) | Large method → Focused data extraction and service update methods |
+| S1541 | 12 | <10 | S7MarketDataBridge.cs (StartAsync) | Nested conditions → 7 extracted setup methods (InitializeServices, SetupMarketDataSubscription, etc.) |
+
+**Example Pattern - Method Extraction:**
+```csharp
+// Before (S1541/S138 violations)
+private void PublishFeaturesCallback(object? state)
+{
+    // 107 lines with complexity 25
+    // Mixed responsibilities: validation, data extraction, publishing, exception handling
+}
+
+// After (Compliant)
+private void PublishFeaturesCallback(object? state)
+{
+    if (!ValidateServicesForPublishing()) return;
+    var snapshot = _s7Service!.GetCurrentSnapshot();
+    PublishCrossSymbolFeatures(snapshot, timestamp, telemetryPrefix);
+    PublishFusionTags(snapshot, timestamp);
+    PublishIndividualSymbolFeatures(timestamp, telemetryPrefix);
+}
+// + 8 focused helper methods with single responsibilities
+```
+
+**Rationale**: Applied systematic method extraction per Analyzer-Fix-Guidebook Priority 3 (Logging & diagnosability). All S7 component complex methods now follow clean orchestration patterns with extracted helper methods that have single responsibilities. This reduces cyclomatic complexity below thresholds and dramatically improves maintainability and testability.
+
+### Round 44 - Priority 1 Systematic Fixes: Core Trading Components (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | **Trading/Mathematical Constants - COMPLETED** | | | | |

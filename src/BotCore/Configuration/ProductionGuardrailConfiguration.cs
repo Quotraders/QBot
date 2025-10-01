@@ -11,7 +11,7 @@ namespace BotCore.Configuration
         /// <summary>
         /// Explicit configuration gate for live trading (default false for safety)
         /// </summary>
-        public bool AllowLiveTrading { get; set; } = false;
+        public bool AllowLiveTrading { get; set; }
         
         /// <summary>
         /// Enable order evidence validation requirements
@@ -78,7 +78,7 @@ namespace BotCore.Configuration
                 throw new ArgumentException("FilePath cannot be null or empty");
                 
             if (CheckIntervalMs <= 0)
-                throw new ArgumentOutOfRangeException("CheckIntervalMs", "CheckIntervalMs must be greater than 0");
+                throw new InvalidOperationException("CheckIntervalMs must be greater than 0");
                 
             if (string.IsNullOrWhiteSpace(TelemetryPrefix))
                 throw new ArgumentException("TelemetryPrefix cannot be null or empty");
@@ -120,7 +120,7 @@ namespace BotCore.Configuration
         public void Validate()
         {
             if (MonitoringIntervalMs <= 0)
-                throw new ArgumentOutOfRangeException("MonitoringIntervalMs", "MonitoringIntervalMs must be greater than 0");
+                throw new InvalidOperationException("MonitoringIntervalMs must be greater than 0");
                 
             if (string.IsNullOrWhiteSpace(TelemetryPrefix))
                 throw new ArgumentException("TelemetryPrefix cannot be null or empty");

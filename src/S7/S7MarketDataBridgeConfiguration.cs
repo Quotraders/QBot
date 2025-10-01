@@ -58,7 +58,7 @@ namespace TradingBot.S7
                 throw new ArgumentException("TelemetryPrefix cannot be null or empty");
                 
             if (ProcessingTimeoutMs <= 0)
-                throw new ArgumentOutOfRangeException("ProcessingTimeoutMs", "ProcessingTimeoutMs must be greater than 0");
+                throw new InvalidOperationException("ProcessingTimeoutMs must be greater than 0");
         }
     }
 }

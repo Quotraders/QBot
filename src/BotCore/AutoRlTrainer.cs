@@ -16,7 +16,6 @@ namespace BotCore
     /// The bot only needs to run for trading, not for learning.
     /// Use CloudDataUploader + CloudRlTrainerEnhanced for cloud-based learning instead.
     /// </summary>
-    [Obsolete("Local training is deprecated. Use 100% cloud-based learning instead.", false)]
     public sealed class AutoRlTrainer : IDisposable
     {
         private readonly ILogger _log;

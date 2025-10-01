@@ -78,9 +78,13 @@ public class PatternEngine
                     _featureBus.Publish(symbol, now, $"pattern.confidence::{detector.PatternName}", result.Confidence);
                 }
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Pattern detector {PatternName} failed for {Symbol}", detector.PatternName, symbol);
+                _logger.LogWarning(ex, "Pattern detector {PatternName} invalid operation for {Symbol}", detector.PatternName, symbol);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Pattern detector {PatternName} invalid argument for {Symbol}", detector.PatternName, symbol);
             }
         }
 
@@ -140,9 +144,9 @@ public class PatternEngine
 
             return detailsResult;
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Failed to get current pattern scores for {Symbol}", symbol);
+            _logger.LogError(ex, "Invalid operation getting pattern scores for {Symbol}", symbol);
             
             // Return neutral scores on error
             return new PatternScoresWithDetails

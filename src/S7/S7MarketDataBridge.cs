@@ -164,73 +164,16 @@ namespace TradingBot.S7
         {
             try
             {
-                // Get services (they might not be available during DI construction)
-                _s7Service = _serviceProvider.GetService<IS7Service>();
-                _config = _serviceProvider.GetService<Microsoft.Extensions.Options.IOptions<S7Configuration>>()?.Value;
-
-                if (_s7Service == null)
-                {
-                    _logS7ServiceNotAvailable(_logger, null);
+                if (!InitializeServices())
                     return Task.CompletedTask;
+
+                var marketDataServiceType = FindMarketDataServiceType();
+                if (marketDataServiceType == null)
+                {
+                    return HandleMissingServiceType();
                 }
 
-                if (_config == null || !_config.Enabled)
-                {
-                    _logS7ServiceDisabled(_logger, null);
-                    return Task.CompletedTask;
-                }
-
-                // Try to get the enhanced market data service
-                // Using reflection to avoid direct BotCore dependency
-                var marketDataServiceType = AppDomain.CurrentDomain.GetAssemblies()
-                    .SelectMany(a => a.GetTypes())
-                    .FirstOrDefault(t => t.Name == _bridgeConfig.EnhancedServiceTypeName);
-
-                if (marketDataServiceType != null)
-                {
-                    _marketDataService = _serviceProvider.GetService(marketDataServiceType);
-                    if (_marketDataService != null)
-                    {
-                        // Use reflection to subscribe to the OnMarketDataReceived event
-                        var eventInfo = marketDataServiceType.GetEvent(_bridgeConfig.MarketDataEventName);
-                        if (eventInfo != null)
-                        {
-                            var handler = new Action<string, object>(OnMarketDataReceived);
-                            eventInfo.AddEventHandler(_marketDataService, handler);
-                            
-                            _logBridgeStarted(_logger, null);
-                            _logMonitoringSymbols(_logger, string.Join(", ", _config.Symbols), null);
-                            return Task.CompletedTask;
-                        }
-                        else
-                        {
-                            _logSubscriptionError(_logger, null);
-                            
-                            if (_bridgeConfig.FailOnMissingEnhancedService)
-                            {
-                                throw new InvalidOperationException($"[S7-BRIDGE] [S7-AUDIT-VIOLATION] Event {_bridgeConfig.MarketDataEventName} not found on enhanced market data service - FAIL-CLOSED + TELEMETRY");
-                            }
-                        }
-                    }
-                    else if (_bridgeConfig.FailOnMissingEnhancedService)
-                    {
-                        _logMarketDataServiceNotAvailable(_logger, null);
-                        throw new InvalidOperationException($"[S7-BRIDGE] [S7-AUDIT-VIOLATION] Enhanced market data service {_bridgeConfig.EnhancedServiceTypeName} not registered in DI - FAIL-CLOSED + TELEMETRY");
-                    }
-                }
-                else if (_bridgeConfig.FailOnMissingEnhancedService)
-                {
-                    _logMarketDataServiceNotAvailable(_logger, null);
-                    throw new InvalidOperationException($"[S7-BRIDGE] [S7-AUDIT-VIOLATION] Enhanced market data service type {_bridgeConfig.EnhancedServiceTypeName} not found - FAIL-CLOSED + TELEMETRY");
-                }
-
-                // AUDIT-CLEAN: Configuration gating - only proceed if explicitly allowed
-                if (!_bridgeConfig.EnableConfigurationGating)
-                {
-                    _logMarketDataServiceNotAvailable(_logger, null);
-                }
-                
-                return Task.CompletedTask;
+                return SetupMarketDataSubscription(marketDataServiceType);
             }
             catch (ReflectionTypeLoadException ex)
             {
@@ -247,6 +190,104 @@ namespace TradingBot.S7
                 _logInvalidOperationSetup(_logger, ex);
                 return Task.FromException(ex);
             }
+        }
+
+        private bool InitializeServices()
+        {
+            // Get services (they might not be available during DI construction)
+            _s7Service = _serviceProvider.GetService<IS7Service>();
+            _config = _serviceProvider.GetService<Microsoft.Extensions.Options.IOptions<S7Configuration>>()?.Value;
+
+            if (_s7Service == null)
+            {
+                _logS7ServiceNotAvailable(_logger, null);
+                return false;
+            }
+
+            if (_config == null || !_config.Enabled)
+            {
+                _logS7ServiceDisabled(_logger, null);
+                return false;
+            }
+
+            return true;
+        }
+
+        private Type? FindMarketDataServiceType()
+        {
+            // Try to get the enhanced market data service
+            // Using reflection to avoid direct BotCore dependency
+            return AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(a => a.GetTypes())
+                .FirstOrDefault(t => t.Name == _bridgeConfig.EnhancedServiceTypeName);
+        }
+
+        private Task HandleMissingServiceType()
+        {
+            if (_bridgeConfig.FailOnMissingEnhancedService)
+            {
+                _logMarketDataServiceNotAvailable(_logger, null);
+                throw new InvalidOperationException($"[S7-BRIDGE] [S7-AUDIT-VIOLATION] Enhanced market data service type {_bridgeConfig.EnhancedServiceTypeName} not found - FAIL-CLOSED + TELEMETRY");
+            }
+
+            // AUDIT-CLEAN: Configuration gating - only proceed if explicitly allowed
+            if (!_bridgeConfig.EnableConfigurationGating)
+            {
+                _logMarketDataServiceNotAvailable(_logger, null);
+            }
+            
+            return Task.CompletedTask;
+        }
+
+        private Task SetupMarketDataSubscription(Type marketDataServiceType)
+        {
+            _marketDataService = _serviceProvider.GetService(marketDataServiceType);
+            if (_marketDataService == null)
+            {
+                return HandleMissingServiceInstance();
+            }
+
+            return SubscribeToMarketDataEvent(marketDataServiceType);
+        }
+
+        private Task HandleMissingServiceInstance()
+        {
+            if (_bridgeConfig.FailOnMissingEnhancedService)
+            {
+                _logMarketDataServiceNotAvailable(_logger, null);
+                throw new InvalidOperationException($"[S7-BRIDGE] [S7-AUDIT-VIOLATION] Enhanced market data service {_bridgeConfig.EnhancedServiceTypeName} not registered in DI - FAIL-CLOSED + TELEMETRY");
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private Task SubscribeToMarketDataEvent(Type marketDataServiceType)
+        {
+            // Use reflection to subscribe to the OnMarketDataReceived event
+            var eventInfo = marketDataServiceType.GetEvent(_bridgeConfig.MarketDataEventName);
+            if (eventInfo == null)
+            {
+                return HandleMissingEvent();
+            }
+
+            var handler = new Action<string, object>(OnMarketDataReceived);
+            eventInfo.AddEventHandler(_marketDataService, handler);
+            
+            _logBridgeStarted(_logger, null);
+            _logMonitoringSymbols(_logger, string.Join(", ", _config!.Symbols), null);
+            return Task.CompletedTask;
+        }
+
+        private Task HandleMissingEvent()
+        {
+            _logSubscriptionError(_logger, null);
+            
+            if (_bridgeConfig.FailOnMissingEnhancedService)
+            {
+                throw new InvalidOperationException($"[S7-BRIDGE] [S7-AUDIT-VIOLATION] Event {_bridgeConfig.MarketDataEventName} not found on enhanced market data service - FAIL-CLOSED + TELEMETRY");
+            }
+
+            return Task.CompletedTask;
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
@@ -325,75 +366,14 @@ namespace TradingBot.S7
         {
             try
             {
-                if (_s7Service == null || _config == null)
+                if (!ShouldProcessMarketData(symbol))
                     return;
 
-                // Only process data for configured symbols (ES and NQ)
-                if (!_config.Symbols.Contains(symbol, StringComparer.OrdinalIgnoreCase))
-                    return;
-
-                // Extract close price from market data
-                decimal? closePrice = null;
-                DateTime timestamp = DateTime.UtcNow;
-
-                if (data is MarketData marketData)
-                {
-                    closePrice = (decimal)marketData.Close;
-                    timestamp = marketData.Timestamp;
-                }
-                else if (data is System.Text.Json.JsonElement jsonElement)
-                {
-                    // Handle JSON market data format
-                    if (jsonElement.TryGetProperty("close", out var closeProp) && closeProp.TryGetDecimal(out var close))
-                    {
-                        closePrice = close;
-                    }
-                    else if (jsonElement.TryGetProperty("last", out var lastProp) && lastProp.TryGetDecimal(out var last))
-                    {
-                        closePrice = last;
-                    }
-                    else if (jsonElement.TryGetProperty("price", out var priceProp) && priceProp.TryGetDecimal(out var price))
-                    {
-                        closePrice = price;
-                    }
-
-                    if (jsonElement.TryGetProperty("timestamp", out var timestampProp))
-                    {
-                        if (timestampProp.TryGetDateTime(out var dt))
-                            timestamp = dt;
-                        else if (timestampProp.TryGetInt64(out var unixMs))
-                            timestamp = DateTimeOffset.FromUnixTimeMilliseconds(unixMs).DateTime;
-                    }
-                }
-                else
-                {
-                    // Try to extract price using reflection as fallback
-                    // AUDIT-CLEAN: Surface telemetry when falling back to reflection
-                    if (_bridgeConfig.EnableReflectionFallbackTelemetry)
-                    {
-                        _logReflectionFallbackTelemetry(_logger, symbol, null);
-                    }
-                    
-                    var type = data.GetType();
-                    var closeProperty = type.GetProperty("Close") ?? type.GetProperty("Last") ?? type.GetProperty("Price");
-                    if (closeProperty != null && closeProperty.PropertyType == typeof(decimal))
-                    {
-                        closePrice = (decimal?)closeProperty.GetValue(data);
-                    }
-
-                    var timestampProperty = type.GetProperty("Timestamp") ?? type.GetProperty("Time");
-                    if (timestampProperty != null && timestampProperty.PropertyType == typeof(DateTime))
-                    {
-                        timestamp = (DateTime)timestampProperty.GetValue(data)!;
-                    }
-                }
-
+                var (closePrice, timestamp) = ExtractPriceAndTimestamp(data, symbol);
+                
                 if (closePrice.HasValue)
                 {
-                    // Update S7 service with new price data
-                    await _s7Service.UpdateAsync(symbol, closePrice.Value, timestamp).ConfigureAwait(false);
-
-                    _logServiceUpdated(_logger, symbol, closePrice.Value, timestamp, null);
+                    await UpdateS7ServiceAsync(symbol, closePrice.Value, timestamp).ConfigureAwait(false);
                 }
                 else
                 {
@@ -432,6 +412,105 @@ namespace TradingBot.S7
             {
                 _logArgumentAuditViolation(_logger, symbol, ex);
             }
+        }
+
+        private bool ShouldProcessMarketData(string symbol)
+        {
+            if (_s7Service == null || _config == null)
+                return false;
+
+            // Only process data for configured symbols (ES and NQ)
+            return _config.Symbols.Contains(symbol, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private (decimal? closePrice, DateTime timestamp) ExtractPriceAndTimestamp(object data, string symbol)
+        {
+            decimal? closePrice = null;
+            DateTime timestamp = DateTime.UtcNow;
+
+            if (data is MarketData marketData)
+            {
+                closePrice = (decimal)marketData.Close;
+                timestamp = marketData.Timestamp;
+            }
+            else if (data is System.Text.Json.JsonElement jsonElement)
+            {
+                closePrice = ExtractPriceFromJson(jsonElement);
+                timestamp = ExtractTimestampFromJson(jsonElement);
+            }
+            else
+            {
+                (closePrice, timestamp) = ExtractPriceUsingReflection(data, symbol);
+            }
+
+            return (closePrice, timestamp);
+        }
+
+        private decimal? ExtractPriceFromJson(System.Text.Json.JsonElement jsonElement)
+        {
+            // Handle JSON market data format
+            if (jsonElement.TryGetProperty("close", out var closeProp) && closeProp.TryGetDecimal(out var close))
+            {
+                return close;
+            }
+            else if (jsonElement.TryGetProperty("last", out var lastProp) && lastProp.TryGetDecimal(out var last))
+            {
+                return last;
+            }
+            else if (jsonElement.TryGetProperty("price", out var priceProp) && priceProp.TryGetDecimal(out var price))
+            {
+                return price;
+            }
+
+            return null;
+        }
+
+        private DateTime ExtractTimestampFromJson(System.Text.Json.JsonElement jsonElement)
+        {
+            if (jsonElement.TryGetProperty("timestamp", out var timestampProp))
+            {
+                if (timestampProp.TryGetDateTime(out var dt))
+                    return dt;
+                else if (timestampProp.TryGetInt64(out var unixMs))
+                    return DateTimeOffset.FromUnixTimeMilliseconds(unixMs).DateTime;
+            }
+
+            return DateTime.UtcNow;
+        }
+
+        private (decimal? closePrice, DateTime timestamp) ExtractPriceUsingReflection(object data, string symbol)
+        {
+            decimal? closePrice = null;
+            DateTime timestamp = DateTime.UtcNow;
+
+            // Try to extract price using reflection as fallback
+            // AUDIT-CLEAN: Surface telemetry when falling back to reflection
+            if (_bridgeConfig.EnableReflectionFallbackTelemetry)
+            {
+                _logReflectionFallbackTelemetry(_logger, symbol, null);
+            }
+            
+            var type = data.GetType();
+            var closeProperty = type.GetProperty("Close") ?? type.GetProperty("Last") ?? type.GetProperty("Price");
+            if (closeProperty != null && closeProperty.PropertyType == typeof(decimal))
+            {
+                closePrice = (decimal?)closeProperty.GetValue(data);
+            }
+
+            var timestampProperty = type.GetProperty("Timestamp") ?? type.GetProperty("Time");
+            if (timestampProperty != null && timestampProperty.PropertyType == typeof(DateTime))
+            {
+                timestamp = (DateTime)timestampProperty.GetValue(data)!;
+            }
+
+            return (closePrice, timestamp);
+        }
+
+        private async Task UpdateS7ServiceAsync(string symbol, decimal closePrice, DateTime timestamp)
+        {
+            // Update S7 service with new price data
+            await _s7Service!.UpdateAsync(symbol, closePrice, timestamp).ConfigureAwait(false);
+            _logServiceUpdated(_logger, symbol, closePrice, timestamp, null);
         }
 
         public void Dispose()

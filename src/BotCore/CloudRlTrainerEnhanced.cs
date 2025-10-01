@@ -165,7 +165,7 @@ namespace BotCore
             }
             catch (HttpRequestException ex)
             {
-                _log.LogWarning("[CloudRlTrainerEnhanced] Failed to download manifest: {Error}", ex.Message);
+                _log.LogError(ex, "[CloudRlTrainerEnhanced] HTTP error downloading manifest");
                 return null;
             }
             catch (JsonException ex)
@@ -173,9 +173,9 @@ namespace BotCore
                 _log.LogError(ex, "[CloudRlTrainerEnhanced] Failed to parse manifest JSON");
                 return null;
             }
-            catch (Exception ex)
+            catch (TaskCanceledException ex)
             {
-                _log.LogError(ex, "[CloudRlTrainerEnhanced] Unexpected error downloading manifest");
+                _log.LogError(ex, "[CloudRlTrainerEnhanced] Manifest download cancelled");
                 return null;
             }
         }
@@ -232,9 +232,19 @@ namespace BotCore
                 _log.LogInformation("[CloudRlTrainerEnhanced] ✅ Downloaded {ModelType} model ({Size} bytes)",
                     modelType, modelInfo.Size);
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
             {
-                _log.LogError(ex, "[CloudRlTrainerEnhanced] Failed to download {ModelType} model", modelType);
+                _log.LogError(ex, "[CloudRlTrainerEnhanced] HTTP error downloading {ModelType} model", modelType);
+
+                // Clean up temp file
+                if (File.Exists(tempPath))
+                {
+                    try { File.Delete(tempPath); } catch { }
+                }
+            }
+            catch (IOException ex)
+            {
+                _log.LogError(ex, "[CloudRlTrainerEnhanced] IO error downloading {ModelType} model", modelType);
 
                 // Clean up temp file
                 if (File.Exists(tempPath))

@@ -238,10 +238,15 @@ public static class StrategyGates
             // All S7 checks passed
             return true;
         }
-        catch (Exception)
+        catch (InvalidOperationException)
         {
             // Fail-closed: any exception in S7 checking should not prevent trading
             // Log would happen in calling code if needed
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            // Fail-closed: any exception in S7 checking should not prevent trading
             return true;
         }
     }

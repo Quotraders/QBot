@@ -227,10 +227,6 @@ public class ResilienceConfiguration
     private const int DefaultCircuitBreakerTimeoutMs = 60000;
     private const int DefaultBulkheadMaxConcurrency = 20;
     
-    // Retry policy constants
-    private const double ExponentialBackoffBase = 2.0;            // Base for exponential backoff calculation
-    private const int JitterMaxDelayMs = 1000;                   // Maximum jitter delay in milliseconds
-    
     [Required]
     [Range(MinRetries, MaxRetriesLimit)]
     public int MaxRetries { get; set; } = 3;
@@ -265,6 +261,10 @@ public class ResilienceConfiguration
 /// </summary>
 public static class ResilienceExtensions
 {
+    // Retry policy constants
+    private const double ExponentialBackoffBase = 2.0;            // Base for exponential backoff calculation
+    private const int JitterMaxDelayMs = 1000;                   // Maximum jitter delay in milliseconds
+    
     /// <summary>
     /// Add resilience policies to HttpClient factory
     /// </summary>
@@ -356,7 +356,7 @@ public abstract class ResilientBackgroundService : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ [SERVICE] {ServiceName} failed with unexpected error", _serviceName);
-            throw; // Re-throw to trigger host shutdown
+            throw new InvalidOperationException($"Service {_serviceName} execution failed unexpectedly", ex);
         }
         finally
         {
@@ -391,7 +391,7 @@ public abstract class ResilientBackgroundService : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ [SERVICE] {ServiceName} {Operation} failed", _serviceName, operationName);
-            throw;
+            throw new InvalidOperationException($"Service {_serviceName} operation {operationName} failed", ex);
         }
     }
 }

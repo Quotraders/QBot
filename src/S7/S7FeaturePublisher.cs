@@ -154,7 +154,7 @@ namespace TradingBot.S7
                 // Start publishing timer - AUDIT-CLEAN: Use dedicated feature publishing interval
                 if (_config.FeaturePublishingIntervalMinutes <= 0)
                 {
-                    _logInvalidConfiguration(_logger, new ArgumentOutOfRangeException("config", "FeaturePublishingIntervalMinutes must be greater than 0"));
+                    _logInvalidConfiguration(_logger, new InvalidOperationException("FeaturePublishingIntervalMinutes must be greater than 0"));
                     return Task.CompletedTask;
                 }
                 
@@ -206,126 +206,175 @@ namespace TradingBot.S7
         {
             try
             {
-                if (_s7Service == null || _featureBus == null || _config == null)
-                {
-                    _logMissingDependencies(_logger, null);
+                if (!ValidateServicesForPublishing())
                     return;
-                }
 
-                // FAIL-CLOSED: Check if S7 service is ready
-                if (!_s7Service.IsReady())
-                {
-                    if (_config.FailOnMissingData)
-                    {
-                        _logServiceNotReadyRequired(_logger, null);
-                        return;
-                    }
-                    _logServiceNotReadySkipping(_logger, null);
-                    return;
-                }
-
-                var snapshot = _s7Service.GetCurrentSnapshot();
+                var snapshot = _s7Service!.GetCurrentSnapshot();
                 var timestamp = DateTime.UtcNow;
-                var telemetryPrefix = _config.TelemetryPrefix;
+                var telemetryPrefix = _config!.TelemetryPrefix;
 
-                // Publish cross-symbol features for knowledge graph consumption
-                _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.coherence", (double)snapshot.CrossSymbolCoherence);
-                _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.leader", (double)snapshot.DominantLeader);
-                _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.signal_strength", (double)snapshot.SignalStrength);
-                _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.actionable", snapshot.IsActionable ? 1.0 : 0.0);
-                
-                // Publish enhanced cross-symbol features for adaptive analysis
-                _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.global_dispersion", (double)snapshot.GlobalDispersionIndex);
-                _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.adaptive_volatility", (double)snapshot.AdaptiveVolatilityMeasure);
-                _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.system_coherence", (double)snapshot.SystemCoherenceScore);
-
-                // Publish fusion tags for knowledge graph integration if enabled
-                if (_config.EnableFusionTags)
-                {
-                    foreach (var fusionTag in snapshot.FusionTags)
-                    {
-                        if (fusionTag.Value is double doubleValue)
-                        {
-                            _featureBus.Publish("FUSION", timestamp, fusionTag.Key, doubleValue);
-                        }
-                        else if (fusionTag.Value is decimal decimalValue)
-                        {
-                            _featureBus.Publish("FUSION", timestamp, fusionTag.Key, (double)decimalValue);
-                        }
-                        else if (double.TryParse(fusionTag.Value?.ToString(), out var parsedValue))
-                        {
-                            _featureBus.Publish("FUSION", timestamp, fusionTag.Key, parsedValue);
-                        }
-                    }
-                }
-
-                // Publish individual symbol features
-                foreach (var symbol in _config.Symbols)
-                {
-                    var featureTuple = _s7Service.GetFeatureTuple(symbol);
-                    
-                    // AUDIT-CLEAN: Publish core features with configured telemetry prefix
-                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.rs", (double)featureTuple.RelativeStrengthShort);
-                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.rs.medium", (double)featureTuple.RelativeStrengthMedium);
-                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.rs.long", (double)featureTuple.RelativeStrengthLong);
-                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.rsz", (double)featureTuple.ZScore);
-                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.coherence", (double)featureTuple.Coherence);
-                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.size_tilt", (double)featureTuple.SizeTilt);
-                    double leaderValue;
-                    if (featureTuple.Leader == "ES")
-                        leaderValue = 1.0;
-                    else if (featureTuple.Leader == "NQ")
-                        leaderValue = -1.0;
-                    else
-                        leaderValue = 0.0;
-                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.leader", leaderValue);
-                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.signal_active", featureTuple.IsSignalActive ? 1.0 : 0.0);
-                    
-                    // AUDIT-CLEAN: Publish enhanced adaptive and dispersion features
-                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.adaptive_threshold", (double)featureTuple.AdaptiveThreshold);
-                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.multi_index_dispersion", (double)featureTuple.MultiIndexDispersion);
-                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.advance_fraction", (double)featureTuple.AdvanceFraction);
-                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.dispersion_adjusted_size_tilt", (double)featureTuple.DispersionAdjustedSizeTilt);
-                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.dispersion_boosted", featureTuple.IsDispersionBoosted ? 1.0 : 0.0);
-                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.dispersion_blocked", featureTuple.IsDispersionBlocked ? 1.0 : 0.0);
-                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.global_dispersion_index", (double)featureTuple.GlobalDispersionIndex);
-                    _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.adaptive_volatility_measure", (double)featureTuple.AdaptiveVolatilityMeasure);
-                }
+                PublishCrossSymbolFeatures(snapshot, timestamp, telemetryPrefix);
+                PublishFusionTags(snapshot, timestamp);
+                PublishIndividualSymbolFeatures(timestamp, telemetryPrefix);
 
                 _logPublishedFeatures(_logger, _config.Symbols.Count, null);
             }
             catch (ObjectDisposedException ex)
             {
-                if (_config?.FailOnMissingData == true)
-                {
-                    _logObjectDisposedError(_logger, ex);
-                }
-                else
-                {
-                    _logObjectDisposedWarning(_logger, ex);
-                }
+                HandleObjectDisposedException(ex);
             }
             catch (ArgumentException ex)
             {
-                if (_config?.FailOnMissingData == true)
-                {
-                    _logInvalidArgumentError(_logger, ex);
-                }
-                else
-                {
-                    _logInvalidArgumentWarning(_logger, ex);
-                }
+                HandleArgumentException(ex);
             }
             catch (InvalidOperationException ex)
             {
-                if (_config?.FailOnMissingData == true)
+                HandleInvalidOperationException(ex);
+            }
+        }
+
+        private bool ValidateServicesForPublishing()
+        {
+            if (_s7Service == null || _featureBus == null || _config == null)
+            {
+                _logMissingDependencies(_logger, null);
+                return false;
+            }
+
+            // FAIL-CLOSED: Check if S7 service is ready
+            if (!_s7Service.IsReady())
+            {
+                if (_config.FailOnMissingData)
                 {
-                    _logInvalidOperationError(_logger, ex);
+                    _logServiceNotReadyRequired(_logger, null);
+                    return false;
                 }
-                else
+                _logServiceNotReadySkipping(_logger, null);
+                return false;
+            }
+
+            return true;
+        }
+
+        private void PublishCrossSymbolFeatures(object snapshot, DateTime timestamp, string telemetryPrefix)
+        {
+            // Publish cross-symbol features for knowledge graph consumption
+            _featureBus!.Publish("CROSS", timestamp, $"{telemetryPrefix}.coherence", (double)((dynamic)snapshot).CrossSymbolCoherence);
+            _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.leader", (double)((dynamic)snapshot).DominantLeader);
+            _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.signal_strength", (double)((dynamic)snapshot).SignalStrength);
+            _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.actionable", ((dynamic)snapshot).IsActionable ? 1.0 : 0.0);
+            
+            // Publish enhanced cross-symbol features for adaptive analysis
+            _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.global_dispersion", (double)((dynamic)snapshot).GlobalDispersionIndex);
+            _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.adaptive_volatility", (double)((dynamic)snapshot).AdaptiveVolatilityMeasure);
+            _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.system_coherence", (double)((dynamic)snapshot).SystemCoherenceScore);
+        }
+
+        private void PublishFusionTags(object snapshot, DateTime timestamp)
+        {
+            // Publish fusion tags for knowledge graph integration if enabled
+            if (_config!.EnableFusionTags)
+            {
+                var fusionTags = ((dynamic)snapshot).FusionTags;
+                foreach (var fusionTag in fusionTags)
                 {
-                    _logInvalidOperationWarning(_logger, ex);
+                    if (fusionTag.Value is double doubleValue)
+                    {
+                        _featureBus!.Publish("FUSION", timestamp, fusionTag.Key, doubleValue);
+                    }
+                    else if (fusionTag.Value is decimal decimalValue)
+                    {
+                        _featureBus!.Publish("FUSION", timestamp, fusionTag.Key, (double)decimalValue);
+                    }
+                    else if (double.TryParse(fusionTag.Value?.ToString(), out double parsedValue))
+                    {
+                        _featureBus!.Publish("FUSION", timestamp, fusionTag.Key, parsedValue);
+                    }
                 }
+            }
+        }
+
+        private void PublishIndividualSymbolFeatures(DateTime timestamp, string telemetryPrefix)
+        {
+            // Publish individual symbol features
+            foreach (var symbol in _config!.Symbols)
+            {
+                var featureTuple = _s7Service!.GetFeatureTuple(symbol);
+                PublishCoreFeatures(symbol, timestamp, telemetryPrefix, featureTuple);
+                PublishEnhancedFeatures(symbol, timestamp, telemetryPrefix, featureTuple);
+            }
+        }
+
+        private void PublishCoreFeatures(string symbol, DateTime timestamp, string telemetryPrefix, object featureTuple)
+        {
+            var tuple = (dynamic)featureTuple;
+            
+            // AUDIT-CLEAN: Publish core features with configured telemetry prefix
+            _featureBus!.Publish(symbol, timestamp, $"{telemetryPrefix}.rs", (double)tuple.RelativeStrengthShort);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.rs.medium", (double)tuple.RelativeStrengthMedium);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.rs.long", (double)tuple.RelativeStrengthLong);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.rsz", (double)tuple.ZScore);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.coherence", (double)tuple.Coherence);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.size_tilt", (double)tuple.SizeTilt);
+            
+            double leaderValue = tuple.Leader switch
+            {
+                "ES" => 1.0,
+                "NQ" => -1.0,
+                _ => 0.0
+            };
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.leader", leaderValue);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.signal_active", tuple.IsSignalActive ? 1.0 : 0.0);
+        }
+
+        private void PublishEnhancedFeatures(string symbol, DateTime timestamp, string telemetryPrefix, object featureTuple)
+        {
+            var tuple = (dynamic)featureTuple;
+            
+            // AUDIT-CLEAN: Publish enhanced adaptive and dispersion features
+            _featureBus!.Publish(symbol, timestamp, $"{telemetryPrefix}.adaptive_threshold", (double)tuple.AdaptiveThreshold);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.multi_index_dispersion", (double)tuple.MultiIndexDispersion);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.advance_fraction", (double)tuple.AdvanceFraction);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.dispersion_adjusted_size_tilt", (double)tuple.DispersionAdjustedSizeTilt);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.dispersion_boosted", tuple.IsDispersionBoosted ? 1.0 : 0.0);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.dispersion_blocked", tuple.IsDispersionBlocked ? 1.0 : 0.0);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.global_dispersion_index", (double)tuple.GlobalDispersionIndex);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.adaptive_volatility_measure", (double)tuple.AdaptiveVolatilityMeasure);
+        }
+
+        private void HandleObjectDisposedException(ObjectDisposedException ex)
+        {
+            if (_config?.FailOnMissingData == true)
+            {
+                _logObjectDisposedError(_logger, ex);
+            }
+            else
+            {
+                _logObjectDisposedWarning(_logger, ex);
+            }
+        }
+
+        private void HandleArgumentException(ArgumentException ex)
+        {
+            if (_config?.FailOnMissingData == true)
+            {
+                _logInvalidArgumentError(_logger, ex);
+            }
+            else
+            {
+                _logInvalidArgumentWarning(_logger, ex);
+            }
+        }
+
+        private void HandleInvalidOperationException(InvalidOperationException ex)
+        {
+            if (_config?.FailOnMissingData == true)
+            {
+                _logInvalidOperationError(_logger, ex);
+            }
+            else
+            {
+                _logInvalidOperationWarning(_logger, ex);
             }
         }
 

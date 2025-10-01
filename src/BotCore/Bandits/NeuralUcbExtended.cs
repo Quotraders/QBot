@@ -66,7 +66,6 @@ public class NeuralUcbExtended : IDisposable
     
     // Performance tracking
     private readonly Dictionary<string, int> _bundleSelectionCount = new();
-    private DateTime _lastPerformanceUpdate = DateTime.UtcNow;
     
     public NeuralUcbExtended(
         ILogger<NeuralUcbExtended> logger,
@@ -663,8 +662,6 @@ public class NeuralUcbExtended : IDisposable
                 };
             }
         }
-        
-        _lastPerformanceUpdate = DateTime.UtcNow;
     }
     
     protected virtual void Dispose(bool disposing)

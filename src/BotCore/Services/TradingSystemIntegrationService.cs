@@ -37,15 +37,12 @@ namespace TopstepX.Bot.Core.Services
         private readonly ILogger<TradingSystemIntegrationService> _logger;
         private readonly IServiceProvider _serviceProvider;
         private readonly EmergencyStopSystem _emergencyStop;
-        private readonly PositionTrackingSystem _positionTracker;
         private OrderFillConfirmationSystem? _orderConfirmation;
         private readonly ErrorHandlingMonitoringSystem _errorMonitoring;
         private readonly HttpClient _httpClient;
         
         // ML/RL Strategy Components - Production Ready Integration
-        private readonly TimeOptimizedStrategyManager _timeOptimizedStrategyManager;
         private readonly FeatureEngineering _featureEngineering;
-        private readonly StrategyMlModelManager _strategyMlModelManager;
         private readonly UnifiedTradingBrain _unifiedTradingBrain;
         private readonly ITopstepXAdapterService _topstepXAdapter;
         private readonly TradingBot.Abstractions.IS7Service? _s7Service;
@@ -147,7 +144,7 @@ namespace TopstepX.Bot.Core.Services
         /// <summary>
         /// Market data structure for price cache
         /// </summary>
-        public class MarketData
+        internal class MarketData
         {
             public string Symbol { get; set; } = string.Empty;
             public decimal BidPrice { get; set; }
@@ -179,13 +176,10 @@ namespace TopstepX.Bot.Core.Services
             ILogger<TradingSystemIntegrationService> logger,
             IServiceProvider serviceProvider,
             EmergencyStopSystem emergencyStop,
-            PositionTrackingSystem positionTracker,
             ErrorHandlingMonitoringSystem errorMonitoring,
             HttpClient httpClient,
             TradingSystemConfiguration config,
-            TimeOptimizedStrategyManager timeOptimizedStrategyManager,
             FeatureEngineering featureEngineering,
-            StrategyMlModelManager strategyMlModelManager,
             UnifiedTradingBrain unifiedTradingBrain,
             ITopstepXAdapterService topstepXAdapter,
             IHistoricalDataBridgeService historicalBridge,
@@ -197,15 +191,12 @@ namespace TopstepX.Bot.Core.Services
             _logger = logger;
             _serviceProvider = serviceProvider;
             _emergencyStop = emergencyStop;
-            _positionTracker = positionTracker;
             _errorMonitoring = errorMonitoring;
             _httpClient = httpClient;
             _config = config;
             
             // Inject ML/RL Strategy Components
-            _timeOptimizedStrategyManager = timeOptimizedStrategyManager;
             _featureEngineering = featureEngineering;
-            _strategyMlModelManager = strategyMlModelManager;
             _unifiedTradingBrain = unifiedTradingBrain;
             _topstepXAdapter = topstepXAdapter;
             
@@ -1629,22 +1620,22 @@ namespace TopstepX.Bot.Core.Services
             catch (HttpRequestException ex)
             {
                 _logger.LogError(ex, "❌ HTTP error during TopstepX adapter setup");
-                throw;
+                throw new InvalidOperationException("TopstepX adapter setup failed due to HTTP request error", ex);
             }
             catch (TaskCanceledException ex)
             {
                 _logger.LogError(ex, "❌ Task cancelled during TopstepX adapter setup");
-                throw;
+                throw new OperationCanceledException("TopstepX adapter setup was cancelled", ex);
             }
             catch (OperationCanceledException ex)
             {
                 _logger.LogError(ex, "❌ Operation cancelled during TopstepX adapter setup");
-                throw;
+                throw new OperationCanceledException("TopstepX adapter setup operation was cancelled", ex);
             }
             catch (InvalidOperationException ex)
             {
                 _logger.LogError(ex, "❌ Invalid operation during TopstepX adapter setup");
-                throw;
+                throw new InvalidOperationException("TopstepX adapter setup failed due to invalid operation", ex);
             }
         }
 

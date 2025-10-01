@@ -26,6 +26,21 @@ public class FeatureBusMapper
     /// </summary>
     private void InitializeDefaultMappings()
     {
+        InitializeZoneMappings();
+        InitializePatternMappings();
+        InitializeMarketRegimeMappings();
+        InitializeMomentumMappings();
+        InitializeVolumeMappings();
+        InitializeVolatilityMappings();
+        InitializeTimeMappings();
+        InitializeTrendMappings();
+        InitializePullbackMappings();
+        InitializeFibonacciMappings();
+        InitializeBreakoutMappings();
+    }
+
+    private void InitializeZoneMappings()
+    {
         // Zone-related mappings
         _keyMappings["zone.distance_atr"] = "zone.distance_atr";
         _keyMappings["zone.breakout_score"] = "zone.breakout_score";
@@ -34,7 +49,10 @@ public class FeatureBusMapper
         _keyMappings["zone.test_count"] = "zone.test_count";
         _keyMappings["zone.type"] = "zone.type";
         _keyMappings["zone.alignment"] = "zone.alignment";
+    }
 
+    private void InitializePatternMappings()
+    {
         // Pattern-related mappings
         _keyMappings["pattern.bull_score"] = "pattern.bull_score";
         _keyMappings["pattern.bear_score"] = "pattern.bear_score";
@@ -59,12 +77,18 @@ public class FeatureBusMapper
             _keyMappings[$"pattern.direction::{pattern}"] = $"pattern.direction::{pattern}";
             _keyMappings[$"pattern.confidence::{pattern}"] = $"pattern.confidence::{pattern}";
         }
+    }
 
+    private void InitializeMarketRegimeMappings()
+    {
         // Market regime mappings
         _keyMappings["market_regime"] = "regime.current";
         _keyMappings["volatility_z_score"] = "volatility.z_score";
         _keyMappings["news_impact_score"] = "news.impact_score";
+    }
 
+    private void InitializeMomentumMappings()
+    {
         // Momentum mappings
         _keyMappings["momentum.z_score"] = "momentum.z_score";
         _keyMappings["momentum.acceleration"] = "momentum.acceleration";
@@ -75,38 +99,59 @@ public class FeatureBusMapper
 
         // VWAP mappings
         _keyMappings["vwap.distance"] = "vwap.distance";
+    }
 
+    private void InitializeVolumeMappings()
+    {
         // Volume mappings  
         _keyMappings["volume.relative"] = "volume.relative";
         _keyMappings["volume.spike"] = "volume.spike";
         _keyMappings["volume_profile.breakout_ready"] = "volume_profile.breakout_ready";
+    }
 
+    private void InitializeVolatilityMappings()
+    {
         // Volatility mappings
         _keyMappings["volatility_contraction"] = "volatility.contraction";
         _keyMappings["atr.ratio"] = "atr.ratio";
+    }
 
+    private void InitializeTimeMappings()
+    {
         // Time-based mappings
         _keyMappings["time_of_day"] = "time.of_day";
         _keyMappings["time_to_close_minutes"] = "time.to_close_minutes";
         _keyMappings["minutes_since_news"] = "news.minutes_since";
         _keyMappings["session_volume"] = "session.volume_pct";
         _keyMappings["economic_event_minutes"] = "economic.event_minutes";
+    }
 
+    private void InitializeTrendMappings()
+    {
         // Trend mappings
         _keyMappings["trend.strength"] = "trend.strength";
         _keyMappings["trend.direction"] = "trend.direction";
         _keyMappings["trend_duration_bars"] = "trend.duration_bars";
         _keyMappings["ema.alignment"] = "ema.alignment";
         _keyMappings["ema.spacing"] = "ema.spacing";
+    }
 
+    private void InitializePullbackMappings()
+    {
         // Pullback mappings
         _keyMappings["pullback.depth"] = "pullback.depth";
         _keyMappings["pullback.complete"] = "pullback.complete";
         _keyMappings["pullback_duration"] = "pullback.duration";
+    }
 
+    private void InitializeFibonacciMappings()
+    {
         // Fibonacci mappings
         _keyMappings["fibonacci.level"] = "fibonacci.level";
+    }
 
+    private void InitializeBreakoutMappings()
+    {
         // Breakout mappings
         _keyMappings["breakout.confirmed"] = "breakout.confirmed";
         _keyMappings["breakout.direction"] = "breakout.direction";

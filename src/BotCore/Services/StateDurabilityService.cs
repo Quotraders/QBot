@@ -166,7 +166,7 @@ namespace TradingBot.BotCore.Services
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "🚨 [STATE-DURABILITY] Restore failed from backup: {BackupFile}", backupFileName);
-                    throw;
+                    throw new InvalidOperationException($"State restore failed from backup {backupFileName}", ex);
                 }
             });
         }
@@ -237,7 +237,7 @@ namespace TradingBot.BotCore.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "🚨 [STATE-DURABILITY] Backup integrity check failed");
-                throw;
+                throw new InvalidOperationException("Backup integrity verification failed", ex);
             }
         }
 
