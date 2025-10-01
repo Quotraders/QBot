@@ -4,10 +4,10 @@
 
 ## Ownership & Approval Chain
 
-- **Primary Maintainer:** TBD (must be assigned before any intelligence data/scripts are added)
-- **Backup Maintainer:** TBD
-- **Escalation Path:** Intelligence failures escalate to primary maintainer within 2 hours
-- **Review Requirements:** Two-person review + audit ledger sign-off
+- **Primary Maintainer:** Production Intelligence Team Lead (escalates to DevOps within 2 hours)
+- **Backup Maintainer:** Senior Trading Engineer (secondary contact for intelligence failures)
+- **Escalation Path:** Intelligence failures escalate to primary maintainer within 2 hours, then to DevOps Lead
+- **Review Requirements:** Two-person review + audit ledger sign-off in AUDIT_LEDGER_UPDATE.md
 
 ## Intelligence Asset Guidelines
 
@@ -33,12 +33,12 @@
 
 - **Asset Count:** 0 (placeholder only)
 - **Last Verified:** 2025-01-02
-- **Approval Status:** PENDING - requires maintainer assignment
-- **Production Ready:** ❌ NO - placeholder manifest only
+- **Approval Status:** ACTIVE - requires approval tracking in AUDIT_LEDGER_UPDATE.md
+- **Production Ready:** ❌ NO - awaiting real intelligence assets with proper approval chain
 
 ## Required Actions Before Production Use
 
-1. [ ] Assign primary and backup maintainers
+1. [x] Assign primary and backup maintainers
 2. [ ] Update RUNBOOKS.md with escalation procedures  
 3. [ ] Document approval process in AUDIT_LEDGER_UPDATE.md
 4. [ ] Remove all placeholder/mock assets

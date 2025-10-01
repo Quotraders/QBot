@@ -1,3 +1,11 @@
+# ⚠️ **HARDENING IN PROGRESS - DO NOT TRUST HISTORICAL CLAIMS** ⚠️
+
+> **WARNING: This ledger contains historical change entries from active development.**  
+> **Do NOT assume past "Phase Complete" claims indicate production readiness.**  
+> **For current guardrails and requirements, see `.github/copilot-instructions.md`**  
+> **Last Verified:** Ongoing - Hardening effort in progress  
+> **Status:** ACTIVE DEVELOPMENT - Historical claims require re-verification
+
 # Change Ledger - Phase 1 Complete, Phase 2 Accelerated + SonarQube Quality Gate Remediation
 
 ## Overview
