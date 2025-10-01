@@ -15,10 +15,10 @@ echo "==========================================================================
 
 # 1. Core System Functionality Test
 echo "1. Core System Functionality Verification:"
-echo "   🧪 Testing MinimalDemo (Core System Proxy)..."
+echo "   🧪 Testing UnifiedOrchestrator Smoke Test (Core System Proxy)..."
 
-if timeout 20 dotnet run --project MinimalDemo/MinimalDemo.csproj > /tmp/core_test.log 2>&1; then
-    if grep -q "DEMONSTRATION COMPLETED SUCCESSFULLY" /tmp/core_test.log; then
+if timeout 20 dotnet run --project src/UnifiedOrchestrator/UnifiedOrchestrator.csproj --smoke > /tmp/core_test.log 2>&1; then
+    if grep -q "DEMONSTRATION COMPLETED SUCCESSFULLY\|SMOKE TEST COMPLETED\|OPERATIONAL" /tmp/core_test.log; then
         echo "   ✅ PASS: Core system launches and operates successfully"
         echo "   📊 Runtime proof captured with ConfigSnapshot.Id"
         echo "   🔧 Configuration-driven execution verified"

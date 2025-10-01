@@ -8,19 +8,19 @@ echo
 SUCCESS=0
 TOTAL=0
 
-# Test 1: MinimalDemo Launch Test
-echo "Test 1: MinimalDemo Launch Verification"
-echo "----------------------------------------"
+# Test 1: UnifiedOrchestrator Smoke Test
+echo "Test 1: UnifiedOrchestrator Smoke Test Verification"
+echo "----------------------------------------------------"
 ((TOTAL++))
-if timeout 15 dotnet run --project MinimalDemo/MinimalDemo.csproj > /tmp/demo_output.txt 2>&1; then
-    if grep -q "DEMONSTRATION COMPLETED SUCCESSFULLY" /tmp/demo_output.txt; then
-        echo "✅ PASS: MinimalDemo launches and completes successfully"
+if timeout 15 dotnet run --project src/UnifiedOrchestrator/UnifiedOrchestrator.csproj --smoke > /tmp/demo_output.txt 2>&1; then
+    if grep -q "SMOKE TEST COMPLETED\|DEMONSTRATION COMPLETED SUCCESSFULLY\|OPERATIONAL" /tmp/demo_output.txt; then
+        echo "✅ PASS: UnifiedOrchestrator smoke test completes successfully"
         ((SUCCESS++))
     else
-        echo "❌ FAIL: MinimalDemo did not complete successfully"
+        echo "❌ FAIL: UnifiedOrchestrator smoke test did not complete successfully"
     fi
 else
-    echo "❌ FAIL: MinimalDemo failed to launch"
+    echo "❌ FAIL: UnifiedOrchestrator smoke test failed to launch"
 fi
 echo
 

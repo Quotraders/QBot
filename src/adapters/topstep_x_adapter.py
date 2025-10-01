@@ -4,12 +4,14 @@ TopstepX Python SDK Adapter
 
 Production-ready adapter for TopstepX trading using the project-x-py SDK.
 Implements TradingSuite initialization, risk management, and order execution.
+Enhanced with fail-closed behavior, centralized retry policies, and structured telemetry.
 """
 
 import asyncio
 import logging
 import os
 import sys
+import time
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 from contextlib import asynccontextmanager
@@ -22,6 +24,83 @@ except ImportError as e:
         "project-x-py SDK is required for production use. "
         "Install with: pip install 'project-x-py[all]'"
     ) from e
+
+
+class AdapterRetryPolicy:
+    """Centralized retry policy with bounded timeouts for fail-closed behavior."""
+    
+    def __init__(self, max_retries: int = None, base_delay: float = None, max_delay: float = None, timeout: float = None):
+        # All parameters must come from configuration - fail closed if not provided
+        if max_retries is None:
+            max_retries = int(os.getenv('ADAPTER_MAX_RETRIES'))
+            if not max_retries or max_retries <= 0:
+                raise ValueError("ADAPTER_MAX_RETRIES environment variable must be set to positive integer")
+        
+        if base_delay is None:
+            base_delay = float(os.getenv('ADAPTER_BASE_DELAY'))
+            if not base_delay or base_delay <= 0:
+                raise ValueError("ADAPTER_BASE_DELAY environment variable must be set to positive number")
+                
+        if max_delay is None:
+            max_delay = float(os.getenv('ADAPTER_MAX_DELAY'))
+            if not max_delay or max_delay <= 0 or max_delay < base_delay:
+                raise ValueError("ADAPTER_MAX_DELAY environment variable must be set and >= base_delay")
+                
+        if timeout is None:
+            timeout = float(os.getenv('ADAPTER_TIMEOUT'))
+            if not timeout or timeout <= 0:
+                raise ValueError("ADAPTER_TIMEOUT environment variable must be set to positive number")
+        
+        self.max_retries = max_retries
+        self.base_delay = base_delay
+        self.max_delay = max_delay
+        self.timeout = timeout
+    
+    async def execute_with_retry(self, operation, operation_name: str, logger, *args, **kwargs):
+        """Execute operation with exponential backoff retry and timeout."""
+        start_time = time.time()
+        last_exception = None
+        
+        for attempt in range(self.max_retries + 1):
+            # Check timeout
+            if time.time() - start_time > self.timeout:
+                logger.error(f"[RETRY-POLICY] {operation_name} timed out after {self.timeout}s")
+                raise TimeoutError(f"{operation_name} operation timed out after {self.timeout} seconds")
+            
+            try:
+                result = await operation(*args, **kwargs)
+                if attempt > 0:
+                    logger.info(f"[RETRY-POLICY] {operation_name} succeeded on attempt {attempt + 1}/{self.max_retries + 1}")
+                return result
+                
+            except Exception as e:
+                last_exception = e
+                if attempt == self.max_retries:
+                    # Final failure - emit telemetry and fail closed
+                    logger.error(f"[RETRY-POLICY] {operation_name} failed after {self.max_retries + 1} attempts: {e}")
+                    self._emit_failure_telemetry(operation_name, e, attempt + 1, logger)
+                    break
+                
+                # Calculate delay with exponential backoff
+                delay = min(self.base_delay * (2 ** attempt), self.max_delay)
+                logger.warning(f"[RETRY-POLICY] {operation_name} attempt {attempt + 1} failed: {e}. Retrying in {delay:.1f}s...")
+                await asyncio.sleep(delay)
+        
+        # All retries exhausted - fail closed
+        raise RuntimeError(f"FAIL-CLOSED: {operation_name} failed after {self.max_retries + 1} attempts") from last_exception
+    
+    def _emit_failure_telemetry(self, operation_name: str, error: Exception, attempts: int, logger):
+        """Emit structured telemetry for adapter failures."""
+        telemetry = {
+            "event_type": "adapter_failure",
+            "operation": operation_name,
+            "error_type": type(error).__name__,
+            "error_message": str(error),
+            "attempts": attempts,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "severity": "critical"
+        }
+        logger.error(f"[TELEMETRY] {telemetry}")
 
 
 class TopstepXAdapter:
@@ -58,15 +137,42 @@ class TopstepXAdapter:
         
         self.instruments = instruments
         self.suite: Optional[TradingSuite] = None
-        self.logger = self._setup_logging()
         self._is_initialized = False
         self._connection_health = 0.0
-        self._last_health_check = datetime.now(timezone.utc)
+        self._last_health_check: Optional[datetime] = None
         
-        # Validate configuration
-        self._validate_configuration()
+        # Configure production logging
+        self.logger = logging.getLogger(f"TopstepXAdapter-{'-'.join(instruments)}")
+        if not self.logger.handlers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter(
+                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            )
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+            self.logger.setLevel(logging.INFO)
         
-    def _setup_logging(self) -> logging.Logger:
+        # Initialize centralized retry policy with fail-closed configuration validation
+        try:
+            self.retry_policy = AdapterRetryPolicy()
+        except ValueError as e:
+            self.logger.error(f"FAIL-CLOSED: Adapter configuration invalid: {e}")
+            raise RuntimeError(f"Adapter configuration failure: {e}") from e
+        
+        self.logger.info(f"🔧 TopstepX adapter initialized for {instruments} with fail-closed retry policy")
+        self._emit_telemetry("adapter_initialized", {"instruments": instruments})
+    
+    def _emit_telemetry(self, event_type: str, data: Dict[str, Any]):
+        """Emit structured telemetry for monitoring and alerting."""
+        telemetry = {
+            "event_type": event_type,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "adapter_instance": f"TopstepX-{'-'.join(self.instruments)}",
+            **data
+        }
+        self.logger.info(f"[TELEMETRY] {telemetry}")
+
+    async def initialize(self) -> None:
         """Setup structured logging for production use."""
         logger = logging.getLogger(f"TopstepXAdapter.{id(self)}")
         logger.setLevel(logging.INFO)
@@ -99,6 +205,7 @@ class TopstepXAdapter:
     async def initialize(self) -> None:
         """
         Initialize TradingSuite with multi-instrument support and risk management.
+        Enhanced with fail-closed behavior and centralized retry policies.
         
         Raises:
             RuntimeError: If initialization fails
@@ -108,55 +215,127 @@ class TopstepXAdapter:
             self.logger.warning("Adapter already initialized")
             return
             
-        try:
+        # Use retry policy for initialization - fail closed if unable to initialize
+        async def _initialize_suite():
             self.logger.info(f"Initializing TradingSuite with instruments: {self.instruments}")
             
             # Initialize with real TopstepX SDK only
             self.logger.info("Initializing production TopstepX SDK...")
-            self.suite = await TradingSuite.create(
+            suite = await TradingSuite.create(
                 instruments=self.instruments,
                 timeframes=["5min"]
             )
             self.logger.info("✅ TopstepX SDK initialized successfully")
+            return suite
+        
+        # Initialize suite with retry policy
+        self.suite = await self.retry_policy.execute_with_retry(
+            _initialize_suite, "TradingSuite_initialization", self.logger
+        )
+        
+        # Verify connection to ALL instruments - FAIL CLOSED if any fail
+        connection_failures = []
+        for instrument in self.instruments:
+            async def _test_instrument_connection():
+                current_price = await self.suite[instrument].data.get_current_price()
+                self.logger.info(f"✅ {instrument} connected - Current price: ${current_price:.2f}")
+                return current_price
             
-            # Verify connection to each instrument
-            connection_failures = []
-            for instrument in self.instruments:
-                try:
-                    # Test data access
-                    current_price = await self.suite[instrument].data.get_current_price()
-                    self.logger.info(f"✅ {instrument} connected - Current price: ${current_price:.2f}")
-                except Exception as e:
-                    self.logger.error(f"❌ Failed to connect to {instrument}: {e}")
-                    connection_failures.append(f"{instrument}: {str(e)}")
-            
-            # Allow partial initialization if some instruments fail (for testing/demo)
-            if connection_failures:
-                self.logger.warning(f"Some instruments failed to connect: {connection_failures}")
-                if len(connection_failures) == len(self.instruments):
-                    raise RuntimeError(f"All instruments failed to initialize: {connection_failures}")
-            
-            # Test risk management system
             try:
-                risk_stats = await self.suite.get_stats()
-                self.logger.info(f"SDK connected successfully - Stats: {risk_stats}")
+                await self.retry_policy.execute_with_retry(
+                    _test_instrument_connection, f"{instrument}_connection_test", self.logger
+                )
             except Exception as e:
-                self.logger.warning(f"Could not retrieve initial stats: {e}")
-            
-            self._is_initialized = True
-            # Calculate health based on successful connections
-            success_rate = (len(self.instruments) - len(connection_failures)) / len(self.instruments)
-            self._connection_health = success_rate * 100.0
-            self._last_health_check = datetime.now(timezone.utc)
-            
-            self.logger.info(f"🚀 TopstepX SDK adapter initialized successfully (Health: {self._connection_health:.1f}%)")
-            
-        except Exception as e:
-            self.logger.error(f"Failed to initialize TopstepX adapter: {e}")
+                connection_failures.append(f"{instrument}: {str(e)}")
+                self.logger.error(f"❌ Failed to connect to {instrument}: {e}")
+        
+        # FAIL-CLOSED: Require ALL instruments to connect successfully
+        if connection_failures:
+            error_msg = f"FAIL-CLOSED: Instrument connection failures detected: {connection_failures}"
+            self.logger.error(error_msg)
+            self._emit_telemetry("initialization_failed", {
+                "reason": "instrument_connection_failures",
+                "failed_instruments": connection_failures,
+                "severity": "critical"
+            })
             await self._cleanup_resources()
-            raise RuntimeError(f"TopstepX adapter initialization failed: {e}") from e
+            raise RuntimeError(error_msg)
+        
+        # Test risk management system with retry policy
+        async def _test_risk_management():
+            risk_stats = await self.suite.get_stats()
+            self.logger.info(f"SDK connected successfully - Stats: {risk_stats}")
+            return risk_stats
+        
+        try:
+            await self.retry_policy.execute_with_retry(
+                _test_risk_management, "risk_management_test", self.logger
+            )
+        except Exception as e:
+            # Risk management failure is critical - fail closed
+            error_msg = f"FAIL-CLOSED: Risk management system unavailable: {e}"
+            self.logger.error(error_msg)
+            self._emit_telemetry("initialization_failed", {
+                "reason": "risk_management_failure",
+                "error": str(e),
+                "severity": "critical"
+            })
+            await self._cleanup_resources()
+            raise RuntimeError(error_msg) from e
+        
+        self._is_initialized = True
+        self._connection_health = 100.0  # All instruments connected successfully
+        self._last_health_check = datetime.now(timezone.utc)
+        
+        self.logger.info(f"🚀 TopstepX SDK adapter initialized successfully (Health: 100%)")
+        self._emit_telemetry("initialization_completed", {
+            "instruments": self.instruments,
+            "health": 100.0,
+            "status": "production_ready"
+        })
 
     async def get_price(self, symbol: str) -> float:
+        """
+        Get current market price for instrument with retry policy and fail-closed behavior.
+        
+        Args:
+            symbol: Instrument symbol (e.g., 'MNQ', 'ES')
+            
+        Returns:
+            Current market price
+            
+        Raises:
+            RuntimeError: If price retrieval fails after retries
+            ValueError: If symbol not configured
+        """
+        if not self._is_initialized or not self.suite:
+            raise RuntimeError("Adapter not initialized. Call initialize() first.")
+            
+        if symbol not in self.instruments:
+            raise ValueError(f"Symbol {symbol} not in configured instruments: {self.instruments}")
+        
+        async def _get_price_operation():
+            price = await self.suite[symbol].data.get_current_price()
+            self.logger.debug(f"[PRICE] {symbol}: ${price:.2f}")
+            return float(price)
+        
+        # Use retry policy for price retrieval - fail closed if unable to get price
+        try:
+            price = await self.retry_policy.execute_with_retry(
+                _get_price_operation, f"get_price_{symbol}", self.logger
+            )
+            self._emit_telemetry("price_retrieved", {"symbol": symbol, "price": price})
+            return price
+        except Exception as e:
+            # Price retrieval failure is critical for trading - fail closed
+            error_msg = f"FAIL-CLOSED: Price retrieval failed for {symbol} after retries"
+            self.logger.error(error_msg)
+            self._emit_telemetry("price_retrieval_failed", {
+                "symbol": symbol,
+                "error": str(e),
+                "severity": "critical"
+            })
+            raise RuntimeError(error_msg) from e
         """
         Get current market price for instrument.
         

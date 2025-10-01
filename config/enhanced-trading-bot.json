@@ -1,13 +1,4 @@
 {
-  "BookAwareSimulator": {
-    "Enabled": false,
-    "HistoricalDataDays": 30,
-    "MaxSlippageMultiplier": 2.0,
-    "MaxPriceDeviationMultiplier": 3.0,
-    "CommissionPerContract": 2.50,
-    "MinFillTimeMs": 10.0,
-    "TrainingDatasetPath": "data/training/execution"
-  },
   "CounterfactualReplay": {
     "GateLogsPath": "state/gates",
     "NightlyRunHour": 2,

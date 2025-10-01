@@ -84,14 +84,15 @@ namespace BotCore.Services
         /// <summary>
         /// Perform regime-based rotation check with atomic model swapping
         /// </summary>
-        public Task PerformRotationCheckAsync(CancellationToken cancellationToken)
+        public async Task PerformRotationCheckAsync(CancellationToken cancellationToken)
         {
+            // Get current regime using RegimeDetectionService (outside lock for async call)
+            var newRegime = await DetermineCurrentRegimeAsync().ConfigureAwait(false);
+            
             lock (_rotationLock)
             {
                 try
                 {
-                    // Get current regime for S7 symbols
-                    var newRegime = DetermineCurrentRegime();
                     
                     // Check if rotation is needed
                     if (!ShouldRotateModels(newRegime))
@@ -144,18 +145,22 @@ namespace BotCore.Services
             }
         }
 
-        private string DetermineCurrentRegime()
+        private async Task<string> DetermineCurrentRegimeAsync()
         {
-            // Simplified regime determination - in production would use RegimeDetectionService
-            // For now, simulate based on time to demonstrate rotation
-            var hour = DateTime.UtcNow.Hour;
-            return hour switch
+            // Use RegimeDetectionService for proper regime determination
+            // This replaces the previous time-of-day heuristics
+            try
             {
-                >= 0 and < 6 => "RANGE_LOW_VOL",
-                >= 6 and < 12 => "TREND_HIGH_VOL", 
-                >= 12 and < 18 => "TREND_LOW_VOL",
-                _ => "RANGE_HIGH_VOL"
-            };
+                // Default to ES for regime detection - can be made configurable
+                var regime = await _regimeService.GetCurrentRegimeAsync("ES", CancellationToken.None).ConfigureAwait(false);
+                _logger.LogDebug("Current regime determined: {Regime}", regime);
+                return regime;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to determine current regime, defaulting to RANGE_LOW_VOL");
+                return "RANGE_LOW_VOL"; // Safe default
+            }
         }
 
         private bool ShouldRotateModels(string newRegime)

@@ -19,7 +19,7 @@ These archived components are preserved for:
 
 All components in this directory are considered **inactive** and not part of the current operational system. The active system uses:
 - **UnifiedOrchestrator** as the main entry point
-- **MinimalDemo** for smoke testing (until fully migrated to UnifiedOrchestrator)
+- **Legacy demos removed** - MinimalDemo deleted per audit requirements (functionality replaced by UnifiedOrchestrator --smoke)
 - All production code remains in `src/` directory
 
 ## Cleanup Date
