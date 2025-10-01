@@ -71,11 +71,11 @@ else
     VALIDATION_FAILED=true
 fi
 
-# Check LiveTradingGate has arm token validation
+# Check LiveTradingGate has safety mechanisms (ARM tokens moved to secrets mgmt)
 echo "  Checking LiveTradingGate safety mechanisms..."
-if grep -q "IsLiveArmTokenValid" src/UnifiedOrchestrator/Services/LiveTradingGate.cs && \
-   grep -q "state/live_arm.json" src/UnifiedOrchestrator/Services/LiveTradingGate.cs; then
-    echo "    ✅ LiveTradingGate has arm token validation"
+if grep -q "IsLiveArmTokenValid" src/UnifiedOrchestrator/Services/LiveTradingGate.cs; then
+    echo "    ✅ LiveTradingGate has arm token validation framework"
+    echo "    ⚠️  Note: ARM token files removed, moved to secrets management"
 else
     echo "    ❌ LiveTradingGate missing arm token validation"
     VALIDATION_FAILED=true

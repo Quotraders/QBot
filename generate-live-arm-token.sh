@@ -1,14 +1,12 @@
 #!/bin/bash
 
-# Live Trading Arm Token Generator
-# Creates a short-lived token for manual live trading authorization
-# Usage: ./generate-live-arm-token.sh [duration_minutes]
+# Live Trading Arm Token Generator - DISABLED
+# ARM token files removed for security - use secrets management instead
 
-set -euo pipefail
-
-DURATION_MINUTES=${1:-60}  # Default 1 hour
-ARM_FILE="state/live_arm.json"
-BACKUP_FILE="state/live_arm_backup.json"
+echo "❌ ARM token generation disabled for security"
+echo "Reason: ARM token files (live_arm.json, live_arm_backup.json) removed"
+echo "Action: Use proper secrets management system instead"
+exit 1
 
 echo "🔐 Live Trading Arm Token Generator"
 echo "====================================="
