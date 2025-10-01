@@ -779,8 +779,9 @@ Please check the configuration and ensure all required services are registered.
         // Register the CENTRAL MESSAGE BUS - The "ONE BRAIN" communication system
         services.AddSingleton<ICentralMessageBus, CentralMessageBus>();
 
-        // Register required interfaces with REAL Safety implementations
-        services.AddSingleton<IKillSwitchWatcher, Trading.Safety.KillSwitchWatcher>();
+        // Register required interfaces with PRODUCTION Safety implementations (aligned with guardrail orchestrator)
+        services.AddSingleton<IKillSwitchWatcher>(serviceProvider => 
+            serviceProvider.GetRequiredService<BotCore.Services.ProductionKillSwitchService>());
         services.AddSingleton<IRiskManager, Trading.Safety.RiskManager>();
         services.AddSingleton<IHealthMonitor, Trading.Safety.HealthMonitor>();
 
