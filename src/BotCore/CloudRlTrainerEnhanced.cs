@@ -239,7 +239,18 @@ namespace BotCore
                 // Clean up temp file
                 if (File.Exists(tempPath))
                 {
-                    try { File.Delete(tempPath); } catch { }
+                    try 
+                    { 
+                        File.Delete(tempPath); 
+                    } 
+                    catch (UnauthorizedAccessException) 
+                    { 
+                        // Ignore - temp file cleanup is non-critical
+                    }
+                    catch (IOException) 
+                    { 
+                        // Ignore - temp file cleanup is non-critical
+                    }
                 }
             }
             catch (IOException ex)
@@ -249,7 +260,18 @@ namespace BotCore
                 // Clean up temp file
                 if (File.Exists(tempPath))
                 {
-                    try { File.Delete(tempPath); } catch { }
+                    try 
+                    { 
+                        File.Delete(tempPath); 
+                    } 
+                    catch (UnauthorizedAccessException) 
+                    { 
+                        // Ignore - temp file cleanup is non-critical
+                    }
+                    catch (IOException) 
+                    { 
+                        // Ignore - temp file cleanup is non-critical
+                    }
                 }
             }
         }

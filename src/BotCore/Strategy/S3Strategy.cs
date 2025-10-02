@@ -26,6 +26,8 @@ namespace BotCore.Strategy
         private const decimal MinimumRankThreshold = 0.05m; // Minimum rank threshold for risk management
         private const decimal PostOpenTighteningAdjustment = 0.02m; // Amount to tighten rank after RTH open
         private const int VwapHoldBarsCount = 2; // Number of bars to check for VWAP hold validation
+        private const int QuarterlyMonthDivisor = 3; // Divisor for quarterly month check (Mar/Jun/Sep/Dec)
+        private const int WeekDaysToAdd = 7; // Days to add for second Thursday calculation
         
         // Calculation constants
         private const decimal MidPriceEpsilon = 1e-9m; // Minimum denominator to prevent division by zero
@@ -675,9 +677,9 @@ namespace BotCore.Strategy
         private static void RegisterAttempt(string sym, string sess, Side side) { /* account for metrics in future */ }
         private static bool IsWithinRollWindow(DateTime today, int daysBefore, int daysAfter)
         {
-            int m = today.Month; if (m % 3 != 0) return false; // Mar/Jun/Sep/Dec only
+            int m = today.Month; if (m % QuarterlyMonthDivisor != 0) return false; // Mar/Jun/Sep/Dec only
             int firstThu = FirstWeekdayOfMonth(today.Year, m, DayOfWeek.Thursday);
-            int secondThu = firstThu + 7;
+            int secondThu = firstThu + WeekDaysToAdd;
             var center = new DateTime(today.Year, m, secondThu);
             return (today - center).TotalDays <= daysBefore && (center - today).TotalDays <= daysAfter;
         }

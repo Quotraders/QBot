@@ -14,7 +14,6 @@ using BotCore.Brain;
 using BotCore.Services;
 using TradingBot.Abstractions;
 using TradingBot.BotCore.Services.Helpers;
-using System.Globalization;
 
 namespace BotCore.Services;
 
@@ -608,14 +607,14 @@ public class AutonomousDecisionEngine : BackgroundService
                 return new TradingOpportunity
                 {
                     Symbol = "ES",
-                    Direction = decision.Action.ToString(CultureInfo.InvariantCulture),
+                    Direction = decision.Action.ToString(),
                     Strategy = _currentStrategy,
                     Confidence = decision.Confidence,
                     EntryPrice = null, // Will be set during execution
                     StopLoss = null,   // Will be calculated during execution
                     TakeProfit = null, // Will be calculated during execution
                     Reasoning = decision.Reasoning.ContainsKey("summary") ? 
-                        decision.Reasoning["summary"]?.ToString(CultureInfo.InvariantCulture) ?? $"Autonomous {_currentStrategy} signal" : 
+                        decision.Reasoning["summary"]?.ToString() ?? $"Autonomous {_currentStrategy} signal" : 
                         $"Autonomous {_currentStrategy} signal"
                 };
             }

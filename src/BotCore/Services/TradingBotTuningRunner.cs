@@ -746,7 +746,7 @@ namespace TradingBot.BotCore.Services
                     ResultCount = results.Count,
                     Results = results.Select(r => new
                     {
-                        Configuration = r.Configuration.ToString(CultureInfo.InvariantCulture),
+                        Configuration = r.Configuration.ToString(),
                         TotalTrades = r.TotalTrades,
                         WinningTrades = r.WinningTrades,
                         LosingTrades = r.LosingTrades,

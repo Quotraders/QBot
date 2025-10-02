@@ -395,9 +395,21 @@ internal sealed class NeuralUcbArm
 
             Console.WriteLine($"[NEURAL-UCB] Retraining completed");
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            Console.WriteLine($"[NEURAL-UCB] Retraining failed: {ex.Message}");
+            Console.WriteLine($"[NEURAL-UCB] Invalid operation during retraining: {ex.Message}");
+        }
+        catch (ArgumentException ex)
+        {
+            Console.WriteLine($"[NEURAL-UCB] Invalid arguments during retraining: {ex.Message}");
+        }
+        catch (OutOfMemoryException ex)
+        {
+            Console.WriteLine($"[NEURAL-UCB] Out of memory during retraining: {ex.Message}");
+        }
+        catch (OperationCanceledException ex)
+        {
+            Console.WriteLine($"[NEURAL-UCB] Retraining was cancelled: {ex.Message}");
         }
     }
 
@@ -533,9 +545,19 @@ public class OnnxNeuralNetwork : INeuralNetwork, IDisposable
                 
                 return (decimal)output;
             }
-            catch (Exception ex)
+            catch (Microsoft.ML.OnnxRuntime.OnnxRuntimeException ex)
             {
-                _logger.LogError(ex, "[NEURAL_UCB] ONNX prediction failed, using fallback");
+                _logger.LogError(ex, "[NEURAL_UCB] ONNX runtime error during prediction, using fallback");
+                return PredictFallback(features);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[NEURAL_UCB] Invalid operation during ONNX prediction, using fallback");
+                return PredictFallback(features);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "[NEURAL_UCB] Invalid arguments for ONNX prediction, using fallback");
                 return PredictFallback(features);
             }
         }
@@ -639,9 +661,21 @@ public class OnnxNeuralNetwork : INeuralNetwork, IDisposable
             
             _logger.LogDebug("[NEURAL_UCB] Training data stored for future model updates");
         }
-        catch (Exception ex)
+        catch (DirectoryNotFoundException ex)
         {
-            _logger.LogError(ex, "[NEURAL_UCB] Failed to store training data");
+            _logger.LogError(ex, "[NEURAL_UCB] Directory not found when storing training data");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "[NEURAL_UCB] Access denied when storing training data");
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "[NEURAL_UCB] IO error when storing training data");
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogError(ex, "[NEURAL_UCB] JSON serialization error when storing training data");
         }
     }
 

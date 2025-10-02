@@ -110,7 +110,9 @@ namespace StrategyAgent
                 .DistinctBy(x => (x.Side, RoundToTick(x.Symbol, x.Entry), RoundToTick(x.Symbol, x.Target), RoundToTick(x.Symbol, x.Stop)))];
 
             // Enhanced ES/NQ correlation guard with 24/7 session awareness
-            var currentTime = snap.UtcNow.TimeOfDay;
+            // Convert UTC to Central Time for session matching (EsNqTradingSchedule is Central Time based)
+            var centralTime = TimeZoneInfo.ConvertTimeFromUtc(snap.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time"));
+            var currentTime = centralTime.TimeOfDay;
             var currentSession = BotCore.Config.EsNqTradingSchedule.GetCurrentSession(currentTime);
 
             if (currentSession != null)
@@ -119,32 +121,48 @@ namespace StrategyAgent
                 outSignals = [.. outSignals.Where(s =>
                     currentSession.Instruments.Contains(s.Symbol, StringComparer.OrdinalIgnoreCase))];
 
-                // Apply session-specific position sizing
+                // Apply session-specific position sizing with minimum lot size protection
                 var adjustedSignals = new List<Signal>();
                 foreach (var signal in outSignals)
                 {
                     var sizeMultiplier = BotCore.Config.EsNqTradingSchedule.GetPositionSizeMultiplier(signal.Symbol, currentTime);
+                    var rawAdjustedSize = signal.Size * sizeMultiplier;
                     var adjustedSignal = signal with
                     {
-                        Size = (int)(signal.Size * sizeMultiplier)
+                        // Ensure size never falls below 1 (minimum lot size)
+                        Size = Math.Max(1, (int)Math.Round(rawAdjustedSize))
                     };
                     adjustedSignals.Add(adjustedSignal);
                 }
                 outSignals = adjustedSignals;
             }
 
-            // Enhanced correlation guard for ES/NQ
+            // Enhanced correlation guard for ES/NQ - respect session's PrimaryInstrument
             var hasEsLong = outSignals.Any(s => s.Symbol.Equals("ES", StringComparison.OrdinalIgnoreCase) && s.Side.Equals("BUY", StringComparison.OrdinalIgnoreCase));
             var hasEsShort = outSignals.Any(s => s.Symbol.Equals("ES", StringComparison.OrdinalIgnoreCase) && s.Side.Equals("SELL", StringComparison.OrdinalIgnoreCase));
 
-            // Only filter NQ if we're in high correlation periods and have ES positions
+            // Correlation guard: keep the session's primary instrument, filter the secondary
             if (currentSession?.PrimaryInstrument != "BOTH" && (hasEsLong || hasEsShort))
             {
-                outSignals = [.. outSignals.Where(s =>
-                    !s.Symbol.Equals("NQ", StringComparison.OrdinalIgnoreCase) ||
-                    !((s.Side.Equals("BUY", StringComparison.OrdinalIgnoreCase) && hasEsLong) ||
-                       (s.Side.Equals("SELL", StringComparison.OrdinalIgnoreCase) && hasEsShort))
-                )];
+                if (currentSession.PrimaryInstrument == "ES")
+                {
+                    // ES is primary - filter out conflicting NQ trades
+                    outSignals = [.. outSignals.Where(s =>
+                        !s.Symbol.Equals("NQ", StringComparison.OrdinalIgnoreCase) ||
+                        !((s.Side.Equals("BUY", StringComparison.OrdinalIgnoreCase) && hasEsLong) ||
+                           (s.Side.Equals("SELL", StringComparison.OrdinalIgnoreCase) && hasEsShort))
+                    )];
+                }
+                else if (currentSession.PrimaryInstrument == "NQ")
+                {
+                    // NQ is primary - filter out conflicting ES trades
+                    outSignals = [.. outSignals.Where(s =>
+                        !s.Symbol.Equals("ES", StringComparison.OrdinalIgnoreCase) ||
+                        !((s.Side.Equals("BUY", StringComparison.OrdinalIgnoreCase) && hasEsLong) ||
+                           (s.Side.Equals("SELL", StringComparison.OrdinalIgnoreCase) && hasEsShort))
+                    )];
+                }
+                // For "BOTH" or other values, no filtering is applied
             }
 
             // Concurrency: enforce one fresh entry per symbol and total cap

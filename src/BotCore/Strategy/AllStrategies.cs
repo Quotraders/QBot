@@ -17,6 +17,24 @@ namespace BotCore.Strategy
     {
         private static readonly TimeZoneInfo Et = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
 
+        // Strategy performance and filtering constants
+        private const decimal DefaultPerformanceThreshold = 0.5m;         // Default performance baseline
+        private const decimal PerformanceFilterThreshold = 0.70m;         // Minimum performance for strategy execution
+        
+        // Signal deduplication constants
+        private const int RoundingDecimalPlaces = 2;                      // Decimal places for signal deduplication
+        
+        // Contract roll month constants
+        private const int QuarterlyRollMonth1 = 3;                        // March
+        private const int QuarterlyRollMonth2 = 6;                        // June  
+        private const int QuarterlyRollMonth3 = 9;                        // September
+        private const int QuarterlyRollMonth4 = 12;                       // December
+        
+        // Time period constants
+        private const int SecondsPerMinute = 60;                          // Seconds in a minute
+        private const int LookbackPeriod = 10;                            // Default lookback period
+        private const int DaysInWeek = 7;                                 // Days in a week
+
         // (attempt accounting moved to specific strategies as needed)
         static decimal rr_quality(decimal entry, decimal stop, decimal t1)
         {
@@ -121,10 +139,10 @@ namespace BotCore.Strategy
 
             // Find closest hour performance
             var closestHour = hourPerformance.Keys.OrderBy(h => Math.Abs(h - hour)).FirstOrDefault();
-            var performance = hourPerformance.ContainsKey(closestHour) ? hourPerformance[closestHour] : 0.5;
+            var performance = hourPerformance.ContainsKey(closestHour) ? (decimal)hourPerformance[closestHour] : DefaultPerformanceThreshold;
 
             // Only run strategy if performance is above threshold
-            return performance > 0.70;
+            return performance > PerformanceFilterThreshold;
         }
 
         // Config-aware method for StrategyAgent
@@ -328,7 +346,7 @@ namespace BotCore.Strategy
             }
             return [.. signals
                 .OrderByDescending(x => x.Score)
-                .DistinctBy(x => (x.Side, x.StrategyId, Math.Round(x.Entry, 2), Math.Round(x.Target, 2), Math.Round(x.Stop, 2)))
+                .DistinctBy(x => (x.Side, x.StrategyId, Math.Round(x.Entry, RoundingDecimalPlaces), Math.Round(x.Target, RoundingDecimalPlaces), Math.Round(x.Stop, RoundingDecimalPlaces)))
                 .Take(max)];
         }
 
@@ -399,7 +417,7 @@ namespace BotCore.Strategy
                 if (t1 > last && stop < last)
                 {
                     var e = new Env { Symbol = symbol, atr = atr, volz = env.volz };
-                    add_cand(lst, "S1", symbol, "BUY", last, stop, t1, e, risk);
+                    add_cand(lst, "S1", symbol, "BUY", last, stop, t1, e, risk, null, bars);
                 }
             }
             if (rsOk && atrOk && bearCross && fastDown)
@@ -409,7 +427,7 @@ namespace BotCore.Strategy
                 if (t1 < last && stop > last)
                 {
                     var e = new Env { Symbol = symbol, atr = atr, volz = env.volz };
-                    add_cand(lst, "S1", symbol, "SELL", last, stop, t1, e, risk);
+                    add_cand(lst, "S1", symbol, "SELL", last, stop, t1, e, risk, null, bars);
                 }
             }
             return lst;
@@ -692,7 +710,7 @@ namespace BotCore.Strategy
                 if (!isRoll)
                 {
                     var rollDay = DateTime.UtcNow.Date;
-                    if (rollDay.Month is 3 or 6 or 9 or 12)
+                    if (rollDay.Month is QuarterlyRollMonth1 or QuarterlyRollMonth2 or QuarterlyRollMonth3 or QuarterlyRollMonth4)
                     {
                         DateTime first = new(rollDay.Year, rollDay.Month, 1);
                         int add = ((int)DayOfWeek.Friday - (int)first.DayOfWeek + 7) % 7;
@@ -751,7 +769,7 @@ namespace BotCore.Strategy
                 {
                     var pb = ExternalGetBars(peer) ?? [];
                     var pbl = pb as IList<Bar> ?? [.. pb];
-                    if (pbl.Count >= 10)
+                    if (pbl.Count >= LookbackPeriod)
                     {
                         var pEma = EmaNoWarmup(pbl, 20).ToArray();
                         var pslope = pEma.Length > 5 ? (pEma[^1] - pEma[^6]) / 5m : 0m;
@@ -779,7 +797,7 @@ namespace BotCore.Strategy
             }
 
             // IB continuation filter after 10:30: avoid small fades unless extreme (use last bar's clock)
-            var now = nowLocal; var nowMin = now.Hour * 60 + now.Minute;
+            var now = nowLocal; var nowMin = now.Hour * SecondsPerMinute + now.Minute;
             if (nowMin >= S2RuntimeConfig.IbEndMinute)
             {
                 var (ibh, ibl) = InitialBalance(bars, AnchorToday(localDate, new TimeSpan(9, 30, 0)), AnchorToday(localDate, new TimeSpan(10, 30, 0)));
@@ -800,7 +818,7 @@ namespace BotCore.Strategy
             // Dynamic sigma threshold + microstructure safety
             var qAdj = S2Quantiles.GetSigmaFor(symbol, nowLocal, needSigma);
             decimal dynSigma = S2Upg.DynamicSigmaThreshold(Math.Max(needSigma, qAdj), volz, slopeTicks, nowLocal, symbol);
-            var imb = S2Upg.UpDownImbalance(bars, 10);
+            var imb = S2Upg.UpDownImbalance(bars, LookbackPeriod);
             var tickSize = InstrumentMeta.Tick(symbol);
             bool pivotOKLong = S2Upg.PivotDistanceOK(bars, px, atr, tickSize, true);
             bool pivotOKShort = S2Upg.PivotDistanceOK(bars, px, atr, tickSize, false);
@@ -864,7 +882,7 @@ namespace BotCore.Strategy
                         if (room < S2RuntimeConfig.AdrRoomFrac * adr) return lst;
                     }
                     if (t1 - entry < 0.8m * r) t1 = entry + 0.9m * r;
-                    add_cand(lst, "S2", symbol, "BUY", entry, stop, t1, env, risk);
+                    add_cand(lst, "S2", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
                 }
             }
             // SHORT: fade above VWAP
@@ -893,7 +911,7 @@ namespace BotCore.Strategy
                         if (room < S2RuntimeConfig.AdrRoomFrac * adr) return lst;
                     }
                     if (entry - t1 < 0.8m * r) t1 = entry - 0.9m * r;
-                    add_cand(lst, "S2", symbol, "SELL", entry, stop, t1, env, risk);
+                    add_cand(lst, "S2", symbol, "SELL", entry, stop, t1, env, risk, null, bars);
                 }
             }
             return lst;
@@ -920,7 +938,7 @@ namespace BotCore.Strategy
                 var entry = bars[^1].Close;
                 var stop = entry - env.atr.Value * 1.5m;
                 var t1 = entry + env.atr.Value * 3.0m;
-                add_cand(lst, "S4", symbol, "BUY", entry, stop, t1, env, risk);
+                add_cand(lst, "S4", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
             }
             return lst;
         }
@@ -936,7 +954,7 @@ namespace BotCore.Strategy
                 var entry = bars[^1].Close;
                 var stop = entry + env.atr.Value * 1.5m;
                 var t1 = entry - env.atr.Value * 3.0m;
-                add_cand(lst, "S5", symbol, "SELL", entry, stop, t1, env, risk);
+                add_cand(lst, "S5", symbol, "SELL", entry, stop, t1, env, risk, null, bars);
             }
             return lst;
         }
@@ -951,21 +969,38 @@ namespace BotCore.Strategy
             {
                 return S6S11Bridge.GetS6Candidates(symbol, env, levels, bars, risk, null!, null!, null!);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
                 // Fallback to original simple implementation if full-stack fails
-                Console.WriteLine($"[S6] Full-stack failed, using fallback: {ex.Message}");
-                var lst = new List<Candidate>();
-                var minAtr = S6RuntimeConfig.MinAtr;
-                if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > minAtr)
-                {
-                    var entry = bars[^1].Close;
-                    var stop = entry - env.atr.Value * S6RuntimeConfig.StopAtrMult;
-                    var t1 = entry + env.atr.Value * S6RuntimeConfig.TargetAtrMult;
-                    add_cand(lst, "S6", symbol, "BUY", entry, stop, t1, env, risk);
-                }
-                return lst;
+                Console.WriteLine($"[S6] Invalid operation in full-stack, using fallback: {ex.Message}");
+                return CreateS6Fallback(symbol, env, bars, risk);
             }
+            catch (ArgumentException ex)
+            {
+                // Fallback to original simple implementation if arguments are invalid
+                Console.WriteLine($"[S6] Invalid arguments in full-stack, using fallback: {ex.Message}");
+                return CreateS6Fallback(symbol, env, bars, risk);
+            }
+            catch (NotSupportedException ex)
+            {
+                // Fallback to original simple implementation if operation not supported
+                Console.WriteLine($"[S6] Unsupported operation in full-stack, using fallback: {ex.Message}");
+                return CreateS6Fallback(symbol, env, bars, risk);
+            }
+        }
+
+        private static List<Candidate> CreateS6Fallback(string symbol, Env env, IList<Bar> bars, RiskEngine risk)
+        {
+            var lst = new List<Candidate>();
+            var minAtr = S6RuntimeConfig.MinAtr;
+            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > minAtr)
+            {
+                var entry = bars[^1].Close;
+                var stop = entry - env.atr.Value * S6RuntimeConfig.StopAtrMult;
+                var t1 = entry + env.atr.Value * S6RuntimeConfig.TargetAtrMult;
+                add_cand(lst, "S6", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
+            }
+            return lst;
         }
 
         // S7 strategy logic handled by IS7Service via dependency injection at higher levels
@@ -984,7 +1019,7 @@ namespace BotCore.Strategy
                 var entry = px;
                 var stop = Math.Min(entry, dn);
                 var t1 = up;
-                add_cand(lst, "S8", symbol, "BUY", entry, stop, t1, env, risk);
+                add_cand(lst, "S8", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
             }
             return lst;
         }
@@ -1000,7 +1035,7 @@ namespace BotCore.Strategy
                 var entry = bars[^1].Close;
                 var stop = entry + env.atr.Value * 2.5m;
                 var t1 = entry - env.atr.Value * 5.0m;
-                add_cand(lst, "S9", symbol, "SELL", entry, stop, t1, env, risk);
+                add_cand(lst, "S9", symbol, "SELL", entry, stop, t1, env, risk, null, bars);
             }
             return lst;
         }
@@ -1016,7 +1051,7 @@ namespace BotCore.Strategy
                 var entry = bars[^1].Close;
                 var stop = entry - env.atr.Value * 3.0m;
                 var t1 = entry + env.atr.Value * 6.0m;
-                add_cand(lst, "S10", symbol, "BUY", entry, stop, t1, env, risk);
+                add_cand(lst, "S10", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
             }
             return lst;
         }
@@ -1031,21 +1066,38 @@ namespace BotCore.Strategy
             {
                 return S6S11Bridge.GetS11Candidates(symbol, env, levels, bars, risk, null!, null!, null!);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
                 // Fallback to original simple implementation if full-stack fails
-                Console.WriteLine($"[S11] Full-stack failed, using fallback: {ex.Message}");
-                var lst = new List<Candidate>();
-                var minAtr = S11RuntimeConfig.MinAtr;
-                if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > minAtr)
-                {
-                    var entry = bars[^1].Close;
-                    var stop = entry + env.atr.Value * S11RuntimeConfig.StopAtrMult;
-                    var t1 = entry - env.atr.Value * S11RuntimeConfig.TargetAtrMult;
-                    add_cand(lst, "S11", symbol, "SELL", entry, stop, t1, env, risk);
-                }
-                return lst;
+                Console.WriteLine($"[S11] Invalid operation in full-stack, using fallback: {ex.Message}");
+                return CreateS11Fallback(symbol, env, bars, risk);
             }
+            catch (ArgumentException ex)
+            {
+                // Fallback to original simple implementation if arguments are invalid
+                Console.WriteLine($"[S11] Invalid arguments in full-stack, using fallback: {ex.Message}");
+                return CreateS11Fallback(symbol, env, bars, risk);
+            }
+            catch (NotSupportedException ex)
+            {
+                // Fallback to original simple implementation if operation not supported
+                Console.WriteLine($"[S11] Unsupported operation in full-stack, using fallback: {ex.Message}");
+                return CreateS11Fallback(symbol, env, bars, risk);
+            }
+        }
+
+        private static List<Candidate> CreateS11Fallback(string symbol, Env env, IList<Bar> bars, RiskEngine risk)
+        {
+            var lst = new List<Candidate>();
+            var minAtr = S11RuntimeConfig.MinAtr;
+            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > minAtr)
+            {
+                var entry = bars[^1].Close;
+                var stop = entry + env.atr.Value * S11RuntimeConfig.StopAtrMult;
+                var t1 = entry - env.atr.Value * S11RuntimeConfig.TargetAtrMult;
+                add_cand(lst, "S11", symbol, "SELL", entry, stop, t1, env, risk, null, bars);
+            }
+            return lst;
         }
 
         public static List<Candidate> S12(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
@@ -1059,7 +1111,7 @@ namespace BotCore.Strategy
                 var entry = bars[^1].Close;
                 var stop = entry - env.atr.Value * 3.5m;
                 var t1 = entry + env.atr.Value * 7.0m;
-                add_cand(lst, "S12", symbol, "BUY", entry, stop, t1, env, risk);
+                add_cand(lst, "S12", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
             }
             return lst;
         }
@@ -1075,7 +1127,7 @@ namespace BotCore.Strategy
                 var entry = bars[^1].Close;
                 var stop = entry + env.atr.Value * 3.5m;
                 var t1 = entry - env.atr.Value * 7.0m;
-                add_cand(lst, "S13", symbol, "SELL", entry, stop, t1, env, risk);
+                add_cand(lst, "S13", symbol, "SELL", entry, stop, t1, env, risk, null, bars);
             }
             return lst;
         }
@@ -1091,13 +1143,13 @@ namespace BotCore.Strategy
                 var entry = bars[^1].Close;
                 var stop = entry - env.atr.Value * 4.0m;
                 var t1 = entry + env.atr.Value * 8.0m;
-                add_cand(lst, "S14", symbol, "BUY", entry, stop, t1, env, risk);
+                add_cand(lst, "S14", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
             }
             return lst;
         }
 
         public static void add_cand(List<Candidate> lst, string sid, string symbol, string sideTxt,
-                                 decimal entry, decimal stop, decimal t1, Env env, RiskEngine risk, string? tag = null)
+                                 decimal entry, decimal stop, decimal t1, Env env, RiskEngine risk, string? tag = null, IList<Bar>? bars = null)
         {
             if (lst is null) throw new ArgumentNullException(nameof(lst));
             if (env is null) throw new ArgumentNullException(nameof(env));
@@ -1138,88 +1190,46 @@ namespace BotCore.Strategy
             };
             lst.Add(c);
 
-            // **ML/RL Integration**: Log signal for training data collection
-            try
+            // **ML/RL Integration**: Log signal for training data collection with real bars only
+            // Only log if we have genuine bar history - never use synthetic data
+            if (bars != null && bars.Count > 0)
             {
-                // Professional bar data extraction from environment context
-                var bars = ExtractBarsFromContext(env, symbol, 100); // Extract last 100 bars for technical analysis
-
-                StrategyMlIntegration.LogStrategySignal(
-                    // Use a simple console logger for now - in production this would be injected
-                    new Microsoft.Extensions.Logging.Abstractions.NullLogger<object>(),
-                    sid,
-                    symbol,
-                    c.side,
-                    entry,
-                    stop,
-                    t1,
-                    score,
-                    qScore,
-                    bars,
-                    $"{sid}-{symbol}-{DateTime.UtcNow:yyyyMMddHHmmss}"
-                );
-            }
-            catch (Exception ex)
-            {
-                // Don't let ML logging break strategy execution
-                Console.WriteLine($"[ML-Integration] Failed to log signal for {sid}: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Extract bar data from environment context for technical analysis
-        /// Uses existing price data from environment to create professional OHLCV bars
-        /// </summary>
-        private static List<Bar> ExtractBarsFromContext(Env env, string symbol, int count)
-        {
-            try
-            {
-                // Extract OHLCV data from environment - use current market data
-                var bars = new List<Bar>();
-                
-                // Create bars from available environment data
-                // In a real system, this would access historical data from the environment
-                if (env != null)
+                try
                 {
-                    // Create a synthetic bar from current environment state for immediate use
-                    // Note: Env doesn't have price/volume properties, so we create synthetic data
-                    var currentPrice = 5000m; // Default price for synthetic bars
-                    var volume = 1000; // Default volume
-                    
-                    // Generate bars with slight price variations for technical analysis
-                    for (int i = count; i > 0; i--)
-                    {
-                        var timeOffset = TimeSpan.FromMinutes(i * 5); // 5-minute bars
-                        var priceVariation = (decimal)(Math.Sin(i * 0.1) * 0.002); // Small price variation
-                        var price = currentPrice * (1 + priceVariation);
-                        
-                        var bar = new Bar
-                        {
-                            Symbol = symbol,
-                            Start = DateTime.UtcNow.Subtract(timeOffset),
-                            Ts = new DateTimeOffset(DateTime.UtcNow.Subtract(timeOffset)).ToUnixTimeMilliseconds(),
-                            Open = price * 0.999m,
-                            High = price * 1.001m,
-                            Low = price * 0.998m,
-                            Close = price,
-                            Volume = (int)(volume * (0.8 + GetSecureRandomDouble() * 0.4)) // Volume variation
-                        };
-                        
-                        bars.Add(bar);
-                    }
-                    
-                    // Sort bars chronologically (oldest first)
-                    bars.Sort((a, b) => a.Start.CompareTo(b.Start));
+                    StrategyMlIntegration.LogStrategySignal(
+                        // Use a simple console logger for now - in production this would be injected
+                        new Microsoft.Extensions.Logging.Abstractions.NullLogger<object>(),
+                        sid,
+                        symbol,
+                        c.side,
+                        entry,
+                        stop,
+                        t1,
+                        score,
+                        qScore,
+                        bars,
+                        $"{sid}-{symbol}-{DateTime.UtcNow:yyyyMMddHHmmss}"
+                    );
                 }
-                
-                return bars;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[AllStrategies] Error extracting bars from context: {ex.Message}");
-                return new List<Bar>(); // Return empty list on error
+                catch (InvalidOperationException ex)
+                {
+                    // Don't let ML logging break strategy execution
+                    Console.WriteLine($"[ML-Integration] Invalid operation when logging signal for {sid}: {ex.Message}");
+                }
+                catch (ArgumentException ex)
+                {
+                    // Don't let ML logging break strategy execution
+                    Console.WriteLine($"[ML-Integration] Invalid arguments when logging signal for {sid}: {ex.Message}");
+                }
+                catch (System.IO.IOException ex)
+                {
+                    // Don't let ML logging break strategy execution
+                    Console.WriteLine($"[ML-Integration] IO error when logging signal for {sid}: {ex.Message}");
+                }
             }
         }
+
+
 
         /// <summary>
         /// Generate cryptographically secure random double value between 0.0 and 1.0
