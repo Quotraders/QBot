@@ -315,9 +315,19 @@ namespace BotCore
                     return false;
                 }
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _log.LogError(ex, "[CloudDataUploader] S3 upload error");
+                _log.LogError(ex, "[CloudDataUploader] S3 upload process error");
+                return false;
+            }
+            catch (System.ComponentModel.Win32Exception ex)
+            {
+                _log.LogError(ex, "[CloudDataUploader] AWS CLI not found or process start failed");
+                return false;
+            }
+            catch (IOException ex)
+            {
+                _log.LogError(ex, "[CloudDataUploader] File I/O error during S3 upload");
                 return false;
             }
         }
@@ -339,9 +349,13 @@ namespace BotCore
                     }
                 }
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                _log.LogWarning(ex, "[CloudDataUploader] Error cleaning up old files");
+                _log.LogWarning(ex, "[CloudDataUploader] I/O error cleaning up old files");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _log.LogWarning(ex, "[CloudDataUploader] Access denied cleaning up old files");
             }
 
             return Task.CompletedTask;
