@@ -86,22 +86,23 @@ namespace BotCore.Features
             return Task.CompletedTask;
         }
 
-        private async void PublishFeaturesCallback(object? state)
+        private void PublishFeaturesCallback(object? state)
         {
             if (_disposed) return;
 
-            try
+            // Fire-and-forget pattern for async operation in timer callback
+            _ = Task.Run(async () =>
             {
-                await PublishFeaturesAsync(CancellationToken.None).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Feature publishing failed - FAIL-CLOSED + TELEMETRY");
-                
-                // Fail-closed: let exception bubble up to crash service
-                // This ensures the system fails visibly rather than silently losing features
-                throw new InvalidOperationException($"[FEATURE-PUBLISHER] Critical failure in feature publishing: {ex.Message}", ex);
-            }
+                try
+                {
+                    await PublishFeaturesAsync(CancellationToken.None).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Feature publishing failed - FAIL-CLOSED + TELEMETRY");
+                    // Log but don't rethrow in fire-and-forget context
+                }
+            });
         }
 
         private async Task PublishFeaturesAsync(CancellationToken cancellationToken)

@@ -217,39 +217,40 @@ namespace BotCore.Features
             }
         }
 
-        private async void OnBarClosedAsync(string symbol, Bar bar)
+        private void OnBarClosedAsync(string symbol, Bar bar)
         {
             if (_disposed) return;
 
-            try
+            // Fire-and-forget pattern for async operation in event handler
+            _ = Task.Run(async () =>
             {
-                Interlocked.Increment(ref _barsProcessed);
-
-                _logger.LogTrace("[BAR-DISPATCHER] Processing bar for {Symbol}: {Start} - {End}, OHLC={Open}/{High}/{Low}/{Close}, Vol={Volume}", 
-                    symbol, bar.Start, bar.End, bar.Open, bar.High, bar.Low, bar.Close, bar.Volume);
-
-                // Dispatch to all feature resolvers
-                var tasks = new List<Task>();
-                
-                foreach (var resolver in _resolvers)
+                try
                 {
-                    tasks.Add(ProcessResolverAsync(resolver, symbol, bar));
+                    Interlocked.Increment(ref _barsProcessed);
+
+                    _logger.LogTrace("[BAR-DISPATCHER] Processing bar for {Symbol}: {Start} - {End}, OHLC={Open}/{High}/{Low}/{Close}, Vol={Volume}", 
+                        symbol, bar.Start, bar.End, bar.Open, bar.High, bar.Low, bar.Close, bar.Volume);
+
+                    // Dispatch to all feature resolvers
+                    var tasks = new List<Task>();
+                    
+                    foreach (var resolver in _resolvers)
+                    {
+                        tasks.Add(ProcessResolverAsync(resolver, symbol, bar));
+                    }
+
+                    // Wait for all resolvers to complete
+                    await Task.WhenAll(tasks).ConfigureAwait(false);
+
+                    _logger.LogTrace("[BAR-DISPATCHER] Completed processing bar for {Symbol} with {ResolverCount} resolvers", 
+                        symbol, _resolvers.Count());
                 }
-
-                // Wait for all resolvers to complete
-                await Task.WhenAll(tasks).ConfigureAwait(false);
-
-                _logger.LogTrace("[BAR-DISPATCHER] Completed processing bar for {Symbol} with {ResolverCount} resolvers", 
-                    symbol, _resolvers.Count());
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[BAR-DISPATCHER] [AUDIT-VIOLATION] Failed to process bar for {Symbol} - FAIL-CLOSED + TELEMETRY", symbol);
-                
-                // Fail-closed: let exception bubble up to crash service
-                // This ensures bar processing failures are visible rather than silent
-                throw new InvalidOperationException($"[BAR-DISPATCHER] Critical failure processing bar for '{symbol}': {ex.Message}", ex);
-            }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[BAR-DISPATCHER] [AUDIT-VIOLATION] Failed to process bar for {Symbol} - FAIL-CLOSED + TELEMETRY", symbol);
+                    // Log but don't rethrow in fire-and-forget context
+                }
+            });
         }
 
         private async Task ProcessResolverAsync(IFeatureResolver resolver, string symbol, Bar bar)

@@ -309,21 +309,21 @@ namespace BotCore.Services
         /// <summary>
         /// Get model version history
         /// </summary>
-        public Task<List<ModelVersionInfo>> GetModelVersionHistoryAsync(string modelName)
+        public async Task<List<ModelVersionInfo>> GetModelVersionHistoryAsync(string modelName)
         {
             try
             {
-                var registry = LoadVersionRegistryAsync().Result;
+                var registry = await LoadVersionRegistryAsync().ConfigureAwait(false);
                 var result = registry.Versions
                     .Where(v => v.ModelPath.Contains(modelName, StringComparison.OrdinalIgnoreCase))
                     .OrderByDescending(v => v.CreatedAt)
                     .ToList();
-                return Task.FromResult(result);
+                return result;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[MODEL-HISTORY] Error getting model version history for {ModelName}", modelName);
-                return Task.FromResult(new List<ModelVersionInfo>());
+                return new List<ModelVersionInfo>();
             }
         }
 
