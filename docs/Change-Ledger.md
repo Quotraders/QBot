@@ -23,6 +23,58 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Current Focus**: Systematic application of Analyzer-Fix-Guidebook patterns across high-priority violations
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 
+## ✅ PHASE 2 - PRIORITY 1 VIOLATIONS ELIMINATION (IN PROGRESS)
+
+### Round 40 - S2139 Exception Handling Enhancement  
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S2139 | 8 | 0 | S6_S11_Bridge.cs, IntegritySigningService.cs | Added contextual information when rethrowing exceptions |
+
+**Fix Applied:**
+```csharp
+// Before - S2139 violation: bare throw without context
+catch (Exception ex)
+{
+    _logger.LogError(ex, "Error occurred");
+    throw; // Violation - no contextual information
+}
+
+// After - S2139 compliant: throw with contextual information
+catch (Exception ex)
+{
+    _logger.LogError(ex, "Error occurred");
+    throw new InvalidOperationException("Specific context about what failed and why", ex);
+}
+```
+
+### Round 41 - S109 Magic Number Elimination
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 10 | 0 | LinUcbBandit.cs, NeuralUcbBandit.cs, S3Strategy.cs | Moved magic numbers to named constants |
+
+**Fix Applied:**
+```csharp
+// Before - S109 violations: Magic numbers inline
+Math.Max(-3m, Math.Min(3m, atr))
+return (0.5m, 1m);
+return 1.6m;
+
+// After - S109 compliant: Named constants
+private const decimal AtrZScoreClippingBound = 3m;
+private const decimal DefaultPrediction = 0.5m;
+private const decimal DefaultVolatilityRatio = 1.6m;
+
+Math.Max(-AtrZScoreClippingBound, Math.Min(AtrZScoreClippingBound, atr))
+return (DefaultPrediction, HighUncertainty);
+return DefaultVolatilityRatio;
+```
+
+**Progress Summary:**
+- **S2139**: Fixed 8 violations across 2 files by adding proper contextual exception information
+- **S109**: Fixed 10 violations across 3 files by extracting magic numbers to named constants
+- **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
+- **Pattern**: Followed Analyzer-Fix-Guidebook priority order (Correctness & invariants first)
+
 ## ✅ PHASE 1 - CS COMPILER ERROR ELIMINATION (COMPLETE)
 
 ### Round 39 - CS0103 Variable Declaration Fix

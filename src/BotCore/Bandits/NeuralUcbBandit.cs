@@ -19,6 +19,10 @@ namespace BotCore.Bandits;
 /// </summary>
 public class NeuralUcbBandit : IFunctionApproximationBandit, IDisposable
 {
+    // Neural UCB default values for fallback scenarios
+    private const decimal DefaultPrediction = 0.5m; // Default prediction when insufficient data
+    private const decimal HighUncertainty = 1m; // High uncertainty value for insufficient data cases
+    
     private readonly Dictionary<string, NeuralUcbArm> _arms = new();
     private readonly NeuralUcbConfig _config;
     private readonly INeuralNetwork _networkTemplate;
@@ -238,7 +242,7 @@ internal sealed class NeuralUcbArm
         if (UpdateCount < _config.MinSamplesForTraining)
         {
             // Not enough data - return high uncertainty
-            return (0.5m, 1m);
+            return (DefaultPrediction, HighUncertainty);
         }
 
         // Get network prediction

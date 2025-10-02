@@ -72,7 +72,8 @@ namespace TradingBot.BotCore.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "🚨 [INTEGRITY] Error calculating content hash");
-                throw;
+                throw new InvalidOperationException("Failed to calculate SHA256 hash for content integrity verification", ex);
+            }
             }
         }
 
@@ -133,7 +134,7 @@ namespace TradingBot.BotCore.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "🚨 [INTEGRITY] Error creating signed manifest: {Name}", manifestName);
-                throw;
+                throw new InvalidOperationException($"Failed to create signed manifest '{manifestName}' with integrity verification", ex);
             }
         }
 
@@ -280,7 +281,7 @@ namespace TradingBot.BotCore.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "🚨 [INTEGRITY] Error signing log entry from {Source}", logSource);
-                throw;
+                throw new InvalidOperationException($"Failed to sign log entry from source '{logSource}' with integrity verification", ex);
             }
         }
 
@@ -364,7 +365,7 @@ namespace TradingBot.BotCore.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "🚨 [INTEGRITY] Error creating model integrity: {Model}", modelPath);
-                throw;
+                throw new InvalidOperationException($"Failed to create model integrity verification for '{modelPath}'", ex);
             }
         }
 

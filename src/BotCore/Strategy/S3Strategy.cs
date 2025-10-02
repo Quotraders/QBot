@@ -31,6 +31,7 @@ namespace BotCore.Strategy
         private const decimal MidPriceEpsilon = 1e-9m; // Minimum denominator to prevent division by zero
         private const int DefaultRsRequiredBars = 2; // Additional bars required for RS calculation  
         private const int DefaultKeltnerLookbackBars = 60; // Lookback period for Keltner channel calculations
+        private const decimal DefaultVolatilityRatio = 1.6m; // Default volatility ratio when no data available
         
         private static readonly ConcurrentDictionary<string, SegmentState> _segState = new(StringComparer.OrdinalIgnoreCase);
         private static readonly ConcurrentDictionary<(string Sym, DateOnly Day, string Sess, Side Side), int> _attempts = new();
@@ -595,7 +596,7 @@ namespace BotCore.Strategy
                 var tr = Math.Max(c.High - c.Low, Math.Max(Math.Abs(c.High - p.Close), Math.Abs(c.Low - p.Close)));
                 trs.Add(tr);
             }
-            if (trs.Count == 0 || boxW <= 0) return 1.6m;
+            if (trs.Count == 0 || boxW <= 0) return DefaultVolatilityRatio;
             var q = Quantile(trs, qLevel);
             var factor = q / Math.Max(1e-9m, boxW / 2m);
             return Math.Clamp(factor, 0.8m, 2.5m);
