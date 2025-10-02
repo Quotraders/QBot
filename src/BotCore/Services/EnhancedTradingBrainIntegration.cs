@@ -13,6 +13,7 @@ using static BotCore.Brain.UnifiedTradingBrain;
 
 // Type alias to resolve namespace conflict  
 using BrainMarketContext = BotCore.Brain.Models.MarketContext;
+using BrainTradingDecision = BotCore.Brain.Models.TradingDecision;
 
 namespace BotCore.Services;
 
@@ -693,12 +694,12 @@ public class EnhancedTradingBrainIntegration
         return riskEngine;
     }
 
-    private TradingDecision ConvertBrainToTradingDecision(object brainDecision)
+    private BrainTradingDecision ConvertBrainToTradingDecision(object brainDecision)
     {
         // Convert UnifiedTradingBrain decision format to BotCore TradingDecision
         if (brainDecision == null)
         {
-            return new TradingDecision
+            return new BrainTradingDecision
             {
                 Symbol = "UNKNOWN",
                 Strategy = "none",
@@ -710,7 +711,7 @@ public class EnhancedTradingBrainIntegration
         // If it's a BrainDecision, convert it to TradingDecision
         if (brainDecision is BrainDecision brain)
         {
-            return new TradingDecision
+            return new BrainTradingDecision
             {
                 Symbol = brain.Symbol,
                 Strategy = brain.RecommendedStrategy,
@@ -720,13 +721,13 @@ public class EnhancedTradingBrainIntegration
         }
 
         // If it's already a TradingDecision, return as-is
-        if (brainDecision is TradingDecision decision)
+        if (brainDecision is BrainTradingDecision decision)
         {
             return decision;
         }
 
         // Fallback for unknown types
-        return new TradingDecision
+        return new BrainTradingDecision
         {
             Symbol = "FALLBACK",
             Strategy = "unknown",
@@ -735,9 +736,9 @@ public class EnhancedTradingBrainIntegration
         };
     }
 
-    private TradingDecision CreateFallbackTradingDecision()
+    private BrainTradingDecision CreateFallbackTradingDecision()
     {
-        return new TradingDecision
+        return new BrainTradingDecision
         {
             Symbol = "FALLBACK",
             Strategy = "fallback",
@@ -753,7 +754,7 @@ public class EnhancedTradingBrainIntegration
 
 public class EnhancedTradingDecision
 {
-    public TradingDecision OriginalDecision { get; set; } = null!;
+    public BrainTradingDecision OriginalDecision { get; set; } = null!;
     public string EnhancedStrategy { get; set; } = string.Empty;
     public decimal EnhancedConfidence { get; set; }
     public decimal EnhancedPositionSize { get; set; }

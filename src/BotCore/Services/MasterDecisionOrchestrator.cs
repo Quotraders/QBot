@@ -262,8 +262,8 @@ public class MasterDecisionOrchestrator : BackgroundService
             {
                 try
                 {
-                    // Convert TradingBot.Abstractions.MarketContext to BotCore.Brain.MarketContext
-                    var brainMarketContext = new BotCore.Brain.MarketContext
+                    // Convert TradingBot.Abstractions.MarketContext to BotCore.Brain.Models.MarketContext
+                    var brainMarketContext = new BotCore.Brain.Models.MarketContext
                     {
                         Symbol = marketContext.Symbol,
                         CurrentPrice = (decimal)marketContext.Price,
@@ -637,8 +637,8 @@ public class MasterDecisionOrchestrator : BackgroundService
                 // Create a simple market context for the update (we could store the original context if needed)
                 var abstractionsMarketContext = CreateMarketContextFromMetadata(metadata);
                 
-                // Convert to BotCore.Brain.MarketContext
-                var brainMarketContext = new BotCore.Brain.MarketContext
+                // Convert to BotCore.Brain.Models.MarketContext
+                var brainMarketContext = new BotCore.Brain.Models.MarketContext
                 {
                     Symbol = abstractionsMarketContext.Symbol,
                     CurrentPrice = (decimal)abstractionsMarketContext.Price,
