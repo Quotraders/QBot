@@ -30,6 +30,9 @@ namespace BotCore.Services
     /// </summary>
     public class WalkForwardValidationService : IWalkForwardValidationService
     {
+        private const int MaxValidationWindows = 1000;
+        private const int PercentageMultiplier = 100;
+        
         private readonly ILogger<WalkForwardValidationService> _logger;
         private readonly WalkForwardValidationConfiguration _config;
         private readonly IEnhancedBacktestService _backtestService;
@@ -167,9 +170,9 @@ namespace BotCore.Services
                     windowIndex++;
 
                     // Safety check to prevent infinite loops
-                    if (windows.Count > 1000)
+                    if (windows.Count > MaxValidationWindows)
                     {
-                        _logger.LogWarning("[WALK-FORWARD] Generated maximum number of windows (1000), stopping");
+                        _logger.LogWarning("[WALK-FORWARD] Generated maximum number of windows ({MaxWindows}), stopping", MaxValidationWindows);
                         break;
                     }
                 }
@@ -207,7 +210,7 @@ namespace BotCore.Services
                 var performance = await SimulateModelPerformance(window).ConfigureAwait(false);
 
                 _logger.LogDebug("[MODEL-VALIDATION] Model validation completed for window {WindowIndex}: Sharpe={Sharpe:F2}, Drawdown={Drawdown:F2}%",
-                    window.WindowIndex, performance.SharpeRatio, performance.MaxDrawdown * 100);
+                    window.WindowIndex, performance.SharpeRatio, performance.MaxDrawdown * PercentageMultiplier);
 
                 return performance;
             }
@@ -243,7 +246,7 @@ namespace BotCore.Services
                         "WinRate={WinRate:F2} (min: {MinWinRate:F2}), " +
                         "Trades={Trades} (min: {MinTrades})",
                         performance.SharpeRatio, thresholds.MinSharpeRatio,
-                        performance.MaxDrawdown * 100, thresholds.MaxDrawdownPct,
+                        performance.MaxDrawdown * PercentageMultiplier, thresholds.MaxDrawdownPct,
                         performance.WinRate, thresholds.MinWinRate,
                         performance.TotalTrades, thresholds.MinTrades);
                 }
@@ -272,7 +275,7 @@ namespace BotCore.Services
 
                 _logger.LogInformation("[WALK-FORWARD-RESULTS] Aggregate Performance: " +
                     "Sharpe={Sharpe:F2}, Drawdown={Drawdown:F2}%, WinRate={WinRate:F2}, TotalTrades={Trades}",
-                    result.AggregateSharpeRatio, result.AggregateMaxDrawdown * 100, result.AggregateWinRate, result.AggregateTotalTrades);
+                    result.AggregateSharpeRatio, result.AggregateMaxDrawdown * PercentageMultiplier, result.AggregateWinRate, result.AggregateTotalTrades);
 
                 // Save detailed results to file
                 var resultJson = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });

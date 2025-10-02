@@ -25,6 +25,11 @@ namespace BotCore.Services
 
     public class ZoneAwareBracketManager : IZoneAwareBracketManager
     {
+        private const decimal EsTickSize = 0.25m;
+        private const decimal NqTickSize = 0.25m;
+        private const decimal YmTickSize = 1.00m;
+        private const decimal DefaultTickSize = 0.25m;
+        
         private readonly ILogger<ZoneAwareBracketManager> _logger;
         private readonly IConfiguration _configuration;
         private readonly IZoneService? _zoneService;
@@ -63,9 +68,14 @@ namespace BotCore.Services
                     return CalculateTraditional(symbol, action, entryPrice, atr);
                 }
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[ZONE-BRACKET] Error calculating bracket levels for {Symbol}, falling back to traditional", symbol);
+                _logger.LogError(ex, "[ZONE-BRACKET] Invalid operation calculating bracket levels for {Symbol}, falling back to traditional", symbol);
+                return CalculateTraditional(symbol, action, entryPrice, atr);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "[ZONE-BRACKET] Invalid argument calculating bracket levels for {Symbol}, falling back to traditional", symbol);
                 return CalculateTraditional(symbol, action, entryPrice, atr);
             }
         }
@@ -192,10 +202,10 @@ namespace BotCore.Services
         {
             return symbol switch
             {
-                "ES" => 0.25m,    // ES tick size
-                "NQ" => 0.25m,    // NQ tick size
-                "YM" => 1.00m,    // YM tick size
-                _ => 0.25m        // Default
+                "ES" => EsTickSize,
+                "NQ" => NqTickSize,
+                "YM" => YmTickSize,
+                _ => DefaultTickSize
             };
         }
     }

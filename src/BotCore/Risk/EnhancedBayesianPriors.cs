@@ -12,6 +12,11 @@ namespace BotCore.Risk;
 /// </summary>
 public class EnhancedBayesianPriors : IBayesianPriors
 {
+    private const decimal ShrinkageMaxFactor = 0.9m;
+    private const decimal ShrinkageMinFactor = 0.1m;
+    private const decimal ShrinkageDefaultNormalization = 1.0m;
+    private const decimal ShrinkageSampleSizeDivisor = 10.0m;
+    
     private readonly Dictionary<string, BayesianPosterior> _priors = new();
     private readonly Dictionary<string, HierarchicalGroup> _hierarchicalGroups = new();
     private readonly ShrinkageConfiguration _shrinkageConfig;
@@ -520,6 +525,6 @@ public static class BayesianCalculationExtensions
         
         // Simple shrinkage factor based on sample size
         var n = posterior.Alpha + posterior.Beta;
-        return Math.Min(0.9m, Math.Max(0.1m, 1.0m / (1.0m + n / 10.0m)));
+        return Math.Min(ShrinkageMaxFactor, Math.Max(ShrinkageMinFactor, ShrinkageDefaultNormalization / (ShrinkageDefaultNormalization + n / ShrinkageSampleSizeDivisor)));
     }
 }
