@@ -178,7 +178,7 @@ public class SystemHealthMonitor
                 {
                     Name = healthCheck.Name,
                     Description = healthCheck.Description,
-                    CheckFunction = () => ConvertHealthCheckResult(healthCheck).Result,
+                    CheckFunctionAsync = () => ConvertHealthCheckResult(healthCheck),
                     CriticalLevel = HealthLevel.Medium
                 };
 
@@ -197,7 +197,7 @@ public class SystemHealthMonitor
             {
                 Name = "Universal Auto-Discovery Monitor",
                 Description = "Automatically discovers and monitors ALL new features, components, and systems without manual intervention",
-                CheckFunction = () => ConvertHealthCheckResult(universalDiscovery).Result,
+                CheckFunctionAsync = () => ConvertHealthCheckResult(universalDiscovery),
                 CriticalLevel = HealthLevel.Critical  // Critical because it monitors everything
             };
 
@@ -260,7 +260,7 @@ public class SystemHealthMonitor
         }
     }
 
-    private void RunHealthChecks(object? state)
+    private async void RunHealthChecks(object? state)
     {
         try
         {
@@ -281,7 +281,7 @@ public class SystemHealthMonitor
             {
                 try
                 {
-                    var result = check.CheckFunction();
+                    var result = await check.CheckFunctionAsync().ConfigureAwait(false);
                     snapshot.Results[key] = result;
 
                     // Log critical and failed checks
@@ -1223,7 +1223,7 @@ public class HealthCheck
 {
     public string Name { get; set; } = "";
     public string Description { get; set; } = "";
-    public Func<HealthResult> CheckFunction { get; set; } = () => new HealthResult();
+    public Func<Task<HealthResult>> CheckFunctionAsync { get; set; } = () => Task.FromResult(new HealthResult());
     public HealthLevel CriticalLevel { get; set; }
 }
 

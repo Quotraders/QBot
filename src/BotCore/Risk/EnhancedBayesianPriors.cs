@@ -138,24 +138,27 @@ public class EnhancedBayesianPriors : IBayesianPriors
     /// </summary>
     public async Task<Dictionary<string, BayesianEstimate>> GetAllPriorsAsync(CancellationToken ct = default)
     {
-        await Task.CompletedTask.ConfigureAwait(false);
-
+        Dictionary<string, string[]> priorKeys;
+        
+        // Collect keys under lock to minimize lock duration
         lock (_lock)
         {
-            var result = new Dictionary<string, BayesianEstimate>();
-
-            foreach (var kvp in _priors)
-            {
-                var parts = kvp.Key.Split('|');
-                if (parts.Length == 4)
-                {
-                    var estimate = GetPriorAsync(parts[0], parts[1], parts[2], parts[3], ct).Result;
-                    result[kvp.Key] = estimate;
-                }
-            }
-
-            return result;
+            priorKeys = _priors.Keys
+                .Select(k => new { Key = k, Parts = k.Split('|') })
+                .Where(x => x.Parts.Length == 4)
+                .ToDictionary(x => x.Key, x => x.Parts);
         }
+
+        // Await calls outside the lock to prevent deadlocks
+        var result = new Dictionary<string, BayesianEstimate>();
+        foreach (var kvp in priorKeys)
+        {
+            var parts = kvp.Value;
+            var estimate = await GetPriorAsync(parts[0], parts[1], parts[2], parts[3], ct).ConfigureAwait(false);
+            result[kvp.Key] = estimate;
+        }
+
+        return result;
     }
 
     private BayesianPosterior ApplyShrinkage(

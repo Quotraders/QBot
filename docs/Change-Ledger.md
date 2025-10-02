@@ -15,13 +15,185 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
 - **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (100%) - **VERIFIED & SECURED**
 - **Phase 2 Status**: ✅ **ACCELERATED PROGRESS** - Systematic high-priority violations elimination in progress
-  - **Latest Session (Round 51-53)**: 61 violations fixed + critical fixes applied
-  - **Round 53 Critical Fix**: Restored accidentally removed fields/methods causing CS errors
-  - **Verified State**: ~6786 violations remaining (from ~7000+ baseline)
-- **Current Focus**: Priority 1 violations (correctness & invariants) - S1144, CA2227, CA1002, CA1031
+  - **Latest Session (Round 56-59)**: 158+ violations fixed + **CRITICAL async/await deadlock fix**
+  - **Round 59**: **CRITICAL** - Fixed async/await deadlocks in hot trading paths
+  - **Round 58**: CA1031 exception handling - 10 violations fixed with specific exception types
+  - **Round 57**: CA1307 string operations - 56 violations fixed with StringComparison parameters
+  - **Round 56**: S109 magic numbers - 88 violations fixed with named constants
+  - **Verified State**: ~6683 violations (0 CS errors maintained)
+- **Current Focus**: Production stability - async/await patterns, deadlock prevention
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 
-### Round 55 - S101 Class Naming Fixes + Critical Reference Update (Current Session)
+### Round 59 - CRITICAL: Async/Await Deadlock Prevention (Current Session)
+| Issue | Files Affected | Fix Applied |
+|-------|----------------|-------------|
+| .Result blocking | EnhancedBayesianPriors.cs | Converted GetAllPriorsAsync to properly await calls outside lock |
+| .Result blocking | ContractRolloverService.cs | Made GetCurrentFrontMonthContractAsync and ShouldRolloverAsync properly async |
+| .Result blocking | SystemHealthMonitor.cs | Changed CheckFunction from Func&lt;HealthResult&gt; to Func&lt;Task&lt;HealthResult&gt;&gt; |
+
+**Example Pattern - Async/Await Deadlock Fix**:
+```csharp
+// BEFORE (DEADLOCK RISK) - .Result inside lock
+public async Task<Dictionary<string, BayesianEstimate>> GetAllPriorsAsync(...)
+{
+    lock (_lock)
+    {
+        foreach (var kvp in _priors)
+        {
+            var estimate = GetPriorAsync(...).Result; // DEADLOCK!
+            result[kvp.Key] = estimate;
+        }
+    }
+}
+
+// AFTER (SAFE) - Await outside lock
+public async Task<Dictionary<string, BayesianEstimate>> GetAllPriorsAsync(...)
+{
+    Dictionary<string, string[]> priorKeys;
+    lock (_lock) { /* collect keys only */ }
+    
+    // Await calls outside lock
+    foreach (var kvp in priorKeys)
+    {
+        var estimate = await GetPriorAsync(...).ConfigureAwait(false);
+        result[kvp.Key] = estimate;
+    }
+}
+
+// BEFORE (DEADLOCK RISK) - Sync wrapper on async method
+public Task<string> GetCurrentFrontMonthContractAsync(...)
+{
+    if (await IsContractActiveAsync(...).Result) // DEADLOCK!
+        return Task.FromResult(contract);
+}
+
+// AFTER (SAFE) - Properly async
+public async Task<string> GetCurrentFrontMonthContractAsync(...)
+{
+    if (await IsContractActiveAsync(...).ConfigureAwait(false))
+        return contract;
+}
+
+// BEFORE (DEADLOCK RISK) - Sync delegate calling async
+CheckFunction = () => ConvertHealthCheckResult(...).Result,
+
+// AFTER (SAFE) - Async delegate
+CheckFunctionAsync = () => ConvertHealthCheckResult(...),
+```
+
+**Critical Impact Areas Fixed**:
+1. **EnhancedBayesianPriors** - Highest priority trading hot path
+   - Removed `.Result` from GetAllPriorsAsync loop that could halt all trading decisions
+   - Moved async calls outside lock to prevent deadlock
+   
+2. **ContractRolloverService** - Futures contract management
+   - Made GetCurrentFrontMonthContractAsync properly async (no more Task.FromResult wrapping)
+   - Made ShouldRolloverAsync properly async
+   - Prevents freezing during contract expiry
+
+3. **SystemHealthMonitor** - System monitoring
+   - Changed CheckFunction from synchronous to async (CheckFunctionAsync)
+   - Updated RunHealthChecks to properly await health checks
+   - Prevents health check system hangs
+
+**Rationale**: These blocking async calls (.Result, .Wait()) in production hot paths could cause deadlocks and halt trading. Per guidebook async/await best practices, all async methods must be awaited, never blocked. This is especially critical in trading systems where deadlocks can prevent order execution.
+
+---
+
+### Round 58 - CA1031 Generic Exception Handling (Previous Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 904 | 894 | EnvConfig.cs, CloudDataUploader.cs (2 files) | Replaced generic Exception catches with specific exception types |
+
+**Example Pattern - Specific Exception Handling**:
+```csharp
+// Before (Violation) - Generic exception catch
+catch (Exception ex)
+{
+    _logger.LogError(ex, "Failed to upload trade data");
+    return false;
+}
+
+// After (Compliant) - Specific exception types per guidebook
+catch (HttpRequestException ex)
+{
+    _logger.LogError(ex, "HTTP request failed for trade data upload");
+    return false;
+}
+catch (System.Text.Json.JsonException ex)
+{
+    _logger.LogError(ex, "JSON serialization failed for trade data");
+    return false;
+}
+catch (TaskCanceledException ex)
+{
+    _logger.LogError(ex, "Upload request timed out for trade data");
+    return false;
+}
+```
+
+**Files Fixed**:
+- **EnvConfig.cs** (3 methods): File I/O operations - IOException, UnauthorizedAccessException, JsonException
+- **CloudDataUploader.cs** (3 methods): Process execution - InvalidOperationException, Win32Exception, IOException
+- **Services/CloudDataUploader.cs** (2 methods): HTTP operations - HttpRequestException, JsonException, TaskCanceledException
+
+**Rationale**: Per guidebook CA1031 pattern, catch specific exceptions and log context. File operations catch IOException/UnauthorizedAccessException, HTTP operations catch HttpRequestException/TaskCanceledException, JSON operations catch JsonException. Each specific exception handler provides meaningful context for debugging.
+
+---
+
+### Round 57 - CA1307 String Operation Globalization (Previous Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1307 | 234 | 178 | FeatureBusMapper.cs, StrategyKnowledgeGraphNew.cs, CloudModelSynchronizationService.cs | Added StringComparison parameters to string operations |
+
+**Example Pattern - String Operation Globalization**:
+```csharp
+// Before (Violation) - String operations without comparison type
+if (id.Contains("time_of_day")) return TimeSpan.FromHours(12);
+if (expression.Contains(">=")) { /* evaluate */ }
+foreach (var artifact in artifacts.Where(a => a.Name.Contains("model")))
+
+// After (Compliant) - StringComparison.Ordinal for protocols/tickers
+if (id.Contains("time_of_day", StringComparison.Ordinal)) return TimeSpan.FromHours(12);
+if (expression.Contains(">=", StringComparison.Ordinal)) { /* evaluate */ }
+foreach (var artifact in artifacts.Where(a => a.Name.Contains("model", StringComparison.OrdinalIgnoreCase)))
+```
+
+**Rationale**: Per guidebook, protocols/tickers/logs use InvariantCulture + StringComparison.Ordinal for deterministic behavior. Applied StringComparison.Ordinal for exact matching (feature identifiers, expressions) and StringComparison.OrdinalIgnoreCase for case-insensitive matching (artifact names, workflow names). Ensures consistent string matching across cultures.
+
+---
+
+### Round 56 - S109 Magic Number Elimination (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 2264 | 2176 | StrategyGates.cs, HighWinRateProfile.cs, UnifiedTradingBrain.cs | Added named constants for magic numbers in critical trading configuration |
+
+**Example Pattern - Named Configuration Constants**:
+```csharp
+// Before (Violation) - Magic numbers inline
+if (snap.SpreadTicks > gf.SpreadTicksMaxBo) w *= 0.60m;
+if (snap.VolumePct5m < gf.VolumePctMinBo) w *= 0.75m;
+if (snapshot.CrossSymbolCoherence < 0.6m) return true;
+contracts = (int)(contracts * Math.Clamp(rlMultiplier, 0.5m, 1.5m));
+
+// After (Compliant) - Named constants with clear intent
+private const decimal VeryWideSpreadScorePenalty = 0.60m;
+private const decimal LowVolumeBreakoutPenalty = 0.75m;
+private const decimal MinCrossSymbolCoherence = 0.6m;
+public const decimal MinRlMultiplier = 0.5m;
+public const decimal MaxRlMultiplier = 1.5m;
+
+w *= VeryWideSpreadScorePenalty;
+w *= LowVolumeBreakoutPenalty;
+if (snapshot.CrossSymbolCoherence < MinCrossSymbolCoherence)
+contracts = (int)(contracts * Math.Clamp(rlMultiplier, TopStepConfig.MinRlMultiplier, TopStepConfig.MaxRlMultiplier));
+```
+
+**Rationale**: Moved trading configuration magic numbers to strongly-typed constants with descriptive names. Added 8 penalty factors in StrategyGates, 13 configuration parameters in HighWinRateProfile, and 10 TopStepConfig constants. All constants document intent and enable centralized adjustment of trading parameters.
+
+---
+
+### Round 55 - S101 Class Naming Fixes + Critical Reference Update (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | S101 | ~7 | ~3 | TechnicalIndicatorResolvers.cs, FeatureMapAuthority.cs | Renamed 4 resolver classes from ALL_CAPS acronyms to PascalCase |

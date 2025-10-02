@@ -85,9 +85,13 @@ public static class EnvConfig
                     }
                     _logger.LogDebug("Loaded environment variables from {EnvFile}", envPath);
                 }
-                catch (Exception ex)
+                catch (IOException ex)
                 {
                     _logger.LogWarning(ex, "Failed to load .env file: {EnvFile}", envPath);
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    _logger.LogWarning(ex, "Access denied to .env file: {EnvFile}", envPath);
                 }
             }
         }
@@ -197,9 +201,19 @@ public static class EnvConfig
             _logger.LogInformation("All AUTO_EXECUTE prechecks passed - enabling live trading");
             return ExecutionMode.AutoExecute;
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error determining execution mode - defaulting to DRY_RUN");
+            _logger.LogError(ex, "I/O error determining execution mode - defaulting to DRY_RUN");
+            return ExecutionMode.DryRun;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "Access denied determining execution mode - defaulting to DRY_RUN");
+            return ExecutionMode.DryRun;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation determining execution mode - defaulting to DRY_RUN");
             return ExecutionMode.DryRun;
         }
     }
@@ -230,9 +244,19 @@ public static class EnvConfig
 
             return quickExit;
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error checking BOT_QUICK_EXIT - defaulting to false");
+            _logger.LogError(ex, "I/O error checking BOT_QUICK_EXIT - defaulting to false");
+            return false;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "Access denied checking BOT_QUICK_EXIT - defaulting to false");
+            return false;
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogError(ex, "JSON parsing error checking BOT_QUICK_EXIT - defaulting to false");
             return false;
         }
     }

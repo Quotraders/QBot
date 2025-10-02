@@ -448,7 +448,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
         try
         {
             // Simple expression evaluator using feature probe
-            if (expression.Contains(">="))
+            if (expression.Contains(">=", StringComparison.Ordinal))
             {
                 var parts = expression.Split(">=", StringSplitOptions.TrimEntries);
                 if (parts.Length == 2)
@@ -458,7 +458,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
                         return featureValue >= threshold;
                 }
             }
-            else if (expression.Contains("<="))
+            else if (expression.Contains("<=", StringComparison.Ordinal))
             {
                 var parts = expression.Split("<=", StringSplitOptions.TrimEntries);
                 if (parts.Length == 2)
@@ -468,7 +468,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
                         return featureValue <= threshold;
                 }
             }
-            else if (expression.Contains(">"))
+            else if (expression.Contains(">", StringComparison.Ordinal))
             {
                 var parts = expression.Split(">", StringSplitOptions.TrimEntries);
                 if (parts.Length == 2)
@@ -478,21 +478,21 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
                         return featureValue > threshold;
                 }
             }
-            else if (expression.Contains("=="))
+            else if (expression.Contains("==", StringComparison.Ordinal))
             {
-                if (expression.Contains("true"))
+                if (expression.Contains("true", StringComparison.Ordinal))
                 {
                     var featureName = expression.Split("==")[0].Trim();
                     var featureValue = _probe.Get(symbol, featureName);
                     return featureValue > DefaultEvaluationThreshold; // Treat > 0.5 as true
                 }
             }
-            else if (expression.Contains("or"))
+            else if (expression.Contains("or", StringComparison.Ordinal))
             {
                 var parts = expression.Split("or", StringSplitOptions.TrimEntries);
                 return Array.Exists(parts, part => EvaluateExpression(part.Trim(), symbol));
             }
-            else if (expression.Contains("and"))
+            else if (expression.Contains("and", StringComparison.Ordinal))
             {
                 var parts = expression.Split("and", StringSplitOptions.TrimEntries);
                 return parts.All(part => EvaluateExpression(part.Trim(), symbol));

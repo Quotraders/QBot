@@ -325,17 +325,17 @@ public class FeatureBusMapper
         // Provide sensible defaults for common identifiers when values are missing
         return identifier.ToLower() switch
         {
-            var id when id.Contains("time_of_day") => TimeSpan.FromHours(12), // Noon
-            var id when id.Contains("_score") => 0.0,
-            var id when id.Contains("distance") => 1.0,
-            var id when id.Contains("ratio") => 1.0,
-            var id when id.Contains("count") => 0,
-            var id when id.Contains("minutes") => DefaultMinutesValue,
-            var id when id.Contains("strength") => DefaultStrengthValue,
-            var id when id.EndsWith("_confirmed") || id.EndsWith("_ready") => false,
-            var id when id.Contains("alignment") => "neutral",
-            var id when id.Contains("direction") => "neutral",
-            var id when id.Contains("regime") => "Range",
+            var id when id.Contains("time_of_day", StringComparison.Ordinal) => TimeSpan.FromHours(12), // Noon
+            var id when id.Contains("_score", StringComparison.Ordinal) => 0.0,
+            var id when id.Contains("distance", StringComparison.Ordinal) => 1.0,
+            var id when id.Contains("ratio", StringComparison.Ordinal) => 1.0,
+            var id when id.Contains("count", StringComparison.Ordinal) => 0,
+            var id when id.Contains("minutes", StringComparison.Ordinal) => DefaultMinutesValue,
+            var id when id.Contains("strength", StringComparison.Ordinal) => DefaultStrengthValue,
+            var id when id.EndsWith("_confirmed", StringComparison.Ordinal) || id.EndsWith("_ready", StringComparison.Ordinal) => false,
+            var id when id.Contains("alignment", StringComparison.Ordinal) => "neutral",
+            var id when id.Contains("direction", StringComparison.Ordinal) => "neutral",
+            var id when id.Contains("regime", StringComparison.Ordinal) => "Range",
             _ => null
         };
     }
