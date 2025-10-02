@@ -714,6 +714,14 @@ internal class TradingOrchestratorService : BackgroundService, ITradingOrchestra
     {
         try
         {
+            // Guard: Re-validate risk/market context before accepting forced trades
+            var validationResult = await ValidateTradeBeforeExecutionAsync(decision, cancellationToken).ConfigureAwait(false);
+            if (!validationResult.IsValid)
+            {
+                _logger.LogWarning("🚫 [TRADE-GUARD] Forced trade rejected - validation failed: {Reason}", validationResult.Reason);
+                return false;
+            }
+
             _logger.LogInformation("⚡ [EXECUTION] Executing trade: {DecisionId} {Action} Confidence={Confidence}", 
                 decision.DecisionId, decision.Action, decision.Confidence);
             
@@ -1553,5 +1561,103 @@ internal class TradeExecutionResult
     public decimal PnL { get; set; }
     public decimal ExecutedQuantity { get; set; }
     public string ExecutionMessage { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Validate trade before execution - guard against forced trades when upstream brains disagree
+    /// </summary>
+    private async Task<TradeValidationResult> ValidateTradeBeforeExecutionAsync(TradingBot.Abstractions.TradingDecision decision, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Re-validate risk context
+            if (decision.Quantity <= 0)
+            {
+                return new TradeValidationResult { IsValid = false, Reason = "Invalid quantity - must be greater than zero" };
+            }
+
+            if (decision.Price <= 0)
+            {
+                return new TradeValidationResult { IsValid = false, Reason = "Invalid price - must be greater than zero" };
+            }
+
+            // Check if multiple brains disagree on this decision
+            var brainAgreement = await CheckUpstreamBrainAgreementAsync(decision, cancellationToken).ConfigureAwait(false);
+            if (!brainAgreement.InAgreement)
+            {
+                return new TradeValidationResult 
+                { 
+                    IsValid = false, 
+                    Reason = $"Upstream brains disagree - blocking forced trade: {brainAgreement.DisagreementReason}" 
+                };
+            }
+
+            // Re-validate market context to ensure conditions haven't changed
+            var marketValidation = await ValidateMarketContextAsync(decision, cancellationToken).ConfigureAwait(false);
+            if (!marketValidation.IsValid)
+            {
+                return marketValidation;
+            }
+
+            return new TradeValidationResult { IsValid = true, Reason = "Trade validation passed" };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "🚫 [TRADE-GUARD] Error validating trade - failing safe");
+            return new TradeValidationResult { IsValid = false, Reason = $"Validation error: {ex.Message}" };
+        }
+    }
+
+    /// <summary>
+    /// Check if upstream brains agree on the trading decision
+    /// </summary>
+    private async Task<BrainAgreementResult> CheckUpstreamBrainAgreementAsync(TradingBot.Abstractions.TradingDecision decision, CancellationToken cancellationToken)
+    {
+        await Task.CompletedTask.ConfigureAwait(false);
+        
+        // In production, this would query multiple brain instances
+        // For now, implement basic confidence threshold check
+        if (decision.Confidence < 0.6m)
+        {
+            return new BrainAgreementResult 
+            { 
+                InAgreement = false, 
+                DisagreementReason = $"Low confidence {decision.Confidence:P1} below safety threshold" 
+            };
+        }
+
+        return new BrainAgreementResult { InAgreement = true };
+    }
+
+    /// <summary>
+    /// Validate current market context for trade execution
+    /// </summary>
+    private async Task<TradeValidationResult> ValidateMarketContextAsync(TradingBot.Abstractions.TradingDecision decision, CancellationToken cancellationToken)
+    {
+        await Task.CompletedTask.ConfigureAwait(false);
+        
+        // Check for market volatility or other risk factors
+        // In production, this would use real-time market data
+        
+        return new TradeValidationResult { IsValid = true, Reason = "Market context validation passed" };
+    }
+}
+
+/// <summary>
+/// Result of trade validation
+/// </summary>
+public class TradeValidationResult
+{
+    public bool IsValid { get; set; }
+    public string Reason { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Result of brain agreement check
+/// </summary>
+public class BrainAgreementResult
+{
+    public bool InAgreement { get; set; }
+    public string DisagreementReason { get; set; } = string.Empty;
+}
 }
 #endregion

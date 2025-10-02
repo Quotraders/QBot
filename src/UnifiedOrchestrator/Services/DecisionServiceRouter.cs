@@ -143,31 +143,49 @@ internal class DecisionServiceRouter
         {
             if (!_options.Enabled)
             {
-                _pythonServiceHealthy;
+                _pythonServiceHealthy = false; // Mark as unhealthy when disabled
+                _logger.LogDebug("🔇 [PYTHON-SERVICE-HEALTH] Python decision service is disabled");
                 return;
             }
             
             var healthUrl = $"{_options.BaseUrl}/health";
             var response = await _httpClient.GetAsync(healthUrl, cancellationToken).ConfigureAwait(false);
             
+            var previousHealthState = _pythonServiceHealthy;
             _pythonServiceHealthy = response.IsSuccessStatusCode;
             _lastHealthCheck = DateTime.UtcNow;
             
-            if (_pythonServiceHealthy)
+            // Log health state transitions to avoid hammering offline service
+            if (previousHealthState != _pythonServiceHealthy)
             {
-                _logger.LogDebug("✅ [PYTHON-SERVICE-HEALTH] Python decision service is healthy");
+                if (_pythonServiceHealthy)
+                {
+                    _logger.LogInformation("✅ [PYTHON-SERVICE-HEALTH] Service became healthy - enabling Python decisions");
+                }
+                else
+                {
+                    _logger.LogWarning("❌ [PYTHON-SERVICE-HEALTH] Service became unhealthy - disabling Python decisions to avoid hammering offline service");
+                }
             }
-            else
+            else if (_pythonServiceHealthy)
             {
-                _logger.LogWarning("⚠️ [PYTHON-SERVICE-HEALTH] Python decision service returned {StatusCode}", 
-                    response.StatusCode);
+                _logger.LogDebug("✅ [PYTHON-SERVICE-HEALTH] Python decision service remains healthy");
             }
         }
         catch (Exception ex)
         {
-            _pythonServiceHealthy;
+            var previousHealthState = _pythonServiceHealthy;
+            _pythonServiceHealthy = false; // Mark as unhealthy on exception
             _lastHealthCheck = DateTime.UtcNow;
-            _logger.LogWarning(ex, "⚠️ [PYTHON-SERVICE-HEALTH] Python decision service health check failed");
+            
+            if (previousHealthState != _pythonServiceHealthy)
+            {
+                _logger.LogWarning(ex, "❌ [PYTHON-SERVICE-HEALTH] Service became unhealthy due to exception - disabling Python decisions to avoid hammering offline service");
+            }
+            else
+            {
+                _logger.LogDebug(ex, "⚠️ [PYTHON-SERVICE-HEALTH] Health check failed but service was already marked unhealthy");
+            }
         }
     }
     

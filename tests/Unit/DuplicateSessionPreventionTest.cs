@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
+using Xunit;
 
 namespace TradingBot.Tests
 {
@@ -101,42 +102,29 @@ namespace TradingBot.Tests
         /// <summary>
         /// Runtime proof that duplicate session prevention works
         /// </summary>
-        public static async Task<bool> VerifyDuplicatePreventionAsync(ILogger logger)
+        [Fact]
+        public static async Task VerifyDuplicatePreventionAsync()
         {
+            // Setup logger for test
+            using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+            var logger = loggerFactory.CreateLogger<DuplicateSessionPreventionTest>();
+            
             var registry = new MockAgentRegistry(logger);
             
             // Test 1: Single launch should succeed
             var firstLaunch = registry.TryLaunchAgent("test-agent-1", async () => await Task.Delay(50));
-            if (!firstLaunch)
-            {
-                logger.LogError("❌ [TEST] First launch should have succeeded");
-                return false;
-            }
+            Assert.True(firstLaunch, "First launch should have succeeded");
 
             // Test 2: Immediate duplicate launch should be prevented
             var duplicateLaunch = registry.TryLaunchAgent("test-agent-1", async () => await Task.Delay(50));
-            if (duplicateLaunch)
-            {
-                logger.LogError("❌ [TEST] Duplicate launch should have been prevented");
-                return false;
-            }
+            Assert.False(duplicateLaunch, "Duplicate launch should have been prevented");
 
             // Test 3: Concurrent launches should only allow one through
             var (successful, prevented) = await registry.SimulateConcurrentLaunches("test-agent-2", 5);
-            if (successful != 1)
-            {
-                logger.LogError("❌ [TEST] Expected exactly 1 successful launch, got {Successful}", successful);
-                return false;
-            }
+            Assert.Equal(1, successful);
+            Assert.Equal(4, prevented);
 
-            if (prevented != 4)
-            {
-                logger.LogError("❌ [TEST] Expected exactly 4 prevented launches, got {Prevented}", prevented);
-                return false;
-            }
-
-            logger.LogInformation("✅ [TEST] All duplicate prevention tests passed");
-            return true;
+            logger.LogInformation("✅ [TEST] All duplicate session prevention tests passed - guardrail working correctly");
         }
     }
 }
