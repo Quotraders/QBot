@@ -60,11 +60,6 @@ public class EnterpriseModelRegistry : IModelRegistry, IAsyncDisposable
             _databasePath);
     }
 
-    public bool RegisterModel(string modelName, string version, string modelPath, ModelMetrics metrics)
-    {
-        return RegisterModelAsync(modelName, version, modelPath, metrics).GetAwaiter().GetResult();
-    }
-    
     public async Task<bool> RegisterModelAsync(string modelName, string version, string modelPath, ModelMetrics metrics)
     {
         await _registryLock.WaitAsync().ConfigureAwait(false);
@@ -294,11 +289,6 @@ public class EnterpriseModelRegistry : IModelRegistry, IAsyncDisposable
         return versions.OrderByDescending(v => v).ToList();
     }
 
-    public bool DeleteModel(string modelName, string? version = null)
-    {
-        return DeleteModelAsync(modelName, version).GetAwaiter().GetResult();
-    }
-    
     public async Task<bool> DeleteModelAsync(string modelName, string? version = null)
     {
         await _registryLock.WaitAsync().ConfigureAwait(false);
@@ -505,11 +495,6 @@ public class EnterpriseFeatureStore : IFeatureStore, IAsyncDisposable
             _storageDirectory);
     }
 
-    public Dictionary<string, double[]> GetFeatures(DateTime startDate, DateTime endDate)
-    {
-        return GetFeaturesAsync(startDate, endDate).GetAwaiter().GetResult();
-    }
-    
     public async Task<Dictionary<string, double[]>> GetFeaturesAsync(DateTime startDate, DateTime endDate)
     {
         var result = new Dictionary<string, double[]>();
@@ -563,11 +548,6 @@ public class EnterpriseFeatureStore : IFeatureStore, IAsyncDisposable
         }
     }
 
-    public bool StoreFeatures(string featureName, DateTime timestamp, double[] values)
-    {
-        return StoreFeaturesAsync(featureName, timestamp, values).GetAwaiter().GetResult();
-    }
-    
     public async Task<bool> StoreFeaturesAsync(string featureName, DateTime timestamp, double[] values)
     {
         await _storageLock.WaitAsync().ConfigureAwait(false);
@@ -624,11 +604,6 @@ public class EnterpriseFeatureStore : IFeatureStore, IAsyncDisposable
         }
     }
 
-    public string[] GetAvailableFeatures()
-    {
-        return GetAvailableFeaturesAsync().GetAwaiter().GetResult();
-    }
-    
     public async Task<string[]> GetAvailableFeaturesAsync()
     {
         try
@@ -655,11 +630,6 @@ public class EnterpriseFeatureStore : IFeatureStore, IAsyncDisposable
         }
     }
 
-    public Dictionary<string, double[]> GetLatestFeatures(int count = 100)
-    {
-        return GetLatestFeaturesAsync(count).GetAwaiter().GetResult();
-    }
-    
     public async Task<Dictionary<string, double[]>> GetLatestFeaturesAsync(int count = 100)
     {
         var result = new Dictionary<string, double[]>();
