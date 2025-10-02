@@ -111,25 +111,27 @@ public class StrategyPerformanceAnalyzer
                 analysis.AllTrades.Add(trade);
                 
                 // Update regime-based performance
-                if (!_regimePerformance.ContainsKey(trade.AnalyzerMarketRegime))
+                if (!_regimePerformance.TryGetValue(trade.AnalyzerMarketRegime, out var regimeDict))
                 {
-                    _regimePerformance[trade.AnalyzerMarketRegime] = new Dictionary<string, decimal>();
+                    regimeDict = new Dictionary<string, decimal>();
+                    _regimePerformance[trade.AnalyzerMarketRegime] = regimeDict;
                 }
-                if (!_regimePerformance[trade.AnalyzerMarketRegime].ContainsKey(strategy))
+                if (!regimeDict.ContainsKey(strategy))
                 {
-                    _regimePerformance[trade.AnalyzerMarketRegime][strategy] = 0m;
+                    regimeDict[strategy] = 0m;
                 }
-                _regimePerformance[trade.AnalyzerMarketRegime][strategy] += trade.PnL;
+                regimeDict[strategy] += trade.PnL;
                 
                 // Update time-based performance
                 var timeKey = new TimeSpan(trade.EntryTime.Hour, 0, 0);
-                if (!_timeBasedPerformance.ContainsKey(timeKey))
+                if (!_timeBasedPerformance.TryGetValue(timeKey, out var timeDict))
                 {
-                    _timeBasedPerformance[timeKey] = new Dictionary<string, decimal>();
+                    timeDict = new Dictionary<string, decimal>();
+                    _timeBasedPerformance[timeKey] = timeDict;
                 }
-                if (!_timeBasedPerformance[timeKey].ContainsKey(strategy))
+                if (!timeDict.ContainsKey(strategy))
                 {
-                    _timeBasedPerformance[timeKey][strategy] = 0m;
+                    timeDict[strategy] = 0m;
                 }
                 _timeBasedPerformance[timeKey][strategy] += trade.PnL;
             }
@@ -157,12 +159,10 @@ public class StrategyPerformanceAnalyzer
         
         lock (_analysisLock)
         {
-            if (!_strategyAnalysis.ContainsKey(strategy))
+            if (!_strategyAnalysis.TryGetValue(strategy, out var analysis))
             {
                 return DefaultStrategyScore; // Default score for unknown strategy
             }
-            
-            var analysis = _strategyAnalysis[strategy];
             
             // Multi-factor scoring
             var baseScore = analysis.OverallScore;
@@ -321,13 +321,11 @@ public class StrategyPerformanceAnalyzer
         
         lock (_analysisLock)
         {
-            if (!_strategyAnalysis.ContainsKey(strategy) || 
-                _strategyAnalysis[strategy].AllTrades.Count < MinTradesForAnalysis)
+            if (!_strategyAnalysis.TryGetValue(strategy, out var analysis) || 
+                analysis.AllTrades.Count < MinTradesForAnalysis)
             {
                 return recommendations;
             }
-            
-            var analysis = _strategyAnalysis[strategy];
             
             // Analyze time-based patterns
             var timeOptimizations = AnalyzeTimeBasedOptimizations(strategy);
@@ -356,12 +354,10 @@ public class StrategyPerformanceAnalyzer
     {
         lock (_analysisLock)
         {
-            if (!_strategyAnalysis.ContainsKey(strategy))
+            if (!_strategyAnalysis.TryGetValue(strategy, out var analysis))
             {
                 return new StrategyAnalysisReport { StrategyName = strategy };
             }
-            
-            var analysis = _strategyAnalysis[strategy];
             
             return new StrategyAnalysisReport
             {

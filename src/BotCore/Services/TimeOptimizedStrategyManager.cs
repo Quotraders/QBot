@@ -133,11 +133,11 @@ namespace BotCore.Services
             }
 
             // Get strategies for this instrument and session
-            var activeStrategies = session.Strategies.ContainsKey(instrument)
-                ? session.Strategies[instrument]
+            var activeStrategies = session.Strategies.TryGetValue(instrument, out var strategies)
+                ? strategies
                 : Array.Empty<string>();
-            var positionSizeMultiplier = session.PositionSizeMultiplier.ContainsKey(instrument)
-                ? session.PositionSizeMultiplier[instrument]
+            var positionSizeMultiplier = session.PositionSizeMultiplier.TryGetValue(instrument, out var multiplier)
+                ? multiplier
                 : 1.0;
 
             // ML Enhancement: Get market regime using real ONNX model inference
@@ -217,17 +217,15 @@ namespace BotCore.Services
 
         private double GetTimePerformance(string strategyId, int hour)
         {
-            if (!_strategyTimePerformance.ContainsKey(strategyId))
+            if (!_strategyTimePerformance.TryGetValue(strategyId, out var performanceMap))
                 return HighConfidenceThreshold; // Default performance
-
-            var performanceMap = _strategyTimePerformance[strategyId];
 
             // Find closest hour with performance data
             var closestHour = performanceMap.Keys
                 .OrderBy(h => Math.Abs(h - hour))
                 .FirstOrDefault();
 
-            return performanceMap.ContainsKey(closestHour) ? performanceMap[closestHour] : HighConfidenceThreshold;
+            return performanceMap.TryGetValue(closestHour, out var performance) ? performance : HighConfidenceThreshold;
         }
 
         private async Task<MarketRegime> GetMarketRegimeAsync(string instrument, TradingBot.Abstractions.MarketData data, IReadOnlyList<Bar> bars)
