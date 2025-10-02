@@ -105,7 +105,7 @@ namespace BotCore.Configuration
         {
             if (symbol is null) throw new ArgumentNullException(nameof(symbol));
             
-            var baseSlippage = symbol.ToUpper() switch
+            var baseSlippage = symbol.ToUpperInvariant() switch
             {
                 "ES" => ESSlippageBps,
                 "NQ" => NQSlippageBps,
@@ -188,7 +188,7 @@ namespace BotCore.Configuration
         {
             if (symbol is null) throw new ArgumentNullException(nameof(symbol));
             
-            var commissionPerContract = symbol.ToUpper() switch
+            var commissionPerContract = symbol.ToUpperInvariant() switch
             {
                 "ES" => ESCommission,
                 "NQ" => NQCommission,

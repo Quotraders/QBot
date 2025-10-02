@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Concurrent;
 using System.Text.Json;
 
@@ -121,7 +122,7 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
         // Check for upcoming high-impact events
         var upcomingEvents = await GetUpcomingEventsAsync(lookAhead).ConfigureAwait(false);
         var relevantEvents = upcomingEvents.Where(e => 
-            e.AffectedSymbols.Contains(symbol) || 
+            e.AffectedSymbols.Contains(symbol, StringComparer.Ordinal) || 
             e.Impact >= EventImpact.Critical ||
             IsSymbolAffectedByEvent(symbol, e)).ToList();
 
@@ -336,7 +337,7 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
     private static bool IsSymbolAffectedByEvent(string symbol, EconomicEvent economicEvent)
     {
         // Basic logic to determine if a symbol is affected by an event
-        if (economicEvent.AffectedSymbols.Contains(symbol))
+        if (economicEvent.AffectedSymbols.Contains(symbol, StringComparer.Ordinal))
             return true;
 
         // ES and NQ are affected by major USD events
@@ -344,7 +345,7 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
             return true;
 
         // Forex pairs affected by their base/quote currencies
-        if (symbol.Contains(economicEvent.Currency))
+        if (symbol.Contains(economicEvent.Currency, StringComparison.Ordinal))
             return true;
 
         return false;
@@ -440,7 +441,7 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
 
             // Remove expired restrictions
             var expiredSymbols = _tradingRestrictions.Keys
-                .Where(symbol => !affectedSymbols.Contains(symbol))
+                .Where(symbol => !affectedSymbols.Contains(symbol, StringComparer.Ordinal))
                 .ToList();
 
             foreach (var symbol in expiredSymbols)

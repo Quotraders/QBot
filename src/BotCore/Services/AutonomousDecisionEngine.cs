@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -607,14 +608,14 @@ public class AutonomousDecisionEngine : BackgroundService
                 return new TradingOpportunity
                 {
                     Symbol = "ES",
-                    Direction = decision.Action.ToString(),
+                    Direction = decision.Action.ToString(CultureInfo.InvariantCulture),
                     Strategy = _currentStrategy,
                     Confidence = decision.Confidence,
                     EntryPrice = null, // Will be set during execution
                     StopLoss = null,   // Will be calculated during execution
                     TakeProfit = null, // Will be calculated during execution
                     Reasoning = decision.Reasoning.ContainsKey("summary") ? 
-                        decision.Reasoning["summary"]?.ToString() ?? $"Autonomous {_currentStrategy} signal" : 
+                        decision.Reasoning["summary"]?.ToString(CultureInfo.InvariantCulture) ?? $"Autonomous {_currentStrategy} signal" : 
                         $"Autonomous {_currentStrategy} signal"
                 };
             }
