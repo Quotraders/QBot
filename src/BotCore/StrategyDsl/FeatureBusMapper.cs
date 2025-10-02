@@ -211,7 +211,8 @@ public class FeatureBusMapper
     /// <summary>
     /// Extract all unique DSL identifiers from an expression
     /// </summary>
-    public HashSet<string> ExtractIdentifiers(string expression)
+    // CA1822/S2325: Made static as it doesn't access instance data
+    public static HashSet<string> ExtractIdentifiers(string expression)
     {
         var identifiers = new HashSet<string>();
         
@@ -241,7 +242,8 @@ public class FeatureBusMapper
     /// <summary>
     /// Extract identifiers from multiple expressions
     /// </summary>
-    public HashSet<string> ExtractIdentifiers(IEnumerable<string> expressions)
+    // CA1822/S2325: Made static as it doesn't access instance data
+    public static HashSet<string> ExtractIdentifiers(IEnumerable<string> expressions)
     {
         ArgumentNullException.ThrowIfNull(expressions);
         
