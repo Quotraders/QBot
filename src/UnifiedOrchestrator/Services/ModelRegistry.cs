@@ -403,7 +403,7 @@ internal sealed class ModelRegistry : BackgroundService, IModelRegistry
     
     private void CleanupModelSession(object session)
     {
-        // In production: dispose ONNX InferenceSession
+        // Dispose ONNX InferenceSession resources
         if (session is ModelSessionMetadata metadata)
         {
             _logger.LogDebug("🗑️ Cleaned up model session: {SessionId}", metadata.SessionId);

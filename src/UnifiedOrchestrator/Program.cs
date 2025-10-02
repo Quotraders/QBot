@@ -1502,9 +1502,6 @@ Please check the configuration and ensure all required services are registered.
         // Register the main unified orchestrator service
         // REMOVED DUPLICATE REGISTRATION: UnifiedOrchestratorService already registered at line ~510
         // Duplicate registration causes multiple agent sessions and premium cost violations
-        // services.AddSingleton<UnifiedOrchestratorService>();
-        // services.AddSingleton<TradingBot.Abstractions.IUnifiedOrchestrator>(provider => provider.GetRequiredService<UnifiedOrchestratorService>());
-        // services.AddHostedService(provider => provider.GetRequiredService<UnifiedOrchestratorService>());
 
         // ================================================================================
         // ENHANCED LEARNING AND ADAPTIVE INTELLIGENCE SERVICES (APPEND-ONLY)

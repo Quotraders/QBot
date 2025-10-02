@@ -10,7 +10,7 @@ namespace TradingBot.Backtest.Adapters
 {
     /// <summary>
     /// Mock historical data provider for initial integration
-    /// In production: Replace with TopstepX API integration or database provider
+    /// Should be replaced with TopstepX API integration or database provider
     /// </summary>
     public class MockHistoricalDataProvider : IHistoricalDataProvider
     {
@@ -113,7 +113,7 @@ namespace TradingBot.Backtest.Adapters
 
     /// <summary>
     /// Mock model registry for initial integration
-    /// In production: Replace with actual model storage system
+    /// Should be replaced with actual model storage system
     /// </summary>
     public class MockModelRegistry : IModelRegistry
     {

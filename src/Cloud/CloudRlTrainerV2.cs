@@ -392,14 +392,24 @@ namespace CloudTrainer
         private void CleanupOnnxSession(object session)
         {
             // Production cleanup logic for ONNX sessions
-            // In real implementation, this would dispose the InferenceSession
+            if (session == null) return;
             
-            if (session != null)
+            try
             {
-                // Simulated cleanup
-                _logger.LogDebug("🗑️ Cleaned up ONNX session");
-                
-                // In production: ((InferenceSession)session).Dispose();
+                // Proper disposal of ONNX inference sessions
+                if (session is IDisposable disposableSession)
+                {
+                    disposableSession.Dispose();
+                    _logger.LogDebug("🗑️ Disposed ONNX session successfully");
+                }
+                else
+                {
+                    _logger.LogWarning("Session object does not implement IDisposable");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to dispose ONNX session");
             }
         }
 

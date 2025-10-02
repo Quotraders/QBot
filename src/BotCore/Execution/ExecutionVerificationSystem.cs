@@ -31,7 +31,7 @@ namespace BotCore.Execution
         private readonly object _lockObject = new();
         private readonly ILogger<ExecutionVerificationSystem> _logger;
         
-        internal sealed class OrderRecord
+        public sealed class OrderRecord
         {
             public string OrderId { get; set; } = string.Empty;
             public string ClientOrderId { get; set; } = string.Empty;
@@ -54,7 +54,7 @@ namespace BotCore.Execution
             }
         }
         
-        internal sealed class FillRecord
+        public sealed class FillRecord
         {
             public string FillId { get; set; } = string.Empty;
             public string OrderId { get; set; } = string.Empty;
@@ -66,7 +66,7 @@ namespace BotCore.Execution
             public string LiquidityType { get; set; } = string.Empty;
         }
         
-        internal sealed class PartialFill
+        public sealed class PartialFill
         {
             public int Quantity { get; set; }
             public decimal Price { get; set; }
@@ -277,6 +277,7 @@ namespace BotCore.Execution
             {
                 // In production, this would call actual TopstepX API
                 // For now, return mock data structure
+                await Task.CompletedTask.ConfigureAwait(false); // Make method properly async
                 return new OrderStatusData
                 {
                     OrderId = orderId,
@@ -300,6 +301,7 @@ namespace BotCore.Execution
             {
                 // In production, this would call actual TopstepX API
                 // For now, return mock fill event
+                await Task.CompletedTask.ConfigureAwait(false); // Make method properly async
                 return new List<FillEventData>
                 {
                     new FillEventData

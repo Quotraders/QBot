@@ -16,6 +16,8 @@ using static BotCore.Brain.UnifiedTradingBrain;
 
 // Explicit type alias to resolve Bar ambiguity  
 using ModelBar = BotCore.Models.Bar;
+// Explicit type alias to resolve TradingDecision ambiguity
+using AbstractionTradingDecision = TradingBot.Abstractions.TradingDecision;
 
 namespace BotCore.Services;
 
@@ -720,7 +722,7 @@ public class UnifiedDecisionRouter
         {
             "STRONG_BUY" or "BUY" => TradingAction.Buy,
             "STRONG_SELL" or "SELL" => TradingAction.Sell,
-            _ => enhanced.OriginalDecision.Strategy.Contains("BUY") ? TradingAction.Buy : TradingAction.Sell
+            _ => enhanced.OriginalDecision.MLStrategy.Contains("BUY") ? TradingAction.Buy : TradingAction.Sell
         };
         
         return new UnifiedTradingDecision
@@ -735,7 +737,7 @@ public class UnifiedDecisionRouter
                 ["enhancement_applied"] = enhanced.EnhancementApplied,
                 ["enhancement_reason"] = enhanced.EnhancementReason,
                 ["market_timing_signal"] = enhanced.MarketTimingSignal,
-                ["original_strategy"] = enhanced.OriginalDecision.Strategy
+                ["original_strategy"] = enhanced.OriginalDecision.MLStrategy
             },
             Timestamp = enhanced.Timestamp
         };
