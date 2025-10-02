@@ -27,7 +27,6 @@ namespace BotCore.Execution
         private readonly ConcurrentDictionary<string, FillRecord> _confirmedFills = new();
         private readonly SQLiteConnection _database;
         private Timer? _reconciliationTimer;
-        private readonly object _lockObject = new();
         private readonly ILogger<ExecutionVerificationSystem> _logger;
         
         public sealed class OrderRecord

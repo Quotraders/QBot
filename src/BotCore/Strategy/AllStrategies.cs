@@ -33,7 +33,6 @@ namespace BotCore.Strategy
         // Time period constants
         private const int SecondsPerMinute = 60;                          // Seconds in a minute
         private const int LookbackPeriod = 10;                            // Default lookback period
-        private const int DaysInWeek = 7;                                 // Days in a week
 
         // (attempt accounting moved to specific strategies as needed)
         static decimal rr_quality(decimal entry, decimal stop, decimal t1)
@@ -1230,17 +1229,5 @@ namespace BotCore.Strategy
         }
 
 
-
-        /// <summary>
-        /// Generate cryptographically secure random double value between 0.0 and 1.0
-        /// </summary>
-        private static double GetSecureRandomDouble()
-        {
-            using var rng = RandomNumberGenerator.Create();
-            var bytes = new byte[8];
-            rng.GetBytes(bytes);
-            var uint64 = BitConverter.ToUInt64(bytes, 0);
-            return (uint64 >> 11) * (1.0 / (1UL << 53));
-        }
     }
 }

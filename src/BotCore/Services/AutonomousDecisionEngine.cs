@@ -120,7 +120,6 @@ public class AutonomousDecisionEngine : BackgroundService
     private const int MinLossesForSizeDecrease = 3;      // Minimum losses to decrease position size
     private const decimal BaseSizeMultiplier = 1.0m;     // Base position size multiplier
     private const decimal PositionSizeIncrement = 0.1m;  // Position size increment per win/loss
-    private const decimal MaxSizeMultiplier = 1.5m;      // Maximum position size multiplier
     private const decimal MinSizeMultiplier = 0.5m;      // Minimum position size multiplier  
     private const int MaxWinsForCalculation = 5;         // Maximum wins to use in size calculation
     private const int WinsOffsetForCalculation = 2;      // Offset wins for size calculation
@@ -156,9 +155,6 @@ public class AutonomousDecisionEngine : BackgroundService
     // Fallback pricing constants
     private const decimal ESFallbackPrice = 4500m;              // Fallback price for ES contracts
     private const decimal NQFallbackPrice = 15000m;             // Fallback price for NQ contracts
-    
-    // Performance tracking constants
-    private const int MaxTradesForPerformanceHistory = 20;      // Maximum trades for performance history
     
     public AutonomousDecisionEngine(
         ILogger<AutonomousDecisionEngine> logger,
