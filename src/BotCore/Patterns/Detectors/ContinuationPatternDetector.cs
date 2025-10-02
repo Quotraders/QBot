@@ -36,7 +36,7 @@ public class ContinuationPatternDetector : IPatternDetector
 
     public PatternResult Detect(IReadOnlyList<Bar> bars)
     {
-        if (bars is null) throw new ArgumentNullException(nameof(bars));
+        ArgumentNullException.ThrowIfNull(bars);
         
         if (bars.Count < RequiredBars)
         {

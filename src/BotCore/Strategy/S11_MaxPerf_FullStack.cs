@@ -173,7 +173,7 @@ namespace TopstepX.S11
         }
         public void ForEachNewest(int n, Action<T> f) 
         { 
-            if (f is null) throw new ArgumentNullException(nameof(f));
+            ArgumentNullException.ThrowIfNull(f);
             
             for (int i = Math.Max(0,_count - n); i < _count; i++) { int pos = ( (_idx - _count + i) % _buf.Length + _buf.Length ) % _buf.Length; f(_buf[pos]); } 
         }
@@ -305,7 +305,7 @@ namespace TopstepX.S11
 
         public void WarmupDaily(Instrument instr, IEnumerable<(DateTime dateEt, double high, double low)> days)
         {
-            if (days is null) throw new ArgumentNullException(nameof(days));
+            ArgumentNullException.ThrowIfNull(days);
             
             var s = Get(instr); s.DailyForAdr.Clear();
             int k=0; foreach (var d in days){ s.DailyForAdr.Add((d.dateEt, d.high, d.low)); if(++k>=_cfg.AdrLookbackDays) break; }
@@ -313,7 +313,7 @@ namespace TopstepX.S11
         }
         public void Warmup1m(Instrument instr, IEnumerable<(DateTimeOffset tEt,double o,double h,double l,double c,double v)> bars)
         {
-            if (bars is null) throw new ArgumentNullException(nameof(bars));
+            ArgumentNullException.ThrowIfNull(bars);
             
             var s = Get(instr); foreach (var b in bars)
             { var bar = new Bar1M(b.tEt, s.ToTicks(b.o), s.ToTicks(b.h), s.ToTicks(b.l), s.ToTicks(b.c), b.v); s.OnBar(bar); }

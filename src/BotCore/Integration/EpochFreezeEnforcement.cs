@@ -49,8 +49,7 @@ public sealed class EpochFreezeEnforcement
             throw new ArgumentException("Position ID cannot be null or empty", nameof(positionId));
         if (string.IsNullOrWhiteSpace(symbol))
             throw new ArgumentException("Symbol cannot be null or empty", nameof(symbol));
-        if (request == null)
-            throw new ArgumentNullException(nameof(request));
+        ArgumentNullException.ThrowIfNull(request);
             
         var snapshot = new EpochSnapshot
         {
@@ -101,8 +100,7 @@ public sealed class EpochFreezeEnforcement
     {
         if (string.IsNullOrWhiteSpace(positionId))
             throw new ArgumentException("Position ID cannot be null or empty", nameof(positionId));
-        if (request == null)
-            throw new ArgumentNullException(nameof(request));
+        ArgumentNullException.ThrowIfNull(request);
             
         var validationResult = new EpochFreezeValidationResult
         {

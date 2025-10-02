@@ -32,7 +32,7 @@ namespace BotCore.Services
         /// </summary>
         public void UpdateMetrics(TradeResult result)
         {
-            if (result is null) throw new ArgumentNullException(nameof(result));
+            ArgumentNullException.ThrowIfNull(result);
             
             lock (_metricsLock)
             {

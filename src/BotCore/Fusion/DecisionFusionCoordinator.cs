@@ -64,7 +64,7 @@ public sealed class DecisionFusionCoordinator
         _ucb = ucb ?? throw new ArgumentNullException(nameof(ucb));
         _ppo = ppo ?? throw new ArgumentNullException(nameof(ppo));
         _cfg = cfg ?? throw new ArgumentNullException(nameof(cfg));
-        if (metrics is null) throw new ArgumentNullException(nameof(metrics));
+        ArgumentNullException.ThrowIfNull(metrics);
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         

@@ -465,14 +465,14 @@ namespace BotCore.Strategy
         public static List<Candidate> GetS6Candidates(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk, 
             IOrderService orderService, ILogger<BridgeOrderRouter> logger, IServiceProvider serviceProvider)
         {
-            if (symbol is null) throw new ArgumentNullException(nameof(symbol));
-            if (env is null) throw new ArgumentNullException(nameof(env));
-            if (levels is null) throw new ArgumentNullException(nameof(levels));
-            if (bars is null) throw new ArgumentNullException(nameof(bars));
-            if (risk is null) throw new ArgumentNullException(nameof(risk));
-            if (orderService is null) throw new ArgumentNullException(nameof(orderService));
-            if (logger is null) throw new ArgumentNullException(nameof(logger));
-            if (serviceProvider is null) throw new ArgumentNullException(nameof(serviceProvider));
+            ArgumentNullException.ThrowIfNull(symbol);
+            ArgumentNullException.ThrowIfNull(env);
+            ArgumentNullException.ThrowIfNull(levels);
+            ArgumentNullException.ThrowIfNull(bars);
+            ArgumentNullException.ThrowIfNull(risk);
+            ArgumentNullException.ThrowIfNull(orderService);
+            ArgumentNullException.ThrowIfNull(logger);
+            ArgumentNullException.ThrowIfNull(serviceProvider);
             
             if (_s6Strategy == null || _router == null)
             {
@@ -545,14 +545,14 @@ namespace BotCore.Strategy
         public static List<Candidate> GetS11Candidates(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk,
             IOrderService orderService, ILogger<BridgeOrderRouter> logger, IServiceProvider serviceProvider)
         {
-            if (symbol is null) throw new ArgumentNullException(nameof(symbol));
-            if (env is null) throw new ArgumentNullException(nameof(env));
-            if (levels is null) throw new ArgumentNullException(nameof(levels));
-            if (bars is null) throw new ArgumentNullException(nameof(bars));
-            if (risk is null) throw new ArgumentNullException(nameof(risk));
-            if (orderService is null) throw new ArgumentNullException(nameof(orderService));
-            if (logger is null) throw new ArgumentNullException(nameof(logger));
-            if (serviceProvider is null) throw new ArgumentNullException(nameof(serviceProvider));
+            ArgumentNullException.ThrowIfNull(symbol);
+            ArgumentNullException.ThrowIfNull(env);
+            ArgumentNullException.ThrowIfNull(levels);
+            ArgumentNullException.ThrowIfNull(bars);
+            ArgumentNullException.ThrowIfNull(risk);
+            ArgumentNullException.ThrowIfNull(orderService);
+            ArgumentNullException.ThrowIfNull(logger);
+            ArgumentNullException.ThrowIfNull(serviceProvider);
             
             if (_s11Strategy == null || _router == null)
             {

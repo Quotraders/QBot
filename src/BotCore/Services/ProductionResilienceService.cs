@@ -21,7 +21,7 @@ public class ProductionResilienceService
 
     public ProductionResilienceService(ILogger<ProductionResilienceService> logger, IOptions<ResilienceConfiguration> config)
     {
-        if (config is null) throw new ArgumentNullException(nameof(config));
+        ArgumentNullException.ThrowIfNull(config);
         
         _logger = logger;
         _config = config.Value;
@@ -37,7 +37,7 @@ public class ProductionResilienceService
         Func<CancellationToken, Task<T>> operation,
         CancellationToken cancellationToken = default)
     {
-        if (operation is null) throw new ArgumentNullException(nameof(operation));
+        ArgumentNullException.ThrowIfNull(operation);
         
         var circuitBreaker = GetOrCreateCircuitBreaker(operationName);
         
@@ -150,8 +150,8 @@ public class ProductionResilienceService
         Func<T> fallbackOperation,
         bool logFallback = true)
     {
-        if (primaryOperation is null) throw new ArgumentNullException(nameof(primaryOperation));
-        if (fallbackOperation is null) throw new ArgumentNullException(nameof(fallbackOperation));
+        ArgumentNullException.ThrowIfNull(primaryOperation);
+        ArgumentNullException.ThrowIfNull(fallbackOperation);
         
         try
         {

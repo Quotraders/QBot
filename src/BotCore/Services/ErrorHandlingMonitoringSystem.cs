@@ -116,8 +116,8 @@ namespace TopstepX.Bot.Core.Services
         /// </summary>
         public async Task LogErrorAsync(string component, Exception exception, ErrorSeverity severity = ErrorSeverity.Medium, Dictionary<string, object>? additionalData = null)
         {
-            if (component is null) throw new ArgumentNullException(nameof(component));
-            if (exception is null) throw new ArgumentNullException(nameof(exception));
+            ArgumentNullException.ThrowIfNull(component);
+            ArgumentNullException.ThrowIfNull(exception);
 
             try
             {

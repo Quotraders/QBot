@@ -103,7 +103,7 @@ namespace BotCore.Services
         /// </summary>
         public async Task<ExecutionResult> SimulateOrderExecutionAsync(OrderRequest order, MarketConditions conditions)
         {
-            if (order is null) throw new ArgumentNullException(nameof(order));
+            ArgumentNullException.ThrowIfNull(order);
             
             if (!_config.EnableMarketFriction)
             {

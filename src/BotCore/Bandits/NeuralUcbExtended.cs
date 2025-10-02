@@ -184,8 +184,8 @@ public class NeuralUcbExtended : IDisposable
         Dictionary<string, object>? metadata = null,
         CancellationToken cancellationToken = default)
     {
-        if (bundleId is null) throw new ArgumentNullException(nameof(bundleId));
-        if (marketContext is null) throw new ArgumentNullException(nameof(marketContext));
+        ArgumentNullException.ThrowIfNull(bundleId);
+        ArgumentNullException.ThrowIfNull(marketContext);
         
         try
         {

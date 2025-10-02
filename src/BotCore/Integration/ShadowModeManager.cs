@@ -48,8 +48,7 @@ public sealed class ShadowModeManager
     /// </summary>
     public async Task RegisterShadowStrategyAsync(ShadowStrategyRegistration registration, CancellationToken cancellationToken = default)
     {
-        if (registration == null)
-            throw new ArgumentNullException(nameof(registration));
+        ArgumentNullException.ThrowIfNull(registration);
         if (string.IsNullOrWhiteSpace(registration.StrategyName))
             throw new ArgumentException("Strategy name cannot be null or empty", nameof(registration));
             
@@ -104,8 +103,7 @@ public sealed class ShadowModeManager
     {
         if (string.IsNullOrWhiteSpace(strategyName))
             throw new ArgumentException("Strategy name cannot be null or empty", nameof(strategyName));
-        if (request == null)
-            throw new ArgumentNullException(nameof(request));
+        ArgumentNullException.ThrowIfNull(request);
             
         var result = new ShadowPickResult
         {
@@ -178,8 +176,7 @@ public sealed class ShadowModeManager
     {
         if (string.IsNullOrWhiteSpace(strategyName))
             throw new ArgumentException("Strategy name cannot be null or empty", nameof(strategyName));
-        if (outcome == null)
-            throw new ArgumentNullException(nameof(outcome));
+        ArgumentNullException.ThrowIfNull(outcome);
             
         try
         {
@@ -317,8 +314,7 @@ public sealed class ShadowModeManager
     {
         if (string.IsNullOrWhiteSpace(strategyName))
             throw new ArgumentException("Strategy name cannot be null or empty", nameof(strategyName));
-        if (metrics == null)
-            throw new ArgumentNullException(nameof(metrics));
+        ArgumentNullException.ThrowIfNull(metrics);
             
         try
         {

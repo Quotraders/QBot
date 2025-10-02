@@ -37,12 +37,9 @@ namespace BotCore.Execution
             ConformalPredictionInterval conformalInterval,
             CancellationToken cancellationToken = default)
         {
-            if (intent == null)
-                throw new ArgumentNullException(nameof(intent));
-            if (microstructure == null)
-                throw new ArgumentNullException(nameof(microstructure));
-            if (conformalInterval == null)
-                throw new ArgumentNullException(nameof(conformalInterval));
+            ArgumentNullException.ThrowIfNull(intent);
+            ArgumentNullException.ThrowIfNull(microstructure);
+            ArgumentNullException.ThrowIfNull(conformalInterval);
 
             await Task.CompletedTask.ConfigureAwait(false);
 

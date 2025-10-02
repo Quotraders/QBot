@@ -188,7 +188,7 @@ namespace BotCore
         /// </summary>
         public static void LogComprehensiveFeatures(ILogger log, ComprehensiveFeatures features)
         {
-            if (features is null) throw new ArgumentNullException(nameof(features));
+            ArgumentNullException.ThrowIfNull(features);
             
             try
             {
@@ -231,7 +231,7 @@ namespace BotCore
         /// </summary>
         public static void LogEnhancedOutcome(ILogger log, EnhancedTradeOutcome outcome)
         {
-            if (outcome is null) throw new ArgumentNullException(nameof(outcome));
+            ArgumentNullException.ThrowIfNull(outcome);
             
             try
             {
@@ -617,7 +617,7 @@ namespace BotCore
         /// </summary>
         public static void LogTradeOutcome(ILogger log, EnhancedTradeOutcome outcome)
         {
-            if (outcome is null) throw new ArgumentNullException(nameof(outcome));
+            ArgumentNullException.ThrowIfNull(outcome);
             
             try
             {
@@ -670,7 +670,7 @@ namespace BotCore
         /// </summary>
         public static TradeSignalData ConvertToTradeSignalData(ComprehensiveFeatures features, string signalId)
         {
-            if (features is null) throw new ArgumentNullException(nameof(features));
+            ArgumentNullException.ThrowIfNull(features);
             
             return new TradeSignalData
             {
@@ -700,7 +700,7 @@ namespace BotCore
         /// </summary>
         public static TradeOutcomeData ConvertToTradeOutcomeData(EnhancedTradeOutcome outcome)
         {
-            if (outcome is null) throw new ArgumentNullException(nameof(outcome));
+            ArgumentNullException.ThrowIfNull(outcome);
             
             return new TradeOutcomeData
             {

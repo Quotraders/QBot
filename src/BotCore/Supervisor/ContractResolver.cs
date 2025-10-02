@@ -11,14 +11,14 @@ namespace BotCore.Supervisor
     {
         public static bool IsExpiring(string symbol)
         {
-            if (symbol is null) throw new ArgumentNullException(nameof(symbol));
+            ArgumentNullException.ThrowIfNull(symbol);
             
             var v = Environment.GetEnvironmentVariable($"TOPSTEPX_EXPIRING_{symbol.ToUpperInvariant()}");
             return v == "1" || string.Equals(v, "true", StringComparison.OrdinalIgnoreCase);
         }
         public static bool ShouldRoll(string symbol)
         {
-            if (symbol is null) throw new ArgumentNullException(nameof(symbol));
+            ArgumentNullException.ThrowIfNull(symbol);
             
             var v = Environment.GetEnvironmentVariable($"TOPSTEPX_SHOULD_ROLL_{symbol.ToUpperInvariant()}");
             return v == "1" || string.Equals(v, "true", StringComparison.OrdinalIgnoreCase);

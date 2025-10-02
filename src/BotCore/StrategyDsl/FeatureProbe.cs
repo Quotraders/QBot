@@ -50,9 +50,9 @@ public sealed class FeatureProbe
         FeatureBusMapper featureBusMapper)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        if (configuration is null) throw new ArgumentNullException(nameof(configuration));
+        ArgumentNullException.ThrowIfNull(configuration);
         _patternEngine = patternEngine ?? throw new ArgumentNullException(nameof(patternEngine));
-        if (featureBusMapper is null) throw new ArgumentNullException(nameof(featureBusMapper));
+        ArgumentNullException.ThrowIfNull(featureBusMapper);
     }
 
     /// <summary>

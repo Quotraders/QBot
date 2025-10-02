@@ -51,7 +51,7 @@ namespace BotCore.Services
 
         public void EmitZoneMetrics(string symbol, ZoneProviderResult result)
         {
-            if (result is null) throw new ArgumentNullException(nameof(result));
+            ArgumentNullException.ThrowIfNull(result);
             if (result.Snapshot == null) return;
 
             try

@@ -47,8 +47,8 @@ public class OnnxMetaLabeler : IMetaLabeler, IDisposable
         MarketContext marketContext,
         CancellationToken ct = default)
     {
-        if (signal is null) throw new ArgumentNullException(nameof(signal));
-        if (marketContext is null) throw new ArgumentNullException(nameof(marketContext));
+        ArgumentNullException.ThrowIfNull(signal);
+        ArgumentNullException.ThrowIfNull(marketContext);
         
         try
         {

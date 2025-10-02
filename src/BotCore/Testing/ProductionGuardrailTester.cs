@@ -31,7 +31,7 @@ public class ProductionGuardrailTester
         ProductionOrderEvidenceService evidenceService)
     {
         _logger = logger;
-        if (orchestrator is null) throw new ArgumentNullException(nameof(orchestrator));
+        ArgumentNullException.ThrowIfNull(orchestrator);
         _evidenceService = evidenceService;
     }
 

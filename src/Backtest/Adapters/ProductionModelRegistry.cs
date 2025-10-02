@@ -131,8 +131,7 @@ namespace TradingBot.Backtest.Adapters
         /// </summary>
         public async Task<bool> RegisterModelAsync(ModelCard modelCard, CancellationToken cancellationToken = default)
         {
-            if (modelCard == null)
-                throw new ArgumentNullException(nameof(modelCard));
+            ArgumentNullException.ThrowIfNull(modelCard);
             
             // Validate contract support
             var contractSymbol = ExtractContractFromFamilyName(modelCard.FamilyName);

@@ -54,7 +54,7 @@ namespace BotCore.Features
         public MtfStructureResolver(ILogger<MtfStructureResolver> logger, IServiceProvider serviceProvider)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            if (serviceProvider is null) throw new ArgumentNullException(nameof(serviceProvider));
+            ArgumentNullException.ThrowIfNull(serviceProvider);
         }
 
         public string[] GetAvailableFeatureKeys() => _availableFeatureKeys;

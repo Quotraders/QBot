@@ -368,7 +368,7 @@ namespace TradingBot.Critical
 
         internal void AddPendingOrder(OrderRecord order)
         {
-            if (order is null) throw new ArgumentNullException(nameof(order));
+            ArgumentNullException.ThrowIfNull(order);
             
             _pendingOrders[order.OrderId] = order;
             _logger.LogInformation("[ORDER] Added pending order {OrderId} {Symbol} {Side} {Qty}@{Price}", 
@@ -1522,7 +1522,7 @@ namespace TradingBot.Critical
 
         internal void AddPosition(Position position)
         {
-            if (position is null) throw new ArgumentNullException(nameof(position));
+            ArgumentNullException.ThrowIfNull(position);
             
             _activePositions[position.Symbol] = position;
         }

@@ -143,7 +143,7 @@ namespace TopstepX.Bot.Core.Services
         /// </summary>
         public void AddPendingOrder(PendingOrder order)
         {
-            if (order is null) throw new ArgumentNullException(nameof(order));
+            ArgumentNullException.ThrowIfNull(order);
             
             _pendingOrders[order.ClientOrderId] = order;
             _logger.LogDebug("📝 Tracking pending order: {ClientOrderId} - {Symbol} {Quantity}@{Price}", 
@@ -155,7 +155,7 @@ namespace TopstepX.Bot.Core.Services
         /// </summary>
         public Task UpdateMarketPricesAsync(Dictionary<string, decimal> marketPrices)
         {
-            if (marketPrices is null) throw new ArgumentNullException(nameof(marketPrices));
+            ArgumentNullException.ThrowIfNull(marketPrices);
             
             foreach (var position in _positions.Values)
             {

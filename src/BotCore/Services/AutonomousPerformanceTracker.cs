@@ -88,7 +88,7 @@ public class AutonomousPerformanceTracker
     /// </summary>
     public Task RecordTradeAsync(AutonomousTradeOutcome trade, CancellationToken cancellationToken = default)
     {
-        if (trade is null) throw new ArgumentNullException(nameof(trade));
+        ArgumentNullException.ThrowIfNull(trade);
         
         lock (_trackingLock)
         {
@@ -135,7 +135,7 @@ public class AutonomousPerformanceTracker
     /// </summary>
     public async Task UpdateMetricsAsync(AutonomousTradeOutcome[] recentTrades, CancellationToken cancellationToken = default)
     {
-        if (recentTrades is null) throw new ArgumentNullException(nameof(recentTrades));
+        ArgumentNullException.ThrowIfNull(recentTrades);
         
         await Task.CompletedTask.ConfigureAwait(false);
         

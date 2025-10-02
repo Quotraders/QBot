@@ -173,7 +173,7 @@ namespace TopstepX.S6
         }
         public void ForEachNewest(int n, Action<T> f) 
         { 
-            if (f is null) throw new ArgumentNullException(nameof(f));
+            ArgumentNullException.ThrowIfNull(f);
             
             for (int i = Math.Max(0,_count - n); i < _count; i++) { int pos = ( (_idx - _count + i) % _buf.Length + _buf.Length ) % _buf.Length; f(_buf[pos]); } 
         }

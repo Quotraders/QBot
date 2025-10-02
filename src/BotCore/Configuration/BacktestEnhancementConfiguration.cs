@@ -103,7 +103,7 @@ namespace BotCore.Configuration
         /// </summary>
         public double CalculateSlippage(string symbol, double volatility = 1.0, double liquidityScore = 1.0)
         {
-            if (symbol is null) throw new ArgumentNullException(nameof(symbol));
+            ArgumentNullException.ThrowIfNull(symbol);
             
             var baseSlippage = symbol.ToUpperInvariant() switch
             {
@@ -186,7 +186,7 @@ namespace BotCore.Configuration
         /// </summary>
         public decimal CalculateCommission(string symbol, int quantity, bool isEntry = true)
         {
-            if (symbol is null) throw new ArgumentNullException(nameof(symbol));
+            ArgumentNullException.ThrowIfNull(symbol);
             
             var commissionPerContract = symbol.ToUpperInvariant() switch
             {

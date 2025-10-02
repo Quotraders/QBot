@@ -23,9 +23,9 @@ namespace BotCore.Integrations
             Bar currentBar,
             MarketSnapshot snapshot)
         {
-            if (trainingService is null) throw new ArgumentNullException(nameof(trainingService));
-            if (signal is null) throw new ArgumentNullException(nameof(signal));
-            if (currentBar is null) throw new ArgumentNullException(nameof(currentBar));
+            ArgumentNullException.ThrowIfNull(trainingService);
+            ArgumentNullException.ThrowIfNull(signal);
+            ArgumentNullException.ThrowIfNull(currentBar);
             
             try
             {
@@ -63,7 +63,7 @@ namespace BotCore.Integrations
             DateTime exitTime,
             TimeSpan holdingTime)
         {
-            if (trainingService is null) throw new ArgumentNullException(nameof(trainingService));
+            ArgumentNullException.ThrowIfNull(trainingService);
             
             try
             {
@@ -100,7 +100,7 @@ namespace BotCore.Integrations
             Bar currentBar,
             MarketSnapshot snapshot)
         {
-            if (signal is null) throw new ArgumentNullException(nameof(signal));
+            ArgumentNullException.ThrowIfNull(signal);
             
             var result = new EnhancedSignalResult
             {

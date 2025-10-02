@@ -31,7 +31,7 @@ public class WalkForwardTrainer
         OnnxModelLoader onnxLoader,
         WalkForwardConfig? config = null)
     {
-        if (dataProvider is null) throw new ArgumentNullException(nameof(dataProvider));
+        ArgumentNullException.ThrowIfNull(dataProvider);
         _labeler = labeler;
         _modelsPath = modelsPath;
         _onnxLoader = onnxLoader;
@@ -497,7 +497,7 @@ public class DateTimeJsonConverter : System.Text.Json.Serialization.JsonConverte
 
     public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
     {
-        if (writer is null) throw new ArgumentNullException(nameof(writer));
+        ArgumentNullException.ThrowIfNull(writer);
         
         writer.WriteStringValue(value.ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture));
     }

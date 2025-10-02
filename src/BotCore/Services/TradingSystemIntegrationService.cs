@@ -186,7 +186,7 @@ namespace TopstepX.Bot.Core.Services
             IEnhancedMarketDataFlowService marketDataFlow,
             IOptions<TradingReadinessConfiguration> readinessConfig)
         {
-            if (readinessConfig is null) throw new ArgumentNullException(nameof(readinessConfig));
+            ArgumentNullException.ThrowIfNull(readinessConfig);
             
             _logger = logger;
             _serviceProvider = serviceProvider;
@@ -377,7 +377,7 @@ namespace TopstepX.Bot.Core.Services
         /// </summary>
         public async Task<OrderResult> PlaceOrderAsync(PlaceOrderRequest request, CancellationToken cancellationToken = default)
         {
-            if (request is null) throw new ArgumentNullException(nameof(request));
+            ArgumentNullException.ThrowIfNull(request);
             
             try
             {

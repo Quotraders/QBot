@@ -40,7 +40,7 @@ namespace BotCore.Services
             IOptions<ModelVersioningConfiguration> config)
         {
             _logger = logger;
-            if (config is null) throw new ArgumentNullException(nameof(config));
+            ArgumentNullException.ThrowIfNull(config);
             _config = config.Value;
             _versionRegistryPath = Path.Combine(_config.ModelRegistry.BaseDirectory, "version_registry.json");
             
@@ -54,7 +54,7 @@ namespace BotCore.Services
         /// </summary>
         public async Task<ModelVersionResult> VerifyModelVersionAsync(string modelPath, ModelMetadata metadata)
         {
-            if (metadata is null) throw new ArgumentNullException(nameof(metadata));
+            ArgumentNullException.ThrowIfNull(metadata);
             
             try
             {
@@ -210,7 +210,7 @@ namespace BotCore.Services
         /// </summary>
         public async Task LogTrainingMetadataAsync(TrainingMetadata metadata)
         {
-            if (metadata is null) throw new ArgumentNullException(nameof(metadata));
+            ArgumentNullException.ThrowIfNull(metadata);
             
             try
             {
@@ -239,7 +239,7 @@ namespace BotCore.Services
         /// </summary>
         public Task<bool> ValidateModelIntegrityAsync(string modelPath)
         {
-            if (modelPath is null) throw new ArgumentNullException(nameof(modelPath));
+            ArgumentNullException.ThrowIfNull(modelPath);
             
             try
             {

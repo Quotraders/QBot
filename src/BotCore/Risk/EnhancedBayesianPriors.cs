@@ -523,14 +523,14 @@ public static class BayesianCalculationExtensions
     // Helper methods for calculations
     public static decimal CalculateMean(this ShrinkageEstimate estimate)
     {
-        if (estimate is null) throw new ArgumentNullException(nameof(estimate));
+        ArgumentNullException.ThrowIfNull(estimate);
         
         return estimate.Alpha / (estimate.Alpha + estimate.Beta);
     }
 
     public static decimal CalculateVariance(this ShrinkageEstimate estimate)
     {
-        if (estimate is null) throw new ArgumentNullException(nameof(estimate));
+        ArgumentNullException.ThrowIfNull(estimate);
         
         var total = estimate.Alpha + estimate.Beta;
         return (estimate.Alpha * estimate.Beta) / (total * total * (total + 1));
@@ -538,7 +538,7 @@ public static class BayesianCalculationExtensions
 
     public static decimal CalculateShrinkageFactor(BayesianPosterior posterior)
     {
-        if (posterior is null) throw new ArgumentNullException(nameof(posterior));
+        ArgumentNullException.ThrowIfNull(posterior);
         
         // Simple shrinkage factor based on sample size
         var n = posterior.Alpha + posterior.Beta;

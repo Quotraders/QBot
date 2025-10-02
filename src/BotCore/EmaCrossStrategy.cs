@@ -11,7 +11,7 @@ namespace BotCore
         
         public static int TrySignal(IReadOnlyList<Bar> bars, int fast = 8, int slow = 21)
         {
-            if (bars is null) throw new ArgumentNullException(nameof(bars));
+            ArgumentNullException.ThrowIfNull(bars);
             
             if (bars.Count < Math.Max(fast, slow) + MinimumHistoryBuffer) return 0;
             decimal emaFastPrev = 0, emaSlowPrev = 0;

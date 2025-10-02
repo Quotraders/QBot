@@ -30,8 +30,8 @@ public class LinUcbBandit : IFunctionApproximationBandit
         ContextVector context,
         CancellationToken ct = default)
     {
-        if (availableArms is null) throw new ArgumentNullException(nameof(availableArms));
-        if (context is null) throw new ArgumentNullException(nameof(context));
+        ArgumentNullException.ThrowIfNull(availableArms);
+        ArgumentNullException.ThrowIfNull(context);
         
         await Task.CompletedTask.ConfigureAwait(false);
 
@@ -85,8 +85,8 @@ public class LinUcbBandit : IFunctionApproximationBandit
         decimal reward,
         CancellationToken ct = default)
     {
-        if (selectedArm is null) throw new ArgumentNullException(nameof(selectedArm));
-        if (context is null) throw new ArgumentNullException(nameof(context));
+        ArgumentNullException.ThrowIfNull(selectedArm);
+        ArgumentNullException.ThrowIfNull(context);
         
         await Task.CompletedTask.ConfigureAwait(false);
 
@@ -498,10 +498,10 @@ public class ContextVector
         decimal volatility,
         decimal timeOfDay)
     {
-        if (strategy is null) throw new ArgumentNullException(nameof(strategy));
-        if (config is null) throw new ArgumentNullException(nameof(config));
-        if (regime is null) throw new ArgumentNullException(nameof(regime));
-        if (session is null) throw new ArgumentNullException(nameof(session));
+        ArgumentNullException.ThrowIfNull(strategy);
+        ArgumentNullException.ThrowIfNull(config);
+        ArgumentNullException.ThrowIfNull(regime);
+        ArgumentNullException.ThrowIfNull(session);
         
         return new ContextVector
         {

@@ -148,7 +148,7 @@ namespace BotCore.Configuration
         /// </summary>
         public string GetFrontMonthContract(string symbol)
         {
-            if (symbol is null) throw new ArgumentNullException(nameof(symbol));
+            ArgumentNullException.ThrowIfNull(symbol);
             
             return FrontMonthMapping.TryGetValue(symbol.ToUpperInvariant(), out var contract) ? contract : symbol;
         }
