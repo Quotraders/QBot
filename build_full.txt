@@ -1,0 +1,25 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  UpdaterAgent -> /home/runner/work/trading-bot-c-/trading-bot-c-/src/UpdaterAgent/bin/Debug/net8.0/UpdaterAgent.dll
+  INFO: Enforcing strict literal detection in critical namespaces
+  Abstractions -> /home/runner/work/trading-bot-c-/trading-bot-c-/src/Abstractions/bin/Debug/net8.0/Abstractions.dll
+  INFO: Enforcing strict literal detection in critical namespaces
+  TopstepAuthAgent -> /home/runner/work/trading-bot-c-/trading-bot-c-/src/TopstepAuthAgent/bin/Debug/net8.0/TopstepAuthAgent.dll
+  INFO: Enforcing strict literal detection in critical namespaces
+  Zones -> /home/runner/work/trading-bot-c-/trading-bot-c-/src/Zones/bin/Debug/net8.0/Zones.dll
+  INFO: Enforcing strict literal detection in critical namespaces
+  RLAgent -> /home/runner/work/trading-bot-c-/trading-bot-c-/src/RLAgent/bin/Debug/net8.0/RLAgent.dll
+  INFO: Enforcing strict literal detection in critical namespaces
+  S7 -> /home/runner/work/trading-bot-c-/trading-bot-c-/src/S7/bin/Debug/net8.0/TradingBot.S7.dll
+  INFO: Enforcing strict literal detection in critical namespaces
+/home/runner/work/trading-bot-c-/trading-bot-c-/src/IntelligenceStack/EnsembleMetaLearner.cs(105,5): error S1144: Remove the unused private field '_lock'. (https://rules.sonarsource.com/csharp/RSPEC-1144) [/home/runner/work/trading-bot-c-/trading-bot-c-/src/IntelligenceStack/IntelligenceStack.csproj]
+/home/runner/work/trading-bot-c-/trading-bot-c-/src/IntelligenceStack/EnsembleMetaLearner.cs(105,29): error CA1823: Unused field '_lock' (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1823) [/home/runner/work/trading-bot-c-/trading-bot-c-/src/IntelligenceStack/IntelligenceStack.csproj]
+
+Build FAILED.
+
+/home/runner/work/trading-bot-c-/trading-bot-c-/src/IntelligenceStack/EnsembleMetaLearner.cs(105,5): error S1144: Remove the unused private field '_lock'. (https://rules.sonarsource.com/csharp/RSPEC-1144) [/home/runner/work/trading-bot-c-/trading-bot-c-/src/IntelligenceStack/IntelligenceStack.csproj]
+/home/runner/work/trading-bot-c-/trading-bot-c-/src/IntelligenceStack/EnsembleMetaLearner.cs(105,29): error CA1823: Unused field '_lock' (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1823) [/home/runner/work/trading-bot-c-/trading-bot-c-/src/IntelligenceStack/IntelligenceStack.csproj]
+    0 Warning(s)
+    2 Error(s)
+
+Time Elapsed 00:00:44.55
