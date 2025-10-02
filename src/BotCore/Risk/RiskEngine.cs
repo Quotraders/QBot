@@ -131,6 +131,24 @@ namespace BotCore.Risk
         // Calculation constants
         private const double PercentageConversionFactor = 100.0;      // Convert decimal to percentage
         
+        // Psychological threshold constants
+        private const decimal PsychologicalLossThresholdMinor = 1000m;
+        private const decimal PsychologicalLossThresholdMajor = 1500m;
+        private const decimal PsychologicalProfitThresholdMinor = 1000m;
+        private const decimal PsychologicalProfitThresholdMajor = 2000m;
+        private const decimal RecoveryRequiredThreshold = 0.25m;
+        
+        // Risk level classification constants
+        private const decimal RiskLevelLowThreshold = 5m;
+        private const decimal RiskLevelModerateThreshold = 10m;
+        private const decimal RiskLevelHighThreshold = 20m;
+        
+        // Action threshold constants
+        private const decimal ActionMonitorThreshold = 250m;
+        private const decimal ActionReducePositionThreshold = 500m;
+        private const decimal ActionConservativeModeThreshold = 1000m;
+        private const decimal ActionHaltTradesThreshold = 1500m;
+        
         /// <summary>
         /// Gets whether trading is currently halted due to risk management
         /// </summary>
@@ -335,28 +353,28 @@ namespace BotCore.Risk
             var dailyPnL = currentBalance - _dailyStartBalance;
             
             // Psychological loss thresholds
-            if (dailyPnL <= -1000)
+            if (dailyPnL <= -PsychologicalLossThresholdMinor)
             {
-                LogWarning("Psychological threshold: $1000 daily loss");
+                LogWarning($"Psychological threshold: ${PsychologicalLossThresholdMinor} daily loss");
                 
-                if (dailyPnL <= -1500)
+                if (dailyPnL <= -PsychologicalLossThresholdMajor)
                 {
                     // Take a break
                     await EnforceCooldownPeriod(TimeSpan.FromHours(2)).ConfigureAwait(false);
-                    LogCritical("Enforcing 2-hour break after $1500 loss");
+                    LogCritical($"Enforcing 2-hour break after ${PsychologicalLossThresholdMajor} loss");
                 }
             }
             
             // Protect profits
-            if (dailyPnL >= 1000)
+            if (dailyPnL >= PsychologicalProfitThresholdMinor)
             {
                 // Switch to capital preservation mode
                 await EnableProfitProtection(dailyPnL).ConfigureAwait(false);
                 
-                if (dailyPnL >= 2000)
+                if (dailyPnL >= PsychologicalProfitThresholdMajor)
                 {
                     // Consider stopping for the day
-                    LogInfo("Excellent day: Consider stopping at $2000 profit");
+                    LogInfo($"Excellent day: Consider stopping at ${PsychologicalProfitThresholdMajor} profit");
                 }
             }
         }
@@ -377,7 +395,7 @@ namespace BotCore.Risk
                     
                     // Calculate recovery metrics
                     var recoveryRequired = tracker.DrawdownAmount / (tracker.PeakValue - tracker.DrawdownAmount);
-                    if (recoveryRequired > 0.25m) // Need > 25% gain to recover
+                    if (recoveryRequired > RecoveryRequiredThreshold) // Need > 25% gain to recover
                     {
                         LogWarning($"Difficult recovery: Need {recoveryRequired:P1} gain to reach peak");
                     }
@@ -467,9 +485,9 @@ namespace BotCore.Risk
         {
             return tracker.DrawdownPercent switch
             {
-                < 5 => "LOW",
-                < 10 => "MODERATE",
-                < 20 => "HIGH",
+                < (double)RiskLevelLowThreshold => "LOW",
+                < (double)RiskLevelModerateThreshold => "MODERATE",
+                < (double)RiskLevelHighThreshold => "HIGH",
                 _ => "CRITICAL"
             };
         }
@@ -478,10 +496,10 @@ namespace BotCore.Risk
         {
             return tracker.DrawdownAmount switch
             {
-                < 250 => "Monitor closely",
-                < 500 => "Reduce position size",
-                < 1000 => "Switch to conservative mode",
-                < 1500 => "Halt new trades",
+                < ActionMonitorThreshold => "Monitor closely",
+                < ActionReducePositionThreshold => "Reduce position size",
+                < ActionConservativeModeThreshold => "Switch to conservative mode",
+                < ActionHaltTradesThreshold => "Halt new trades",
                 _ => "Emergency stop"
             };
         }

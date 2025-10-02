@@ -109,13 +109,11 @@ namespace BotCore.Services
 
                     // Load manifest to get regime-specific artifacts
                     var manifest = LoadManifest();
-                    if (!manifest.RegimeArtifacts.ContainsKey(newRegime))
+                    if (!manifest.RegimeArtifacts.TryGetValue(newRegime, out var regimeArtifacts))
                     {
                         _logger.LogError("[MODEL-ROTATION] [AUDIT-VIOLATION] No artifacts found for regime {NewRegime} - FAIL-CLOSED + TELEMETRY", newRegime);
                         throw new InvalidOperationException($"[MODEL-ROTATION] Missing artifacts for regime '{newRegime}' - TRIGGERING HOLD");
                     }
-
-                    var regimeArtifacts = manifest.RegimeArtifacts[newRegime];
 
                     // Download and verify artifacts
                     DownloadAndVerifyArtifacts(regimeArtifacts);

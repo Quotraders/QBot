@@ -318,7 +318,7 @@ namespace TradingBot.BotCore.Services
             {
                 return _suppressions.Exists(s => 
                     s.RuleId == ruleId && 
-                    s.FilePath.EndsWith(filePath.Replace("./", "")) &&
+                    s.FilePath.EndsWith(filePath.Replace("./", "", StringComparison.Ordinal), StringComparison.Ordinal) &&
                     Math.Abs(s.LineNumber - lineNumber) <= MaxLineNumberDrift); // Allow some line number drift
             }
         }

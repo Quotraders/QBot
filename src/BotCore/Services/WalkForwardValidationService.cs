@@ -30,6 +30,9 @@ namespace BotCore.Services
     /// </summary>
     public class WalkForwardValidationService : IWalkForwardValidationService
     {
+        private const int MaxValidationWindows = 1000;
+        private const int PercentageMultiplier = 100;
+        
         private readonly ILogger<WalkForwardValidationService> _logger;
         private readonly WalkForwardValidationConfiguration _config;
         private readonly IEnhancedBacktestService _backtestService;
@@ -167,9 +170,9 @@ namespace BotCore.Services
                     windowIndex++;
 
                     // Safety check to prevent infinite loops
-                    if (windows.Count > 1000)
+                    if (windows.Count > MaxValidationWindows)
                     {
-                        _logger.LogWarning("[WALK-FORWARD] Generated maximum number of windows (1000), stopping");
+                        _logger.LogWarning("[WALK-FORWARD] Generated maximum number of windows ({MaxWindows}), stopping", MaxValidationWindows);
                         break;
                     }
                 }
@@ -207,7 +210,7 @@ namespace BotCore.Services
                 var performance = await SimulateModelPerformance(window).ConfigureAwait(false);
 
                 _logger.LogDebug("[MODEL-VALIDATION] Model validation completed for window {WindowIndex}: Sharpe={Sharpe:F2}, Drawdown={Drawdown:F2}%",
-                    window.WindowIndex, performance.SharpeRatio, performance.MaxDrawdown * 100);
+                    window.WindowIndex, performance.SharpeRatio, performance.MaxDrawdown * PercentageMultiplier);
 
                 return performance;
             }
@@ -243,16 +246,21 @@ namespace BotCore.Services
                         "WinRate={WinRate:F2} (min: {MinWinRate:F2}), " +
                         "Trades={Trades} (min: {MinTrades})",
                         performance.SharpeRatio, thresholds.MinSharpeRatio,
-                        performance.MaxDrawdown * 100, thresholds.MaxDrawdownPct,
+                        performance.MaxDrawdown * PercentageMultiplier, thresholds.MaxDrawdownPct,
                         performance.WinRate, thresholds.MinWinRate,
                         performance.TotalTrades, thresholds.MinTrades);
                 }
 
                 return Task.FromResult(meetsThresholds);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[PERFORMANCE-CHECK] Error checking performance thresholds");
+                _logger.LogError(ex, "[PERFORMANCE-CHECK] Invalid operation checking performance thresholds");
+                return Task.FromResult(false);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "[PERFORMANCE-CHECK] Invalid argument checking performance thresholds");
                 return Task.FromResult(false);
             }
         }
@@ -272,7 +280,7 @@ namespace BotCore.Services
 
                 _logger.LogInformation("[WALK-FORWARD-RESULTS] Aggregate Performance: " +
                     "Sharpe={Sharpe:F2}, Drawdown={Drawdown:F2}%, WinRate={WinRate:F2}, TotalTrades={Trades}",
-                    result.AggregateSharpeRatio, result.AggregateMaxDrawdown * 100, result.AggregateWinRate, result.AggregateTotalTrades);
+                    result.AggregateSharpeRatio, result.AggregateMaxDrawdown * PercentageMultiplier, result.AggregateWinRate, result.AggregateTotalTrades);
 
                 // Save detailed results to file
                 var resultJson = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
@@ -284,9 +292,17 @@ namespace BotCore.Services
 
                 _logger.LogInformation("[WALK-FORWARD-RESULTS] Detailed results saved to {ResultPath}", resultPath);
             }
-            catch (Exception ex)
+            catch (System.IO.IOException ex)
             {
-                _logger.LogError(ex, "[WALK-FORWARD-RESULTS] Error logging validation results");
+                _logger.LogError(ex, "[WALK-FORWARD-RESULTS] I/O error logging validation results");
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "[WALK-FORWARD-RESULTS] JSON serialization error logging validation results");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogError(ex, "[WALK-FORWARD-RESULTS] Access denied logging validation results");
             }
         }
 
@@ -308,9 +324,14 @@ namespace BotCore.Services
                     .OrderByDescending(r => r.ValidationStarted)
                     .ToList();
             }
-            catch (Exception ex)
+            catch (System.IO.IOException ex)
             {
-                _logger.LogError(ex, "[VALIDATION-HISTORY] Error getting validation history for {Strategy}", strategyName);
+                _logger.LogError(ex, "[VALIDATION-HISTORY] I/O error getting validation history for {Strategy}", strategyName);
+                return new List<WalkForwardResult>();
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "[VALIDATION-HISTORY] JSON deserialization error getting validation history for {Strategy}", strategyName);
                 return new List<WalkForwardResult>();
             }
         }
@@ -358,9 +379,22 @@ namespace BotCore.Services
 
                 return windowResult;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[WINDOW-VALIDATION] Error processing window {WindowIndex}", window.WindowIndex);
+                _logger.LogError(ex, "[WINDOW-VALIDATION] Invalid operation processing window {WindowIndex}", window.WindowIndex);
+                return new WindowResult
+                {
+                    Window = window,
+                    ProcessingStarted = DateTime.UtcNow,
+                    ProcessingCompleted = DateTime.UtcNow,
+                    ProcessingDuration = TimeSpan.Zero,
+                    PassesThresholds = false,
+                    Performance = new WalkForwardModelPerformance()
+                };
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "[WINDOW-VALIDATION] Invalid argument processing window {WindowIndex}", window.WindowIndex);
                 return new WindowResult
                 {
                     Window = window,
@@ -546,9 +580,14 @@ namespace BotCore.Services
 
                 return Task.FromResult(passesOverall);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[OVERALL-VALIDATION] Error validating overall performance");
+                _logger.LogError(ex, "[OVERALL-VALIDATION] Invalid operation validating overall performance");
+                return Task.FromResult(false);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "[OVERALL-VALIDATION] Invalid argument validating overall performance");
                 return Task.FromResult(false);
             }
         }
@@ -579,9 +618,17 @@ namespace BotCore.Services
                 var historyJson = JsonSerializer.Serialize(history, new JsonSerializerOptions { WriteIndented = true });
                 await File.WriteAllTextAsync(_validationHistoryPath, historyJson).ConfigureAwait(false);
             }
-            catch (Exception ex)
+            catch (System.IO.IOException ex)
             {
-                _logger.LogError(ex, "[VALIDATION-HISTORY] Error updating validation history");
+                _logger.LogError(ex, "[VALIDATION-HISTORY] I/O error updating validation history");
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "[VALIDATION-HISTORY] JSON serialization error updating validation history");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogError(ex, "[VALIDATION-HISTORY] Access denied updating validation history");
             }
         }
 

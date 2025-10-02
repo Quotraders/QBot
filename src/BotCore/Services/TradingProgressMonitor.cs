@@ -38,16 +38,15 @@ namespace BotCore.Services
             {
                 var key = $"{result.Instrument}_{result.Strategy}";
 
-                if (!_metrics.ContainsKey(key))
+                if (!_metrics.TryGetValue(key, out var metrics))
                 {
-                    _metrics[key] = new TradingMetrics
+                    metrics = new TradingMetrics
                     {
                         StrategyId = result.Strategy,
                         Instrument = result.Instrument
                     };
+                    _metrics[key] = metrics;
                 }
-
-                var metrics = _metrics[key];
 
                 // Update basic metrics
                 metrics.TotalTrades++;
@@ -66,7 +65,7 @@ namespace BotCore.Services
 
                 // Update hourly metrics
                 var hour = result.EntryTime.Hour;
-                if (!metrics.TradesByHour.ContainsKey(hour))
+                if (!metrics.TradesByHour.TryGetValue(hour, out _))
                 {
                     metrics.TradesByHour[hour] = 0;
                     metrics.WinsByHour[hour] = 0;

@@ -107,7 +107,7 @@ public class SafeHoldDecisionPolicy
     /// <summary>
     /// Zone gate evaluation to block entries near opposing zones without sufficient breakout probability
     /// </summary>
-    public (bool Held, string Reason, TradingDecision MaybeAmended) ZoneGate(TradingDecision decision, string symbol)
+    public async Task<(bool Held, string Reason, TradingDecision MaybeAmended)> ZoneGateAsync(TradingDecision decision, string symbol, CancellationToken cancellationToken = default)
     {
         if (decision is null) throw new ArgumentNullException(nameof(decision));
         if (_zoneProvider == null)
@@ -118,10 +118,11 @@ public class SafeHoldDecisionPolicy
 
         try
         {
-            // Get zone snapshot from hybrid provider
-            var zoneResultTask = _zoneProvider.GetZoneSnapshotAsync(symbol);
-            zoneResultTask.Wait(TimeSpan.FromSeconds(2)); // Timeout to prevent blocking
-            var zoneResult = zoneResultTask.Result;
+            // Get zone snapshot from hybrid provider with timeout
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(TimeSpan.FromSeconds(2));
+            
+            var zoneResult = await _zoneProvider.GetZoneSnapshotAsync(symbol).ConfigureAwait(false);
 
             // Emit telemetry for zone source and freshness
             _zoneTelemetryService?.EmitZoneMetrics(symbol, zoneResult);

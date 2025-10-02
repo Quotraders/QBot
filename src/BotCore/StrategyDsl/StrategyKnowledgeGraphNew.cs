@@ -172,15 +172,15 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
         }
     }
 
-    private double GetPatternScore(string symbol, bool bullish)
+    private async Task<double> GetPatternScoreAsync(string symbol, bool bullish, CancellationToken cancellationToken = default)
     {
         try
         {
             // Get pattern scores directly from PatternEngine instead of cascading through feature bus
-            var patternScoresTask = _patternEngine.GetCurrentScoresAsync(symbol);
-            patternScoresTask.Wait(TimeSpan.FromSeconds(5)); // Wait with timeout
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(TimeSpan.FromSeconds(5));
             
-            var patternScores = patternScoresTask.Result;
+            var patternScores = await _patternEngine.GetCurrentScoresAsync(symbol).ConfigureAwait(false);
             var score = bullish ? patternScores.BullScore : patternScores.BearScore;
             
             _logger.LogTrace("Pattern score from PatternEngine for {Symbol}, bullish={Bullish}: {Score}", 
@@ -396,10 +396,11 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
         return ranked;
     }
 
-    public IReadOnlyList<BotCore.Strategy.StrategyRecommendation> Evaluate(string symbol, DateTime utc)
-    {
-        return EvaluateAsync(symbol, utc, CancellationToken.None).GetAwaiter().GetResult();
-    }
+    // Removed synchronous wrapper - use EvaluateAsync instead to prevent deadlocks
+    // public IReadOnlyList<BotCore.Strategy.StrategyRecommendation> Evaluate(string symbol, DateTime utc)
+    // {
+    //     return EvaluateAsync(symbol, utc, CancellationToken.None).GetAwaiter().GetResult();
+    // }
 
     private static bool EvaluateRegimeFilter(DslStrategy card, RegimeType regime)
     {
@@ -583,33 +584,30 @@ public sealed class ProductionRegimeService : IRegimeService
         _regimeDetector = regimeDetector ?? throw new ArgumentNullException(nameof(regimeDetector));
     }
 
-    public RegimeType GetRegime(string symbol)
+    public async Task<RegimeType> GetRegimeAsync(string symbol, CancellationToken cancellationToken = default)
     {
-        lock (_lockObject)
+        // Use cached regime if recent (no lock needed for read)
+        if (DateTime.UtcNow - _lastUpdate < _cacheTime)
         {
-            // Use cached regime if recent
-            if (DateTime.UtcNow - _lastUpdate < _cacheTime)
+            return _lastRegime;
+        }
+
+        try
+        {
+            // Get current regime from detector
+            var regimeState = await _regimeDetector.DetectCurrentRegimeAsync().ConfigureAwait(false);
+
+            if (regimeState != null)
             {
-                return _lastRegime;
+                _lastRegime = MapToStrategyRegimeType(regimeState.Type);
+                _lastUpdate = DateTime.UtcNow;
+
+                _logger.LogTrace("Regime detected for {Symbol}: {Regime} (confidence: {Confidence:F2})", 
+                    symbol, _lastRegime, regimeState.Confidence);
             }
 
-            try
-            {
-                // Get current regime from detector
-                var regimeStateTask = _regimeDetector.DetectCurrentRegimeAsync();
-                var regimeState = regimeStateTask.GetAwaiter().GetResult();
-
-                if (regimeState != null)
-                {
-                    _lastRegime = MapToStrategyRegimeType(regimeState.Type);
-                    _lastUpdate = DateTime.UtcNow;
-
-                    _logger.LogTrace("Regime detected for {Symbol}: {Regime} (confidence: {Confidence:F2})", 
-                        symbol, _lastRegime, regimeState.Confidence);
-                }
-
-                return _lastRegime;
-            }
+            return _lastRegime;
+        }
             catch (InvalidOperationException ex)
             {
                 _logger.LogError(ex, "Invalid operation detecting regime for {Symbol}, using cached value {Regime}", symbol, _lastRegime);

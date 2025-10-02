@@ -40,6 +40,15 @@ namespace BotCore
         private const double BidAskImbalanceRange = 0.3;            // Bid-ask imbalance range
         private const double OrderBookImbalanceRange = 0.2;         // Order book imbalance range
         
+        // Signal strength and performance constants
+        private const int TickDirectionModulo = 2;                  // Modulo for tick direction calculation
+        private const decimal SignalStrengthBaseMultiplier = 0.8m;  // Signal strength base multiplier
+        private const decimal SignalStrengthMinimum = 0.2m;         // Minimum signal strength
+        private const decimal PriorWinRateMinimum = 0.45m;          // Minimum prior win rate (45%)
+        private const decimal PriorWinRateVariation = 0.3m;         // Prior win rate variation range (30%)
+        private const decimal AvgRMultipleMinimum = 0.8m;           // Minimum average R-multiple
+        private const decimal AvgRMultipleVariation = 1.4m;         // Average R-multiple variation range
+        
         public class FeatureSnapshot
         {
             public DateTime Timestamp { get; set; }
@@ -246,10 +255,10 @@ namespace BotCore
                 Volatility = Math.Abs((decimal)(Math.Sin(DateTime.UtcNow.Millisecond * VolatilityMultiplier) * VolatilityVariation)),
                 BidAskImbalance = (decimal)(Math.Sin(signalId.GetHashCode() * ImbalanceMultiplier) * BidAskImbalanceRange),
                 OrderBookImbalance = (decimal)(Math.Cos(signalId.GetHashCode() * ImbalanceMultiplier) * OrderBookImbalanceRange),
-                TickDirection = strategy.GetHashCode() % 2 == 0 ? 1m : -1m, // Up or down tick
-                SignalStrength = Math.Abs((decimal)(Math.Sin(signalId.GetHashCode()) * 0.8)) + 0.2m,
-                PriorWinRate = 0.45m + (decimal)(Math.Abs(Math.Sin(strategy.GetHashCode())) * 0.3), // 45-75%
-                AvgRMultiple = 0.8m + (decimal)(Math.Abs(Math.Cos(strategy.GetHashCode())) * 1.4), // 0.8-2.2R
+                TickDirection = strategy.GetHashCode(StringComparison.Ordinal) % TickDirectionModulo == 0 ? 1m : -1m, // Up or down tick
+                SignalStrength = Math.Abs((decimal)(Math.Sin(signalId.GetHashCode(StringComparison.Ordinal)) * (double)SignalStrengthBaseMultiplier)) + SignalStrengthMinimum,
+                PriorWinRate = PriorWinRateMinimum + (decimal)(Math.Abs(Math.Sin(strategy.GetHashCode(StringComparison.Ordinal))) * (double)PriorWinRateVariation), // 45-75%
+                AvgRMultiple = AvgRMultipleMinimum + (decimal)(Math.Abs(Math.Cos(strategy.GetHashCode(StringComparison.Ordinal))) * (double)AvgRMultipleVariation), // 0.8-2.2R
                 DrawdownRisk = 0m,
                 NewsImpact = 0m,
                 LiquidityRisk = 0m

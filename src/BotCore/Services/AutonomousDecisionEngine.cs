@@ -387,12 +387,10 @@ public class AutonomousDecisionEngine : BackgroundService
     
     private decimal CalculateStrategyScore(string strategy)
     {
-        if (!_strategyMetrics.ContainsKey(strategy))
+        if (!_strategyMetrics.TryGetValue(strategy, out var metrics))
         {
             return DefaultConfidenceThreshold; // Default score for unknown strategies
         }
-        
-        var metrics = _strategyMetrics[strategy];
         
         // Multi-factor scoring algorithm
         var recentPerformanceScore = CalculateRecentPerformanceScore(metrics);
@@ -609,8 +607,8 @@ public class AutonomousDecisionEngine : BackgroundService
                     EntryPrice = null, // Will be set during execution
                     StopLoss = null,   // Will be calculated during execution
                     TakeProfit = null, // Will be calculated during execution
-                    Reasoning = decision.Reasoning.ContainsKey("summary") ? 
-                        decision.Reasoning["summary"]?.ToString() ?? $"Autonomous {_currentStrategy} signal" : 
+                    Reasoning = decision.Reasoning.TryGetValue("summary", out var summary) ? 
+                        summary?.ToString() ?? $"Autonomous {_currentStrategy} signal" : 
                         $"Autonomous {_currentStrategy} signal"
                 };
             }
@@ -1343,10 +1341,8 @@ public class AutonomousDecisionEngine : BackgroundService
             var strategy = kvp.Key;
             var performance = kvp.Value;
             
-            if (_strategyMetrics.ContainsKey(strategy))
+            if (_strategyMetrics.TryGetValue(strategy, out var metrics))
             {
-                var metrics = _strategyMetrics[strategy];
-                
                 // Initialize from historical performance
                 metrics.TotalTrades = performance.TotalTrades;
                 metrics.WinningTrades = (int)(performance.TotalTrades * performance.WinRate);
@@ -1411,9 +1407,8 @@ public class AutonomousDecisionEngine : BackgroundService
     {
         foreach (var strategy in StrategyConstants.AllStrategies)
         {
-            if (_strategyMetrics.ContainsKey(strategy))
+            if (_strategyMetrics.TryGetValue(strategy, out var metrics))
             {
-                var metrics = _strategyMetrics[strategy];
                 var baselineData = CreateBaselinePerformanceData(strategy);
                 
                 // Initialize with baseline data

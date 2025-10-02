@@ -136,15 +136,15 @@ public class UnifiedDataIntegrationService : BackgroundService
             // Detect current contracts (Z25 → H26 rollover logic)
             var currentContracts = await _contractManager.GetCurrentContractsAsync(cancellationToken).ConfigureAwait(false);
             
-            if (currentContracts.ContainsKey("ES"))
+            if (currentContracts.TryGetValue("ES", out var esContract))
             {
-                _currentESContract = currentContracts["ES"];
+                _currentESContract = esContract;
                 _logger.LogInformation("📊 [CONTRACT-DETECTION] ES contract: {Contract}", _currentESContract);
             }
             
-            if (currentContracts.ContainsKey("NQ"))
+            if (currentContracts.TryGetValue("NQ", out var nqContract))
             {
-                _currentNQContract = currentContracts["NQ"];
+                _currentNQContract = nqContract;
                 _logger.LogInformation("📊 [CONTRACT-DETECTION] NQ contract: {Contract}", _currentNQContract);
             }
             
