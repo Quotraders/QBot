@@ -43,7 +43,7 @@ namespace BotCore.Services
             _config.Validate();
 
             // Initialize rotation timer
-            _rotationTimer = new Timer(CheckForRotationAsync, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+            _rotationTimer = new Timer(CheckForRotationCallback, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -62,23 +62,25 @@ namespace BotCore.Services
         }
 
         /// <summary>
-        /// Check if regime rotation is needed and execute if conditions are met
+        /// Timer callback for rotation checks - uses fire-and-forget pattern for async operations
         /// </summary>
-        private async void CheckForRotationAsync(object? state)
+        private void CheckForRotationCallback(object? state)
         {
             if (_disposed || !_config.RotationEnabled) return;
 
-            try
+            // Fire-and-forget pattern for async operation in timer callback
+            _ = Task.Run(async () =>
             {
-                await PerformRotationCheckAsync(CancellationToken.None).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[MODEL-ROTATION] [AUDIT-VIOLATION] Rotation check failed - FAIL-CLOSED + TELEMETRY");
-                
-                // Fail-closed: let exception bubble up to indicate rotation failure
-                throw new InvalidOperationException($"[MODEL-ROTATION] Critical rotation check failure: {ex.Message}", ex);
-            }
+                try
+                {
+                    await PerformRotationCheckAsync(CancellationToken.None).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[MODEL-ROTATION] [AUDIT-VIOLATION] Rotation check failed - FAIL-CLOSED + TELEMETRY");
+                    // Log but don't rethrow in fire-and-forget context
+                }
+            });
         }
 
         /// <summary>

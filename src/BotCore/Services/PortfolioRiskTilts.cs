@@ -41,12 +41,16 @@ namespace BotCore.Services
             decimal basePositionSize, 
             CancellationToken cancellationToken = default)
         {
+            await Task.CompletedTask.ConfigureAwait(false);
+            return CalculatePositionMultiplierCore(symbol, basePositionSize);
+        }
+
+        private double CalculatePositionMultiplierCore(string symbol, decimal basePositionSize)
+        {
             if (string.IsNullOrWhiteSpace(symbol))
                 throw new ArgumentException("[BREADTH-REALLOCATION] Symbol cannot be null or empty", nameof(symbol));
             if (basePositionSize <= 0)
                 throw new ArgumentException("[BREADTH-REALLOCATION] Base position size must be positive", nameof(basePositionSize));
-
-            await Task.CompletedTask.ConfigureAwait(false);
 
             try
             {
@@ -177,7 +181,7 @@ namespace BotCore.Services
                 {
                     foreach (var symbol in new[] { "ES", "NQ" })
                     {
-                        factors[symbol] = CalculatePositionMultiplierAsync(symbol, 100m, cancellationToken).Result;
+                        factors[symbol] = CalculatePositionMultiplierCore(symbol, 100m);
                     }
                 }
 

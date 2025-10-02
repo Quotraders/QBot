@@ -28,7 +28,7 @@ namespace BotCore.Models
             var tolerance = 0.001m;
             var levels = new[] { Support1, Support2, Support3, Resistance1, Resistance2, Resistance3, VWAP, DailyPivot };
             
-            return levels.Any(level => level > 0 && Math.Abs(price - level) / level <= tolerance);
+            return Array.Exists(levels, level => level > 0 && Math.Abs(price - level) / level <= tolerance);
         }
         
         public string GetNearestLevel(decimal price)

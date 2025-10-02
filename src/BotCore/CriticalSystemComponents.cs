@@ -1849,6 +1849,39 @@ namespace TradingBot.Critical
             Microsoft.Extensions.Logging.LoggerFactory.Create(builder => builder.AddConsole())
                 .CreateLogger("EnhancedCredentialManager");
         
+        // High-performance logging delegates to address CA1848 violations
+        private static readonly Action<ILogger, string, Exception?> _azureKeyVaultUnauthorized =
+            LoggerMessage.Define<string>(LogLevel.Debug, new EventId(3001, nameof(AzureKeyVaultUnauthorized)),
+                "Failed to get credential {Key} from Azure Key Vault - unauthorized");
+                
+        private static readonly Action<ILogger, string, Exception?> _azureKeyVaultInvalidOperation =
+            LoggerMessage.Define<string>(LogLevel.Debug, new EventId(3002, nameof(AzureKeyVaultInvalidOperation)),
+                "Failed to get credential {Key} from Azure Key Vault - invalid operation");
+                
+        private static readonly Action<ILogger, string, Exception?> _azureKeyVaultTimeout =
+            LoggerMessage.Define<string>(LogLevel.Debug, new EventId(3003, nameof(AzureKeyVaultTimeout)),
+                "Failed to get credential {Key} from Azure Key Vault - timeout");
+                
+        private static readonly Action<ILogger, string, Exception?> _awsSecretsManagerUnauthorized =
+            LoggerMessage.Define<string>(LogLevel.Debug, new EventId(3004, nameof(AwsSecretsManagerUnauthorized)),
+                "Failed to get credential {Key} from AWS Secrets Manager - unauthorized");
+                
+        private static readonly Action<ILogger, string, Exception?> _awsSecretsManagerInvalidOperation =
+            LoggerMessage.Define<string>(LogLevel.Debug, new EventId(3005, nameof(AwsSecretsManagerInvalidOperation)),
+                "Failed to get credential {Key} from AWS Secrets Manager - invalid operation");
+                
+        private static readonly Action<ILogger, string, Exception?> _awsSecretsManagerTimeout =
+            LoggerMessage.Define<string>(LogLevel.Debug, new EventId(3006, nameof(AwsSecretsManagerTimeout)),
+                "Failed to get credential {Key} from AWS Secrets Manager - timeout");
+        
+        // Public logging methods
+        public static void AzureKeyVaultUnauthorized(ILogger logger, string key, Exception? ex) => _azureKeyVaultUnauthorized(logger, key, ex);
+        public static void AzureKeyVaultInvalidOperation(ILogger logger, string key, Exception? ex) => _azureKeyVaultInvalidOperation(logger, key, ex);
+        public static void AzureKeyVaultTimeout(ILogger logger, string key, Exception? ex) => _azureKeyVaultTimeout(logger, key, ex);
+        public static void AwsSecretsManagerUnauthorized(ILogger logger, string key, Exception? ex) => _awsSecretsManagerUnauthorized(logger, key, ex);
+        public static void AwsSecretsManagerInvalidOperation(ILogger logger, string key, Exception? ex) => _awsSecretsManagerInvalidOperation(logger, key, ex);
+        public static void AwsSecretsManagerTimeout(ILogger logger, string key, Exception? ex) => _awsSecretsManagerTimeout(logger, key, ex);
+        
         public static string GetCredential(string key, string? defaultValue = null)
         {
             ArgumentNullException.ThrowIfNull(key);
@@ -1873,15 +1906,15 @@ namespace TradingBot.Critical
             }
             catch (UnauthorizedAccessException ex)
             {
-                _logger.LogDebug(ex, "Failed to get credential {Key} from Azure Key Vault - unauthorized", key);
+                AzureKeyVaultUnauthorized(_logger, key, ex);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogDebug(ex, "Failed to get credential {Key} from Azure Key Vault - invalid operation", key);
+                AzureKeyVaultInvalidOperation(_logger, key, ex);
             }
             catch (TimeoutException ex)
             {
-                _logger.LogDebug(ex, "Failed to get credential {Key} from Azure Key Vault - timeout", key);
+                AzureKeyVaultTimeout(_logger, key, ex);
             }
             
             // 3. Check AWS Secrets Manager (if available)
@@ -1895,15 +1928,15 @@ namespace TradingBot.Critical
             }
             catch (UnauthorizedAccessException ex)
             {
-                _logger.LogDebug(ex, "Failed to get credential {Key} from AWS Secrets Manager - unauthorized", key);
+                AwsSecretsManagerUnauthorized(_logger, key, ex);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogDebug(ex, "Failed to get credential {Key} from AWS Secrets Manager - invalid operation", key);
+                AwsSecretsManagerInvalidOperation(_logger, key, ex);
             }
             catch (TimeoutException ex)
             {
-                _logger.LogDebug(ex, "Failed to get credential {Key} from AWS Secrets Manager - timeout", key);
+                AwsSecretsManagerTimeout(_logger, key, ex);
             }
             
             // 4. Return default or throw

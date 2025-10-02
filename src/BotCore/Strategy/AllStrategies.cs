@@ -61,8 +61,8 @@ namespace BotCore.Strategy
             // Get current session and allowed strategies
             var currentTimeSpan = currentTime.TimeOfDay;
             var currentSession = BotCore.Config.EsNqTradingSchedule.GetCurrentSession(currentTimeSpan);
-            var allowedStrategies = currentSession != null && currentSession.Strategies.ContainsKey(symbol)
-                ? currentSession.Strategies[symbol]
+            var allowedStrategies = currentSession != null && currentSession.Strategies.TryGetValue(symbol, out var strategies)
+                ? strategies
                 : new[] { "S1", "S2", "S3", "S4", "S5", "S6", "S8", "S9", "S10", "S11", "S12", "S13", "S14" };
 
             var strategyMethods = new List<(string, Func<string, Env, Levels, IList<Bar>, RiskEngine, List<Candidate>>)> {
@@ -89,9 +89,8 @@ namespace BotCore.Strategy
                 var candidates = method(symbol, env, levels, bars, risk);
 
                 // Apply session-specific position sizing to candidates
-                if (currentSession != null && currentSession.PositionSizeMultiplier.ContainsKey(symbol))
+                if (currentSession != null && currentSession.PositionSizeMultiplier.TryGetValue(symbol, out var multiplier))
                 {
-                    var multiplier = currentSession.PositionSizeMultiplier[symbol];
                     foreach (var candidate in candidates)
                     {
                         candidate.qty = candidate.qty * (decimal)multiplier;

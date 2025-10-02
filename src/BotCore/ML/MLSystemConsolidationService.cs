@@ -4,6 +4,63 @@ using System.Globalization;
 namespace BotCore.ML;
 
 /// <summary>
+/// Represents an action to consolidate ML systems
+/// </summary>
+public sealed class ConsolidationAction
+{
+    public string Action { get; set; } = string.Empty;
+    public string SourcePath { get; set; } = string.Empty;
+    public string TargetPath { get; set; } = string.Empty;
+    public string Reason { get; set; } = string.Empty;
+    public ConsolidationStatus Status { get; set; } = ConsolidationStatus.Pending;
+    public DateTime ActionTime { get; set; } = DateTime.UtcNow;
+    public string? ErrorMessage { get; set; }
+}
+
+/// <summary>
+/// Analysis plan for ML system consolidation
+/// </summary>
+public sealed class ConsolidationPlan
+{
+    public int DuplicatesFound { get; set; }
+    public int ConflictsFound { get; set; }
+    public DateTime AnalysisTime { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
+/// Result of ML system consolidation execution
+/// </summary>
+public sealed class ConsolidationResult
+{
+    public bool DryRun { get; set; }
+    public DateTime StartTime { get; set; }
+    public DateTime EndTime { get; set; }
+    public TimeSpan Duration { get; set; }
+    public int ActionsCompleted { get; set; }
+    public int ActionsSkipped { get; set; }
+    public int ActionsFailed { get; set; }
+    public IReadOnlyList<ConsolidationAction> CompletedActions => _completedActions;
+    public IReadOnlyList<ConsolidationAction> FailedActions => _failedActions;
+    
+    private readonly List<ConsolidationAction> _completedActions = new();
+    private readonly List<ConsolidationAction> _failedActions = new();
+    
+    internal void AddCompletedAction(ConsolidationAction action) => _completedActions.Add(action);
+    internal void AddFailedAction(ConsolidationAction action) => _failedActions.Add(action);
+}
+
+/// <summary>
+/// Status of consolidation action
+/// </summary>
+public enum ConsolidationStatus
+{
+    Pending,
+    Completed,
+    Failed,
+    Skipped
+}
+
+/// <summary>
 /// ML System Consolidation Service - Identifies and consolidates duplicate ML implementations
 /// Removes duplicate code between BotCore/ML and Enhanced directories
 /// </summary>
@@ -11,25 +68,6 @@ public sealed class MLSystemConsolidationService
 {
     private readonly ILogger<MLSystemConsolidationService> _logger;
     private readonly List<ConsolidationAction> _consolidationActions = new();
-
-    public class ConsolidationAction
-    {
-        public string Action { get; set; } = string.Empty;
-        public string SourcePath { get; set; } = string.Empty;
-        public string TargetPath { get; set; } = string.Empty;
-        public string Reason { get; set; } = string.Empty;
-        public ConsolidationStatus Status { get; set; } = ConsolidationStatus.Pending;
-        public DateTime ActionTime { get; set; } = DateTime.UtcNow;
-        public string? ErrorMessage { get; set; }
-    }
-
-    public enum ConsolidationStatus
-    {
-        Pending,
-        Completed,
-        Failed,
-        Skipped
-    }
 
     public MLSystemConsolidationService(ILogger<MLSystemConsolidationService> logger)
     {
@@ -337,22 +375,5 @@ NEXT STEPS:
 
         _logger.LogInformation("[ML-Consolidation] Consolidation report generated");
         return report;
-    }
-
-    public class ConsolidationPlan
-    {
-        public int DuplicatesFound { get; set; }
-        public int ConflictsFound { get; set; }
-        public DateTime AnalysisTime { get; set; } = DateTime.UtcNow;
-    }
-
-    public class ConsolidationResult
-    {
-        public bool DryRun { get; set; }
-        public DateTime StartTime { get; set; }
-        public DateTime EndTime { get; set; }
-        public TimeSpan Duration { get; set; }
-        public int ActionsCompleted { get; set; }
-        public int ActionsFailed { get; set; }
     }
 }

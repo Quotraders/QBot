@@ -18,6 +18,10 @@ namespace BotCore.Strategy
         private const decimal StrongTrendThreshold = 0.25m;
         private const int LateMoningStartMinutes = 680; // 11:20 AM
         private const int LateMoningEndMinutes = 720;   // 12:00 PM
+        
+        // Volume analysis constants
+        private const decimal DefaultVolumeImbalanceRatio = 1.5m; // Default ratio when down volume is zero
+        private const int MinimumLookbackBarsForDeceleration = 3; // Minimum bars needed for deceleration analysis
         // Volume imbalance of up vs down bars over lookback window
         public static decimal UpDownImbalance(IList<Bar> bars, int look = 10)
         {
@@ -31,7 +35,7 @@ namespace BotCore.Strategy
                 if (b.Close > b.Open) up += vol;
                 else if (b.Close < b.Open) dn += vol;
             }
-            return dn <= 0 ? 1.5m : up / dn; // >1 buyers dominant; <1 sellers dominant
+            return dn <= 0 ? DefaultVolumeImbalanceRatio : up / dn; // >1 buyers dominant; <1 sellers dominant
         }
 
         // Prior day extremes (using local calendar day on Bar.Start). Returns (hi, lo); zeros if not found.
@@ -80,7 +84,7 @@ namespace BotCore.Strategy
             int n = bars.Count - 1;
             var zNow = AbsZ(n);
             var zPrev = AbsZ(n - 1);
-            if (look >= 3)
+            if (look >= MinimumLookbackBarsForDeceleration)
             {
                 var zPrev2 = AbsZ(n - 2);
                 return zNow <= zPrev && zPrev <= zPrev2; // monotonic decel

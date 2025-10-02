@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -153,7 +154,7 @@ namespace TradingBot.BotCore.Services
 
             public override string ToString() => 
                 string.Join(", ", Parameters.Select(p => 
-                    $"{p.Key}={p.DecimalValue?.ToString() ?? p.IntValue?.ToString() ?? p.BoolValue?.ToString() ?? p.StringValue ?? ""}"));
+                    $"{p.Key}={p.DecimalValue?.ToString(CultureInfo.InvariantCulture) ?? p.IntValue?.ToString(CultureInfo.InvariantCulture) ?? p.BoolValue?.ToString(CultureInfo.InvariantCulture) ?? p.StringValue ?? ""}"));
         }
 
         /// <summary>
@@ -745,7 +746,7 @@ namespace TradingBot.BotCore.Services
                     ResultCount = results.Count,
                     Results = results.Select(r => new
                     {
-                        Configuration = r.Configuration.ToString(),
+                        Configuration = r.Configuration.ToString(CultureInfo.InvariantCulture),
                         TotalTrades = r.TotalTrades,
                         WinningTrades = r.WinningTrades,
                         LosingTrades = r.LosingTrades,

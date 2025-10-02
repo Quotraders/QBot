@@ -169,10 +169,14 @@ namespace BotCore.Services
         /// </summary>
         public async Task AddFeatureValueAsync(string featureName, double value, CancellationToken cancellationToken = default)
         {
+            await Task.CompletedTask.ConfigureAwait(false);
+            AddFeatureValueCore(featureName, value);
+        }
+
+        private void AddFeatureValueCore(string featureName, double value)
+        {
             if (string.IsNullOrWhiteSpace(featureName))
                 throw new ArgumentException("[FEATURE-DRIFT] Feature name cannot be null or empty", nameof(featureName));
-
-            await Task.CompletedTask.ConfigureAwait(false);
 
             try
             {
@@ -221,7 +225,7 @@ namespace BotCore.Services
                 if (_featureDriftStates.TryGetValue(feature.Key, out var driftState) && driftState.IsBaselineSet)
                 {
                     // Add current value to recent values
-                    AddFeatureValueAsync(feature.Key, feature.Value, CancellationToken.None).Wait();
+                    AddFeatureValueCore(feature.Key, feature.Value);
 
                     // Check if enough recent data for drift calculation
                     if (driftState.RecentValues.Count >= _config.MinDriftDataPoints)

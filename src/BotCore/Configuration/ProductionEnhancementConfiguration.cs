@@ -150,7 +150,7 @@ namespace BotCore.Configuration
         {
             if (symbol is null) throw new ArgumentNullException(nameof(symbol));
             
-            return FrontMonthMapping.TryGetValue(symbol.ToUpper(), out var contract) ? contract : symbol;
+            return FrontMonthMapping.TryGetValue(symbol.ToUpperInvariant(), out var contract) ? contract : symbol;
         }
     }
 

@@ -409,7 +409,7 @@ internal sealed class NeuralUcbArm
         // Estimate average uncertainty using recent contexts
         var recentContexts = _trainingData.TakeLast(10).Select(d => d.context).ToList();
 
-        if (!recentContexts.Any())
+        if (recentContexts.Count == 0)
             return 0.5m;
 
         var uncertainties = new List<decimal>();

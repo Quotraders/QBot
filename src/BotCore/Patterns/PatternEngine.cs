@@ -236,10 +236,20 @@ public class PatternEngine
             _logger.LogWarning("No bar data available for pattern analysis of {Symbol}", symbol);
             return null;
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "Error retrieving real bars for pattern analysis of {Symbol}", symbol);
-            throw; // Re-throw to fail fast rather than return stub data
+            _logger.LogError(ex, "Invalid symbol argument for pattern analysis: {Symbol}", symbol);
+            throw new InvalidOperationException($"Pattern analysis failed for symbol '{symbol}' due to invalid symbol argument", ex);
+        }
+        catch (InvalidOperationException ex) 
+        {
+            _logger.LogError(ex, "Pattern analysis service unavailable for {Symbol}", symbol);
+            throw new InvalidOperationException($"Pattern analysis failed for symbol '{symbol}' due to service unavailability", ex);
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogError(ex, "Timeout retrieving bar data for pattern analysis of {Symbol}", symbol);
+            throw new InvalidOperationException($"Pattern analysis failed for symbol '{symbol}' due to data retrieval timeout", ex);
         }
     }
     
