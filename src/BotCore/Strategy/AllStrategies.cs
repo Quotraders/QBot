@@ -34,6 +34,21 @@ namespace BotCore.Strategy
         private const int SecondsPerMinute = 60;                          // Seconds in a minute
         private const int LookbackPeriod = 10;                            // Default lookback period
 
+        // Strategy calculation constants
+        private const decimal HighImbalanceThreshold = 0.9m;              // High imbalance threshold for long setups
+        private const decimal LowImbalanceThreshold = 1.1m;               // Low imbalance threshold for short setups
+        private const decimal StopDistanceMultiplier = 0.25m;             // ATR multiplier for stop distance
+        private const decimal MinTargetRatioLong = 0.8m;                  // Minimum target ratio for long trades
+        private const decimal MinTargetRatioShort = 0.9m;                 // Minimum target ratio for short trades
+        private const decimal TargetAdjustmentRatio = 0.9m;               // Target adjustment ratio
+        private const decimal MinRiskRewardRatio = 0.6m;                  // Minimum risk-reward ratio
+        private const decimal NeutralRiskRewardRatio = 1.0m;              // Neutral risk-reward ratio
+        private const decimal HighRiskRewardRatio = 1.1m;                 // High risk-reward ratio
+        private const int RsiOversoldLevel = 30;                          // RSI oversold level
+        private const int RsiOverboughtLevel = 20;                        // RSI overbought level (inverted for short)
+        private const decimal RsiMultiplier = 1.5m;                       // RSI condition multiplier
+        private const int TimeWindowMinutes = 60;                         // Time window in minutes for evaluations
+
         // (attempt accounting moved to specific strategies as needed)
         static decimal rr_quality(decimal entry, decimal stop, decimal t1)
         {
@@ -561,7 +576,7 @@ namespace BotCore.Strategy
         }
 
         // Keltner Channel helper: EMA mid and ATR band
-        private static (decimal mid, decimal up, decimal dn) Keltner(IList<Bar> bars, int emaLen = 20, int atrLen = 20, decimal mult = 1.5m)
+        private static (decimal mid, decimal up, decimal dn) Keltner(IList<Bar> bars, int emaLen = RsiOverboughtLevel, int atrLen = RsiOverboughtLevel, decimal mult = RsiMultiplier)
         {
             var e = EmaNoWarmup(bars, emaLen);
             var a = AtrNoWarmup(bars, atrLen);
@@ -854,7 +869,7 @@ namespace BotCore.Strategy
             }
 
             // LONG: fade below VWAP
-            if ((z <= -dynSigma || a <= -baseAtr) && imb >= 0.9m && pivotOKLong && roomLong && decel)
+            if ((z <= -dynSigma || a <= -baseAtr) && imb >= HighImbalanceThreshold && pivotOKLong && roomLong && decel)
             {
                 if (BullConfirm(bars) || reclaimDown)
                 {
@@ -862,7 +877,7 @@ namespace BotCore.Strategy
                     var dn3 = vwap - 3m * sigma;
                     var swing = bars.Skip(Math.Max(0, bars.Count - S2RuntimeConfig.ConfirmLookback)).Min(b => b.Low);
                     var stop = Math.Min(swing, dn3);
-                    if (stop >= entry) stop = entry - 0.25m * atr;
+                    if (stop >= entry) stop = entry - StopDistanceMultiplier * atr;
                     var r = entry - stop;
                     var t1 = vwap;
                     // Retest entry mode: wait for micro pullback toward VWAP by offset ticks
@@ -878,12 +893,12 @@ namespace BotCore.Strategy
                         var room = Math.Abs(t1 - entry);
                         if (room < S2RuntimeConfig.AdrRoomFrac * adr) return lst;
                     }
-                    if (t1 - entry < 0.8m * r) t1 = entry + 0.9m * r;
+                    if (t1 - entry < MinTargetRatioLong * r) t1 = entry + TargetAdjustmentRatio * r;
                     add_cand(lst, "S2", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
                 }
             }
             // SHORT: fade above VWAP
-            else if ((z >= dynSigma || a >= baseAtr) && imb <= 1.1m && pivotOKShort && roomShort && decel)
+            else if ((z >= dynSigma || a >= baseAtr) && imb <= LowImbalanceThreshold && pivotOKShort && roomShort && decel)
             {
                 if (BearConfirm(bars) || rejectUp)
                 {
@@ -891,7 +906,7 @@ namespace BotCore.Strategy
                     var up3 = vwap + 3m * sigma;
                     var swing = bars.Skip(Math.Max(0, bars.Count - S2RuntimeConfig.ConfirmLookback)).Max(b => b.High);
                     var stop = Math.Max(swing, up3);
-                    if (stop <= entry) stop = entry + 0.25m * atr;
+                    if (stop <= entry) stop = entry + StopDistanceMultiplier * atr;
                     var r = stop - entry;
                     var t1 = vwap;
                     // Retest entry pricing
@@ -907,7 +922,7 @@ namespace BotCore.Strategy
                         var room = Math.Abs(entry - t1);
                         if (room < S2RuntimeConfig.AdrRoomFrac * adr) return lst;
                     }
-                    if (entry - t1 < 0.8m * r) t1 = entry - 0.9m * r;
+                    if (entry - t1 < MinTargetRatioLong * r) t1 = entry - TargetAdjustmentRatio * r;
                     add_cand(lst, "S2", symbol, "SELL", entry, stop, t1, env, risk, null, bars);
                 }
             }
@@ -930,10 +945,10 @@ namespace BotCore.Strategy
             if (bars is null) throw new ArgumentNullException(nameof(bars));
             
             var lst = new List<Candidate>();
-            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > 0.6m)
+            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > MinRiskRewardRatio)
             {
                 var entry = bars[^1].Close;
-                var stop = entry - env.atr.Value * 1.5m;
+                var stop = entry - env.atr.Value * RsiMultiplier;
                 var t1 = entry + env.atr.Value * 3.0m;
                 add_cand(lst, "S4", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
             }
@@ -1007,7 +1022,7 @@ namespace BotCore.Strategy
         {
             var lst = new List<Candidate>();
             if (bars is null || bars.Count < 30) return lst;
-            var (mid, up, dn) = Keltner(bars, 20, 20, 1.5m);
+            var (mid, up, dn) = Keltner(bars, RsiOverboughtLevel, RsiOverboughtLevel, RsiMultiplier);
             var px = bars[^1].Close;
             var ema20 = EmaNoWarmup(bars, 20);
             bool midRising = ema20[^1] > ema20[^2];
@@ -1027,7 +1042,7 @@ namespace BotCore.Strategy
             if (bars is null) throw new ArgumentNullException(nameof(bars));
             
             var lst = new List<Candidate>();
-            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > 0.8m)
+            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > MinTargetRatioLong)
             {
                 var entry = bars[^1].Close;
                 var stop = entry + env.atr.Value * 2.5m;
