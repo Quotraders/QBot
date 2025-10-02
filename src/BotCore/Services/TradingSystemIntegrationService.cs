@@ -631,7 +631,7 @@ namespace TopstepX.Bot.Core.Services
                 CreateMarketSnapshot(symbol, marketData);
                 
                 // Use AllStrategies for signal generation - this is what the user wants!
-                var allStrategiesSignals = ConvertCandidatesToSignals(mlEnhancedCandidates);
+                var allStrategiesSignals = ConvertCandidatesToSignals(mlEnhancedCandidates, "ML-Enhanced");
 
                 _logger.LogInformation("[ML/RL-STRATEGY] Generated {CandidateCount} base candidates, {EnhancedCount} ML-enhanced, {SignalCount} AllStrategies signals for {Symbol}", 
                     candidates.Count, mlEnhancedCandidates.Count, allStrategiesSignals.Count, symbol);
@@ -717,9 +717,9 @@ namespace TopstepX.Bot.Core.Services
         }
 
         /// <summary>
-        /// Convert AllStrategies candidates to standardized signals
+        /// Convert AllStrategies candidates to standardized signals with accurate profile tagging
         /// </summary>
-        private static List<Signal> ConvertCandidatesToSignals(IReadOnlyList<Candidate> candidates)
+        private static List<Signal> ConvertCandidatesToSignals(IReadOnlyList<Candidate> candidates, string profileName = "AllStrategies")
         {
             var signals = new List<Signal>();
             
@@ -738,7 +738,7 @@ namespace TopstepX.Bot.Core.Services
                     QScore = candidate.QScore,
                     Size = Math.Abs((int)candidate.qty),
                     Tag = candidate.Tag,
-                    ProfileName = "ML-Enhanced",
+                    ProfileName = profileName, // Use actual profile name instead of hardcoding
                     EmittedUtc = DateTime.UtcNow
                 });
             }
@@ -785,15 +785,15 @@ namespace TopstepX.Bot.Core.Services
 
             try
             {
-                // Convert AllStrategies candidates to signals
-                var baseSignals = ConvertCandidatesToSignals(allStrategiesCandidates);
+                // Convert AllStrategies candidates to signals with accurate profile tagging
+                var baseSignals = ConvertCandidatesToSignals(allStrategiesCandidates, "AllStrategies");
                 aggregatedSignals.AddRange(baseSignals);
 
-                // Add ML-enhanced candidates with higher confidence
-                var enhancedSignals = ConvertCandidatesToSignals(mlEnhancedCandidates);
+                // Add ML-enhanced candidates with higher confidence and proper profile name
+                var enhancedSignals = ConvertCandidatesToSignals(mlEnhancedCandidates, "ML-Enhanced");
                 foreach (var signal in enhancedSignals)
                 {
-                    var enhancedSignal = signal with { Score = 0.85m, QScore = 0.85m, ProfileName = "ML-Enhanced" };
+                    var enhancedSignal = signal with { Score = 0.85m, QScore = 0.85m };
                     aggregatedSignals.Add(enhancedSignal);
                 }
 

@@ -23,7 +23,41 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Current Focus**: Systematic application of Analyzer-Fix-Guidebook patterns across high-priority violations
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 
-### Round 49 - Critical Session Timezone and Trading Logic Fixes (Current Session)
+### Round 50 - Data Quality and Profile Tagging Improvements (Current Session)
+| Issue | Files Affected | Fix Applied |
+|-------|----------------|-------------|
+| Synthetic Bar Data | AllStrategies.cs | Removed ExtractBarsFromContext - now uses only genuine bar history for ML logging |
+| Hardcoded Profile Names | TradingSystemIntegrationService.cs | Updated ConvertCandidatesToSignals to accept profileName parameter, distinguishing AllStrategies from ML-Enhanced signals |
+
+**Data Quality Fixes Applied:**
+```csharp
+// Before - Fabricated synthetic bars with hardcoded price ~5000
+var bars = ExtractBarsFromContext(env, symbol, 100); // Synthetic data!
+
+// After - Only log with real bar history, skip if unavailable
+public static void add_cand(..., IList<Bar>? bars = null)
+{
+    if (bars != null && bars.Count > 0) {
+        StrategyMlIntegration.LogStrategySignal(..., bars, ...);
+    }
+}
+
+// Before - Hardcoded profile name
+ProfileName = "ML-Enhanced",
+
+// After - Accurate profile tagging based on source
+private static List<Signal> ConvertCandidatesToSignals(..., string profileName = "AllStrategies")
+{
+    ProfileName = profileName, // "AllStrategies" or "ML-Enhanced"
+}
+```
+
+**Rationale:**
+- ML training data should never use fabricated bars - only genuine market history
+- Downstream analytics require accurate ProfileName to distinguish signal sources
+- All 14 add_cand() calls updated to pass real bars parameter
+
+### Round 49 - Critical Session Timezone and Trading Logic Fixes (Previous Session)
 | Bug | Issue | Files Affected | Fix Applied |
 |-----|--------|----------------|-------------|
 | Timezone | StrategyAgent feeds UTC directly into EsNqTradingSchedule (Central Time) causing session gate offsets | StrategyAgent.cs | Convert UTC to Central Time before session matching |

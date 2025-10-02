@@ -417,7 +417,7 @@ namespace BotCore.Strategy
                 if (t1 > last && stop < last)
                 {
                     var e = new Env { Symbol = symbol, atr = atr, volz = env.volz };
-                    add_cand(lst, "S1", symbol, "BUY", last, stop, t1, e, risk);
+                    add_cand(lst, "S1", symbol, "BUY", last, stop, t1, e, risk, null, bars);
                 }
             }
             if (rsOk && atrOk && bearCross && fastDown)
@@ -427,7 +427,7 @@ namespace BotCore.Strategy
                 if (t1 < last && stop > last)
                 {
                     var e = new Env { Symbol = symbol, atr = atr, volz = env.volz };
-                    add_cand(lst, "S1", symbol, "SELL", last, stop, t1, e, risk);
+                    add_cand(lst, "S1", symbol, "SELL", last, stop, t1, e, risk, null, bars);
                 }
             }
             return lst;
@@ -882,7 +882,7 @@ namespace BotCore.Strategy
                         if (room < S2RuntimeConfig.AdrRoomFrac * adr) return lst;
                     }
                     if (t1 - entry < 0.8m * r) t1 = entry + 0.9m * r;
-                    add_cand(lst, "S2", symbol, "BUY", entry, stop, t1, env, risk);
+                    add_cand(lst, "S2", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
                 }
             }
             // SHORT: fade above VWAP
@@ -911,7 +911,7 @@ namespace BotCore.Strategy
                         if (room < S2RuntimeConfig.AdrRoomFrac * adr) return lst;
                     }
                     if (entry - t1 < 0.8m * r) t1 = entry - 0.9m * r;
-                    add_cand(lst, "S2", symbol, "SELL", entry, stop, t1, env, risk);
+                    add_cand(lst, "S2", symbol, "SELL", entry, stop, t1, env, risk, null, bars);
                 }
             }
             return lst;
@@ -938,7 +938,7 @@ namespace BotCore.Strategy
                 var entry = bars[^1].Close;
                 var stop = entry - env.atr.Value * 1.5m;
                 var t1 = entry + env.atr.Value * 3.0m;
-                add_cand(lst, "S4", symbol, "BUY", entry, stop, t1, env, risk);
+                add_cand(lst, "S4", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
             }
             return lst;
         }
@@ -954,7 +954,7 @@ namespace BotCore.Strategy
                 var entry = bars[^1].Close;
                 var stop = entry + env.atr.Value * 1.5m;
                 var t1 = entry - env.atr.Value * 3.0m;
-                add_cand(lst, "S5", symbol, "SELL", entry, stop, t1, env, risk);
+                add_cand(lst, "S5", symbol, "SELL", entry, stop, t1, env, risk, null, bars);
             }
             return lst;
         }
@@ -998,7 +998,7 @@ namespace BotCore.Strategy
                 var entry = bars[^1].Close;
                 var stop = entry - env.atr.Value * S6RuntimeConfig.StopAtrMult;
                 var t1 = entry + env.atr.Value * S6RuntimeConfig.TargetAtrMult;
-                add_cand(lst, "S6", symbol, "BUY", entry, stop, t1, env, risk);
+                add_cand(lst, "S6", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
             }
             return lst;
         }
@@ -1019,7 +1019,7 @@ namespace BotCore.Strategy
                 var entry = px;
                 var stop = Math.Min(entry, dn);
                 var t1 = up;
-                add_cand(lst, "S8", symbol, "BUY", entry, stop, t1, env, risk);
+                add_cand(lst, "S8", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
             }
             return lst;
         }
@@ -1035,7 +1035,7 @@ namespace BotCore.Strategy
                 var entry = bars[^1].Close;
                 var stop = entry + env.atr.Value * 2.5m;
                 var t1 = entry - env.atr.Value * 5.0m;
-                add_cand(lst, "S9", symbol, "SELL", entry, stop, t1, env, risk);
+                add_cand(lst, "S9", symbol, "SELL", entry, stop, t1, env, risk, null, bars);
             }
             return lst;
         }
@@ -1051,7 +1051,7 @@ namespace BotCore.Strategy
                 var entry = bars[^1].Close;
                 var stop = entry - env.atr.Value * 3.0m;
                 var t1 = entry + env.atr.Value * 6.0m;
-                add_cand(lst, "S10", symbol, "BUY", entry, stop, t1, env, risk);
+                add_cand(lst, "S10", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
             }
             return lst;
         }
@@ -1095,7 +1095,7 @@ namespace BotCore.Strategy
                 var entry = bars[^1].Close;
                 var stop = entry + env.atr.Value * S11RuntimeConfig.StopAtrMult;
                 var t1 = entry - env.atr.Value * S11RuntimeConfig.TargetAtrMult;
-                add_cand(lst, "S11", symbol, "SELL", entry, stop, t1, env, risk);
+                add_cand(lst, "S11", symbol, "SELL", entry, stop, t1, env, risk, null, bars);
             }
             return lst;
         }
@@ -1111,7 +1111,7 @@ namespace BotCore.Strategy
                 var entry = bars[^1].Close;
                 var stop = entry - env.atr.Value * 3.5m;
                 var t1 = entry + env.atr.Value * 7.0m;
-                add_cand(lst, "S12", symbol, "BUY", entry, stop, t1, env, risk);
+                add_cand(lst, "S12", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
             }
             return lst;
         }
@@ -1127,7 +1127,7 @@ namespace BotCore.Strategy
                 var entry = bars[^1].Close;
                 var stop = entry + env.atr.Value * 3.5m;
                 var t1 = entry - env.atr.Value * 7.0m;
-                add_cand(lst, "S13", symbol, "SELL", entry, stop, t1, env, risk);
+                add_cand(lst, "S13", symbol, "SELL", entry, stop, t1, env, risk, null, bars);
             }
             return lst;
         }
@@ -1143,13 +1143,13 @@ namespace BotCore.Strategy
                 var entry = bars[^1].Close;
                 var stop = entry - env.atr.Value * 4.0m;
                 var t1 = entry + env.atr.Value * 8.0m;
-                add_cand(lst, "S14", symbol, "BUY", entry, stop, t1, env, risk);
+                add_cand(lst, "S14", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
             }
             return lst;
         }
 
         public static void add_cand(List<Candidate> lst, string sid, string symbol, string sideTxt,
-                                 decimal entry, decimal stop, decimal t1, Env env, RiskEngine risk, string? tag = null)
+                                 decimal entry, decimal stop, decimal t1, Env env, RiskEngine risk, string? tag = null, IList<Bar>? bars = null)
         {
             if (lst is null) throw new ArgumentNullException(nameof(lst));
             if (env is null) throw new ArgumentNullException(nameof(env));
@@ -1190,108 +1190,46 @@ namespace BotCore.Strategy
             };
             lst.Add(c);
 
-            // **ML/RL Integration**: Log signal for training data collection
-            try
+            // **ML/RL Integration**: Log signal for training data collection with real bars only
+            // Only log if we have genuine bar history - never use synthetic data
+            if (bars != null && bars.Count > 0)
             {
-                // Professional bar data extraction from environment context
-                var bars = ExtractBarsFromContext(env, symbol, 100); // Extract last 100 bars for technical analysis
-
-                StrategyMlIntegration.LogStrategySignal(
-                    // Use a simple console logger for now - in production this would be injected
-                    new Microsoft.Extensions.Logging.Abstractions.NullLogger<object>(),
-                    sid,
-                    symbol,
-                    c.side,
-                    entry,
-                    stop,
-                    t1,
-                    score,
-                    qScore,
-                    bars,
-                    $"{sid}-{symbol}-{DateTime.UtcNow:yyyyMMddHHmmss}"
-                );
-            }
-            catch (InvalidOperationException ex)
-            {
-                // Don't let ML logging break strategy execution
-                Console.WriteLine($"[ML-Integration] Invalid operation when logging signal for {sid}: {ex.Message}");
-            }
-            catch (ArgumentException ex)
-            {
-                // Don't let ML logging break strategy execution
-                Console.WriteLine($"[ML-Integration] Invalid arguments when logging signal for {sid}: {ex.Message}");
-            }
-            catch (System.IO.IOException ex)
-            {
-                // Don't let ML logging break strategy execution
-                Console.WriteLine($"[ML-Integration] IO error when logging signal for {sid}: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Extract bar data from environment context for technical analysis
-        /// Uses existing price data from environment to create professional OHLCV bars
-        /// </summary>
-        private static List<Bar> ExtractBarsFromContext(Env env, string symbol, int count)
-        {
-            try
-            {
-                // Extract OHLCV data from environment - use current market data
-                var bars = new List<Bar>();
-                
-                // Create bars from available environment data
-                // In a real system, this would access historical data from the environment
-                if (env != null)
+                try
                 {
-                    // Create a synthetic bar from current environment state for immediate use
-                    // Note: Env doesn't have price/volume properties, so we create synthetic data
-                    var currentPrice = 5000m; // Default price for synthetic bars
-                    var volume = 1000; // Default volume
-                    
-                    // Generate bars with slight price variations for technical analysis
-                    for (int i = count; i > 0; i--)
-                    {
-                        var timeOffset = TimeSpan.FromMinutes(i * 5); // 5-minute bars
-                        var priceVariation = (decimal)(Math.Sin(i * 0.1) * 0.002); // Small price variation
-                        var price = currentPrice * (1 + priceVariation);
-                        
-                        var bar = new Bar
-                        {
-                            Symbol = symbol,
-                            Start = DateTime.UtcNow.Subtract(timeOffset),
-                            Ts = new DateTimeOffset(DateTime.UtcNow.Subtract(timeOffset)).ToUnixTimeMilliseconds(),
-                            Open = price * 0.999m,
-                            High = price * 1.001m,
-                            Low = price * 0.998m,
-                            Close = price,
-                            Volume = (int)(volume * (0.8 + GetSecureRandomDouble() * 0.4)) // Volume variation
-                        };
-                        
-                        bars.Add(bar);
-                    }
-                    
-                    // Sort bars chronologically (oldest first)
-                    bars.Sort((a, b) => a.Start.CompareTo(b.Start));
+                    StrategyMlIntegration.LogStrategySignal(
+                        // Use a simple console logger for now - in production this would be injected
+                        new Microsoft.Extensions.Logging.Abstractions.NullLogger<object>(),
+                        sid,
+                        symbol,
+                        c.side,
+                        entry,
+                        stop,
+                        t1,
+                        score,
+                        qScore,
+                        bars,
+                        $"{sid}-{symbol}-{DateTime.UtcNow:yyyyMMddHHmmss}"
+                    );
                 }
-                
-                return bars;
-            }
-            catch (ArgumentException ex)
-            {
-                Console.WriteLine($"[AllStrategies] Invalid arguments when extracting bars from context: {ex.Message}");
-                return new List<Bar>(); // Return empty list on error
-            }
-            catch (InvalidOperationException ex)
-            {
-                Console.WriteLine($"[AllStrategies] Invalid operation when extracting bars from context: {ex.Message}");
-                return new List<Bar>(); // Return empty list on error
-            }
-            catch (NotSupportedException ex)
-            {
-                Console.WriteLine($"[AllStrategies] Unsupported operation when extracting bars from context: {ex.Message}");
-                return new List<Bar>(); // Return empty list on error
+                catch (InvalidOperationException ex)
+                {
+                    // Don't let ML logging break strategy execution
+                    Console.WriteLine($"[ML-Integration] Invalid operation when logging signal for {sid}: {ex.Message}");
+                }
+                catch (ArgumentException ex)
+                {
+                    // Don't let ML logging break strategy execution
+                    Console.WriteLine($"[ML-Integration] Invalid arguments when logging signal for {sid}: {ex.Message}");
+                }
+                catch (System.IO.IOException ex)
+                {
+                    // Don't let ML logging break strategy execution
+                    Console.WriteLine($"[ML-Integration] IO error when logging signal for {sid}: {ex.Message}");
+                }
             }
         }
+
+
 
         /// <summary>
         /// Generate cryptographically secure random double value between 0.0 and 1.0
