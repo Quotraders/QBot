@@ -96,18 +96,20 @@ public class AutonomousPerformanceTracker
             _allTrades.Add(trade);
             
             // Organize by strategy
-            if (!_tradesByStrategy.ContainsKey(trade.Strategy))
+            if (!_tradesByStrategy.TryGetValue(trade.Strategy, out var strategyTrades))
             {
-                _tradesByStrategy[trade.Strategy] = new List<AutonomousTradeOutcome>();
+                strategyTrades = new List<AutonomousTradeOutcome>();
+                _tradesByStrategy[trade.Strategy] = strategyTrades;
             }
-            _tradesByStrategy[trade.Strategy].Add(trade);
+            strategyTrades.Add(trade);
             
             // Organize by symbol
-            if (!_tradesBySymbol.ContainsKey(trade.Symbol))
+            if (!_tradesBySymbol.TryGetValue(trade.Symbol, out var symbolTrades))
             {
-                _tradesBySymbol[trade.Symbol] = new List<AutonomousTradeOutcome>();
+                symbolTrades = new List<AutonomousTradeOutcome>();
+                _tradesBySymbol[trade.Symbol] = symbolTrades;
             }
-            _tradesBySymbol[trade.Symbol].Add(trade);
+            symbolTrades.Add(trade);
             
             // Update daily P&L tracking
             var tradeDate = trade.EntryTime.Date;
@@ -191,12 +193,10 @@ public class AutonomousPerformanceTracker
     {
         lock (_trackingLock)
         {
-            if (!_tradesByStrategy.ContainsKey(strategy))
+            if (!_tradesByStrategy.TryGetValue(strategy, out var trades))
             {
                 return new StrategyPerformance { StrategyName = strategy };
             }
-            
-            var trades = _tradesByStrategy[strategy];
             var winningTrades = trades.Where(t => t.PnL > 0).ToArray();
             var losingTrades = trades.Where(t => t.PnL < 0).ToArray();
             
@@ -312,9 +312,9 @@ public class AutonomousPerformanceTracker
                     insights.AddRange(strategyLearning.Insights);
                 }
             }
-            else if (_strategyLearning.ContainsKey(strategy))
+            else if (_strategyLearning.TryGetValue(strategy, out var strategyLearning))
             {
-                insights.AddRange(_strategyLearning[strategy].Insights);
+                insights.AddRange(strategyLearning.Insights);
             }
             
             return insights.OrderByDescending(i => i.Timestamp).Take(20).ToList();

@@ -558,8 +558,8 @@ public class StrategyPerformanceAnalyzer
     
     private decimal GetRegimeSpecificScore(string strategy, AnalyzerMarketRegime regime)
     {
-        if (!_regimePerformance.ContainsKey(regime) || 
-            !_regimePerformance[regime].ContainsKey(strategy))
+        if (!_regimePerformance.TryGetValue(regime, out var regimeDict) || 
+            !regimeDict.ContainsKey(strategy))
         {
             // Use strategy characteristics for unknown regimes
             var characteristics = _strategyCharacteristics.GetValueOrDefault(strategy);
@@ -580,8 +580,8 @@ public class StrategyPerformanceAnalyzer
     {
         var hour = new TimeSpan(currentTime.Hours, 0, 0);
         
-        if (!_timeBasedPerformance.ContainsKey(hour) || 
-            !_timeBasedPerformance[hour].ContainsKey(strategy))
+        if (!_timeBasedPerformance.TryGetValue(hour, out var hourDict) || 
+            !hourDict.ContainsKey(strategy))
         {
             // Use strategy characteristics for unknown times
             var characteristics = _strategyCharacteristics.GetValueOrDefault(strategy);
@@ -602,10 +602,8 @@ public class StrategyPerformanceAnalyzer
     
     private decimal GetRecentPerformanceScore(string strategy)
     {
-        if (!_strategyAnalysis.ContainsKey(strategy))
+        if (!_strategyAnalysis.TryGetValue(strategy, out var analysis))
             return 0.5m;
-        
-        var analysis = _strategyAnalysis[strategy];
         if (analysis.AllTrades.Count < 10)
             return 0.5m;
         
@@ -622,10 +620,8 @@ public class StrategyPerformanceAnalyzer
     
     private decimal GetConsistencyScore(string strategy)
     {
-        if (!_strategyAnalysis.ContainsKey(strategy))
+        if (!_strategyAnalysis.TryGetValue(strategy, out var analysis))
             return 0.5m;
-        
-        var analysis = _strategyAnalysis[strategy];
         if (analysis.AllTrades.Count < 10)
             return 0.5m;
         
@@ -852,13 +848,13 @@ public class StrategyPerformanceAnalyzer
     
     private PerformanceTrend GetRecentPerformanceTrend(string strategy)
     {
-        if (!_performanceHistory.ContainsKey(strategy) ||
-            _performanceHistory[strategy].Count < 10)
+        if (!_performanceHistory.TryGetValue(strategy, out var history) ||
+            history.Count < 10)
         {
             return PerformanceTrend.Stable;
         }
         
-        var recent = _performanceHistory[strategy].TakeLast(10).ToArray();
+        var recent = history.TakeLast(10).ToArray();
         var firstHalf = recent.Take(5).Average(s => s.OverallScore);
         var secondHalf = recent.Skip(5).Average(s => s.OverallScore);
         

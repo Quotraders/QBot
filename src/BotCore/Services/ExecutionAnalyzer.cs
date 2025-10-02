@@ -202,13 +202,14 @@ public class ExecutionAnalyzer
             }
 
             // Update zone feedback
-            if (!feedback.ContainsKey(zoneKey))
+            if (!feedback.TryGetValue(zoneKey, out var zoneValue))
             {
-                feedback[zoneKey] = new { success_count = 0, test_count = 0, success_rate = 0.0 };
+                zoneValue = new { success_count = 0, test_count = 0, success_rate = 0.0 };
+                feedback[zoneKey] = zoneValue;
             }
 
             var zoneData = JsonSerializer.Deserialize<Dictionary<string, object>>(
-                feedback[zoneKey].ToString() ?? "{}");
+                zoneValue.ToString() ?? "{}");
 
             var successCount = zoneData?.GetValueOrDefault("success_count", 0);
             var testCount = zoneData?.GetValueOrDefault("test_count", 0);
