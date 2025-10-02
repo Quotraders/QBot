@@ -13,7 +13,7 @@ namespace BotCore.Integration;
 /// Persists zone buffers, pattern reliability, and other critical state
 /// Uses atomic File.Replace operations to prevent corruption
 /// </summary>
-public sealed class AtomicStatePersistence
+public sealed class AtomicStatePersistence : IDisposable
 {
     private readonly ILogger<AtomicStatePersistence> _logger;
     private readonly string _stateDirectory;
@@ -33,9 +33,6 @@ public sealed class AtomicStatePersistence
     private readonly object _persistenceLock = new();
     
     // State tracking
-    private readonly Dictionary<string, object> _pendingZoneState = new();
-    private readonly Dictionary<string, object> _pendingPatternState = new();
-    private readonly Dictionary<string, object> _pendingFusionState = new();
     private volatile bool _persistenceEnabled = true;
     
     public AtomicStatePersistence(ILogger<AtomicStatePersistence> logger, string? baseStateDirectory = null)
@@ -98,8 +95,7 @@ public sealed class AtomicStatePersistence
     {
         if (string.IsNullOrWhiteSpace(symbol))
             throw new ArgumentException("Symbol cannot be null or empty", nameof(symbol));
-        if (snapshot == null)
-            throw new ArgumentNullException(nameof(snapshot));
+        ArgumentNullException.ThrowIfNull(snapshot);
             
         if (!_persistenceEnabled)
             return;
@@ -109,13 +105,19 @@ public sealed class AtomicStatePersistence
             var fileName = $"{symbol}.json";
             var filePath = Path.Combine(_zonesStateDirectory, fileName);
             
-            await PersistStateAtomicallyAsync(filePath, snapshot, cancellationToken);
+            await PersistStateAtomicallyAsync(filePath, snapshot, cancellationToken).ConfigureAwait(false);
             
             _logger.LogTrace("Zone state persisted for {Symbol}", symbol);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error persisting zone state for {Symbol}", symbol);
+            _logger.LogError(ex, "I/O error persisting zone state for {Symbol}", symbol);
+            throw new InvalidOperationException($"Failed to persist zone state for {symbol} due to I/O error", ex);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Serialization error persisting zone state for {Symbol}", symbol);
+            throw new InvalidOperationException($"Failed to serialize zone state for {symbol}", ex);
         }
     }
     
@@ -124,8 +126,7 @@ public sealed class AtomicStatePersistence
     /// </summary>
     public async Task PersistPatternReliabilityAsync(PatternReliabilitySnapshot snapshot, CancellationToken cancellationToken = default)
     {
-        if (snapshot == null)
-            throw new ArgumentNullException(nameof(snapshot));
+        ArgumentNullException.ThrowIfNull(snapshot);
             
         if (!_persistenceEnabled)
             return;
@@ -134,13 +135,19 @@ public sealed class AtomicStatePersistence
         {
             var filePath = Path.Combine(_patternsStateDirectory, "reliability.json");
             
-            await PersistStateAtomicallyAsync(filePath, snapshot, cancellationToken);
+            await PersistStateAtomicallyAsync(filePath, snapshot, cancellationToken).ConfigureAwait(false);
             
             _logger.LogTrace("Pattern reliability state persisted");
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error persisting pattern reliability state");
+            _logger.LogError(ex, "I/O error persisting pattern reliability state");
+            throw new InvalidOperationException("Failed to persist pattern reliability state due to I/O error", ex);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Serialization error persisting pattern reliability state");
+            throw new InvalidOperationException("Failed to serialize pattern reliability state", ex);
         }
     }
     
@@ -149,8 +156,7 @@ public sealed class AtomicStatePersistence
     /// </summary>
     public async Task PersistFusionStateAsync(FusionStateSnapshot snapshot, CancellationToken cancellationToken = default)
     {
-        if (snapshot == null)
-            throw new ArgumentNullException(nameof(snapshot));
+        ArgumentNullException.ThrowIfNull(snapshot);
             
         if (!_persistenceEnabled)
             return;
@@ -159,13 +165,19 @@ public sealed class AtomicStatePersistence
         {
             var filePath = Path.Combine(_fusionStateDirectory, "coordinator.json");
             
-            await PersistStateAtomicallyAsync(filePath, snapshot, cancellationToken);
+            await PersistStateAtomicallyAsync(filePath, snapshot, cancellationToken).ConfigureAwait(false);
             
             _logger.LogTrace("Fusion coordinator state persisted");
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error persisting fusion coordinator state");
+            _logger.LogError(ex, "I/O error persisting fusion coordinator state");
+            throw new InvalidOperationException("Failed to persist fusion coordinator state due to I/O error", ex);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Serialization error persisting fusion coordinator state");
+            throw new InvalidOperationException("Failed to serialize fusion coordinator state", ex);
         }
     }
     
@@ -176,8 +188,7 @@ public sealed class AtomicStatePersistence
     {
         if (string.IsNullOrWhiteSpace(metricsName))
             throw new ArgumentException("Metrics name cannot be null or empty", nameof(metricsName));
-        if (snapshot == null)
-            throw new ArgumentNullException(nameof(snapshot));
+        ArgumentNullException.ThrowIfNull(snapshot);
             
         if (!_persistenceEnabled)
             return;
@@ -187,13 +198,19 @@ public sealed class AtomicStatePersistence
             var fileName = $"{metricsName}.json";
             var filePath = Path.Combine(_metricsStateDirectory, fileName);
             
-            await PersistStateAtomicallyAsync(filePath, snapshot, cancellationToken);
+            await PersistStateAtomicallyAsync(filePath, snapshot, cancellationToken).ConfigureAwait(false);
             
             _logger.LogTrace("Metrics state persisted for {MetricsName}", metricsName);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error persisting metrics state for {MetricsName}", metricsName);
+            _logger.LogError(ex, "I/O error persisting metrics state for {MetricsName}", metricsName);
+            throw new InvalidOperationException($"Failed to persist metrics state for {metricsName} due to I/O error", ex);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Serialization error persisting metrics state for {MetricsName}", metricsName);
+            throw new InvalidOperationException($"Failed to serialize metrics state for {metricsName}", ex);
         }
     }
     
@@ -209,12 +226,12 @@ public sealed class AtomicStatePersistence
         {
             // Serialize to temporary file first
             var jsonData = JsonSerializer.Serialize(state, _jsonOptions);
-            await File.WriteAllTextAsync(tempFilePath, jsonData, cancellationToken);
+            await File.WriteAllTextAsync(tempFilePath, jsonData, cancellationToken).ConfigureAwait(false);
             
             // Ensure data is written to disk
             using (var fileStream = new FileStream(tempFilePath, FileMode.Open, FileAccess.Read))
             {
-                await fileStream.FlushAsync(cancellationToken);
+                await fileStream.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
             
             // Atomic replace: temp -> target (with backup if original exists)
@@ -237,12 +254,12 @@ public sealed class AtomicStatePersistence
                 File.Delete(backupFilePath);
             }
         }
-        catch (Exception)
+        catch (IOException)
         {
             // Clean up temp file on error
             if (File.Exists(tempFilePath))
             {
-                try { File.Delete(tempFilePath); } catch { /* ignore */ }
+                try { File.Delete(tempFilePath); } catch (IOException) { /* ignore cleanup errors */ }
             }
             
             // Restore from backup if available
@@ -253,10 +270,20 @@ public sealed class AtomicStatePersistence
                     File.Move(backupFilePath, filePath);
                     _logger.LogWarning("Restored state file from backup: {FilePath}", filePath);
                 } 
-                catch (Exception restoreEx)
+                catch (IOException restoreEx)
                 {
                     _logger.LogError(restoreEx, "Failed to restore backup for {FilePath}", filePath);
                 }
+            }
+            
+            throw;
+        }
+        catch (JsonException)
+        {
+            // Clean up temp file on serialization error
+            if (File.Exists(tempFilePath))
+            {
+                try { File.Delete(tempFilePath); } catch (IOException) { /* ignore cleanup errors */ }
             }
             
             throw;
@@ -282,15 +309,20 @@ public sealed class AtomicStatePersistence
                 return null;
             }
             
-            var jsonData = await File.ReadAllTextAsync(filePath, cancellationToken);
+            var jsonData = await File.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false);
             var snapshot = JsonSerializer.Deserialize<ZoneStateSnapshot>(jsonData, _jsonOptions);
             
             _logger.LogDebug("Loaded zone state for {Symbol} from {FilePath}", symbol, filePath);
             return snapshot;
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error loading zone state for {Symbol}", symbol);
+            _logger.LogError(ex, "I/O error loading zone state for {Symbol}", symbol);
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Deserialization error loading zone state for {Symbol}", symbol);
             return null;
         }
     }
@@ -310,15 +342,20 @@ public sealed class AtomicStatePersistence
                 return null;
             }
             
-            var jsonData = await File.ReadAllTextAsync(filePath, cancellationToken);
+            var jsonData = await File.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false);
             var snapshot = JsonSerializer.Deserialize<PatternReliabilitySnapshot>(jsonData, _jsonOptions);
             
             _logger.LogDebug("Loaded pattern reliability state from {FilePath}", filePath);
             return snapshot;
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error loading pattern reliability state");
+            _logger.LogError(ex, "I/O error loading pattern reliability state");
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Deserialization error loading pattern reliability state");
             return null;
         }
     }
@@ -338,15 +375,20 @@ public sealed class AtomicStatePersistence
                 return null;
             }
             
-            var jsonData = await File.ReadAllTextAsync(filePath, cancellationToken);
+            var jsonData = await File.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false);
             var snapshot = JsonSerializer.Deserialize<FusionStateSnapshot>(jsonData, _jsonOptions);
             
             _logger.LogDebug("Loaded fusion coordinator state from {FilePath}", filePath);
             return snapshot;
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error loading fusion coordinator state");
+            _logger.LogError(ex, "I/O error loading fusion coordinator state");
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Deserialization error loading fusion coordinator state");
             return null;
         }
     }
@@ -354,9 +396,9 @@ public sealed class AtomicStatePersistence
     /// <summary>
     /// Load all available state for complete warm restart
     /// </summary>
-    public async Task<WarmRestartStateCollection> LoadAllStateAsync(CancellationToken cancellationToken = default)
+    public async Task<WarmRestartState> LoadAllStateAsync(CancellationToken cancellationToken = default)
     {
-        var collection = new WarmRestartStateCollection
+        var collection = new WarmRestartState
         {
             LoadedAt = DateTime.UtcNow,
             ZoneStates = new Dictionary<string, ZoneStateSnapshot>(),
@@ -374,7 +416,7 @@ public sealed class AtomicStatePersistence
                 foreach (var zoneFile in zoneFiles)
                 {
                     var symbol = Path.GetFileNameWithoutExtension(zoneFile);
-                    var zoneState = await LoadZoneStateAsync(symbol, cancellationToken);
+                    var zoneState = await LoadZoneStateAsync(symbol, cancellationToken).ConfigureAwait(false);
                     if (zoneState != null)
                     {
                         collection.ZoneStates[symbol] = zoneState;
@@ -383,10 +425,10 @@ public sealed class AtomicStatePersistence
             }
             
             // Load pattern reliability
-            collection.PatternReliability = await LoadPatternReliabilityAsync(cancellationToken);
+            collection.PatternReliability = await LoadPatternReliabilityAsync(cancellationToken).ConfigureAwait(false);
             
             // Load fusion state
-            collection.FusionState = await LoadFusionStateAsync(cancellationToken);
+            collection.FusionState = await LoadFusionStateAsync(cancellationToken).ConfigureAwait(false);
             
             // Load metrics states
             if (Directory.Exists(_metricsStateDirectory))
@@ -397,16 +439,20 @@ public sealed class AtomicStatePersistence
                     var metricsName = Path.GetFileNameWithoutExtension(metricsFile);
                     try
                     {
-                        var jsonData = await File.ReadAllTextAsync(metricsFile, cancellationToken);
+                        var jsonData = await File.ReadAllTextAsync(metricsFile, cancellationToken).ConfigureAwait(false);
                         var metricsState = JsonSerializer.Deserialize<MetricsStateSnapshot>(jsonData, _jsonOptions);
                         if (metricsState != null)
                         {
                             collection.MetricsStates[metricsName] = metricsState;
                         }
                     }
-                    catch (Exception ex)
+                    catch (IOException ex)
                     {
-                        _logger.LogWarning(ex, "Error loading metrics state: {MetricsName}", metricsName);
+                        _logger.LogWarning(ex, "I/O error loading metrics state: {MetricsName}", metricsName);
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogWarning(ex, "Deserialization error loading metrics state: {MetricsName}", metricsName);
                     }
                 }
             }
@@ -419,9 +465,14 @@ public sealed class AtomicStatePersistence
                 
             return collection;
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error loading warm restart state collection");
+            _logger.LogError(ex, "I/O error loading warm restart state collection");
+            return collection;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Deserialization error loading warm restart state collection");
             return collection;
         }
     }
@@ -544,13 +595,27 @@ public sealed class MetricsStateSnapshot
 }
 
 /// <summary>
-/// Complete warm restart state collection
+/// Complete warm restart state
 /// </summary>
-public sealed class WarmRestartStateCollection
+public sealed class WarmRestartState
 {
+    private readonly Dictionary<string, ZoneStateSnapshot> _zoneStates = new();
+    private readonly Dictionary<string, MetricsStateSnapshot> _metricsStates = new();
+    
     public DateTime LoadedAt { get; set; }
-    public Dictionary<string, ZoneStateSnapshot> ZoneStates { get; set; } = new();
+    
+    public Dictionary<string, ZoneStateSnapshot> ZoneStates 
+    { 
+        get => _zoneStates;
+        init => _zoneStates = value ?? new Dictionary<string, ZoneStateSnapshot>();
+    }
+    
     public PatternReliabilitySnapshot? PatternReliability { get; set; }
     public FusionStateSnapshot? FusionState { get; set; }
-    public Dictionary<string, MetricsStateSnapshot> MetricsStates { get; set; } = new();
+    
+    public Dictionary<string, MetricsStateSnapshot> MetricsStates 
+    { 
+        get => _metricsStates;
+        init => _metricsStates = value ?? new Dictionary<string, MetricsStateSnapshot>();
+    }
 }

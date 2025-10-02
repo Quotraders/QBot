@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -75,12 +76,22 @@ namespace BotCore.Services
                 
                 return frontMonth;
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "[CONTRACT-ROLLOVER] Error getting front month contract for {BaseSymbol}", baseSymbol);
+                _logger.LogError(ex, "[CONTRACT-ROLLOVER] Invalid argument getting front month contract for {BaseSymbol}", baseSymbol);
                 
                 // Return fallback
-                var fallback = _config.FrontMonthMapping.TryGetValue(baseSymbol.ToUpper(), out var fb) 
+                var fallback = _config.FrontMonthMapping.TryGetValue(baseSymbol.ToUpper(CultureInfo.InvariantCulture), out var fb) 
+                    ? fb 
+                    : $"{baseSymbol}Z25"; // Default to December 2025
+                return fallback;
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[CONTRACT-ROLLOVER] Invalid operation getting front month contract for {BaseSymbol}", baseSymbol);
+                
+                // Return fallback
+                var fallback = _config.FrontMonthMapping.TryGetValue(baseSymbol.ToUpper(CultureInfo.InvariantCulture), out var fb) 
                     ? fb 
                     : $"{baseSymbol}Z25"; // Default to December 2025
                 return fallback;
@@ -124,10 +135,15 @@ namespace BotCore.Services
                     Currency = spec.Currency
                 };
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "[CONTRACT-INFO] Error getting contract info for {ContractSymbol}", contractSymbol);
-                throw;
+                _logger.LogError(ex, "[CONTRACT-INFO] Invalid argument getting contract info for {ContractSymbol}", contractSymbol);
+                throw new InvalidOperationException($"Failed to get contract info for {contractSymbol} due to invalid argument", ex);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[CONTRACT-INFO] Invalid operation getting contract info for {ContractSymbol}", contractSymbol);
+                throw new InvalidOperationException($"Failed to get contract info for {contractSymbol}", ex);
             }
         }
 
@@ -152,9 +168,14 @@ namespace BotCore.Services
 
                 return shouldRollover;
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "[CONTRACT-ROLLOVER] Error checking rollover for {Contract}", currentContract);
+                _logger.LogError(ex, "[CONTRACT-ROLLOVER] Invalid argument checking rollover for {Contract}", currentContract);
+                return false;
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[CONTRACT-ROLLOVER] Invalid operation checking rollover for {Contract}", currentContract);
                 return false;
             }
         }
@@ -208,10 +229,15 @@ namespace BotCore.Services
                 
                 return Task.FromResult(nextContract);
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "[CONTRACT-ROLLOVER] Error getting next contract for {Current}", currentContract);
-                throw;
+                _logger.LogError(ex, "[CONTRACT-ROLLOVER] Invalid argument getting next contract for {Current}", currentContract);
+                throw new InvalidOperationException($"Failed to get next contract after {currentContract} due to invalid argument", ex);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[CONTRACT-ROLLOVER] Invalid operation getting next contract for {Current}", currentContract);
+                throw new InvalidOperationException($"Failed to get next contract after {currentContract}", ex);
             }
         }
 
@@ -255,9 +281,14 @@ namespace BotCore.Services
 
                 return activeContracts.OrderBy(c => c.ExpirationDate).ToList();
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "[CONTRACT-LIST] Error getting active contracts for {BaseSymbol}", baseSymbol);
+                _logger.LogError(ex, "[CONTRACT-LIST] Invalid argument getting active contracts for {BaseSymbol}", baseSymbol);
+                return new List<ContractInfo>();
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[CONTRACT-LIST] Invalid operation getting active contracts for {BaseSymbol}", baseSymbol);
                 return new List<ContractInfo>();
             }
         }
@@ -294,9 +325,13 @@ namespace BotCore.Services
             {
                 _logger.LogInformation("[CONTRACT-MONITOR] Contract rollover monitoring stopped");
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "[CONTRACT-MONITOR] Error in contract rollover monitoring");
+                _logger.LogError(ex, "[CONTRACT-MONITOR] Invalid argument in contract rollover monitoring");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[CONTRACT-MONITOR] Invalid operation in contract rollover monitoring");
             }
         }
 
@@ -477,7 +512,11 @@ namespace BotCore.Services
                 var expirationDate = GetContractExpirationDate(contractSymbol);
                 return Task.FromResult(expirationDate > DateTime.UtcNow);
             }
-            catch
+            catch (ArgumentException)
+            {
+                return Task.FromResult(false);
+            }
+            catch (InvalidOperationException)
             {
                 return Task.FromResult(false);
             }
@@ -510,9 +549,13 @@ namespace BotCore.Services
                     }
                 }
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "[CONTRACT-MONITOR] Error checking rollover requirements");
+                _logger.LogError(ex, "[CONTRACT-MONITOR] Invalid argument checking rollover requirements");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "[CONTRACT-MONITOR] Invalid operation checking rollover requirements");
             }
         }
 
