@@ -507,13 +507,13 @@ public class ContextVector
         {
             Features = new Dictionary<string, decimal>
             {
-                ["strategy_hash"] = (decimal)strategy.GetHashCode() / int.MaxValue,
-                ["config_hash"] = (decimal)config.GetHashCode() / int.MaxValue,
+                ["strategy_hash"] = (decimal)strategy.GetHashCode(StringComparison.Ordinal) / int.MaxValue,
+                ["config_hash"] = (decimal)config.GetHashCode(StringComparison.Ordinal) / int.MaxValue,
                 ["regime_bull"] = regime == "BULL" ? 1m : 0m,
                 ["regime_bear"] = regime == "BEAR" ? 1m : 0m,
                 ["regime_neutral"] = regime == "NEUTRAL" ? 1m : 0m,
-                ["session_morning"] = session.Contains("MORNING") ? 1m : 0m,
-                ["session_afternoon"] = session.Contains("AFTERNOON") ? 1m : 0m,
+                ["session_morning"] = session.Contains("MORNING", StringComparison.Ordinal) ? 1m : 0m,
+                ["session_afternoon"] = session.Contains("AFTERNOON", StringComparison.Ordinal) ? 1m : 0m,
                 ["atr_zscore"] = Math.Max(-AtrZScoreClippingBound, Math.Min(AtrZScoreClippingBound, atr)), // Clip to [-3, 3]
                 ["spread_bps"] = Math.Min(MaxSpreadBasisPoints, spread), // Cap at 20 bps
                 ["volume_ratio"] = Math.Min(MaxVolumeRatio, volume), // Cap at 3x normal

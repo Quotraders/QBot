@@ -167,9 +167,21 @@ public class UnifiedModelPathResolver
                 FallbackAvailable = false
             };
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "❌ [MODEL-RESOLVER] Error resolving path for: {Model}", modelIdentifier);
+            _logger.LogError(ex, "❌ [MODEL-RESOLVER] Invalid operation resolving path for: {Model}", modelIdentifier);
+            
+            return new ModelResolutionResult
+            {
+                Success = false,
+                ModelPath = null,
+                ErrorMessage = $"Path resolution error: {ex.Message}",
+                FallbackAvailable = _config.FallbackEnabled
+            };
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "❌ [MODEL-RESOLVER] Invalid argument resolving path for: {Model}", modelIdentifier);
             
             return new ModelResolutionResult
             {
@@ -225,18 +237,26 @@ public class UnifiedModelPathResolver
                     
                     models.Add(model);
                 }
-                catch (Exception ex)
+                catch (System.IO.IOException ex)
                 {
-                    _logger.LogWarning(ex, "⚠️ [MODEL-DISCOVERY] Error processing model file: {Path}", filePath);
+                    _logger.LogWarning(ex, "⚠️ [MODEL-DISCOVERY] I/O error processing model file: {Path}", filePath);
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    _logger.LogWarning(ex, "⚠️ [MODEL-DISCOVERY] Access denied processing model file: {Path}", filePath);
                 }
             }
             
             _logger.LogInformation("🔍 [MODEL-DISCOVERY] Discovered {Count} models ({Valid} valid)", 
                 models.Count, models.Count(m => m.IsValidName));
         }
-        catch (Exception ex)
+        catch (System.IO.IOException ex)
         {
-            _logger.LogError(ex, "❌ [MODEL-DISCOVERY] Error discovering models");
+            _logger.LogError(ex, "❌ [MODEL-DISCOVERY] I/O error discovering models");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "❌ [MODEL-DISCOVERY] Access denied discovering models");
         }
         
         return models;
@@ -360,7 +380,15 @@ public class UnifiedModelPathResolver
                 }
             };
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
+        {
+            return new ModelNameValidation
+            {
+                IsValid = false,
+                ValidationMessage = $"Error validating model name: {ex.Message}"
+            };
+        }
+        catch (ArgumentException ex)
         {
             return new ModelNameValidation
             {

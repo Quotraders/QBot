@@ -255,10 +255,10 @@ namespace BotCore
                 Volatility = Math.Abs((decimal)(Math.Sin(DateTime.UtcNow.Millisecond * VolatilityMultiplier) * VolatilityVariation)),
                 BidAskImbalance = (decimal)(Math.Sin(signalId.GetHashCode() * ImbalanceMultiplier) * BidAskImbalanceRange),
                 OrderBookImbalance = (decimal)(Math.Cos(signalId.GetHashCode() * ImbalanceMultiplier) * OrderBookImbalanceRange),
-                TickDirection = strategy.GetHashCode() % TickDirectionModulo == 0 ? 1m : -1m, // Up or down tick
-                SignalStrength = Math.Abs((decimal)(Math.Sin(signalId.GetHashCode()) * (double)SignalStrengthBaseMultiplier)) + SignalStrengthMinimum,
-                PriorWinRate = PriorWinRateMinimum + (decimal)(Math.Abs(Math.Sin(strategy.GetHashCode())) * (double)PriorWinRateVariation), // 45-75%
-                AvgRMultiple = AvgRMultipleMinimum + (decimal)(Math.Abs(Math.Cos(strategy.GetHashCode())) * (double)AvgRMultipleVariation), // 0.8-2.2R
+                TickDirection = strategy.GetHashCode(StringComparison.Ordinal) % TickDirectionModulo == 0 ? 1m : -1m, // Up or down tick
+                SignalStrength = Math.Abs((decimal)(Math.Sin(signalId.GetHashCode(StringComparison.Ordinal)) * (double)SignalStrengthBaseMultiplier)) + SignalStrengthMinimum,
+                PriorWinRate = PriorWinRateMinimum + (decimal)(Math.Abs(Math.Sin(strategy.GetHashCode(StringComparison.Ordinal))) * (double)PriorWinRateVariation), // 45-75%
+                AvgRMultiple = AvgRMultipleMinimum + (decimal)(Math.Abs(Math.Cos(strategy.GetHashCode(StringComparison.Ordinal))) * (double)AvgRMultipleVariation), // 0.8-2.2R
                 DrawdownRisk = 0m,
                 NewsImpact = 0m,
                 LiquidityRisk = 0m

@@ -318,7 +318,7 @@ namespace TradingBot.BotCore.Services
             {
                 return _suppressions.Exists(s => 
                     s.RuleId == ruleId && 
-                    s.FilePath.EndsWith(filePath.Replace("./", "")) &&
+                    s.FilePath.EndsWith(filePath.Replace("./", "", StringComparison.Ordinal), StringComparison.Ordinal) &&
                     Math.Abs(s.LineNumber - lineNumber) <= MaxLineNumberDrift); // Allow some line number drift
             }
         }
@@ -333,14 +333,14 @@ namespace TradingBot.BotCore.Services
         private static string ExtractRuleFromSuppressMessage(string suppressLine)
         {
             // Extract rule ID from [SuppressMessage("Category", "CA1234:...")]
-            var start = suppressLine.IndexOf('"');
+            var start = suppressLine.IndexOf('"', StringComparison.Ordinal);
             if (start >= 0)
             {
-                var end = suppressLine.IndexOf('"', start + 1);
+                var end = suppressLine.IndexOf('"', start + 1, StringComparison.Ordinal);
                 if (end > start)
                 {
                     var categoryAndRule = suppressLine.Substring(start + 1, end - start - 1);
-                    var colonIndex = categoryAndRule.IndexOf(':');
+                    var colonIndex = categoryAndRule.IndexOf(':', StringComparison.Ordinal);
                     return colonIndex > 0 ? categoryAndRule.Substring(0, colonIndex) : categoryAndRule;
                 }
             }
