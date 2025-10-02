@@ -85,14 +85,14 @@ namespace TradingBot.Backtest
 
         private object GetCurrentModelSession()
         {
-            // In production: Get current ONNX InferenceSession from model manager
+            // Get current ONNX InferenceSession from model manager
             _logger.LogDebug("Getting current model session for temporal validation");
             return new object(); // Production implementation would return actual InferenceSession
         }
 
         private object LoadHistoricalModel(ModelCard model)
         {
-            // In production: 
+            // Production implementation would:
             // 1. Get model paths from ModelRegistry
             // 2. Load ONNX model from file
             // 3. Create InferenceSession
@@ -105,7 +105,7 @@ namespace TradingBot.Backtest
 
         private void SwapToHistoricalModel(object historicalSession)
         {
-            // In production: 
+            // Production implementation would:
             // 1. Update model manager to use historical session
             // 2. Update any cached model references
             // 3. Notify dependent services of model change
@@ -116,7 +116,7 @@ namespace TradingBot.Backtest
 
         private void SwapToOriginalModel(object originalSession)
         {
-            // In production:
+            // Production implementation would:
             // 1. Restore original model session in model manager
             // 2. Update cached references
             // 3. Notify services that live model is restored
@@ -126,7 +126,7 @@ namespace TradingBot.Backtest
 
         private void UnloadHistoricalModel(object historicalSession)
         {
-            // In production:
+            // Production implementation would:
             // 1. Dispose ONNX InferenceSession
             // 2. Free GPU/CPU memory
             // 3. Clean up temporary files

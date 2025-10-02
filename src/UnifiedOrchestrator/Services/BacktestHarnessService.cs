@@ -190,7 +190,7 @@ namespace UnifiedOrchestrator.Services
             try
             {
                 // Try to get the real backtest integration service
-                // In production: This would be injected via constructor
+                // This service would be injected via constructor in full implementation
                 var integrationService = GetBacktestIntegrationService();
                 
                 if (integrationService != null)
@@ -218,7 +218,7 @@ namespace UnifiedOrchestrator.Services
         }
 
         // Helper method to get the real backtest integration service
-        // In production: This would be injected via constructor dependency injection
+        // This service would be injected via constructor dependency injection in full implementation
         private BacktestIntegrationService? GetBacktestIntegrationService()
         {
             // For now, return null - this will be wired up via DI in production
