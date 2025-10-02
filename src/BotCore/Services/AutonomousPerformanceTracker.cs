@@ -36,6 +36,14 @@ public class AutonomousPerformanceTracker
 {
     private readonly ILogger<AutonomousPerformanceTracker> _logger;
     
+    // Performance analysis constants
+    private const decimal HourlyPerformanceMultiplierThreshold = 2;
+    private const int TimeOptimizationPriority = 6;
+    private const int RiskRewardOptimizationPriority = 8;
+    private const decimal RiskRewardRatioThreshold = 1.5m;
+    private const int MinimumTradesForAnalysis = 20;
+    private const decimal SessionPerformanceThreshold = 1.5m;
+    
     // Performance tracking collections
     private readonly List<AutonomousTradeOutcome> _allTrades = new();
     private readonly Dictionary<string, List<AutonomousTradeOutcome>> _tradesByStrategy = new();
@@ -394,7 +402,7 @@ public class AutonomousPerformanceTracker
         }
     }
     
-    private decimal CalculateProfitFactor(AutonomousTradeOutcome[] winningTrades, AutonomousTradeOutcome[] losingTrades)
+    private static decimal CalculateProfitFactor(AutonomousTradeOutcome[] winningTrades, AutonomousTradeOutcome[] losingTrades)
     {
         var totalWins = winningTrades.Sum(t => t.PnL);
         var totalLosses = Math.Abs(losingTrades.Sum(t => t.PnL));
@@ -433,7 +441,7 @@ public class AutonomousPerformanceTracker
         return maxDrawdown;
     }
     
-    private decimal CalculateStandardDeviation(decimal[] values)
+    private static decimal CalculateStandardDeviation(decimal[] values)
     {
         if (values.Length <= 1) return 0m;
         
@@ -548,14 +556,16 @@ public class AutonomousPerformanceTracker
         return strategyPnL.OrderBy(kvp => kvp.Value).First().Key;
     }
     
-    private async Task<List<string>> GenerateTradingInsightsAsync(AutonomousTradeOutcome[] trades, CancellationToken cancellationToken = default)
+    private static Task<List<string>> GenerateTradingInsightsAsync(AutonomousTradeOutcome[] trades, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        
         var insights = new List<string>();
         
         if (trades.Length == 0)
         {
             insights.Add("No trades executed today");
-            return insights;
+            return Task.FromResult(insights);
         }
         
         // Performance insights
@@ -573,7 +583,7 @@ public class AutonomousPerformanceTracker
         var strategyPerformance = trades.GroupBy(t => t.Strategy)
             .ToDictionary(g => g.Key, g => g.Sum(t => t.PnL));
         
-        if (strategyPerformance.Any())
+        if (strategyPerformance.Count > 0)
         {
             var bestStrategy = strategyPerformance.OrderByDescending(kvp => kvp.Value).First();
             var worstStrategy = strategyPerformance.OrderBy(kvp => kvp.Value).First();
@@ -594,18 +604,17 @@ public class AutonomousPerformanceTracker
             var morningPnL = morningTrades.Sum(t => t.PnL);
             var afternoonPnL = afternoonTrades.Sum(t => t.PnL);
             
-            if (morningPnL > afternoonPnL * 1.5m)
+            if (morningPnL > afternoonPnL * SessionPerformanceThreshold)
             {
                 insights.Add("Morning session significantly outperformed afternoon");
             }
-            else if (afternoonPnL > morningPnL * 1.5m)
+            else if (afternoonPnL > morningPnL * SessionPerformanceThreshold)
             {
                 insights.Add("Afternoon session significantly outperformed morning");
             }
         }
         
-        await Task.CompletedTask.ConfigureAwait(false);
-        return insights;
+        return Task.FromResult(insights);
     }
     
     private List<OptimizationRecommendation> GenerateOptimizationRecommendations()
@@ -623,7 +632,7 @@ public class AutonomousPerformanceTracker
         return recommendations.OrderByDescending(r => r.Priority).ToList();
     }
     
-    private List<OptimizationRecommendation> AnalyzeStrategyForOptimization(StrategyPerformance performance)
+    private static List<OptimizationRecommendation> AnalyzeStrategyForOptimization(StrategyPerformance performance)
     {
         var recommendations = new List<OptimizationRecommendation>();
         
@@ -675,17 +684,17 @@ public class AutonomousPerformanceTracker
             .GroupBy(t => t.EntryTime.Hour)
             .ToDictionary(g => g.Key, g => g.Sum(t => t.PnL));
         
-        if (hourlyPerformance.Any())
+        if (hourlyPerformance.Count > 0)
         {
             var bestHour = hourlyPerformance.OrderByDescending(kvp => kvp.Value).First();
             var worstHour = hourlyPerformance.OrderBy(kvp => kvp.Value).First();
             
-            if (bestHour.Value > worstHour.Value * 2)
+            if (bestHour.Value > worstHour.Value * HourlyPerformanceMultiplierThreshold)
             {
                 recommendations.Add(new OptimizationRecommendation
                 {
                     Type = "TIME_OPTIMIZATION",
-                    Priority = 6,
+                    Priority = TimeOptimizationPriority,
                     Description = $"Hour {bestHour.Key} performs significantly better than hour {worstHour.Key}",
                     Action = "Focus trading activity during higher-performing hours",
                     Strategy = "ALL"
@@ -712,12 +721,12 @@ public class AutonomousPerformanceTracker
             });
         }
         
-        if (_avgLoss > _avgWin * 1.5m && _totalTrades > 20)
+        if (_avgLoss > _avgWin * RiskRewardRatioThreshold && _totalTrades > MinimumTradesForAnalysis)
         {
             recommendations.Add(new OptimizationRecommendation
             {
                 Type = "RISK_REWARD",
-                Priority = 8,
+                Priority = RiskRewardOptimizationPriority,
                 Description = "Average loss significantly exceeds average win",
                 Action = "Improve profit targets or tighten stop losses",
                 Strategy = "ALL"
