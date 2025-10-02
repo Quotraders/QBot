@@ -26,7 +26,8 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
 - **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (100%) - **VERIFIED & SECURED**
 - **Phase 2 Status**: ✅ **ACCELERATED PROGRESS** - Systematic high-priority violations elimination + critical async fixes
-  - **Current Session (Round 71-72)**: Phase 2 Priority 1 violations - 31 violations fixed across 2 files
+  - **Current Session (Round 71-73)**: Phase 2 Priority 1 violations - 47 violations fixed across 3 files
+    - Round 73: ContractRolloverService.cs (16 CA1031/S2139 violations fixed)
     - Round 72: EconomicEventManager.cs (14 CA1031/S2139 violations fixed)
     - Round 71: AtomicStatePersistence.cs (17 violations fixed)
   - **Previous Session (Round 69-70)**: Phase 1 regression fixes (5 CS errors) + Phase 2 CA1822/S2325 static methods (28 violations)
@@ -44,7 +45,75 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Current Focus**: Critical async patterns fixed! Moving to CA2007 ConfigureAwait and other Priority 1 violations
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 
-### 🔧 Round 72 - Phase 2 Priority 1: EconomicEventManager Exception Handling (Current Session)
+### 🔧 Round 73 - Phase 2 Priority 1: ContractRolloverService Exception Handling (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 12 | 0 | ContractRolloverService.cs | Replaced generic Exception catches with ArgumentException and InvalidOperationException |
+| S2139 | 4 | 0 | ContractRolloverService.cs | Added contextual information when rethrowing exceptions |
+| CA1311 | 2 | 0 | ContractRolloverService.cs | Added CultureInfo.InvariantCulture to ToUpper() calls |
+
+**Total Fixed: 16 violations (12 CA1031 + 4 S2139) + 2 CA1311 bonus fixes**
+
+**Example Patterns Applied**:
+
+**CA1031 - Business Logic Exception Handling**:
+```csharp
+// Before (Violation)
+catch (Exception ex)
+{
+    _logger.LogError(ex, "[CONTRACT-ROLLOVER] Error checking rollover for {Contract}", currentContract);
+    return false;
+}
+
+// After (Compliant)
+catch (ArgumentException ex)
+{
+    _logger.LogError(ex, "[CONTRACT-ROLLOVER] Invalid argument checking rollover for {Contract}", currentContract);
+    return false;
+}
+catch (InvalidOperationException ex)
+{
+    _logger.LogError(ex, "[CONTRACT-ROLLOVER] Invalid operation checking rollover for {Contract}", currentContract);
+    return false;
+}
+```
+
+**S2139 + CA1031 - Rethrow with Context**:
+```csharp
+// Before (Violation)
+catch (Exception ex)
+{
+    _logger.LogError(ex, "[CONTRACT-INFO] Error getting contract info for {ContractSymbol}", contractSymbol);
+    throw;
+}
+
+// After (Compliant)
+catch (ArgumentException ex)
+{
+    _logger.LogError(ex, "[CONTRACT-INFO] Invalid argument getting contract info for {ContractSymbol}", contractSymbol);
+    throw new InvalidOperationException($"Failed to get contract info for {contractSymbol} due to invalid argument", ex);
+}
+catch (InvalidOperationException ex)
+{
+    _logger.LogError(ex, "[CONTRACT-INFO] Invalid operation getting contract info for {ContractSymbol}", contractSymbol);
+    throw new InvalidOperationException($"Failed to get contract info for {contractSymbol}", ex);
+}
+```
+
+**CA1311 - Culture-Specific String Operations**:
+```csharp
+// Before (Violation)
+baseSymbol.ToUpper()
+
+// After (Compliant)
+baseSymbol.ToUpper(CultureInfo.InvariantCulture)
+```
+
+**Rationale**: Enhanced contract rollover service exception handling with precise exception types. Contract management operations use ArgumentException for invalid contract symbols/dates and InvalidOperationException for state/sequencing errors. Added proper context when rethrowing to preserve stack traces while providing domain-specific error messages. Bonus fix: Added culture-specific string operations for contract symbol normalization.
+
+---
+
+### 🔧 Round 72 - Phase 2 Priority 1: EconomicEventManager Exception Handling (Previous in Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA1031 | 12 | 0 | EconomicEventManager.cs | Replaced generic Exception catches with specific IOException, JsonException, InvalidOperationException, ArgumentException, ObjectDisposedException |
