@@ -128,7 +128,7 @@ public class SessionAwareRuntimeGates
     {
         var et = etTime ?? NowEt();
         var session = GetCurrentSession(et);
-        var tradingAllowed = await IsTradingAllowedAsync(cancellationToken).ConfigureAwait(false);
+        var tradingAllowed = await IsTradingAllowedAsync("ES", cancellationToken).ConfigureAwait(false);
         
         return new SessionStatus
         {
