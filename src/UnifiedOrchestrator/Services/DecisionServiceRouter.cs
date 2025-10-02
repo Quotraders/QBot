@@ -254,14 +254,19 @@ internal class DecisionServiceRouter
         {
             "BUY" or "LONG" => TradingAction.Buy,
             "SELL" or "SHORT" => TradingAction.Sell,
-            _ => pythonResponse.Confidence > 0.5 ? TradingAction.Buy : TradingAction.Sell // Force decision if unclear
+            "HOLD" => TradingAction.Hold,
+            _ => TradingAction.Hold // Default to HOLD instead of forcing decision
         };
         
-        // Ensure minimum viable confidence
-        var confidence = Math.Max(0.51m, (decimal)pythonResponse.Confidence);
+        // Set confidence appropriately based on action
+        var confidence = action == TradingAction.Hold ? 
+            (decimal)pythonResponse.Confidence : 
+            Math.Max(0.51m, (decimal)pythonResponse.Confidence);
         
-        // Conservative position sizing from Python service
-        var quantity = Math.Max(1m, Math.Min(3m, (decimal)(pythonResponse.Decision?.PositionSize ?? 1.0)));
+        // Conservative position sizing from Python service (only for non-Hold actions)
+        var quantity = action == TradingAction.Hold ? 
+            0m : 
+            Math.Max(1m, Math.Min(3m, (decimal)(pythonResponse.Decision?.PositionSize ?? 1.0)));
         
         return new UnifiedTradingDecision
         {

@@ -76,7 +76,7 @@ namespace StrategyAgent
                 }
 
                 // Per-strategy cooldown and duplicate suppression
-                var cooldownSec;
+                var cooldownSec = 0;
                 if (s.Extra.TryGetValue("cooldown_s", out var coolElem) && coolElem.TryGetInt32(out var c))
                     cooldownSec = Math.Max(0, c);
                 if (cooldownSec <= 0)

@@ -20,7 +20,7 @@ namespace BotCore.Utilities
         /// <returns>Configured Timer instance</returns>
         public static Timer CreateAsyncTimer(Func<Task> asyncCallback, TimeSpan dueTime, TimeSpan period)
         {
-            return new Timer(_ => _ = asyncCallback(), null, 
+            return new Timer(_ => asyncCallback(), null, 
                 (int)dueTime.TotalMilliseconds, 
                 (int)period.TotalMilliseconds);
         }

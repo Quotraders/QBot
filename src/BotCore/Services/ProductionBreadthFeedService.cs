@@ -10,6 +10,18 @@ namespace TradingBot.BotCore.Services
     /// <summary>
     /// Production implementation of IBreadthFeed with fail-closed behavior
     /// Provides market breadth data from available feeds or fails closed with telemetry
+    /// 
+    /// PRODUCTION STATUS: Intentionally DISABLED by configuration (_config.Enabled = false)
+    /// REASON: Live market breadth data feed subscription not yet licensed/available
+    /// BEHAVIOR: All IsDataAvailable() calls return false, triggering HOLD guardrail behavior
+    /// PREREQUISITE: Licensed breadth data feed required before production go/no-go
+    /// 
+    /// For production deployment with vetted breadth source integration:
+    /// 1. Secure proper licensing for live market breadth data feed
+    /// 2. Replace ComputeSyntheticAdvanceDeclineRatio() with real breadth data feed
+    /// 3. Update configuration to point to vetted breadth data provider  
+    /// 4. Implement real-time connection monitoring and failover logic
+    /// 5. Set _config.Enabled = true only after above steps completed
     /// </summary>
     public class ProductionBreadthFeedService : IBreadthFeed
     {

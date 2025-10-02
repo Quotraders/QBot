@@ -466,6 +466,12 @@ public record LinUcbConfig
 /// </summary>
 public class ContextVector
 {
+    // Feature scaling constants for strategy context normalization
+    private const decimal AtrZScoreClippingBound = 3m; // ATR Z-score clipping bounds [-3, 3]
+    private const decimal MaxSpreadBasisPoints = 20m; // Maximum spread cap in basis points
+    private const decimal MaxVolumeRatio = 3m; // Maximum volume ratio relative to normal (3x)
+    private const decimal MaxVolatilityPercent = 0.1m; // Maximum volatility percentage (10%)
+    
     public Dictionary<string, decimal> Features { get; init; } = new();
     public DateTime Timestamp { get; init; } = DateTime.UtcNow;
 
@@ -509,10 +515,10 @@ public class ContextVector
                 ["regime_neutral"] = regime == "NEUTRAL" ? 1m : 0m,
                 ["session_morning"] = session.Contains("MORNING") ? 1m : 0m,
                 ["session_afternoon"] = session.Contains("AFTERNOON") ? 1m : 0m,
-                ["atr_zscore"] = Math.Max(-3m, Math.Min(3m, atr)), // Clip to [-3, 3]
-                ["spread_bps"] = Math.Min(20m, spread), // Cap at 20 bps
-                ["volume_ratio"] = Math.Min(3m, volume), // Cap at 3x normal
-                ["volatility"] = Math.Min(0.1m, volatility) // Cap at 10%
+                ["atr_zscore"] = Math.Max(-AtrZScoreClippingBound, Math.Min(AtrZScoreClippingBound, atr)), // Clip to [-3, 3]
+                ["spread_bps"] = Math.Min(MaxSpreadBasisPoints, spread), // Cap at 20 bps
+                ["volume_ratio"] = Math.Min(MaxVolumeRatio, volume), // Cap at 3x normal
+                ["volatility"] = Math.Min(MaxVolatilityPercent, volatility) // Cap at 10%
             }
         };
     }

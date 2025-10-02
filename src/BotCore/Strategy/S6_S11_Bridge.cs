@@ -198,7 +198,7 @@ namespace BotCore.Strategy
             {
                 _logger.LogError(ex, "[S6S11_BRIDGE] ❌ Stop modification failed: PositionId={PositionId} ConfigSnapshot.Id={ConfigSnapshotId}", 
                     positionId, _configSnapshotId);
-                throw;
+                throw new InvalidOperationException($"Failed to modify stop for position {positionId} in config snapshot {_configSnapshotId}", ex);
             }
         }
 
@@ -239,7 +239,7 @@ namespace BotCore.Strategy
             {
                 _logger.LogError(ex, "[S6S11_BRIDGE] ❌ Position closure failed: PositionId={PositionId} ConfigSnapshot.Id={ConfigSnapshotId}", 
                     positionId, _configSnapshotId);
-                throw;
+                throw new InvalidOperationException($"Failed to close position {positionId} in config snapshot {_configSnapshotId}", ex);
             }
         }
 
@@ -272,7 +272,7 @@ namespace BotCore.Strategy
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[S6S11_BRIDGE] ❌ Position retrieval failed: ConfigSnapshot.Id={ConfigSnapshotId}", _configSnapshotId);
-                throw;
+                throw new InvalidOperationException($"Failed to retrieve all positions in config snapshot {_configSnapshotId}", ex);
             }
         }
 
@@ -299,7 +299,7 @@ namespace BotCore.Strategy
             {
                 _logger.LogError(ex, "[S6S11_BRIDGE] ❌ Position retrieval failed for {Instrument}: ConfigSnapshot.Id={ConfigSnapshotId}", 
                     instrument, _configSnapshotId);
-                throw;
+                throw new InvalidOperationException($"Failed to retrieve position for instrument {instrument} in config snapshot {_configSnapshotId}", ex);
             }
         }
 

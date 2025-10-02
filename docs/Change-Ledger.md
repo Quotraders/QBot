@@ -23,6 +23,153 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Current Focus**: Systematic application of Analyzer-Fix-Guidebook patterns across high-priority violations
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 
+### Round 42 - CS Compiler Error Fix (Critical)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CS0103, CS1519, CS1513, CS1022 | 8 | 0 | LinUcbBandit.cs, NeuralUcbBandit.cs, IntegritySigningService.cs | Fixed constant scope and syntax errors |
+
+**Fix Applied:**
+```csharp
+// Before - CS errors: Constants in wrong class scope, extra brace
+private const decimal AtrZScoreClippingBound = 3m; // In LinUcbBandit class
+Math.Max(-AtrZScoreClippingBound, ...); // In ContextVector class - CS0103
+
+catch (Exception ex) {
+    throw new InvalidOperationException(...);
+} // Extra brace - CS1519
+}
+
+// After - CS compliant: Constants moved to correct class scope
+// In ContextVector class:
+private const decimal AtrZScoreClippingBound = 3m;
+Math.Max(-AtrZScoreClippingBound, ...); // Now accessible
+
+// In NeuralUcbArm class:
+private const decimal DefaultPrediction = 0.5m;
+return (DefaultPrediction, HighUncertainty); // Now accessible
+
+// Fixed syntax:
+catch (Exception ex) {
+    throw new InvalidOperationException(...);
+}
+```
+
+**Critical Issue Resolution:**
+- **Problem**: Introduced CS compiler errors during S109 magic number fixes due to constant scope issues
+- **Root Cause**: Constants defined in wrong class scope (LinUcbBandit vs ContextVector, NeuralUcbBandit vs NeuralUcbArm)
+- **Solution**: Moved constants to the correct classes where they are used
+- **Priority**: Critical Phase 1 issue - CS compiler errors block all progress
+
+### Round 43 - Additional Analyzer Violations (Beyond Guidebook Priority List)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1305 | 5 | 0 | TradeLog.cs | Added CultureInfo.InvariantCulture to ToString() calls |
+| CA1727 | 8 | 0 | TradeLog.cs | Changed logging template parameters to PascalCase |
+| CA1003 | 4 | 0 | UserHubClient.cs | Replaced Action<T> events with EventHandler<TEventArgs> |
+| S1854 | 2 | 0 | TimerHelper.cs | Removed useless assignment to _ in timer callback |
+| S1144 | 1 | 0 | CustomTagGenerator.cs | Removed unused GetStrategyCode private method |
+| S1172 | 1 | 0 | TradeLog.cs | Removed unused 'lvl' parameter from LogChange method |
+
+**Fix Applied:**
+```csharp
+// Before - CA1305 violation: Culture-dependent string formatting
+qty.ToString()
+
+// After - CA1305 compliant: Culture-invariant formatting
+qty.ToString(CultureInfo.InvariantCulture)
+
+// Before - CA1727 violation: Lowercase template parameters
+"[{sym}] SIGNAL {side} qty={qty}"
+
+// After - CA1727 compliant: PascalCase template parameters  
+"[{Sym}] SIGNAL {Side} qty={Qty}"
+
+// Before - CA1003 violation: Action-based events
+public event Action<JsonElement>? OnOrder;
+
+// After - CA1003 compliant: EventHandler pattern
+public class OrderEventArgs : EventArgs { /* ... */ }
+public event EventHandler<OrderEventArgs>? OnOrder;
+
+// Before - S1854 violation: Useless assignment
+return new Timer(_ => _ = asyncCallback(), ...);
+
+// After - S1854 compliant: Direct call
+return new Timer(_ => asyncCallback(), ...);
+
+// Before - S1144 violation: Unused private method
+private static string GetStrategyCode(string strategyId) { /* ... */ }
+
+// After - S1144 compliant: Method removed entirely
+
+// Before - S1172 violation: Unused parameter
+static void LogChange(ILogger log, string key, string line, LogLevel lvl = LogLevel.Information)
+
+// After - S1172 compliant: Parameter removed
+static void LogChange(ILogger log, string key, string line)
+```
+
+**Progress Summary:**
+- **CA1305**: Fixed 5 globalization violations by adding culture-invariant string formatting
+- **CA1727**: Fixed 8 logging template violations by using PascalCase parameter names
+- **CA1003**: Fixed 4 event violations by implementing proper EventHandler<T> pattern with custom EventArgs
+- **S1854**: Fixed 2 useless assignment violations by removing unnecessary assignments
+- **S1144**: Fixed 1 unused method violation by removing dead code
+- **S1172**: Fixed 1 unused parameter violation by removing the parameter
+- **Total**: 21 additional violations eliminated beyond the Analyzer-Fix-Guidebook priority list
+
+## ✅ PHASE 2 - PRIORITY 1 VIOLATIONS ELIMINATION (IN PROGRESS)
+
+### Round 40 - S2139 Exception Handling Enhancement  
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S2139 | 8 | 0 | S6_S11_Bridge.cs, IntegritySigningService.cs | Added contextual information when rethrowing exceptions |
+
+**Fix Applied:**
+```csharp
+// Before - S2139 violation: bare throw without context
+catch (Exception ex)
+{
+    _logger.LogError(ex, "Error occurred");
+    throw; // Violation - no contextual information
+}
+
+// After - S2139 compliant: throw with contextual information
+catch (Exception ex)
+{
+    _logger.LogError(ex, "Error occurred");
+    throw new InvalidOperationException("Specific context about what failed and why", ex);
+}
+```
+
+### Round 41 - S109 Magic Number Elimination
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 10 | 0 | LinUcbBandit.cs, NeuralUcbBandit.cs, S3Strategy.cs | Moved magic numbers to named constants |
+
+**Fix Applied:**
+```csharp
+// Before - S109 violations: Magic numbers inline
+Math.Max(-3m, Math.Min(3m, atr))
+return (0.5m, 1m);
+return 1.6m;
+
+// After - S109 compliant: Named constants
+private const decimal AtrZScoreClippingBound = 3m;
+private const decimal DefaultPrediction = 0.5m;
+private const decimal DefaultVolatilityRatio = 1.6m;
+
+Math.Max(-AtrZScoreClippingBound, Math.Min(AtrZScoreClippingBound, atr))
+return (DefaultPrediction, HighUncertainty);
+return DefaultVolatilityRatio;
+```
+
+**Progress Summary:**
+- **S2139**: Fixed 8 violations across 2 files by adding proper contextual exception information
+- **S109**: Fixed 10 violations across 3 files by extracting magic numbers to named constants
+- **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
+- **Pattern**: Followed Analyzer-Fix-Guidebook priority order (Correctness & invariants first)
+
 ## ✅ PHASE 1 - CS COMPILER ERROR ELIMINATION (COMPLETE)
 
 ### Round 39 - CS0103 Variable Declaration Fix

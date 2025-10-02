@@ -157,19 +157,6 @@ namespace BotCore.Utilities
             return null;
         }
         
-        private static string GetStrategyCode(string strategyId)
-        {
-            return strategyId?.ToUpperInvariant() switch
-            {
-                "EMA" or "EMACROSS" => "EM",
-                "MACD" => "MA", 
-                "RSI" => "RS",
-                "BOLLINGER" => "BB",
-                "MEAN_REVERSION" => "MR",
-                _ => "GN" // Generic
-            };
-        }
-        
         private static string GetSymbolCode(string symbol)
         {
             return symbol?.ToUpperInvariant() switch
