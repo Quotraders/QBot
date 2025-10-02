@@ -60,6 +60,64 @@ catch (Exception ex) {
 - **Solution**: Moved constants to the correct classes where they are used
 - **Priority**: Critical Phase 1 issue - CS compiler errors block all progress
 
+### Round 43 - Additional Analyzer Violations (Beyond Guidebook Priority List)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1305 | 5 | 0 | TradeLog.cs | Added CultureInfo.InvariantCulture to ToString() calls |
+| CA1727 | 8 | 0 | TradeLog.cs | Changed logging template parameters to PascalCase |
+| CA1003 | 4 | 0 | UserHubClient.cs | Replaced Action<T> events with EventHandler<TEventArgs> |
+| S1854 | 2 | 0 | TimerHelper.cs | Removed useless assignment to _ in timer callback |
+| S1144 | 1 | 0 | CustomTagGenerator.cs | Removed unused GetStrategyCode private method |
+| S1172 | 1 | 0 | TradeLog.cs | Removed unused 'lvl' parameter from LogChange method |
+
+**Fix Applied:**
+```csharp
+// Before - CA1305 violation: Culture-dependent string formatting
+qty.ToString()
+
+// After - CA1305 compliant: Culture-invariant formatting
+qty.ToString(CultureInfo.InvariantCulture)
+
+// Before - CA1727 violation: Lowercase template parameters
+"[{sym}] SIGNAL {side} qty={qty}"
+
+// After - CA1727 compliant: PascalCase template parameters  
+"[{Sym}] SIGNAL {Side} qty={Qty}"
+
+// Before - CA1003 violation: Action-based events
+public event Action<JsonElement>? OnOrder;
+
+// After - CA1003 compliant: EventHandler pattern
+public class OrderEventArgs : EventArgs { /* ... */ }
+public event EventHandler<OrderEventArgs>? OnOrder;
+
+// Before - S1854 violation: Useless assignment
+return new Timer(_ => _ = asyncCallback(), ...);
+
+// After - S1854 compliant: Direct call
+return new Timer(_ => asyncCallback(), ...);
+
+// Before - S1144 violation: Unused private method
+private static string GetStrategyCode(string strategyId) { /* ... */ }
+
+// After - S1144 compliant: Method removed entirely
+
+// Before - S1172 violation: Unused parameter
+static void LogChange(ILogger log, string key, string line, LogLevel lvl = LogLevel.Information)
+
+// After - S1172 compliant: Parameter removed
+static void LogChange(ILogger log, string key, string line)
+```
+
+**Progress Summary:**
+- **CA1305**: Fixed 5 globalization violations by adding culture-invariant string formatting
+- **CA1727**: Fixed 8 logging template violations by using PascalCase parameter names
+- **CA1003**: Fixed 4 event violations by implementing proper EventHandler<T> pattern with custom EventArgs
+- **S1854**: Fixed 2 useless assignment violations by removing unnecessary assignments
+- **S1144**: Fixed 1 unused method violation by removing dead code
+- **S1172**: Fixed 1 unused parameter violation by removing the parameter
+- **Total**: 21 additional violations eliminated beyond the Analyzer-Fix-Guidebook priority list
+
 ## ✅ PHASE 2 - PRIORITY 1 VIOLATIONS ELIMINATION (IN PROGRESS)
 
 ### Round 40 - S2139 Exception Handling Enhancement  

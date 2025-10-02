@@ -24,35 +24,35 @@ namespace BotCore
 
         private static readonly Action<ILogger, string, string, string, string, string, Exception?> SignalLog =
             LoggerMessage.Define<string, string, string, string, string>(LogLevel.Information, new EventId(1003, nameof(Signal)), 
-                "[{sym}] SIGNAL {strat} {side} qty={qty} entry={entry}");
+                "[{Sym}] SIGNAL {Strat} {Side} qty={Qty} entry={Entry}");
 
         private static readonly Action<ILogger, string, string, string, string, Exception?> OrderNewLog =
             LoggerMessage.Define<string, string, string, string>(LogLevel.Information, new EventId(1004, nameof(OrderNew)), 
-                "[{sym}] ORDER NEW {side} qty={qty} px={px}");
+                "[{Sym}] ORDER NEW {Side} qty={Qty} px={Px}");
 
         private static readonly Action<ILogger, string, string, string, string, string, Exception?> FillLog =
             LoggerMessage.Define<string, string, string, string, string>(LogLevel.Information, new EventId(1005, nameof(Fill)), 
-                "[{sym}] FILL {side} qty={qty} px={px} pos={pos}");
+                "[{Sym}] FILL {Side} qty={Qty} px={Px} pos={Pos}");
 
         private static readonly Action<ILogger, string, string, Exception?> StopNewLog =
             LoggerMessage.Define<string, string>(LogLevel.Information, new EventId(1006, nameof(StopNew)), 
-                "[{sym}] STOP NEW {stop}");
+                "[{Sym}] STOP NEW {Stop}");
 
         private static readonly Action<ILogger, string, string, string, Exception?> StopMoveLog =
             LoggerMessage.Define<string, string, string>(LogLevel.Information, new EventId(1007, nameof(StopMove)), 
-                "[{sym}] STOP MOVE {stop} {reason}");
+                "[{Sym}] STOP MOVE {Stop} {Reason}");
 
         private static readonly Action<ILogger, string, string, string, Exception?> StopHitLog =
             LoggerMessage.Define<string, string, string>(LogLevel.Information, new EventId(1008, nameof(StopHit)), 
-                "[{sym}] STOP HIT qty={qty} px={px}");
+                "[{Sym}] STOP HIT qty={Qty} px={Px}");
 
         private static readonly Action<ILogger, string, string, Exception?> TargetNewLog =
             LoggerMessage.Define<string, string>(LogLevel.Information, new EventId(1009, nameof(TargetNew)), 
-                "[{sym}] TARGET NEW {t1}");
+                "[{Sym}] TARGET NEW {T1}");
 
         private static readonly Action<ILogger, string, string, string, Exception?> ExitLog =
             LoggerMessage.Define<string, string, string>(LogLevel.Information, new EventId(1010, nameof(Exit)), 
-                "[{sym}] EXIT qty={qty} px={px}");
+                "[{Sym}] EXIT qty={Qty} px={Px}");
 
         private static readonly Action<ILogger, string, string, string, Exception?> HeartbeatLog =
             LoggerMessage.Define<string, string, string>(LogLevel.Information, new EventId(1011, nameof(Heartbeat)), 
@@ -69,7 +69,7 @@ namespace BotCore
         static string Fpn(decimal v) => v.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
 
         static readonly ConcurrentDictionary<string, string> _last = new();
-        static void LogChange(ILogger log, string key, string line, LogLevel lvl = LogLevel.Information)
+        static void LogChange(ILogger log, string key, string line)
         {
             if (_last.TryGetValue(key, out var prev) && prev == line) return;
             _last[key] = line;
@@ -80,13 +80,13 @@ namespace BotCore
             SessionLog(log, mode, acct, string.Join(",", syms), null);
 
         public static void Signal(ILogger log, string sym, string strat, string side, int qty, decimal entry, decimal stop, decimal target, string reason, string tag)
-            => SignalLog(log, sym, strat, side, qty.ToString(), Fpx(sym, entry), null);
+            => SignalLog(log, sym, strat, side, qty.ToString(CultureInfo.InvariantCulture), Fpx(sym, entry), null);
 
         public static void OrderNew(ILogger log, string sym, string side, int qty, decimal px, string tag)
-            => OrderNewLog(log, sym, side, qty.ToString(), Fpx(sym, px), null);
+            => OrderNewLog(log, sym, side, qty.ToString(CultureInfo.InvariantCulture), Fpx(sym, px), null);
 
         public static void Fill(ILogger log, string sym, string side, int qty, decimal px, int pos, decimal avg, decimal mark, decimal uPnL, decimal rPnL, string tag)
-            => FillLog(log, sym, side, qty.ToString(), Fpx(sym, px), pos.ToString(), null);
+            => FillLog(log, sym, side, qty.ToString(CultureInfo.InvariantCulture), Fpx(sym, px), pos.ToString(CultureInfo.InvariantCulture), null);
 
         public static void StopNew(ILogger log, string sym, decimal stop, string tag)
             => StopNewLog(log, sym, Fpx(sym, stop), null);
@@ -95,7 +95,7 @@ namespace BotCore
             => StopMoveLog(log, sym, Fpx(sym, stop), reason, null);
 
         public static void StopHit(ILogger log, string sym, int qty, decimal px, int pos, decimal rPnL, string tag)
-            => StopHitLog(log, sym, qty.ToString(), Fpx(sym, px), null);
+            => StopHitLog(log, sym, qty.ToString(CultureInfo.InvariantCulture), Fpx(sym, px), null);
 
         public static void TargetNew(ILogger log, string sym, decimal t1, string tag)
             => TargetNewLog(log, sym, Fpx(sym, t1), null);
