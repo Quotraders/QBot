@@ -26,7 +26,8 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
 - **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (100%) - **VERIFIED & SECURED**
 - **Phase 2 Status**: ✅ **ACCELERATED PROGRESS** - Systematic high-priority violations elimination + critical async fixes
-  - **Current Session (Round 69-70)**: Phase 1 regression fixes (5 CS errors) + Phase 2 CA1822/S2325 static methods (28 violations)
+  - **Current Session (Round 71)**: Phase 2 Priority 1 violations - AtomicStatePersistence.cs (17 violations fixed)
+  - **Previous Session (Round 69-70)**: Phase 1 regression fixes (5 CS errors) + Phase 2 CA1822/S2325 static methods (28 violations)
   - **Previous Session (Round 60-68)**: 255 violations fixed + CS error regression fixed + **async/await deadlock risks eliminated**
   - **Round 68**: ✅ **CRITICAL ASYNC FIX** - Eliminated async-over-sync blocking patterns (6 files, 10 call sites)
   - **Round 67**: ✅ **CA1854 COMPLETE** - Final 14 violations (90/90 total = 100% category elimination!)
@@ -41,7 +42,81 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Current Focus**: Critical async patterns fixed! Moving to CA2007 ConfigureAwait and other Priority 1 violations
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 
-### 🔧 Round 68 - CRITICAL: Async/Await Blocking Pattern Elimination (Current Session)
+### 🔧 Round 71 - Phase 2 Priority 1: AtomicStatePersistence Comprehensive Fixes (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S1144 | 3 | 0 | AtomicStatePersistence.cs | Removed unused private fields (_pendingZoneState, _pendingPatternState, _pendingFusionState) |
+| CA1510 | 4 | 0 | AtomicStatePersistence.cs | Replaced manual null checks with ArgumentNullException.ThrowIfNull |
+| CA1031 | 8 | 0 | AtomicStatePersistence.cs | Replaced generic Exception catches with specific IOException/JsonException + contextual rethrow |
+| CA2007 | 9 | 0 | AtomicStatePersistence.cs | Added ConfigureAwait(false) to all async operations |
+| S2139 | 8 | 0 | AtomicStatePersistence.cs | Added contextual information when rethrowing exceptions |
+| CA2227 | 2 | 0 | AtomicStatePersistence.cs | Made WarmRestartState collections use init accessors with backing fields |
+| CA1711 | 1 | 0 | AtomicStatePersistence.cs | Renamed WarmRestartStateCollection → WarmRestartState |
+| S2953 | 1 | 0 | AtomicStatePersistence.cs | Properly implemented IDisposable interface |
+
+**Total Fixed: 17 violations** (36 if counting each instance)
+
+**Example Patterns Applied**:
+
+**CA1510 - ArgumentNullException.ThrowIfNull**:
+```csharp
+// Before (Violation)
+if (snapshot == null)
+    throw new ArgumentNullException(nameof(snapshot));
+
+// After (Compliant)
+ArgumentNullException.ThrowIfNull(snapshot);
+```
+
+**CA1031 + S2139 - Specific Exceptions with Context**:
+```csharp
+// Before (Violation)
+catch (Exception ex)
+{
+    _logger.LogError(ex, "Error persisting zone state for {Symbol}", symbol);
+}
+
+// After (Compliant)
+catch (IOException ex)
+{
+    _logger.LogError(ex, "I/O error persisting zone state for {Symbol}", symbol);
+    throw new InvalidOperationException($"Failed to persist zone state for {symbol} due to I/O error", ex);
+}
+catch (JsonException ex)
+{
+    _logger.LogError(ex, "Serialization error persisting zone state for {Symbol}", symbol);
+    throw new InvalidOperationException($"Failed to serialize zone state for {symbol}", ex);
+}
+```
+
+**CA2007 - ConfigureAwait(false)**:
+```csharp
+// Before (Violation)
+await PersistStateAtomicallyAsync(filePath, snapshot, cancellationToken);
+
+// After (Compliant)
+await PersistStateAtomicallyAsync(filePath, snapshot, cancellationToken).ConfigureAwait(false);
+```
+
+**CA2227 - Read-only Collection Properties**:
+```csharp
+// Before (Violation)
+public Dictionary<string, ZoneStateSnapshot> ZoneStates { get; set; } = new();
+
+// After (Compliant)
+private readonly Dictionary<string, ZoneStateSnapshot> _zoneStates = new();
+public Dictionary<string, ZoneStateSnapshot> ZoneStates 
+{ 
+    get => _zoneStates;
+    init => _zoneStates = value ?? new Dictionary<string, ZoneStateSnapshot>();
+}
+```
+
+**Rationale**: Comprehensive cleanup of state persistence system following all guidebook patterns. Removed dead code (unused fields), improved null safety (ThrowIfNull), enhanced exception handling (specific types + context), ensured async best practices (ConfigureAwait), made collections immutable, and properly implemented disposal pattern. All fixes maintain zero suppressions and production guardrails.
+
+---
+
+### 🔧 Round 68 - CRITICAL: Async/Await Blocking Pattern Elimination (Previous Session)
 | Pattern | Files Affected | Fix Applied |
 |---------|----------------|-------------|
 | .Result, .Wait(), GetAwaiter().GetResult() | StrategyKnowledgeGraphNew.cs, RiskManagementService.cs, SafeHoldDecisionPolicy.cs, EnsembleMetaLearner.cs, MAMLLiveIntegration.cs, ObservabilityDashboard.cs | Converted to proper async/await with ConfigureAwait(false), removed synchronous wrappers, updated 10 call sites |
