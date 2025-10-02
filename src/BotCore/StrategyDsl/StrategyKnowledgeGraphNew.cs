@@ -117,6 +117,36 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
         };
     }
 
+    private double GetPatternScore(string symbol, bool bullish)
+    {
+        // Synchronous wrapper with timeout to avoid deadlocks
+        // This is called from synchronous feature bus Get() method
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            var task = GetPatternScoreAsync(symbol, bullish, cts.Token);
+            if (task.Wait(TimeSpan.FromSeconds(2)))
+            {
+                return task.Result;
+            }
+            else
+            {
+                // Timeout - fall back to feature bus
+                return bullish 
+                    ? _featureBus.Probe(symbol, "pattern.bull_score") ?? DefaultPatternScoreThreshold
+                    : _featureBus.Probe(symbol, "pattern.bear_score") ?? DefaultPatternScoreThreshold;
+            }
+        }
+        catch (AggregateException ex)
+        {
+            _logger.LogWarning(ex.InnerException ?? ex, "Error getting pattern score synchronously for {Symbol}, bullish={Bullish}", symbol, bullish);
+            // Fall back to feature bus
+            return bullish 
+                ? _featureBus.Probe(symbol, "pattern.bull_score") ?? DefaultPatternScoreThreshold
+                : _featureBus.Probe(symbol, "pattern.bear_score") ?? DefaultPatternScoreThreshold;
+        }
+    }
+
     private static bool IsMarketMicrostructureFeature(string key)
     {
         return key is "vdc" or "mom.zscore" or "pullback.at_risk" or "climax.volume_thrust" or 
@@ -253,6 +283,7 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
 public interface IRegimeService
 {
     RegimeType GetRegime(string symbol);
+    Task<RegimeType> GetRegimeAsync(string symbol, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -303,10 +334,8 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
         if (string.IsNullOrWhiteSpace(symbol))
             throw new ArgumentException("Symbol cannot be null or empty", nameof(symbol));
 
-        // Strategy evaluation is synchronous for performance, with async capability available
-        await Task.CompletedTask.ConfigureAwait(false);
-
-        var regime = _regimes.GetRegime(symbol);
+        // Get current regime asynchronously to avoid blocking
+        var regime = await _regimes.GetRegimeAsync(symbol, cancellationToken).ConfigureAwait(false);
         var list = new List<BotCore.Strategy.StrategyRecommendation>();
 
         _logger.LogDebug("Evaluating {StrategyCount} strategies for {Symbol} in regime {Regime}", 
@@ -396,11 +425,31 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
         return ranked;
     }
 
-    // Removed synchronous wrapper - use EvaluateAsync instead to prevent deadlocks
-    // public IReadOnlyList<BotCore.Strategy.StrategyRecommendation> Evaluate(string symbol, DateTime utc)
-    // {
-    //     return EvaluateAsync(symbol, utc, CancellationToken.None).GetAwaiter().GetResult();
-    // }
+    public IReadOnlyList<BotCore.Strategy.StrategyRecommendation> Evaluate(string symbol, DateTime utc)
+    {
+        // Synchronous wrapper for backward compatibility with interface requirement
+        // Uses timeout-based approach to avoid indefinite blocking
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var task = EvaluateAsync(symbol, utc, cts.Token);
+            // Use Wait with timeout to avoid deadlock in synchronous context
+            if (task.Wait(TimeSpan.FromSeconds(5)))
+            {
+                return task.Result;
+            }
+            else
+            {
+                _logger.LogWarning("Timeout in synchronous Evaluate for {Symbol}, returning empty recommendations", symbol);
+                return Array.Empty<BotCore.Strategy.StrategyRecommendation>();
+            }
+        }
+        catch (AggregateException ex)
+        {
+            _logger.LogError(ex.InnerException ?? ex, "Error in synchronous Evaluate for {Symbol}, returning empty recommendations", symbol);
+            return Array.Empty<BotCore.Strategy.StrategyRecommendation>();
+        }
+    }
 
     private static bool EvaluateRegimeFilter(DslStrategy card, RegimeType regime)
     {
@@ -623,6 +672,37 @@ public sealed class ProductionRegimeService : IRegimeService
                 _logger.LogError(ex, "Invalid argument detecting regime for {Symbol}, using cached value {Regime}", symbol, _lastRegime);
                 return _lastRegime;
             }
+    }
+
+    public RegimeType GetRegime(string symbol)
+    {
+        // Synchronous wrapper for backward compatibility
+        // Uses cached value if available, otherwise performs async detection with timeout
+        if (DateTime.UtcNow - _lastUpdate < _cacheTime)
+        {
+            return _lastRegime;
+        }
+
+        // For legacy synchronous callers, use a timeout-based approach
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            var task = GetRegimeAsync(symbol, cts.Token);
+            // Use ConfigureAwait(false) and Wait with timeout to avoid deadlock
+            if (task.Wait(TimeSpan.FromSeconds(2)))
+            {
+                return task.Result;
+            }
+            else
+            {
+                _logger.LogWarning("Timeout in synchronous GetRegime for {Symbol}, using cached value {Regime}", symbol, _lastRegime);
+                return _lastRegime;
+            }
+        }
+        catch (AggregateException ex)
+        {
+            _logger.LogError(ex.InnerException ?? ex, "Error in synchronous GetRegime for {Symbol}, using cached value {Regime}", symbol, _lastRegime);
+            return _lastRegime;
         }
     }
 
