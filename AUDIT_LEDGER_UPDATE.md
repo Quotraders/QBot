@@ -17,7 +17,7 @@
 
 **Audit Items Completed:**
 1. ✅ **ModelRotationService**: RegimeDetectionService integration
-2. ⚠️ **ProductionBreadthFeedService**: SKIPPED (guidance obsolete - service not in use)
+2. ⚠️ **ProductionBreadthFeedService**: INTENTIONALLY DISABLED - Live breadth feed not licensed yet (PRODUCTION PREREQUISITE)
 3. ✅ **ProductionGuardrailOrchestrator**: Already implemented
 4. ✅ **ProductionKillSwitchService**: Already implemented  
 5. ✅ **EmergencyStopSystem**: Kill file creation added

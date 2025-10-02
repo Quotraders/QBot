@@ -73,7 +73,13 @@ dotnet run --project SimpleBot/SimpleBot.csproj
 dotnet restore     # ✅ VERIFIED WORKING
 dotnet build       # ✅ VERIFIED WORKING
 
-# 3. Health Check
+# 3. Market Data Dependencies (PRODUCTION PREREQUISITE)
+- [ ] **Live Breadth Data Feed License**: ProductionBreadthFeedService currently DISABLED
+      Requires licensed market breadth data subscription before production go-live
+      Current: Service returns false for all IsDataAvailable() calls (triggers HOLD)
+      Action: Secure breadth data feed license and configure _config.Enabled = true
+
+# 4. Health Check
 dotnet run --project SimpleBot/SimpleBot.csproj  # ✅ VERIFIED WORKING
 ```
 
@@ -126,8 +132,9 @@ dotnet run --project SimpleBot/SimpleBot.csproj  # ✅ VERIFIED WORKING
 
 ### 🟡 CONDITIONAL GO - Full Trading System
 - **Requirements**: Complete TopstepX integration testing
-- **Prerequisites**: Live API credentials, comprehensive DRY_RUN testing
+- **Prerequisites**: Live API credentials, comprehensive DRY_RUN testing, licensed breadth data feed
 - **Risk Level**: Medium (requires additional validation)
+- **Blocking Dependencies**: ProductionBreadthFeedService requires licensed market breadth subscription
 
 ### ❌ NO-GO Conditions
 - Build errors or warnings during startup
