@@ -1,5 +1,19 @@
 # CI Pipeline Updates for TopstepX SDK Integration
 
+**⚠️ DEPLOYMENT REQUIREMENTS VALIDATION:**
+
+Before deploying to production environments, ensure:
+
+1. **CUDA GPU Support**: Microsoft.ML.OnnxRuntime.Gpu package requires CUDA runtime
+   - Verify target deployment environments have CUDA 11.x or 12.x installed
+   - Test GPU-accelerated ONNX model inference in staging environments
+   - Fallback to CPU-only Microsoft.ML.OnnxRuntime if GPU unavailable
+
+2. **Private Python Wheel Access**: project-x-py[all] is a private dependency
+   - Ensure CI/deployment environments have access to private PyPI index or wheel files
+   - Validate authentication credentials for accessing project-x-py packages
+   - Test pip install with appropriate index-url or find-links configurations
+
 Add the following to your CI pipeline configuration:
 
 ## GitHub Actions (.github/workflows/topstepx-integration.yml)

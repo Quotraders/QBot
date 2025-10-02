@@ -10,6 +10,12 @@ namespace TradingBot.BotCore.Services
     /// <summary>
     /// Production implementation of IBreadthFeed with fail-closed behavior
     /// Provides market breadth data from available feeds or fails closed with telemetry
+    /// 
+    /// NOTE: Currently generates synthetic breadth metrics based on market patterns.
+    /// For production deployment with vetted breadth source integration:
+    /// 1. Replace ComputeSyntheticAdvanceDeclineRatio() with real breadth data feed
+    /// 2. Update configuration to point to vetted breadth data provider
+    /// 3. Implement real-time connection monitoring and failover logic
     /// </summary>
     public class ProductionBreadthFeedService : IBreadthFeed
     {

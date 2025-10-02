@@ -33,8 +33,6 @@ namespace BotCore.Services;
 public class UnifiedDecisionRouter
 {
     // Trading analysis constants
-    private const double RSI_OVERSOLD_THRESHOLD = 40;       // RSI level indicating oversold condition
-    private const double RSI_OVERBOUGHT_THRESHOLD = 60;     // RSI level indicating overbought condition
     private const int MAX_DECISION_HISTORY = 1000;          // Maximum decisions to retain in memory
     
     // Trading schedule constants (UTC hours)
@@ -177,16 +175,17 @@ public class UnifiedDecisionRouter
                 return decision4;
             }
             
-            // Step 4: ULTIMATE FALLBACK - Force BUY/SELL based on market conditions
-            var forcedDecision = CreateForceDecision(symbol, marketContext);
-            forcedDecision.DecisionId = decisionId;
-            forcedDecision.DecisionSource = "ForcedDecision";
-            forcedDecision.ProcessingTimeMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            // Step 4: ULTIMATE FALLBACK - Stand down when all brains return HOLD
+            // This ensures upstream failures are not masked by forcing arbitrary decisions
+            var standdownDecision = CreateStanddownDecision(symbol);
+            standdownDecision.DecisionId = decisionId;
+            standdownDecision.DecisionSource = "SystemStanddown";
+            standdownDecision.ProcessingTimeMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
             
-            await TrackDecisionAsync(forcedDecision, "forced_decision").ConfigureAwait(false);
-            _logger.LogWarning("⚠️ [FORCED-DECISION] All brains returned HOLD, forcing: {Action} {Symbol}",
-                forcedDecision.Action, symbol);
-            return forcedDecision;
+            await TrackDecisionAsync(standdownDecision, "system_standdown").ConfigureAwait(false);
+            _logger.LogWarning("⚠️ [SYSTEM-STANDDOWN] All brains returned HOLD, standing down for: {Symbol}",
+                symbol);
+            return standdownDecision;
         }
         catch (Exception ex)
         {
@@ -338,30 +337,22 @@ public class UnifiedDecisionRouter
     }
     
     /// <summary>
-    /// Create forced decision based on market conditions - NEVER RETURNS HOLD
+    /// Create standdown decision when all brains return HOLD - allows system to stand down gracefully
     /// </summary>
-    private static UnifiedTradingDecision CreateForceDecision(string symbol, TradingBot.Abstractions.MarketContext marketContext)
+    private static UnifiedTradingDecision CreateStanddownDecision(string symbol)
     {
-        // Analyze market conditions to determine direction
-        var marketAnalysis = AnalyzeMarketConditions(marketContext);
-        
-        // Force a decision based on market analysis
-        var action = marketAnalysis.IsUptrend ? TradingAction.Buy : TradingAction.Sell;
-        var confidence = Math.Max(0.51m, marketAnalysis.Strength); // Minimum viable confidence
-        
         return new UnifiedTradingDecision
         {
             Symbol = symbol,
-            Action = action,
-            Confidence = confidence,
-            Quantity = 1m, // Conservative size for forced decisions
-            Strategy = "FORCED_" + (action == TradingAction.Buy ? "BUY" : "SELL"),
+            Action = TradingAction.Hold,
+            Confidence = 0m, // No confidence for standdown
+            Quantity = 0m, // No quantity for standdown
+            Strategy = "SYSTEM_STANDDOWN",
             Reasoning = new Dictionary<string, object>
             {
-                ["source"] = "Forced decision - all brains returned HOLD",
-                ["market_analysis"] = marketAnalysis,
-                ["confidence_boost"] = "Applied minimum viable confidence",
-                ["safety"] = "Conservative 1 contract sizing"
+                ["source"] = "System standdown - all brains returned HOLD",
+                ["safety"] = "Standing down prevents masking upstream failures",
+                ["action"] = "No trading action taken"
             },
             Timestamp = DateTime.UtcNow
         };
@@ -394,39 +385,6 @@ public class UnifiedDecisionRouter
     /// <summary>
     /// Analyze market conditions for forced decision making
     /// </summary>
-    private static MarketAnalysis AnalyzeMarketConditions(TradingBot.Abstractions.MarketContext context)
-    {
-        var analysis = new MarketAnalysis();
-        
-        // Simple trend analysis
-        if (context.TechnicalIndicators.TryGetValue("rsi", out var rsi))
-        {
-            if (rsi < RSI_OVERSOLD_THRESHOLD) analysis.Signals.Add("oversold");
-            else if (rsi > RSI_OVERBOUGHT_THRESHOLD) analysis.Signals.Add("overbought");
-        }
-        
-        if (context.TechnicalIndicators.TryGetValue("macd", out var macd))
-        {
-            if (macd > 0) analysis.Signals.Add("macd_bullish");
-            else analysis.Signals.Add("macd_bearish");
-        }
-        
-        if (context.TechnicalIndicators.TryGetValue("volatility", out var vol))
-        {
-            if (vol > 0.2) analysis.Signals.Add("high_volatility");
-            else if (vol < 0.1) analysis.Signals.Add("low_volatility");
-        }
-        
-        // Determine overall bias
-        var bullishSignals = analysis.Signals.Count(s => s.Contains("bullish") || s.Contains("oversold"));
-        var bearishSignals = analysis.Signals.Count(s => s.Contains("bearish") || s.Contains("overbought"));
-        
-        analysis.IsUptrend = bullishSignals >= bearishSignals;
-        analysis.Strength = Math.Max(0.51m, Math.Min(0.75m, 0.5m + Math.Abs(bullishSignals - bearishSignals) * 0.1m));
-        
-        return analysis;
-    }
-    
     /// <summary>
     /// Track decision for learning and performance analysis
     /// </summary>
