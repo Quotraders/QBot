@@ -301,9 +301,17 @@ namespace BotCore
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (JsonException ex)
                     {
-                        log.LogWarning("[RL] Failed to process file {File}: {Error}", file, ex.Message);
+                        log.LogWarning("[RL] Failed to parse JSON in file {File}: {Error}", file, ex.Message);
+                    }
+                    catch (IOException ex)
+                    {
+                        log.LogWarning("[RL] Failed to read file {File}: {Error}", file, ex.Message);
+                    }
+                    catch (UnauthorizedAccessException ex)
+                    {
+                        log.LogWarning("[RL] Access denied to file {File}: {Error}", file, ex.Message);
                     }
                 }
                 
@@ -314,10 +322,20 @@ namespace BotCore
                 log.LogInformation("[RL] Training data exported to {Path} with {Count} records", outputPath, recordCount);
                 return outputPath;
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                log.LogError(ex, "[RL] Failed to export training data");
-                throw;
+                log.LogError(ex, "[RL] Failed to export training data - IO error during file operations");
+                throw new InvalidOperationException("Training data export failed due to file system error", ex);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                log.LogError(ex, "[RL] Failed to export training data - access denied to output path");
+                throw new InvalidOperationException("Training data export failed due to insufficient permissions", ex);
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                log.LogError(ex, "[RL] Failed to export training data - directory not found");
+                throw new InvalidOperationException("Training data export failed due to missing directory", ex);
             }
         }
 
@@ -355,9 +373,17 @@ namespace BotCore
                 // Return CSV line with proper escaping
                 return $"{timestamp},{strategy},{signalId},{session},{regime},{price},{baselineMultiplier},{atr},{rsi},{ema20},{ema50},{volume},{spread},{volatility},{bidAskImbalance},{orderBookImbalance},{tickDirection},{signalStrength},{priorWinRate},{avgRMultiple},{outcome},{actualRMultiple}";
             }
-            catch
+            catch (JsonException)
             {
-                return string.Empty; // Return empty string on parse error
+                return string.Empty; // Return empty string on JSON parse error
+            }
+            catch (InvalidOperationException)
+            {
+                return string.Empty; // Return empty string on data conversion error  
+            }
+            catch (FormatException)
+            {
+                return string.Empty; // Return empty string on number format error
             }
         }
     }

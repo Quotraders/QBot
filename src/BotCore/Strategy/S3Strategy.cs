@@ -33,6 +33,19 @@ namespace BotCore.Strategy
         private const int DefaultKeltnerLookbackBars = 60; // Lookback period for Keltner channel calculations
         private const decimal DefaultVolatilityRatio = 1.6m; // Default volatility ratio when no data available
         
+        // Factor calculation constants
+        private const decimal MinimumFactorClamp = 0.8m; // Minimum factor value for clamping
+        private const decimal MaximumFactorClamp = 2.5m; // Maximum factor value for clamping
+        private const decimal DefaultEsTickSize = 0.25m; // Default ES tick size for unknown symbols
+        
+        // Time-based trading constants
+        private const int RthOpenStartMinute = 570; // RTH open start (9:30 AM in minutes from midnight)
+        private const int RthOpenEndMinute = 630; // RTH open end (10:30 AM in minutes from midnight)
+        private const int MaxLookbackBarsForNews = 7; // Maximum bars to look back for news impact
+        
+        // Strategy-specific constants  
+        private const int SegmentLengthBars = 3; // Number of bars in a segment for analysis
+        
         private static readonly ConcurrentDictionary<string, SegmentState> _segState = new(StringComparer.OrdinalIgnoreCase);
         private static readonly ConcurrentDictionary<(string Sym, DateOnly Day, string Sess, Side Side), int> _attempts = new();
         private static readonly TimeSpan OvernightWinStart = new(2, 55, 0);
@@ -279,7 +292,7 @@ namespace BotCore.Strategy
             }
 
             // Impulse
-            var impulseScore = ImpulseScore(bars, 3) / boxW;
+            var impulseScore = ImpulseScore(bars, SegmentLengthBars) / boxW;
             if (impulseScore < cfg.ImpulseScoreMin) { Reject("impulse_low"); return lst; }
 
             // Buffers
@@ -599,7 +612,7 @@ namespace BotCore.Strategy
             if (trs.Count == 0 || boxW <= 0) return DefaultVolatilityRatio;
             var q = Quantile(trs, qLevel);
             var factor = q / Math.Max(1e-9m, boxW / 2m);
-            return Math.Clamp(factor, 0.8m, 2.5m);
+            return Math.Clamp(factor, MinimumFactorClamp, MaximumFactorClamp);
         }
         private static bool InNewsWindow(DateTime nowLocal, int[] onMinutes, int beforeMin, int afterMin)
         {
@@ -645,12 +658,12 @@ namespace BotCore.Strategy
             catch (ArgumentException)
             {
                 // Unknown symbol, use ES default
-                return 0.25m;
+                return DefaultEsTickSize;
             }
             catch (InvalidOperationException)
             {
                 // Instrument metadata unavailable, use ES default  
-                return 0.25m;
+                return DefaultEsTickSize;
             }
         }
         private static bool CanAttempt(string sym, string sess, Side side, int cap)
@@ -675,7 +688,7 @@ namespace BotCore.Strategy
             // Simple hourly adaptation: slightly tighter just after RTH open
             var minuteOfDay = local.Hour * 60 + local.Minute;
             // Tighten by 0.02 between 09:30-10:30, otherwise base
-            if (minuteOfDay >= 570 && minuteOfDay <= 630) return Math.Max(MinimumRankThreshold, baseRank - PostOpenTighteningAdjustment);
+            if (minuteOfDay >= RthOpenStartMinute && minuteOfDay <= RthOpenEndMinute) return Math.Max(MinimumRankThreshold, baseRank - PostOpenTighteningAdjustment);
             return baseRank;
         }
 
@@ -830,7 +843,7 @@ namespace BotCore.Strategy
                     foreach (var b in bases.Distinct())
                     {
                         var dir = new DirectoryInfo(b);
-                        for (int i = 0; i < 7 && dir != null; i++, dir = dir.Parent)
+                        for (int i = 0; i < MaxLookbackBarsForNews && dir != null; i++, dir = dir.Parent)
                         {
                             var c1 = Path.Combine(dir.FullName, "src", "BotCore", "Strategy", "S3-StrategyConfig.json");
                             var c2 = Path.Combine(dir.FullName, "BotCore", "Strategy", "S3-StrategyConfig.json");

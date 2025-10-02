@@ -93,14 +93,36 @@ namespace BotCore.Services
                     IsStale = IsModernDataStale(snapshot)
                 };
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
             {
                 LogModernZoneDataError(_logger, symbol, ex);
                 return new ZoneProviderResult
                 {
                     Source = ZoneSource.Modern,
                     IsStale = true,
-                    ErrorReason = ex.Message,
+                    ErrorReason = $"Invalid symbol argument: {ex.Message}",
+                    Timestamp = startTime
+                };
+            }
+            catch (InvalidOperationException ex)
+            {
+                LogModernZoneDataError(_logger, symbol, ex);
+                return new ZoneProviderResult
+                {
+                    Source = ZoneSource.Modern,
+                    IsStale = true,
+                    ErrorReason = $"Zone service unavailable: {ex.Message}",
+                    Timestamp = startTime
+                };
+            }
+            catch (TimeoutException ex)
+            {
+                LogModernZoneDataError(_logger, symbol, ex);
+                return new ZoneProviderResult
+                {
+                    Source = ZoneSource.Modern,
+                    IsStale = true,
+                    ErrorReason = $"Zone data timeout: {ex.Message}",
                     Timestamp = startTime
                 };
             }

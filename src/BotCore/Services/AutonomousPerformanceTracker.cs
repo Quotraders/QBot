@@ -43,6 +43,7 @@ public class AutonomousPerformanceTracker
     private const decimal RiskRewardRatioThreshold = 1.5m;
     private const int MinimumTradesForAnalysis = 20;
     private const decimal SessionPerformanceThreshold = 1.5m;
+    private const int RiskManagementOptimizationPriority = 10; // Priority for high drawdown risk management
     
     // Performance tracking collections
     private readonly List<AutonomousTradeOutcome> _allTrades = new();
@@ -714,7 +715,7 @@ public class AutonomousPerformanceTracker
             recommendations.Add(new OptimizationRecommendation
             {
                 Type = "RISK_MANAGEMENT",
-                Priority = 10,
+                Priority = RiskManagementOptimizationPriority,
                 Description = $"High maximum drawdown: ${_maxDrawdown:F2}",
                 Action = "Reduce position sizes or improve stop loss management",
                 Strategy = "ALL"
