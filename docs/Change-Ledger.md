@@ -21,7 +21,31 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Current Focus**: Priority 1 violations (correctness & invariants) - S1144, CA2227, CA1002, CA1031
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 
-### Round 53 - Critical CS Compiler Error Fix (Current Session)
+### Round 54 - CA1707 Naming Convention Compliance (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1707 | 94 | 84 | UnifiedTradingBrain.cs | Renamed 19 public constants from SCREAMING_SNAKE_CASE to PascalCase per C# naming conventions |
+
+**Example Pattern - Naming Convention Fix**:
+```csharp
+// Before (Violation) - C-style constant naming
+public const decimal ACCOUNT_SIZE = 50_000m;
+public const decimal MAX_DRAWDOWN = 2_000m;
+public const double EXPLORATION_BONUS = 0.3;
+var risk = _accountBalance * TopStepConfig.RISK_PER_TRADE;
+
+// After (Compliant) - C# PascalCase naming
+public const decimal AccountSize = 50_000m;
+public const decimal MaxDrawdown = 2_000m;
+public const double ExplorationBonus = 0.3;
+var risk = _accountBalance * TopStepConfig.RiskPerTrade;
+```
+
+**Rationale**: CA1707 requires C# naming conventions - PascalCase for public constants. Renamed all 19 TopStepConfig constants and updated 21 reference sites in same file. Maintains readability while following framework guidelines.
+
+---
+
+### Round 53 - Critical CS Compiler Error Fix (Previous in Session)
 | Error | Files Affected | Fix Applied |
 |-------|----------------|-------------|
 | CS0103 | StatusService.cs | Restored `_lastJson` field that was incorrectly removed (write-read field, not write-only) |
