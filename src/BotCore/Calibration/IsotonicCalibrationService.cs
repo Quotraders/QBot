@@ -85,12 +85,12 @@ namespace BotCore.Calibration
             }
         }
 
-        private string CreateTableKey(string symbol, string regime)
+        private static string CreateTableKey(string symbol, string regime)
         {
             return $"breakout_{symbol.ToLowerInvariant()}_{regime.ToLowerInvariant()}";
         }
 
-        private double ApplyIsotonicCalibration(double rawScore, CalibrationTable table)
+        private static double ApplyIsotonicCalibration(double rawScore, CalibrationTable table)
         {
             var calibrationPoints = table.CalibrationPoints;
             

@@ -493,7 +493,7 @@ public sealed class ProductionPpoSizer : IPpoSizer
     /// <summary>
     /// Check if RL system has position sizing capability - fail-closed validation
     /// </summary>
-    private bool IsRLSystemCapableOfPositionSizing(TradingBot.IntelligenceStack.RLAdvisorSystem rlSystem)
+    private static bool IsRLSystemCapableOfPositionSizing(TradingBot.IntelligenceStack.RLAdvisorSystem rlSystem)
     {
         // Since GetPositionSizingRecommendationAsync doesn't exist,
         // we know the system lacks this capability

@@ -275,6 +275,12 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
 {
     // Evaluation threshold constants for expression evaluation
     private const double DefaultEvaluationThreshold = 0.5; // Threshold for boolean-like evaluations
+    private const double MaxConfidenceEvidenceCount = 4.0; // Number of evidence items for full confidence
+    private const double S2StrategyMultiplier = 0.9; // Conservative for mean reversion
+    private const double S3StrategyMultiplier = 1.1; // Higher confidence for compression breakouts  
+    private const double S6StrategyMultiplier = 1.0; // Neutral for momentum
+    private const double S11StrategyMultiplier = 0.85; // Lower confidence for exhaustion/reversal
+    private const double DefaultStrategyMultiplier = 1.0; // Default for other strategies
     
     private readonly IReadOnlyList<DslStrategy> _cards;
     private readonly IFeatureProbe _probe;
@@ -535,22 +541,22 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
         return evidence;
     }
 
-    private double CalculateConfidence(IReadOnlyList<BotCore.Strategy.StrategyEvidence> evidence, DslStrategy card)
+    private static double CalculateConfidence(IReadOnlyList<BotCore.Strategy.StrategyEvidence> evidence, DslStrategy card)
     {
         if (!evidence.Any())
             return 0.0;
 
         // Base confidence from evidence count
-        var baseConfidence = Math.Min(1.0, evidence.Count / 4.0); // Assume 4 conditions is full confidence
+        var baseConfidence = Math.Min(1.0, evidence.Count / MaxConfidenceEvidenceCount);
 
         // Strategy-specific multipliers
         var strategyMultiplier = card.Name switch
         {
-            "S2" => 0.9,  // Conservative for mean reversion
-            "S3" => 1.1,  // Higher confidence for compression breakouts
-            "S6" => 1.0,  // Neutral for momentum
-            "S11" => 0.85, // Lower confidence for exhaustion/reversal
-            _ => 1.0
+            "S2" => S2StrategyMultiplier,
+            "S3" => S3StrategyMultiplier,
+            "S6" => S6StrategyMultiplier,
+            "S11" => S11StrategyMultiplier,
+            _ => DefaultStrategyMultiplier
         };
 
         return Math.Max(0.0, Math.Min(1.0, baseConfidence * strategyMultiplier));
