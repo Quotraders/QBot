@@ -158,13 +158,13 @@ public sealed class FeatureMapAuthority
     /// </summary>
     private void RegisterTechnicalIndicatorResolvers()
     {
-        RegisterResolver("atr.14", new ATRResolver(_serviceProvider, 14));
-        RegisterResolver("atr.20", new ATRResolver(_serviceProvider, 20));
+        RegisterResolver("atr.14", new AtrResolver(_serviceProvider, 14));
+        RegisterResolver("atr.20", new AtrResolver(_serviceProvider, 20));
         RegisterResolver("volatility.realized", new RealizedVolatilityResolver(_serviceProvider));
         RegisterResolver("volatility.contraction", new VolatilityContractionResolver(_serviceProvider));
-        RegisterResolver("rsi.14", new RSIResolver(_serviceProvider, 14));
-        RegisterResolver("ema.21", new EMAResolver(_serviceProvider, 21));
-        RegisterResolver("sma.50", new SMAResolver(_serviceProvider, 50));
+        RegisterResolver("rsi.14", new RsiResolver(_serviceProvider, 14));
+        RegisterResolver("ema.21", new EmaResolver(_serviceProvider, 21));
+        RegisterResolver("sma.50", new SmaResolver(_serviceProvider, 50));
     }
     
     /// <summary>
