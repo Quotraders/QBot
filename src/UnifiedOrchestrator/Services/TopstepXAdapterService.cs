@@ -501,7 +501,13 @@ internal class TopstepXAdapterService : ITopstepXAdapterService, IDisposable
         {
             try
             {
-                DisconnectAsync().Wait(TimeSpan.FromSeconds(5));
+                // NOTE: Dispose must be synchronous per IDisposable contract.
+                // Using Task.Run to safely execute async cleanup on thread pool.
+                var disconnectTask = Task.Run(async () => await DisconnectAsync().ConfigureAwait(false));
+                if (!disconnectTask.Wait(TimeSpan.FromSeconds(5)))
+                {
+                    _logger.LogWarning("Disconnect timed out during disposal after 5 seconds");
+                }
             }
             catch (Exception ex)
             {

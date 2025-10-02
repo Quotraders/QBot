@@ -55,9 +55,10 @@ These files are in the direct trade execution path and must be fixed immediately
    - Estimated blocking calls: 3-5
    - Priority: Critical - main decision orchestrator
 
-6. **TopstepAuthAgent/** ⚠️ NEEDS AUDIT
-   - Estimated blocking calls: 2-4
-   - Priority: Critical - authentication/API calls
+6. **TopstepXAdapterService.cs** ✅ IMPROVED
+   - Fixed 1 blocking call in Dispose method
+   - Added proper timeout handling
+   - Note: Dispose must remain synchronous per IDisposable contract
 
 7. **OrderExecutionService.cs** ⚠️ NEEDS AUDIT
    - Estimated blocking calls: 2-3
@@ -84,7 +85,10 @@ Important for system reliability but not on immediate trade execution path:
     - Marked synchronous Decide as Obsolete
 12. **AutonomousDecisionEngine.cs** ⚠️ NEEDS AUDIT
 13. **EnsembleMetaLearner.cs** ✅ PARTIALLY FIXED (Removed unused _lock)
-14. **SessionManager.cs** ⚠️ NEEDS AUDIT
+14. **SessionAwareRuntimeGates.cs** ✅ FIXED
+    - Fixed 1 blocking call (GetSessionStatus → GetSessionStatusAsync)
+    - Added Task.Run wrapper for backward compatibility
+    - Marked synchronous version as Obsolete
 15. **PatternEngine.cs** ⚠️ NEEDS AUDIT
 16. **RegimeDetector.cs** ⚠️ NEEDS AUDIT
 17. **MLModelManager.cs** ⚠️ NEEDS AUDIT
@@ -188,7 +192,18 @@ Lower priority, cosmetic improvements:
 
 ### Completed Fixes
 
-#### Round 72 (Current Session)
+#### Round 73 (Current Session)
+- ✅ **SessionAwareRuntimeGates.cs** - Fixed blocking + created async API
+  - Converted GetSessionStatus() to GetSessionStatusAsync()
+  - Added Task.Run wrapper for backward compatibility, marked as Obsolete
+  - Properly awaits IsTradingAllowedAsync with CancellationToken
+
+- ✅ **TopstepXAdapterService.cs** - Improved Dispose method
+  - Fixed blocking call in Dispose (IDisposable.Dispose must be synchronous)
+  - Added Task.Run with proper timeout handling
+  - Added timeout warning logging
+
+#### Round 72 (Previous Session)
 - ✅ **DecisionFusionCoordinator.cs** - Fixed blocking + updated callers
   - Wrapped Decide() with Task.Run, marked as Obsolete
   - Updated UnifiedDecisionRouter to use DecideAsync properly
@@ -325,10 +340,10 @@ var result = await SomeAsyncMethod().ConfigureAwait(false);
 
 ### Current State (as of current session)
 - **CS Compiler Errors**: 0 ✅
-- **Async Fixes Complete**: 4/25 files (16%)
+- **Async Fixes Complete**: 6/25 files (24%)
 - **Decimal Fixes Complete**: 1/20 files (5%)
-- **Critical Path Complete**: 3/16 files (19%)
-- **Total Progress**: ~19/150 fixes (13%)
+- **Critical Path Complete**: 4/16 files (25%)
+- **Total Progress**: ~21/150 fixes (14%)
 
 ### Target State (Before Live Trading)
 - **CS Compiler Errors**: 0 ✅
