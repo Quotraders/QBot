@@ -11,6 +11,18 @@ public static class StrategyGates
     private const decimal WideSpreadPenalty = 0.70m; // very wide spread size reduction
     private const decimal SlightlyWideSpreadPenalty = 0.85m; // slightly wide spread size reduction
     private const decimal LowVolumePenalty = 0.85m; // thin tape size reduction
+    
+    // Score weight penalty factors for market conditions
+    private const decimal VeryWideSpreadScorePenalty = 0.60m; // severe spread widening
+    private const decimal WideSpreadScorePenalty = 0.80m; // moderate spread widening
+    private const decimal LowVolumeBreakoutPenalty = 0.75m; // thin tape for breakout
+    private const decimal LowAggImbalanceBreakoutPenalty = 0.80m; // weak imbalance for breakout
+    private const decimal LowVolumeMeanRevPenalty = 0.85m; // thin tape for mean reversion
+    private const decimal HighAggImbalanceMeanRevPenalty = 0.85m; // excessive imbalance for mean reversion
+    private const decimal OverExtendedAtrPenalty = 0.70m; // signal bar exceeds ATR threshold
+    
+    // S7 coherence threshold
+    private const decimal MinCrossSymbolCoherence = 0.6m; // minimum coherence for high confidence signals
 
     // In AlwaysOn mode, enforce hard spread guard; otherwise use RS gate
     public static bool PassesGlobal(TradingProfileConfig cfg, BotCore.Models.MarketSnapshot snap)
@@ -103,24 +115,24 @@ public static class StrategyGates
 
         // Spread
         if (snap.SpreadTicks > gf.SpreadTicksMaxBo)
-            w *= 0.60m;
+            w *= VeryWideSpreadScorePenalty;
         else if (snap.SpreadTicks > gf.SpreadTicksMax)
-            w *= 0.80m;
+            w *= WideSpreadScorePenalty;
 
         // Volume
         if (breakout)
         {
-            if (snap.VolumePct5m > 0 && snap.VolumePct5m < gf.VolumePctMinBo) w *= 0.75m;
-            if (snap.AggIAbs < gf.AggIMinBo) w *= 0.80m;
+            if (snap.VolumePct5m > 0 && snap.VolumePct5m < gf.VolumePctMinBo) w *= LowVolumeBreakoutPenalty;
+            if (snap.AggIAbs < gf.AggIMinBo) w *= LowAggImbalanceBreakoutPenalty;
         }
         else
         {
-            if (snap.VolumePct5m > 0 && snap.VolumePct5m < gf.VolumePctMinMr) w *= 0.85m;
-            if (snap.AggIAbs > gf.AggIMaxMrAbs && gf.AggIMaxMrAbs > 0) w *= 0.85m;
+            if (snap.VolumePct5m > 0 && snap.VolumePct5m < gf.VolumePctMinMr) w *= LowVolumeMeanRevPenalty;
+            if (snap.AggIAbs > gf.AggIMaxMrAbs && gf.AggIMaxMrAbs > 0) w *= HighAggImbalanceMeanRevPenalty;
         }
 
         // Over-extended signal bar ATR
-        if (snap.SignalBarAtrMult > gf.SignalBarMaxAtrMult) w *= 0.70m;
+        if (snap.SignalBarAtrMult > gf.SignalBarMaxAtrMult) w *= OverExtendedAtrPenalty;
 
         return w;
     }
@@ -228,7 +240,7 @@ public static class StrategyGates
             }
 
             // Check coherence threshold for cross-symbol agreement
-            if (snapshot.CrossSymbolCoherence < 0.6m)
+            if (snapshot.CrossSymbolCoherence < MinCrossSymbolCoherence)
             {
                 // Low coherence between ES/NQ - reduce strategy activity
                 // This is a soft gate - still allow but with reduced confidence

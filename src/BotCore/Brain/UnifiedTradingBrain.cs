@@ -39,6 +39,20 @@ namespace BotCore.Brain
         public const decimal EsMinStopDistance = 0.25m;           // Minimum stop distance for ES
         public const decimal FallbackExpectedMove = 5;             // Fallback expected move value
         public const int DefaultAtrLookback = 10;                  // Default ATR lookback period
+        
+        // Position sizing and risk multipliers
+        public const decimal MinRlMultiplier = 0.5m;               // Minimum RL position multiplier
+        public const decimal MaxRlMultiplier = 1.5m;               // Maximum RL position multiplier
+        public const decimal NearDailyLossWarningFactor = 0.9m;    // Warning at 90% of daily loss
+        public const decimal NearMaxDrawdownWarningFactor = 0.8m;  // Warning at 80% of max drawdown
+        
+        // Confidence and reward calculation constants
+        public const decimal StrategyPredictionAverageWeight = 2m; // Weight for averaging strategy and prediction confidence
+        public const decimal DefaultNeutralPositionMultiplier = 1.0m; // Default neutral position size
+        public const decimal DefaultRsiNeutral = 50m;              // Default RSI neutral value
+        public const decimal DefaultRsiMax = 100m;                 // Maximum RSI value
+        public const int MinBarsPeriod = 10;                       // Minimum bars for period calculations
+        public const int MinBarsExtended = 20;                     // Minimum bars for extended calculations
     }
     /// <summary>
     /// UNIFIED TRADING BRAIN - The ONE intelligence that controls all trading decisions
@@ -827,7 +841,7 @@ namespace BotCore.Brain
                     new List<Bar>()
                 ).ConfigureAwait(false);
                 
-                contracts = (int)(contracts * Math.Clamp(rlMultiplier, 0.5m, 1.5m));
+                contracts = (int)(contracts * Math.Clamp(rlMultiplier, TopStepConfig.MinRlMultiplier, TopStepConfig.MaxRlMultiplier));
                 _logger.LogDebug("📊 [LEGACY-RL] Using fallback RL multiplier: {Multiplier:F2}", rlMultiplier);
             }
 
@@ -857,10 +871,10 @@ namespace BotCore.Brain
                 return (false, $"Account below minimum: {_accountBalance:C}", "hard_stop");
 
             // Warning levels (can trade but with caution)
-            if (_dailyPnl <= -(TopStepConfig.DailyLossLimit * 0.9m))
+            if (_dailyPnl <= -(TopStepConfig.DailyLossLimit * TopStepConfig.NearDailyLossWarningFactor))
                 return (true, $"Near daily loss limit: {_dailyPnl:C}", "warning");
             
-            if (_currentDrawdown >= (TopStepConfig.MaxDrawdown * 0.8m))
+            if (_currentDrawdown >= (TopStepConfig.MaxDrawdown * TopStepConfig.NearMaxDrawdownWarningFactor))
                 return (true, $"Near max drawdown: {_currentDrawdown:C}", "warning");
 
             return (true, "OK", "normal");
@@ -1112,13 +1126,13 @@ namespace BotCore.Brain
 
         private static decimal CalculateOverallConfidence(StrategySelection strategy, PricePrediction prediction)
         {
-            return (strategy.Confidence + prediction.Probability) / 2;
+            return (strategy.Confidence + prediction.Probability) / TopStepConfig.StrategyPredictionAverageWeight;
         }
 
         private static string AssessRisk(MarketContext context, PricePrediction prediction)
         {
-            if (context.Volatility > 0.4m) return "HIGH";
-            if (context.Volatility < 0.15m && prediction.Probability > 0.7m) return "LOW";
+            if (context.Volatility > HighVolatilityThreshold) return "HIGH";
+            if (context.Volatility < LowVolatilityThreshold && prediction.Probability > TopStepConfig.HighConfidenceProbability) return "LOW";
             return "MEDIUM";
         }
 
@@ -1131,15 +1145,15 @@ namespace BotCore.Brain
             {
                 Symbol = symbol,
                 RecommendedStrategy = "S3", // Default strategy
-                StrategyConfidence = 0.5m,
+                StrategyConfidence = TopStepConfig.NeutralProbability,
                 PriceDirection = PriceDirection.Sideways,
-                PriceProbability = 0.5m,
-                OptimalPositionMultiplier = 1.0m,
+                PriceProbability = TopStepConfig.NeutralProbability,
+                OptimalPositionMultiplier = TopStepConfig.DefaultNeutralPositionMultiplier,
                 MarketRegime = MarketRegime.Normal,
                 EnhancedCandidates = candidates,
                 DecisionTime = DateTime.UtcNow,
-                ProcessingTimeMs = 10,
-                ModelConfidence = 0.5m,
+                ProcessingTimeMs = TopStepConfig.DefaultAtrLookback,
+                ModelConfidence = TopStepConfig.NeutralProbability,
                 RiskAssessment = "MEDIUM"
             };
         }
@@ -1162,7 +1176,7 @@ namespace BotCore.Brain
 
         private decimal CalculateRSI(IList<Bar> bars, int period)
         {
-            if (bars.Count < period + 1) return 50;
+            if (bars.Count < period + 1) return TopStepConfig.DefaultRsiNeutral;
             
             var gains = 0m;
             var losses = 0m;
@@ -1174,27 +1188,27 @@ namespace BotCore.Brain
                 else losses -= change;
             }
             
-            if (losses == 0) return 100;
+            if (losses == 0) return TopStepConfig.DefaultRsiMax;
             
             var rs = gains / losses;
-            return 100 - (100 / (1 + rs));
+            return TopStepConfig.DefaultRsiMax - (TopStepConfig.DefaultRsiMax / (1 + rs));
         }
 
         private decimal CalculateTrendStrength(IList<Bar> bars)
         {
-            if (bars.Count < 10) return 0;
+            if (bars.Count < TopStepConfig.MinBarsPeriod) return 0;
             
-            var recent = bars.TakeLast(10).ToList();
+            var recent = bars.TakeLast(TopStepConfig.MinBarsPeriod).ToList();
             var slope = (recent.Last().Close - recent.First().Close) / recent.Count;
             return Math.Abs(slope) / (recent.Average(b => Math.Abs(b.High - b.Low)));
         }
 
         private decimal CalculateVolatilityRank(IList<Bar> bars)
         {
-            if (bars.Count < 20) return 0.5m;
+            if (bars.Count < TopStepConfig.MinBarsExtended) return TopStepConfig.NeutralProbability;
             
             var currentVol = Math.Abs(bars.Last().High - bars.Last().Low);
-            var historicalVols = bars.TakeLast(20).Select(b => Math.Abs(b.High - b.Low)).OrderBy(v => v).ToList();
+            var historicalVols = bars.TakeLast(TopStepConfig.MinBarsExtended).Select(b => Math.Abs(b.High - b.Low)).OrderBy(v => v).ToList();
             
             var rank = historicalVols.Count(v => v < currentVol) / (decimal)historicalVols.Count;
             return rank;
