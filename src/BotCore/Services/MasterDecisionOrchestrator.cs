@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using BotCore.Services;
 using BotCore.Bandits;
+using BotCore.Brain.Models;
 using TradingBot.Abstractions;
 using System.Text.Json;
 
@@ -243,7 +244,7 @@ public class MasterDecisionOrchestrator : BackgroundService
     /// </summary>
     public async Task<UnifiedTradingDecision> MakeUnifiedDecisionAsync(
         string symbol,
-        MarketContext marketContext,
+        TradingBot.Abstractions.MarketContext marketContext,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(symbol);
@@ -438,7 +439,7 @@ public class MasterDecisionOrchestrator : BackgroundService
     /// Apply bundle parameters to market context
     /// This replaces hardcoded values with learned parameter selections
     /// </summary>
-    private static MarketContext ApplyBundleParameters(MarketContext marketContext, BundleSelection? bundleSelection)
+    private static TradingBot.Abstractions.MarketContext ApplyBundleParameters(TradingBot.Abstractions.MarketContext marketContext, BundleSelection? bundleSelection)
     {
         if (bundleSelection == null)
         {
@@ -524,7 +525,7 @@ public class MasterDecisionOrchestrator : BackgroundService
     /// </summary>
     private async Task TrackDecisionForLearningAsync(
         UnifiedTradingDecision decision,
-        MarketContext marketContext,
+        TradingBot.Abstractions.MarketContext marketContext,
         BundleSelection? bundleSelection,
         CancellationToken cancellationToken)
     {
@@ -696,9 +697,9 @@ public class MasterDecisionOrchestrator : BackgroundService
     /// <summary>
     /// Create a basic market context from metadata for bundle updates
     /// </summary>
-    private static MarketContext CreateMarketContextFromMetadata(Dictionary<string, object> metadata)
+    private static TradingBot.Abstractions.MarketContext CreateMarketContextFromMetadata(Dictionary<string, object> metadata)
     {
-        var context = new MarketContext();
+        var context = new TradingBot.Abstractions.MarketContext();
         
         // Extract basic market data from metadata if available
         if (metadata.TryGetValue("symbol", out var symbolObj) && symbolObj is string symbol)
@@ -1033,7 +1034,7 @@ public class DecisionTrackingInfo
     public decimal Confidence { get; set; }
     public string Strategy { get; set; } = string.Empty;
     public string DecisionSource { get; set; } = string.Empty;
-    public MarketContext MarketContext { get; set; } = new();
+    public TradingBot.Abstractions.MarketContext MarketContext { get; set; } = new();
     public DateTime Timestamp { get; set; }
 }
 

@@ -1378,7 +1378,7 @@ namespace BotCore.Brain
         private string[] GetBestConditionsForStrategy(string strategy)
         {
             return _strategyOptimalConditions
-                .GetValueOrDefault(strategy, new List<MarketCondition>())
+                .GetValueOrDefault<string, List<BotCore.Brain.Models.MarketCondition>>(strategy, new List<BotCore.Brain.Models.MarketCondition>())
                 .Where(c => c.SuccessRate > 0.6m && c.TotalCount >= 3)
                 .OrderByDescending(c => c.SuccessRate)
                 .Take(5)

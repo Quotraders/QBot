@@ -277,6 +277,7 @@ namespace BotCore.Execution
             {
                 // In production, this would call actual TopstepX API
                 // For now, return mock data structure
+                await Task.CompletedTask.ConfigureAwait(false); // Make method properly async
                 return new OrderStatusData
                 {
                     OrderId = orderId,
@@ -300,6 +301,7 @@ namespace BotCore.Execution
             {
                 // In production, this would call actual TopstepX API
                 // For now, return mock fill event
+                await Task.CompletedTask.ConfigureAwait(false); // Make method properly async
                 return new List<FillEventData>
                 {
                     new FillEventData

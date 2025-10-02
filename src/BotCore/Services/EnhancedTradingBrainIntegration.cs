@@ -194,15 +194,15 @@ public class EnhancedTradingBrainIntegration
         
         // Enhancement 1: Strategy Selection
         enhancedDecision.EnhancedStrategy = EnhanceStrategySelection(
-            originalDecision.Strategy, // Use Strategy instead of SelectedStrategy
+            originalDecision.MLStrategy, // Use MLStrategy instead of Strategy
             strategyPrediction,
             originalDecision.Confidence);
         
         // Enhancement 2: Confidence Adjustment
         enhancedDecision.EnhancedConfidence = EnhanceConfidence(
             originalDecision.Confidence,
-            strategyPrediction.Confidence,
-            pricePrediction.Confidence);
+            (decimal)strategyPrediction.Confidence,
+            (decimal)pricePrediction.Confidence);
         
         // Enhancement 3: Position Sizing
         enhancedDecision.EnhancedPositionSize = EnhancePositionSizing(
@@ -753,7 +753,7 @@ public class EnhancedTradingBrainIntegration
 
 public class EnhancedTradingDecision
 {
-    public TradingDecision OriginalDecision { get; set; } = null!;
+    public TradingBot.Abstractions.TradingDecision OriginalDecision { get; set; } = null!;
     public string EnhancedStrategy { get; set; } = string.Empty;
     public decimal EnhancedConfidence { get; set; }
     public decimal EnhancedPositionSize { get; set; }
