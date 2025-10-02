@@ -23,7 +23,41 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Current Focus**: Systematic application of Analyzer-Fix-Guidebook patterns across high-priority violations
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 
-### Round 48 - Continued Phase 2 Priority 1 Violations (Current Session)
+### Round 49 - Critical Session Timezone and Trading Logic Fixes (Current Session)
+| Bug | Issue | Files Affected | Fix Applied |
+|-----|--------|----------------|-------------|
+| Timezone | StrategyAgent feeds UTC directly into EsNqTradingSchedule (Central Time) causing session gate offsets | StrategyAgent.cs | Convert UTC to Central Time before session matching |
+| Size Clamp | Session multipliers (0.5-0.9) can reduce signal.Size to 0, causing trades to disappear | StrategyAgent.cs | Added Math.Max(1, adjustedSize) to prevent zero-sized orders |
+| Correlation Logic | Guard strips NQ trades when ES positions exist, backwards for NQ-primary sessions | StrategyAgent.cs | Fixed logic to respect session's PrimaryInstrument setting |
+
+**Critical Fixes Applied:**
+```csharp
+// Before - UTC timezone bug
+var currentTime = snap.UtcNow.TimeOfDay;
+
+// After - Proper Central Time conversion for session matching
+var centralTime = TimeZoneInfo.ConvertTimeFromUtc(snap.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time"));
+var currentTime = centralTime.TimeOfDay;
+
+// Before - Size can drop to zero
+Size = (int)(signal.Size * sizeMultiplier)
+
+// After - Minimum lot size protection
+Size = Math.Max(1, (int)Math.Round(rawAdjustedSize))
+
+// Before - Backwards correlation guard (always filters NQ)
+if (currentSession?.PrimaryInstrument != "BOTH" && (hasEsLong || hasEsShort)) {
+    outSignals = [.. outSignals.Where(s => !s.Symbol.Equals("NQ", ...))];
+
+// After - Respects session's PrimaryInstrument
+if (currentSession.PrimaryInstrument == "ES") {
+    // Filter conflicting NQ trades
+} else if (currentSession.PrimaryInstrument == "NQ") {
+    // Filter conflicting ES trades  
+}
+```
+
+### Round 48 - Continued Phase 2 Priority 1 Violations (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CS0173 | 1 | 0 | AllStrategies.cs | Fixed type conversion issue (double to decimal cast) |
