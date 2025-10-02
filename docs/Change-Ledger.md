@@ -15,7 +15,7 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
 - **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (100%) - **VERIFIED & SECURED**
 - **Phase 2 Status**: ✅ **ACCELERATED PROGRESS** - Systematic high-priority violations elimination + critical async fixes
-  - **Current Session (Round 69)**: Phase 1 regression fixes - 5 errors fixed (S1144, CA1823, CS1519, CS0535, CS0103)
+  - **Current Session (Round 69-70)**: Phase 1 regression fixes (5 CS errors) + Phase 2 CA1822/S2325 static methods (28 violations)
   - **Previous Session (Round 60-68)**: 255 violations fixed + CS error regression fixed + **async/await deadlock risks eliminated**
   - **Round 68**: ✅ **CRITICAL ASYNC FIX** - Eliminated async-over-sync blocking patterns (6 files, 10 call sites)
   - **Round 67**: ✅ **CA1854 COMPLETE** - Final 14 violations (90/90 total = 100% category elimination!)
@@ -191,6 +191,58 @@ Round 68 properly converted methods to async to eliminate deadlock risks, but in
 These fixes complete the async transition while maintaining backward compatibility through timeout-based synchronous wrappers that fail-fast instead of blocking indefinitely.
 
 **Build Verification**: ✅ Phase 1 COMPLETE - 0 CS compiler errors, ~13,194 analyzer violations remain for Phase 2
+
+---
+
+### 🔧 Round 70 - CA1822/S2325: Make Static Methods (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1822/S2325 | 588 | 560 | FeatureProbe.cs (12 methods), FeatureBusMapper.cs (2 methods) | Made helper methods static - don't access instance data |
+
+**Violations Fixed**: 28 (14 methods × 2 analyzers each)
+
+**Files Modified**:
+
+1. **FeatureProbe.cs** - 12 calculation helper methods:
+```csharp
+// BEFORE - CA1822/S2325 violations
+private double CalculateZoneDistanceAtr(string symbol) => ...;
+private double CalculateBreakoutScore(string symbol) => ...;
+// ... 10 more methods
+
+// AFTER - Made static
+private static double CalculateZoneDistanceAtr(string symbol) => ...;
+private static double CalculateBreakoutScore(string symbol) => ...;
+// ... 10 more methods
+```
+
+Methods converted to static:
+- `CalculateZoneDistanceAtr`, `CalculateBreakoutScore`, `CalculateZonePressure`
+- `GetCurrentZoneType`, `DetermineMarketRegime`, `CalculateVolatilityZScore`
+- `CalculateTrendStrength`, `CalculateOrderFlowImbalance`, `CalculateVolumeProfile`
+- `CalculateMomentumZScore`, `CalculateVwapDistance`, `CalculateSessionVolume`
+
+2. **FeatureBusMapper.cs** - 2 identifier extraction methods:
+```csharp
+// BEFORE - CA1822/S2325 violations
+public HashSet<string> ExtractIdentifiers(string expression) { ... }
+public HashSet<string> ExtractIdentifiers(IEnumerable<string> expressions) { ... }
+
+// AFTER - Made static (both overloads)
+public static HashSet<string> ExtractIdentifiers(string expression) { ... }
+public static HashSet<string> ExtractIdentifiers(IEnumerable<string> expressions) { ... }
+```
+
+**Rationale**: 
+According to guidebook CA1822/S2325 rule: "Make static if no instance state." All these methods:
+- Perform pure calculations or parsing
+- Don't access any instance fields or properties
+- Only use their parameters and static constants
+- Can be safely marked static for better code clarity and potential performance benefits
+
+Static methods clearly communicate that they don't have side effects on instance state, making code easier to reason about and test.
+
+**Build Verification**: ✅ 0 CS errors maintained, ~13,142 analyzer violations remaining
 
 ---
 
