@@ -74,7 +74,6 @@ namespace TradingBot.BotCore.Services
                 _logger.LogError(ex, "🚨 [INTEGRITY] Error calculating content hash");
                 throw new InvalidOperationException("Failed to calculate SHA256 hash for content integrity verification", ex);
             }
-            }
         }
 
         /// <summary>

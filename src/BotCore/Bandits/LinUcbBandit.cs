@@ -193,12 +193,6 @@ internal sealed class LinUcbArm
     private const decimal FallbackConfidenceInterval = 1m; // Default confidence interval for fallback scenarios
     private const decimal MatrixSingularityTolerance = 0.0000000001m; // Tolerance for matrix singularity detection (1e-10)
     private const int MatrixMultiplier = 2; // Matrix size multiplier for augmented operations
-    
-    // Feature scaling constants for context vector normalization
-    private const decimal AtrZScoreClippingBound = 3m; // ATR Z-score clipping bounds [-3, 3]
-    private const decimal MaxSpreadBasisPoints = 20m; // Maximum spread cap in basis points
-    private const decimal MaxVolumeRatio = 3m; // Maximum volume ratio relative to normal (3x)
-    private const decimal MaxVolatilityPercent = 0.1m; // Maximum volatility percentage (10%)
     private bool _inverseNeedsUpdate = true;
 
     public int UpdateCount { get; private set; }
@@ -472,6 +466,12 @@ public record LinUcbConfig
 /// </summary>
 public class ContextVector
 {
+    // Feature scaling constants for strategy context normalization
+    private const decimal AtrZScoreClippingBound = 3m; // ATR Z-score clipping bounds [-3, 3]
+    private const decimal MaxSpreadBasisPoints = 20m; // Maximum spread cap in basis points
+    private const decimal MaxVolumeRatio = 3m; // Maximum volume ratio relative to normal (3x)
+    private const decimal MaxVolatilityPercent = 0.1m; // Maximum volatility percentage (10%)
+    
     public Dictionary<string, decimal> Features { get; init; } = new();
     public DateTime Timestamp { get; init; } = DateTime.UtcNow;
 
