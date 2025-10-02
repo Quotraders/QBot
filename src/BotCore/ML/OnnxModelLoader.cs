@@ -437,8 +437,8 @@ public sealed class OnnxModelLoader : IDisposable
                 
                 // Check if this metadata file has been updated since last check
                 var cacheKey = $"registry_{modelName}_lastcheck";
-                if (!_modelMetadata.ContainsKey(cacheKey) || 
-                    _modelMetadata[cacheKey].LoadedAt < lastWriteTime)
+                if (!_modelMetadata.TryGetValue(cacheKey, out var metadata) || 
+                    metadata.LoadedAt < lastWriteTime)
                 {
                     _logger.LogInformation("[HOT_RELOAD] Registry update detected: {MetadataFile} (modified: {LastWrite})", 
                         Path.GetFileName(metadataFile), lastWriteTime);
@@ -488,8 +488,8 @@ public sealed class OnnxModelLoader : IDisposable
                 
                 // Check if this SAC model has been updated since last check
                 var cacheKey = $"sac_{modelName}_lastcheck";
-                if (!_modelMetadata.ContainsKey(cacheKey) || 
-                    _modelMetadata[cacheKey].LoadedAt < lastWriteTime)
+                if (!_modelMetadata.TryGetValue(cacheKey, out var sacMetadata) || 
+                    sacMetadata.LoadedAt < lastWriteTime)
                 {
                     _logger.LogInformation("[HOT_RELOAD] SAC model update detected: {SACFile} (modified: {LastWrite})", 
                         Path.GetFileName(sacFile), lastWriteTime);
@@ -1161,10 +1161,10 @@ public sealed class OnnxModelLoader : IDisposable
         {
             // Parse metadata content (could be YAML or JSON)
             var metadata = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(content);
-            if (metadata != null && metadata.ContainsKey("version"))
+            if (metadata != null && metadata.TryGetValue("version", out var version))
             {
                 _logger.LogInformation("[MODEL_RELOAD] Model metadata parsed from {File}, version: {Version}", 
-                    Path.GetFileName(metadataFile), metadata["version"]);
+                    Path.GetFileName(metadataFile), version);
                 
                 // Trigger model reload notification
                 await NotifyModelUpdateAsync(metadataFile, metadata).ConfigureAwait(false);

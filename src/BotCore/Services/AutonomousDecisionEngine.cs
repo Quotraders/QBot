@@ -1341,10 +1341,8 @@ public class AutonomousDecisionEngine : BackgroundService
             var strategy = kvp.Key;
             var performance = kvp.Value;
             
-            if (_strategyMetrics.ContainsKey(strategy))
+            if (_strategyMetrics.TryGetValue(strategy, out var metrics))
             {
-                var metrics = _strategyMetrics[strategy];
-                
                 // Initialize from historical performance
                 metrics.TotalTrades = performance.TotalTrades;
                 metrics.WinningTrades = (int)(performance.TotalTrades * performance.WinRate);
@@ -1409,9 +1407,8 @@ public class AutonomousDecisionEngine : BackgroundService
     {
         foreach (var strategy in StrategyConstants.AllStrategies)
         {
-            if (_strategyMetrics.ContainsKey(strategy))
+            if (_strategyMetrics.TryGetValue(strategy, out var metrics))
             {
-                var metrics = _strategyMetrics[strategy];
                 var baselineData = CreateBaselinePerformanceData(strategy);
                 
                 // Initialize with baseline data

@@ -504,15 +504,15 @@ public class AutonomousPerformanceTracker
         };
         insight.ReplaceMarketConditions(conditions);
         
-        if (_strategyLearning.ContainsKey(trade.Strategy))
+        if (_strategyLearning.TryGetValue(trade.Strategy, out var learning))
         {
-            _strategyLearning[trade.Strategy].AddInsight(insight);
+            learning.AddInsight(insight);
             
             // Keep limited insights per strategy
-            while (_strategyLearning[trade.Strategy].Insights.Count > 100)
+            while (learning.Insights.Count > 100)
             {
-                var insights = _strategyLearning[trade.Strategy].Insights.Skip(1).ToList();
-                _strategyLearning[trade.Strategy].ReplaceInsights(insights);
+                var insights = learning.Insights.Skip(1).ToList();
+                learning.ReplaceInsights(insights);
             }
         }
 
@@ -521,10 +521,10 @@ public class AutonomousPerformanceTracker
     
     private decimal GetRecentStrategyPerformance(string strategy, TimeSpan period)
     {
-        if (!_tradesByStrategy.ContainsKey(strategy)) return 0m;
+        if (!_tradesByStrategy.TryGetValue(strategy, out var trades)) return 0m;
         
         var cutoffTime = DateTime.UtcNow - period;
-        return _tradesByStrategy[strategy]
+        return trades
             .Where(t => t.EntryTime >= cutoffTime)
             .Sum(t => t.PnL);
     }
