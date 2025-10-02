@@ -26,7 +26,9 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
 - **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (100%) - **VERIFIED & SECURED**
 - **Phase 2 Status**: ✅ **ACCELERATED PROGRESS** - Systematic high-priority violations elimination + critical async fixes
-  - **Current Session (Round 71)**: Phase 2 Priority 1 violations - AtomicStatePersistence.cs (17 violations fixed)
+  - **Current Session (Round 71-72)**: Phase 2 Priority 1 violations - 31 violations fixed across 2 files
+    - Round 72: EconomicEventManager.cs (14 CA1031/S2139 violations fixed)
+    - Round 71: AtomicStatePersistence.cs (17 violations fixed)
   - **Previous Session (Round 69-70)**: Phase 1 regression fixes (5 CS errors) + Phase 2 CA1822/S2325 static methods (28 violations)
   - **Previous Session (Round 60-68)**: 255 violations fixed + CS error regression fixed + **async/await deadlock risks eliminated**
   - **Round 68**: ✅ **CRITICAL ASYNC FIX** - Eliminated async-over-sync blocking patterns (6 files, 10 call sites)
@@ -42,7 +44,60 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Current Focus**: Critical async patterns fixed! Moving to CA2007 ConfigureAwait and other Priority 1 violations
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 
-### 🔧 Round 71 - Phase 2 Priority 1: AtomicStatePersistence Comprehensive Fixes (Current Session)
+### 🔧 Round 72 - Phase 2 Priority 1: EconomicEventManager Exception Handling (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 12 | 0 | EconomicEventManager.cs | Replaced generic Exception catches with specific IOException, JsonException, InvalidOperationException, ArgumentException, ObjectDisposedException |
+| S2139 | 2 | 0 | EconomicEventManager.cs | Added contextual information when rethrowing exceptions in InitializeAsync |
+
+**Total Fixed: 14 violations**
+
+**Example Patterns Applied**:
+
+**CA1031 - File I/O Exception Handling**:
+```csharp
+// Before (Violation)
+catch (Exception ex)
+{
+    _logger.LogError(ex, "[EconomicEventManager] Failed to load from local file: {File}", filePath);
+    return new List<EconomicEvent>();
+}
+
+// After (Compliant)
+catch (IOException ex)
+{
+    _logger.LogError(ex, "[EconomicEventManager] I/O error loading from local file: {File}", filePath);
+    return new List<EconomicEvent>();
+}
+catch (JsonException ex)
+{
+    _logger.LogError(ex, "[EconomicEventManager] JSON parsing error loading from local file: {File}", filePath);
+    return new List<EconomicEvent>();
+}
+```
+
+**S2139 - Exception Rethrow with Context**:
+```csharp
+// Before (Violation)
+catch (Exception ex)
+{
+    _logger.LogError(ex, "[EconomicEventManager] Failed to initialize economic event manager");
+    throw;
+}
+
+// After (Compliant)
+catch (IOException ex)
+{
+    _logger.LogError(ex, "[EconomicEventManager] Failed to initialize economic event manager - I/O error");
+    throw new InvalidOperationException("Failed to initialize economic event monitoring due to I/O error", ex);
+}
+```
+
+**Rationale**: Enhanced exception handling precision in economic event monitoring system. Replaced 12 generic Exception catches with specific exception types (IOException for file operations, JsonException for parsing errors, InvalidOperationException/ArgumentException for business logic errors, ObjectDisposedException for disposal timing). Added contextual wrapping for 2 rethrow scenarios. Maintains production guardrails with zero suppressions.
+
+---
+
+### 🔧 Round 71 - Phase 2 Priority 1: AtomicStatePersistence Comprehensive Fixes (Previous in Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | S1144 | 3 | 0 | AtomicStatePersistence.cs | Removed unused private fields (_pendingZoneState, _pendingPatternState, _pendingFusionState) |

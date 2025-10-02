@@ -67,10 +67,20 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
             _initialized = true;
             _logger.LogInformation("[EconomicEventManager] Economic event monitoring started successfully");
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "[EconomicEventManager] Failed to initialize economic event manager");
-            throw;
+            _logger.LogError(ex, "[EconomicEventManager] Failed to initialize economic event manager - I/O error");
+            throw new InvalidOperationException("Failed to initialize economic event monitoring due to I/O error", ex);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "[EconomicEventManager] Failed to initialize economic event manager - JSON error");
+            throw new InvalidOperationException("Failed to initialize economic event monitoring due to JSON parsing error", ex);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "[EconomicEventManager] Failed to initialize economic event manager - invalid operation");
+            throw new InvalidOperationException("Failed to initialize economic event monitoring", ex);
         }
     }
 
@@ -175,9 +185,13 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
             _initialized = false;
             _logger.LogInformation("[EconomicEventManager] Economic event monitoring stopped");
         }
-        catch (Exception ex)
+        catch (ObjectDisposedException ex)
         {
-            _logger.LogError(ex, "[EconomicEventManager] Error during shutdown");
+            _logger.LogError(ex, "[EconomicEventManager] Timer already disposed during shutdown");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "[EconomicEventManager] Invalid operation during shutdown");
         }
     }
 
@@ -196,9 +210,17 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
 
             _logger.LogInformation("[EconomicEventManager] Loaded {Count} economic events from real data sources", realEvents.Count);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "[EconomicEventManager] Failed to load economic events");
+            _logger.LogError(ex, "[EconomicEventManager] I/O error loading economic events");
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "[EconomicEventManager] JSON error loading economic events");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "[EconomicEventManager] Invalid operation loading economic events");
         }
     }
 
@@ -235,9 +257,19 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
 
             _logger.LogInformation("[EconomicEventManager] Successfully loaded {Count} events from real data source", events.Count);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogWarning(ex, "[EconomicEventManager] Error loading from primary source, using fallback");
+            _logger.LogWarning(ex, "[EconomicEventManager] I/O error loading from primary source, using fallback");
+            events = GetKnownScheduledEvents();
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "[EconomicEventManager] JSON error loading from primary source, using fallback");
+            events = GetKnownScheduledEvents();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "[EconomicEventManager] Invalid operation loading from primary source, using fallback");
             events = GetKnownScheduledEvents();
         }
 
@@ -262,9 +294,14 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
             _logger.LogInformation("[EconomicEventManager] Loaded {Count} events from local file: {File}", events.Count, filePath);
             return events;
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "[EconomicEventManager] Failed to load from local file: {File}", filePath);
+            _logger.LogError(ex, "[EconomicEventManager] I/O error loading from local file: {File}", filePath);
+            return new List<EconomicEvent>();
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "[EconomicEventManager] JSON parsing error loading from local file: {File}", filePath);
             return new List<EconomicEvent>();
         }
     }
@@ -388,9 +425,13 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
                 }
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "[EconomicEventManager] Error checking upcoming events");
+            _logger.LogError(ex, "[EconomicEventManager] Invalid operation checking upcoming events");
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "[EconomicEventManager] Invalid argument checking upcoming events");
         }
     }
 
@@ -461,9 +502,13 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
                 }
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "[EconomicEventManager] Error updating trading restrictions");
+            _logger.LogError(ex, "[EconomicEventManager] Invalid operation updating trading restrictions");
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "[EconomicEventManager] Invalid argument updating trading restrictions");
         }
     }
 
