@@ -99,13 +99,13 @@ public class NeuralUcbBandit : IFunctionApproximationBandit, IDisposable
 
         lock (_lock)
         {
-            if (!_arms.ContainsKey(selectedArm))
+            if (!_arms.TryGetValue(selectedArm, out arm))
             {
-                _arms[selectedArm] = new NeuralUcbArm(
+                arm = new NeuralUcbArm(
                     _networkTemplate.Clone(),
                     _config);
+                _arms[selectedArm] = arm;
             }
-            arm = _arms[selectedArm];
         }
 
         await arm.UpdateAsync(context, reward, ct).ConfigureAwait(false);

@@ -16,6 +16,20 @@ public class EnhancedBayesianPriors : IBayesianPriors
     private const decimal ShrinkageMinFactor = 0.1m;
     private const decimal ShrinkageDefaultNormalization = 1.0m;
     private const decimal ShrinkageSampleSizeDivisor = 10.0m;
+    private const decimal CredibleIntervalConfidence = 0.95m;
+    private const decimal MinimumSufficientDataSize = 20m;
+    private const decimal MaxShrinkageStrength = 0.8m;
+    private const decimal MinShrinkageStrength = 0.05m;
+    private const decimal MinPosteriorAlpha = 0.1m;
+    private const decimal MinPosteriorBeta = 0.1m;
+    private const decimal HierarchicalUpdateIncrement = 0.1m;
+    private const decimal UncertaintyVeryHighThreshold = 5m;
+    private const decimal UncertaintyHighThreshold = 15m;
+    private const decimal UncertaintyHighVariance = 0.05m;
+    private const decimal UncertaintyMediumThreshold = 30m;
+    private const decimal UncertaintyMediumVariance = 0.02m;
+    private const decimal UncertaintyLowThreshold = 100m;
+    private const decimal UncertaintyLowVariance = 0.01m;
     
     private readonly Dictionary<string, BayesianPosterior> _priors = new();
     private readonly Dictionary<string, HierarchicalGroup> _hierarchicalGroups = new();
@@ -44,12 +58,12 @@ public class EnhancedBayesianPriors : IBayesianPriors
         {
             var key = CreateKey(strategy, config, regime, session);
 
-            if (!_priors.ContainsKey(key))
+            if (!_priors.TryGetValue(key, out var posterior))
             {
-                _priors[key] = CreateDefaultPosterior();
+                posterior = CreateDefaultPosterior();
+                _priors[key] = posterior;
             }
 
-            var posterior = _priors[key];
             var shrunkPosterior = ApplyShrinkage(strategy, regime, posterior);
 
             // Create shrinkage estimate for calculations
@@ -63,10 +77,10 @@ public class EnhancedBayesianPriors : IBayesianPriors
             {
                 Mean = shrinkageEstimate.CalculateMean(),
                 Variance = shrinkageEstimate.CalculateVariance(),
-                CredibleInterval = CalculateCredibleInterval(shrunkPosterior, 0.95m),
+                CredibleInterval = CalculateCredibleInterval(shrunkPosterior, CredibleIntervalConfidence),
                 EffectiveSampleSize = CalculateEffectiveSampleSize(shrunkPosterior),
                 UncertaintyLevel = CalculateUncertainty(shrunkPosterior),
-                IsReliable = shrinkageEstimate.Alpha + shrinkageEstimate.Beta > 20, // Sufficient data
+                IsReliable = shrinkageEstimate.Alpha + shrinkageEstimate.Beta > MinimumSufficientDataSize, // Sufficient data
                 ShrinkageFactor = shrinkageEstimate.Shrinkage,
                 LastUpdated = shrunkPosterior.LastUpdated
             };
@@ -90,12 +104,11 @@ public class EnhancedBayesianPriors : IBayesianPriors
         {
             var key = CreateKey(strategy, config, regime, session);
 
-            if (!_priors.ContainsKey(key))
+            if (!_priors.TryGetValue(key, out var posterior))
             {
-                _priors[key] = CreateDefaultPosterior();
+                posterior = CreateDefaultPosterior();
+                _priors[key] = posterior;
             }
-
-            var posterior = _priors[key];
 
             // Update local posterior
             if (wasSuccessful)
@@ -175,23 +188,23 @@ public class EnhancedBayesianPriors : IBayesianPriors
 
         // Strategy-level shrinkage
         var strategyKey = CreateKey(strategy, "*", "*", "*");
-        if (_hierarchicalGroups.ContainsKey(strategyKey))
+        if (_hierarchicalGroups.TryGetValue(strategyKey, out var strategyGroup))
         {
-            shrinkageTargets.Add((_shrinkageConfig.StrategyWeight, _hierarchicalGroups[strategyKey].Posterior));
+            shrinkageTargets.Add((_shrinkageConfig.StrategyWeight, strategyGroup.Posterior));
         }
 
         // Regime-level shrinkage
         var regimeKey = CreateKey("*", "*", regime, "*");
-        if (_hierarchicalGroups.ContainsKey(regimeKey))
+        if (_hierarchicalGroups.TryGetValue(regimeKey, out var regimeGroup))
         {
-            shrinkageTargets.Add((_shrinkageConfig.RegimeWeight, _hierarchicalGroups[regimeKey].Posterior));
+            shrinkageTargets.Add((_shrinkageConfig.RegimeWeight, regimeGroup.Posterior));
         }
 
         // Global shrinkage
         var globalKey = CreateKey("*", "*", "*", "*");
-        if (_hierarchicalGroups.ContainsKey(globalKey))
+        if (_hierarchicalGroups.TryGetValue(globalKey, out var globalGroup))
         {
-            shrinkageTargets.Add((_shrinkageConfig.GlobalWeight, _hierarchicalGroups[globalKey].Posterior));
+            shrinkageTargets.Add((_shrinkageConfig.GlobalWeight, globalGroup.Posterior));
         }
 
         if (shrinkageTargets.Count == 0)
@@ -205,7 +218,7 @@ public class EnhancedBayesianPriors : IBayesianPriors
         var shrinkageStrength = _shrinkageConfig.BaseShrinkage *
                                (decimal)Math.Exp(-(double)localN / (double)_shrinkageConfig.ShrinkageDecay);
 
-        shrinkageStrength = Math.Min(0.8m, Math.Max(0.05m, shrinkageStrength));
+        shrinkageStrength = Math.Min(MaxShrinkageStrength, Math.Max(MinShrinkageStrength, shrinkageStrength));
 
         // Apply James-Stein shrinkage
         var shrunkAlpha = localPosterior.Alpha;
@@ -222,8 +235,8 @@ public class EnhancedBayesianPriors : IBayesianPriors
 
         return new BayesianPosterior
         {
-            Alpha = Math.Max(0.1m, shrunkAlpha),
-            Beta = Math.Max(0.1m, shrunkBeta),
+            Alpha = Math.Max(MinPosteriorAlpha, shrunkAlpha),
+            Beta = Math.Max(MinPosteriorBeta, shrunkBeta),
             LastUpdated = localPosterior.LastUpdated,
             TotalObservations = localPosterior.TotalObservations,
             ShrinkageFactor = shrinkageStrength
@@ -246,22 +259,21 @@ public class EnhancedBayesianPriors : IBayesianPriors
 
         foreach (var key in updates)
         {
-            if (!_hierarchicalGroups.ContainsKey(key))
+            if (!_hierarchicalGroups.TryGetValue(key, out var group))
             {
-                _hierarchicalGroups[key] = new HierarchicalGroup
+                group = new HierarchicalGroup
                 {
                     Posterior = CreateDefaultPosterior()
                 };
+                _hierarchicalGroups[key] = group;
             }
-
-            var group = _hierarchicalGroups[key];
             if (wasSuccessful)
             {
-                group.Posterior.Alpha += 0.1m; // Fractional updates for hierarchical groups
+                group.Posterior.Alpha += HierarchicalUpdateIncrement; // Fractional updates for hierarchical groups
             }
             else
             {
-                group.Posterior.Beta += 0.1m;
+                group.Posterior.Beta += HierarchicalUpdateIncrement;
             }
 
             group.Posterior.LastUpdated = DateTime.UtcNow;
@@ -310,10 +322,10 @@ public class EnhancedBayesianPriors : IBayesianPriors
 
         return (effectiveN, variance) switch
         {
-            ( < 5, _) => UncertaintyLevel.VeryHigh,
-            ( < 15, > 0.05m) => UncertaintyLevel.High,
-            ( < 30, > 0.02m) => UncertaintyLevel.Medium,
-            ( < 100, > 0.01m) => UncertaintyLevel.Low,
+            ( < UncertaintyVeryHighThreshold, _) => UncertaintyLevel.VeryHigh,
+            ( < UncertaintyHighThreshold, > UncertaintyHighVariance) => UncertaintyLevel.High,
+            ( < UncertaintyMediumThreshold, > UncertaintyMediumVariance) => UncertaintyLevel.Medium,
+            ( < UncertaintyLowThreshold, > UncertaintyLowVariance) => UncertaintyLevel.Low,
             _ => UncertaintyLevel.VeryLow
         };
     }

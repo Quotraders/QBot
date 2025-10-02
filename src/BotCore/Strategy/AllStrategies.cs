@@ -131,14 +131,12 @@ namespace BotCore.Strategy
                 ["S11"] = new() { [13] = 0.91, [14] = 0.88, [15] = 0.85, [16] = 0.82 }
             };
 
-            if (!performanceThresholds.ContainsKey(strategyId))
+            if (!performanceThresholds.TryGetValue(strategyId, out var hourPerformance))
                 return true; // Allow strategies without specific time restrictions
-
-            var hourPerformance = performanceThresholds[strategyId];
 
             // Find closest hour performance
             var closestHour = hourPerformance.Keys.OrderBy(h => Math.Abs(h - hour)).FirstOrDefault();
-            var performance = hourPerformance.ContainsKey(closestHour) ? (decimal)hourPerformance[closestHour] : DefaultPerformanceThreshold;
+            var performance = hourPerformance.TryGetValue(closestHour, out var perf) ? (decimal)perf : DefaultPerformanceThreshold;
 
             // Only run strategy if performance is above threshold
             return performance > PerformanceFilterThreshold;

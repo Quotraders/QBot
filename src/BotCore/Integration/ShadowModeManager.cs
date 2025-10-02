@@ -218,12 +218,11 @@ public sealed class ShadowModeManager
                 
                 // Update daily stats
                 var tradeDate = outcome.ExitTime.Date;
-                if (!tracker.DailyStats.ContainsKey(tradeDate))
+                if (!tracker.DailyStats.TryGetValue(tradeDate, out var dailyStats))
                 {
-                    tracker.DailyStats[tradeDate] = new DailyPerformanceStats { Date = tradeDate };
+                    dailyStats = new DailyPerformanceStats { Date = tradeDate };
+                    tracker.DailyStats[tradeDate] = dailyStats;
                 }
-                
-                var dailyStats = tracker.DailyStats[tradeDate];
                 dailyStats.TotalTrades++;
                 dailyStats.TotalPnL += outcome.PnL;
                 if (shadowTrade.IsWinner)
