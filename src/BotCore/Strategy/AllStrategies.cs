@@ -17,6 +17,24 @@ namespace BotCore.Strategy
     {
         private static readonly TimeZoneInfo Et = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
 
+        // Strategy performance and filtering constants
+        private const decimal DefaultPerformanceThreshold = 0.5m;         // Default performance baseline
+        private const decimal PerformanceFilterThreshold = 0.70m;         // Minimum performance for strategy execution
+        
+        // Signal deduplication constants
+        private const int RoundingDecimalPlaces = 2;                      // Decimal places for signal deduplication
+        
+        // Contract roll month constants
+        private const int QuarterlyRollMonth1 = 3;                        // March
+        private const int QuarterlyRollMonth2 = 6;                        // June  
+        private const int QuarterlyRollMonth3 = 9;                        // September
+        private const int QuarterlyRollMonth4 = 12;                       // December
+        
+        // Time period constants
+        private const int SecondsPerMinute = 60;                          // Seconds in a minute
+        private const int LookbackPeriod = 10;                            // Default lookback period
+        private const int DaysInWeek = 7;                                 // Days in a week
+
         // (attempt accounting moved to specific strategies as needed)
         static decimal rr_quality(decimal entry, decimal stop, decimal t1)
         {
@@ -121,10 +139,10 @@ namespace BotCore.Strategy
 
             // Find closest hour performance
             var closestHour = hourPerformance.Keys.OrderBy(h => Math.Abs(h - hour)).FirstOrDefault();
-            var performance = hourPerformance.ContainsKey(closestHour) ? hourPerformance[closestHour] : 0.5;
+            var performance = hourPerformance.ContainsKey(closestHour) ? hourPerformance[closestHour] : DefaultPerformanceThreshold;
 
             // Only run strategy if performance is above threshold
-            return performance > 0.70;
+            return performance > PerformanceFilterThreshold;
         }
 
         // Config-aware method for StrategyAgent
@@ -328,7 +346,7 @@ namespace BotCore.Strategy
             }
             return [.. signals
                 .OrderByDescending(x => x.Score)
-                .DistinctBy(x => (x.Side, x.StrategyId, Math.Round(x.Entry, 2), Math.Round(x.Target, 2), Math.Round(x.Stop, 2)))
+                .DistinctBy(x => (x.Side, x.StrategyId, Math.Round(x.Entry, RoundingDecimalPlaces), Math.Round(x.Target, RoundingDecimalPlaces), Math.Round(x.Stop, RoundingDecimalPlaces)))
                 .Take(max)];
         }
 
@@ -692,7 +710,7 @@ namespace BotCore.Strategy
                 if (!isRoll)
                 {
                     var rollDay = DateTime.UtcNow.Date;
-                    if (rollDay.Month is 3 or 6 or 9 or 12)
+                    if (rollDay.Month is QuarterlyRollMonth1 or QuarterlyRollMonth2 or QuarterlyRollMonth3 or QuarterlyRollMonth4)
                     {
                         DateTime first = new(rollDay.Year, rollDay.Month, 1);
                         int add = ((int)DayOfWeek.Friday - (int)first.DayOfWeek + 7) % 7;
@@ -751,7 +769,7 @@ namespace BotCore.Strategy
                 {
                     var pb = ExternalGetBars(peer) ?? [];
                     var pbl = pb as IList<Bar> ?? [.. pb];
-                    if (pbl.Count >= 10)
+                    if (pbl.Count >= LookbackPeriod)
                     {
                         var pEma = EmaNoWarmup(pbl, 20).ToArray();
                         var pslope = pEma.Length > 5 ? (pEma[^1] - pEma[^6]) / 5m : 0m;
@@ -779,7 +797,7 @@ namespace BotCore.Strategy
             }
 
             // IB continuation filter after 10:30: avoid small fades unless extreme (use last bar's clock)
-            var now = nowLocal; var nowMin = now.Hour * 60 + now.Minute;
+            var now = nowLocal; var nowMin = now.Hour * SecondsPerMinute + now.Minute;
             if (nowMin >= S2RuntimeConfig.IbEndMinute)
             {
                 var (ibh, ibl) = InitialBalance(bars, AnchorToday(localDate, new TimeSpan(9, 30, 0)), AnchorToday(localDate, new TimeSpan(10, 30, 0)));
@@ -800,7 +818,7 @@ namespace BotCore.Strategy
             // Dynamic sigma threshold + microstructure safety
             var qAdj = S2Quantiles.GetSigmaFor(symbol, nowLocal, needSigma);
             decimal dynSigma = S2Upg.DynamicSigmaThreshold(Math.Max(needSigma, qAdj), volz, slopeTicks, nowLocal, symbol);
-            var imb = S2Upg.UpDownImbalance(bars, 10);
+            var imb = S2Upg.UpDownImbalance(bars, LookbackPeriod);
             var tickSize = InstrumentMeta.Tick(symbol);
             bool pivotOKLong = S2Upg.PivotDistanceOK(bars, px, atr, tickSize, true);
             bool pivotOKShort = S2Upg.PivotDistanceOK(bars, px, atr, tickSize, false);

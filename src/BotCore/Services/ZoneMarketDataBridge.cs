@@ -56,9 +56,19 @@ namespace BotCore.Services
                 _logger.LogInformation("🔗 [ZONE-BRIDGE] Market data to zone service bridge activated");
                 return Task.CompletedTask;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[ZONE-BRIDGE] Failed to start zone market data bridge");
+                _logger.LogError(ex, "[ZONE-BRIDGE] Invalid operation when starting zone market data bridge");
+                return Task.CompletedTask;
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "[ZONE-BRIDGE] Invalid arguments when starting zone market data bridge");
+                return Task.CompletedTask;
+            }
+            catch (NotSupportedException ex)
+            {
+                _logger.LogError(ex, "[ZONE-BRIDGE] Unsupported operation when starting zone market data bridge");
                 return Task.CompletedTask;
             }
         }
@@ -97,9 +107,17 @@ namespace BotCore.Services
                         break;
                 }
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[ZONE-BRIDGE] Error processing market data for {Symbol}", symbol);
+                _logger.LogError(ex, "[ZONE-BRIDGE] Invalid operation when processing market data for {Symbol}", symbol);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "[ZONE-BRIDGE] Invalid arguments when processing market data for {Symbol}", symbol);
+            }
+            catch (NullReferenceException ex)
+            {
+                _logger.LogError(ex, "[ZONE-BRIDGE] Null reference when processing market data for {Symbol}", symbol);
             }
         }
 
