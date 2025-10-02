@@ -340,7 +340,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
 
                 // Step 4: Confluence (at least one must pass)
                 var confluenceResults = EvaluateConfluence(card, symbol);
-                if (!confluenceResults.Any())
+                if (confluenceResults.Count == 0)
                 {
                     _logger.LogTrace("Strategy {StrategyName} has no confluence", card.Name);
                     continue;
@@ -404,7 +404,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
 
     private static bool EvaluateRegimeFilter(DslStrategy card, RegimeType regime)
     {
-        if (card.When?.Regime == null || !card.When.Regime.Any())
+        if (card.When?.Regime == null || card.When.Regime.Count == 0)
             return true; // No regime filter
 
         // Check if current regime matches any of the required regimes
