@@ -259,7 +259,7 @@ internal class TradingBrainAdapter : ITradingBrainAdapter
     {
         // Determine action based on PriceDirection and OptimalPositionMultiplier
         string actionString = "HOLD";
-        decimal size;
+        decimal size = 0; // Initialize to default value
         
         if (brainDecision.OptimalPositionMultiplier > 0)
         {
