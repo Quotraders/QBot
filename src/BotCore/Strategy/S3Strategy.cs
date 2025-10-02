@@ -12,7 +12,7 @@ namespace BotCore.Strategy
 {
     public static class S3Strategy
     {
-        private static readonly ILogger? _logger; // Logger field for S3Strategy - initialized externally
+        private static readonly ILogger? _logger = null; // Logger field for S3Strategy - initialized externally
         
         private static bool BtBypass(string gate)
         {
@@ -701,6 +701,7 @@ namespace BotCore.Strategy
             public DateTime LastFillLocal = DateTime.MinValue;
             public bool IsInvalid;
             public int LastBreakBarIndex = -1;
+            public Side LastSide = Side.BUY;
 
             public void UpdateIfNewSegment(int segId, DateTime nowLocal, decimal hi, decimal lo)
             {

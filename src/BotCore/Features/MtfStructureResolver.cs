@@ -38,6 +38,10 @@ namespace BotCore.Features
             int.TryParse(Environment.GetEnvironmentVariable("MTF_MIN_DATA_POINTS"), out var points) && points > 0 
                 ? points : 2; // Minimal requirement fallback
         
+        private static double GetConfiguredEpsilon() => 
+            double.TryParse(Environment.GetEnvironmentVariable("MTF_CALCULATION_EPSILON"), out var eps) && eps > 0 
+                ? eps : 1e-10; // Minimal precision fallback
+        
         private const int ShortHorizonBars = 10;
         private const int MediumHorizonBars = 30;
         

@@ -14,6 +14,7 @@ namespace BotCore.Supervisor
         private readonly ConcurrentDictionary<string, object> _vals = new();
         private DateTimeOffset _lastBeat = DateTimeOffset.MinValue;
         private DateTimeOffset _lastEmit = DateTimeOffset.MinValue;
+        private string _lastJson = string.Empty;
         private string _lastSig = string.Empty;
 
         public long AccountId { get; set; }
