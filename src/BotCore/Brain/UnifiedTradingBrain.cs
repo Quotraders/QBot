@@ -362,12 +362,11 @@ namespace BotCore.Brain
                 }
 
                 // Update performance tracking for the specific strategy
-                if (!_performance.ContainsKey(symbol))
+                if (!_performance.TryGetValue(symbol, out var perf))
                 {
-                    _performance[symbol] = new TradingPerformance();
+                    perf = new TradingPerformance();
+                    _performance[symbol] = perf;
                 }
-                
-                var perf = _performance[symbol];
                 perf.TotalTrades++;
                 perf.TotalPnL += pnl;
                 if (wasCorrect) perf.WinningTrades++;

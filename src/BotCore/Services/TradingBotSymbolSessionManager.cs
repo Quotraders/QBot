@@ -100,13 +100,14 @@ namespace TradingBot.BotCore.Services
                 throw new ArgumentException("Symbol cannot be null or empty", nameof(symbol));
 
             var priorKey = ConfigurationKeyHelper.GetConfigurationKey(symbol, sessionType);
-            if (!_bayesianPriors.ContainsKey(priorKey))
+            if (!_bayesianPriors.TryGetValue(priorKey, out var priors))
             {
-                _bayesianPriors[priorKey] = new SessionBayesianPriors();
+                priors = new SessionBayesianPriors();
+                _bayesianPriors[priorKey] = priors;
                 _logger.LogDebug("Created new Bayesian priors for {Symbol}-{Session}", symbol, sessionType);
             }
 
-            return _bayesianPriors[priorKey];
+            return priors;
         }
 
         /// <summary>

@@ -408,7 +408,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
             return true; // No regime filter
 
         // Check if current regime matches any of the required regimes
-        return card.When.Regime.Any(r => 
+        return card.When.Regime.Exists(r => 
             string.Equals(r, regime.ToString(), StringComparison.OrdinalIgnoreCase));
     }
 
@@ -491,7 +491,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
             else if (expression.Contains("or"))
             {
                 var parts = expression.Split("or", StringSplitOptions.TrimEntries);
-                return parts.Any(part => EvaluateExpression(part.Trim(), symbol));
+                return Array.Exists(parts, part => EvaluateExpression(part.Trim(), symbol));
             }
             else if (expression.Contains("and"))
             {

@@ -92,12 +92,11 @@ public class LinUcbBandit : IFunctionApproximationBandit
 
         lock (_lock)
         {
-            if (!_arms.ContainsKey(selectedArm))
+            if (!_arms.TryGetValue(selectedArm, out var arm))
             {
-                _arms[selectedArm] = new LinUcbArm(_config.ContextDimension, _config.Alpha);
+                arm = new LinUcbArm(_config.ContextDimension, _config.Alpha);
+                _arms[selectedArm] = arm;
             }
-
-            var arm = _arms[selectedArm];
             arm.Update(context, reward);
 
             Console.WriteLine($"[LINUCB] Updated {selectedArm}: reward={reward:F3} " +
