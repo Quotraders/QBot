@@ -21,7 +21,36 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Current Focus**: Priority 1 violations (correctness & invariants) - S1144, CA2227, CA1002, CA1031
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 
-### Round 54 - CA1707 Naming Convention Compliance (Current Session)
+### Round 55 - S101 Class Naming Fixes + Critical Reference Update (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S101 | ~7 | ~3 | TechnicalIndicatorResolvers.cs, FeatureMapAuthority.cs | Renamed 4 resolver classes from ALL_CAPS acronyms to PascalCase |
+| CS0246 | 10 | 0 | FeatureMapAuthority.cs | Updated resolver instantiation references after class renames |
+
+**Example Pattern - Acronym Class Naming**:
+```csharp
+// Before (Violation) - All-caps acronyms in class names
+public sealed class ATRResolver : IFeatureResolver { }
+public sealed class RSIResolver : IFeatureResolver { }
+RegisterResolver("atr.14", new ATRResolver(_serviceProvider, 14));
+
+// After (Compliant) - PascalCase acronyms
+public sealed class AtrResolver : IFeatureResolver { }
+public sealed class RsiResolver : IFeatureResolver { }
+RegisterResolver("atr.14", new AtrResolver(_serviceProvider, 14));
+```
+
+**Classes Renamed** (4 total):
+- ATRResolver → AtrResolver (Average True Range)
+- RSIResolver → RsiResolver (Relative Strength Index)
+- EMAResolver → EmaResolver (Exponential Moving Average)
+- SMAResolver → SmaResolver (Simple Moving Average)
+
+**Rationale**: S101 requires PascalCase for class names, treating multi-letter acronyms as words (Atr, not ATR). Updated class definitions, generic parameters (ILogger<T>), and all instantiation sites. Critical fix applied when CS0246 errors detected.
+
+---
+
+### Round 54 - CA1707 Naming Convention Compliance (Previous in Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA1707 | 94 | 84 | UnifiedTradingBrain.cs | Renamed 19 public constants from SCREAMING_SNAKE_CASE to PascalCase per C# naming conventions |
