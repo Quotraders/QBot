@@ -99,7 +99,7 @@ public class NeuralUcbBandit : IFunctionApproximationBandit, IDisposable
 
         lock (_lock)
         {
-            if (!_arms.TryGetValue(selectedArm, out arm))
+            if (!_arms.TryGetValue(selectedArm, out arm!))
             {
                 arm = new NeuralUcbArm(
                     _networkTemplate.Clone(),

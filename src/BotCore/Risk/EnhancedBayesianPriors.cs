@@ -515,6 +515,11 @@ public record ShrinkageEstimate(decimal Alpha, decimal Beta, decimal Shrinkage)
 /// </summary>
 public static class BayesianCalculationExtensions
 {
+    private const decimal ShrinkageMaxFactor = 0.9m;
+    private const decimal ShrinkageMinFactor = 0.1m;
+    private const decimal ShrinkageDefaultNormalization = 1.0m;
+    private const decimal ShrinkageSampleSizeDivisor = 10.0m;
+    
     // Helper methods for calculations
     public static decimal CalculateMean(this ShrinkageEstimate estimate)
     {

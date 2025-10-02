@@ -10,21 +10,6 @@ namespace BotCore.Risk
 {
     public sealed class RiskEngine
     {
-        private const decimal PsychologicalLossThresholdMinor = 1000m;
-        private const decimal PsychologicalLossThresholdMajor = 1500m;
-        private const decimal PsychologicalProfitThresholdMinor = 1000m;
-        private const decimal PsychologicalProfitThresholdMajor = 2000m;
-        private const decimal RecoveryRequiredThreshold = 0.25m;
-        
-        private const decimal RiskLevelLowThreshold = 5m;
-        private const decimal RiskLevelModerateThreshold = 10m;
-        private const decimal RiskLevelHighThreshold = 20m;
-        
-        private const decimal ActionMonitorThreshold = 250m;
-        private const decimal ActionReducePositionThreshold = 500m;
-        private const decimal ActionConservativeModeThreshold = 1000m;
-        private const decimal ActionHaltTradesThreshold = 1500m;
-        
         public RiskConfig cfg { get; set; } = new RiskConfig();
         private readonly DrawdownProtectionSystem _drawdownProtection;
 
@@ -145,6 +130,24 @@ namespace BotCore.Risk
         
         // Calculation constants
         private const double PercentageConversionFactor = 100.0;      // Convert decimal to percentage
+        
+        // Psychological threshold constants
+        private const decimal PsychologicalLossThresholdMinor = 1000m;
+        private const decimal PsychologicalLossThresholdMajor = 1500m;
+        private const decimal PsychologicalProfitThresholdMinor = 1000m;
+        private const decimal PsychologicalProfitThresholdMajor = 2000m;
+        private const decimal RecoveryRequiredThreshold = 0.25m;
+        
+        // Risk level classification constants
+        private const decimal RiskLevelLowThreshold = 5m;
+        private const decimal RiskLevelModerateThreshold = 10m;
+        private const decimal RiskLevelHighThreshold = 20m;
+        
+        // Action threshold constants
+        private const decimal ActionMonitorThreshold = 250m;
+        private const decimal ActionReducePositionThreshold = 500m;
+        private const decimal ActionConservativeModeThreshold = 1000m;
+        private const decimal ActionHaltTradesThreshold = 1500m;
         
         /// <summary>
         /// Gets whether trading is currently halted due to risk management
@@ -482,9 +485,9 @@ namespace BotCore.Risk
         {
             return tracker.DrawdownPercent switch
             {
-                < RiskLevelLowThreshold => "LOW",
-                < RiskLevelModerateThreshold => "MODERATE",
-                < RiskLevelHighThreshold => "HIGH",
+                < (double)RiskLevelLowThreshold => "LOW",
+                < (double)RiskLevelModerateThreshold => "MODERATE",
+                < (double)RiskLevelHighThreshold => "HIGH",
                 _ => "CRITICAL"
             };
         }
