@@ -24,6 +24,21 @@ namespace BotCore
         
         // Technical analysis approximation constants
         private const double TechnicalAnalysisSmallVariation = 0.005; // Small price variation for EMA approximation
+        private const double EmaHourVariation = 0.008;               // Hourly EMA variation
+        
+        // Volume simulation constants
+        private const decimal BaseVolumeMinimum = 1000m;             // Minimum volume baseline
+        private const int VolumeVariationRange = 5000;              // Volume variation range
+        
+        // Spread and volatility constants
+        private const decimal MinimumSpreadPercentage = 0.0001m;     // 0.01% minimum spread
+        private const double VolatilityMultiplier = 0.01;           // Volatility calculation multiplier
+        private const double VolatilityVariation = 0.02;            // Volatility variation range
+        
+        // Market imbalance constants
+        private const double ImbalanceMultiplier = 0.1;             // Order book imbalance multiplier
+        private const double BidAskImbalanceRange = 0.3;            // Bid-ask imbalance range
+        private const double OrderBookImbalanceRange = 0.2;         // Order book imbalance range
         
         public class FeatureSnapshot
         {
@@ -225,12 +240,12 @@ namespace BotCore
                 Atr = price * AtrPercentageApproximation,
                 Rsi = BaselineRsiValue + (decimal)(signalId.GetHashCode() % RsiVariationRange - RsiVariationOffset), // RSI between 30-70
                 Ema20 = price * (1 + (decimal)(Math.Sin(DateTime.UtcNow.Minute) * TechnicalAnalysisSmallVariation)),
-                Ema50 = price * (1 + (decimal)(Math.Sin(DateTime.UtcNow.Hour) * 0.008)),
-                Volume = 1000m + (decimal)(signalId.GetHashCode() % 5000), // Variable volume
-                Spread = Math.Max(defaultSpread, price * 0.0001m), // Minimum 0.01% spread
-                Volatility = Math.Abs((decimal)(Math.Sin(DateTime.UtcNow.Millisecond * 0.01) * 0.02)),
-                BidAskImbalance = (decimal)(Math.Sin(signalId.GetHashCode() * 0.1) * 0.3),
-                OrderBookImbalance = (decimal)(Math.Cos(signalId.GetHashCode() * 0.1) * 0.2),
+                Ema50 = price * (1 + (decimal)(Math.Sin(DateTime.UtcNow.Hour) * EmaHourVariation)),
+                Volume = BaseVolumeMinimum + (decimal)(signalId.GetHashCode() % VolumeVariationRange), // Variable volume
+                Spread = Math.Max(defaultSpread, price * MinimumSpreadPercentage), // Minimum 0.01% spread
+                Volatility = Math.Abs((decimal)(Math.Sin(DateTime.UtcNow.Millisecond * VolatilityMultiplier) * VolatilityVariation)),
+                BidAskImbalance = (decimal)(Math.Sin(signalId.GetHashCode() * ImbalanceMultiplier) * BidAskImbalanceRange),
+                OrderBookImbalance = (decimal)(Math.Cos(signalId.GetHashCode() * ImbalanceMultiplier) * OrderBookImbalanceRange),
                 TickDirection = strategy.GetHashCode() % 2 == 0 ? 1m : -1m, // Up or down tick
                 SignalStrength = Math.Abs((decimal)(Math.Sin(signalId.GetHashCode()) * 0.8)) + 0.2m,
                 PriorWinRate = 0.45m + (decimal)(Math.Abs(Math.Sin(strategy.GetHashCode())) * 0.3), // 45-75%

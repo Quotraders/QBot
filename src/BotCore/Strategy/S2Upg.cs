@@ -22,6 +22,19 @@ namespace BotCore.Strategy
         // Volume analysis constants
         private const decimal DefaultVolumeImbalanceRatio = 1.5m; // Default ratio when down volume is zero
         private const int MinimumLookbackBarsForDeceleration = 3; // Minimum bars needed for deceleration analysis
+        
+        // Pivot analysis constants
+        private const int DefaultPivotLookback = 48;             // Default lookback for pivot analysis
+        private const decimal PivotDistanceMultiplier = 0.5m;    // Minimum distance from pivot as multiple of ATR
+        
+        // Size scaling constants
+        private const decimal SizeScaleBase = 0.75m;             // Base size scale factor
+        private const decimal SizeScaleMultiplier = 0.25m;       // Size scale Z-score multiplier
+        private const decimal MinimumSizeScale = 0.5m;           // Minimum size scale limit
+        private const decimal MaximumSizeScale = 1.5m;           // Maximum size scale limit
+        
+        // Swing pivot detection constants
+        private const int SwingLookbackOffset = 2;               // Offset for swing pivot detection
         // Volume imbalance of up vs down bars over lookback window
         public static decimal UpDownImbalance(IList<Bar> bars, int look = 10)
         {
@@ -108,22 +121,22 @@ namespace BotCore.Strategy
         // Require at least 0.5*ATR distance away from nearest opposite pivot (using 1m as proxy)
         public static bool PivotDistanceOK(IList<Bar> bars, decimal price, decimal atr, decimal tickSize, bool longSide)
         {
-            var (hi, lo) = LastHtfPivots(bars, 48);
+            var (hi, lo) = LastHtfPivots(bars, DefaultPivotLookback);
             if (hi == 0m && lo == 0m) return true;
             var dist = longSide ? price - lo : hi - price;
-            return dist >= 0.5m * Math.Max(tickSize, atr);
+            return dist >= PivotDistanceMultiplier * Math.Max(tickSize, atr);
         }
 
         // Simple swing pivot scan over recent window (1m proxy)
         private static (decimal hi, decimal lo) LastHtfPivots(IList<Bar> b, int lookback)
         {
             if (b == null || b.Count < 5) return (0m, 0m);
-            int start = Math.Max(2, b.Count - lookback);
+            int start = Math.Max(SwingLookbackOffset, b.Count - lookback);
             decimal lastHi = 0m, lastLo = 0m;
-            for (int i = start; i < b.Count - 2; i++)
+            for (int i = start; i < b.Count - SwingLookbackOffset; i++)
             {
-                bool swingHi = b[i].High > b[i - 1].High && b[i].High > b[i - 2].High && b[i].High > b[i + 1].High && b[i].High > b[i + 2].High;
-                bool swingLo = b[i].Low < b[i - 1].Low && b[i].Low < b[i - 2].Low && b[i].Low < b[i + 1].Low && b[i].Low < b[i + 2].Low;
+                bool swingHi = b[i].High > b[i - 1].High && b[i].High > b[i - SwingLookbackOffset].High && b[i].High > b[i + 1].High && b[i].High > b[i + SwingLookbackOffset].High;
+                bool swingLo = b[i].Low < b[i - 1].Low && b[i].Low < b[i - SwingLookbackOffset].Low && b[i].Low < b[i + 1].Low && b[i].Low < b[i + SwingLookbackOffset].Low;
                 if (swingHi) lastHi = b[i].High;
                 if (swingLo) lastLo = b[i].Low;
             }
@@ -133,11 +146,11 @@ namespace BotCore.Strategy
         // Optional size scale from |z|, not wired to sizing here (risk engine controls size). Provided for future use.
         public static decimal SizeScaleFromStretch(decimal absZ)
         {
-            decimal s = 0.75m + 0.25m * absZ;
-            if (s < 0.5m)
-                s = 0.5m;
-            if (s > 1.5m)
-                s = 1.5m;
+            decimal s = SizeScaleBase + SizeScaleMultiplier * absZ;
+            if (s < MinimumSizeScale)
+                s = MinimumSizeScale;
+            if (s > MaximumSizeScale)
+                s = MaximumSizeScale;
             return s;
         }
 
