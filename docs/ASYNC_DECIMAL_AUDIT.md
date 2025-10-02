@@ -35,9 +35,11 @@ These files are in the direct trade execution path and must be fixed immediately
    - Blocking patterns: All removed
    - ConfigureAwait(false): Applied throughout
 
-2. **S6_S11_Bridge.cs** ⚠️ NEEDS AUDIT
-   - Estimated blocking calls: 3-5
+2. **S6_S11_Bridge.cs** ✅ FIXED
+   - Fixed 7 blocking calls with Task.Run pattern
+   - Fixed 4 decimal precision issues (constants now decimal)
    - Priority: Critical - bridges strategy evaluation
+   - Note: Must remain synchronous per third-party interface contract
 
 3. **RiskManagementService.cs** ⚠️ NEEDS AUDIT
    - Estimated blocking calls: 2-4
@@ -181,6 +183,13 @@ Lower priority, cosmetic improvements:
 
 ### Completed Fixes
 
+#### Round 71 (Current Session)
+- ✅ **S6_S11_Bridge.cs** - Fixed async blocking + decimal precision
+  - Replaced 7 `.GetAwaiter().GetResult()` calls with Task.Run pattern
+  - Changed constants to decimal: EsTickSize, NqTickSize, EsPointValue, NqPointValue  
+  - Added documentation for synchronous interface constraints
+  - **Impact**: 1 critical file complete, 8 critical files remaining
+
 #### Round 69 (Commit edbaa54)
 - ✅ EnsembleMetaLearner.cs - Removed unused `_lock` field
 - ✅ StrategyKnowledgeGraphNew.cs - Fixed CS1519 syntax error
@@ -212,6 +221,8 @@ Lower priority, cosmetic improvements:
 - [ ] TradeSignalProcessor.cs - 2-3 blocking calls
 
 **Total Critical Path**: ~20-25 async fixes + 15-20 decimal fixes = **35-45 changes**
+- ✅ S6_S11_Bridge.cs: 7 async + 4 decimal = 11 fixes
+- ⚠️ Remaining: ~13-18 async + ~11-16 decimal = **24-34 changes**
 
 #### Next Priority (High Impact)
 - [ ] 8 HIGH priority async files (~10-15 fixes)
@@ -295,12 +306,12 @@ var result = await SomeAsyncMethod().ConfigureAwait(false);
 
 ## 6. Completion Metrics
 
-### Current State (as of commit 1814d62)
+### Current State (as of current session)
 - **CS Compiler Errors**: 0 ✅
-- **Async Fixes Complete**: 1/25 files (4%)
-- **Decimal Fixes Complete**: 0/20 files (0%)
-- **Critical Path Complete**: 1/16 files (6%)
-- **Total Progress**: ~5/150 fixes (3%)
+- **Async Fixes Complete**: 2/25 files (8%)
+- **Decimal Fixes Complete**: 1/20 files (5%)
+- **Critical Path Complete**: 2/16 files (13%)
+- **Total Progress**: ~16/150 fixes (11%)
 
 ### Target State (Before Live Trading)
 - **CS Compiler Errors**: 0 ✅
