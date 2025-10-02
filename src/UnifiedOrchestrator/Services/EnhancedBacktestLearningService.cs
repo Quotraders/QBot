@@ -701,11 +701,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
             // For now, return empty list since historical data service is not available
             var dataPoints = new List<HistoricalDataPoint>();
             
-            // This would be the real implementation:
-            // var topstepXClient = GetService<ITopstepXClient>();
-            // var historicalData = await topstepXClient.GetHistoricalDataAsync(config.Symbol, config.StartDate, config.EndDate, cancellationToken).ConfigureAwait(false);
-            // return ConvertToHistoricalDataPoints(historicalData);
-            
+            // Historical data service not available - logging warning
             _logger.LogWarning("[HISTORICAL-DATA] Historical data service not available for {Symbol}. Backtesting will be skipped.", config.Symbol);
             return dataPoints;
         }
@@ -1337,11 +1333,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
             // For now, return empty list since historical bars service is not available
             var bars = new List<BotCore.Models.Bar>();
             
-            // This would be the real implementation:
-            // var topstepXClient = GetService<ITopstepXClient>();
-            // var historicalBars = await topstepXClient.GetHistoricalBarsAsync(config.Symbol, config.StartDate, config.EndDate, TimeFrame.OneMinute, cancellationToken).ConfigureAwait(false);
-            // return ConvertToBotCoreBars(historicalBars);
-            
+            // Historical bars service not available - logging warning
             _logger.LogWarning("[UNIFIED-BACKTEST] Historical bars service not available for {Symbol}. Unified backtesting will be skipped.", config.Symbol);
             return bars;
         }
