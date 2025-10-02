@@ -143,7 +143,7 @@ public class CloudModelSynchronizationService : BackgroundService
                 {
                     var artifacts = await GetWorkflowArtifactsAsync(run.Id, cancellationToken).ConfigureAwait(false);
                     
-                    foreach (var artifact in artifacts.Where(a => a.Name.Contains("model") || a.Name.Contains("onnx")))
+                    foreach (var artifact in artifacts.Where(a => a.Name.Contains("model", StringComparison.OrdinalIgnoreCase) || a.Name.Contains("onnx", StringComparison.OrdinalIgnoreCase)))
                     {
                         var wasNew = await DownloadAndUpdateModelAsync(artifact, run, cancellationToken).ConfigureAwait(false);
                         syncedCount++;
@@ -192,7 +192,7 @@ public class CloudModelSynchronizationService : BackgroundService
             
             // Filter for ML training workflows
             var mlWorkflows = result?.WorkflowRuns?.Where(r => 
-                r.Name.Contains("train") || r.Name.Contains("ml") || r.Name.Contains("rl") ||
+                r.Name.Contains("train", StringComparison.OrdinalIgnoreCase) || r.Name.Contains("ml", StringComparison.OrdinalIgnoreCase) || r.Name.Contains("rl", StringComparison.OrdinalIgnoreCase) ||
                 r.WorkflowId == 0 || // Include all if we can't filter
                 r.Conclusion == "success"
             ).ToList() ?? new List<WorkflowRun>();
@@ -307,15 +307,15 @@ public class CloudModelSynchronizationService : BackgroundService
     {
         var lowerName = artifactName.ToLowerInvariant();
         
-        if (lowerName.Contains("cvar") || lowerName.Contains("ppo") || lowerName.Contains("rl"))
+        if (lowerName.Contains("cvar", StringComparison.Ordinal) || lowerName.Contains("ppo", StringComparison.Ordinal) || lowerName.Contains("rl", StringComparison.Ordinal))
         {
             return Path.Combine(_modelsDirectory, "rl", fileName);
         }
-        else if (lowerName.Contains("ensemble") || lowerName.Contains("blend"))
+        else if (lowerName.Contains("ensemble", StringComparison.Ordinal) || lowerName.Contains("blend", StringComparison.Ordinal))
         {
             return Path.Combine(_modelsDirectory, "ensemble", fileName);
         }
-        else if (lowerName.Contains("cloud"))
+        else if (lowerName.Contains("cloud", StringComparison.Ordinal))
         {
             return Path.Combine(_modelsDirectory, "cloud", fileName);
         }
