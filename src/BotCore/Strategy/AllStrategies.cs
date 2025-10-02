@@ -969,21 +969,38 @@ namespace BotCore.Strategy
             {
                 return S6S11Bridge.GetS6Candidates(symbol, env, levels, bars, risk, null!, null!, null!);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
                 // Fallback to original simple implementation if full-stack fails
-                Console.WriteLine($"[S6] Full-stack failed, using fallback: {ex.Message}");
-                var lst = new List<Candidate>();
-                var minAtr = S6RuntimeConfig.MinAtr;
-                if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > minAtr)
-                {
-                    var entry = bars[^1].Close;
-                    var stop = entry - env.atr.Value * S6RuntimeConfig.StopAtrMult;
-                    var t1 = entry + env.atr.Value * S6RuntimeConfig.TargetAtrMult;
-                    add_cand(lst, "S6", symbol, "BUY", entry, stop, t1, env, risk);
-                }
-                return lst;
+                Console.WriteLine($"[S6] Invalid operation in full-stack, using fallback: {ex.Message}");
+                return CreateS6Fallback(symbol, env, bars, risk);
             }
+            catch (ArgumentException ex)
+            {
+                // Fallback to original simple implementation if arguments are invalid
+                Console.WriteLine($"[S6] Invalid arguments in full-stack, using fallback: {ex.Message}");
+                return CreateS6Fallback(symbol, env, bars, risk);
+            }
+            catch (NotSupportedException ex)
+            {
+                // Fallback to original simple implementation if operation not supported
+                Console.WriteLine($"[S6] Unsupported operation in full-stack, using fallback: {ex.Message}");
+                return CreateS6Fallback(symbol, env, bars, risk);
+            }
+        }
+
+        private static List<Candidate> CreateS6Fallback(string symbol, Env env, IList<Bar> bars, RiskEngine risk)
+        {
+            var lst = new List<Candidate>();
+            var minAtr = S6RuntimeConfig.MinAtr;
+            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > minAtr)
+            {
+                var entry = bars[^1].Close;
+                var stop = entry - env.atr.Value * S6RuntimeConfig.StopAtrMult;
+                var t1 = entry + env.atr.Value * S6RuntimeConfig.TargetAtrMult;
+                add_cand(lst, "S6", symbol, "BUY", entry, stop, t1, env, risk);
+            }
+            return lst;
         }
 
         // S7 strategy logic handled by IS7Service via dependency injection at higher levels
@@ -1049,21 +1066,38 @@ namespace BotCore.Strategy
             {
                 return S6S11Bridge.GetS11Candidates(symbol, env, levels, bars, risk, null!, null!, null!);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
                 // Fallback to original simple implementation if full-stack fails
-                Console.WriteLine($"[S11] Full-stack failed, using fallback: {ex.Message}");
-                var lst = new List<Candidate>();
-                var minAtr = S11RuntimeConfig.MinAtr;
-                if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > minAtr)
-                {
-                    var entry = bars[^1].Close;
-                    var stop = entry + env.atr.Value * S11RuntimeConfig.StopAtrMult;
-                    var t1 = entry - env.atr.Value * S11RuntimeConfig.TargetAtrMult;
-                    add_cand(lst, "S11", symbol, "SELL", entry, stop, t1, env, risk);
-                }
-                return lst;
+                Console.WriteLine($"[S11] Invalid operation in full-stack, using fallback: {ex.Message}");
+                return CreateS11Fallback(symbol, env, bars, risk);
             }
+            catch (ArgumentException ex)
+            {
+                // Fallback to original simple implementation if arguments are invalid
+                Console.WriteLine($"[S11] Invalid arguments in full-stack, using fallback: {ex.Message}");
+                return CreateS11Fallback(symbol, env, bars, risk);
+            }
+            catch (NotSupportedException ex)
+            {
+                // Fallback to original simple implementation if operation not supported
+                Console.WriteLine($"[S11] Unsupported operation in full-stack, using fallback: {ex.Message}");
+                return CreateS11Fallback(symbol, env, bars, risk);
+            }
+        }
+
+        private static List<Candidate> CreateS11Fallback(string symbol, Env env, IList<Bar> bars, RiskEngine risk)
+        {
+            var lst = new List<Candidate>();
+            var minAtr = S11RuntimeConfig.MinAtr;
+            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > minAtr)
+            {
+                var entry = bars[^1].Close;
+                var stop = entry + env.atr.Value * S11RuntimeConfig.StopAtrMult;
+                var t1 = entry - env.atr.Value * S11RuntimeConfig.TargetAtrMult;
+                add_cand(lst, "S11", symbol, "SELL", entry, stop, t1, env, risk);
+            }
+            return lst;
         }
 
         public static List<Candidate> S12(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
@@ -1177,10 +1211,20 @@ namespace BotCore.Strategy
                     $"{sid}-{symbol}-{DateTime.UtcNow:yyyyMMddHHmmss}"
                 );
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
                 // Don't let ML logging break strategy execution
-                Console.WriteLine($"[ML-Integration] Failed to log signal for {sid}: {ex.Message}");
+                Console.WriteLine($"[ML-Integration] Invalid operation when logging signal for {sid}: {ex.Message}");
+            }
+            catch (ArgumentException ex)
+            {
+                // Don't let ML logging break strategy execution
+                Console.WriteLine($"[ML-Integration] Invalid arguments when logging signal for {sid}: {ex.Message}");
+            }
+            catch (System.IO.IOException ex)
+            {
+                // Don't let ML logging break strategy execution
+                Console.WriteLine($"[ML-Integration] IO error when logging signal for {sid}: {ex.Message}");
             }
         }
 
@@ -1232,9 +1276,19 @@ namespace BotCore.Strategy
                 
                 return bars;
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
             {
-                Console.WriteLine($"[AllStrategies] Error extracting bars from context: {ex.Message}");
+                Console.WriteLine($"[AllStrategies] Invalid arguments when extracting bars from context: {ex.Message}");
+                return new List<Bar>(); // Return empty list on error
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"[AllStrategies] Invalid operation when extracting bars from context: {ex.Message}");
+                return new List<Bar>(); // Return empty list on error
+            }
+            catch (NotSupportedException ex)
+            {
+                Console.WriteLine($"[AllStrategies] Unsupported operation when extracting bars from context: {ex.Message}");
                 return new List<Bar>(); // Return empty list on error
             }
         }
