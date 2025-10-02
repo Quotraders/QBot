@@ -354,7 +354,7 @@ public sealed class MamlLiveIntegration : IDisposable
                 PeriodicUpdatePerforming(_logger, null);
             
             // Update for each regime that has recent activity
-            var ensembleStatus = _ensemble.GetCurrentStatus();
+            var ensembleStatus = await _ensemble.GetCurrentStatusAsync(CancellationToken.None).ConfigureAwait(false);
             var currentRegime = ensembleStatus.CurrentRegime;
             
             // Focus updates on current and recently active regimes

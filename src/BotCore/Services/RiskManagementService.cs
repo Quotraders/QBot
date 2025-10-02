@@ -76,7 +76,7 @@ namespace BotCore.Services
         /// <summary>
         /// Check if a trade should be rejected based on risk rules
         /// </summary>
-        public bool ShouldRejectTrade(string symbol, decimal quantity, decimal price, string strategy)
+        public async Task<bool> ShouldRejectTradeAsync(string symbol, decimal quantity, decimal price, string strategy, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -95,7 +95,7 @@ namespace BotCore.Services
                 }
 
                 // Daily rejection limit per symbol
-                var dailyRejections = GetRiskRejectCountAsync(symbol, "all_types", CancellationToken.None).Result;
+                var dailyRejections = await GetRiskRejectCountAsync(symbol, "all_types", cancellationToken).ConfigureAwait(false);
                 if (dailyRejections > 50) // Max 50 rejections per day per symbol
                 {
                     RecordRiskRejection(symbol, "rejection_limit", "Daily rejection limit exceeded");

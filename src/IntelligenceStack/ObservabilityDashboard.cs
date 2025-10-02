@@ -175,7 +175,7 @@ public class ObservabilityDashboard : IDisposable
         await Task.Delay(1, cancellationToken).ConfigureAwait(false);
         
         var sloStatus = _sloMonitor.GetCurrentSloStatus();
-        var ensembleStatus = _ensemble.GetCurrentStatus();
+        var ensembleStatus = await _ensemble.GetCurrentStatusAsync(cancellationToken).ConfigureAwait(false);
         
         return new GoldenSignals
         {
@@ -217,7 +217,7 @@ public class ObservabilityDashboard : IDisposable
         // Perform brief async operation for proper async pattern
         await Task.Delay(1, cancellationToken).ConfigureAwait(false);
         
-        var ensembleStatus = _ensemble.GetCurrentStatus();
+        var ensembleStatus = await _ensemble.GetCurrentStatusAsync(cancellationToken).ConfigureAwait(false);
         
         // Get recent regime changes from metrics
         var recentRegimeChanges = GetRecentMetrics("regime_changes")
@@ -264,7 +264,7 @@ public class ObservabilityDashboard : IDisposable
         // Perform brief async operation for proper async pattern
         await Task.Delay(1, cancellationToken).ConfigureAwait(false);
         
-        var ensembleStatus = _ensemble.GetCurrentStatus();
+        var ensembleStatus = await _ensemble.GetCurrentStatusAsync(cancellationToken).ConfigureAwait(false);
         
         var ensembleWeights = new EnsembleWeightsDashboard();
         
@@ -671,7 +671,7 @@ public class ObservabilityDashboard : IDisposable
         var timestamp = DateTime.UtcNow;
         
         // Collect ensemble metrics asynchronously
-        var ensembleStatusTask = Task.Run(() => _ensemble.GetCurrentStatus());
+        var ensembleStatusTask = _ensemble.GetCurrentStatusAsync(CancellationToken.None);
         var sloStatusTask = Task.Run(() => _sloMonitor.GetCurrentSloStatus());
         var healthReportTask = Task.Run(() => _quarantine.GetHealthReport());
         

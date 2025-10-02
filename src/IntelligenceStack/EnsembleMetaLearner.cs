@@ -267,46 +267,48 @@ public class EnsembleMetaLearner
     /// <summary>
     /// Get current ensemble status and weights
     /// </summary>
-    public EnsembleStatus GetCurrentStatus()
+    public async Task<EnsembleStatus> GetCurrentStatusAsync(CancellationToken cancellationToken = default)
     {
-        lock (_lock)
+        var status = new EnsembleStatus
         {
-            var status = new EnsembleStatus
-            {
-                CurrentRegime = _currentRegime,
-                PreviousRegime = _previousRegime,
-                InTransition = _inTransition,
-                TransitionStartTime = _lastTransitionTime
-            };
+            CurrentRegime = _currentRegime,
+            PreviousRegime = _previousRegime,
+            InTransition = _inTransition,
+            TransitionStartTime = _lastTransitionTime
+        };
 
-            // Get current weights for active regime
-            var regimeTypeStr = _currentRegime.ToString();
-            var task = _onlineLearning.GetCurrentWeightsAsync(regimeTypeStr, CancellationToken.None);
-            task.Wait(TimeSpan.FromSeconds(1));
-            
-            if (task.IsCompletedSuccessfully)
+        // Get current weights for active regime with timeout
+        var regimeTypeStr = _currentRegime.ToString();
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(TimeSpan.FromSeconds(1));
+        
+        try
+        {
+            var weights = await _onlineLearning.GetCurrentWeightsAsync(regimeTypeStr, cts.Token).ConfigureAwait(false);
+            // Copy the weights to the ActiveModels dictionary
+            foreach (var kvp in weights)
             {
-                // Copy the weights to the ActiveModels dictionary
-                foreach (var kvp in task.Result)
-                {
-                    status.ActiveModels[kvp.Key] = kvp.Value;
-                }
+                status.ActiveModels[kvp.Key] = kvp.Value;
             }
-
-            // Get regime head status
-            foreach (var (regime, head) in _regimeHeads)
-            {
-                status.RegimeHeadStatus[regime] = new RegimeHeadStatus
-                {
-                    IsActive = regime == _currentRegime,
-                    LastTrainingTime = head.LastTrainingTime,
-                    TrainingExamples = head.TrainingExampleCount,
-                    ValidationScore = head.LastValidationScore
-                };
-            }
-
-            return status;
         }
+        catch (OperationCanceledException)
+        {
+            // Timeout - continue with empty weights
+        }
+
+        // Get regime head status
+        foreach (var (regime, head) in _regimeHeads)
+        {
+            status.RegimeHeadStatus[regime] = new RegimeHeadStatus
+            {
+                IsActive = regime == _currentRegime,
+                LastTrainingTime = head.LastTrainingTime,
+                TrainingExamples = head.TrainingExampleCount,
+                ValidationScore = head.LastValidationScore
+            };
+        }
+
+        return status;
     }
 
     private void InitializeRegimeHeads()
