@@ -20,15 +20,15 @@ using ModelBar = BotCore.Models.Bar;
 namespace BotCore.Services;
 
 /// <summary>
-/// 🎯 UNIFIED DECISION ROUTER - NEVER RETURNS HOLD 🎯
+/// 🎯 UNIFIED DECISION ROUTER - SAFE FALLBACK ON SYSTEM FAILURES 🎯
 /// 
 /// Creates cascading decision system that tries each brain in order:
 /// 1. EnhancedBrainIntegration: Multi-model ensemble with cloud learning
 /// 2. UnifiedTradingBrain: Neural UCB strategy selection + CVaR-PPO sizing
 /// 3. IntelligenceOrchestrator: Basic ML/RL fallback
 /// 
-/// GUARANTEES: Always returns BUY/SELL, never HOLD
-/// RESULT: No more stuck decision engines, real trading actions
+/// SAFETY: Returns HOLD in emergency when all systems fail to preserve safety
+/// RESULT: Reliable trading actions with safe standdown on system failures
 /// </summary>
 public class UnifiedDecisionRouter
 {
@@ -104,7 +104,7 @@ public class UnifiedDecisionRouter
     }
     
     /// <summary>
-    /// Main decision routing method - GUARANTEES BUY/SELL decision, never HOLD
+    /// Main decision routing method - Returns safe HOLD when all systems fail
     /// </summary>
     public async Task<UnifiedTradingDecision> RouteDecisionAsync(
         string symbol,
@@ -368,23 +368,24 @@ public class UnifiedDecisionRouter
     }
     
     /// <summary>
-    /// Create emergency decision - Last resort fallback
+    /// Create emergency decision - Last resort fallback that safely stands down
     /// </summary>
     private static UnifiedTradingDecision CreateEmergencyDecision(string symbol)
     {
-        // Emergency decisions are always conservative BUY (ES/NQ tend to trend up)
+        // Emergency decisions should stand down safely rather than mask upstream faults
+        // Return minimal action that preserves safety
         return new UnifiedTradingDecision
         {
             Symbol = symbol,
-            Action = TradingAction.Buy,
-            Confidence = 0.51m, // Minimum viable
-            Quantity = 1m, // Very conservative
-            Strategy = "EMERGENCY_BUY",
+            Action = TradingAction.Hold, // Safe default - don't trade when all systems fail
+            Confidence = 0.0m, // No confidence in emergency state
+            Quantity = 0m, // No position sizing in emergency
+            Strategy = "EMERGENCY_STANDDOWN",
             Reasoning = new Dictionary<string, object>
             {
-                ["source"] = "Emergency fallback decision",
-                ["rationale"] = "ES/NQ long-term uptrend bias",
-                ["safety"] = "Minimum size, conservative direction"
+                ["source"] = "Emergency standdown - all decision systems failed",
+                ["rationale"] = "Preserving safety by avoiding trades during system failures",
+                ["safety"] = "No trading action - system standdown mode"
             },
             Timestamp = DateTime.UtcNow
         };

@@ -254,6 +254,7 @@ public class TradingDecision
     public decimal MaxPositionSize { get; set; }
     public string MarketRegime { get; set; } = string.Empty;
     public decimal RegimeConfidence { get; set; }
+    public string Strategy { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     public Dictionary<string, object> Reasoning { get; } = new();
 }
