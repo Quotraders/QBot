@@ -41,7 +41,7 @@ public static class SessionAwareRuntimeGatesTest
         
         // Test basic functionality
         Console.WriteLine("📊 Current Session Status:");
-        var status = sessionGates.GetSessionStatus();
+        var status = await sessionGates.GetSessionStatusAsync().ConfigureAwait(false);
         
         Console.WriteLine($"  Current Session: {status.CurrentSession}");
         Console.WriteLine($"  Trading Allowed: {status.TradingAllowed}");
