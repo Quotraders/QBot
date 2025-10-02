@@ -7,6 +7,23 @@ using System.Runtime;
 namespace BotCore.ML;
 
 /// <summary>
+/// Memory usage snapshot for ML operations
+/// </summary>
+public sealed class MemorySnapshot
+{
+    public long TotalMemory { get; set; }
+    public long UsedMemory { get; set; }
+    public long MLMemory { get; set; }
+    public Dictionary<string, long> ModelMemory { get; } = new();
+    public int LoadedModels { get; set; }
+    public int CachedPredictions { get; set; }
+    private readonly List<string> _memoryLeaks = new();
+    public IReadOnlyList<string> MemoryLeaks => _memoryLeaks;
+    
+    internal void AddMemoryLeak(string leak) => _memoryLeaks.Add(leak);
+}
+
+/// <summary>
 /// ML Memory Management System for preventing memory leaks in the ML pipeline
 /// Manages ML model lifecycle, memory monitoring, and automatic cleanup
 /// </summary>
@@ -34,20 +51,6 @@ public class MLMemoryManager : IMLMemoryManager
         public int UsageCount { get; set; }
         public DateTime LastUsed { get; set; }
         public WeakReference? WeakRef { get; set; }
-    }
-
-    public class MemorySnapshot
-    {
-        public long TotalMemory { get; set; }
-        public long UsedMemory { get; set; }
-        public long MLMemory { get; set; }
-        public Dictionary<string, long> ModelMemory { get; } = new();
-        public int LoadedModels { get; set; }
-        public int CachedPredictions { get; set; }
-        private readonly List<string> _memoryLeaks = new();
-        public IReadOnlyList<string> MemoryLeaks => _memoryLeaks;
-        
-        internal void AddMemoryLeak(string leak) => _memoryLeaks.Add(leak);
     }
 
     public MLMemoryManager(ILogger<MLMemoryManager> logger, OnnxModelLoader onnxLoader)

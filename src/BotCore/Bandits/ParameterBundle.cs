@@ -74,7 +74,7 @@ public record BracketMode
     /// <summary>
     /// Predefined bracket modes for different market conditions
     /// </summary>
-    public static class Presets
+    internal static class Presets
     {
         /// <summary>Conservative bracket: Tight stops, moderate targets</summary>
         public static readonly BracketMode Conservative = new()

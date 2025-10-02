@@ -142,7 +142,7 @@ namespace BotCore.ML
         /// <summary>
         /// Get memory usage statistics from memory manager
         /// </summary>
-        public MLMemoryManager.MemorySnapshot? GetMemorySnapshot()
+        public MemorySnapshot? GetMemorySnapshot()
         {
             return _memoryManager?.GetMemorySnapshot();
         }

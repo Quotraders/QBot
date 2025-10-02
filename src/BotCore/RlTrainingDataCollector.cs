@@ -322,20 +322,20 @@ namespace BotCore
                 log.LogInformation("[RL] Training data exported to {Path} with {Count} records", outputPath, recordCount);
                 return outputPath;
             }
-            catch (IOException ex)
+            catch (DirectoryNotFoundException ex)
             {
-                log.LogError(ex, "[RL] Failed to export training data - IO error during file operations");
-                throw new InvalidOperationException("Training data export failed due to file system error", ex);
+                log.LogError(ex, "[RL] Failed to export training data - directory not found");
+                throw new InvalidOperationException("Training data export failed due to missing directory", ex);
             }
             catch (UnauthorizedAccessException ex)
             {
                 log.LogError(ex, "[RL] Failed to export training data - access denied to output path");
                 throw new InvalidOperationException("Training data export failed due to insufficient permissions", ex);
             }
-            catch (DirectoryNotFoundException ex)
+            catch (IOException ex)
             {
-                log.LogError(ex, "[RL] Failed to export training data - directory not found");
-                throw new InvalidOperationException("Training data export failed due to missing directory", ex);
+                log.LogError(ex, "[RL] Failed to export training data - IO error during file operations");
+                throw new InvalidOperationException("Training data export failed due to file system error", ex);
             }
         }
 

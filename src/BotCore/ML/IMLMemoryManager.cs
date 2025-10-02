@@ -18,5 +18,5 @@ public interface IMLMemoryManager : IDisposable
     /// <summary>
     /// Get current memory usage statistics
     /// </summary>
-    MLMemoryManager.MemorySnapshot GetMemorySnapshot();
+    MemorySnapshot GetMemorySnapshot();
 }
