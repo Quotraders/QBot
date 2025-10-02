@@ -625,7 +625,6 @@ namespace BotCore.Strategy
         
         // Volume calculation constants
         private const int RecentVolumeBarCount = 5;             // Number of bars for recent volume average
-        private const int MillisecondsMultiplier = 1000;        // Multiplier for milliseconds conversion
 
         private static decimal CalculateATR(IList<Bar> bars, int period = 14)
         {

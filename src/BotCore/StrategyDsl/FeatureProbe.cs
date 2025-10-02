@@ -36,9 +36,7 @@ public sealed class FeatureProbe
     private const int MaxSessionVolume = 2000000; // Maximum session volume for simulation
     
     private readonly ILogger<FeatureProbe> _logger;
-    private readonly IConfiguration _configuration;
     private readonly PatternEngine _patternEngine;
-    private readonly FeatureBusMapper _featureBusMapper;
     
     // Feature cache with expiration to avoid stale data
     private readonly Dictionary<string, (object Value, DateTime Expiry)> _featureCache = new();
@@ -52,9 +50,9 @@ public sealed class FeatureProbe
         FeatureBusMapper featureBusMapper)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        if (configuration is null) throw new ArgumentNullException(nameof(configuration));
         _patternEngine = patternEngine ?? throw new ArgumentNullException(nameof(patternEngine));
-        _featureBusMapper = featureBusMapper ?? throw new ArgumentNullException(nameof(featureBusMapper));
+        if (featureBusMapper is null) throw new ArgumentNullException(nameof(featureBusMapper));
     }
 
     /// <summary>

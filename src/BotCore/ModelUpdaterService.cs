@@ -33,7 +33,6 @@ namespace BotCore
         private readonly string _modelsPath;
 
         private string _currentManifestHash = "";
-        private DateTime _lastSuccessfulCheck = DateTime.MinValue;
         private int _consecutiveFailures;
 
         private readonly Timer _updateTimer;
@@ -100,7 +99,6 @@ namespace BotCore
             {
                 await CheckForModelUpdates(CancellationToken.None).ConfigureAwait(false);
                 _consecutiveFailures = 0;
-                _lastSuccessfulCheck = DateTime.UtcNow;
             }
             catch (HttpRequestException ex)
             {

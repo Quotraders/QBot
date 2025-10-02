@@ -91,25 +91,13 @@ namespace TradingBot.BotCore.Services
             LoggerMessage.Define<int>(LogLevel.Warning, new EventId(1003, "InsufficientData"),
                 "[TuningRunner] Insufficient market data: {BarCount} bars");
                 
-        private static readonly Action<ILogger, string, Exception?> LogBacktestComplete =
-            LoggerMessage.Define<string>(LogLevel.Information, new EventId(1004, "BacktestComplete"),
-                "[TuningRunner] Backtest completed for {Strategy}");
-                
         private static readonly Action<ILogger, string, Exception> LogBacktestError =
             LoggerMessage.Define<string>(LogLevel.Error, new EventId(1005, "BacktestError"),
                 "[TuningRunner] Error during backtest for {Strategy}");
-        
-        private static readonly Action<ILogger, string, int, decimal, decimal, Exception?> LogBacktestDebug =
-            LoggerMessage.Define<string, int, decimal, decimal>(LogLevel.Debug, new EventId(1006, "BacktestDebug"),
-                "[TuningRunner] Strategy {Strategy} backtest: Trades={TradeCount}, WinRate={WinRate:P1}, NetPnL=${NetPnL:F2}");
                 
         private static readonly Action<ILogger, int, string, Exception?> LogBacktestTrialsComplete =
             LoggerMessage.Define<int, string>(LogLevel.Information, new EventId(1007, "BacktestTrialsComplete"),
                 "[TuningRunner] Completed {TrialCount} backtesting trials for {Symbol}");
-                
-        private static readonly Action<ILogger, int, string, Exception?> LogParameterConfigGenerated =
-            LoggerMessage.Define<int, string>(LogLevel.Information, new EventId(1008, "ParameterConfigGenerated"),
-                "[TuningRunner] Generated {Count} {Strategy} parameter configurations from configuration service");
 
         /// <summary>
         /// Parameter configuration record - immutable and configuration-driven

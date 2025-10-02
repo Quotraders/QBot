@@ -18,27 +18,27 @@ namespace BotCore.Brain
     /// </summary>
     public static class TopStepConfig
     {
-        public const decimal ACCOUNT_SIZE = 50_000m;
-        public const decimal MAX_DRAWDOWN = 2_000m;
-        public const decimal DAILY_LOSS_LIMIT = 1_000m;
-        public const decimal TRAILING_STOP = 48_000m;
-        public const decimal ES_POINT_VALUE = 50m;
-        public const decimal NQ_POINT_VALUE = 20m;
-        public const decimal RISK_PER_TRADE = 0.01m; // 1% = $500 baseline
-        public const double EXPLORATION_BONUS = 0.3;
-        public const double CONFIDENCE_THRESHOLD = 0.65;
+        public const decimal AccountSize = 50_000m;
+        public const decimal MaxDrawdown = 2_000m;
+        public const decimal DailyLossLimit = 1_000m;
+        public const decimal TrailingStop = 48_000m;
+        public const decimal EsPointValue = 50m;
+        public const decimal NqPointValue = 20m;
+        public const decimal RiskPerTrade = 0.01m; // 1% = $500 baseline
+        public const double ExplorationBonus = 0.3;
+        public const double ConfidenceThreshold = 0.65;
         
         // Trading Brain confidence and probability constants
-        public const decimal FALLBACK_CONFIDENCE = 0.6m;             // Fallback strategy confidence
-        public const decimal FALLBACK_UCB_VALUE = 0.5m;              // Fallback UCB value
-        public const decimal HIGH_CONFIDENCE_PROBABILITY = 0.7m;      // High confidence prediction probability
-        public const decimal NEUTRAL_PROBABILITY = 0.5m;             // Neutral/sideways prediction probability
-        public const decimal DEFAULT_ATR_FALLBACK = 25.0m;           // Default ATR for NQ when unavailable
-        public const decimal ES_DEFAULT_ATR_FALLBACK = 10.0m;        // Default ATR for ES when unavailable
-        public const decimal NQ_MIN_STOP_DISTANCE = 0.5m;            // Minimum stop distance for NQ
-        public const decimal ES_MIN_STOP_DISTANCE = 0.25m;           // Minimum stop distance for ES
-        public const decimal FALLBACK_EXPECTED_MOVE = 5;             // Fallback expected move value
-        public const int DEFAULT_ATR_LOOKBACK = 10;                  // Default ATR lookback period
+        public const decimal FallbackConfidence = 0.6m;             // Fallback strategy confidence
+        public const decimal FallbackUcbValue = 0.5m;              // Fallback UCB value
+        public const decimal HighConfidenceProbability = 0.7m;      // High confidence prediction probability
+        public const decimal NeutralProbability = 0.5m;             // Neutral/sideways prediction probability
+        public const decimal DefaultAtrFallback = 25.0m;           // Default ATR for NQ when unavailable
+        public const decimal EsDefaultAtrFallback = 10.0m;        // Default ATR for ES when unavailable
+        public const decimal NqMinStopDistance = 0.5m;            // Minimum stop distance for NQ
+        public const decimal EsMinStopDistance = 0.25m;           // Minimum stop distance for ES
+        public const decimal FallbackExpectedMove = 5;             // Fallback expected move value
+        public const int DefaultAtrLookback = 10;                  // Default ATR lookback period
     }
     /// <summary>
     /// UNIFIED TRADING BRAIN - The ONE intelligence that controls all trading decisions
@@ -84,7 +84,7 @@ namespace BotCore.Brain
         // TopStep compliance tracking
         private decimal _currentDrawdown;
         private decimal _dailyPnl;
-        private decimal _accountBalance = TopStepConfig.ACCOUNT_SIZE;
+        private decimal _accountBalance = TopStepConfig.AccountSize;
         private DateTime _lastResetDate = DateTime.UtcNow.Date;
         
         // Performance tracking for learning
@@ -612,8 +612,8 @@ namespace BotCore.Brain
                 return new StrategySelection
                 {
                     SelectedStrategy = fallbackStrategy,
-                    Confidence = TopStepConfig.FALLBACK_CONFIDENCE,
-                    UcbValue = TopStepConfig.FALLBACK_UCB_VALUE,
+                    Confidence = TopStepConfig.FallbackConfidence,
+                    UcbValue = TopStepConfig.FallbackUcbValue,
                     Reasoning = "Fallback time-based selection"
                 };
             }
@@ -662,24 +662,24 @@ namespace BotCore.Brain
                 if (isUptrend && !isOverbought)
                 {
                     direction = PriceDirection.Up;
-                    probability = TopStepConfig.HIGH_CONFIDENCE_PROBABILITY;
+                    probability = TopStepConfig.HighConfidenceProbability;
                 }
                 else if (!isUptrend && !isOversold)
                 {
                     direction = PriceDirection.Down;
-                    probability = TopStepConfig.HIGH_CONFIDENCE_PROBABILITY;
+                    probability = TopStepConfig.HighConfidenceProbability;
                 }
                 else
                 {
                     direction = PriceDirection.Sideways;
-                    probability = TopStepConfig.NEUTRAL_PROBABILITY;
+                    probability = TopStepConfig.NeutralProbability;
                 }
                 
                 return Task.FromResult(new PricePrediction
                 {
                     Direction = direction,
                     Probability = probability,
-                    ExpectedMove = context.Atr ?? TopStepConfig.DEFAULT_ATR_LOOKBACK,
+                    ExpectedMove = context.Atr ?? TopStepConfig.DefaultAtrLookback,
                     TimeHorizon = TimeSpan.FromMinutes(30)
                 });
             }
@@ -689,8 +689,8 @@ namespace BotCore.Brain
                 return Task.FromResult(new PricePrediction
                 {
                     Direction = PriceDirection.Sideways,
-                    Probability = TopStepConfig.NEUTRAL_PROBABILITY,
-                    ExpectedMove = TopStepConfig.FALLBACK_EXPECTED_MOVE,
+                    Probability = TopStepConfig.NeutralProbability,
+                    ExpectedMove = TopStepConfig.FallbackExpectedMove,
                     TimeHorizon = TimeSpan.FromMinutes(30)
                 });
             }
@@ -711,10 +711,10 @@ namespace BotCore.Brain
             }
 
             // Calculate base risk amount
-            var baseRisk = _accountBalance * TopStepConfig.RISK_PER_TRADE;
+            var baseRisk = _accountBalance * TopStepConfig.RiskPerTrade;
 
             // Progressive position reduction based on drawdown
-            var drawdownRatio = _currentDrawdown / TopStepConfig.MAX_DRAWDOWN;
+            var drawdownRatio = _currentDrawdown / TopStepConfig.MaxDrawdown;
             decimal riskMultiplier = drawdownRatio switch
             {
                 > 0.75m => 0.25m, // Very conservative when near max drawdown
@@ -725,10 +725,10 @@ namespace BotCore.Brain
 
             // Confidence-based sizing (UCB approach)
             var confidence = Math.Max((decimal)strategy.Confidence, (decimal)prediction.Probability);
-            if (confidence < (decimal)TopStepConfig.CONFIDENCE_THRESHOLD)
+            if (confidence < (decimal)TopStepConfig.ConfidenceThreshold)
             {
                 _logger.LogDebug("🎯 [CONFIDENCE] Below threshold {Threshold:P1}, confidence: {Confidence:P1}", 
-                    TopStepConfig.CONFIDENCE_THRESHOLD, confidence);
+                    TopStepConfig.ConfidenceThreshold, confidence);
                 return 0m; // No trade if confidence too low
             }
 
@@ -763,13 +763,13 @@ namespace BotCore.Brain
 
             if (instrument.Equals("NQ", StringComparison.OrdinalIgnoreCase))
             {
-                stopDistance = Math.Max(TopStepConfig.NQ_MIN_STOP_DISTANCE, context.Atr ?? TopStepConfig.DEFAULT_ATR_FALLBACK);
-                pointValue = TopStepConfig.NQ_POINT_VALUE;
+                stopDistance = Math.Max(TopStepConfig.NqMinStopDistance, context.Atr ?? TopStepConfig.DefaultAtrFallback);
+                pointValue = TopStepConfig.NqPointValue;
             }
             else // ES
             {
-                stopDistance = Math.Max(TopStepConfig.ES_MIN_STOP_DISTANCE, context.Atr ?? TopStepConfig.ES_DEFAULT_ATR_FALLBACK);
-                pointValue = TopStepConfig.ES_POINT_VALUE;
+                stopDistance = Math.Max(TopStepConfig.EsMinStopDistance, context.Atr ?? TopStepConfig.EsDefaultAtrFallback);
+                pointValue = TopStepConfig.EsPointValue;
             }
 
             // Convert risk to contracts
@@ -821,7 +821,7 @@ namespace BotCore.Brain
                     strategy.SelectedStrategy,
                     context.Symbol,
                     context.CurrentPrice,
-                    context.Atr ?? TopStepConfig.DEFAULT_ATR_LOOKBACK,
+                    context.Atr ?? TopStepConfig.DefaultAtrLookback,
                     (decimal)strategy.Confidence,
                     (decimal)prediction.Probability,
                     new List<Bar>()
@@ -847,20 +847,20 @@ namespace BotCore.Brain
             CheckAndResetDaily();
 
             // Hard stops (no trading allowed)
-            if (_dailyPnl <= -TopStepConfig.DAILY_LOSS_LIMIT)
+            if (_dailyPnl <= -TopStepConfig.DailyLossLimit)
                 return (false, $"Daily loss limit reached: {_dailyPnl:C}", "hard_stop");
             
-            if (_currentDrawdown >= TopStepConfig.MAX_DRAWDOWN)
+            if (_currentDrawdown >= TopStepConfig.MaxDrawdown)
                 return (false, $"Max drawdown reached: {_currentDrawdown:C}", "hard_stop");
             
-            if (_accountBalance <= TopStepConfig.TRAILING_STOP)
+            if (_accountBalance <= TopStepConfig.TrailingStop)
                 return (false, $"Account below minimum: {_accountBalance:C}", "hard_stop");
 
             // Warning levels (can trade but with caution)
-            if (_dailyPnl <= -(TopStepConfig.DAILY_LOSS_LIMIT * 0.9m))
+            if (_dailyPnl <= -(TopStepConfig.DailyLossLimit * 0.9m))
                 return (true, $"Near daily loss limit: {_dailyPnl:C}", "warning");
             
-            if (_currentDrawdown >= (TopStepConfig.MAX_DRAWDOWN * 0.8m))
+            if (_currentDrawdown >= (TopStepConfig.MaxDrawdown * 0.8m))
                 return (true, $"Near max drawdown: {_currentDrawdown:C}", "warning");
 
             return (true, "OK", "normal");
@@ -1609,8 +1609,8 @@ namespace BotCore.Brain
                 Math.Cos(2 * Math.PI * context.TimeOfDay.TotalHours / 24.0),
                 
                 // Risk management features
-                (double)Math.Max(-1.0m, Math.Min(1.0m, _currentDrawdown / TopStepConfig.MAX_DRAWDOWN)), // Drawdown ratio [-1,1]
-                (double)Math.Max(-1.0m, Math.Min(1.0m, _dailyPnl / TopStepConfig.DAILY_LOSS_LIMIT)), // Daily P&L ratio [-1,1]
+                (double)Math.Max(-1.0m, Math.Min(1.0m, _currentDrawdown / TopStepConfig.MaxDrawdown)), // Drawdown ratio [-1,1]
+                (double)Math.Max(-1.0m, Math.Min(1.0m, _dailyPnl / TopStepConfig.DailyLossLimit)), // Daily P&L ratio [-1,1]
                 
                 // Portfolio state features
                 Math.Min(1.0, DecisionsToday / 50.0), // Decision frequency normalized [0-1]

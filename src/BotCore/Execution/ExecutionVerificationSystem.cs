@@ -25,10 +25,8 @@ namespace BotCore.Execution
         
         private readonly ConcurrentDictionary<string, OrderRecord> _pendingOrders = new();
         private readonly ConcurrentDictionary<string, FillRecord> _confirmedFills = new();
-        private readonly TradingBot.Abstractions.ITopstepXClient _topstepXClient;
         private readonly SQLiteConnection _database;
         private Timer? _reconciliationTimer;
-        private readonly object _lockObject = new();
         private readonly ILogger<ExecutionVerificationSystem> _logger;
         
         public sealed class OrderRecord
@@ -102,7 +100,6 @@ namespace BotCore.Execution
             string databasePath = "execution_verification.db")
         {
             _logger = logger;
-            _topstepXClient = topstepXClient;
             
             // Initialize SQLite database
             _database = new SQLiteConnection($"Data Source={databasePath}");

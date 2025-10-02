@@ -13,17 +13,155 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ## Progress Summary
 - **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
-- **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (100%) - CS0103 priceRange variable fixed
+- **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (100%) - **VERIFIED & SECURED**
 - **Phase 2 Status**: ✅ **ACCELERATED PROGRESS** - Systematic high-priority violations elimination in progress
-  - **S4487**: 3 violations fixed (unused private loggers removed)
-  - **CA1002**: 2 violations fixed (collection encapsulation improved)
-  - **CA1056**: 3 violations fixed (string URLs converted to Uri)
-  - **CS0103**: 1 violation fixed (missing variable declaration)
-  - **CS1503**: 2 violations fixed (Uri.ToString() conversions)
-- **Current Focus**: Systematic application of Analyzer-Fix-Guidebook patterns across high-priority violations
+  - **Latest Session (Round 51-53)**: 61 violations fixed + critical fixes applied
+  - **Round 53 Critical Fix**: Restored accidentally removed fields/methods causing CS errors
+  - **Verified State**: ~6786 violations remaining (from ~7000+ baseline)
+- **Current Focus**: Priority 1 violations (correctness & invariants) - S1144, CA2227, CA1002, CA1031
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 
-### Round 50 - Data Quality and Profile Tagging Improvements (Current Session)
+### Round 55 - S101 Class Naming Fixes + Critical Reference Update (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S101 | ~7 | ~3 | TechnicalIndicatorResolvers.cs, FeatureMapAuthority.cs | Renamed 4 resolver classes from ALL_CAPS acronyms to PascalCase |
+| CS0246 | 10 | 0 | FeatureMapAuthority.cs | Updated resolver instantiation references after class renames |
+
+**Example Pattern - Acronym Class Naming**:
+```csharp
+// Before (Violation) - All-caps acronyms in class names
+public sealed class ATRResolver : IFeatureResolver { }
+public sealed class RSIResolver : IFeatureResolver { }
+RegisterResolver("atr.14", new ATRResolver(_serviceProvider, 14));
+
+// After (Compliant) - PascalCase acronyms
+public sealed class AtrResolver : IFeatureResolver { }
+public sealed class RsiResolver : IFeatureResolver { }
+RegisterResolver("atr.14", new AtrResolver(_serviceProvider, 14));
+```
+
+**Classes Renamed** (4 total):
+- ATRResolver → AtrResolver (Average True Range)
+- RSIResolver → RsiResolver (Relative Strength Index)
+- EMAResolver → EmaResolver (Exponential Moving Average)
+- SMAResolver → SmaResolver (Simple Moving Average)
+
+**Rationale**: S101 requires PascalCase for class names, treating multi-letter acronyms as words (Atr, not ATR). Updated class definitions, generic parameters (ILogger<T>), and all instantiation sites. Critical fix applied when CS0246 errors detected.
+
+---
+
+### Round 54 - CA1707 Naming Convention Compliance (Previous in Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1707 | 94 | 84 | UnifiedTradingBrain.cs | Renamed 19 public constants from SCREAMING_SNAKE_CASE to PascalCase per C# naming conventions |
+
+**Example Pattern - Naming Convention Fix**:
+```csharp
+// Before (Violation) - C-style constant naming
+public const decimal ACCOUNT_SIZE = 50_000m;
+public const decimal MAX_DRAWDOWN = 2_000m;
+public const double EXPLORATION_BONUS = 0.3;
+var risk = _accountBalance * TopStepConfig.RISK_PER_TRADE;
+
+// After (Compliant) - C# PascalCase naming
+public const decimal AccountSize = 50_000m;
+public const decimal MaxDrawdown = 2_000m;
+public const double ExplorationBonus = 0.3;
+var risk = _accountBalance * TopStepConfig.RiskPerTrade;
+```
+
+**Rationale**: CA1707 requires C# naming conventions - PascalCase for public constants. Renamed all 19 TopStepConfig constants and updated 21 reference sites in same file. Maintains readability while following framework guidelines.
+
+---
+
+### Round 53 - Critical CS Compiler Error Fix (Previous in Session)
+| Error | Files Affected | Fix Applied |
+|-------|----------------|-------------|
+| CS0103 | StatusService.cs | Restored `_lastJson` field that was incorrectly removed (write-read field, not write-only) |
+| CS0103 | MtfStructureResolver.cs | Restored `GetConfiguredEpsilon()` method that was incorrectly removed (still called) |
+| CS0103 | S3Strategy.cs | Restored `LastSide` field in SegmentState class (still used in MarkFilled method) |
+| CS0649 | S3Strategy.cs | Added explicit `= null` to `_logger` field to avoid unassigned warning (intentionally null) |
+
+**Rationale**: Previous S4487/S1144 fixes inadvertently removed code that was actually in use. This round performed surgical restoration of only the required fields/methods while maintaining the valid removals from previous rounds. Phase 1 integrity restored and verified.
+
+**Pattern Applied - Careful Usage Analysis**:
+```csharp
+// Issue: Field removed but still referenced
+// Before Fix: private string _lastJson = string.Empty; // REMOVED
+// Code: _lastJson = json; // CS0103: name does not exist
+
+// After Fix: Restored field
+private string _lastJson = string.Empty;
+
+// Lesson: Always verify field is truly unused by checking ALL references
+```
+
+---
+
+### Round 52 - S1144 Unused Private Members Part 1 (Previous in Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S1144 | 58 | 34 | AllStrategies.cs, S6_S11_Bridge.cs, TradingBotTuningRunner.cs, FeatureBusMapper.cs, ExecutionVerificationSystem.cs, StrategyKnowledgeGraphNew.cs, AutonomousDecisionEngine.cs, MtfStructureResolver.cs | Removed unused private fields, constants, and LoggerMessage delegates |
+
+**Example Pattern - Unused Fields Removal**:
+```csharp
+// Before (Violation) - Unused field
+private const int DaysInWeek = 7;
+private readonly Dictionary<string, object> _cachedValues = new();
+private readonly object _lockObject = new();
+
+// After (Compliant) - Removed
+// Removed completely if not referenced anywhere
+
+// Before (Violation) - Unused LoggerMessage
+private static readonly Action<ILogger, string, Exception?> LogBacktestComplete =
+    LoggerMessage.Define<string>(...);
+
+// After (Compliant) - Removed unused delegates
+```
+
+**Rationale**: Removed 24 unused private members following guidebook S1144 pattern. All removed items were write-only or never referenced. Maintains code clarity and reduces maintenance burden.
+
+---
+
+### Round 51 - CA1805 and S4487 Elimination (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1805 | 17 | 0 | ExecutionIntent.cs, TradingBotSymbolSessionManager.cs, S3Strategy.cs, DslContracts.cs, EpochFreezeEnforcement.cs, ShadowModeManager.cs, UnifiedBarPipeline.cs, ModelRotationService.cs, TimeOptimizedStrategyManager.cs | Removed explicit default value initialization |
+| S4487 | 19 | 0 | ExecutionVerificationSystem.cs, AuthenticationServiceExtensions.cs, TradingBotParameterProvider.cs, MtfStructureResolver.cs, DecisionFusionCoordinator.cs, WalkForwardTrainer.cs, MLConfiguration.cs, S3Strategy.cs, FeatureProbe.cs, StatusService.cs, ProductionGuardrailTester.cs, ModelUpdaterService.cs, TechnicalIndicatorResolvers.cs, UnifiedBarPipeline.cs | Removed unread private fields or added null validation |
+
+**Example Pattern - CA1805 Explicit Default Initialization**:
+```csharp
+// Before (Violation)
+public bool AllowMarketOrders { get; set; } = false;
+private long _barsProcessed = 0;
+private static readonly ILogger? _logger = null;
+
+// After (Compliant)
+public bool AllowMarketOrders { get; set; }
+private long _barsProcessed;
+private static readonly ILogger? _logger;
+```
+
+**Example Pattern - S4487 Unread Fields**:
+```csharp
+// Before (Violation) - Field assigned but never read
+private readonly ITopstepXClient _topstepXClient;
+public Constructor(...) {
+    _topstepXClient = client; // Assigned but never used
+}
+
+// After (Compliant) - Removed field, added null check only
+public Constructor(ITopstepXClient client, ...) {
+    if (client is null) throw new ArgumentNullException(nameof(client));
+}
+```
+
+**Rationale**: Eliminated all CA1805 and S4487 violations following guidebook patterns. Removed redundant initialization and write-only fields while preserving null validation where needed.
+
+---
+
+### Round 50 - Data Quality and Profile Tagging Improvements (Previous Session)
 | Issue | Files Affected | Fix Applied |
 |-------|----------------|-------------|
 | Synthetic Bar Data | AllStrategies.cs | Removed ExtractBarsFromContext - now uses only genuine bar history for ML logging |

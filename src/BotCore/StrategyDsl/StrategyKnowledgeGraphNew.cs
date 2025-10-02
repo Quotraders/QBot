@@ -30,7 +30,6 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
     private const double DefaultVolatilityContractionFallback = 0.6;
     private const double DefaultPullbackRiskFallback = 0.5;
     private const double DefaultVwapDistanceFallback = 0.3;
-    private const double DefaultEvaluationThreshold = 0.5;
     private const double DefaultPatternScoreThreshold = 0.3;
     
     // Breadth features neutral score constants (disabled functionality)

@@ -445,9 +445,9 @@ namespace TradingBot.BotCore.Services
         private const int MinimumTradesForConfidenceInterval = 10;
         
         public double SuccessRate { get; private set; } = 0.5;
-        public double AverageReturn { get; private set; } = 0.0;
-        public int TotalTrades { get; private set; } = 0;
-        public int SuccessfulTrades { get; private set; } = 0;
+        public double AverageReturn { get; private set; }
+        public int TotalTrades { get; private set; }
+        public int SuccessfulTrades { get; private set; }
         public DateTime LastUpdated { get; private set; } = DateTime.UtcNow;
 
         /// <summary>

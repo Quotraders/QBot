@@ -36,7 +36,7 @@ namespace BotCore.Execution
         public double? PatternReliability { get; set; } // Historical pattern success rate
         
         // Execution preferences
-        public bool AllowMarketOrders { get; set; } = false;
+        public bool AllowMarketOrders { get; set; }
         public bool PreferPostOnly { get; set; } = true;
         public double MaxSlippageBps { get; set; } = 5.0; // Maximum acceptable slippage
         public int MaxChildOrders { get; set; } = 3; // For order slicing

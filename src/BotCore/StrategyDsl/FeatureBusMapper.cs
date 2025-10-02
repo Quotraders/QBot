@@ -9,7 +9,6 @@ public class FeatureBusMapper
 {
     private readonly ILogger<FeatureBusMapper> _logger;
     private readonly Dictionary<string, string> _keyMappings = new();
-    private readonly Dictionary<string, object> _cachedValues = new();
 
     // Default feature value constants
     private const int DefaultMinutesValue = 60;                // Default minutes for time-based features

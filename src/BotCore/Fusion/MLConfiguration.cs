@@ -40,13 +40,12 @@ public interface IPpoSizer
 /// </summary>
 public sealed class ProductionMLConfigurationService : IMLConfigurationService
 {
-    private readonly IServiceProvider _serviceProvider;
     private readonly IConfiguration _configuration;
     private readonly ILogger<ProductionMLConfigurationService> _logger;
 
     public ProductionMLConfigurationService(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<ProductionMLConfigurationService> logger)
     {
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        if (serviceProvider is null) throw new ArgumentNullException(nameof(serviceProvider));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }

@@ -7,17 +7,17 @@ using System.Threading.Tasks;
 namespace BotCore.Integration;
 
 // Technical Indicator Resolvers
-public sealed class ATRResolver : IFeatureResolver
+public sealed class AtrResolver : IFeatureResolver
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly int _period;
-    private readonly ILogger<ATRResolver> _logger;
+    private readonly ILogger<AtrResolver> _logger;
     
-    public ATRResolver(IServiceProvider serviceProvider, int period = 14)
+    public AtrResolver(IServiceProvider serviceProvider, int period = 14)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _period = period > 0 ? period : throw new ArgumentException("Period must be positive", nameof(period));
-        _logger = serviceProvider.GetRequiredService<ILogger<ATRResolver>>();
+        _logger = serviceProvider.GetRequiredService<ILogger<AtrResolver>>();
     }
     
     public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
@@ -47,13 +47,12 @@ public sealed class ATRResolver : IFeatureResolver
 public sealed class RealizedVolatilityResolver : IFeatureResolver
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly int _period;
     private readonly ILogger<RealizedVolatilityResolver> _logger;
     
     public RealizedVolatilityResolver(IServiceProvider serviceProvider, int period = 20)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        _period = period > 0 ? period : throw new ArgumentException("Period must be positive", nameof(period));
+        if (period <= 0) throw new ArgumentException("Period must be positive", nameof(period));
         _logger = serviceProvider.GetRequiredService<ILogger<RealizedVolatilityResolver>>();
     }
     
@@ -82,17 +81,17 @@ public sealed class RealizedVolatilityResolver : IFeatureResolver
     }
 }
 
-public sealed class RSIResolver : IFeatureResolver
+public sealed class RsiResolver : IFeatureResolver
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly int _period;
-    private readonly ILogger<RSIResolver> _logger;
+    private readonly ILogger<RsiResolver> _logger;
     
-    public RSIResolver(IServiceProvider serviceProvider, int period = 14)
+    public RsiResolver(IServiceProvider serviceProvider, int period = 14)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _period = period > 0 ? period : throw new ArgumentException("Period must be positive", nameof(period));
-        _logger = serviceProvider.GetRequiredService<ILogger<RSIResolver>>();
+        _logger = serviceProvider.GetRequiredService<ILogger<RsiResolver>>();
     }
     
     public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
@@ -119,17 +118,17 @@ public sealed class RSIResolver : IFeatureResolver
     }
 }
 
-public sealed class EMAResolver : IFeatureResolver
+public sealed class EmaResolver : IFeatureResolver
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly int _period;
-    private readonly ILogger<EMAResolver> _logger;
+    private readonly ILogger<EmaResolver> _logger;
     
-    public EMAResolver(IServiceProvider serviceProvider, int period = 21)
+    public EmaResolver(IServiceProvider serviceProvider, int period = 21)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _period = period > 0 ? period : throw new ArgumentException("Period must be positive", nameof(period));
-        _logger = serviceProvider.GetRequiredService<ILogger<EMAResolver>>();
+        _logger = serviceProvider.GetRequiredService<ILogger<EmaResolver>>();
     }
     
     public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)
@@ -156,17 +155,17 @@ public sealed class EMAResolver : IFeatureResolver
     }
 }
 
-public sealed class SMAResolver : IFeatureResolver
+public sealed class SmaResolver : IFeatureResolver
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly int _period;
-    private readonly ILogger<SMAResolver> _logger;
+    private readonly ILogger<SmaResolver> _logger;
     
-    public SMAResolver(IServiceProvider serviceProvider, int period = 50)
+    public SmaResolver(IServiceProvider serviceProvider, int period = 50)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _period = period > 0 ? period : throw new ArgumentException("Period must be positive", nameof(period));
-        _logger = serviceProvider.GetRequiredService<ILogger<SMAResolver>>();
+        _logger = serviceProvider.GetRequiredService<ILogger<SmaResolver>>();
     }
     
     public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)

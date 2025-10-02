@@ -697,9 +697,6 @@ namespace BotCore.Strategy
         private sealed class SegmentState
         {
             public int SegmentId = -1;
-            public DateTime SegmentStartLocal = DateTime.MinValue;
-            public decimal BoxHigh;
-            public decimal BoxLow;
             public bool FilledThisSegment;
             public DateTime LastFillLocal = DateTime.MinValue;
             public bool IsInvalid;
@@ -711,8 +708,6 @@ namespace BotCore.Strategy
                 if (segId != SegmentId)
                 {
                     SegmentId = segId;
-                    SegmentStartLocal = nowLocal;
-                    BoxHigh = hi; BoxLow = lo;
                     FilledThisSegment = false; IsInvalid = false; LastBreakBarIndex = -1;
                 }
             }

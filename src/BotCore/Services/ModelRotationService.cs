@@ -27,7 +27,7 @@ namespace BotCore.Services
 
         // Cooldown tracking
         private DateTime _lastRotation = DateTime.MinValue;
-        private int _cooldownBars = 0;
+        private int _cooldownBars;
         private string _currentRegime = string.Empty;
 
         public ModelRotationService(

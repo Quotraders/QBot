@@ -18,7 +18,6 @@ namespace TradingBot.BotCore.Services
         private const double DefaultMinimumConfidence = 0.65;
         
         private static IServiceProvider? _serviceProvider;
-        private static ILogger? _logger;
         
         /// <summary>
         /// Initialize the provider with the service provider
@@ -26,7 +25,6 @@ namespace TradingBot.BotCore.Services
         public static void Initialize(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider;
-            _logger = serviceProvider.GetService<ILogger<MLConfigurationService>>();
         }
         
         /// <summary>

@@ -54,7 +54,7 @@ public class DslWhen
     public string Expression { get; set; } = string.Empty;
     public string Action { get; set; } = string.Empty;
     public double Weight { get; set; } = 1.0;
-    public bool IsRequired { get; set; } = false;
+    public bool IsRequired { get; set; }
     
     // Knowledge graph compatibility properties
     public List<string> Regime { get; set; } = new();
@@ -91,8 +91,8 @@ public class DslPositionSizing
 {
     public int BaseSize { get; set; } = 1;
     public bool ConfidenceMultiplier { get; set; } = true;
-    public bool TrendStrengthMultiplier { get; set; } = false;
-    public bool VolatilityAdjusted { get; set; } = false;
+    public bool TrendStrengthMultiplier { get; set; }
+    public bool VolatilityAdjusted { get; set; }
     public int MaxSize { get; set; } = 5;
 }
 
@@ -122,11 +122,11 @@ public class DslTakeProfit
     public double TrailAfterProfit { get; set; } = 0.5;
     public List<double> ExtensionLevels { get; set; } = new();
     public List<double> PartialExitLevels { get; set; } = new();
-    public bool PartialExitAt50Pct { get; set; } = false;
+    public bool PartialExitAt50Pct { get; set; }
     public double MinimumRMultiple { get; set; } = 1.5;
     public string TargetZone { get; set; } = string.Empty;
     public string Target { get; set; } = string.Empty;
-    public double PartialExit { get; set; } = 0.0;
+    public double PartialExit { get; set; }
 }
 
 /// <summary>
