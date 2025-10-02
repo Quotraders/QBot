@@ -39,6 +39,12 @@ namespace TradingBot.Backtest
     public interface IModelRegistry
     {
         /// <summary>
+        /// Initialize the registry asynchronously (load existing models, etc.)
+        /// This should be called after construction, typically from startup code
+        /// </summary>
+        Task InitializeAsync(CancellationToken cancellationToken = default);
+        
+        /// <summary>
         /// Get the most recent model that was trained before the specified validation date
         /// Critical for walk-forward validation - prevents using future information
         /// </summary>

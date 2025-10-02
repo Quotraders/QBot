@@ -1629,12 +1629,20 @@ internal class AdvancedSystemInitializationService : IHostedService
         _serviceProvider = serviceProvider;
     }
 
-    public Task StartAsync(CancellationToken cancellationToken)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("🚀 Advanced System Initialization Service starting");
         
         try
         {
+            // Initialize model registries asynchronously to avoid constructor deadlocks
+            var modelRegistry = _serviceProvider.GetService<TradingBot.UnifiedOrchestrator.Interfaces.IModelRegistry>();
+            if (modelRegistry != null)
+            {
+                _logger.LogInformation("📦 Initializing Model Registry...");
+                await modelRegistry.InitializeAsync(cancellationToken).ConfigureAwait(false);
+            }
+            
             // Initialize intelligence system components first
             var intelligenceOrchestrator = _serviceProvider.GetService<TradingBot.Abstractions.IIntelligenceOrchestrator>();
             if (intelligenceOrchestrator != null)
@@ -1644,12 +1652,11 @@ internal class AdvancedSystemInitializationService : IHostedService
             }
 
             _logger.LogInformation("✅ Advanced System Initialization completed successfully");
-            return Task.CompletedTask;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ Advanced System Initialization failed");
-            return Task.FromException(ex);
+            throw;
         }
     }
 

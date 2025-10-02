@@ -35,10 +35,17 @@ namespace TradingBot.Backtest.Adapters
             Directory.CreateDirectory(_modelsDirectory);
             Directory.CreateDirectory(_metadataDirectory);
             
-            // Load existing models on startup
-            LoadExistingModelsAsync().GetAwaiter().GetResult();
-            
             _logger.LogInformation("PRODUCTION ModelRegistry initialized at {ModelsDirectory} (ES and NQ contracts only)", _modelsDirectory);
+        }
+        
+        /// <summary>
+        /// Initialize the registry by loading existing models asynchronously
+        /// This should be called after construction, typically from startup code
+        /// </summary>
+        public async Task InitializeAsync(CancellationToken cancellationToken = default)
+        {
+            await LoadExistingModelsAsync().ConfigureAwait(false);
+            _logger.LogInformation("PRODUCTION ModelRegistry initialization completed");
         }
 
         /// <summary>
