@@ -58,8 +58,7 @@ public sealed class UnifiedBarPipeline
     {
         if (string.IsNullOrWhiteSpace(symbol))
             throw new ArgumentException("Symbol cannot be null or empty", nameof(symbol));
-        if (bar == null)
-            throw new ArgumentNullException(nameof(bar));
+        ArgumentNullException.ThrowIfNull(bar);
             
         var processingResult = new UnifiedBarProcessingResult
         {
@@ -75,7 +74,7 @@ public sealed class UnifiedBarPipeline
             _logger.LogDebug("Starting unified bar processing for {Symbol} at {Timestamp}", symbol, bar.Start);
             
             // Step 1: ZoneService.OnBar
-            var zoneServiceResult = await ProcessZoneServiceOnBarAsync(symbol, bar, cancellationToken);
+            var zoneServiceResult = await ProcessZoneServiceOnBarAsync(symbol, bar, cancellationToken).ConfigureAwait(false);
             processingResult.PipelineSteps.Add(zoneServiceResult);
             
             if (!zoneServiceResult.Success)
@@ -85,7 +84,7 @@ public sealed class UnifiedBarPipeline
             }
             
             // Step 2: PatternEngine.OnBar
-            var patternEngineResult = await ProcessPatternEngineOnBarAsync(symbol, bar, cancellationToken);
+            var patternEngineResult = await ProcessPatternEngineOnBarAsync(symbol, bar, cancellationToken).ConfigureAwait(false);
             processingResult.PipelineSteps.Add(patternEngineResult);
             
             if (!patternEngineResult.Success)
@@ -95,7 +94,7 @@ public sealed class UnifiedBarPipeline
             }
             
             // Step 3: DslEngine.Evaluate
-            var dslEngineResult = await ProcessDslEngineEvaluateAsync(symbol, bar, cancellationToken);
+            var dslEngineResult = await ProcessDslEngineEvaluateAsync(symbol, bar, cancellationToken).ConfigureAwait(false);
             processingResult.PipelineSteps.Add(dslEngineResult);
             
             if (!dslEngineResult.Success)
@@ -105,7 +104,7 @@ public sealed class UnifiedBarPipeline
             }
             
             // Step 4: FeatureBus.Publish (pattern signals injection)
-            var featureBusResult = await ProcessFeatureBusPublishAsync(symbol, bar, patternEngineResult, cancellationToken);
+            var featureBusResult = await ProcessFeatureBusPublishAsync(symbol, bar, patternEngineResult, cancellationToken).ConfigureAwait(false);
             processingResult.PipelineSteps.Add(featureBusResult);
             
             // Final success determination
@@ -118,7 +117,7 @@ public sealed class UnifiedBarPipeline
             _lastBarProcessed = DateTime.UtcNow;
             
             // Emit telemetry
-            await EmitPipelineTelemetryAsync(processingResult, cancellationToken);
+            await EmitPipelineTelemetryAsync(processingResult, cancellationToken).ConfigureAwait(false);
             
             if (processingResult.Success)
             {
@@ -134,14 +133,24 @@ public sealed class UnifiedBarPipeline
             
             return processingResult;
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             Interlocked.Increment(ref _pipelineErrors);
             processingResult.ProcessingCompleted = DateTime.UtcNow;
             processingResult.ProcessingTimeMs = (processingResult.ProcessingCompleted - processingResult.ProcessingStarted).TotalMilliseconds;
             processingResult.Error = ex.Message;
             
-            _logger.LogError(ex, "Critical error in unified bar pipeline for {Symbol}", symbol);
+            _logger.LogError(ex, "Invalid operation in unified bar pipeline for {Symbol}", symbol);
+            return processingResult;
+        }
+        catch (ArgumentException ex)
+        {
+            Interlocked.Increment(ref _pipelineErrors);
+            processingResult.ProcessingCompleted = DateTime.UtcNow;
+            processingResult.ProcessingTimeMs = (processingResult.ProcessingCompleted - processingResult.ProcessingStarted).TotalMilliseconds;
+            processingResult.Error = ex.Message;
+            
+            _logger.LogError(ex, "Invalid argument in unified bar pipeline for {Symbol}", symbol);
             return processingResult;
         }
     }
@@ -164,11 +173,17 @@ public sealed class UnifiedBarPipeline
             stepResult.Success = true;
             _logger.LogTrace("ZoneService.OnBar completed for {Symbol}", symbol);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             stepResult.Success = false;
             stepResult.Error = ex.Message;
-            _logger.LogError(ex, "Error in ZoneService.OnBar for {Symbol}", symbol);
+            _logger.LogError(ex, "Invalid operation in ZoneService.OnBar for {Symbol}", symbol);
+        }
+        catch (ArgumentException ex)
+        {
+            stepResult.Success = false;
+            stepResult.Error = ex.Message;
+            _logger.LogError(ex, "Invalid argument in ZoneService.OnBar for {Symbol}", symbol);
         }
         finally
         {
@@ -200,11 +215,17 @@ public sealed class UnifiedBarPipeline
             _logger.LogTrace("PatternEngine.OnBar completed for {Symbol} - Bull: {BullScore}, Bear: {BearScore}", 
                 symbol, patternScores.BullScore, patternScores.BearScore);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             stepResult.Success = false;
             stepResult.Error = ex.Message;
-            _logger.LogError(ex, "Error in PatternEngine.OnBar for {Symbol}", symbol);
+            _logger.LogError(ex, "Invalid operation in PatternEngine.OnBar for {Symbol}", symbol);
+        }
+        catch (ArgumentException ex)
+        {
+            stepResult.Success = false;
+            stepResult.Error = ex.Message;
+            _logger.LogError(ex, "Invalid argument in PatternEngine.OnBar for {Symbol}", symbol);
         }
         finally
         {
@@ -235,11 +256,17 @@ public sealed class UnifiedBarPipeline
             _logger.LogTrace("DslEngine.Evaluate completed for {Symbol} - {RecommendationCount} recommendations", 
                 symbol, recommendations.Count);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             stepResult.Success = false;
             stepResult.Error = ex.Message;
-            _logger.LogError(ex, "Error in DslEngine.Evaluate for {Symbol}", symbol);
+            _logger.LogError(ex, "Invalid operation in DslEngine.Evaluate for {Symbol}", symbol);
+        }
+        catch (ArgumentException ex)
+        {
+            stepResult.Success = false;
+            stepResult.Error = ex.Message;
+            _logger.LogError(ex, "Invalid argument in DslEngine.Evaluate for {Symbol}", symbol);
         }
         finally
         {
@@ -293,11 +320,17 @@ public sealed class UnifiedBarPipeline
             
             await Task.CompletedTask.ConfigureAwait(false); // Satisfy async signature
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             stepResult.Success = false;
             stepResult.Error = ex.Message;
-            _logger.LogError(ex, "Error in FeatureBus.Publish for {Symbol}", symbol);
+            _logger.LogError(ex, "Invalid operation in FeatureBus.Publish for {Symbol}", symbol);
+        }
+        catch (ArgumentException ex)
+        {
+            stepResult.Success = false;
+            stepResult.Error = ex.Message;
+            _logger.LogError(ex, "Invalid argument in FeatureBus.Publish for {Symbol}", symbol);
         }
         finally
         {
@@ -339,12 +372,16 @@ public sealed class UnifiedBarPipeline
             _logger.LogDebug("Pipeline cumulative metrics: TotalBarsProcessed={BarsProcessed}, TotalErrors={Errors}", 
                 _barsProcessed, _pipelineErrors);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Error emitting pipeline telemetry for {Symbol}", result.Symbol);
+            _logger.LogWarning(ex, "Invalid operation emitting pipeline telemetry for {Symbol}", result.Symbol);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument emitting pipeline telemetry for {Symbol}", result.Symbol);
         }
         
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
     
     /// <summary>
