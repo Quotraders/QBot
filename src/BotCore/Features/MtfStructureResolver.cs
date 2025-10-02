@@ -16,7 +16,6 @@ namespace BotCore.Features
     public sealed class MtfStructureResolver : IFeatureResolver
     {
         private readonly ILogger<MtfStructureResolver> _logger;
-        private readonly IServiceProvider _serviceProvider;
         private readonly ConcurrentDictionary<string, MtfStructureState> _symbolStates = new(StringComparer.OrdinalIgnoreCase);
         
         // Contract ID to Symbol mapping (ContractDirectory equivalent)
@@ -56,7 +55,7 @@ namespace BotCore.Features
         public MtfStructureResolver(ILogger<MtfStructureResolver> logger, IServiceProvider serviceProvider)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            if (serviceProvider is null) throw new ArgumentNullException(nameof(serviceProvider));
         }
 
         public string[] GetAvailableFeatureKeys() => _availableFeatureKeys;

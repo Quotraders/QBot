@@ -23,7 +23,6 @@ public class ProductionGuardrailTester
     private const decimal EsTestPrice2Expected = 4125.50m; // Expected rounded price for ES tick test
     
     private readonly ILogger<ProductionGuardrailTester> _logger;
-    private readonly ProductionGuardrailOrchestrator _orchestrator;
     private readonly ProductionOrderEvidenceService _evidenceService;
 
     public ProductionGuardrailTester(
@@ -32,7 +31,7 @@ public class ProductionGuardrailTester
         ProductionOrderEvidenceService evidenceService)
     {
         _logger = logger;
-        _orchestrator = orchestrator;
+        if (orchestrator is null) throw new ArgumentNullException(nameof(orchestrator));
         _evidenceService = evidenceService;
     }
 

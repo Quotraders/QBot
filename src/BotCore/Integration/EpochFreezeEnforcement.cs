@@ -25,8 +25,8 @@ public sealed class EpochFreezeEnforcement
     private readonly object _epochsLock = new();
     
     // Freeze violation tracking
-    private long _freezeViolationCount = 0;
-    private long _successfulFreezeEnforcements = 0;
+    private long _freezeViolationCount;
+    private long _successfulFreezeEnforcements;
     
     // Configuration
     private readonly EpochFreezeConfig _config;

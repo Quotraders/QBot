@@ -19,7 +19,6 @@ namespace BotCore.MetaLabeler;
 /// </summary>
 public class WalkForwardTrainer
 {
-    private readonly IHistoricalDataProvider _dataProvider;
     private readonly TripleBarrierLabeler _labeler;
     private readonly string _modelsPath;
     private readonly WalkForwardConfig _config;
@@ -32,7 +31,7 @@ public class WalkForwardTrainer
         OnnxModelLoader onnxLoader,
         WalkForwardConfig? config = null)
     {
-        _dataProvider = dataProvider;
+        if (dataProvider is null) throw new ArgumentNullException(nameof(dataProvider));
         _labeler = labeler;
         _modelsPath = modelsPath;
         _onnxLoader = onnxLoader;

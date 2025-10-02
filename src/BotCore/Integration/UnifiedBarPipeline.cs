@@ -28,11 +28,10 @@ public sealed class UnifiedBarPipeline
     private readonly Lazy<BotCore.Patterns.PatternEngine?> _patternEngine;
     private readonly Lazy<BotCore.Strategy.IStrategyKnowledgeGraph?> _dslEngine;
     private readonly Lazy<Zones.IFeatureBus?> _featureBus;
-    private readonly Lazy<TradingBot.IntelligenceStack.RealTradingMetricsService?> _metricsService;
     
     // Telemetry counters
-    private long _barsProcessed = 0;
-    private long _pipelineErrors = 0;
+    private long _barsProcessed;
+    private long _pipelineErrors;
     private DateTime _lastBarProcessed = DateTime.MinValue;
     
     public UnifiedBarPipeline(ILogger<UnifiedBarPipeline> logger, IServiceProvider serviceProvider)
@@ -49,8 +48,6 @@ public sealed class UnifiedBarPipeline
             _serviceProvider.GetService<BotCore.Strategy.IStrategyKnowledgeGraph>());
         _featureBus = new Lazy<Zones.IFeatureBus?>(() => 
             _serviceProvider.GetService<Zones.IFeatureBus>());
-        _metricsService = new Lazy<TradingBot.IntelligenceStack.RealTradingMetricsService?>(() => 
-            _serviceProvider.GetService<TradingBot.IntelligenceStack.RealTradingMetricsService>());
     }
     
     /// <summary>

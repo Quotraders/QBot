@@ -1024,7 +1024,7 @@ namespace BotCore.Services
     public class MLAdjustment
     {
         public double SizeMultiplier { get; set; } = 1.0;
-        public double ConfidenceBoost { get; set; } = 0.0;
+        public double ConfidenceBoost { get; set; }
     }
 
     /// <summary>

@@ -46,8 +46,6 @@ internal sealed class SimpleTopstepAuthWrapper : ITopstepAuth, IAsyncDisposable
 internal sealed class FuncTopstepAuthWrapper : ITopstepAuth
 {
     private readonly Func<CancellationToken, Task<string>> _authProvider;
-    private string _lastJwt = string.Empty;
-    private DateTimeOffset _lastExpiry = DateTimeOffset.MinValue;
 
     public FuncTopstepAuthWrapper(Func<CancellationToken, Task<string>> authProvider)
     {
@@ -58,9 +56,6 @@ internal sealed class FuncTopstepAuthWrapper : ITopstepAuth
     {
         var jwt = await _authProvider(ct).ConfigureAwait(false);
         var expiry = GetJwtExpiryUtc(jwt);
-        
-        _lastJwt = jwt;
-        _lastExpiry = expiry;
         
         return (jwt, expiry);
     }

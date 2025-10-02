@@ -48,7 +48,6 @@ public sealed class DecisionFusionCoordinator
     private readonly IUcbStrategyChooser _ucb;
     private readonly IPpoSizer _ppo;
     private readonly IMLConfigurationService _cfg;
-    private readonly IMetrics _metrics;
     private readonly ILogger<DecisionFusionCoordinator> _logger;
     private readonly IServiceProvider _serviceProvider;
 
@@ -65,7 +64,7 @@ public sealed class DecisionFusionCoordinator
         _ucb = ucb ?? throw new ArgumentNullException(nameof(ucb));
         _ppo = ppo ?? throw new ArgumentNullException(nameof(ppo));
         _cfg = cfg ?? throw new ArgumentNullException(nameof(cfg));
-        _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
+        if (metrics is null) throw new ArgumentNullException(nameof(metrics));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         

@@ -29,9 +29,9 @@ public sealed class ShadowModeManager
     private readonly ShadowModeConfig _config;
     
     // Telemetry counters
-    private long _shadowPicksGenerated = 0;
-    private long _shadowPromotions = 0;
-    private long _shadowDemotions = 0;
+    private long _shadowPicksGenerated;
+    private long _shadowPromotions;
+    private long _shadowDemotions;
     
     public ShadowModeManager(ILogger<ShadowModeManager> logger, IServiceProvider serviceProvider, ShadowModeConfig? config = null)
     {

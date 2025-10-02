@@ -47,13 +47,12 @@ public sealed class ATRResolver : IFeatureResolver
 public sealed class RealizedVolatilityResolver : IFeatureResolver
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly int _period;
     private readonly ILogger<RealizedVolatilityResolver> _logger;
     
     public RealizedVolatilityResolver(IServiceProvider serviceProvider, int period = 20)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        _period = period > 0 ? period : throw new ArgumentException("Period must be positive", nameof(period));
+        if (period <= 0) throw new ArgumentException("Period must be positive", nameof(period));
         _logger = serviceProvider.GetRequiredService<ILogger<RealizedVolatilityResolver>>();
     }
     
