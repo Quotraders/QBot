@@ -14,6 +14,7 @@ using static BotCore.Brain.UnifiedTradingBrain;
 // Type alias to resolve namespace conflict  
 using BrainMarketContext = BotCore.Brain.Models.MarketContext;
 using BrainTradingDecision = BotCore.Brain.Models.TradingDecision;
+using ServicesTradingDecision = BotCore.Services.TradingDecision;
 
 namespace BotCore.Services;
 
@@ -108,7 +109,8 @@ public class EnhancedTradingBrainIntegration
             
             // Get ensemble CVaR action
             var convertedDecision = ConvertBrainToTradingDecision(originalBrainDecision);
-            var state = CreateStateVector(convertedDecision, brainMarketContext);
+            var servicesDecision = ConvertToServicesDecision(convertedDecision);
+            var state = CreateStateVector(servicesDecision, brainMarketContext);
             var ensembleAction = await _ensembleService.GetEnsembleActionAsync(
                 state, true, cancellationToken).ConfigureAwait(false);
             
@@ -177,7 +179,7 @@ public class EnhancedTradingBrainIntegration
     /// This preserves the original logic while adding intelligent enhancements
     /// </summary>
     private EnhancedTradingDecision EnhanceDecision(
-        TradingDecision originalDecision,
+        BrainTradingDecision originalDecision,
         EnsemblePrediction strategyPrediction,
         EnsemblePrediction pricePrediction,
         EnsembleActionResult ensembleAction,
@@ -356,7 +358,7 @@ public class EnhancedTradingBrainIntegration
     /// Generate human-readable enhancement reason
     /// </summary>
     private string GenerateEnhancementReason(
-        TradingDecision originalDecision,
+        BrainTradingDecision originalDecision,
         EnsemblePrediction strategyPred, 
         EnsemblePrediction pricePred, 
         EnsembleActionResult action)
@@ -538,7 +540,7 @@ public class EnhancedTradingBrainIntegration
     /// <summary>
     /// Log decision enhancement details
     /// </summary>
-    private void LogDecisionEnhancement(TradingDecision original, EnhancedTradingDecision enhanced, string symbol)
+    private void LogDecisionEnhancement(BrainTradingDecision original, EnhancedTradingDecision enhanced, string symbol)
     {
         _logger.LogInformation("🧠 [ENHANCED-BRAIN] Decision enhanced for {Symbol}: {OriginalStrategy} → {EnhancedStrategy} " +
                              "(confidence: {OriginalConf:P1} → {EnhancedConf:P1})",
@@ -576,7 +578,7 @@ public class EnhancedTradingBrainIntegration
         };
     }
 
-    private double[] CreateStateVector(TradingDecision decision, BrainMarketContext marketContext)
+    private double[] CreateStateVector(ServicesTradingDecision decision, BrainMarketContext marketContext)
     {
         // Create state vector for CVaR-PPO using available properties
         return new double[] { 
@@ -585,8 +587,8 @@ public class EnhancedTradingBrainIntegration
             (double)marketContext.Volume, // Market volume
             (double)marketContext.Volatility, // Volatility
             // Use strategy as action encoding instead of Action property (which doesn't exist)
-            decision.Strategy.Contains("S3", StringComparison.OrdinalIgnoreCase) ? 1.0 : 
-            decision.Strategy.Contains("S6", StringComparison.OrdinalIgnoreCase) ? -1.0 : 0.0 // Strategy-based encoding
+            decision.StrategyId.Contains("S3", StringComparison.OrdinalIgnoreCase) ? 1.0 : 
+            decision.StrategyId.Contains("S6", StringComparison.OrdinalIgnoreCase) ? -1.0 : 0.0 // Strategy-based encoding
         };
     }
 
@@ -744,6 +746,22 @@ public class EnhancedTradingBrainIntegration
             Strategy = "fallback",
             Confidence = 0.0m,
             Timestamp = DateTime.UtcNow
+        };
+    }
+
+    /// <summary>
+    /// Convert BrainTradingDecision to ServicesTradingDecision for ensemble processing
+    /// </summary>
+    private ServicesTradingDecision ConvertToServicesDecision(BrainTradingDecision brainDecision)
+    {
+        return new ServicesTradingDecision
+        {
+            Action = TradingAction.Hold, // Default, will be set based on strategy
+            Confidence = (double)brainDecision.Confidence,
+            Reason = $"Converted from brain decision: {brainDecision.Strategy}",
+            Symbol = brainDecision.Symbol,
+            StrategyId = brainDecision.Strategy,
+            Timestamp = brainDecision.Timestamp
         };
     }
 
