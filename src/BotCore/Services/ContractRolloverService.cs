@@ -46,7 +46,7 @@ namespace BotCore.Services
         /// <summary>
         /// Get current front month contract for a base symbol
         /// </summary>
-        public Task<string> GetCurrentFrontMonthContractAsync(string baseSymbol)
+        public async Task<string> GetCurrentFrontMonthContractAsync(string baseSymbol)
         {
             ArgumentException.ThrowIfNullOrEmpty(baseSymbol);
 
@@ -58,9 +58,9 @@ namespace BotCore.Services
                 if (_config.FrontMonthMapping.TryGetValue(baseSymbol.ToUpper(), out var configuredContract))
                 {
                     // Verify the configured contract is still valid
-                    if (IsContractActiveAsync(configuredContract).Result)
+                    if (await IsContractActiveAsync(configuredContract).ConfigureAwait(false))
                     {
-                        return Task.FromResult(configuredContract);
+                        return configuredContract;
                     }
                     else
                     {
@@ -73,7 +73,7 @@ namespace BotCore.Services
                 
                 _logger.LogInformation("[CONTRACT-ROLLOVER] Front month contract for {BaseSymbol}: {FrontMonth}", baseSymbol, frontMonth);
                 
-                return Task.FromResult(frontMonth);
+                return frontMonth;
             }
             catch (Exception ex)
             {
@@ -83,7 +83,7 @@ namespace BotCore.Services
                 var fallback = _config.FrontMonthMapping.TryGetValue(baseSymbol.ToUpper(), out var fb) 
                     ? fb 
                     : $"{baseSymbol}Z25"; // Default to December 2025
-                return Task.FromResult(fallback);
+                return fallback;
             }
         }
 
@@ -134,14 +134,14 @@ namespace BotCore.Services
         /// <summary>
         /// Determine if a contract should be rolled over
         /// </summary>
-        public Task<bool> ShouldRolloverAsync(string currentContract)
+        public async Task<bool> ShouldRolloverAsync(string currentContract)
         {
             try
             {
                 if (!_config.EnableContractRollover)
-                    return Task.FromResult(false);
+                    return false;
 
-                var contractInfo = GetContractInfoAsync(currentContract).Result;
+                var contractInfo = await GetContractInfoAsync(currentContract).ConfigureAwait(false);
                 var shouldRollover = contractInfo.DaysToExpiration <= _config.ContractRolloverDays;
 
                 if (shouldRollover)
@@ -150,12 +150,12 @@ namespace BotCore.Services
                         currentContract, contractInfo.DaysToExpiration);
                 }
 
-                return Task.FromResult(shouldRollover);
+                return shouldRollover;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[CONTRACT-ROLLOVER] Error checking rollover for {Contract}", currentContract);
-                return Task.FromResult(false);
+                return false;
             }
         }
 
