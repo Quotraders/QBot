@@ -1219,7 +1219,7 @@ namespace BotCore.Brain
                 if (!_strategyPerformance.TryGetValue(strategy, out var perf))
                     continue;
                     
-                var metrics = new PerformanceMetrics
+                var metrics = new BotCore.Brain.Models.PerformanceMetrics
                 {
                     WinRate = perf.TotalTrades > 0 ? (decimal)perf.WinningTrades / perf.TotalTrades : 0,
                     AveragePnL = perf.TotalTrades > 0 ? perf.TotalPnL / perf.TotalTrades : 0,
@@ -1288,7 +1288,7 @@ namespace BotCore.Brain
             
             // Share successful patterns with other strategies
             var successfulConditions = _strategyOptimalConditions
-                .GetValueOrDefault(bestStrategy, new List<MarketCondition>())
+                .GetValueOrDefault<string, List<BotCore.Brain.Models.MarketCondition>>(bestStrategy, new List<BotCore.Brain.Models.MarketCondition>())
                 .Where(c => c.SuccessRate > 0.7m)
                 .ToList();
             
@@ -1335,7 +1335,7 @@ namespace BotCore.Brain
         {
             if (!_strategyOptimalConditions.TryGetValue(strategy, out var conditions))
             {
-                conditions = new List<MarketCondition>();
+                conditions = new List<BotCore.Brain.Models.MarketCondition>();
                 _strategyOptimalConditions[strategy] = conditions;
             }
             
@@ -1350,17 +1350,17 @@ namespace BotCore.Brain
         {
             if (!_strategyOptimalConditions.TryGetValue(strategy, out var conditions))
             {
-                conditions = new List<MarketCondition>();
+                conditions = new List<BotCore.Brain.Models.MarketCondition>();
                 _strategyOptimalConditions[strategy] = conditions;
             }
             
             var condition = conditions.FirstOrDefault(c => c.ConditionName == conditionName);
             if (condition == null)
             {
-                condition = new MarketCondition 
-                { 
-                    ConditionName = conditionName, 
-                    SuccessCount = 0, 
+                condition = new BotCore.Brain.Models.MarketCondition
+                {
+                    ConditionName = conditionName,
+                    SuccessCount = 0,
                     TotalCount = 0 
                 };
                 conditions.Add(condition);
@@ -1378,7 +1378,7 @@ namespace BotCore.Brain
         private string[] GetBestConditionsForStrategy(string strategy)
         {
             return _strategyOptimalConditions
-                .GetValueOrDefault(strategy, new List<MarketCondition>())
+                .GetValueOrDefault<string, List<BotCore.Brain.Models.MarketCondition>>(strategy, new List<BotCore.Brain.Models.MarketCondition>())
                 .Where(c => c.SuccessRate > 0.6m && c.TotalCount >= 3)
                 .OrderByDescending(c => c.SuccessRate)
                 .Take(5)
