@@ -11,12 +11,12 @@ namespace TradingBot.ML.Interfaces;
 /// </summary>
 public interface IModelRegistry
 {
-    bool RegisterModel(string modelName, string version, string modelPath, ModelMetrics metrics);
+    Task<bool> RegisterModelAsync(string modelName, string version, string modelPath, ModelMetrics metrics);
     string? GetModelPath(string modelName, string? version = null);
     ModelMetrics? GetModelMetrics(string modelName, string? version = null);
     List<string> GetAvailableModels();
     List<string> GetModelVersions(string modelName);
-    bool DeleteModel(string modelName, string? version = null);
+    Task<bool> DeleteModelAsync(string modelName, string? version = null);
 }
 
 /// <summary>
@@ -24,8 +24,8 @@ public interface IModelRegistry
 /// </summary>
 public interface IFeatureStore
 {
-    Dictionary<string, double[]> GetFeatures(DateTime startDate, DateTime endDate);
-    bool StoreFeatures(string featureName, DateTime timestamp, double[] values);
-    string[] GetAvailableFeatures();
-    Dictionary<string, double[]> GetLatestFeatures(int count = 100);
+    Task<Dictionary<string, double[]>> GetFeaturesAsync(DateTime startDate, DateTime endDate);
+    Task<bool> StoreFeaturesAsync(string featureName, DateTime timestamp, double[] values);
+    Task<string[]> GetAvailableFeaturesAsync();
+    Task<Dictionary<string, double[]>> GetLatestFeaturesAsync(int count = 100);
 }

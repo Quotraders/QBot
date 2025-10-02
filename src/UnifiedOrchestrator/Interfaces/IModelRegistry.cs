@@ -12,6 +12,12 @@ namespace TradingBot.UnifiedOrchestrator.Interfaces;
 internal interface IModelRegistry
 {
     /// <summary>
+    /// Initialize the registry asynchronously (load champion pointers, existing models, etc.)
+    /// This should be called after construction, typically from startup code
+    /// </summary>
+    Task InitializeAsync(CancellationToken cancellationToken = default);
+    
+    /// <summary>
     /// Register a new model version
     /// </summary>
     Task<string> RegisterModelAsync(ModelVersion model, CancellationToken cancellationToken = default);

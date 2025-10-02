@@ -38,10 +38,17 @@ internal class FileModelRegistry : IModelRegistry
         Directory.CreateDirectory(Path.Combine(_registryPath, "models"));
         Directory.CreateDirectory(Path.Combine(_registryPath, "promotions"));
         
-        // Load champion pointers on startup
-        LoadChampionPointersAsync().GetAwaiter().GetResult();
-        
         _logger.LogInformation("FileModelRegistry initialized at {RegistryPath}", _registryPath);
+    }
+    
+    /// <summary>
+    /// Initialize the registry by loading champion pointers asynchronously
+    /// This should be called after construction, typically from startup code
+    /// </summary>
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        await LoadChampionPointersAsync().ConfigureAwait(false);
+        _logger.LogInformation("FileModelRegistry initialization completed");
     }
 
     /// <summary>

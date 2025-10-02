@@ -12,7 +12,7 @@ namespace TradingBot.IntelligenceStack;
 /// Leader election service with distributed lock implementation
 /// Supports active-standby pattern with TTL and automatic renewal
 /// </summary>
-public class LeaderElectionService : ILeaderElectionService, IDisposable
+public sealed class LeaderElectionService : ILeaderElectionService, IAsyncDisposable, IDisposable
 {
     private readonly ILogger<LeaderElectionService> _logger;
     private readonly LeaderElectionConfig _config;
@@ -77,6 +77,9 @@ public class LeaderElectionService : ILeaderElectionService, IDisposable
 
     private static readonly Action<ILogger, Exception?> ErrorDuringDispose =
         LoggerMessage.Define(LogLevel.Warning, new EventId(3018, "ErrorDuringDispose"), "[LEADER] Error during dispose");
+    
+    private static readonly Action<ILogger, Exception?> SyncDisposeTimedOut =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(3019, "SyncDisposeTimedOut"), "[LEADER] Synchronous dispose timed out waiting for leadership release");
 
     // JSON serializer options for CA1869 compliance
     private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
@@ -432,40 +435,72 @@ public class LeaderElectionService : ILeaderElectionService, IDisposable
         });
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        Dispose(true);
+        try
+        {
+            if (_isLeader)
+            {
+                await ReleaseLeadershipAsync(CancellationToken.None).ConfigureAwait(false);
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            ErrorDuringDispose(_logger, ex);
+        }
+        catch (IOException ex)
+        {
+            ErrorDuringDispose(_logger, ex);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            ErrorDuringDispose(_logger, ex);
+        }
+        finally
+        {
+            StopRenewalTimer();
+        }
+        
         GC.SuppressFinalize(this);
     }
     
-    protected virtual void Dispose(bool disposing)
+    public void Dispose()
     {
-        if (disposing)
+        // For synchronous disposal, use fire-and-forget with a short timeout
+        try
         {
-            try
+            if (_isLeader)
             {
-                if (_isLeader)
+                // Use Task.Run with a timeout to avoid blocking indefinitely
+                var releaseTask = Task.Run(async () => await ReleaseLeadershipAsync(CancellationToken.None).ConfigureAwait(false));
+                if (!releaseTask.Wait(TimeSpan.FromSeconds(5)))
                 {
-                    ReleaseLeadershipAsync(CancellationToken.None).GetAwaiter().GetResult();
+                    SyncDisposeTimedOut(_logger, null);
                 }
             }
-            catch (InvalidOperationException ex)
-            {
-                ErrorDuringDispose(_logger, ex);
-            }
-            catch (IOException ex)
-            {
-                ErrorDuringDispose(_logger, ex);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                ErrorDuringDispose(_logger, ex);
-            }
-            finally
-            {
-                StopRenewalTimer();
-            }
         }
+        catch (InvalidOperationException ex)
+        {
+            ErrorDuringDispose(_logger, ex);
+        }
+        catch (IOException ex)
+        {
+            ErrorDuringDispose(_logger, ex);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            ErrorDuringDispose(_logger, ex);
+        }
+        catch (AggregateException ex)
+        {
+            ErrorDuringDispose(_logger, ex);
+        }
+        finally
+        {
+            StopRenewalTimer();
+        }
+        
+        GC.SuppressFinalize(this);
     }
 
     private sealed class LeaderLockData
