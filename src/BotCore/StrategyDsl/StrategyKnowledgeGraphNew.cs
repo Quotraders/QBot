@@ -17,7 +17,7 @@ namespace BotCore.StrategyDsl;
 /// </summary>
 public interface IFeatureProbe 
 { 
-    double Get(string symbol, string key); 
+    Task<double> GetAsync(string symbol, string key, CancellationToken cancellationToken = default); 
 }
 
 /// <summary>
@@ -52,29 +52,38 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
         _zoneFeatures = zoneFeatures ?? throw new ArgumentNullException(nameof(zoneFeatures));
     }
 
-    public double Get(string symbol, string key)
+    public async Task<double> GetAsync(string symbol, string key, CancellationToken cancellationToken = default)
     {
         try
         {
             // Route feature requests to appropriate real sources
-            return key switch
+            // Zone-based features
+            if (key.StartsWith("zone.", StringComparison.OrdinalIgnoreCase))
             {
-                // Zone-based features
-                string k when k.StartsWith("zone.", StringComparison.OrdinalIgnoreCase) => GetZoneBasedFeature(symbol, key),
-                
-                // Pattern-based features
-                string k when k.StartsWith("pattern.", StringComparison.OrdinalIgnoreCase) => GetPatternBasedFeature(symbol, key),
-                
-                // Market microstructure features
-                string k when IsMarketMicrostructureFeature(k) => GetMarketMicrostructureFeature(symbol, key),
-                
-                // BREADTH FEATURES INTENTIONALLY DISABLED: Short-circuit to neutral scores
-                // Breadth feed subscription not active - return neutral values to avoid risk check bypass
-                string k when k.StartsWith("breadth.", StringComparison.OrdinalIgnoreCase) => BreadthNeutralScore,
-                
-                // Default fallback
-                _ => 0.0
-            };
+                return GetZoneBasedFeature(symbol, key);
+            }
+            
+            // Pattern-based features (async)
+            if (key.StartsWith("pattern.", StringComparison.OrdinalIgnoreCase))
+            {
+                return await GetPatternBasedFeatureAsync(symbol, key, cancellationToken).ConfigureAwait(false);
+            }
+            
+            // Market microstructure features
+            if (IsMarketMicrostructureFeature(key))
+            {
+                return GetMarketMicrostructureFeature(symbol, key);
+            }
+            
+            // BREADTH FEATURES INTENTIONALLY DISABLED: Short-circuit to neutral scores
+            // Breadth feed subscription not active - return neutral values to avoid risk check bypass
+            if (key.StartsWith("breadth.", StringComparison.OrdinalIgnoreCase))
+            {
+                return BreadthNeutralScore;
+            }
+            
+            // Default fallback
+            return 0.0;
         }
         catch (InvalidOperationException ex)
         {
@@ -107,12 +116,12 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
         };
     }
 
-    private double GetPatternBasedFeature(string symbol, string key)
+    private async Task<double> GetPatternBasedFeatureAsync(string symbol, string key, CancellationToken cancellationToken)
     {
         return key switch
         {
-            "pattern.bull_score" => GetPatternScore(symbol, true),
-            "pattern.bear_score" => GetPatternScore(symbol, false),
+            "pattern.bull_score" => await GetPatternScoreAsync(symbol, true, cancellationToken).ConfigureAwait(false),
+            "pattern.bear_score" => await GetPatternScoreAsync(symbol, false, cancellationToken).ConfigureAwait(false),
             _ => 0.0
         };
     }
@@ -252,7 +261,7 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
 /// </summary>
 public interface IRegimeService
 {
-    RegimeType GetRegime(string symbol);
+    Task<RegimeType> GetRegimeAsync(string symbol, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -303,10 +312,8 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
         if (string.IsNullOrWhiteSpace(symbol))
             throw new ArgumentException("Symbol cannot be null or empty", nameof(symbol));
 
-        // Strategy evaluation is synchronous for performance, with async capability available
-        await Task.CompletedTask.ConfigureAwait(false);
-
-        var regime = _regimes.GetRegime(symbol);
+        // Get current regime asynchronously
+        var regime = await _regimes.GetRegimeAsync(symbol, cancellationToken).ConfigureAwait(false);
         var list = new List<BotCore.Strategy.StrategyRecommendation>();
 
         _logger.LogDebug("Evaluating {StrategyCount} strategies for {Symbol} in regime {Regime}", 
@@ -324,21 +331,21 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
                 }
 
                 // Step 2: Micro conditions (all must pass)
-                if (!EvaluateMicroConditions(card, symbol))
+                if (!await EvaluateMicroConditionsAsync(card, symbol, cancellationToken).ConfigureAwait(false))
                 {
                     _logger.LogTrace("Strategy {StrategyName} failed micro conditions", card.Name);
                     continue;
                 }
 
                 // Step 3: Contraindications (any failing blocks the strategy)
-                if (EvaluateContraindications(card, symbol))
+                if (await EvaluateContraindicationsAsync(card, symbol, cancellationToken).ConfigureAwait(false))
                 {
                     _logger.LogTrace("Strategy {StrategyName} blocked by contraindications", card.Name);
                     continue;
                 }
 
                 // Step 4: Confluence (at least one must pass)
-                var confluenceResults = EvaluateConfluence(card, symbol);
+                var confluenceResults = await EvaluateConfluenceAsync(card, symbol, cancellationToken).ConfigureAwait(false);
                 if (confluenceResults.Count == 0)
                 {
                     _logger.LogTrace("Strategy {StrategyName} has no confluence", card.Name);
@@ -346,7 +353,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
                 }
 
                 // Step 5: Calculate confidence from evidence strength
-                var confluenceEvidence = CreateEvidence(card, symbol, confluenceResults);
+                var confluenceEvidence = await CreateEvidenceAsync(card, symbol, confluenceResults, cancellationToken).ConfigureAwait(false);
                 double confidence = CalculateConfidence(confluenceEvidence, card);
 
                 // Create recommendations for both directions unless bias restricts it
@@ -412,39 +419,49 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
             string.Equals(r, regime.ToString(), StringComparison.OrdinalIgnoreCase));
     }
 
-    private bool EvaluateMicroConditions(DslStrategy card, string symbol)
+    private async Task<bool> EvaluateMicroConditionsAsync(DslStrategy card, string symbol, CancellationToken cancellationToken)
     {
         var microConditions = card.When?.Micro ?? new List<string>();
         if (!microConditions.Any())
             return true; // No micro conditions
 
         // All micro conditions must pass
-        return microConditions.All(condition => EvaluateExpression(condition, symbol));
+        var tasks = microConditions.Select(condition => EvaluateExpressionAsync(condition, symbol, cancellationToken));
+        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+        return results.All(r => r);
     }
 
-    private bool EvaluateContraindications(DslStrategy card, string symbol)
+    private async Task<bool> EvaluateContraindicationsAsync(DslStrategy card, string symbol, CancellationToken cancellationToken)
     {
         var contraindications = card.Contra ?? new List<string>();
         if (!contraindications.Any())
             return false; // No contraindications = not blocked
 
         // Any contraindication passing blocks the strategy
-        return contraindications.Any(condition => EvaluateExpression(condition, symbol));
+        var tasks = contraindications.Select(condition => EvaluateExpressionAsync(condition, symbol, cancellationToken));
+        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+        return results.Any(r => r);
     }
 
-    private List<string> EvaluateConfluence(DslStrategy card, string symbol)
+    private async Task<List<string>> EvaluateConfluenceAsync(DslStrategy card, string symbol, CancellationToken cancellationToken)
     {
         var confluenceConditions = card.Confluence ?? new List<string>();
         if (!confluenceConditions.Any())
             return new List<string>(); // No confluence conditions
 
         // Return all passing confluence conditions
-        return confluenceConditions
-            .Where(condition => EvaluateExpression(condition, symbol))
-            .ToList();
+        var passingConditions = new List<string>();
+        foreach (var condition in confluenceConditions)
+        {
+            if (await EvaluateExpressionAsync(condition, symbol, cancellationToken).ConfigureAwait(false))
+            {
+                passingConditions.Add(condition);
+            }
+        }
+        return passingConditions;
     }
 
-    private bool EvaluateExpression(string expression, string symbol)
+    private async Task<bool> EvaluateExpressionAsync(string expression, string symbol, CancellationToken cancellationToken)
     {
         try
         {
@@ -454,7 +471,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
                 var parts = expression.Split(">=", StringSplitOptions.TrimEntries);
                 if (parts.Length == 2)
                 {
-                    var featureValue = _probe.Get(symbol, parts[0]);
+                    var featureValue = await _probe.GetAsync(symbol, parts[0], cancellationToken).ConfigureAwait(false);
                     if (double.TryParse(parts[1], out var threshold))
                         return featureValue >= threshold;
                 }
@@ -464,7 +481,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
                 var parts = expression.Split("<=", StringSplitOptions.TrimEntries);
                 if (parts.Length == 2)
                 {
-                    var featureValue = _probe.Get(symbol, parts[0]);
+                    var featureValue = await _probe.GetAsync(symbol, parts[0], cancellationToken).ConfigureAwait(false);
                     if (double.TryParse(parts[1], out var threshold))
                         return featureValue <= threshold;
                 }
@@ -474,7 +491,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
                 var parts = expression.Split(">", StringSplitOptions.TrimEntries);
                 if (parts.Length == 2)
                 {
-                    var featureValue = _probe.Get(symbol, parts[0]);
+                    var featureValue = await _probe.GetAsync(symbol, parts[0], cancellationToken).ConfigureAwait(false);
                     if (double.TryParse(parts[1], out var threshold))
                         return featureValue > threshold;
                 }
@@ -484,19 +501,23 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
                 if (expression.Contains("true", StringComparison.Ordinal))
                 {
                     var featureName = expression.Split("==")[0].Trim();
-                    var featureValue = _probe.Get(symbol, featureName);
+                    var featureValue = await _probe.GetAsync(symbol, featureName, cancellationToken).ConfigureAwait(false);
                     return featureValue > DefaultEvaluationThreshold; // Treat > 0.5 as true
                 }
             }
             else if (expression.Contains("or", StringComparison.Ordinal))
             {
                 var parts = expression.Split("or", StringSplitOptions.TrimEntries);
-                return Array.Exists(parts, part => EvaluateExpression(part.Trim(), symbol));
+                var tasks = parts.Select(part => EvaluateExpressionAsync(part.Trim(), symbol, cancellationToken));
+                var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+                return results.Any(r => r);
             }
             else if (expression.Contains("and", StringComparison.Ordinal))
             {
                 var parts = expression.Split("and", StringSplitOptions.TrimEntries);
-                return parts.All(part => EvaluateExpression(part.Trim(), symbol));
+                var tasks = parts.Select(part => EvaluateExpressionAsync(part.Trim(), symbol, cancellationToken));
+                var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+                return results.All(r => r);
             }
 
             return false;
@@ -518,7 +539,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
         }
     }
 
-    private IReadOnlyList<BotCore.Strategy.StrategyEvidence> CreateEvidence(DslStrategy card, string symbol, List<string> confluenceResults)
+    private async Task<IReadOnlyList<BotCore.Strategy.StrategyEvidence>> CreateEvidenceAsync(DslStrategy card, string symbol, List<string> confluenceResults, CancellationToken cancellationToken)
     {
         var evidence = new List<BotCore.Strategy.StrategyEvidence>();
 
@@ -526,7 +547,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
         var microConditions = card.When?.Micro ?? new List<string>();
         foreach (var condition in microConditions)
         {
-            if (EvaluateExpression(condition, symbol))
+            if (await EvaluateExpressionAsync(condition, symbol, cancellationToken).ConfigureAwait(false))
             {
                 evidence.Add(new BotCore.Strategy.StrategyEvidence(condition, 1.0, "Micro condition met"));
             }
@@ -623,7 +644,6 @@ public sealed class ProductionRegimeService : IRegimeService
                 _logger.LogError(ex, "Invalid argument detecting regime for {Symbol}, using cached value {Regime}", symbol, _lastRegime);
                 return _lastRegime;
             }
-        }
     }
 
     private static RegimeType MapToStrategyRegimeType(TradingBot.Abstractions.RegimeType detectedRegime)

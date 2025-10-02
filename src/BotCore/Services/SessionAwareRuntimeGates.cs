@@ -122,13 +122,13 @@ public class SessionAwareRuntimeGates
     }
 
     /// <summary>
-    /// Get detailed session status with timing information
+    /// Get detailed session status with timing information (async)
     /// </summary>
-    public SessionStatus GetSessionStatus(DateTime? etTime = null)
+    public async Task<SessionStatus> GetSessionStatusAsync(DateTime? etTime = null, CancellationToken cancellationToken = default)
     {
         var et = etTime ?? NowEt();
         var session = GetCurrentSession(et);
-        var tradingAllowed = IsTradingAllowedAsync().Result; // Safe for synchronous context
+        var tradingAllowed = await IsTradingAllowedAsync(cancellationToken).ConfigureAwait(false);
         
         return new SessionStatus
         {
@@ -145,6 +145,17 @@ public class SessionAwareRuntimeGates
             IsWithinReopenCurbWindow = IsWithinReopenCurbWindow(et),
             ReopenCurbTimeRemaining = GetReopenCurbTimeRemaining(et)
         };
+    }
+
+    /// <summary>
+    /// Get detailed session status with timing information (synchronous wrapper)
+    /// </summary>
+    [Obsolete("Use GetSessionStatusAsync to avoid blocking. This synchronous wrapper uses Task.Run.")]
+    public SessionStatus GetSessionStatus(DateTime? etTime = null)
+    {
+        // NOTE: Synchronous wrapper for backward compatibility.
+        // Using Task.Run to avoid blocking the caller's synchronization context.
+        return Task.Run(async () => await GetSessionStatusAsync(etTime, CancellationToken.None).ConfigureAwait(false)).GetAwaiter().GetResult();
     }
 
     #region Private Helper Methods

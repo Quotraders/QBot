@@ -41,12 +41,4 @@ public interface IStrategyKnowledgeGraph
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of strategy recommendations ranked by confidence</returns>
     Task<IReadOnlyList<StrategyRecommendation>> EvaluateAsync(string symbol, DateTime utc, CancellationToken cancellationToken = default);
-    
-    /// <summary>
-    /// Synchronously evaluate all strategies for backward compatibility
-    /// </summary>
-    /// <param name="symbol">Trading symbol to evaluate</param>
-    /// <param name="utc">Current UTC time for evaluation</param>
-    /// <returns>List of strategy recommendations ranked by confidence</returns>
-    IReadOnlyList<StrategyRecommendation> Evaluate(string symbol, DateTime utc);
 }

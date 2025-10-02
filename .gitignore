@@ -78,3 +78,7 @@ tools/analyzers/*.tsv
 # Automated artifacts and generated files
 artifacts_backup/
 trading.db*
+
+# Build output files
+build_output.txt
+build_full.txt

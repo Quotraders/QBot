@@ -207,15 +207,15 @@ public class UnifiedDecisionRouter
     /// <summary>
     /// Try Strategy Knowledge Graph & Decision Fusion - Highest priority ML-enhanced decision making
     /// </summary>
-    private Task<UnifiedTradingDecision?> TryDecisionFusionAsync(
+    private async Task<UnifiedTradingDecision?> TryDecisionFusionAsync(
         string symbol,
         TradingBot.Abstractions.MarketContext marketContext,
         CancellationToken cancellationToken)
     {
         try
         {
-            // Get fusion recommendation
-            var fusionRecommendation = _decisionFusion!.Decide(symbol);
+            // Get fusion recommendation asynchronously
+            var fusionRecommendation = await _decisionFusion!.DecideAsync(symbol, cancellationToken).ConfigureAwait(false);
             
             if (fusionRecommendation != null)
             {
@@ -243,16 +243,16 @@ public class UnifiedDecisionRouter
                 _logger.LogDebug("🧠 [STRATEGY-FUSION] Fusion recommendation: {Strategy} {Intent} confidence={Confidence:F2}",
                     fusionRecommendation.StrategyName, fusionRecommendation.Intent, fusionRecommendation.Confidence);
                 
-                return Task.FromResult<UnifiedTradingDecision?>(decision);
+                return decision;
             }
             
             _logger.LogTrace("🧠 [STRATEGY-FUSION] No fusion recommendation for {Symbol}", symbol);
-            return Task.FromResult<UnifiedTradingDecision?>(null);
+            return null;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "⚠️ [STRATEGY-FUSION] Failed to get fusion decision for {Symbol}", symbol);
-            return Task.FromResult<UnifiedTradingDecision?>(null);
+            return null;
         }
     }
 

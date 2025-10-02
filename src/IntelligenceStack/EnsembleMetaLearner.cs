@@ -102,7 +102,6 @@ public class EnsembleMetaLearner
     
     private readonly Dictionary<RegimeType, RegimeBlendHead> _regimeHeads = new();
     private readonly Dictionary<string, ModelArtifact> _activeModels = new();
-    private readonly object _lock = new();
     
     private RegimeType _currentRegime = RegimeType.Range;
     private RegimeType _previousRegime = RegimeType.Range;

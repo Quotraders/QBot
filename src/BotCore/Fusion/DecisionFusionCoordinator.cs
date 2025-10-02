@@ -303,10 +303,15 @@ public sealed class DecisionFusionCoordinator
     }
 
     /// <summary>
-    /// Synchronous wrapper for backward compatibility
+    /// Synchronous wrapper for backward compatibility - DEPRECATED
+    /// Use DecideAsync instead to avoid blocking
     /// </summary>
+    [Obsolete("Use DecideAsync to avoid blocking. This synchronous wrapper uses Task.Run.")]
     public BotCore.Strategy.StrategyRecommendation? Decide(string symbol)
     {
-        return DecideAsync(symbol, CancellationToken.None).GetAwaiter().GetResult();
+        // NOTE: This method exists for backward compatibility only.
+        // Using Task.Run to avoid blocking the caller's synchronization context.
+        // Callers should be updated to use DecideAsync directly.
+        return Task.Run(async () => await DecideAsync(symbol, CancellationToken.None).ConfigureAwait(false)).GetAwaiter().GetResult();
     }
 }

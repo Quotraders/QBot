@@ -23,11 +23,11 @@ namespace BotCore.Strategy
     /// </summary>
     public class BridgeOrderRouter : TopstepX.S6.IOrderRouter, TopstepX.S11.IOrderRouter
     {        
-        // Instrument specifications constants
-        private const double EsTickSize = 0.25;                 // ES futures tick size
-        private const double NqTickSize = 0.25;                 // NQ futures tick size
-        private const double EsPointValue = 50.0;               // ES point value in dollars
-        private const double NqPointValue = 20.0;               // NQ point value in dollars
+        // Instrument specifications constants (using decimal for precision in price calculations)
+        private const decimal EsTickSize = 0.25m;               // ES futures tick size
+        private const decimal NqTickSize = 0.25m;               // NQ futures tick size
+        private const decimal EsPointValue = 50.0m;             // ES point value in dollars
+        private const decimal NqPointValue = 20.0m;             // NQ point value in dollars
         private const int MaxQuantityLimit = 1000;              // Maximum allowed quantity for risk validation
         
         private readonly RiskEngine _risk;
@@ -59,24 +59,31 @@ namespace BotCore.Strategy
 
         public string PlaceMarket(TopstepX.S6.Instrument instr, TopstepX.S6.Side side, int qty, string tag)
         {
-            return PlaceMarketOrderInternalAsync(instr.ToString(), ConvertS6Side(side), qty, tag).GetAwaiter().GetResult();
+            // NOTE: This method MUST be synchronous per TopstepX.S6.IOrderRouter interface contract.
+            // Using Task.Run to safely execute async work on thread pool to avoid blocking the caller's context.
+            // This is acceptable here as the bridge runs on background hosted worker, not UI/SignalR context.
+            return Task.Run(async () => await PlaceMarketOrderInternalAsync(instr.ToString(), ConvertS6Side(side), qty, tag).ConfigureAwait(false)).GetAwaiter().GetResult();
         }
 
         public (TopstepX.S6.Side side, int qty, double avgPx, DateTimeOffset openedAt, string positionId) GetPosition(TopstepX.S6.Instrument instr)
         {
-            var position = GetPositionInternalAsync(instr.ToString()).GetAwaiter().GetResult();
+            // NOTE: This method MUST be synchronous per TopstepX.S6.IOrderRouter interface contract.
+            // Using Task.Run to safely execute async work on thread pool to avoid blocking the caller's context.
+            var position = Task.Run(async () => await GetPositionInternalAsync(instr.ToString()).ConfigureAwait(false)).GetAwaiter().GetResult();
             var side = ConvertToS6Side(position?.Side ?? "FLAT");
             return (side, position?.Quantity ?? 0, (double)(position?.AveragePrice ?? 0), position?.OpenTime ?? DateTimeOffset.MinValue, position?.Id ?? "");
         }
 
         public double GetTickSize(TopstepX.S6.Instrument instr)
         {
-            return instr == TopstepX.S6.Instrument.ES ? EsTickSize : NqTickSize; // Both ES and NQ use 0.25 tick size
+            // NOTE: Interface requires double, but we use decimal internally for precision
+            return (double)(instr == TopstepX.S6.Instrument.ES ? EsTickSize : NqTickSize); // Both ES and NQ use 0.25 tick size
         }
 
         public double GetPointValue(TopstepX.S6.Instrument instr)
         {
-            return instr == TopstepX.S6.Instrument.ES ? EsPointValue : NqPointValue; // ES $50/pt, NQ $20/pt
+            // NOTE: Interface requires double, but we use decimal internally for precision
+            return (double)(instr == TopstepX.S6.Instrument.ES ? EsPointValue : NqPointValue); // ES $50/pt, NQ $20/pt
         }
 
         #endregion
@@ -85,24 +92,30 @@ namespace BotCore.Strategy
 
         public string PlaceMarket(TopstepX.S11.Instrument instr, TopstepX.S11.Side side, int qty, string tag)
         {
-            return PlaceMarketOrderInternalAsync(instr.ToString(), ConvertS11Side(side), qty, tag).GetAwaiter().GetResult();
+            // NOTE: This method MUST be synchronous per TopstepX.S11.IOrderRouter interface contract.
+            // Using Task.Run to safely execute async work on thread pool to avoid blocking the caller's context.
+            return Task.Run(async () => await PlaceMarketOrderInternalAsync(instr.ToString(), ConvertS11Side(side), qty, tag).ConfigureAwait(false)).GetAwaiter().GetResult();
         }
 
         public (TopstepX.S11.Side side, int qty, double avgPx, DateTimeOffset openedAt, string positionId) GetPosition(TopstepX.S11.Instrument instr)
         {
-            var position = GetPositionInternalAsync(instr.ToString()).GetAwaiter().GetResult();
+            // NOTE: This method MUST be synchronous per TopstepX.S11.IOrderRouter interface contract.
+            // Using Task.Run to safely execute async work on thread pool to avoid blocking the caller's context.
+            var position = Task.Run(async () => await GetPositionInternalAsync(instr.ToString()).ConfigureAwait(false)).GetAwaiter().GetResult();
             var side = ConvertToS11Side(position?.Side ?? "FLAT");
             return (side, position?.Quantity ?? 0, (double)(position?.AveragePrice ?? 0), position?.OpenTime ?? DateTimeOffset.MinValue, position?.Id ?? "");
         }
 
         public double GetTickSize(TopstepX.S11.Instrument instr)
         {
-            return instr == TopstepX.S11.Instrument.ES ? EsTickSize : NqTickSize; // Both ES and NQ use 0.25 tick size
+            // NOTE: Interface requires double, but we use decimal internally for precision
+            return (double)(instr == TopstepX.S11.Instrument.ES ? EsTickSize : NqTickSize); // Both ES and NQ use 0.25 tick size
         }
 
         public double GetPointValue(TopstepX.S11.Instrument instr)
         {
-            return instr == TopstepX.S11.Instrument.ES ? EsPointValue : NqPointValue; // ES $50/pt, NQ $20/pt
+            // NOTE: Interface requires double, but we use decimal internally for precision
+            return (double)(instr == TopstepX.S11.Instrument.ES ? EsPointValue : NqPointValue); // ES $50/pt, NQ $20/pt
         }
 
         #endregion
@@ -167,7 +180,9 @@ namespace BotCore.Strategy
 
         public void ModifyStop(string positionId, double stopPrice)
         {
-            ModifyStopOrderInternalAsync(positionId, (decimal)stopPrice).GetAwaiter().GetResult();
+            // NOTE: This method MUST be synchronous per TopstepX IOrderRouter interface contract.
+            // Using Task.Run to safely execute async work on thread pool to avoid blocking the caller's context.
+            Task.Run(async () => await ModifyStopOrderInternalAsync(positionId, (decimal)stopPrice).ConfigureAwait(false)).GetAwaiter().GetResult();
         }
 
         private async Task ModifyStopOrderInternalAsync(string positionId, decimal stopPrice)
@@ -204,7 +219,9 @@ namespace BotCore.Strategy
 
         public void ClosePosition(string positionId)
         {
-            ClosePositionInternalAsync(positionId).GetAwaiter().GetResult();
+            // NOTE: This method MUST be synchronous per TopstepX IOrderRouter interface contract.
+            // Using Task.Run to safely execute async work on thread pool to avoid blocking the caller's context.
+            Task.Run(async () => await ClosePositionInternalAsync(positionId).ConfigureAwait(false)).GetAwaiter().GetResult();
         }
 
         private async Task ClosePositionInternalAsync(string positionId)
@@ -245,7 +262,9 @@ namespace BotCore.Strategy
 
         public List<(object Side, int Qty, double AvgPx, DateTime OpenedAt)> GetPositions()
         {
-            return GetPositionsInternalAsync().GetAwaiter().GetResult();
+            // NOTE: This method MUST be synchronous per TopstepX IOrderRouter interface contract.
+            // Using Task.Run to safely execute async work on thread pool to avoid blocking the caller's context.
+            return Task.Run(async () => await GetPositionsInternalAsync().ConfigureAwait(false)).GetAwaiter().GetResult();
         }
 
         private async Task<List<(object Side, int Qty, double AvgPx, DateTime OpenedAt)>> GetPositionsInternalAsync()
