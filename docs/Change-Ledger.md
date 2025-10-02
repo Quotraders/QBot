@@ -25,6 +25,59 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Current Focus**: Phase 1 secured, continuing Priority 1 correctness violations
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 
+### Round 64 - CRITICAL: CS Compiler Error Regression Fix (Current Session)
+| Error | Files Affected | Fix Applied |
+|-------|----------------|-------------|
+| CS0103 | RiskEngine.cs | Moved 13 constants from RiskEngine class to DrawdownProtectionSystem class (constants used in nested class) |
+| CS0266 | RiskEngine.cs | Added explicit cast (double) for decimal constants used in switch pattern with double DrawdownPercent |
+| CS0103 | EnhancedBayesianPriors.cs | Moved 4 shrinkage constants to BayesianCalculationExtensions static class (static method needs static constants) |
+| CS1503 | SuppressionLedgerService.cs | Fixed IndexOf overload - char.IndexOf(char, int, StringComparison) doesn't exist, reverted to IndexOf(char, int) |
+| CS8600 | NeuralUcbBandit.cs | Added null-forgiving operator (out arm!) for TryGetValue pattern |
+
+**Example Patterns - CS Error Fixes**:
+```csharp
+// BEFORE - CS0103: Constants in wrong scope
+public sealed class RiskEngine
+{
+    private const decimal PsychologicalLossThresholdMinor = 1000m;
+    // ...
+}
+public class DrawdownProtectionSystem
+{
+    private async Task CheckPsychologicalThresholds(decimal currentBalance)
+    {
+        if (dailyPnL <= -PsychologicalLossThresholdMinor) // ERROR: Not accessible
+    }
+}
+
+// AFTER - Constants in correct scope
+public class DrawdownProtectionSystem
+{
+    private const decimal PsychologicalLossThresholdMinor = 1000m;
+    
+    private async Task CheckPsychologicalThresholds(decimal currentBalance)
+    {
+        if (dailyPnL <= -PsychologicalLossThresholdMinor) // OK: Accessible
+    }
+}
+
+// BEFORE - CS0266: Type mismatch
+return tracker.DrawdownPercent switch
+{
+    < RiskLevelLowThreshold => "LOW",  // ERROR: decimal vs double
+};
+
+// AFTER - Explicit cast
+return tracker.DrawdownPercent switch
+{
+    < (double)RiskLevelLowThreshold => "LOW",  // OK: Explicit cast
+};
+```
+
+**Rationale**: Previous commits introduced CS compiler errors that violated Phase 1 non-negotiable requirement. Fixed all scope, type conversion, and nullability issues. Constants moved to classes where they're actually used. Type casts added for pattern matching with different numeric types. Null-forgiving operator used where TryGetValue guarantees non-null result.
+
+---
+
 ### Round 59 - CRITICAL: Async/Await Deadlock Prevention (Current Session)
 | Issue | Files Affected | Fix Applied |
 |-------|----------------|-------------|
