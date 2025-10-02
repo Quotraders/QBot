@@ -15,13 +15,12 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
 - **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (100%) - **VERIFIED & SECURED**
 - **Phase 2 Status**: ✅ **ACCELERATED PROGRESS** - Systematic high-priority violations elimination in progress
-  - **Latest Session (Round 56-59)**: 158+ violations fixed + **CRITICAL async/await deadlock fix**
-  - **Round 59**: **CRITICAL** - Fixed async/await deadlocks in hot trading paths
-  - **Round 58**: CA1031 exception handling - 10 violations fixed with specific exception types
-  - **Round 57**: CA1307 string operations - 56 violations fixed with StringComparison parameters
-  - **Round 56**: S109 magic numbers - 88 violations fixed with named constants
-  - **Verified State**: ~6683 violations (0 CS errors maintained)
-- **Current Focus**: Production stability - async/await patterns, deadlock prevention
+  - **Current Session (Round 60-62)**: 159 violations fixed - Priority 1 focus
+  - **Round 62**: CA1854 dictionary lookups - 20 violations, S109 magic numbers - 30 violations
+  - **Round 61**: CA1031 exception handling - 22 violations, CA1307 string operations - 22 violations
+  - **Round 60**: S109 magic numbers - 64 violations, CA1031 exception handling - 1 violation
+  - **Verified State**: ~12,885 violations (0 CS errors maintained)
+- **Current Focus**: Priority 1 correctness violations - magic numbers, exception handling, dictionary performance
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 
 ### Round 59 - CRITICAL: Async/Await Deadlock Prevention (Current Session)
@@ -97,6 +96,105 @@ CheckFunctionAsync = () => ConvertHealthCheckResult(...),
    - Prevents health check system hangs
 
 **Rationale**: These blocking async calls (.Result, .Wait()) in production hot paths could cause deadlocks and halt trading. Per guidebook async/await best practices, all async methods must be awaited, never blocked. This is especially critical in trading systems where deadlocks can prevent order execution.
+
+---
+
+### Round 60-62 - Phase 2 Priority 1: Correctness & Invariants (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 2176 | 2082 | RiskEngine.cs, RlTrainingDataCollector.cs, ZoneAwareBracketManager.cs, WalkForwardValidationService.cs, EnhancedBayesianPriors.cs | Named constants for risk thresholds, signal generation, tick sizes, validation limits, and Bayesian statistics (94 violations) |
+| CA1031 | 894 | 872 | ZoneAwareBracketManager.cs, WalkForwardValidationService.cs, UnifiedModelPathResolver.cs | Specific exception types: InvalidOperationException, ArgumentException, IOException, JsonException, UnauthorizedAccessException (23 violations) |
+| CA1307 | 178 | 156 | SuppressionLedgerService.cs, RlTrainingDataCollector.cs, LinUcbBandit.cs | StringComparison.Ordinal for Replace, IndexOf, GetHashCode, Contains (22 violations) |
+| CA1854 | 90 | 70 | EnhancedBayesianPriors.cs, NeuralUcbBandit.cs, AllStrategies.cs, ShadowModeManager.cs | TryGetValue pattern replacing ContainsKey + indexer (20 violations) |
+
+**Example Patterns Applied**:
+
+**S109 - Magic Numbers to Named Constants**:
+```csharp
+// BEFORE - Magic numbers inline
+if (dailyPnL <= -1000) { /* ... */ }
+if (dailyPnL <= -1500) { /* ... */ }
+var recoveryRequired = tracker.DrawdownAmount / (tracker.PeakValue - tracker.DrawdownAmount);
+if (recoveryRequired > 0.25m) { /* ... */ }
+
+// AFTER - Named constants with clear intent
+private const decimal PsychologicalLossThresholdMinor = 1000m;
+private const decimal PsychologicalLossThresholdMajor = 1500m;
+private const decimal RecoveryRequiredThreshold = 0.25m;
+
+if (dailyPnL <= -PsychologicalLossThresholdMinor) { /* ... */ }
+if (dailyPnL <= -PsychologicalLossThresholdMajor) { /* ... */ }
+if (recoveryRequired > RecoveryRequiredThreshold) { /* ... */ }
+```
+
+**CA1031 - Specific Exception Types**:
+```csharp
+// BEFORE - Generic catch
+catch (Exception ex)
+{
+    _logger.LogError(ex, "[WALK-FORWARD-RESULTS] Error logging validation results");
+}
+
+// AFTER - Specific exception types for file operations
+catch (System.IO.IOException ex)
+{
+    _logger.LogError(ex, "[WALK-FORWARD-RESULTS] I/O error logging validation results");
+}
+catch (JsonException ex)
+{
+    _logger.LogError(ex, "[WALK-FORWARD-RESULTS] JSON serialization error logging validation results");
+}
+catch (UnauthorizedAccessException ex)
+{
+    _logger.LogError(ex, "[WALK-FORWARD-RESULTS] Access denied logging validation results");
+}
+```
+
+**CA1307 - String Operations with Culture/Comparison**:
+```csharp
+// BEFORE - Culture-dependent operations
+filePath.Replace("./", "")
+suppressLine.IndexOf('"')
+strategy.GetHashCode()
+session.Contains("MORNING")
+
+// AFTER - Explicit culture/comparison
+filePath.Replace("./", "", StringComparison.Ordinal)
+suppressLine.IndexOf('"', StringComparison.Ordinal)
+strategy.GetHashCode(StringComparison.Ordinal)
+session.Contains("MORNING", StringComparison.Ordinal)
+```
+
+**CA1854 - TryGetValue Pattern**:
+```csharp
+// BEFORE - Double dictionary lookup
+if (!_priors.ContainsKey(key))
+{
+    _priors[key] = CreateDefaultPosterior();
+}
+var posterior = _priors[key];
+
+// AFTER - Single lookup with TryGetValue
+if (!_priors.TryGetValue(key, out var posterior))
+{
+    posterior = CreateDefaultPosterior();
+    _priors[key] = posterior;
+}
+```
+
+**Files Modified**:
+- **RiskEngine.cs**: 13 risk management constants (psychological thresholds, risk levels, action thresholds)
+- **RlTrainingDataCollector.cs**: 7 RL training constants (tick direction, signal strength, performance metrics)
+- **ZoneAwareBracketManager.cs**: 4 tick size constants + InvalidOperationException/ArgumentException handling
+- **WalkForwardValidationService.cs**: 2 validation constants + 6 specific exception handlers (IOException, JsonException, etc.)
+- **EnhancedBayesianPriors.cs**: 15 Bayesian constants + 7 TryGetValue optimizations
+- **UnifiedModelPathResolver.cs**: 4 specific exception handlers (InvalidOperationException, ArgumentException, IOException, etc.)
+- **SuppressionLedgerService.cs**: 3 StringComparison.Ordinal additions
+- **NeuralUcbBandit.cs**: 1 TryGetValue optimization
+- **AllStrategies.cs**: 2 TryGetValue optimizations
+- **ShadowModeManager.cs**: 1 TryGetValue optimization
+
+**Rationale**: Applied systematic Priority 1 correctness fixes per Analyzer-Fix-Guidebook.md. Magic numbers replaced with descriptive constants for maintainability and configurability. Generic exception catches replaced with specific types for proper error handling and recovery. String operations made culture-explicit for protocol/data consistency. Dictionary lookups optimized to avoid double hash table lookups and improve performance in hot paths.
 
 ---
 
