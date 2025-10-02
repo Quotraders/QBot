@@ -139,7 +139,7 @@ namespace BotCore.Strategy
 
             // Find closest hour performance
             var closestHour = hourPerformance.Keys.OrderBy(h => Math.Abs(h - hour)).FirstOrDefault();
-            var performance = hourPerformance.ContainsKey(closestHour) ? hourPerformance[closestHour] : DefaultPerformanceThreshold;
+            var performance = hourPerformance.ContainsKey(closestHour) ? (decimal)hourPerformance[closestHour] : DefaultPerformanceThreshold;
 
             // Only run strategy if performance is above threshold
             return performance > PerformanceFilterThreshold;

@@ -27,6 +27,18 @@ namespace BotCore.Brain
         public const decimal RISK_PER_TRADE = 0.01m; // 1% = $500 baseline
         public const double EXPLORATION_BONUS = 0.3;
         public const double CONFIDENCE_THRESHOLD = 0.65;
+        
+        // Trading Brain confidence and probability constants
+        public const decimal FALLBACK_CONFIDENCE = 0.6m;             // Fallback strategy confidence
+        public const decimal FALLBACK_UCB_VALUE = 0.5m;              // Fallback UCB value
+        public const decimal HIGH_CONFIDENCE_PROBABILITY = 0.7m;      // High confidence prediction probability
+        public const decimal NEUTRAL_PROBABILITY = 0.5m;             // Neutral/sideways prediction probability
+        public const decimal DEFAULT_ATR_FALLBACK = 25.0m;           // Default ATR for NQ when unavailable
+        public const decimal ES_DEFAULT_ATR_FALLBACK = 10.0m;        // Default ATR for ES when unavailable
+        public const decimal NQ_MIN_STOP_DISTANCE = 0.5m;            // Minimum stop distance for NQ
+        public const decimal ES_MIN_STOP_DISTANCE = 0.25m;           // Minimum stop distance for ES
+        public const decimal FALLBACK_EXPECTED_MOVE = 5;             // Fallback expected move value
+        public const int DEFAULT_ATR_LOOKBACK = 10;                  // Default ATR lookback period
     }
     /// <summary>
     /// UNIFIED TRADING BRAIN - The ONE intelligence that controls all trading decisions
@@ -545,9 +557,19 @@ namespace BotCore.Brain
                 
                 return Task.FromResult(MarketRegime.Normal);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Meta classifier prediction failed, using fallback");
+                _logger.LogWarning(ex, "Meta classifier invalid operation, using fallback");
+                return Task.FromResult(MarketRegime.Normal);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Meta classifier invalid arguments, using fallback");
+                return Task.FromResult(MarketRegime.Normal);
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogWarning(ex, "Meta classifier timeout, using fallback");
                 return Task.FromResult(MarketRegime.Normal);
             }
         }
@@ -573,9 +595,9 @@ namespace BotCore.Brain
                     Reasoning = selection.SelectionReason ?? "Neural UCB selection"
                 };
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Neural UCB selection failed, using fallback");
+                _logger.LogWarning(ex, "Neural UCB invalid operation, using fallback");
                 
                 // Fallback: time-based strategy selection from your existing logic
                 var hour = context.TimeOfDay.Hours;
@@ -590,8 +612,8 @@ namespace BotCore.Brain
                 return new StrategySelection
                 {
                     SelectedStrategy = fallbackStrategy,
-                    Confidence = 0.6m,
-                    UcbValue = 0.5m,
+                    Confidence = TopStepConfig.FALLBACK_CONFIDENCE,
+                    UcbValue = TopStepConfig.FALLBACK_UCB_VALUE,
                     Reasoning = "Fallback time-based selection"
                 };
             }
@@ -640,24 +662,24 @@ namespace BotCore.Brain
                 if (isUptrend && !isOverbought)
                 {
                     direction = PriceDirection.Up;
-                    probability = 0.7m;
+                    probability = TopStepConfig.HIGH_CONFIDENCE_PROBABILITY;
                 }
                 else if (!isUptrend && !isOversold)
                 {
                     direction = PriceDirection.Down;
-                    probability = 0.7m;
+                    probability = TopStepConfig.HIGH_CONFIDENCE_PROBABILITY;
                 }
                 else
                 {
                     direction = PriceDirection.Sideways;
-                    probability = 0.5m;
+                    probability = TopStepConfig.NEUTRAL_PROBABILITY;
                 }
                 
                 return Task.FromResult(new PricePrediction
                 {
                     Direction = direction,
                     Probability = probability,
-                    ExpectedMove = context.Atr ?? 10,
+                    ExpectedMove = context.Atr ?? TopStepConfig.DEFAULT_ATR_LOOKBACK,
                     TimeHorizon = TimeSpan.FromMinutes(30)
                 });
             }
@@ -667,8 +689,8 @@ namespace BotCore.Brain
                 return Task.FromResult(new PricePrediction
                 {
                     Direction = PriceDirection.Sideways,
-                    Probability = 0.5m,
-                    ExpectedMove = 5,
+                    Probability = TopStepConfig.NEUTRAL_PROBABILITY,
+                    ExpectedMove = TopStepConfig.FALLBACK_EXPECTED_MOVE,
                     TimeHorizon = TimeSpan.FromMinutes(30)
                 });
             }
@@ -741,12 +763,12 @@ namespace BotCore.Brain
 
             if (instrument.Equals("NQ", StringComparison.OrdinalIgnoreCase))
             {
-                stopDistance = Math.Max(0.5m, context.Atr ?? 25.0m);
+                stopDistance = Math.Max(TopStepConfig.NQ_MIN_STOP_DISTANCE, context.Atr ?? TopStepConfig.DEFAULT_ATR_FALLBACK);
                 pointValue = TopStepConfig.NQ_POINT_VALUE;
             }
             else // ES
             {
-                stopDistance = Math.Max(0.25m, context.Atr ?? 10.0m);
+                stopDistance = Math.Max(TopStepConfig.ES_MIN_STOP_DISTANCE, context.Atr ?? TopStepConfig.ES_DEFAULT_ATR_FALLBACK);
                 pointValue = TopStepConfig.ES_POINT_VALUE;
             }
 
@@ -799,7 +821,7 @@ namespace BotCore.Brain
                     strategy.SelectedStrategy,
                     context.Symbol,
                     context.CurrentPrice,
-                    context.Atr ?? 10,
+                    context.Atr ?? TopStepConfig.DEFAULT_ATR_LOOKBACK,
                     (decimal)strategy.Confidence,
                     (decimal)prediction.Probability,
                     new List<Bar>()

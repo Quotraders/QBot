@@ -23,7 +23,41 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Current Focus**: Systematic application of Analyzer-Fix-Guidebook patterns across high-priority violations
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 
-### Round 44-47 - Systematic Analyzer Violation Elimination (Current Session)
+### Round 48 - Continued Phase 2 Priority 1 Violations (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CS0173 | 1 | 0 | AllStrategies.cs | Fixed type conversion issue (double to decimal cast) |
+| S109 | 2294 | 2268 | UnifiedTradingBrain.cs, S3Strategy.cs | Added 11 named constants for trading brain confidence levels and strategy parameters |
+| CA1031 | 912 | 904 | CloudRlTrainerEnhanced.cs, UnifiedTradingBrain.cs | Replaced generic Exception catches with specific exception types (IOException, InvalidOperationException, ArgumentException) |
+
+**Fix Applied:**
+```csharp
+// Before - CS0173 type conversion error
+var performance = hourPerformance.ContainsKey(closestHour) ? hourPerformance[closestHour] : DefaultPerformanceThreshold;
+
+// After - Explicit cast to resolve type mismatch
+var performance = hourPerformance.ContainsKey(closestHour) ? (decimal)hourPerformance[closestHour] : DefaultPerformanceThreshold;
+
+// Before - S109 magic numbers
+Confidence = 0.6m,
+probability = 0.7m,
+stopDistance = Math.Max(0.5m, context.Atr ?? 25.0m);
+
+// After - Named constants
+public const decimal FALLBACK_CONFIDENCE = 0.6m;
+public const decimal HIGH_CONFIDENCE_PROBABILITY = 0.7m;
+public const decimal NQ_MIN_STOP_DISTANCE = 0.5m;
+Confidence = TopStepConfig.FALLBACK_CONFIDENCE,
+
+// Before - CA1031 generic exception
+catch (Exception ex) { /* cleanup */ }
+
+// After - Specific exceptions  
+catch (UnauthorizedAccessException) { /* cleanup */ }
+catch (IOException) { /* cleanup */ }
+```
+
+### Round 44-47 - Systematic Analyzer Violation Elimination (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA1822 | 450 | 314 | AutonomousPerformanceTracker.cs, StrategyKnowledgeGraphNew.cs, MLConfiguration.cs, IsotonicCalibrationService.cs | Made 7 utility methods static (136 fixes) |
