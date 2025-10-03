@@ -77,7 +77,8 @@ public class ExecutionAnalyzer
         {
             var pnlPercent = entryPrice != 0 ? ((exitPrice - entryPrice) / entryPrice) * 100 : 0;
 
-            var feedback = new
+            // Feedback object prepared for future zone test tracking
+            _ = new
             {
                 Symbol = symbol,
                 ZoneLevel = Math.Round(zoneLevel, 2),

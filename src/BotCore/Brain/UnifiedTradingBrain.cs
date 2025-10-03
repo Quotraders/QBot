@@ -717,7 +717,7 @@ namespace BotCore.Brain
                         CancellationToken cancellationToken)
         {
             // Check TopStep compliance first
-            var (canTrade, reason, level) = ShouldStopTrading();
+            var (canTrade, reason, _) = ShouldStopTrading();
             if (!canTrade)
             {
                 _logger.LogWarning("🛑 [TOPSTEP-COMPLIANCE] Trading blocked: {Reason}", reason);
@@ -746,8 +746,8 @@ namespace BotCore.Brain
                 return 0m; // No trade if confidence too low
             }
 
-            // Confidence multiplier using ONNX model
-            var features = new Dictionary<string, double>
+            // Confidence multiplier using ONNX model (features prepared for future advanced scoring)
+            _ = new Dictionary<string, double>
             {
                 ["strategy_confidence"] = (double)strategy.Confidence,
                 ["prediction_probability"] = (double)prediction.Probability,

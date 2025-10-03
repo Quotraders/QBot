@@ -536,7 +536,6 @@ public class RedundantDataFeedManager : IDisposable
 
     private void LogConsistencyStatus(DataConsistencyResult consistency)
     {
-        var feedNames = string.Join(", ", consistency.FeedData.Keys);
         var avgPrice = consistency.FeedData.Values.Average(s => s.Price);
         
         if (consistency.IsConsistent)

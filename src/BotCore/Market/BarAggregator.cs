@@ -52,7 +52,6 @@ namespace BotCore.Market
             }
 
             // update current
-            var open = bar.Open;
             var high = price > bar.High ? price : bar.High;
             var low = price < bar.Low ? price : bar.Low;
             var vol = bar.Volume + qty;

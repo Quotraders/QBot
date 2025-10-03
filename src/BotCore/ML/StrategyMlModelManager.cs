@@ -76,68 +76,6 @@ namespace BotCore.ML
             _logger.LogInformation("[ML-Manager] Initialized - RL enabled: {Enabled}, Memory management: {MemoryEnabled}", 
                 IsEnabled, _memoryManager != null);
         }
-        
-        /// <summary>
-        /// Load real ONNX model using OnnxModelLoader instead of fake data
-        /// </summary>
-        private async Task<T?> LoadModelDirectAsync<T>(string modelPath) where T : class
-        {
-            try
-            {
-                _logger.LogInformation("[ML-Manager] Loading real ONNX model: {ModelPath}", modelPath);
-                
-                if (!File.Exists(modelPath))
-                {
-                    _logger.LogWarning("[ML-Manager] Model file not found: {ModelPath}", modelPath);
-                    return null;
-                }
-
-                // Use real ONNX loader if available, otherwise fall back to direct loading
-                if (_onnxLoader != null)
-                {
-                    var session = await _onnxLoader.LoadModelAsync(modelPath, validateInference: true).ConfigureAwait(false);
-                    if (session == null)
-                    {
-                        _logger.LogError("[ML-Manager] Failed to load ONNX model: {ModelPath}", modelPath);
-                        return null;
-                    }
-                    
-                    _logger.LogInformation("[ML-Manager] Successfully loaded real ONNX model: {ModelPath}", modelPath);
-                    return session as T;
-                }
-                else
-                {
-                    _logger.LogWarning("[ML-Manager] No ONNX loader available, model loading disabled for safety");
-                    return null;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[ML-Manager] Error loading real ONNX model: {ModelPath}", modelPath);
-                return null;
-            }
-        }
-        
-        /// <summary>
-        /// Get model version from file metadata or timestamp
-        /// </summary>
-        private static string GetModelVersion(string modelPath)
-        {
-            try
-            {
-                if (File.Exists(modelPath))
-                {
-                    var lastWrite = File.GetLastWriteTime(modelPath);
-                    return lastWrite.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
-                }
-            }
-            catch
-            {
-                // Ignore errors
-            }
-            
-            return "unknown";
-        }
 
         /// <summary>
         /// Get memory usage statistics from memory manager
@@ -366,44 +304,6 @@ namespace BotCore.ML
                 _logger.LogError(ex, "[ML-Manager] Error calculating execution quality for {Symbol}", symbol);
                 return 0.8m; // Default score
             }
-        }
-
-        private static decimal CalculateEma(IList<Bar> bars, int period)
-        {
-            if (bars.Count < period) return bars.Last().Close;
-
-            var multiplier = 2m / (period + 1);
-            var ema = bars[0].Close;
-
-            for (int i = 1; i < bars.Count; i++)
-            {
-                ema = (bars[i].Close * multiplier) + (ema * (1 - multiplier));
-            }
-
-            return ema;
-        }
-
-        private static decimal CalculateRsi(IList<Bar> bars, int period)
-        {
-            if (bars.Count < period + 1) return 50m;
-
-            var gains = 0m;
-            var losses = 0m;
-
-            for (int i = bars.Count - period; i < bars.Count; i++)
-            {
-                var change = bars[i].Close - bars[i - 1].Close;
-                if (change > 0) gains += change;
-                else losses -= change;
-            }
-
-            var avgGain = gains / period;
-            var avgLoss = losses / period;
-
-            if (avgLoss == 0) return 100m;
-
-            var rs = avgGain / avgLoss;
-            return 100m - (100m / (1 + rs));
         }
 
         public void Dispose()

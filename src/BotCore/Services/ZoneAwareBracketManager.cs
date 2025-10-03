@@ -37,8 +37,6 @@ namespace BotCore.Services
 
         // Zone anchoring constants
         private const int DefaultBufferTicks = 6;
-        private const double FallbackStopAtrMultiple = 1.0;
-        private const double FallbackTargetAtrMultiple = 2.0;
 
         public ZoneAwareBracketManager(
             ILogger<ZoneAwareBracketManager> logger,

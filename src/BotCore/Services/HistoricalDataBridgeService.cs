@@ -558,7 +558,6 @@ namespace BotCore.Services
             for (int i = barCount - 1; i >= 0; i--)
             {
                 var barStart = currentTime.AddMinutes(-i - 1);
-                var barEnd = barStart.AddMinutes(1);
                 
                 // Simple price movement simulation for warm-up
                 var priceVariation = (decimal)(new Random().NextDouble() - 0.5) * (basePrice * 0.001m);

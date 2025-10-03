@@ -95,7 +95,6 @@ namespace BotCore.Services
         private const decimal MinimumAccountBalance = 5000m;        // Minimum account balance for strategy execution
         
         // Time-based optimization constants
-        private const double ConfidenceScoreMultiplier = 1.5;       // Multiplier for confidence score calculation
         private const double NeutralRSIValue = 50.0;                // Neutral RSI value (midpoint)
         private const decimal NeutralRSIValueDecimal = 50.0m;       // Neutral RSI value as decimal
 
@@ -448,43 +447,6 @@ namespace BotCore.Services
             return instrument == "ES" || instrument == "NQ";
         }
 
-        private double CalculateRegimeMultiplier(MarketRegime regime)
-        {
-            // ML-based regime multiplier from historical performance analysis
-            return regime.Name switch
-            {
-                "high_vol" => 0.85, // Reduce size in high volatility
-                "low_vol" => 1.15,  // Increase size in low volatility
-                "trending" => 1.1,  // Increase size in trending markets
-                "ranging" => 0.95,  // Slightly reduce size in ranging markets
-                _ => 1.0
-            };
-        }
-
-        private double CalculateSessionMultiplier()
-        {
-            // ML-based session performance adjustments
-            var hour = DateTime.UtcNow.Hour;
-            return hour switch
-            {
-                >= 9 and <= 11 => 1.05,  // Morning session - higher institutional activity
-                >= 13 and <= 15 => 1.02, // Afternoon session - moderate activity  
-                >= 15 and <= 16 => 0.95, // Power hour - higher volatility, lower size
-                _ => 1.0
-            };
-        }
-
-        private double CalculateInstrumentMultiplier(string instrument)
-        {
-            // ML-based instrument-specific performance adjustments
-            return instrument switch
-            {
-                "ES" => 1.0,   // Baseline
-                "NQ" => 0.98,  // Slightly lower due to higher volatility
-                _ => 1.0
-            };
-        }
-
         private double CalculateRealTimeCorrelation()
         {
             try
@@ -555,7 +517,6 @@ namespace BotCore.Services
             if (series1.Length != series2.Length || series1.Length == 0)
                 return 0.85; // Fallback
                 
-            var n = series1.Length;
             var mean1 = series1.Average();
             var mean2 = series2.Average();
             

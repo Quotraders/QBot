@@ -674,7 +674,7 @@ public class ConfigurationValidationStartupService : IHostedService
         try
         {
             var options = _serviceProvider.GetRequiredService<IOptions<T>>();
-            var value = options.Value; // This triggers validation
+            _ = options.Value; // This triggers validation
             _logger.LogInformation("✅ [CONFIG] {Section} configuration validated", sectionName);
         }
         catch (OptionsValidationException ex)

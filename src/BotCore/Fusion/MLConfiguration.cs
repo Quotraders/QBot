@@ -236,9 +236,6 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
                 // Get market condition thresholds from configuration
                 var trendingThreshold = configuration.GetValue<double>("Trading:TrendingRegimeThreshold", 0.7);
                 var highVolThreshold = configuration.GetValue<double>("Trading:HighVolatilityThreshold", 0.03);
-                var momentumConfidence = configuration.GetValue<double>("Trading:MomentumConfidenceScore", 0.6);
-                var volatilityConfidence = configuration.GetValue<double>("Trading:VolatilityConfidenceScore", 0.65);
-                var defaultConfidence = configuration.GetValue<double>("Trading:DefaultConfidenceScore", 0.5);
                 
                 // Select strategy based on market conditions with configured thresholds
                 var rangingThreshold = configuration.GetValue<double>("Trading:RangingRegimeThreshold", 0.3);
@@ -326,7 +323,6 @@ public sealed class ProductionPpoSizer : IPpoSizer
     private const int OperationIdPrefixLength = 8;
     private const double MinimalFallbackSizePercent = 0.01;
     private const double MinimalFallbackRiskMultiplier = 0.1;
-    private const double DefaultScoreForFallback = 0.5;
 
     public ProductionPpoSizer(IServiceProvider serviceProvider, ILogger<ProductionPpoSizer> logger)
     {
@@ -345,9 +341,6 @@ public sealed class ProductionPpoSizer : IPpoSizer
             var rlAdvisorSystem = _serviceProvider.GetService<TradingBot.IntelligenceStack.RLAdvisorSystem>();
             if (rlAdvisorSystem != null)
             {
-                // Create market context for RL system
-                var marketContext = CreateMarketContext(symbol, intent, risk);
-                
                 // Attempt to get size recommendation from RL system - fail-closed approach
                 _logger.LogDebug("Attempting ML position sizing for {Symbol} with intent {Intent}, risk {Risk:P2}", symbol, intent, risk);
                 
@@ -386,116 +379,6 @@ public sealed class ProductionPpoSizer : IPpoSizer
             // Fallback to safe conservative sizing
             return CalculateConservativeFallbackSize(risk, intent);
         }
-    }
-
-    private TradingBot.Abstractions.MarketContext CreateMarketContext(
-        string symbol, 
-        BotCore.Strategy.StrategyIntent intent, 
-        double risk)
-    {
-        // Get feature bus for market data
-        var featureBus = _serviceProvider.GetService<IFeatureBusWithProbe>();
-        var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
-        
-        if (configuration == null)
-        {
-            _logger.LogError("🚨 Configuration service unavailable - fail-closed: cannot create market context");
-            throw new InvalidOperationException("Configuration service unavailable - cannot create market context (fail-closed)");
-        }
-        
-        // Get default values from configuration when features are unavailable  
-        var defaultPrice = configuration.GetValue<double>("Trading:DefaultPrice", 4000.0);
-        var defaultVolatility = configuration.GetValue<double>("Trading:DefaultVolatility", 0.02);
-        var defaultVolume = configuration.GetValue<double>("Trading:DefaultVolume", 1000.0);
-        
-        var currentPrice = featureBus?.Probe(symbol, "price.current") ?? defaultPrice;
-        var volatility = featureBus?.Probe(symbol, "volatility.realized") ?? defaultVolatility;
-        var volume = featureBus?.Probe(symbol, "volume.current") ?? defaultVolume;
-        
-        return new TradingBot.Abstractions.MarketContext
-        {
-            Symbol = symbol,
-            Price = currentPrice, // Use existing Price property
-            Volume = volume, // Use existing Volume property
-            // Store additional data in TechnicalIndicators since direct properties don't exist
-            TechnicalIndicators = 
-            {
-                ["volatility"] = volatility,
-                ["risk_level"] = risk,
-                ["position_intent"] = intent == BotCore.Strategy.StrategyIntent.Buy ? 
-                    configuration.GetValue<double>("Trading:BuyIntentValue", 1.0) : 
-                    intent == BotCore.Strategy.StrategyIntent.Sell ? 
-                    configuration.GetValue<double>("Trading:SellIntentValue", -1.0) : 
-                    configuration.GetValue<double>("Trading:NeutralIntentValue", 0.0)
-            },
-            Regime = GetMarketRegime(symbol) // Use existing Regime property
-        };
-    }
-    
-    private string GetMarketRegime(string symbol)
-    {
-        var featureBus = _serviceProvider.GetService<IFeatureBusWithProbe>();
-        var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
-        
-        if (configuration == null)
-        {
-            _logger.LogError("🚨 Configuration service unavailable for market regime - using fallback");
-            return "VOLATILE"; // Safe fallback when config unavailable
-        }
-        
-        var defaultRegimeValue = configuration.GetValue<double>("Trading:DefaultRegimeValue", 0.5);
-        var regimeValue = featureBus?.Probe(symbol, "regime.current") ?? defaultRegimeValue;
-        
-        var trendingThreshold = configuration.GetValue<double>("Trading:RegimeTrendingThreshold", 0.7);
-        var rangingThreshold = configuration.GetValue<double>("Trading:RegimeRangingThreshold", 0.3);
-        
-        return regimeValue switch
-        {
-            var val when val > trendingThreshold => "TRENDING",
-            var val when val < rangingThreshold => "RANGING", 
-            _ => "VOLATILE"
-        };
-    }
-    
-    private double NormalizeSizeRecommendation(double rawRecommendation, double risk, BotCore.Strategy.StrategyIntent intent)
-    {
-        // Normalize the raw RL recommendation to a reasonable position size
-        var baseSize = Math.Abs(rawRecommendation);
-        
-        // Scale by risk tolerance
-        var riskAdjustedSize = baseSize * risk;
-        
-        // Get configuration for directional multipliers
-        var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
-        if (configuration == null)
-        {
-            _logger.LogError("🚨 Configuration service unavailable for size normalization - using minimal fallback");
-            return intent switch
-            {
-                BotCore.Strategy.StrategyIntent.Buy => Math.Min(MinimalFallbackSizePercent, riskAdjustedSize),
-                BotCore.Strategy.StrategyIntent.Sell => Math.Max(-MinimalFallbackSizePercent, -riskAdjustedSize),
-                _ => 0.0
-            };
-        }
-        
-        // Apply directional multiplier using configured values
-        var buyMultiplier = configuration.GetValue<double>("Trading:BuyDirectionalMultiplier", 1.0);
-        var sellMultiplier = configuration.GetValue<double>("Trading:SellDirectionalMultiplier", -1.0);
-        var neutralMultiplier = configuration.GetValue<double>("Trading:NeutralDirectionalMultiplier", 0.0);
-        
-        var directionalMultiplier = intent switch
-        {
-            BotCore.Strategy.StrategyIntent.Buy => buyMultiplier,
-            BotCore.Strategy.StrategyIntent.Sell => sellMultiplier,
-            _ => neutralMultiplier
-        };
-        
-        // Clamp to configured reasonable bounds
-        var maxPosition = configuration.GetValue<double>("Trading:MaxPositionSize", 0.1);
-        var minPosition = configuration.GetValue<double>("Trading:MinPositionSize", -0.1);
-        var finalSize = Math.Max(minPosition, Math.Min(maxPosition, riskAdjustedSize * directionalMultiplier));
-        
-        return finalSize;
     }
 
     /// <summary>

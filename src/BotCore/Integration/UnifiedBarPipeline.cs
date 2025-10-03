@@ -351,12 +351,6 @@ public sealed class UnifiedBarPipeline
             // Note: Using structured logging instead of metrics service for observability
             // RealTradingMetricsService integration would be done here in full production setup
             
-            var tags = new Dictionary<string, string>
-            {
-                ["symbol"] = result.Symbol,
-                ["success"] = result.Success.ToString().ToLowerInvariant()
-            };
-            
             // Emit pipeline metrics via logging for observability
             _logger.LogInformation("Unified pipeline metrics: Symbol={Symbol}, ProcessingTime={ProcessingTimeMs}ms, Success={Success}, BarsProcessed={BarsProcessed}", 
                 result.Symbol, result.ProcessingTimeMs, result.Success, _barsProcessed);

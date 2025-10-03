@@ -106,7 +106,8 @@ public class EnhancedProductionResilienceService
     public IAsyncPolicy<T> GetOperationResiliencePolicy<T>(string operationName)
     {
         // Simplified approach for now to avoid Polly API complexity
-        var retryPolicy = Policy.Handle<Exception>()
+        // Retry policy defined for potential future use
+        _ = Policy.Handle<Exception>()
             .WaitAndRetryAsync(
                 retryCount: _config.MaxRetries,
                 sleepDurationProvider: retryAttempt => TimeSpan.FromMilliseconds(Math.Min(

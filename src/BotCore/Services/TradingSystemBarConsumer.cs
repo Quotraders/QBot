@@ -136,7 +136,6 @@ namespace BotCore.Services
                     // For the BotCore.BarAggregator, we need to simulate OnTrade calls
                     foreach (var bar in bars)
                     {
-                        var barTime = DateTime.UnixEpoch.AddMilliseconds(bar.Ts);
                         // Simulate trade at bar close
                         var tradePayload = System.Text.Json.JsonSerializer.SerializeToElement(new[]
                         {

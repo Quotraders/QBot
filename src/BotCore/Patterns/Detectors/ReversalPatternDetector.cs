@@ -77,7 +77,6 @@ public class ReversalPatternDetector : IPatternDetector
 
         // Calculate strength based on reversal magnitude
         var rangeSize = (double)(current.High - current.Low);
-        var bodySize = (double)Math.Abs(current.Close - current.Open);
         var wickSize = bullishKeyReversal ? (double)(current.High - Math.Max(current.Open, current.Close)) :
                                             (double)(Math.Min(current.Open, current.Close) - current.Low);
 
@@ -220,9 +219,6 @@ public class ReversalPatternDetector : IPatternDetector
         if (rangeMultiple < 1.5) return new PatternResult { Score = 0, Confidence = 0 };
 
         // Check for reversal signs in the bar itself
-        var bodySize = (double)Math.Abs(current.Close - current.Open);
-        var bodyRatio = bodySize / currentRange;
-        
         // Large wicks suggest rejection at extremes
         var upperWick = (double)(current.High - Math.Max(current.Open, current.Close));
         var lowerWick = (double)(Math.Min(current.Open, current.Close) - current.Low);

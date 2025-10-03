@@ -267,7 +267,6 @@ namespace BotCore.Infra
             {
                 // Check disk space
                 var dataDir = new DirectoryInfo(_dataDir);
-                var modelDir = new DirectoryInfo(_modelDir);
 
                 var drive = new DriveInfo(dataDir.Root.FullName);
                 var freeSpaceGB = drive.AvailableFreeSpace / (1024 * 1024 * 1024);
