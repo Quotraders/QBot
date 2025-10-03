@@ -105,6 +105,9 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
     private readonly ILogger<ProductionUcbStrategyChooser> _logger;
     private readonly Dictionary<string, (double reward, int count)> _strategyStats = new();
     private readonly object _statsLock = new();
+    
+    // Strategy selection fallback constants
+    private const double DefaultScoreForFallback = 0.5;
 
     public ProductionUcbStrategyChooser(IServiceProvider serviceProvider, ILogger<ProductionUcbStrategyChooser> logger)
     {
@@ -216,7 +219,7 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
             if (configuration == null)
             {
                 _logger.LogError("🚨 Configuration service unavailable for fallback strategy selection - using simple fallback");
-                return ("MomentumFade", BotCore.Strategy.StrategyIntent.Buy, 0.5); // Safe fallback
+                return ("MomentumFade", BotCore.Strategy.StrategyIntent.Buy, DefaultScoreForFallback); // Safe fallback
             }
             
             if (featureBus != null)
@@ -318,6 +321,12 @@ public sealed class ProductionPpoSizer : IPpoSizer
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ProductionPpoSizer> _logger;
+    
+    // Position sizing fallback constants
+    private const int OperationIdPrefixLength = 8;
+    private const double MinimalFallbackSizePercent = 0.01;
+    private const double MinimalFallbackRiskMultiplier = 0.1;
+    private const double DefaultScoreForFallback = 0.5;
 
     public ProductionPpoSizer(IServiceProvider serviceProvider, ILogger<ProductionPpoSizer> logger)
     {
@@ -351,7 +360,7 @@ public sealed class ProductionPpoSizer : IPpoSizer
                 
                 // RL system lacks position sizing capability - fail-closed approach
                 _logger.LogError("🚨 [AUDIT-{OperationId}] RL system position sizing not available - fail-closed: cannot provide ML sizing for {Symbol}", 
-                    Guid.NewGuid().ToString("N")[..8], symbol);
+                    Guid.NewGuid().ToString("N")[..OperationIdPrefixLength], symbol);
                 
                 // Get configuration for fail-closed behavior
                 var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
@@ -463,8 +472,8 @@ public sealed class ProductionPpoSizer : IPpoSizer
             _logger.LogError("🚨 Configuration service unavailable for size normalization - using minimal fallback");
             return intent switch
             {
-                BotCore.Strategy.StrategyIntent.Buy => Math.Min(0.01, riskAdjustedSize),
-                BotCore.Strategy.StrategyIntent.Sell => Math.Max(-0.01, -riskAdjustedSize),
+                BotCore.Strategy.StrategyIntent.Buy => Math.Min(MinimalFallbackSizePercent, riskAdjustedSize),
+                BotCore.Strategy.StrategyIntent.Sell => Math.Max(-MinimalFallbackSizePercent, -riskAdjustedSize),
                 _ => 0.0
             };
         }
@@ -516,8 +525,8 @@ public sealed class ProductionPpoSizer : IPpoSizer
                 _logger.LogError("🚨 Configuration service unavailable for intelligent fallback sizing - using minimal fallback");
                 return intent switch
                 {
-                    BotCore.Strategy.StrategyIntent.Buy => Math.Min(0.01, risk * 0.1),
-                    BotCore.Strategy.StrategyIntent.Sell => Math.Max(-0.01, -risk * 0.1),
+                    BotCore.Strategy.StrategyIntent.Buy => Math.Min(MinimalFallbackSizePercent, risk * MinimalFallbackRiskMultiplier),
+                    BotCore.Strategy.StrategyIntent.Sell => Math.Max(-MinimalFallbackSizePercent, -risk * MinimalFallbackRiskMultiplier),
                     _ => 0.0
                 };
             }
@@ -575,8 +584,8 @@ public sealed class ProductionPpoSizer : IPpoSizer
             // Absolute minimal fallback when even configuration is unavailable
             return intent switch
             {
-                BotCore.Strategy.StrategyIntent.Buy => 0.01,  // 1% max
-                BotCore.Strategy.StrategyIntent.Sell => -0.01, // 1% max
+                BotCore.Strategy.StrategyIntent.Buy => MinimalFallbackSizePercent,
+                BotCore.Strategy.StrategyIntent.Sell => -MinimalFallbackSizePercent,
                 _ => 0.0
             };
         }

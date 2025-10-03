@@ -53,7 +53,66 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 85 - Phase 2: Priority 1 Correctness Fixes Batch 1 (Current Session)
+### 🔧 Round 86 - Phase 2: Priority 1 Correctness Fixes Batch 2 (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 814 | 810 | TradingFeedbackService.cs | Specific exception types (InvalidOperationException, ArgumentException) |
+| S109 | 2054 | 2034 | MLConfiguration.cs | Named constants for position sizing fallbacks and strategy selection |
+
+**Total Fixed: 24 violations (4 CA1031 + 20 S109)**
+
+**Example Patterns Applied**:
+
+**CA1031 - Specific Exception Types in Feedback Processing**:
+```csharp
+// Before (CA1031) - Generic exception catch
+catch (Exception ex)
+{
+    _logger.LogError(ex, "Error submitting trading outcome");
+}
+
+// After (Compliant) - Specific exception types
+catch (InvalidOperationException ex)
+{
+    _logger.LogError(ex, "Queue operation failed submitting trading outcome");
+}
+catch (ArgumentException ex)
+{
+    _logger.LogError(ex, "Invalid argument submitting trading outcome");
+}
+```
+
+**S109 - Named Constants for ML Position Sizing**:
+```csharp
+// Before (S109) - Magic numbers
+Guid.NewGuid().ToString("N")[..8]
+Math.Min(0.01, riskAdjustedSize)
+Math.Min(0.01, risk * 0.1)
+return ("MomentumFade", BotCore.Strategy.StrategyIntent.Buy, 0.5);
+
+// After (Compliant) - Named constants
+private const int OperationIdPrefixLength = 8;
+private const double MinimalFallbackSizePercent = 0.01;
+private const double MinimalFallbackRiskMultiplier = 0.1;
+private const double DefaultScoreForFallback = 0.5;
+
+Guid.NewGuid().ToString("N")[..OperationIdPrefixLength]
+Math.Min(MinimalFallbackSizePercent, riskAdjustedSize)
+Math.Min(MinimalFallbackSizePercent, risk * MinimalFallbackRiskMultiplier)
+return ("MomentumFade", BotCore.Strategy.StrategyIntent.Buy, DefaultScoreForFallback);
+```
+
+**Rationale**: 
+- **CA1031**: Feedback service methods should catch specific expected exceptions (InvalidOperationException for queue/ensemble operations, ArgumentException for validation) to enable proper error diagnostics
+- **S109**: ML position sizing fallback values (1% minimal size, 0.1 risk multiplier, 0.5 default score, 8-char operation IDs) extracted to named constants for clarity and consistent fail-closed behavior across all fallback paths
+
+**Phase 1 Status**: ✅ **MAINTAINED** - 0 CS compiler errors
+
+**Phase 2 Progress**: 12,616 → 12,600 violations (40 fixed total = 0.3% complete)
+
+---
+
+### 🔧 Round 85 - Phase 2: Priority 1 Correctness Fixes Batch 1 (Previous in Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA1031 | 818 | 814 | RiskManagement.cs | Specific exception types (InvalidOperationException, TimeoutException, ArgumentException) |

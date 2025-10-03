@@ -87,9 +87,13 @@ public class TradingFeedbackService : BackgroundService
             _logger.LogDebug("🔄 [FEEDBACK] Outcome submitted: {Strategy} {Action} P&L: {PnL:C2} (accuracy: {Accuracy:P1})", 
                 outcome.Strategy, outcome.Action, outcome.RealizedPnL, outcome.PredictionAccuracy);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "🔄 [FEEDBACK] Error submitting trading outcome");
+            _logger.LogError(ex, "🔄 [FEEDBACK] Queue operation failed submitting trading outcome");
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "🔄 [FEEDBACK] Invalid argument submitting trading outcome");
         }
     }
 
@@ -127,9 +131,13 @@ public class TradingFeedbackService : BackgroundService
             _logger.LogDebug("🔄 [FEEDBACK] Prediction feedback submitted for {ModelName}: {Accuracy:P1}", 
                 feedback.ModelName, feedback.ActualAccuracy);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "🔄 [FEEDBACK] Error submitting prediction feedback");
+            _logger.LogError(ex, "🔄 [FEEDBACK] Ensemble update failed for prediction feedback");
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "🔄 [FEEDBACK] Invalid model name in prediction feedback");
         }
     }
 
