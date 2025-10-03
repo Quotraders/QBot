@@ -74,6 +74,16 @@ public class CloudModelSynchronizationService : BackgroundService
         Directory.CreateDirectory(Path.Combine(_modelsDirectory, "cloud"));
         Directory.CreateDirectory(Path.Combine(_modelsDirectory, "ensemble"));
         
+        // Ensure data directories exist
+        var baseDir = Directory.GetCurrentDirectory();
+        Directory.CreateDirectory(Path.Combine(baseDir, "datasets"));
+        Directory.CreateDirectory(Path.Combine(baseDir, "datasets", "features"));
+        Directory.CreateDirectory(Path.Combine(baseDir, "datasets", "regime_output"));
+        Directory.CreateDirectory(Path.Combine(baseDir, "datasets", "news_flags"));
+        Directory.CreateDirectory(Path.Combine(baseDir, "Intelligence", "data"));
+        Directory.CreateDirectory(Path.Combine(baseDir, "Intelligence", "data", "macro"));
+        Directory.CreateDirectory(Path.Combine(baseDir, "Intelligence", "data", "regime"));
+        
         _logger.LogInformation("🌐 [CLOUD-SYNC] Service initialized - Repository: {Owner}/{Repo}, Sync interval: {Interval}", 
             _repositoryOwner, _repositoryName, _syncInterval);
     }
@@ -143,11 +153,29 @@ public class CloudModelSynchronizationService : BackgroundService
                 {
                     var artifacts = await GetWorkflowArtifactsAsync(run.Id, cancellationToken).ConfigureAwait(false);
                     
-                    foreach (var artifact in artifacts.Where(a => a.Name.Contains("model", StringComparison.OrdinalIgnoreCase) || a.Name.Contains("onnx", StringComparison.OrdinalIgnoreCase)))
+                    foreach (var artifact in artifacts.Where(a => 
+                        a.Name.Contains("model", StringComparison.OrdinalIgnoreCase) || 
+                        a.Name.Contains("onnx", StringComparison.OrdinalIgnoreCase) ||
+                        a.Name.Contains("data-features", StringComparison.OrdinalIgnoreCase) ||
+                        a.Name.Contains("regime-outputs", StringComparison.OrdinalIgnoreCase) ||
+                        a.Name.Contains("news-flags", StringComparison.OrdinalIgnoreCase) ||
+                        a.Name.Contains("trained-models", StringComparison.OrdinalIgnoreCase)))
                     {
-                        var wasNew = await DownloadAndUpdateModelAsync(artifact, run, cancellationToken).ConfigureAwait(false);
-                        syncedCount++;
-                        if (wasNew) newModelCount++;
+                        // Check if this is a data artifact or model artifact
+                        if (artifact.Name.Contains("data-features", StringComparison.OrdinalIgnoreCase) ||
+                            artifact.Name.Contains("regime-outputs", StringComparison.OrdinalIgnoreCase) ||
+                            artifact.Name.Contains("news-flags", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var wasNew = await ExtractDataArtifactAsync(artifact, run, cancellationToken).ConfigureAwait(false);
+                            syncedCount++;
+                            if (wasNew) newModelCount++;
+                        }
+                        else
+                        {
+                            var wasNew = await DownloadAndUpdateModelAsync(artifact, run, cancellationToken).ConfigureAwait(false);
+                            syncedCount++;
+                            if (wasNew) newModelCount++;
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -298,6 +326,134 @@ public class CloudModelSynchronizationService : BackgroundService
             _logger.LogError(ex, "🌐 [CLOUD-SYNC] Failed to download model {ArtifactName}", artifact.Name);
             return false;
         }
+    }
+
+    /// <summary>
+    /// Extract data artifact (parquet, json) to datasets directory
+    /// </summary>
+    private async Task<bool> ExtractDataArtifactAsync(Artifact artifact, WorkflowRun run, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Check if we already have this data version
+            var dataKey = $"{artifact.Name}_{run.HeadSha[..8]}";
+            if (_currentModels.ContainsKey(dataKey))
+            {
+                return false; // Not new
+            }
+            
+            _logger.LogInformation("🌐 [CLOUD-SYNC] Downloading data artifact: {Name} from run {RunId}", artifact.Name, run.Id);
+            
+            // Download artifact
+            var downloadUrl = $"https://api.github.com/repos/{_repositoryOwner}/{_repositoryName}/actions/artifacts/{artifact.Id}/zip";
+            var downloadResponse = await _httpClient.GetAsync(downloadUrl, cancellationToken).ConfigureAwait(false);
+            
+            if (!downloadResponse.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("🌐 [CLOUD-SYNC] Failed to download data artifact {ArtifactId}", artifact.Id);
+                return false;
+            }
+            
+            // Extract and save data files
+            using var zipStream = await downloadResponse.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+            using var archive = new ZipArchive(zipStream, ZipArchiveMode.Read);
+            
+            var extracted = false;
+            foreach (var entry in archive.Entries)
+            {
+                if (entry.Name.EndsWith(".parquet", StringComparison.OrdinalIgnoreCase) || 
+                    entry.Name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+                {
+                    var targetPath = DetermineDataPath(entry.FullName);
+                    await ExtractAndSaveFileAsync(entry, targetPath, cancellationToken).ConfigureAwait(false);
+                    
+                    extracted = true;
+                    _logger.LogInformation("🌐 [CLOUD-SYNC] Extracted data file: {FileName}", entry.Name);
+                }
+            }
+            
+            if (extracted)
+            {
+                // Track that we've processed this data artifact
+                _currentModels[dataKey] = new ModelInfo
+                {
+                    Name = artifact.Name,
+                    Version = run.HeadSha[..8],
+                    Path = "datasets",
+                    DownloadedAt = DateTime.UtcNow,
+                    WorkflowRun = run.Id,
+                    Size = 0
+                };
+            }
+            
+            return extracted;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "🌐 [CLOUD-SYNC] Failed to extract data artifact {ArtifactName}", artifact.Name);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Determine where to save data files based on entry path
+    /// </summary>
+    private string DetermineDataPath(string entryFullName)
+    {
+        var baseDir = Directory.GetCurrentDirectory();
+        
+        // Preserve folder structure from the zip
+        // If entry contains path separators, preserve the structure
+        if (entryFullName.Contains('/', StringComparison.Ordinal) || entryFullName.Contains('\\', StringComparison.Ordinal))
+        {
+            // Normalize path separators
+            var normalizedPath = entryFullName.Replace('\\', '/');
+            
+            // Extract just the filename if it's at the root
+            var fileName = Path.GetFileName(normalizedPath);
+            
+            // Determine target directory based on naming conventions
+            if (normalizedPath.Contains("features", StringComparison.OrdinalIgnoreCase) || 
+                fileName.Contains("features", StringComparison.OrdinalIgnoreCase) ||
+                fileName.Contains("market_features", StringComparison.OrdinalIgnoreCase))
+            {
+                return Path.Combine(baseDir, "datasets", "features", fileName);
+            }
+            else if (normalizedPath.Contains("regime", StringComparison.OrdinalIgnoreCase) || 
+                     fileName.Contains("regime", StringComparison.OrdinalIgnoreCase) ||
+                     fileName.Contains("market_state", StringComparison.OrdinalIgnoreCase))
+            {
+                return Path.Combine(baseDir, "datasets", "regime_output", fileName);
+            }
+            else if (normalizedPath.Contains("news", StringComparison.OrdinalIgnoreCase) || 
+                     fileName.Contains("news", StringComparison.OrdinalIgnoreCase) ||
+                     fileName.Contains("government_releases", StringComparison.OrdinalIgnoreCase))
+            {
+                return Path.Combine(baseDir, "datasets", "news_flags", fileName);
+            }
+            else if (normalizedPath.Contains("quotes", StringComparison.OrdinalIgnoreCase) || 
+                     fileName.Contains("quotes", StringComparison.OrdinalIgnoreCase))
+            {
+                return Path.Combine(baseDir, "datasets", "quotes", fileName);
+            }
+            else if (normalizedPath.Contains("macro", StringComparison.OrdinalIgnoreCase) || 
+                     fileName.Contains("macro", StringComparison.OrdinalIgnoreCase) ||
+                     fileName.Contains("vix", StringComparison.OrdinalIgnoreCase) ||
+                     fileName.Contains("spx", StringComparison.OrdinalIgnoreCase) ||
+                     fileName.Contains("ndx", StringComparison.OrdinalIgnoreCase))
+            {
+                return Path.Combine(baseDir, "Intelligence", "data", "macro", fileName);
+            }
+            else if (normalizedPath.Contains("cot", StringComparison.OrdinalIgnoreCase) || 
+                     fileName.Contains("cot", StringComparison.OrdinalIgnoreCase))
+            {
+                return Path.Combine(baseDir, "Intelligence", "data", "cot", fileName);
+            }
+        }
+        
+        // Default to datasets/features
+        var defaultFileName = Path.GetFileName(entryFullName);
+        return Path.Combine(baseDir, "datasets", "features", defaultFileName);
     }
 
     /// <summary>
