@@ -79,10 +79,19 @@ public class ModelEnsembleService
                         predictions.Add(prediction);
                     }
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
+                {
+                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Invalid model operation for {ModelName}", model.Name);
+                    UpdateModelPerformance(model.Name, 0.0, "prediction_failure");
+                }
+                catch (ArgumentException ex)
+                {
+                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Invalid prediction argument for model {ModelName}", model.Name);
+                    UpdateModelPerformance(model.Name, 0.0, "prediction_failure");
+                }
+                catch (Exception ex) when (!ex.IsFatal())
                 {
                     _logger.LogWarning(ex, "🔀 [ENSEMBLE] Strategy prediction failed for model {ModelName}", model.Name);
-                    // Update model performance (penalize failures)
                     UpdateModelPerformance(model.Name, 0.0, "prediction_failure");
                 }
             }
@@ -103,7 +112,17 @@ public class ModelEnsembleService
                 Timestamp = DateTime.UtcNow
             };
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "🔀 [ENSEMBLE] Invalid ensemble operation during strategy selection");
+            return CreateFallbackStrategyPrediction(availableStrategies);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "🔀 [ENSEMBLE] Invalid argument during strategy selection");
+            return CreateFallbackStrategyPrediction(availableStrategies);
+        }
+        catch (Exception ex) when (!ex.IsFatal())
         {
             _logger.LogError(ex, "🔀 [ENSEMBLE] Strategy selection ensemble failed");
             return CreateFallbackStrategyPrediction(availableStrategies);
@@ -146,7 +165,17 @@ public class ModelEnsembleService
                         predictions.Add(prediction);
                     }
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
+                {
+                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Invalid model operation for {ModelName}", model.Name);
+                    UpdateModelPerformance(model.Name, 0.0, "prediction_failure");
+                }
+                catch (ArgumentException ex)
+                {
+                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Invalid prediction argument for model {ModelName}", model.Name);
+                    UpdateModelPerformance(model.Name, 0.0, "prediction_failure");
+                }
+                catch (Exception ex) when (!ex.IsFatal())
                 {
                     _logger.LogWarning(ex, "🔀 [ENSEMBLE] Price prediction failed for model {ModelName}", model.Name);
                     UpdateModelPerformance(model.Name, 0.0, "prediction_failure");
@@ -169,7 +198,17 @@ public class ModelEnsembleService
                 Timestamp = DateTime.UtcNow
             };
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "🔀 [ENSEMBLE] Invalid ensemble operation during price prediction");
+            return CreateFallbackPricePrediction();
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "🔀 [ENSEMBLE] Invalid argument during price prediction");
+            return CreateFallbackPricePrediction();
+        }
+        catch (Exception ex) when (!ex.IsFatal())
         {
             _logger.LogError(ex, "🔀 [ENSEMBLE] Price direction ensemble failed");
             return CreateFallbackPricePrediction();
@@ -202,7 +241,17 @@ public class ModelEnsembleService
                         actions.Add(action);
                     }
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
+                {
+                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Invalid CVaR-PPO operation for model {ModelName}", model.Name);
+                    UpdateModelPerformance(model.Name, 0.0, "action_failure");
+                }
+                catch (ArgumentException ex)
+                {
+                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Invalid CVaR-PPO argument for model {ModelName}", model.Name);
+                    UpdateModelPerformance(model.Name, 0.0, "action_failure");
+                }
+                catch (Exception ex) when (!ex.IsFatal())
                 {
                     _logger.LogWarning(ex, "🔀 [ENSEMBLE] CVaR-PPO action failed for model {ModelName}", model.Name);
                     UpdateModelPerformance(model.Name, 0.0, "action_failure");
@@ -228,7 +277,17 @@ public class ModelEnsembleService
                 Timestamp = DateTime.UtcNow
             };
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "🔀 [ENSEMBLE] Invalid ensemble operation during CVaR action");
+            return CreateFallbackAction();
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "🔀 [ENSEMBLE] Invalid argument during CVaR action");
+            return CreateFallbackAction();
+        }
+        catch (Exception ex) when (!ex.IsFatal())
         {
             _logger.LogError(ex, "🔀 [ENSEMBLE] CVaR ensemble failed");
             return CreateFallbackAction();
@@ -298,7 +357,19 @@ public class ModelEnsembleService
                 _logger.LogWarning("🔀 [ENSEMBLE] Failed to load model: {ModelName}", modelName);
             }
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "🔀 [ENSEMBLE] I/O error loading model {ModelName}", modelName);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "🔀 [ENSEMBLE] Access denied loading model {ModelName}", modelName);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "🔀 [ENSEMBLE] Invalid model loading operation for {ModelName}", modelName);
+        }
+        catch (Exception ex) when (!ex.IsFatal())
         {
             _logger.LogError(ex, "🔀 [ENSEMBLE] Error loading model {ModelName}", modelName);
         }

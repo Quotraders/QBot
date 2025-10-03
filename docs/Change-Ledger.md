@@ -53,7 +53,49 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 87 - Phase 2: Priority 1 Kill Switch Safety Hardening (Current Session)
+### 🔧 Round 88 - Phase 2: Priority 1 Model Ensemble Safety Hardening (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 803 | 796 | ModelEnsembleService.cs | Specific exception types (InvalidOperationException, ArgumentException, IOException, UnauthorizedAccessException) with IsFatal guard |
+
+**Total Fixed: 7 CA1031 violations**
+
+**Example Pattern Applied**:
+
+**CA1031 - Model Ensemble Exception Safety**:
+```csharp
+// Before (CA1031) - Generic exception catch
+catch (Exception ex)
+{
+    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Strategy prediction failed for model {ModelName}", model.Name);
+    UpdateModelPerformance(model.Name, 0.0, "prediction_failure");
+}
+
+// After (Compliant) - Specific exception types with fatal guard
+catch (InvalidOperationException ex)
+{
+    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Invalid model operation for {ModelName}", model.Name);
+    UpdateModelPerformance(model.Name, 0.0, "prediction_failure");
+}
+catch (ArgumentException ex)
+{
+    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Invalid prediction argument for model {ModelName}", model.Name);
+    UpdateModelPerformance(model.Name, 0.0, "prediction_failure");
+}
+catch (Exception ex) when (!ex.IsFatal())
+{
+    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Strategy prediction failed for model {ModelName}", model.Name);
+    UpdateModelPerformance(model.Name, 0.0, "prediction_failure");
+}
+```
+
+**Rationale**: 
+- **CA1031**: Model ensemble is critical for ML prediction reliability. All exception handlers now catch specific ML operation exceptions (InvalidOperationException, ArgumentException) for predictions and file system exceptions (IOException, UnauthorizedAccessException) for model loading. Generic catch remains only as final safety net with IsFatal guard.
+- **Production Safety**: Fixed methods include GetStrategySelectionPredictionAsync, GetPriceDirectionPredictionAsync, GetEnsembleActionAsync, and LoadModelAsync - all critical for ensemble prediction reliability.
+
+---
+
+### 🔧 Round 87 - Phase 2: Priority 1 Kill Switch Safety Hardening (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA1031 | 810 | 803 | ProductionKillSwitchService.cs | Specific exception types (IOException, UnauthorizedAccessException, SecurityException) with IsFatal guard |
