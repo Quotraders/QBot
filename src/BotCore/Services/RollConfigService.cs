@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using TradingBot.Abstractions;
@@ -37,12 +38,12 @@ namespace TradingBot.BotCore.Services
             _config.GetValue("Roll:EnableAutomaticRoll", true);
 
         public TimeSpan GetRollWindowStartUtc() => 
-            TimeSpan.ParseExact(_config.GetValue("Roll:RollWindowStartUtc", "13:30"), @"hh\:mm", null);
+            TimeSpan.ParseExact(_config.GetValue("Roll:RollWindowStartUtc", "13:30"), @"hh\:mm", CultureInfo.InvariantCulture);
 
         public TimeSpan GetRollWindowEndUtc() => 
-            TimeSpan.ParseExact(_config.GetValue("Roll:RollWindowEndUtc", "14:30"), @"hh\:mm", null);
+            TimeSpan.ParseExact(_config.GetValue("Roll:RollWindowEndUtc", "14:30"), @"hh\:mm", CultureInfo.InvariantCulture);
 
-        public string GetRollHintsForSymbol(string symbol) => symbol?.ToUpper() switch
+        public string GetRollHintsForSymbol(string symbol) => symbol?.ToUpper(CultureInfo.InvariantCulture) switch
         {
             "ES" => _config.GetValue("Roll:Hints:ES", "H,M,U,Z"),
             "NQ" => _config.GetValue("Roll:Hints:NQ", "H,M,U,Z"),

@@ -33,6 +33,7 @@ This ledger documents all fixes made during the analyzer compliance initiative i
     - Round 80: 1646 namespace collision fixes (BotCore.Math → BotCore.Financial)
     - Round 78: 96 RLAgent/S7 decimal/double fixes + Round 79: 16 analyzer violations
 - **Phase 2 Status**: ✅ **IN PROGRESS** - Moving to systematic analyzer violation elimination
+  - **Current Session (Round 113)**: 4 analyzer violations fixed (S6580, CA1304, CA1311 globalization)
   - **Current Session (Round 112)**: 6 analyzer violations fixed (CA1304, CA1311 globalization)
   - **Current Session (Round 111)**: 3 CS compiler errors fixed (CS0176 static method access)
   - **Previous Session (Round 79)**: 16 analyzer violations fixed (S109, CA1849, S6966, CA1031)
@@ -56,6 +57,39 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Current Focus**: Session complete - CA1510 eliminated, S1144 cleaned, S125 removed
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
+
+### 🔧 Round 113 - Phase 2: S6580/CA1304/CA1311 Globalization Fixes (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S6580 | 54 | 52 | RollConfigService.cs | Added CultureInfo.InvariantCulture to TimeSpan.ParseExact calls |
+| CA1304 | 59 | 58 | RollConfigService.cs | Added CultureInfo.InvariantCulture to ToUpper call |
+| CA1311 | 59 | 58 | RollConfigService.cs | Specified culture parameter in ToUpper call |
+
+**Total Fixed: 4 violations (3 unique fixes in 1 file)**
+
+**Example Pattern Applied**:
+```csharp
+// Before (S6580/CA1304/CA1311) - Missing culture specification
+public TimeSpan GetRollWindowStartUtc() => 
+    TimeSpan.ParseExact(_config.GetValue("Roll:RollWindowStartUtc", "13:30"), @"hh\:mm", null);
+
+public string GetRollHintsForSymbol(string symbol) => symbol?.ToUpper() switch
+
+// After (Compliant) - InvariantCulture for time parsing and protocol strings
+public TimeSpan GetRollWindowStartUtc() => 
+    TimeSpan.ParseExact(_config.GetValue("Roll:RollWindowStartUtc", "13:30"), @"hh\:mm", CultureInfo.InvariantCulture);
+
+public string GetRollHintsForSymbol(string symbol) => symbol?.ToUpper(CultureInfo.InvariantCulture) switch
+```
+
+**Rationale**: 
+- **S6580**: Added format provider (InvariantCulture) to TimeSpan.ParseExact for culture-independent time parsing
+- **CA1304/CA1311**: Added CultureInfo.InvariantCulture to symbol case conversion (ES, NQ, etc.)
+- **Context**: Futures contract rollover configuration - times and symbols must be culture-independent
+
+**Build Verification**: ✅ 0 CS errors maintained, 5961 analyzer violations remaining (4 violations fixed, reduced from 5965 to 5961)
+
+---
 
 ### 🔧 Round 112 - Phase 2: CA1304/CA1311 Globalization Fixes (Current Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
