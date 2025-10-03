@@ -1,6 +1,6 @@
 using System;
 
-namespace BotCore.Math;
+namespace BotCore.Financial;
 
 /// <summary>
 /// Decimal-safe mathematical operations for financial calculations
