@@ -113,9 +113,9 @@ public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, I
         {
             _logger.LogError(ex, "❌ [KILL-SWITCH] Access denied during periodic kill file check");
         }
-        catch (Exception ex) when (!ex.IsFatal())
+        catch (NotSupportedException ex)
         {
-            _logger.LogError(ex, "❌ [KILL-SWITCH] Error during periodic kill file check");
+            _logger.LogError(ex, "❌ [KILL-SWITCH] Operation not supported during periodic kill file check");
         }
     }
 
@@ -149,18 +149,22 @@ public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, I
                 KillSwitchToggled?.Invoke(this, new KillSwitchToggledEventArgs(true));
                 OnKillSwitchActivated?.Invoke(this, EventArgs.Empty);
             }
-            catch (Exception eventEx) when (!eventEx.IsFatal())
+            catch (InvalidOperationException eventEx)
             {
-                _logger.LogError(eventEx, "❌ [KILL-SWITCH] Error firing kill switch events");
+                _logger.LogError(eventEx, "❌ [KILL-SWITCH] Invalid operation firing kill switch events");
+            }
+            catch (ArgumentException eventEx)
+            {
+                _logger.LogError(eventEx, "❌ [KILL-SWITCH] Invalid argument firing kill switch events");
             }
         }
         catch (System.Security.SecurityException ex)
         {
             _logger.LogError(ex, "❌ [KILL-SWITCH] Security error while enforcing DRY_RUN mode");
         }
-        catch (Exception ex) when (!ex.IsFatal())
+        catch (UnauthorizedAccessException ex)
         {
-            _logger.LogError(ex, "❌ [KILL-SWITCH] Critical error while enforcing DRY_RUN mode");
+            _logger.LogError(ex, "❌ [KILL-SWITCH] Access denied while enforcing DRY_RUN mode");
         }
     }
 
@@ -195,9 +199,9 @@ public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, I
         {
             _logger.LogWarning(ex, "⚠️ [KILL-SWITCH] Access denied creating DRY_RUN marker file");
         }
-        catch (Exception ex) when (!ex.IsFatal())
+        catch (NotSupportedException ex)
         {
-            _logger.LogWarning(ex, "⚠️ [KILL-SWITCH] Could not create DRY_RUN marker file");
+            _logger.LogWarning(ex, "⚠️ [KILL-SWITCH] Operation not supported creating DRY_RUN marker file");
         }
     }
 
@@ -227,9 +231,9 @@ public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, I
         {
             _logger.LogWarning(ex, "⚠️ [KILL-SWITCH] Access denied reading kill file contents");
         }
-        catch (Exception ex) when (!ex.IsFatal())
+        catch (NotSupportedException ex)
         {
-            _logger.LogWarning(ex, "⚠️ [KILL-SWITCH] Could not read kill file contents");
+            _logger.LogWarning(ex, "⚠️ [KILL-SWITCH] Operation not supported reading kill file contents");
         }
     }
 
@@ -319,9 +323,9 @@ public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, I
         {
             _logger.LogError(ex, "❌ [GUARDRAIL-METRIC] Invalid operation publishing metric {MetricName}", metricName);
         }
-        catch (Exception ex) when (!ex.IsFatal())
+        catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "❌ [GUARDRAIL-METRIC] Failed to publish metric {MetricName}", metricName);
+            _logger.LogError(ex, "❌ [GUARDRAIL-METRIC] Invalid argument publishing metric {MetricName}", metricName);
         }
     }
 
@@ -343,10 +347,6 @@ public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, I
             catch (InvalidOperationException ex)
             {
                 _logger.LogError(ex, "🗑️ [KILL-SWITCH] Invalid operation disposing resources");
-            }
-            catch (Exception ex) when (!ex.IsFatal())
-            {
-                _logger.LogError(ex, "🗑️ [KILL-SWITCH] Error disposing resources");
             }
             finally
             {

@@ -90,7 +90,7 @@ catch (Exception ex) when (!ex.IsFatal())
 ```
 
 **Rationale**: 
-- **CA1031**: Model ensemble is critical for ML prediction reliability. All exception handlers now catch specific ML operation exceptions (InvalidOperationException, ArgumentException) for predictions and file system exceptions (IOException, UnauthorizedAccessException) for model loading. Generic catch remains only as final safety net with IsFatal guard.
+- **CA1031**: Model ensemble is critical for ML prediction reliability. All exception handlers now catch specific ML operation exceptions (InvalidOperationException, ArgumentException, NullReferenceException) for predictions and file system exceptions (IOException, UnauthorizedAccessException) for model loading.
 - **Production Safety**: Fixed methods include GetStrategySelectionPredictionAsync, GetPriceDirectionPredictionAsync, GetEnsembleActionAsync, and LoadModelAsync - all critical for ensemble prediction reliability.
 
 ---
@@ -128,7 +128,7 @@ catch (Exception ex) when (!ex.IsFatal())
 ```
 
 **Rationale**: 
-- **CA1031**: Kill switch is a critical safety component. All exception handlers now catch specific file system exceptions (IOException, UnauthorizedAccessException) and security exceptions (SecurityException) with descriptive error messages. Generic catch remains only as final safety net with IsFatal guard to allow critical exceptions (OutOfMemoryException, StackOverflowException) to propagate.
+- **CA1031**: Kill switch is a critical safety component. All exception handlers now catch specific file system exceptions (IOException, UnauthorizedAccessException, NotSupportedException) and security exceptions (SecurityException) with descriptive error messages.
 - **Production Safety**: Fixed methods include PeriodicKillFileCheck, EnforceDryRunMode, CreateDryRunMarker, LogKillFileContents, PublishGuardrailMetric, and Dispose - all critical for kill switch reliability.
 
 ---
