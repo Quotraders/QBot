@@ -232,6 +232,9 @@ namespace BotCore.Execution
     /// </summary>
     public sealed class BracketConfiguration
     {
+        // Bracket validation constants
+        private const decimal MinHighVolatilityMultiplier = 1.0m; // Minimum threshold for high volatility multiplier
+        
         public decimal BaseStopAtrMultiplier { get; set; }
         public decimal BaseRiskRewardRatio { get; set; }
         public decimal MinRiskRewardRatio { get; set; }
@@ -264,7 +267,7 @@ namespace BotCore.Execution
                 throw new InvalidOperationException("[BRACKET-ADJUSTMENT] [AUDIT-VIOLATION] MinRiskRewardRatio cannot exceed BaseRiskRewardRatio - FAIL-CLOSED");
             if (ConformalIntervalSensitivity <= 0 || ModelUncertaintySensitivity <= 0 || PatternReliabilitySensitivity <= 0)
                 throw new InvalidOperationException("[BRACKET-ADJUSTMENT] [AUDIT-VIOLATION] Sensitivity values must be positive - FAIL-CLOSED");
-            if (HighVolatilityMultiplier <= 1.0m)
+            if (HighVolatilityMultiplier <= MinHighVolatilityMultiplier)
                 throw new InvalidOperationException("[BRACKET-ADJUSTMENT] [AUDIT-VIOLATION] HighVolatilityMultiplier must be greater than 1.0 - FAIL-CLOSED");
             if (TakeMultiplierBase <= 0 || TakeMultiplierRange <= 0)
                 throw new InvalidOperationException("[BRACKET-ADJUSTMENT] [AUDIT-VIOLATION] Take multiplier values must be positive - FAIL-CLOSED");
@@ -278,6 +281,9 @@ namespace BotCore.Execution
     /// </summary>
     public sealed class ConformalPredictionInterval
     {
+        // Conformal interval validation constants
+        private const int ConformalIntervalStalenessMinutes = 10; // Maximum age for conformal interval before considered stale
+        
         public decimal LowerBound { get; set; }
         public decimal UpperBound { get; set; }
         public double ConfidenceLevel { get; set; } = 0.95; // 95% confidence
@@ -289,7 +295,7 @@ namespace BotCore.Execution
                 throw new InvalidOperationException("[CONFORMAL-INTERVAL] UpperBound must be greater than LowerBound");
             if (ConfidenceLevel <= 0 || ConfidenceLevel >= 1)
                 throw new InvalidOperationException("[CONFORMAL-INTERVAL] ConfidenceLevel must be between 0 and 1");
-            if (Timestamp < DateTime.UtcNow.AddMinutes(-10))
+            if (Timestamp < DateTime.UtcNow.AddMinutes(-ConformalIntervalStalenessMinutes))
                 throw new InvalidOperationException("[CONFORMAL-INTERVAL] Conformal interval is stale");
         }
     }

@@ -56,6 +56,9 @@ namespace BotCore.Infrastructure
     /// </summary>
     public class TopstepXTokenHandler : ITopstepXTokenHandler
     {
+        // Token expiration buffer constants
+        private const int TokenExpiryBufferMinutes = 5; // Refresh token 5 minutes before actual expiry
+        
         private readonly ILogger<TopstepXTokenHandler> _logger;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly SemaphoreSlim _refreshSemaphore = new(1, 1);
@@ -70,8 +73,8 @@ namespace BotCore.Infrastructure
 
         public async Task<string?> GetValidTokenAsync(CancellationToken cancellationToken = default)
         {
-            // Check if current token is still valid (with 5 minute buffer)
-            if (!string.IsNullOrEmpty(_currentToken) && DateTime.UtcNow < _tokenExpiry.AddMinutes(-5))
+            // Check if current token is still valid (with buffer)
+            if (!string.IsNullOrEmpty(_currentToken) && DateTime.UtcNow < _tokenExpiry.AddMinutes(-TokenExpiryBufferMinutes))
             {
                 return _currentToken;
             }
@@ -87,7 +90,7 @@ namespace BotCore.Infrastructure
             try
             {
                 // Double-check pattern - another thread might have refreshed the token
-                if (!string.IsNullOrEmpty(_currentToken) && DateTime.UtcNow < _tokenExpiry.AddMinutes(-5))
+                if (!string.IsNullOrEmpty(_currentToken) && DateTime.UtcNow < _tokenExpiry.AddMinutes(-TokenExpiryBufferMinutes))
                 {
                     return;
                 }
