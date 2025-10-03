@@ -105,7 +105,7 @@ namespace BotCore.Strategy
                 if (!task.Wait(TimeSpan.FromSeconds(10)))
                 {
                     _logger.LogWarning("GetPosition timed out after 10 seconds for {Instrument}", instr);
-                    return (TopstepX.S6.Side.FLAT, 0, 0, DateTimeOffset.MinValue, string.Empty);
+                    return (TopstepX.S6.Side.Flat, 0, 0, DateTimeOffset.MinValue, string.Empty);
                 }
                 var position = task.Result;
                 var side = ConvertToS6Side(position?.Side ?? "FLAT");
@@ -114,7 +114,7 @@ namespace BotCore.Strategy
             catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
                 _logger.LogWarning("GetPosition cancelled for {Instrument}", instr);
-                return (TopstepX.S6.Side.FLAT, 0, 0, DateTimeOffset.MinValue, string.Empty);
+                return (TopstepX.S6.Side.Flat, 0, 0, DateTimeOffset.MinValue, string.Empty);
             }
         }
 
@@ -181,7 +181,7 @@ namespace BotCore.Strategy
                 if (!task.Wait(TimeSpan.FromSeconds(10)))
                 {
                     _logger.LogWarning("GetPosition timed out after 10 seconds for {Instrument}", instr);
-                    return (TopstepX.S11.Side.FLAT, 0, 0, DateTimeOffset.MinValue, string.Empty);
+                    return (TopstepX.S11.Side.Flat, 0, 0, DateTimeOffset.MinValue, string.Empty);
                 }
                 var position = task.Result;
                 var side = ConvertToS11Side(position?.Side ?? "FLAT");
@@ -190,7 +190,7 @@ namespace BotCore.Strategy
             catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
                 _logger.LogWarning("GetPosition cancelled for {Instrument}", instr);
-                return (TopstepX.S11.Side.FLAT, 0, 0, DateTimeOffset.MinValue, string.Empty);
+                return (TopstepX.S11.Side.Flat, 0, 0, DateTimeOffset.MinValue, string.Empty);
             }
         }
 

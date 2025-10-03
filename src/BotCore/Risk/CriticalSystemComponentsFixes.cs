@@ -19,6 +19,12 @@ namespace BotCore.Risk
         private readonly ILogger<CriticalSystemComponentsFixes> _logger;
         private readonly CancellationTokenSource _cancellationTokenSource = new();
 
+        // Memory monitoring constants
+        private const double HighMemoryThresholdGB = 2.0;
+        private const double BytesToMegabytesConversion = 1024.0 * 1024.0;
+        private const double BytesToGigabytesConversion = 1024.0 * 1024.0 * 1024.0;
+        private const double PlaceholderCpuUsagePercent = 15.0;
+
         public CriticalSystemComponentsFixes(ILogger<CriticalSystemComponentsFixes> logger)
         {
             _logger = logger;
@@ -77,9 +83,9 @@ namespace BotCore.Risk
                 {
                     // Intelligent memory pressure monitoring instead of forced GC
                     var memoryUsageBytes = GC.GetTotalMemory(false);
-                    var memoryUsageGB = memoryUsageBytes / (1024.0 * 1024.0 * 1024.0);
+                    var memoryUsageGB = memoryUsageBytes / BytesToGigabytesConversion;
 
-                    if (memoryUsageGB > 2.0) // Alert if using more than 2GB
+                    if (memoryUsageGB > HighMemoryThresholdGB)
                     {
                         _logger.LogWarning("[CRITICAL-SYSTEM] High memory usage detected: {MemoryUsageGB:F2}GB", memoryUsageGB);
                         
@@ -142,7 +148,7 @@ namespace BotCore.Risk
             var gen2Collections = GC.CollectionCount(2);
 
             _logger.LogDebug("[CRITICAL-SYSTEM] System resources - Memory: {MemoryMB:F2}MB, GC: Gen0={Gen0}, Gen1={Gen1}, Gen2={Gen2}",
-                memoryUsage / (1024.0 * 1024.0), gen0Collections, gen1Collections, gen2Collections);
+                memoryUsage / BytesToMegabytesConversion, gen0Collections, gen1Collections, gen2Collections);
         }
 
         private async Task CheckDatabaseConnectivityAsync()
@@ -195,7 +201,7 @@ namespace BotCore.Risk
         {
             await Task.Yield();
             // Real CPU usage calculation would go here
-            return 15.0; // Placeholder value
+            return PlaceholderCpuUsagePercent;
         }
 
         private static (int WorkerThreads, int CompletionPortThreads) GetThreadPoolInfo()

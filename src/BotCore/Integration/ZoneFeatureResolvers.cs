@@ -31,12 +31,12 @@ public sealed class ZoneFeatureResolver : IFeatureResolver
             
             var value = _featureName switch
             {
-                "dist_to_demand_atr" => features.distToDemandAtr,
-                "dist_to_supply_atr" => features.distToSupplyAtr,
-                "breakout_score" => features.breakoutScore,
-                "pressure" => features.zonePressure,
-                "test_count" => CalculateZoneTestCount(features),
-                "dist_to_opposing_atr" => Math.Max(features.distToDemandAtr, features.distToSupplyAtr),
+                "dist_to_demand_atr" => (double)features.distToDemandAtr,
+                "dist_to_supply_atr" => (double)features.distToSupplyAtr,
+                "breakout_score" => (double)features.breakoutScore,
+                "pressure" => (double)features.zonePressure,
+                "test_count" => CalculateZoneTestCount(((double)features.distToDemandAtr, (double)features.distToSupplyAtr, (double)features.breakoutScore, (double)features.zonePressure)),
+                "dist_to_opposing_atr" => (double)Math.Max(features.distToDemandAtr, features.distToSupplyAtr),
                 _ => throw new InvalidOperationException($"Unknown zone feature: {_featureName}")
             };
             
@@ -82,8 +82,8 @@ public sealed class ZoneCountResolver : IFeatureResolver
             var features = zoneFeatureSource.GetFeatures(symbol);
             
             // Count zones based on proximity - closer zones are more significant
-            var demandProximity = features.distToDemandAtr;
-            var supplyProximity = features.distToSupplyAtr;
+            var demandProximity = (double)features.distToDemandAtr;
+            var supplyProximity = (double)features.distToSupplyAtr;
             
             var activeZoneCount = 0.0;
             
@@ -98,7 +98,7 @@ public sealed class ZoneCountResolver : IFeatureResolver
             else if (supplyProximity <= 3.0) activeZoneCount += 0.25;
             
             // Pressure multiplier - higher pressure indicates more significant zones
-            activeZoneCount *= Math.Max(1.0, features.zonePressure);
+            activeZoneCount *= Math.Max(1.0, (double)features.zonePressure);
             
             _logger.LogTrace("Zone count for {Symbol}: {Count} (demand: {Demand}ATR, supply: {Supply}ATR)", 
                 symbol, activeZoneCount, demandProximity, supplyProximity);
@@ -135,7 +135,7 @@ public sealed class ZoneTestsResolver : IFeatureResolver
             var features = zoneFeatureSource.GetFeatures(symbol);
             
             // Calculate zone tests based on breakout score and pressure
-            var testFrequency = CalculateZoneTestCount(features);
+            var testFrequency = CalculateZoneTestCount(((double)features.distToDemandAtr, (double)features.distToSupplyAtr, (double)features.breakoutScore, (double)features.zonePressure));
             
             _logger.LogTrace("Zone tests for {Symbol}: {Tests} (breakout: {Breakout}, pressure: {Pressure})", 
                 symbol, testFrequency, features.breakoutScore, features.zonePressure);

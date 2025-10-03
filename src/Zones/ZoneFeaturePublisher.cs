@@ -8,7 +8,8 @@ namespace Zones;
 
 public interface IFeatureBus 
 { 
-    void Publish(string symbol, DateTime utc, string name, decimal value); 
+    void Publish(string symbol, DateTime utc, string name, decimal value);
+    void Publish(string symbol, DateTime utc, string name, double value);
 }
 
 public sealed class ZoneFeaturePublisher : BackgroundService

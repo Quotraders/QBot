@@ -120,9 +120,15 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
                         operationId, configuredRisk.Value, (DateTime.UtcNow - startTime).TotalMilliseconds);
                     return Task.FromResult(configuredRisk.Value);
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk assessment failed - fail-closed: returning hold", operationId);
+                    _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk assessment invalid operation - fail-closed: returning hold", operationId);
+                    var holdRisk = GetConfiguredHoldRiskLevel(_serviceProvider);
+                    return Task.FromResult(holdRisk);
+                }
+                catch (TimeoutException ex)
+                {
+                    _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk assessment timeout - fail-closed: returning hold", operationId);
                     var holdRisk = GetConfiguredHoldRiskLevel(_serviceProvider);
                     return Task.FromResult(holdRisk);
                 }
@@ -133,9 +139,16 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
             var holdRiskFallback = GetConfiguredHoldRiskLevel(_serviceProvider);
             return Task.FromResult(holdRiskFallback);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk assessment failed - fail-closed: returning hold, Duration={Duration}ms", 
+            _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk service invalid operation - fail-closed: returning hold, Duration={Duration}ms", 
+                operationId, (DateTime.UtcNow - startTime).TotalMilliseconds);
+            var holdRiskException = GetConfiguredHoldRiskLevel(_serviceProvider);
+            return Task.FromResult(holdRiskException);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk service bad argument - fail-closed: returning hold, Duration={Duration}ms", 
                 operationId, (DateTime.UtcNow - startTime).TotalMilliseconds);
             var holdRiskException = GetConfiguredHoldRiskLevel(_serviceProvider);
             return Task.FromResult(holdRiskException);

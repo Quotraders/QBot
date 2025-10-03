@@ -24,6 +24,10 @@ namespace TradingBot.S7
         private Timer? _publishTimer;
         private bool _disposed;
 
+        // Feature flag constants for boolean state representation
+        private const decimal FeatureFlagActive = 1.0m;
+        private const decimal FeatureFlagInactive = 0.0m;
+
         // LoggerMessage delegates for performance
         private static readonly Action<ILogger, Exception?> _logS7ServiceNotAvailable = 
             LoggerMessage.Define(LogLevel.Error, new EventId(1001, "S7ServiceNotAvailable"), 
@@ -259,15 +263,15 @@ namespace TradingBot.S7
         private void PublishCrossSymbolFeatures(object snapshot, DateTime timestamp, string telemetryPrefix)
         {
             // Publish cross-symbol features for knowledge graph consumption
-            _featureBus!.Publish("CROSS", timestamp, $"{telemetryPrefix}.coherence", (double)((dynamic)snapshot).CrossSymbolCoherence);
-            _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.leader", (double)((dynamic)snapshot).DominantLeader);
-            _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.signal_strength", (double)((dynamic)snapshot).SignalStrength);
-            _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.actionable", ((dynamic)snapshot).IsActionable ? 1.0 : 0.0);
+            _featureBus!.Publish("CROSS", timestamp, $"{telemetryPrefix}.coherence", (decimal)((dynamic)snapshot).CrossSymbolCoherence);
+            _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.leader", (decimal)((dynamic)snapshot).DominantLeader);
+            _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.signal_strength", (decimal)((dynamic)snapshot).SignalStrength);
+            _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.actionable", ((dynamic)snapshot).IsActionable ? FeatureFlagActive : FeatureFlagInactive);
             
             // Publish enhanced cross-symbol features for adaptive analysis
-            _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.global_dispersion", (double)((dynamic)snapshot).GlobalDispersionIndex);
-            _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.adaptive_volatility", (double)((dynamic)snapshot).AdaptiveVolatilityMeasure);
-            _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.system_coherence", (double)((dynamic)snapshot).SystemCoherenceScore);
+            _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.global_dispersion", (decimal)((dynamic)snapshot).GlobalDispersionIndex);
+            _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.adaptive_volatility", (decimal)((dynamic)snapshot).AdaptiveVolatilityMeasure);
+            _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.system_coherence", (decimal)((dynamic)snapshot).SystemCoherenceScore);
         }
 
         private void PublishFusionTags(object snapshot, DateTime timestamp)
@@ -280,13 +284,13 @@ namespace TradingBot.S7
                 {
                     if (fusionTag.Value is double doubleValue)
                     {
-                        _featureBus!.Publish("FUSION", timestamp, fusionTag.Key, doubleValue);
+                        _featureBus!.Publish("FUSION", timestamp, fusionTag.Key, (decimal)doubleValue);
                     }
                     else if (fusionTag.Value is decimal decimalValue)
                     {
-                        _featureBus!.Publish("FUSION", timestamp, fusionTag.Key, (double)decimalValue);
+                        _featureBus!.Publish("FUSION", timestamp, fusionTag.Key, decimalValue);
                     }
-                    else if (double.TryParse(fusionTag.Value?.ToString(), out double parsedValue))
+                    else if (decimal.TryParse(fusionTag.Value?.ToString(), out decimal parsedValue))
                     {
                         _featureBus!.Publish("FUSION", timestamp, fusionTag.Key, parsedValue);
                     }
@@ -310,21 +314,21 @@ namespace TradingBot.S7
             var tuple = (dynamic)featureTuple;
             
             // AUDIT-CLEAN: Publish core features with configured telemetry prefix
-            _featureBus!.Publish(symbol, timestamp, $"{telemetryPrefix}.rs", (double)tuple.RelativeStrengthShort);
-            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.rs.medium", (double)tuple.RelativeStrengthMedium);
-            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.rs.long", (double)tuple.RelativeStrengthLong);
-            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.rsz", (double)tuple.ZScore);
-            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.coherence", (double)tuple.Coherence);
-            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.size_tilt", (double)tuple.SizeTilt);
+            _featureBus!.Publish(symbol, timestamp, $"{telemetryPrefix}.rs", (decimal)tuple.RelativeStrengthShort);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.rs.medium", (decimal)tuple.RelativeStrengthMedium);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.rs.long", (decimal)tuple.RelativeStrengthLong);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.rsz", (decimal)tuple.ZScore);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.coherence", (decimal)tuple.Coherence);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.size_tilt", (decimal)tuple.SizeTilt);
             
-            double leaderValue = tuple.Leader switch
+            decimal leaderValue = tuple.Leader switch
             {
-                "ES" => 1.0,
-                "NQ" => -1.0,
-                _ => 0.0
+                "ES" => FeatureFlagActive,
+                "NQ" => -FeatureFlagActive,
+                _ => FeatureFlagInactive
             };
             _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.leader", leaderValue);
-            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.signal_active", tuple.IsSignalActive ? 1.0 : 0.0);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.signal_active", tuple.IsSignalActive ? FeatureFlagActive : FeatureFlagInactive);
         }
 
         private void PublishEnhancedFeatures(string symbol, DateTime timestamp, string telemetryPrefix, object featureTuple)
@@ -332,14 +336,14 @@ namespace TradingBot.S7
             var tuple = (dynamic)featureTuple;
             
             // AUDIT-CLEAN: Publish enhanced adaptive and dispersion features
-            _featureBus!.Publish(symbol, timestamp, $"{telemetryPrefix}.adaptive_threshold", (double)tuple.AdaptiveThreshold);
-            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.multi_index_dispersion", (double)tuple.MultiIndexDispersion);
-            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.advance_fraction", (double)tuple.AdvanceFraction);
-            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.dispersion_adjusted_size_tilt", (double)tuple.DispersionAdjustedSizeTilt);
-            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.dispersion_boosted", tuple.IsDispersionBoosted ? 1.0 : 0.0);
-            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.dispersion_blocked", tuple.IsDispersionBlocked ? 1.0 : 0.0);
-            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.global_dispersion_index", (double)tuple.GlobalDispersionIndex);
-            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.adaptive_volatility_measure", (double)tuple.AdaptiveVolatilityMeasure);
+            _featureBus!.Publish(symbol, timestamp, $"{telemetryPrefix}.adaptive_threshold", (decimal)tuple.AdaptiveThreshold);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.multi_index_dispersion", (decimal)tuple.MultiIndexDispersion);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.advance_fraction", (decimal)tuple.AdvanceFraction);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.dispersion_adjusted_size_tilt", (decimal)tuple.DispersionAdjustedSizeTilt);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.dispersion_boosted", tuple.IsDispersionBoosted ? FeatureFlagActive : FeatureFlagInactive);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.dispersion_blocked", tuple.IsDispersionBlocked ? FeatureFlagActive : FeatureFlagInactive);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.global_dispersion_index", (decimal)tuple.GlobalDispersionIndex);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.adaptive_volatility_measure", (decimal)tuple.AdaptiveVolatilityMeasure);
         }
 
         private void HandleObjectDisposedException(ObjectDisposedException ex)

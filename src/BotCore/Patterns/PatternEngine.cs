@@ -73,9 +73,9 @@ public class PatternEngine
                     });
 
                     // Publish individual pattern metrics to feature bus
-                    _featureBus.Publish(symbol, now, $"pattern.kind::{detector.PatternName}", result.Score);
-                    _featureBus.Publish(symbol, now, $"pattern.direction::{detector.PatternName}", result.Direction);
-                    _featureBus.Publish(symbol, now, $"pattern.confidence::{detector.PatternName}", result.Confidence);
+                    _featureBus.Publish(symbol, now, $"pattern.kind::{detector.PatternName}", (decimal)result.Score);
+                    _featureBus.Publish(symbol, now, $"pattern.direction::{detector.PatternName}", (decimal)result.Direction);
+                    _featureBus.Publish(symbol, now, $"pattern.confidence::{detector.PatternName}", (decimal)result.Confidence);
                 }
             }
             catch (InvalidOperationException ex)
@@ -92,9 +92,9 @@ public class PatternEngine
         var patternScores = AggregateScores(results);
 
         // Publish summary scores to feature bus  
-        _featureBus.Publish(symbol, now, "pattern.bull_score", patternScores.BullScore);
-        _featureBus.Publish(symbol, now, "pattern.bear_score", patternScores.BearScore);
-        _featureBus.Publish(symbol, now, "pattern.total_count", patternScores.PatternFlags.Count);
+        _featureBus.Publish(symbol, now, "pattern.bull_score", (decimal)patternScores.BullScore);
+        _featureBus.Publish(symbol, now, "pattern.bear_score", (decimal)patternScores.BearScore);
+        _featureBus.Publish(symbol, now, "pattern.total_count", (decimal)patternScores.PatternFlags.Count);
 
         _logger.LogDebug("Pattern analysis for {Symbol}: Bull={BullScore:F3}, Bear={BearScore:F3}, Patterns={Count}",
             symbol, patternScores.BullScore, patternScores.BearScore, results.Count);

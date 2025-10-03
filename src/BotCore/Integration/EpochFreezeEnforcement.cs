@@ -252,20 +252,20 @@ public sealed class EpochFreezeEnforcement
                 snapshot.ZoneAnchors["demand"] = new ZoneAnchor
                 {
                     ZoneType = "demand",
-                    AnchorPrice = snapshot.EntryPrice - features.distToDemandAtr * GetATRValue(snapshot.Symbol),
-                    DistanceATR = features.distToDemandAtr,
-                    BreakoutScore = features.breakoutScore,
-                    Pressure = features.zonePressure,
+                    AnchorPrice = snapshot.EntryPrice - (double)features.distToDemandAtr * GetATRValue(snapshot.Symbol),
+                    DistanceATR = (double)features.distToDemandAtr,
+                    BreakoutScore = (double)features.breakoutScore,
+                    Pressure = (double)features.zonePressure,
                     CapturedAt = DateTime.UtcNow
                 };
                 
                 snapshot.ZoneAnchors["supply"] = new ZoneAnchor
                 {
                     ZoneType = "supply",
-                    AnchorPrice = snapshot.EntryPrice + features.distToSupplyAtr * GetATRValue(snapshot.Symbol),
-                    DistanceATR = features.distToSupplyAtr,
-                    BreakoutScore = features.breakoutScore,
-                    Pressure = features.zonePressure,
+                    AnchorPrice = snapshot.EntryPrice + (double)features.distToSupplyAtr * GetATRValue(snapshot.Symbol),
+                    DistanceATR = (double)features.distToSupplyAtr,
+                    BreakoutScore = (double)features.breakoutScore,
+                    Pressure = (double)features.zonePressure,
                     CapturedAt = DateTime.UtcNow
                 };
             }
@@ -319,7 +319,7 @@ public sealed class EpochFreezeEnforcement
             // Validate demand zone anchor
             if (snapshot.ZoneAnchors.TryGetValue("demand", out var demandAnchor))
             {
-                var currentDemandPrice = request.CurrentPrice - currentFeatures.distToDemandAtr * currentATR;
+                var currentDemandPrice = request.CurrentPrice - (double)currentFeatures.distToDemandAtr * currentATR;
                 var priceDifference = Math.Abs(currentDemandPrice - demandAnchor.AnchorPrice);
                 var toleranceTicks = _config.PriceToleranceTicks * GetTickSize(snapshot.Symbol);
                 
@@ -339,7 +339,7 @@ public sealed class EpochFreezeEnforcement
             // Validate supply zone anchor
             if (snapshot.ZoneAnchors.TryGetValue("supply", out var supplyAnchor))
             {
-                var currentSupplyPrice = request.CurrentPrice + currentFeatures.distToSupplyAtr * currentATR;
+                var currentSupplyPrice = request.CurrentPrice + (double)currentFeatures.distToSupplyAtr * currentATR;
                 var priceDifference = Math.Abs(currentSupplyPrice - supplyAnchor.AnchorPrice);
                 var toleranceTicks = _config.PriceToleranceTicks * GetTickSize(snapshot.Symbol);
                 
