@@ -110,7 +110,7 @@ namespace BotCore.Services
             return session == "Open";
         }
 
-        private string DetermineMarketSession(DateTime easternTime, string symbol)
+        private static string DetermineMarketSession(DateTime easternTime, string symbol)
         {
             // Handle weekends
             if (easternTime.DayOfWeek == DayOfWeek.Saturday || easternTime.DayOfWeek == DayOfWeek.Sunday)
@@ -148,13 +148,13 @@ namespace BotCore.Services
             }
         }
 
-        private DateTime GetMarketOpenTime(DateTime easternTime, string symbol)
+        private static DateTime GetMarketOpenTime(DateTime easternTime, string symbol)
         {
             // Standard market open time: 9:30 AM ET
             return new DateTime(easternTime.Year, easternTime.Month, easternTime.Day, 9, 30, 0);
         }
 
-        private DateTime GetMarketCloseTime(DateTime easternTime, string symbol)
+        private static DateTime GetMarketCloseTime(DateTime easternTime, string symbol)
         {
             // Standard market close time: 4:00 PM ET
             return new DateTime(easternTime.Year, easternTime.Month, easternTime.Day, 16, 0, 0);

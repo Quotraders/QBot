@@ -218,7 +218,7 @@ public class TopStepComplianceManager
     /// <summary>
     /// Get profit target for TopStep evaluation
     /// </summary>
-    public decimal GetProfitTarget()
+    public static decimal GetProfitTarget()
     {
         // TopStep evaluation profit targets
         // Evaluation: $3,000 profit target for $50K account
@@ -339,7 +339,7 @@ public class TopStepComplianceManager
         return Task.CompletedTask;
     }
     
-    private int GetMinimumTradingDays()
+    private static int GetMinimumTradingDays()
     {
         // TopStep evaluation requirements
         // Evaluation: Minimum 5 trading days
@@ -347,7 +347,7 @@ public class TopStepComplianceManager
         return 5;
     }
     
-    private DateTime GetEasternTime()
+    private static DateTime GetEasternTime()
     {
         try
         {

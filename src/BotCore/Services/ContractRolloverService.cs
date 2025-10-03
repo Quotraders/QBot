@@ -409,7 +409,7 @@ namespace BotCore.Services
         /// <summary>
         /// Calculate expiration date for a contract
         /// </summary>
-        private DateTime CalculateExpirationDate(string monthCode, int year)
+        private static DateTime CalculateExpirationDate(string monthCode, int year)
         {
             var month = MonthCodeToMonth(monthCode);
             
@@ -468,7 +468,7 @@ namespace BotCore.Services
         /// <summary>
         /// Extract month code from contract symbol
         /// </summary>
-        private string ExtractMonthCode(string contractSymbol)
+        private static string ExtractMonthCode(string contractSymbol)
         {
             var baseLength = ExtractBaseSymbol(contractSymbol).Length;
             if (contractSymbol.Length <= baseLength)
@@ -480,7 +480,7 @@ namespace BotCore.Services
         /// <summary>
         /// Extract year from contract symbol
         /// </summary>
-        private int ExtractYear(string contractSymbol)
+        private static int ExtractYear(string contractSymbol)
         {
             var baseLength = ExtractBaseSymbol(contractSymbol).Length;
             if (contractSymbol.Length < baseLength + 3)
