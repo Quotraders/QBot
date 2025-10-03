@@ -102,9 +102,17 @@ public static class ParamStore
             File.WriteAllText(S2Path(root), json);
             AppendHistory(EvtSave, "S2", root, exp, new { keys = extra.Keys });
         }
-        catch (Exception)
+        catch (IOException)
         {
             // Best-effort save; ignore IO issues
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Best-effort save; ignore access denied
+        }
+        catch (JsonException)
+        {
+            // Best-effort save; ignore serialization issues
         }
     }
 
@@ -124,7 +132,9 @@ public static class ParamStore
             ov = obj;
             return true;
         }
-        catch { return false; }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
+        catch (JsonException) { return false; }
     }
 
     public static bool ApplyS2OverrideIfPresent(string root, Microsoft.Extensions.Logging.ILogger? log = null)
@@ -142,7 +152,11 @@ public static class ParamStore
             AppendHistory(EvtApply, "S2", root, ov.ExpiresUtc, new { keys = ov.Extra.Keys });
             return true;
         }
-        catch
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+        catch (JsonException)
         {
             return false;
         }
@@ -162,9 +176,17 @@ public static class ParamStore
             File.WriteAllText(S3Path(root), json);
             AppendHistory(EvtSave, "S3", root, exp, new { length = jsonConfig?.Length ?? 0 });
         }
-        catch (System.Exception)
+        catch (IOException)
         {
             // Best-effort save; ignore IO issues
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Best-effort save; ignore access denied
+        }
+        catch (JsonException)
+        {
+            // Best-effort save; ignore serialization issues
         }
     }
 
@@ -186,7 +208,19 @@ public static class ParamStore
             AppendHistory(EvtApply, "S3", root, obj.ExpiresUtc, new { length = obj.JsonConfig?.Length ?? 0 });
             return true;
         }
-        catch (System.Exception)
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+        catch (InvalidOperationException)
         {
             return false;
         }
@@ -206,9 +240,17 @@ public static class ParamStore
             File.WriteAllText(S6Path(root), json);
             AppendHistory(EvtSave, "S6", root, exp, new { keys = extra.Keys });
         }
-        catch (System.Exception)
+        catch (IOException)
         {
             // Best-effort save; ignore IO issues
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Best-effort save; ignore access denied
+        }
+        catch (JsonException)
+        {
+            // Best-effort save; ignore serialization issues
         }
     }
 
@@ -232,7 +274,19 @@ public static class ParamStore
             AppendHistory(EvtApply, "S6", root, obj.ExpiresUtc, new { keys = obj.Extra.Keys });
             return true;
         }
-        catch (System.Exception)
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+        catch (InvalidOperationException)
         {
             return false;
         }
@@ -252,9 +306,17 @@ public static class ParamStore
             File.WriteAllText(S11Path(root), json);
             AppendHistory(EvtSave, "S11", root, exp, new { keys = extra.Keys });
         }
-        catch (System.Exception)
+        catch (IOException)
         {
             // Best-effort save; ignore IO issues
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Best-effort save; ignore access denied
+        }
+        catch (JsonException)
+        {
+            // Best-effort save; ignore serialization issues
         }
     }
 
@@ -278,7 +340,19 @@ public static class ParamStore
             AppendHistory(EvtApply, "S11", root, obj.ExpiresUtc, new { keys = obj.Extra.Keys });
             return true;
         }
-        catch (System.Exception)
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+        catch (InvalidOperationException)
         {
             return false;
         }

@@ -53,7 +53,50 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 89 - Phase 2: Critical Risk Manager Fail-Closed Fix (Current Session)
+### 🔧 Round 90 - Phase 2: Parameter Store File I/O Safety (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 784 | 775 | ParamStore.cs | Specific exception types for file I/O operations (IOException, UnauthorizedAccessException, JsonException, InvalidOperationException) |
+
+**Total Fixed: 9 CA1031 violations**
+
+**Example Pattern Applied**:
+
+**CA1031 - Parameter Store Best-Effort I/O**:
+```csharp
+// Before (CA1031) - Generic exception catch
+catch (Exception)
+{
+    // Best-effort save; ignore IO issues
+}
+
+// After (Compliant) - Specific exception types for file operations
+catch (IOException)
+{
+    // Best-effort save; ignore IO issues
+}
+catch (UnauthorizedAccessException)
+{
+    // Best-effort save; ignore access denied
+}
+catch (JsonException)
+{
+    // Best-effort save; ignore serialization issues
+}
+```
+
+**Rationale**: 
+- **CA1031**: ParamStore performs best-effort file I/O operations for strategy parameter overrides. All exception handlers now catch specific expected exception types:
+  - `IOException` for file system errors
+  - `UnauthorizedAccessException` for permission issues
+  - `JsonException` for serialization/deserialization failures
+  - `InvalidOperationException` for strategy application failures
+- **Best-Effort Pattern**: These operations are intentionally non-critical - failures are silently ignored as the system can operate without parameter overrides. The specific exception types document expected failure modes.
+- **Fixed Methods**: SaveS2, TryLoadS2, ApplyS2OverrideIfPresent, SaveS3, ApplyS3OverrideIfPresent, SaveS6, ApplyS6OverrideIfPresent, SaveS11, ApplyS11OverrideIfPresent
+
+---
+
+### 🔧 Round 89 - Phase 2: Critical Risk Manager Fail-Closed Fix (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA1031 | 796 | 795 | RiskManagement.cs | Added fail-closed catch-all for unanticipated exceptions |
