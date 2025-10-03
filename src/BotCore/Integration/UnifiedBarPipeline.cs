@@ -313,7 +313,7 @@ public sealed class UnifiedBarPipeline
             featureBus.Publish(symbol, bar.Start, "pattern.bear_score", patternData.BearScore);
             
             // Publish bar completion signal
-            featureBus.Publish(symbol, bar.Start, "bar.processed", 1.0);
+            featureBus.Publish(symbol, bar.Start, "bar.processed", 1.0m);
             
             stepResult.Success = true;
             _logger.LogTrace("FeatureBus.Publish completed for {Symbol}", symbol);
