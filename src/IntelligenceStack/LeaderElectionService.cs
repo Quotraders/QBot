@@ -466,17 +466,13 @@ public sealed class LeaderElectionService : ILeaderElectionService, IAsyncDispos
     
     public void Dispose()
     {
-        // For synchronous disposal, use fire-and-forget with a short timeout
+        // Synchronous dispose calls async dispose with a bounded helper
         try
         {
-            if (_isLeader)
+            var disposeTask = DisposeAsync().AsTask();
+            if (!disposeTask.Wait(TimeSpan.FromSeconds(5)))
             {
-                // Use Task.Run with a timeout to avoid blocking indefinitely
-                var releaseTask = Task.Run(async () => await ReleaseLeadershipAsync(CancellationToken.None).ConfigureAwait(false));
-                if (!releaseTask.Wait(TimeSpan.FromSeconds(5)))
-                {
-                    SyncDisposeTimedOut(_logger, null);
-                }
+                SyncDisposeTimedOut(_logger, null);
             }
         }
         catch (InvalidOperationException ex)
@@ -494,10 +490,6 @@ public sealed class LeaderElectionService : ILeaderElectionService, IAsyncDispos
         catch (AggregateException ex)
         {
             ErrorDuringDispose(_logger, ex);
-        }
-        finally
-        {
-            StopRenewalTimer();
         }
         
         GC.SuppressFinalize(this);

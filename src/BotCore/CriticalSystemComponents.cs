@@ -1150,20 +1150,25 @@ namespace TradingBot.Critical
             SaveCrashDump(exception);
             
             // Attempt emergency position protection with timeout
-            // NOTE: Using Task.Run with Wait here is acceptable as this is emergency shutdown path
-            // and we need to ensure positions are protected before process termination
-            try
+            // NOTE: Fire-and-forget pattern for emergency shutdown - we cannot await in sync handler
+            // but we give it a chance to complete with timeout monitoring
+            _ = Task.Run(async () =>
             {
-                var emergencyTask = Task.Run(async () => await EmergencyPositionProtection().ConfigureAwait(false));
-                if (!emergencyTask.Wait(EmergencyProtectionTimeoutMs))
+                try
+                {
+                    using var cts = new CancellationTokenSource(EmergencyProtectionTimeoutMs);
+                    await EmergencyPositionProtection().WaitAsync(cts.Token).ConfigureAwait(false);
+                    _logger.LogInformation("Emergency position protection completed successfully");
+                }
+                catch (OperationCanceledException)
                 {
                     _logger.LogWarning("Emergency position protection timed out after {Timeout}ms", EmergencyProtectionTimeoutMs);
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Emergency position protection failed during crash handling");
-            }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Emergency position protection failed during crash handling");
+                }
+            });
         }
 
         // Additional stub implementations

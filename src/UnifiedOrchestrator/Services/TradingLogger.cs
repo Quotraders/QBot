@@ -18,7 +18,7 @@ namespace TradingBot.UnifiedOrchestrator.Services;
 /// High-performance async trading logger with lock-free concurrent operations
 /// Implements production-ready logging with file rotation, compression, and structured JSON
 /// </summary>
-internal class TradingLogger : ITradingLogger, IDisposable
+internal class TradingLogger : ITradingLogger, IAsyncDisposable, IDisposable
 {
     private readonly ILogger<TradingLogger> _logger;
     private readonly TradingLoggerOptions _options;
@@ -475,7 +475,7 @@ using System.Globalization;
         WriteIndented = false
     };
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         if (_disposed) return;
         _disposed = true;
@@ -485,7 +485,12 @@ using System.Globalization;
         
         try
         {
-            _backgroundProcessor.Wait(TimeSpan.FromSeconds(5));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await _backgroundProcessor.WaitAsync(cts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Background processor did not complete within timeout during async disposal");
         }
         catch (Exception ex)
         {
@@ -494,6 +499,25 @@ using System.Globalization;
         
         _cancellationTokenSource.Dispose();
         _fileLock.Dispose();
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        
+        // Synchronous dispose calls async dispose with a bounded helper
+        try
+        {
+            var disposeTask = DisposeAsync().AsTask();
+            if (!disposeTask.Wait(TimeSpan.FromSeconds(5)))
+            {
+                _logger.LogWarning("Async dispose timed out in synchronous Dispose()");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error calling async dispose from synchronous Dispose()");
+        }
     }
 }
 
