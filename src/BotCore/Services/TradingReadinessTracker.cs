@@ -13,6 +13,9 @@ namespace BotCore.Services
     /// </summary>
     public class TradingReadinessTracker : ITradingReadinessTracker
     {
+        // Readiness score calculation constants
+        private const int ReadinessScoreComponentCount = 4; // bars, seeded, ticks, time
+        
         private readonly ILogger<TradingReadinessTracker> _logger;
         private readonly TradingReadinessConfiguration _config;
         private readonly object _lockObject = new();
@@ -224,7 +227,7 @@ namespace BotCore.Services
             var ticksScore = Math.Min(1.0, (double)_context.LiveTicks / minLiveTicks);
             var timeScore = _context.TimeSinceLastData.TotalSeconds <= _config.MarketDataTimeoutSeconds ? 1.0 : 0.0;
 
-            return (barsScore + seededScore + ticksScore + timeScore) / 4.0;
+            return (barsScore + seededScore + ticksScore + timeScore) / ReadinessScoreComponentCount;
         }
 
         private string GenerateReadinessReason(int minBarsSeen, int minSeededBars, int minLiveTicks)
