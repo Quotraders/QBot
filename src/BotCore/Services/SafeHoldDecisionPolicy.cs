@@ -195,7 +195,7 @@ public class SafeHoldDecisionPolicy
         double blockAtr, double allowBreak, double sizeTiltFactor, ZoneSource source)
     {
         // Check if we're too close to supply without breakout potential
-        if (snap.DistToSupplyAtr <= blockAtr && snap.BreakoutScore < allowBreak)
+        if ((double)snap.DistToSupplyAtr <= blockAtr && (double)snap.BreakoutScore < allowBreak)
         {
             var reason = "supply_block";
             _logger.LogInformation("[ZONE-GATE] {Symbol}: Blocked LONG entry - near supply zone (dist={DistAtr:F2}, breakout={Score:F2}) from {Source}",
@@ -208,9 +208,9 @@ public class SafeHoldDecisionPolicy
         }
 
         // Apply size tilt if near supply
-        if (snap.DistToSupplyAtr < 1.0)
+        if ((double)snap.DistToSupplyAtr < 1.0)
         {
-            return ApplyZoneSizeTilt(decision, snap.DistToSupplyAtr, sizeTiltFactor);
+            return ApplyZoneSizeTilt(decision, (double)snap.DistToSupplyAtr, sizeTiltFactor);
         }
 
         return (false, string.Empty, decision);
@@ -221,7 +221,7 @@ public class SafeHoldDecisionPolicy
         double blockAtr, double allowBreak, double sizeTiltFactor, ZoneSource source)
     {
         // Check if we're too close to demand without breakout potential
-        if (snap.DistToDemandAtr <= blockAtr && snap.BreakoutScore < allowBreak)
+        if ((double)snap.DistToDemandAtr <= blockAtr && (double)snap.BreakoutScore < allowBreak)
         {
             var reason = "demand_block";
             _logger.LogInformation("[ZONE-GATE] {Symbol}: Blocked SHORT entry - near demand zone (dist={DistAtr:F2}, breakout={Score:F2}) from {Source}",
@@ -234,9 +234,9 @@ public class SafeHoldDecisionPolicy
         }
 
         // Apply size tilt if near demand
-        if (snap.DistToDemandAtr < 1.0)
+        if ((double)snap.DistToDemandAtr < 1.0)
         {
-            return ApplyZoneSizeTilt(decision, snap.DistToDemandAtr, sizeTiltFactor);
+            return ApplyZoneSizeTilt(decision, (double)snap.DistToDemandAtr, sizeTiltFactor);
         }
 
         return (false, string.Empty, decision);

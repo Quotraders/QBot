@@ -139,7 +139,7 @@ namespace BotCore.Features
                             if (value.HasValue)
                             {
                                 // Publish feature via feature bus
-                                _featureBus.Publish(symbol, currentTime, featureKey, value.Value);
+                                _featureBus.Publish(symbol, currentTime, featureKey, (decimal)value.Value);
                                 publishedCount++;
                                 
                                 _logger.LogTrace("[FEATURE-PUBLISHER] Published {Symbol}.{FeatureKey}={Value:F6}", 
@@ -148,7 +148,7 @@ namespace BotCore.Features
                             else
                             {
                                 // Emit fusion.feature_missing telemetry as specified
-                                _featureBus.Publish(symbol, currentTime, "fusion.feature_missing", 1.0);
+                                _featureBus.Publish(symbol, currentTime, "fusion.feature_missing", 1.0m);
                                 missingCount++;
                                 
                                 _logger.LogWarning("[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Missing feature {Symbol}.{FeatureKey} - emitted fusion.feature_missing telemetry", 
@@ -165,7 +165,7 @@ namespace BotCore.Features
                         // Emit fusion.feature_missing for resolver failure
                         try
                         {
-                            _featureBus.Publish(symbol, currentTime, "fusion.feature_missing", 1.0);
+                            _featureBus.Publish(symbol, currentTime, "fusion.feature_missing", 1.0m);
                         }
                         catch (Exception busEx)
                         {

@@ -502,7 +502,7 @@ public class NeuralUcbExtended : IDisposable
         
         // Add ATR-based volatility if available
         var atrVolatility = marketContext.TechnicalIndicators.TryGetValue("atr", out var atr) 
-            ? (decimal)Math.Min(atr / marketContext.Price, 0.1) // Cap at 10%
+            ? Math.Min(atr / marketContext.Price, 0.1m) // Cap at 10%
             : 0m;
             
         // Volume volatility indicator

@@ -594,7 +594,7 @@ public class OnnxEnsembleWrapper : IAsyncDisposable, IDisposable
     {
         if (!_disposed)
         {
-            _cancellationTokenSource.Cancel();
+            await _cancellationTokenSource.CancelAsync().ConfigureAwait(false);
             _inferenceWriter.Complete();
 
             try
@@ -647,8 +647,19 @@ public class OnnxEnsembleWrapper : IAsyncDisposable, IDisposable
                     LogMessages.BatchProcessingTimeout(_logger, new TimeoutException("Async dispose timed out"));
                 }
             }
-            catch (Exception ex)
+            catch (AggregateException ex) when (ex.InnerException is OperationCanceledException or ObjectDisposedException)
             {
+                // Expected exceptions during disposal
+                LogMessages.BatchProcessingTimeout(_logger, ex);
+            }
+            catch (OperationCanceledException ex)
+            {
+                // Expected exception during cancellation
+                LogMessages.BatchProcessingTimeout(_logger, ex);
+            }
+            catch (ObjectDisposedException ex)
+            {
+                // Expected exception if already disposed
                 LogMessages.BatchProcessingTimeout(_logger, ex);
             }
         }

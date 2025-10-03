@@ -194,7 +194,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
     {
         try
         {
-            _featureBus.Publish(symbol, utc, name, value);
+            _featureBus.Publish(symbol, utc, name, (decimal)value);
             _logger.LogTrace("Published feature '{Name}' for {Symbol}: {Value}", name, symbol, value);
         }
         catch (Exception ex)

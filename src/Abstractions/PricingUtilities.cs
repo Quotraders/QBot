@@ -47,5 +47,29 @@ namespace TradingBot.Abstractions
         {
             return value.ToString("F2", CultureInfo.InvariantCulture);
         }
+
+        /// <summary>
+        /// Align limit order price to tick grid based on order side
+        /// Buyers round down (better fill probability), sellers round up
+        /// </summary>
+        public static decimal AlignForLimit(decimal price, bool isBuy, decimal tickSize = StandardTickSize)
+        {
+            if (tickSize <= 0) tickSize = StandardTickSize;
+            return isBuy
+                ? Math.Floor(price / tickSize) * tickSize   // buyer: round down
+                : Math.Ceiling(price / tickSize) * tickSize; // seller: round up
+        }
+
+        /// <summary>
+        /// Align stop order price to tick grid based on stop direction
+        /// Buy stops round up (trigger above market), sell stops round down (trigger below market)
+        /// </summary>
+        public static decimal AlignForStop(decimal price, bool isBuyStop, decimal tickSize = StandardTickSize)
+        {
+            if (tickSize <= 0) tickSize = StandardTickSize;
+            return isBuyStop
+                ? Math.Ceiling(price / tickSize) * tickSize  // stop buy: round up
+                : Math.Floor(price / tickSize) * tickSize;   // stop sell: round down
+        }
     }
 }

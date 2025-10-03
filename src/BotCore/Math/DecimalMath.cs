@@ -1,12 +1,12 @@
 using System;
 
-namespace BotCore.Math;
+namespace BotCore.DecimalMath;
 
 /// <summary>
 /// Decimal-safe mathematical operations for financial calculations
 /// Provides precision-preserving alternatives to System.Math methods that require double
 /// </summary>
-public static class DecimalMath
+public static class MathHelper
 {
     /// <summary>
     /// Calculate square root of a decimal value

@@ -641,8 +641,8 @@ public sealed class IntelligenceOrchestrator : IIntelligenceOrchestrator, IDispo
                 var marketContext = new MarketContext
                 {
                     Symbol = symbol,
-                    Price = Convert.ToDouble(context.Parameters.GetValueOrDefault("price", 4500.0), CultureInfo.InvariantCulture),
-                    Volume = Convert.ToDouble(context.Parameters.GetValueOrDefault("volume", 1000.0), CultureInfo.InvariantCulture),
+                    Price = Convert.ToDecimal(context.Parameters.GetValueOrDefault("price", 4500.0), CultureInfo.InvariantCulture),
+                    Volume = Convert.ToDecimal(context.Parameters.GetValueOrDefault("volume", 1000.0), CultureInfo.InvariantCulture),
                     Timestamp = DateTime.UtcNow
                 };
                 
@@ -797,8 +797,8 @@ public sealed class IntelligenceOrchestrator : IIntelligenceOrchestrator, IDispo
             var marketContext = new MarketContext
             {
                 Symbol = context.Parameters.GetValueOrDefault("symbol", "ES").ToString() ?? "ES",
-                Price = Convert.ToDouble(context.Parameters.GetValueOrDefault("price", 4500.0), CultureInfo.InvariantCulture),
-                Volume = Convert.ToDouble(context.Parameters.GetValueOrDefault("volume", 1000.0), CultureInfo.InvariantCulture),
+                Price = Convert.ToDecimal(context.Parameters.GetValueOrDefault("price", 4500.0), CultureInfo.InvariantCulture),
+                Volume = Convert.ToDecimal(context.Parameters.GetValueOrDefault("volume", 1000.0), CultureInfo.InvariantCulture),
                 Timestamp = DateTime.UtcNow
             };
 
@@ -944,8 +944,8 @@ public sealed class IntelligenceOrchestrator : IIntelligenceOrchestrator, IDispo
         };
 
         // Add basic market features
-        features.Features["price"] = context.Price;
-        features.Features["volume"] = context.Volume;
+        features.Features["price"] = (double)context.Price;
+        features.Features["volume"] = (double)context.Volume;
         features.Features["volatility"] = CalculateVolatility(context);
         features.Features["trend_strength"] = CalculateTrendStrength(context);
 
@@ -994,7 +994,7 @@ public sealed class IntelligenceOrchestrator : IIntelligenceOrchestrator, IDispo
         // Simple volatility estimation based on price spread
         var high = context.TechnicalIndicators.TryGetValue("high", out var h) ? h : context.Price;
         var low = context.TechnicalIndicators.TryGetValue("low", out var l) ? l : context.Price;
-        return high > 0 ? (high - low) / high : 0.0;
+        return high > 0 ? (double)((high - low) / high) : 0.0;
     }
 
     /// <summary>
@@ -1004,7 +1004,7 @@ public sealed class IntelligenceOrchestrator : IIntelligenceOrchestrator, IDispo
     {
         // Simple trend strength based on price momentum
         var open = context.TechnicalIndicators.TryGetValue("open", out var o) ? o : context.Price;
-        return open > 0 ? (context.Price - open) / open : 0.0;
+        return open > 0 ? (double)((context.Price - open) / open) : 0.0;
     }
 
     /// <summary>
@@ -1054,8 +1054,8 @@ public sealed class IntelligenceOrchestrator : IIntelligenceOrchestrator, IDispo
         var confidenceMultiplier = (decimal)Math.Max(0.0, confidence);
         
         // Use available volatility from technical indicators or default
-        var volatility = context.TechnicalIndicators.GetValueOrDefault("volatility", 0.1);
-        var volatilityAdjustment = (decimal)(1.0 / Math.Max(0.1, volatility)); // Reduce size in high volatility
+        var volatility = context.TechnicalIndicators.GetValueOrDefault("volatility", 0.1m);
+        var volatilityAdjustment = 1.0m / Math.Max(0.1m, volatility); // Reduce size in high volatility
         
         return baseSize * confidenceMultiplier * volatilityAdjustment;
     }
