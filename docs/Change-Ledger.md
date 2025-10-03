@@ -53,7 +53,35 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 93 - Phase 2: Null Guard Completion (Current Session)
+### 🔧 Round 94 - Phase 2: ConfigureAwait Hygiene (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA2007 | 154 | 136 | FeatureProbe.cs | Added `.ConfigureAwait(false)` to all await statements in library code |
+
+**Total Fixed: 18 CA2007 violations (11.7% reduction)**
+
+**Example Pattern Applied**:
+
+**CA2007 - ConfigureAwait for Library Code**:
+```csharp
+// Before (CA2007) - Missing ConfigureAwait
+await ProbeZoneMetricsAsync(snapshot, symbol, cancellationToken);
+var zoneDistance = await GetCachedFeatureAsync($"zone.distance_atr.{symbol}", () => {...});
+
+// After (Compliant) - ConfigureAwait(false) for library code
+await ProbeZoneMetricsAsync(snapshot, symbol, cancellationToken).ConfigureAwait(false);
+var zoneDistance = await GetCachedFeatureAsync($"zone.distance_atr.{symbol}", () => {...}).ConfigureAwait(false);
+```
+
+**Rationale**: 
+- **CA2007**: Added `.ConfigureAwait(false)` to all 18 await statements in FeatureProbe.cs per guidebook async hygiene requirements
+- **Fixed Methods**: ProbeAsync, ProbeZoneMetricsAsync, ProbePatternScoresAsync, ProbeRegimeStateAsync, ProbeMicrostructureAsync, ProbeAdditionalFeaturesAsync, GetCachedFeatureAsync
+- **Pattern**: Library code should use ConfigureAwait(false) to avoid capturing sync context, improving performance and avoiding deadlocks
+- **Impact**: Critical path for strategy feature aggregation now follows proper async hygiene
+
+---
+
+### 🔧 Round 93 - Phase 2: Null Guard Completion (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA1062 | 2 | 0 | StrategyKnowledgeGraphNew.cs | ArgumentNullException.ThrowIfNull() for public method parameters |
