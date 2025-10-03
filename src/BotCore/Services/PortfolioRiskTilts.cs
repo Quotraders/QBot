@@ -308,7 +308,7 @@ namespace BotCore.Services
             return CalculatePearsonCorrelation(returns1, returns2);
         }
 
-        private List<double> CalculateReturns(List<PriceDataPoint> prices)
+        private static List<double> CalculateReturns(List<PriceDataPoint> prices)
         {
             var returns = new List<double>();
             
@@ -326,7 +326,7 @@ namespace BotCore.Services
             return returns;
         }
 
-        private double CalculatePearsonCorrelation(List<double> x, List<double> y)
+        private static double CalculatePearsonCorrelation(List<double> x, List<double> y)
         {
             var n = Math.Min(x.Count, y.Count);
             if (n < GetConfiguredMinCorrelationPoints()) return GetConfiguredSafeCorrelation();

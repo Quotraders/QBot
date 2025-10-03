@@ -152,7 +152,7 @@ namespace BotCore.Execution
             }
         }
 
-        private void ApplyLatencyLogic(ExecutionIntent intent, MicrostructureSnapshot microstructure, OrderTypeRecommendation recommendation)
+        private static void ApplyLatencyLogic(ExecutionIntent intent, MicrostructureSnapshot microstructure, OrderTypeRecommendation recommendation)
         {
             if (intent.LatencyGuardBreached)
             {
@@ -176,7 +176,7 @@ namespace BotCore.Execution
             }
         }
 
-        private decimal CalculatePrice(ExecutionIntent intent, MicrostructureSnapshot microstructure)
+        private static decimal CalculatePrice(ExecutionIntent intent, MicrostructureSnapshot microstructure)
         {
             // Default to mid-price for limit orders
             return microstructure.MidPrice;

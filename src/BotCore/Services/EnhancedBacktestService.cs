@@ -323,7 +323,7 @@ namespace BotCore.Services
         /// <summary>
         /// Calculate enhanced performance metrics
         /// </summary>
-        private void CalculateEnhancedMetrics(BacktestResult result)
+        private static void CalculateEnhancedMetrics(BacktestResult result)
         {
             if (!result.Trades.Any())
                 return;
@@ -351,7 +351,7 @@ namespace BotCore.Services
         /// <summary>
         /// Get tick size for symbol
         /// </summary>
-        private decimal GetTickSize(string symbol)
+        private static decimal GetTickSize(string symbol)
         {
             return symbol.ToUpper() switch
             {
