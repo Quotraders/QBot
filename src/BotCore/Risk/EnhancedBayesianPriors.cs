@@ -12,10 +12,6 @@ namespace BotCore.Risk;
 /// </summary>
 public class EnhancedBayesianPriors : IBayesianPriors
 {
-    private const decimal ShrinkageMaxFactor = 0.9m;
-    private const decimal ShrinkageMinFactor = 0.1m;
-    private const decimal ShrinkageDefaultNormalization = 1.0m;
-    private const decimal ShrinkageSampleSizeDivisor = 10.0m;
     private const decimal CredibleIntervalConfidence = 0.95m;
     private const decimal MinimumSufficientDataSize = 20m;
     private const decimal MaxShrinkageStrength = 0.8m;

@@ -39,15 +39,10 @@ namespace BotCore.Strategy
         private const decimal LowImbalanceThreshold = 1.1m;               // Low imbalance threshold for short setups
         private const decimal StopDistanceMultiplier = 0.25m;             // ATR multiplier for stop distance
         private const decimal MinTargetRatioLong = 0.8m;                  // Minimum target ratio for long trades
-        private const decimal MinTargetRatioShort = 0.9m;                 // Minimum target ratio for short trades
         private const decimal TargetAdjustmentRatio = 0.9m;               // Target adjustment ratio
         private const decimal MinRiskRewardRatio = 0.6m;                  // Minimum risk-reward ratio
-        private const decimal NeutralRiskRewardRatio = 1.0m;              // Neutral risk-reward ratio
-        private const decimal HighRiskRewardRatio = 1.1m;                 // High risk-reward ratio
-        private const int RsiOversoldLevel = 30;                          // RSI oversold level
         private const int RsiOverboughtLevel = 20;                        // RSI overbought level (inverted for short)
         private const decimal RsiMultiplier = 1.5m;                       // RSI condition multiplier
-        private const int TimeWindowMinutes = 60;                         // Time window in minutes for evaluations
 
         // (attempt accounting moved to specific strategies as needed)
         static decimal rr_quality(decimal entry, decimal stop, decimal t1)

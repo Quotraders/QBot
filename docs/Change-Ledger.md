@@ -43,10 +43,77 @@ This ledger documents all fixes made during the analyzer compliance initiative i
   - **Round 61**: CA1031 exception handling - 22 violations, CA1307 string operations - 22 violations
   - **Round 60**: S109 magic numbers - 64 violations, CA1031 exception handling - 1 violation
   - **Verified State**: ~12,741 analyzer violations (0 CS errors maintained, async blocking patterns eliminated)
-- **Current Focus**: CA1510 null checks COMPLETE! Moving to other Priority 1 violations
+- **Current Focus**: CA1510 COMPLETE, S1144 unused members cleaned! Moving to other Priority 1 violations
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 
-### 🔧 Round 75 - Phase 2 Priority 1: CA1510 ArgumentNullException.ThrowIfNull Systematic Fix (Current Session)
+### 🔧 Round 76 - Phase 2 Code Cleanliness: S1144 Unused Private Members Removal (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S1144 | 32 | 24 | EnhancedBayesianPriors.cs, AllStrategies.cs, TradingSystemIntegrationService.cs | Removed duplicate constants and unused stub methods |
+
+**Total Fixed: 8 violations**
+
+**Example Patterns Applied**:
+
+**S1144 - Duplicate Constants Removal**:
+```csharp
+// Before (Violation) - Duplicate constants at top of class
+public class EnhancedBayesianPriors : IBayesianPriors
+{
+    private const decimal ShrinkageMaxFactor = 0.9m;     // Duplicate - line 15
+    private const decimal ShrinkageMinFactor = 0.1m;     // Duplicate - line 16
+    ...
+    // Same constants declared again at line 518 and actually used there
+    private const decimal ShrinkageMaxFactor = 0.9m;
+    private const decimal ShrinkageMinFactor = 0.1m;
+}
+
+// After (Compliant) - Only one set of constants
+public class EnhancedBayesianPriors : IBayesianPriors
+{
+    private const decimal CredibleIntervalConfidence = 0.95m;
+    // Other constants...
+    // Working constants kept at their usage location (line 518+)
+}
+```
+
+**S1144 - Unused Stub Methods Removal**:
+```csharp
+// Before (Violation) - Stub methods never called
+private Task UpdateStopLossAsync(Signal signal)
+{
+    _logger.LogInformation("[ML/RL-STOP-LOSS] Updated stop loss...");
+    return Task.CompletedTask;
+}
+
+private Task UpdateTakeProfitAsync(Signal signal)
+{
+    _logger.LogInformation("[ML/RL-TAKE-PROFIT] Updated take profit...");
+    return Task.CompletedTask;
+}
+
+// After (Compliant) - Removed unused stubs
+// (No replacement needed - methods were never called)
+```
+
+**S1144 - Unused Constants Removal**:
+```csharp
+// Before (Violation) - Constants declared but never referenced
+private const decimal MinTargetRatioShort = 0.9m;
+private const decimal NeutralRiskRewardRatio = 1.0m;
+private const decimal HighRiskRewardRatio = 1.1m;
+private const int RsiOversoldLevel = 30;
+private const int TimeWindowMinutes = 60;
+
+// After (Compliant) - Only used constants remain
+// (Removed all 5 unused constants)
+```
+
+**Rationale**: Systematic removal of dead code identified by S1144 analyzer. Removed 4 duplicate shrinkage constants from EnhancedBayesianPriors that were shadowed by actual working constants later in the file. Eliminated 3 stub methods in TradingSystemIntegrationService (UpdateStopLossAsync, UpdateTakeProfitAsync, ProcessPositionScalingAsync) that were never called. Removed 5 unused constants from AllStrategies.cs. This cleanup reduces code surface area and eliminates potential confusion from dead code.
+
+---
+
+### 🔧 Round 75 - Phase 2 Priority 1: CA1510 ArgumentNullException.ThrowIfNull Systematic Fix (Previous in Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA1510 | 460 | 0 | 73 files across BotCore | Replaced manual null checks with ArgumentNullException.ThrowIfNull |
