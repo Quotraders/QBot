@@ -186,7 +186,7 @@ namespace BotCore.Execution
             }
         }
 
-        private int CalculateChildDelay(ExecutionIntent intent, MicrostructureSnapshot microstructure)
+        private static int CalculateChildDelay(ExecutionIntent intent, MicrostructureSnapshot microstructure)
         {
             // Base delay between child orders
             var baseDelay = 30; // 30 seconds default
@@ -202,7 +202,7 @@ namespace BotCore.Execution
             return Math.Max(5, baseDelay); // Minimum 5 seconds
         }
 
-        private string DetermineChildTriggerType(int childIndex, ExecutionIntent intent, MicrostructureSnapshot microstructure)
+        private static string DetermineChildTriggerType(int childIndex, ExecutionIntent intent, MicrostructureSnapshot microstructure)
         {
             return childIndex switch
             {

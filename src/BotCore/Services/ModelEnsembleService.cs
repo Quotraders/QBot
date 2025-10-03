@@ -533,7 +533,7 @@ public class ModelEnsembleService
     /// <summary>
     /// Blend CVaR actions using weighted voting
     /// </summary>
-    private ActionResult BlendCVaRActions(List<ActionResult> actions)
+    private static ActionResult BlendCVaRActions(List<ActionResult> actions)
     {
         if (!actions.Any())
         {

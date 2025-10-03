@@ -118,7 +118,7 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
         }
     }
     
-    private Task<decimal> AnalyzeNewssentimentAsync(List<NewsItem> newsData)
+    private static Task<decimal> AnalyzeNewssentimentAsync(List<NewsItem> newsData)
     {
         // Professional sentiment analysis
         var sentiments = new List<decimal>();
