@@ -59,7 +59,7 @@ public class BasicMarketHours : IMarketHours
         return timeOfDay >= new TimeSpan(9, 30, 0) && timeOfDay < new TimeSpan(16, 0, 0);
     }
     
-    private DateTime GetEasternTime()
+    private static DateTime GetEasternTime()
     {
         try
         {
@@ -72,7 +72,7 @@ public class BasicMarketHours : IMarketHours
         }
     }
     
-    private DateTime GetEasternTimeFromUtc(DateTime utcTime)
+    private static DateTime GetEasternTimeFromUtc(DateTime utcTime)
     {
         try
         {

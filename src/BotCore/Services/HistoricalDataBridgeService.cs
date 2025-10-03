@@ -492,7 +492,7 @@ namespace BotCore.Services
             }
         }
         
-        private long ParseTopstepXTimestampToUnixMs(JsonElement barElement)
+        private static long ParseTopstepXTimestampToUnixMs(JsonElement barElement)
         {
             // TopstepX uses 't' field with ISO 8601 format: "2025-09-12T20:59:00+00:00"
             if (barElement.TryGetProperty("t", out var timestampElement) && timestampElement.ValueKind == JsonValueKind.String)
@@ -508,7 +508,7 @@ namespace BotCore.Services
             return DateTimeOffset.UtcNow.AddMinutes(-1).ToUnixTimeMilliseconds();
         }
         
-        private decimal ParseDecimalField(JsonElement element, params string[] fieldNames)
+        private static decimal ParseDecimalField(JsonElement element, params string[] fieldNames)
         {
             foreach (var fieldName in fieldNames)
             {
@@ -528,7 +528,7 @@ namespace BotCore.Services
             return 0;
         }
         
-        private long ParseLongField(JsonElement element, params string[] fieldNames)
+        private static long ParseLongField(JsonElement element, params string[] fieldNames)
         {
             foreach (var fieldName in fieldNames)
             {
@@ -548,7 +548,7 @@ namespace BotCore.Services
             return 0;
         }
 
-        private List<BotCore.Models.Bar> GenerateWarmupBars(string contractId, int barCount)
+        private static List<BotCore.Models.Bar> GenerateWarmupBars(string contractId, int barCount)
         {
             var bars = new List<BotCore.Models.Bar>();
             var basePrice = GetBasePriceForContract(contractId);
@@ -580,7 +580,7 @@ namespace BotCore.Services
             return bars.OrderBy(b => b.Ts).ToList();
         }
 
-        private decimal GetBasePriceForContract(string contractId)
+        private static decimal GetBasePriceForContract(string contractId)
         {
             // Get reasonable base prices for major contracts
             return contractId switch
@@ -593,7 +593,7 @@ namespace BotCore.Services
             };
         }
 
-        private string GetSymbolFromContractId(string contractId)
+        private static string GetSymbolFromContractId(string contractId)
         {
             return contractId switch
             {

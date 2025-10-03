@@ -213,7 +213,7 @@ namespace BotCore.Execution
             };
         }
 
-        private string CreateTriggerCondition(int childIndex, ExecutionIntent intent, MicrostructureSnapshot microstructure)
+        private static string CreateTriggerCondition(int childIndex, ExecutionIntent intent, MicrostructureSnapshot microstructure)
         {
             return childIndex switch
             {

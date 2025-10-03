@@ -398,7 +398,7 @@ public class CloudModelSynchronizationService : BackgroundService
     /// <summary>
     /// Determine where to save data files based on entry path
     /// </summary>
-    private string DetermineDataPath(string entryFullName)
+    private static string DetermineDataPath(string entryFullName)
     {
         var baseDir = Directory.GetCurrentDirectory();
         

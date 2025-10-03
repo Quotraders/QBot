@@ -184,7 +184,7 @@ public class ProductionResilienceService
         return _circuitBreakers.GetOrAdd(operationName, _ => new CircuitBreakerState());
     }
 
-    private bool IsRetriableException(Exception ex)
+    private static bool IsRetriableException(Exception ex)
     {
         return ex switch
         {
@@ -199,7 +199,7 @@ public class ProductionResilienceService
         };
     }
 
-    private bool IsRetriableHttpError(HttpRequestException httpEx)
+    private static bool IsRetriableHttpError(HttpRequestException httpEx)
     {
         // Use HttpRequestException.Data or try to extract status code
         if (httpEx.Data.Contains("StatusCode") && httpEx.Data["StatusCode"] is HttpStatusCode statusCode)
