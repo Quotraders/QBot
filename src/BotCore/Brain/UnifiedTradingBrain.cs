@@ -1022,7 +1022,7 @@ namespace BotCore.Brain
 
         #region Helper Methods
 
-        private MarketContext CreateMarketContext(string symbol, Env env, IList<Bar> bars)
+        private static MarketContext CreateMarketContext(string symbol, Env env, IList<Bar> bars)
         {
             var latestBar = bars.LastOrDefault();
             if (latestBar == null)

@@ -348,7 +348,7 @@ namespace BotCore.Execution
             return true;
         }
 
-        private FillRecord CreateFillRecord(OrderRecord orderRecord, List<FillEventData> fillEvents)
+        private static FillRecord CreateFillRecord(OrderRecord orderRecord, List<FillEventData> fillEvents)
         {
             var primaryFill = fillEvents.First();
             

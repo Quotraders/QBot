@@ -104,7 +104,7 @@ public class CloudDataUploader : ICloudDataUploader
         }
     }
     
-    private byte[] CompressData(string data)
+    private static byte[] CompressData(string data)
     {
         var bytes = System.Text.Encoding.UTF8.GetBytes(data);
         using var output = new MemoryStream();

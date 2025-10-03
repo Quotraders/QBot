@@ -281,7 +281,7 @@ public sealed class EpochFreezeEnforcement
     /// <summary>
     /// Capture bracket settings
     /// </summary>
-    private void CaptureBracketSettings(EpochSnapshot snapshot, EpochSnapshotRequest request)
+    private static void CaptureBracketSettings(EpochSnapshot snapshot, EpochSnapshotRequest request)
     {
         snapshot.BracketSettings = new BracketSnapshot
         {

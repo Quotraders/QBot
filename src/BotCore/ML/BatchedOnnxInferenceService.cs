@@ -244,7 +244,7 @@ public class BatchedOnnxInferenceService : IDisposable
         }
     }
 
-    private void FailRequests(List<InferenceRequest> requests, Exception exception)
+    private static void FailRequests(List<InferenceRequest> requests, Exception exception)
     {
         foreach (var request in requests)
         {

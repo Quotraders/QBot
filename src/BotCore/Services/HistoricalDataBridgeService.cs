@@ -548,7 +548,7 @@ namespace BotCore.Services
             return 0;
         }
 
-        private List<BotCore.Models.Bar> GenerateWarmupBars(string contractId, int barCount)
+        private static List<BotCore.Models.Bar> GenerateWarmupBars(string contractId, int barCount)
         {
             var bars = new List<BotCore.Models.Bar>();
             var basePrice = GetBasePriceForContract(contractId);
