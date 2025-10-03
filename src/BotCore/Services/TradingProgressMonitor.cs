@@ -213,14 +213,14 @@ namespace BotCore.Services
             return bestTimes.OrderByDescending(t => t.WinRate).ToList();
         }
 
-        private string GetSessionForHour(int hour)
+        private static string GetSessionForHour(int hour)
         {
             var timeSpan = new TimeSpan(hour, 0, 0);
             var session = EsNqTradingSchedule.GetCurrentSession(timeSpan);
             return session?.Description ?? "Unknown";
         }
 
-        private double UpdateAverage(double currentAvg, double newValue, int count)
+        private static double UpdateAverage(double currentAvg, double newValue, int count)
         {
             if (count == 1) return newValue;
             return ((currentAvg * (count - 1)) + newValue) / count;
@@ -238,7 +238,7 @@ namespace BotCore.Services
             return recentWinRate > 0.5 && latestPnL > 0;
         }
 
-        private void UpdateDrawdown(TradingMetrics metrics, double pnl)
+        private static void UpdateDrawdown(TradingMetrics metrics, double pnl)
         {
             if (pnl < 0)
             {
