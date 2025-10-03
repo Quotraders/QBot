@@ -283,7 +283,7 @@ public class EnhancedBayesianPriors : IBayesianPriors
         var beta = posterior.Beta;
         var mean = alpha / (alpha + beta);
         var variance = (alpha * beta) / ((alpha + beta) * (alpha + beta) * (alpha + beta + 1));
-        var stdDev = (decimal)Math.Sqrt((double)variance);
+        var stdDev = BotCore.Math.DecimalMath.Sqrt(variance);
 
         // Approximate credible interval using normal approximation for large samples
         var z = confidence switch
