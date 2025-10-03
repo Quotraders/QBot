@@ -105,7 +105,15 @@ public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, I
                 EnforceDryRunMode("Periodic check");
             }
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "❌ [KILL-SWITCH] I/O error during periodic kill file check");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "❌ [KILL-SWITCH] Access denied during periodic kill file check");
+        }
+        catch (Exception ex) when (!ex.IsFatal())
         {
             _logger.LogError(ex, "❌ [KILL-SWITCH] Error during periodic kill file check");
         }
@@ -141,12 +149,16 @@ public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, I
                 KillSwitchToggled?.Invoke(this, new KillSwitchToggledEventArgs(true));
                 OnKillSwitchActivated?.Invoke(this, EventArgs.Empty);
             }
-            catch (Exception eventEx)
+            catch (Exception eventEx) when (!eventEx.IsFatal())
             {
                 _logger.LogError(eventEx, "❌ [KILL-SWITCH] Error firing kill switch events");
             }
         }
-        catch (Exception ex)
+        catch (System.Security.SecurityException ex)
+        {
+            _logger.LogError(ex, "❌ [KILL-SWITCH] Security error while enforcing DRY_RUN mode");
+        }
+        catch (Exception ex) when (!ex.IsFatal())
         {
             _logger.LogError(ex, "❌ [KILL-SWITCH] Critical error while enforcing DRY_RUN mode");
         }
@@ -175,7 +187,15 @@ public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, I
             File.WriteAllText(markerPath, markerContent);
             _logger.LogInformation("📝 [KILL-SWITCH] DRY_RUN marker created: {MarkerPath}", markerPath);
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            _logger.LogWarning(ex, "⚠️ [KILL-SWITCH] I/O error creating DRY_RUN marker file");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "⚠️ [KILL-SWITCH] Access denied creating DRY_RUN marker file");
+        }
+        catch (Exception ex) when (!ex.IsFatal())
         {
             _logger.LogWarning(ex, "⚠️ [KILL-SWITCH] Could not create DRY_RUN marker file");
         }
@@ -199,7 +219,15 @@ public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, I
                     fileInfo.CreationTime, fileInfo.LastWriteTime);
             }
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            _logger.LogWarning(ex, "⚠️ [KILL-SWITCH] I/O error reading kill file contents");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "⚠️ [KILL-SWITCH] Access denied reading kill file contents");
+        }
+        catch (Exception ex) when (!ex.IsFatal())
         {
             _logger.LogWarning(ex, "⚠️ [KILL-SWITCH] Could not read kill file contents");
         }
@@ -287,7 +315,11 @@ public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, I
             _logger.LogInformation("METRIC: guardrail.{MetricName} {Value} {UnixTimestamp} tags=context:{Context},component:kill_switch", 
                 metricName, value, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), context);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "❌ [GUARDRAIL-METRIC] Invalid operation publishing metric {MetricName}", metricName);
+        }
+        catch (Exception ex) when (!ex.IsFatal())
         {
             _logger.LogError(ex, "❌ [GUARDRAIL-METRIC] Failed to publish metric {MetricName}", metricName);
         }
@@ -308,7 +340,11 @@ public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, I
             {
                 // Expected during shutdown - ignore
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "🗑️ [KILL-SWITCH] Invalid operation disposing resources");
+            }
+            catch (Exception ex) when (!ex.IsFatal())
             {
                 _logger.LogError(ex, "🗑️ [KILL-SWITCH] Error disposing resources");
             }

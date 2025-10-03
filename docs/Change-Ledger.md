@@ -53,7 +53,45 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 86 - Phase 2: Priority 1 Correctness Fixes Batch 2 (Current Session)
+### 🔧 Round 87 - Phase 2: Priority 1 Kill Switch Safety Hardening (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 810 | 803 | ProductionKillSwitchService.cs | Specific exception types (IOException, UnauthorizedAccessException, SecurityException) with IsFatal guard |
+
+**Total Fixed: 7 CA1031 violations**
+
+**Example Pattern Applied**:
+
+**CA1031 - Kill Switch Exception Safety**:
+```csharp
+// Before (CA1031) - Generic exception catch
+catch (Exception ex)
+{
+    _logger.LogError(ex, "❌ [KILL-SWITCH] Error during periodic kill file check");
+}
+
+// After (Compliant) - Specific exception types with fatal guard
+catch (IOException ex)
+{
+    _logger.LogError(ex, "❌ [KILL-SWITCH] I/O error during periodic kill file check");
+}
+catch (UnauthorizedAccessException ex)
+{
+    _logger.LogError(ex, "❌ [KILL-SWITCH] Access denied during periodic kill file check");
+}
+catch (Exception ex) when (!ex.IsFatal())
+{
+    _logger.LogError(ex, "❌ [KILL-SWITCH] Error during periodic kill file check");
+}
+```
+
+**Rationale**: 
+- **CA1031**: Kill switch is a critical safety component. All exception handlers now catch specific file system exceptions (IOException, UnauthorizedAccessException) and security exceptions (SecurityException) with descriptive error messages. Generic catch remains only as final safety net with IsFatal guard to allow critical exceptions (OutOfMemoryException, StackOverflowException) to propagate.
+- **Production Safety**: Fixed methods include PeriodicKillFileCheck, EnforceDryRunMode, CreateDryRunMarker, LogKillFileContents, PublishGuardrailMetric, and Dispose - all critical for kill switch reliability.
+
+---
+
+### 🔧 Round 86 - Phase 2: Priority 1 Correctness Fixes Batch 2 (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA1031 | 814 | 810 | TradingFeedbackService.cs | Specific exception types (InvalidOperationException, ArgumentException) |
