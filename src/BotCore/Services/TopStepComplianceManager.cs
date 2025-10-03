@@ -238,7 +238,7 @@ public class TopStepComplianceManager
     /// <summary>
     /// Get time until daily reset (5 PM ET)
     /// </summary>
-    public TimeSpan GetTimeUntilDailyReset()
+    public static TimeSpan GetTimeUntilDailyReset()
     {
         var easternTime = GetEasternTime();
         var resetTime = easternTime.Date.AddHours(17); // 5 PM ET
@@ -361,7 +361,7 @@ public class TopStepComplianceManager
         }
     }
     
-    private List<string> GenerateRecommendations(ComplianceStatus status)
+    private static List<string> GenerateRecommendations(ComplianceStatus status)
     {
         var recommendations = new List<string>();
         

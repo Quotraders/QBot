@@ -332,7 +332,7 @@ namespace BotCore.Services
         /// <summary>
         /// Calculate SHA256 hash of model file
         /// </summary>
-        private async Task<string> CalculateModelHashAsync(string modelPath)
+        private static async Task<string> CalculateModelHashAsync(string modelPath)
         {
             using var sha256 = SHA256.Create();
             using var stream = File.OpenRead(modelPath);
@@ -343,7 +343,7 @@ namespace BotCore.Services
         /// <summary>
         /// Generate new version string
         /// </summary>
-        private string GenerateVersion()
+        private static string GenerateVersion()
         {
             return $"v{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Guid.NewGuid().ToString("N")[..8]}";
         }
