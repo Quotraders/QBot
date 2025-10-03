@@ -53,7 +53,38 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 94 - Phase 2: ConfigureAwait Hygiene (Current Session)
+### 🔧 Round 95 - Phase 2: ConfigureAwait Hygiene Continued (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA2007 | 118 | 104 | ExpressionEvaluator.cs, YamlSchemaValidator.cs, FeatureMapAuthority.cs | Added `.ConfigureAwait(false)` to await statements (14 violations) |
+
+**Total Fixed: 14 CA2007 violations (11.9% reduction)**
+
+**Example Pattern Applied**:
+
+**CA2007 - ConfigureAwait for Library Code**:
+```csharp
+// Before (CA2007) - Missing ConfigureAwait
+return await Task.Run(() => {...});
+var yamlContent = await File.ReadAllTextAsync(filePath);
+await ValidateAgainstSchemaAsync(yamlObject, schema, result);
+
+// After (Compliant) - ConfigureAwait(false) for library code
+return await Task.Run(() => {...}).ConfigureAwait(false);
+var yamlContent = await File.ReadAllTextAsync(filePath).ConfigureAwait(false);
+await ValidateAgainstSchemaAsync(yamlObject, schema, result).ConfigureAwait(false);
+```
+
+**Rationale**: 
+- **CA2007**: Added `.ConfigureAwait(false)` to 14 additional await statements across multiple library files per guidebook async hygiene requirements
+- **Fixed Methods**: ExpressionEvaluator.EvaluateAsync, YamlSchemaValidator validation methods, FeatureMapAuthority.ResolveFeatureAsync
+- **Pattern**: Library code should use ConfigureAwait(false) to avoid capturing sync context, improving performance and avoiding deadlocks
+- **Impact**: Expression evaluation, YAML validation, and feature resolution paths now follow proper async hygiene
+- **Note**: `await using` statements do not require ConfigureAwait as they are not regular awaits
+
+---
+
+### 🔧 Round 94 - Phase 2: ConfigureAwait Hygiene (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA2007 | 154 | 136 | FeatureProbe.cs | Added `.ConfigureAwait(false)` to all await statements in library code |

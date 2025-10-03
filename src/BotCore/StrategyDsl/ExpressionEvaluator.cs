@@ -175,7 +175,7 @@ public class ExpressionEvaluator
                 _logger.LogError(ex, "Failed to evaluate expression: {Expression}", expression);
                 return new ExpressionResult { IsSuccess = false, ErrorMessage = ex.Message };
             }
-        });
+        }).ConfigureAwait(false);
     }
 
     private bool EvaluateLogicalAnd(string expression)
