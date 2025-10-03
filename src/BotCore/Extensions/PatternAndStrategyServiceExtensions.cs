@@ -27,7 +27,7 @@ public static class PatternAndStrategyServiceExtensions
         this IServiceCollection services, 
         IConfiguration configuration)
     {
-        if (configuration is null) throw new ArgumentNullException(nameof(configuration));
+        ArgumentNullException.ThrowIfNull(configuration);
         
         // Register pattern engine configuration
         services.Configure<PatternEngineOptions>(
@@ -84,7 +84,7 @@ public static class PatternAndStrategyServiceExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        if (configuration is null) throw new ArgumentNullException(nameof(configuration));
+        ArgumentNullException.ThrowIfNull(configuration);
         
         // Register DSL configuration - configurations handled per service
         // No centralized DSL loader options needed with SimpleDslLoader
@@ -110,7 +110,7 @@ public static class PatternAndStrategyServiceExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        if (configuration is null) throw new ArgumentNullException(nameof(configuration));
+        ArgumentNullException.ThrowIfNull(configuration);
 
         // Register required dependencies for production implementations - NO MOCKS
         services.AddSingleton<FeatureBusAdapter>(provider =>

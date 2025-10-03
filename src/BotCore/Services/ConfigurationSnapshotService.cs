@@ -26,8 +26,8 @@ namespace TradingBot.BotCore.Services
         /// </summary>
         public ConfigSnapshot CreateSnapshot(string positionId, IServiceProvider serviceProvider)
         {
-            if (positionId is null) throw new ArgumentNullException(nameof(positionId));
-            if (serviceProvider is null) throw new ArgumentNullException(nameof(serviceProvider));
+            ArgumentNullException.ThrowIfNull(positionId);
+            ArgumentNullException.ThrowIfNull(serviceProvider);
             
             lock (_snapshotLock)
             {

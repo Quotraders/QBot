@@ -64,7 +64,7 @@ public sealed class DecisionFusionCoordinator
         _ucb = ucb ?? throw new ArgumentNullException(nameof(ucb));
         _ppo = ppo ?? throw new ArgumentNullException(nameof(ppo));
         _cfg = cfg ?? throw new ArgumentNullException(nameof(cfg));
-        if (metrics is null) throw new ArgumentNullException(nameof(metrics));
+        ArgumentNullException.ThrowIfNull(metrics);
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         
@@ -302,16 +302,4 @@ public sealed class DecisionFusionCoordinator
         }
     }
 
-    /// <summary>
-    /// Synchronous wrapper for backward compatibility - DEPRECATED
-    /// Use DecideAsync instead to avoid blocking
-    /// </summary>
-    [Obsolete("Use DecideAsync to avoid blocking. This synchronous wrapper uses Task.Run.")]
-    public BotCore.Strategy.StrategyRecommendation? Decide(string symbol)
-    {
-        // NOTE: This method exists for backward compatibility only.
-        // Using Task.Run to avoid blocking the caller's synchronization context.
-        // Callers should be updated to use DecideAsync directly.
-        return Task.Run(async () => await DecideAsync(symbol, CancellationToken.None).ConfigureAwait(false)).GetAwaiter().GetResult();
-    }
 }

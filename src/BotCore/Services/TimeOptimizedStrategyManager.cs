@@ -115,7 +115,7 @@ namespace BotCore.Services
         /// </summary>
         public async Task<StrategyEvaluationResult> EvaluateInstrumentAsync(string instrument, TradingBot.Abstractions.MarketData data, IReadOnlyList<Bar> bars)
         {
-            if (data is null) throw new ArgumentNullException(nameof(data));
+            ArgumentNullException.ThrowIfNull(data);
             
             var currentTime = GetMarketTime(data.Timestamp);
             var session = EsNqTradingSchedule.GetCurrentSession(currentTime);
@@ -942,7 +942,7 @@ namespace BotCore.Services
         /// </summary>
         public void UpdateBarData(string symbol, IReadOnlyList<Bar> bars)
         {
-            if (symbol is null) throw new ArgumentNullException(nameof(symbol));
+            ArgumentNullException.ThrowIfNull(symbol);
             
             switch (symbol.ToUpper())
             {

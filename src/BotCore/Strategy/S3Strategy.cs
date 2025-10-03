@@ -74,11 +74,11 @@ namespace BotCore.Strategy
 
         public static List<Candidate> S3(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
         {
-            if (symbol is null) throw new ArgumentNullException(nameof(symbol));
-            if (env is null) throw new ArgumentNullException(nameof(env));
-            if (levels is null) throw new ArgumentNullException(nameof(levels));
-            if (bars is null) throw new ArgumentNullException(nameof(bars));
-            if (risk is null) throw new ArgumentNullException(nameof(risk));
+            ArgumentNullException.ThrowIfNull(symbol);
+            ArgumentNullException.ThrowIfNull(env);
+            ArgumentNullException.ThrowIfNull(levels);
+            ArgumentNullException.ThrowIfNull(bars);
+            ArgumentNullException.ThrowIfNull(risk);
             
             var lst = new List<Candidate>();
             if (bars.Count < MinimumBarsRequired) return lst; // need enough for pre-squeeze, TF2 agg, etc.

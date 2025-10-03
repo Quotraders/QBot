@@ -58,8 +58,8 @@ public static class ProfitObjective
 
     public static decimal Score(ProfitMetrics m, Weights w)
     {
-        if (m is null) throw new ArgumentNullException(nameof(m));
-        if (w is null) throw new ArgumentNullException(nameof(w));
+        ArgumentNullException.ThrowIfNull(m);
+        ArgumentNullException.ThrowIfNull(w);
         
         if (m.Trades < w.MinTrades) return decimal.MinusOne; // unviable
         if (m.MaxDrawdownUsd > w.MaxDrawdownLimitUsd) return decimal.MinusOne; // violates risk cap

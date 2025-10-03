@@ -65,8 +65,8 @@ namespace TopstepX.Bot.Core.Services
         /// </summary>
         public async Task<OrderResult> PlaceOrderAsync(PlaceOrderRequest request, string accountId)
         {
-            if (request is null) throw new ArgumentNullException(nameof(request));
-            if (accountId is null) throw new ArgumentNullException(nameof(accountId));
+            ArgumentNullException.ThrowIfNull(request);
+            ArgumentNullException.ThrowIfNull(accountId);
             
             // Check emergency stop
             if (_emergencyStop.IsEmergencyStop)

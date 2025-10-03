@@ -142,7 +142,7 @@ public class RedundantDataFeedManager : IDisposable
 
     public void AddDataFeed(IDataFeed dataFeed)
     {
-        if (dataFeed is null) throw new ArgumentNullException(nameof(dataFeed));
+        ArgumentNullException.ThrowIfNull(dataFeed);
         
         _dataFeeds.Add(dataFeed);
         _logger.LogDebug("[DataFeed] Added data feed: {FeedName} (Priority: {Priority})", 

@@ -29,8 +29,7 @@ namespace TradingBot.BotCore.Services
         /// </summary>
         public async Task RegisterModelAsync(string modelPath, ModelCard modelCard)
         {
-            if (modelCard == null)
-                throw new ArgumentNullException(nameof(modelCard));
+            ArgumentNullException.ThrowIfNull(modelCard);
 
             lock (_registryLock)
             {

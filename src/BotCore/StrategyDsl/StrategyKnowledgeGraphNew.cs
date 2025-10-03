@@ -403,12 +403,6 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
         return ranked;
     }
 
-    // Removed synchronous wrapper - use EvaluateAsync instead to prevent deadlocks
-    // public IReadOnlyList<BotCore.Strategy.StrategyRecommendation> Evaluate(string symbol, DateTime utc)
-    // {
-    //     return EvaluateAsync(symbol, utc, CancellationToken.None).GetAwaiter().GetResult();
-    // }
-
     private static bool EvaluateRegimeFilter(DslStrategy card, RegimeType regime)
     {
         if (card.When?.Regime == null || card.When.Regime.Count == 0)

@@ -27,7 +27,7 @@ public class EnhancedProductionResilienceService
         ILogger<EnhancedProductionResilienceService> logger,
         IOptions<ResilienceConfiguration> config)
     {
-        if (config is null) throw new ArgumentNullException(nameof(config));
+        ArgumentNullException.ThrowIfNull(config);
         
         _logger = logger;
         _config = config.Value;
@@ -377,7 +377,7 @@ public abstract class ResilientBackgroundService : BackgroundService
         CancellationToken cancellationToken,
         string operationName = "operation")
     {
-        if (operation is null) throw new ArgumentNullException(nameof(operation));
+        ArgumentNullException.ThrowIfNull(operation);
         
         try
         {

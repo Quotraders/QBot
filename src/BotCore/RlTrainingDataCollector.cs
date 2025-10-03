@@ -123,7 +123,7 @@ namespace BotCore
         /// </summary>
         public static void LogFeatures(ILogger log, FeatureSnapshot features)
         {
-            if (features is null) throw new ArgumentNullException(nameof(features));
+            ArgumentNullException.ThrowIfNull(features);
             
             try
             {
@@ -163,7 +163,7 @@ namespace BotCore
         /// </summary>
         public static void LogOutcome(ILogger log, TradeOutcome outcome)
         {
-            if (outcome is null) throw new ArgumentNullException(nameof(outcome));
+            ArgumentNullException.ThrowIfNull(outcome);
             
             try
             {
@@ -226,9 +226,9 @@ namespace BotCore
             decimal price,
             decimal baselineMultiplier = 1.0m)
         {
-            if (signalId is null) throw new ArgumentNullException(nameof(signalId));
-            if (symbol is null) throw new ArgumentNullException(nameof(symbol));
-            if (strategy is null) throw new ArgumentNullException(nameof(strategy));
+            ArgumentNullException.ThrowIfNull(signalId);
+            ArgumentNullException.ThrowIfNull(symbol);
+            ArgumentNullException.ThrowIfNull(strategy);
             
             // Symbol-specific defaults
             var isES = symbol.Equals("ES", StringComparison.OrdinalIgnoreCase);

@@ -219,8 +219,7 @@ public sealed class FeatureMapAuthority
     {
         if (string.IsNullOrWhiteSpace(featureKey))
             throw new ArgumentException("Feature key cannot be null or empty", nameof(featureKey));
-        if (resolver == null)
-            throw new ArgumentNullException(nameof(resolver));
+        ArgumentNullException.ThrowIfNull(resolver);
             
         if (_featureResolvers.ContainsKey(featureKey))
         {

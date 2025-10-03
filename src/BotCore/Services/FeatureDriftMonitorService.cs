@@ -46,8 +46,7 @@ namespace BotCore.Services
             Dictionary<string, double> currentFeatures,
             CancellationToken cancellationToken = default)
         {
-            if (currentFeatures == null)
-                throw new ArgumentNullException(nameof(currentFeatures));
+            ArgumentNullException.ThrowIfNull(currentFeatures);
 
             await Task.CompletedTask.ConfigureAwait(false);
 
@@ -119,8 +118,7 @@ namespace BotCore.Services
         {
             if (string.IsNullOrWhiteSpace(featureName))
                 throw new ArgumentException("[FEATURE-DRIFT] Feature name cannot be null or empty", nameof(featureName));
-            if (baselineValues == null)
-                throw new ArgumentNullException(nameof(baselineValues));
+            ArgumentNullException.ThrowIfNull(baselineValues);
 
             await Task.CompletedTask.ConfigureAwait(false);
 

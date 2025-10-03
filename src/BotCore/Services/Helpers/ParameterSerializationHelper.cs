@@ -16,8 +16,7 @@ namespace TradingBot.BotCore.Services
         /// </summary>
         public static void ApplyParameter(Dictionary<string, JsonElement> strategyParameters, string key, object? value)
         {
-            if (strategyParameters == null)
-                throw new ArgumentNullException(nameof(strategyParameters));
+            ArgumentNullException.ThrowIfNull(strategyParameters);
             
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentException("Parameter key cannot be null or empty", nameof(key));
@@ -52,8 +51,7 @@ namespace TradingBot.BotCore.Services
             Dictionary<string, JsonElement> strategyParameters, 
             IEnumerable<TradingBotTuningRunner.ParameterConfig> parameters)
         {
-            if (strategyParameters == null)
-                throw new ArgumentNullException(nameof(strategyParameters));
+            ArgumentNullException.ThrowIfNull(strategyParameters);
 
             if (parameters == null)
                 return;

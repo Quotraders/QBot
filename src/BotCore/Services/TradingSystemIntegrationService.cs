@@ -186,7 +186,7 @@ namespace TopstepX.Bot.Core.Services
             IEnhancedMarketDataFlowService marketDataFlow,
             IOptions<TradingReadinessConfiguration> readinessConfig)
         {
-            if (readinessConfig is null) throw new ArgumentNullException(nameof(readinessConfig));
+            ArgumentNullException.ThrowIfNull(readinessConfig);
             
             _logger = logger;
             _serviceProvider = serviceProvider;
@@ -377,7 +377,7 @@ namespace TopstepX.Bot.Core.Services
         /// </summary>
         public async Task<OrderResult> PlaceOrderAsync(PlaceOrderRequest request, CancellationToken cancellationToken = default)
         {
-            if (request is null) throw new ArgumentNullException(nameof(request));
+            ArgumentNullException.ThrowIfNull(request);
             
             try
             {
@@ -1370,39 +1370,6 @@ namespace TopstepX.Bot.Core.Services
                 _logger.LogError(ex, "[BAR_CACHE] Invalid argument updating bar cache for {Symbol}", symbol);
             }
         }
-
-        /// <summary>
-        /// Update stop loss using ML-enhanced risk management
-        /// </summary>
-        private Task UpdateStopLossAsync(Signal signal)
-        {
-            // Implementation for ML-enhanced stop loss updates
-            _logger.LogInformation("[ML/RL-STOP-LOSS] Updated stop loss for {Symbol} to {Price}", signal.Symbol, signal.Stop);
-            return Task.CompletedTask;
-        }
-
-        /// <summary>
-        /// Update take profit using ML-enhanced profit targeting
-        /// </summary>
-        private Task UpdateTakeProfitAsync(Signal signal)
-        {
-            // Implementation for ML-enhanced take profit updates
-            _logger.LogInformation("[ML/RL-TAKE-PROFIT] Updated take profit for {Symbol} to {Price}", signal.Symbol, signal.Target);
-            return Task.CompletedTask;
-        }
-
-        /// <summary>
-        /// Process position scaling using ML-enhanced risk management
-        /// </summary>
-        private Task ProcessPositionScalingAsync(Signal signal)
-        {
-            // Implementation for ML-enhanced position scaling
-            _logger.LogInformation("[ML/RL-SCALING] Processing position scaling for {Symbol}: {Action}", signal.Symbol, signal.Side);
-            return Task.CompletedTask;
-        }
-
-        // Rest of the existing methods would be implemented here...
-        // (I'm keeping this focused on the new implementations for now)
 
         private Task InitializeComponentsAsync()
         {

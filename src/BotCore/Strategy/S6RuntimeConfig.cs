@@ -11,7 +11,7 @@ public static class S6RuntimeConfig
 
     public static void ApplyFrom(StrategyDef def)
     {
-        if (def is null) throw new ArgumentNullException(nameof(def));
+        ArgumentNullException.ThrowIfNull(def);
         
         if (def.Extra.TryGetValue("min_atr", out var ma) && ma.TryGetDecimal(out var d1)) MinAtr = d1;
         if (def.Extra.TryGetValue("stop_mult", out var sm) && sm.TryGetDecimal(out var d2)) StopAtrMult = d2;

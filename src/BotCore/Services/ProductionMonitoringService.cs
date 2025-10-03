@@ -20,7 +20,7 @@ public class ProductionMonitoringService : IHealthCheck
 
     public ProductionMonitoringService(ILogger<ProductionMonitoringService> logger, IOptions<ProductionTradingConfig> config)
     {
-        if (config is null) throw new ArgumentNullException(nameof(config));
+        ArgumentNullException.ThrowIfNull(config);
         
         _logger = logger;
         _config = config.Value;

@@ -14,7 +14,8 @@ namespace TradingBot.UnifiedOrchestrator.Services;
 internal interface ILoginCompletionState
 {
     Task WaitForLoginCompletion();
-    void SetLoginCompleted();
+    Task SetLoginCompletedAsync(CancellationToken cancellationToken = default);
+    void SetLoginCompleted(); // Deprecated: Use SetLoginCompletedAsync
 }
 
 /// <summary>
@@ -112,7 +113,7 @@ internal class EnterpriseLoginCompletionState : ILoginCompletionState
         }
     }
 
-    public void SetLoginCompleted()
+    public async Task SetLoginCompletedAsync(CancellationToken cancellationToken = default)
     {
         if (_isDisposed)
         {
@@ -121,7 +122,10 @@ internal class EnterpriseLoginCompletionState : ILoginCompletionState
             return;
         }
 
-        _stateSemaphore.Wait(TimeSpan.FromSeconds(5));
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _timeoutCts.Token);
+        cts.CancelAfter(TimeSpan.FromSeconds(5));
+        
+        await _stateSemaphore.WaitAsync(cts.Token).ConfigureAwait(false);
         try
         {
             if (!_isLoginCompleted)
@@ -166,6 +170,23 @@ internal class EnterpriseLoginCompletionState : ILoginCompletionState
         {
             _stateSemaphore.Release();
         }
+    }
+
+    public void SetLoginCompleted()
+    {
+        // Synchronous wrapper calls async version with fire-and-forget
+        // This is for backward compatibility only
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await SetLoginCompletedAsync(CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[LOGIN-STATE] Error in SetLoginCompleted synchronous wrapper");
+            }
+        });
     }
     
     /// <summary>

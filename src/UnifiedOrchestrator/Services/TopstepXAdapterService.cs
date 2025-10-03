@@ -58,7 +58,7 @@ internal record PositionInfo(
     decimal UnrealizedPnL,
     decimal RealizedPnL);
 
-internal class TopstepXAdapterService : ITopstepXAdapterService, IDisposable
+internal class TopstepXAdapterService : ITopstepXAdapterService, IAsyncDisposable, IDisposable
 {
     private readonly ILogger<TopstepXAdapterService> _logger;
     private readonly TopstepXConfiguration _config;
@@ -495,29 +495,52 @@ internal class TopstepXAdapterService : ITopstepXAdapterService, IDisposable
         }
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         if (!_disposed)
         {
             try
             {
-                // NOTE: Dispose must be synchronous per IDisposable contract.
-                // Using Task.Run to safely execute async cleanup on thread pool.
-                var disconnectTask = Task.Run(async () => await DisconnectAsync().ConfigureAwait(false));
-                if (!disconnectTask.Wait(TimeSpan.FromSeconds(5)))
-                {
-                    _logger.LogWarning("Disconnect timed out during disposal after 5 seconds");
-                }
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                await DisconnectAsync(cts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("Disconnect timed out during async disposal after 5 seconds");
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error during disposal");
+                _logger.LogWarning(ex, "Error during async disposal");
             }
 
             lock (_processLock)
             {
                 _pythonProcess?.Dispose();
                 _pythonProcess = null;
+            }
+
+            _disposed = true;
+        }
+    }
+
+    public void Dispose()
+    {
+        // Synchronous dispose calls async dispose with a bounded helper
+        // This is the recommended pattern when IAsyncDisposable is implemented
+        if (!_disposed)
+        {
+            try
+            {
+                // Use GetAwaiter().GetResult() in a controlled manner with timeout
+                var disposeTask = DisposeAsync().AsTask();
+                if (!disposeTask.Wait(TimeSpan.FromSeconds(5)))
+                {
+                    _logger.LogWarning("Async dispose timed out in synchronous Dispose() after 5 seconds");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error calling async dispose from synchronous Dispose()");
             }
 
             _disposed = true;

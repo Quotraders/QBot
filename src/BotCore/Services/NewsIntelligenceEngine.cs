@@ -174,7 +174,7 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
 
     public async Task<decimal> GetMarketSentimentAsync(string symbol)
     {
-        if (symbol is null) throw new ArgumentNullException(nameof(symbol));
+        ArgumentNullException.ThrowIfNull(symbol);
         try
         {
             _logger.LogInformation("Getting market sentiment for {Symbol}", symbol);

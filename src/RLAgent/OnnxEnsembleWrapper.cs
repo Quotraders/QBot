@@ -19,7 +19,7 @@ namespace TradingBot.RLAgent;
 /// Merged from UnifiedOrchestrator.Services.OnnxEnsembleService
 /// Implements proper session disposal and memory management for RL agent use
 /// </summary>
-public class OnnxEnsembleWrapper : IDisposable
+public class OnnxEnsembleWrapper : IAsyncDisposable, IDisposable
 {
     private readonly ILogger<OnnxEnsembleWrapper> _logger;
     private readonly OnnxEnsembleOptions _options;
@@ -590,32 +590,24 @@ public class OnnxEnsembleWrapper : IDisposable
 
     #endregion
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!_disposed && disposing)
+        if (!_disposed)
         {
             _cancellationTokenSource.Cancel();
             _inferenceWriter.Complete();
 
             try
             {
-                _batchProcessingTask.Wait(TimeSpan.FromSeconds(5));
-            }
-            catch (AggregateException ex)
-            {
-                LogMessages.BatchProcessingTimeout(_logger, ex);
-            }
-            catch (TaskCanceledException ex)
-            {
-                LogMessages.BatchProcessingTimeout(_logger, ex);
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                await _batchProcessingTask.WaitAsync(cts.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException ex)
+            {
+                // Catches both OperationCanceledException and TaskCanceledException
+                LogMessages.BatchProcessingTimeout(_logger, ex);
+            }
+            catch (AggregateException ex)
             {
                 LogMessages.BatchProcessingTimeout(_logger, ex);
             }
@@ -631,6 +623,34 @@ public class OnnxEnsembleWrapper : IDisposable
             _disposed = true;
 
             LogMessages.OnnxDisposedDebug(_logger);
+        }
+
+        GC.SuppressFinalize(this);
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed && disposing)
+        {
+            // Synchronous dispose calls async dispose with bounded helper
+            try
+            {
+                var disposeTask = DisposeAsync().AsTask();
+                if (!disposeTask.Wait(TimeSpan.FromSeconds(5)))
+                {
+                    LogMessages.BatchProcessingTimeout(_logger, new TimeoutException("Async dispose timed out"));
+                }
+            }
+            catch (Exception ex)
+            {
+                LogMessages.BatchProcessingTimeout(_logger, ex);
+            }
         }
     }
 }

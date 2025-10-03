@@ -42,10 +42,8 @@ namespace BotCore.Execution
             MicrostructureSnapshot microstructure,
             CancellationToken cancellationToken = default)
         {
-            if (intent == null)
-                throw new ArgumentNullException(nameof(intent));
-            if (microstructure == null)
-                throw new ArgumentNullException(nameof(microstructure));
+            ArgumentNullException.ThrowIfNull(intent);
+            ArgumentNullException.ThrowIfNull(microstructure);
 
             await Task.CompletedTask.ConfigureAwait(false);
 

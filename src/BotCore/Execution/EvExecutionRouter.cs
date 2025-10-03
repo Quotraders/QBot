@@ -31,7 +31,7 @@ public class EvExecutionRouter : IExecutionRouter
         MarketContext marketContext,
         CancellationToken ct = default)
     {
-        if (signal is null) throw new ArgumentNullException(nameof(signal));
+        ArgumentNullException.ThrowIfNull(signal);
         
         try
         {
@@ -86,8 +86,8 @@ public class EvExecutionRouter : IExecutionRouter
         ExecutionResult actualResult,
         CancellationToken ct = default)
     {
-        if (originalDecision is null) throw new ArgumentNullException(nameof(originalDecision));
-        if (actualResult is null) throw new ArgumentNullException(nameof(actualResult));
+        ArgumentNullException.ThrowIfNull(originalDecision);
+        ArgumentNullException.ThrowIfNull(actualResult);
         
         await _costTracker.RecordExecutionAsync(signalId, originalDecision, actualResult, ct).ConfigureAwait(false);
 

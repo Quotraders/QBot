@@ -122,8 +122,7 @@ namespace TradingBot.BotCore.Services
             if (string.IsNullOrWhiteSpace(symbol))
                 throw new ArgumentException("Symbol cannot be null or empty", nameof(symbol));
             
-            if (configuration == null)
-                throw new ArgumentNullException(nameof(configuration));
+            ArgumentNullException.ThrowIfNull(configuration);
 
             var configurationKey = ConfigurationKeyHelper.GetConfigurationKey(symbol, sessionType);
             _configurations[configurationKey] = configuration;

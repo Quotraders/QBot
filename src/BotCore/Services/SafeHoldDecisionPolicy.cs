@@ -109,7 +109,7 @@ public class SafeHoldDecisionPolicy
     /// </summary>
     public async Task<(bool Held, string Reason, TradingDecision MaybeAmended)> ZoneGateAsync(TradingDecision decision, string symbol, CancellationToken cancellationToken = default)
     {
-        if (decision is null) throw new ArgumentNullException(nameof(decision));
+        ArgumentNullException.ThrowIfNull(decision);
         if (_zoneProvider == null)
         {
             // Zone provider not available, allow trade to proceed

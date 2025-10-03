@@ -81,8 +81,8 @@ namespace TradingBot.BotCore.Services
         /// </summary>
         public async Task<SignedManifest> CreateSignedManifestAsync(string manifestName, IEnumerable<string> filePaths)
         {
-            if (manifestName is null) throw new ArgumentNullException(nameof(manifestName));
-            if (filePaths is null) throw new ArgumentNullException(nameof(filePaths));
+            ArgumentNullException.ThrowIfNull(manifestName);
+            ArgumentNullException.ThrowIfNull(filePaths);
             
             try
             {
@@ -142,7 +142,7 @@ namespace TradingBot.BotCore.Services
         /// </summary>
         public async Task<ManifestVerificationResult> VerifySignedManifestAsync(SignedManifest manifest)
         {
-            if (manifest is null) throw new ArgumentNullException(nameof(manifest));
+            ArgumentNullException.ThrowIfNull(manifest);
             
             var result = new ManifestVerificationResult
             {
@@ -289,7 +289,7 @@ namespace TradingBot.BotCore.Services
         /// </summary>
         public bool VerifyLogEntry(SignedLogEntry logEntry)
         {
-            if (logEntry is null) throw new ArgumentNullException(nameof(logEntry));
+            ArgumentNullException.ThrowIfNull(logEntry);
             
             try
             {

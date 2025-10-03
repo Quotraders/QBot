@@ -373,7 +373,7 @@ public class TradingConfigurationValidator : IValidateOptions<TradingConfigurati
 {
     public ValidateOptionsResult Validate(string? name, TradingConfiguration options)
     {
-        if (options is null) throw new ArgumentNullException(nameof(options));
+        ArgumentNullException.ThrowIfNull(options);
         
         var failures = new List<string>();
 
@@ -451,7 +451,7 @@ public class TopstepXConfigurationValidator : IValidateOptions<TopstepXConfigura
 {
     public ValidateOptionsResult Validate(string? name, TopstepXConfiguration options)
     {
-        if (options is null) throw new ArgumentNullException(nameof(options));
+        ArgumentNullException.ThrowIfNull(options);
         
         var failures = new List<string>();
 
@@ -482,7 +482,7 @@ public class SecurityConfigurationValidator : IValidateOptions<SecurityConfigura
 {
     public ValidateOptionsResult Validate(string? name, SecurityConfiguration options)
     {
-        if (options is null) throw new ArgumentNullException(nameof(options));
+        ArgumentNullException.ThrowIfNull(options);
         
         var failures = new List<string>();
 
@@ -527,7 +527,7 @@ public class ResilienceConfigurationValidator : IValidateOptions<ResilienceConfi
 {
     public ValidateOptionsResult Validate(string? name, ResilienceConfiguration options)
     {
-        if (options is null) throw new ArgumentNullException(nameof(options));
+        ArgumentNullException.ThrowIfNull(options);
         
         var failures = new List<string>();
 
@@ -554,7 +554,7 @@ public class ObservabilityConfigurationValidator : IValidateOptions<Observabilit
 {
     public ValidateOptionsResult Validate(string? name, ObservabilityConfiguration options)
     {
-        if (options is null) throw new ArgumentNullException(nameof(options));
+        ArgumentNullException.ThrowIfNull(options);
         
         var failures = new List<string>();
 
@@ -608,7 +608,7 @@ public class HealthCheckConfigurationValidator : IValidateOptions<HealthCheckCon
 {
     public ValidateOptionsResult Validate(string? name, HealthCheckConfiguration options)
     {
-        if (options is null) throw new ArgumentNullException(nameof(options));
+        ArgumentNullException.ThrowIfNull(options);
         
         var failures = new List<string>();
 

@@ -27,8 +27,8 @@ public static class StrategyGates
     // In AlwaysOn mode, enforce hard spread guard; otherwise use RS gate
     public static bool PassesGlobal(TradingProfileConfig cfg, BotCore.Models.MarketSnapshot snap)
     {
-        if (cfg is null) throw new ArgumentNullException(nameof(cfg));
-        if (snap is null) throw new ArgumentNullException(nameof(snap));
+        ArgumentNullException.ThrowIfNull(cfg);
+        ArgumentNullException.ThrowIfNull(snap);
         
         if (cfg.AlwaysOn.Enabled)
         {
@@ -43,8 +43,8 @@ public static class StrategyGates
 
     public static bool PassesRSGate(TradingProfileConfig cfg, BotCore.Models.MarketSnapshot snap)
     {
-        if (cfg is null) throw new ArgumentNullException(nameof(cfg));
-        if (snap is null) throw new ArgumentNullException(nameof(snap));
+        ArgumentNullException.ThrowIfNull(cfg);
+        ArgumentNullException.ThrowIfNull(snap);
         
         var z = snap.Z5mReturnDiff;
         var abs = Math.Abs(z);
@@ -64,8 +64,8 @@ public static class StrategyGates
     // Convert environment into a size multiplier (never zero)
     public static decimal SizeScale(TradingProfileConfig cfg, BotCore.Models.MarketSnapshot snap)
     {
-        if (cfg is null) throw new ArgumentNullException(nameof(cfg));
-        if (snap is null) throw new ArgumentNullException(nameof(snap));
+        ArgumentNullException.ThrowIfNull(cfg);
+        ArgumentNullException.ThrowIfNull(snap);
         
         decimal scale = 1.0m;
         if (cfg.News.BoostOnMajorNews && (snap.IsMajorNewsNow || snap.IsHoliday))
@@ -87,9 +87,9 @@ public static class StrategyGates
     // News/holiday score weight, biased by family (deterministic; no RNG)
     public static decimal ScoreWeight(TradingProfileConfig cfg, BotCore.Models.MarketSnapshot snap, string family)
     {
-        if (cfg is null) throw new ArgumentNullException(nameof(cfg));
-        if (snap is null) throw new ArgumentNullException(nameof(snap));
-        if (family is null) throw new ArgumentNullException(nameof(family));
+        ArgumentNullException.ThrowIfNull(cfg);
+        ArgumentNullException.ThrowIfNull(snap);
+        ArgumentNullException.ThrowIfNull(family);
         
         decimal w = 1.0m;
 
@@ -140,9 +140,9 @@ public static class StrategyGates
     // Legacy blocking filters preserved for non-always-on scenarios
     public static bool PassesGlobalFilters(TradingProfileConfig cfg, StrategyDef s, BotCore.Models.MarketSnapshot snap)
     {
-        if (cfg is null) throw new ArgumentNullException(nameof(cfg));
-        if (s is null) throw new ArgumentNullException(nameof(s));
-        if (snap is null) throw new ArgumentNullException(nameof(snap));
+        ArgumentNullException.ThrowIfNull(cfg);
+        ArgumentNullException.ThrowIfNull(s);
+        ArgumentNullException.ThrowIfNull(snap);
         
         if (cfg.AlwaysOn.Enabled) return true; // never block in AlwaysOn
         var gf = cfg.GlobalFilters;

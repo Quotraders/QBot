@@ -18,7 +18,7 @@ namespace BotCore.Extensions
             this IServiceCollection services, 
             IConfiguration configuration)
         {
-            if (configuration is null) throw new ArgumentNullException(nameof(configuration));
+            ArgumentNullException.ThrowIfNull(configuration);
             
             // Register trading readiness configuration
             services.Configure<TradingReadinessConfiguration>(

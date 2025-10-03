@@ -64,7 +64,7 @@ public class EnhancedTradingBrainIntegration
         List<string> availableStrategies,
         CancellationToken cancellationToken = default)
     {
-        if (marketContext is null) throw new ArgumentNullException(nameof(marketContext));
+        ArgumentNullException.ThrowIfNull(marketContext);
         
         try
         {

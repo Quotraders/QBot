@@ -147,17 +147,6 @@ public class SessionAwareRuntimeGates
         };
     }
 
-    /// <summary>
-    /// Get detailed session status with timing information (synchronous wrapper)
-    /// </summary>
-    [Obsolete("Use GetSessionStatusAsync to avoid blocking. This synchronous wrapper uses Task.Run.")]
-    public SessionStatus GetSessionStatus(DateTime? etTime = null)
-    {
-        // NOTE: Synchronous wrapper for backward compatibility.
-        // Using Task.Run to avoid blocking the caller's synchronization context.
-        return Task.Run(async () => await GetSessionStatusAsync(etTime, CancellationToken.None).ConfigureAwait(false)).GetAwaiter().GetResult();
-    }
-
     #region Private Helper Methods
 
     /// <summary>

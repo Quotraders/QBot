@@ -41,7 +41,7 @@ public class CloudModelSynchronizationService : BackgroundService
         _logger = logger;
         _httpClient = httpClient;
         _memoryManager = memoryManager;
-        if (configuration is null) throw new ArgumentNullException(nameof(configuration));
+        ArgumentNullException.ThrowIfNull(configuration);
         _resilienceService = resilienceService;
         _monitoringService = monitoringService;
         

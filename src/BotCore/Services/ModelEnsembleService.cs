@@ -52,8 +52,8 @@ public class ModelEnsembleService
         IReadOnlyList<string> availableStrategies,
         CancellationToken cancellationToken = default)
     {
-        if (contextVector is null) throw new ArgumentNullException(nameof(contextVector));
-        if (availableStrategies is null) throw new ArgumentNullException(nameof(availableStrategies));
+        ArgumentNullException.ThrowIfNull(contextVector);
+        ArgumentNullException.ThrowIfNull(availableStrategies);
         
         try
         {
@@ -118,7 +118,7 @@ public class ModelEnsembleService
         double[] marketFeatures,
         CancellationToken cancellationToken = default)
     {
-        if (marketFeatures is null) throw new ArgumentNullException(nameof(marketFeatures));
+        ArgumentNullException.ThrowIfNull(marketFeatures);
         
         try
         {
