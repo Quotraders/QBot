@@ -53,7 +53,48 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 91 - Phase 2: Historical Data Bridge Safety (Current Session)
+### 🔧 Round 92 - Phase 2: Master Decision Orchestrator Safety (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 760 | 753 | MasterDecisionOrchestrator.cs | Specific exception types for orchestration operations (InvalidOperationException, TimeoutException, ArgumentException, IOException, UnauthorizedAccessException) |
+
+**Total Fixed: 7 CA1031 violations**
+
+**Example Pattern Applied**:
+
+**CA1031 - Master Orchestrator Exception Safety**:
+```csharp
+// Before (CA1031) - Generic exception catch
+catch (Exception ex)
+{
+    _logger.LogError(ex, "❌ [MASTER-ORCHESTRATOR] Error in orchestration cycle");
+    await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken).ConfigureAwait(false);
+}
+
+// After (Compliant) - Specific exception types for orchestration operations
+catch (InvalidOperationException ex)
+{
+    _logger.LogError(ex, "❌ [MASTER-ORCHESTRATOR] Invalid operation in orchestration cycle");
+    await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken).ConfigureAwait(false);
+}
+catch (TimeoutException ex)
+{
+    _logger.LogError(ex, "❌ [MASTER-ORCHESTRATOR] Timeout in orchestration cycle");
+    await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken).ConfigureAwait(false);
+}
+```
+
+**Rationale**: 
+- **CA1031**: Master decision orchestrator coordinates trading decisions, learning feedback, and system recovery. All exception handlers now catch specific expected exception types:
+  - `InvalidOperationException` for state/service errors
+  - `TimeoutException` for slow operations
+  - `ArgumentException` for validation failures
+  - `IOException` / `UnauthorizedAccessException` for file operations (bundle tracking)
+- **Fixed Methods**: ExecuteAsync (main orchestration loop), MakeUnifiedDecisionAsync, SubmitTradingOutcomeAsync, TrackBundleDecisionAsync, UpdateBundlePerformanceAsync, TriggerRecoveryActionsAsync - all critical for coordinated decision-making and learning.
+
+---
+
+### 🔧 Round 91 - Phase 2: Historical Data Bridge Safety (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA1031 | 775 | 772 | HistoricalDataBridgeService.cs | Specific exception types for data retrieval operations (InvalidOperationException, TimeoutException, HttpRequestException, ArgumentException) |
