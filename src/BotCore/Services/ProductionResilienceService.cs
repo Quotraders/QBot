@@ -213,7 +213,7 @@ public class ProductionResilienceService
         return GetHttpStatusCodeFromMessage(httpEx);
     }
 
-    private bool GetHttpStatusCodeFromMessage(HttpRequestException httpEx)
+    private static bool GetHttpStatusCodeFromMessage(HttpRequestException httpEx)
     {
         // Extract status code from HTTP exception message if available
         var message = httpEx.Message;

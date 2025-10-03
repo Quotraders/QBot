@@ -649,7 +649,7 @@ public sealed class OnnxModelLoader : IDisposable
     /// <summary>
     /// Calculate SHA256 checksum of model file
     /// </summary>
-    private async Task<string> CalculateFileChecksumAsync(string filePath)
+    private static async Task<string> CalculateFileChecksumAsync(string filePath)
     {
         using var stream = File.OpenRead(filePath);
         using var sha256 = SHA256.Create();
@@ -1090,7 +1090,7 @@ public sealed class OnnxModelLoader : IDisposable
         return Task.CompletedTask;
     }
 
-    private async Task<string> CalculateFileHashAsync(string filePath, CancellationToken cancellationToken)
+    private static async Task<string> CalculateFileHashAsync(string filePath, CancellationToken cancellationToken)
     {
         using var sha256 = SHA256.Create();
         using var fileStream = File.OpenRead(filePath);

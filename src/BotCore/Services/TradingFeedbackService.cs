@@ -499,7 +499,7 @@ public class TradingFeedbackService : BackgroundService
     /// <summary>
     /// Calculate severity based on deviation from threshold
     /// </summary>
-    private string CalculateSeverity(double actual, double threshold, bool higherIsBad = false)
+    private static string CalculateSeverity(double actual, double threshold, bool higherIsBad = false)
     {
         var deviation = higherIsBad ? (actual - threshold) / threshold : (threshold - actual) / threshold;
         

@@ -252,7 +252,7 @@ namespace BotCore.Services
             }
         }
 
-        private FeatureStatistics CalculateFeatureStatistics(List<double> values)
+        private static FeatureStatistics CalculateFeatureStatistics(List<double> values)
         {
             if (values.Count == 0)
                 return new FeatureStatistics();
@@ -277,7 +277,7 @@ namespace BotCore.Services
             };
         }
 
-        private double CalculateKSStatistic(FeatureStatistics baseline, FeatureStatistics current)
+        private static double CalculateKSStatistic(FeatureStatistics baseline, FeatureStatistics current)
         {
             // Simplified KS statistic based on mean and standard deviation differences
             var meanDiff = Math.Abs(current.Mean - baseline.Mean);
@@ -290,7 +290,7 @@ namespace BotCore.Services
             return Math.Max(normalizedMeanDiff, normalizedStdDevDiff);
         }
 
-        private double CalculatePSIStatistic(FeatureStatistics baseline, FeatureStatistics current)
+        private static double CalculatePSIStatistic(FeatureStatistics baseline, FeatureStatistics current)
         {
             // Simplified PSI calculation based on distribution changes
             var meanShift = Math.Abs(current.Mean - baseline.Mean);

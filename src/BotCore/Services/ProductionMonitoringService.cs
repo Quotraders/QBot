@@ -267,7 +267,7 @@ public class ProductionMonitoringService : IHealthCheck
         }
     }
 
-    private async Task<(bool IsHealthy, string Message)> CheckGitHubConnectivityAsync(CancellationToken cancellationToken)
+    private static async Task<(bool IsHealthy, string Message)> CheckGitHubConnectivityAsync(CancellationToken cancellationToken)
     {
         try
         {
@@ -286,7 +286,7 @@ public class ProductionMonitoringService : IHealthCheck
         }
     }
 
-    private (bool IsHealthy, string Message) CheckSystemResourcesHealth()
+    private static (bool IsHealthy, string Message) CheckSystemResourcesHealth()
     {
         try
         {

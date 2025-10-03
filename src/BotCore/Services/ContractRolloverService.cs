@@ -340,7 +340,7 @@ namespace BotCore.Services
         /// <summary>
         /// Initialize contract specifications
         /// </summary>
-        private Dictionary<string, ContractSpec> InitializeContractSpecs()
+        private static Dictionary<string, ContractSpec> InitializeContractSpecs()
         {
             return new Dictionary<string, ContractSpec>
             {
@@ -409,7 +409,7 @@ namespace BotCore.Services
         /// <summary>
         /// Calculate expiration date for a contract
         /// </summary>
-        private DateTime CalculateExpirationDate(string monthCode, int year)
+        private static DateTime CalculateExpirationDate(string monthCode, int year)
         {
             var month = MonthCodeToMonth(monthCode);
             
@@ -423,7 +423,7 @@ namespace BotCore.Services
         /// <summary>
         /// Get third Friday of a month
         /// </summary>
-        private DateTime GetThirdFridayOfMonth(int year, int month)
+        private static DateTime GetThirdFridayOfMonth(int year, int month)
         {
             var firstDay = new DateTime(year, month, 1);
             var firstFriday = firstDay.AddDays((DayOfWeek.Friday - firstDay.DayOfWeek + 7) % 7);
@@ -433,7 +433,7 @@ namespace BotCore.Services
         /// <summary>
         /// Convert month code to month number
         /// </summary>
-        private int MonthCodeToMonth(string monthCode)
+        private static int MonthCodeToMonth(string monthCode)
         {
             return monthCode.ToUpper() switch
             {
@@ -456,7 +456,7 @@ namespace BotCore.Services
         /// <summary>
         /// Extract base symbol from contract symbol (e.g., "ESZ3" -> "ES")
         /// </summary>
-        private string ExtractBaseSymbol(string contractSymbol)
+        private static string ExtractBaseSymbol(string contractSymbol)
         {
             if (contractSymbol.Length < 2)
                 throw new ArgumentException("Invalid contract symbol format");
@@ -468,7 +468,7 @@ namespace BotCore.Services
         /// <summary>
         /// Extract month code from contract symbol
         /// </summary>
-        private string ExtractMonthCode(string contractSymbol)
+        private static string ExtractMonthCode(string contractSymbol)
         {
             var baseLength = ExtractBaseSymbol(contractSymbol).Length;
             if (contractSymbol.Length <= baseLength)
@@ -480,7 +480,7 @@ namespace BotCore.Services
         /// <summary>
         /// Extract year from contract symbol
         /// </summary>
-        private int ExtractYear(string contractSymbol)
+        private static int ExtractYear(string contractSymbol)
         {
             var baseLength = ExtractBaseSymbol(contractSymbol).Length;
             if (contractSymbol.Length < baseLength + 3)

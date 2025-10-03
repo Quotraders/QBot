@@ -197,7 +197,7 @@ public class SecurityService : ISecurityService
         }
     }
 
-    private (bool IsRemote, string Details) CheckRDPSession()
+    private static (bool IsRemote, string Details) CheckRDPSession()
     {
         try
         {
@@ -236,7 +236,7 @@ public class SecurityService : ISecurityService
         }
     }
 
-    private (bool IsRemote, string Details) CheckVPNAdapters()
+    private static (bool IsRemote, string Details) CheckVPNAdapters()
     {
         try
         {
@@ -273,7 +273,7 @@ public class SecurityService : ISecurityService
         }
     }
 
-    private (bool IsRemote, string Details) CheckVMIndicators()
+    private static (bool IsRemote, string Details) CheckVMIndicators()
     {
         try
         {
@@ -345,7 +345,7 @@ public class SecurityService : ISecurityService
         }
     }
 
-    private (bool IsRemote, string Details) CheckEnvironmentIndicators()
+    private static (bool IsRemote, string Details) CheckEnvironmentIndicators()
     {
         try
         {

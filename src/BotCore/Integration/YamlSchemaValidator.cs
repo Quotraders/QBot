@@ -263,7 +263,7 @@ public sealed class YamlSchemaValidator
     /// <summary>
     /// Validate YAML object against schema definition
     /// </summary>
-    private async Task ValidateAgainstSchemaAsync(object yamlObject, YamlSchemaDefinition schema, YamlValidationResult result)
+    private static async Task ValidateAgainstSchemaAsync(object yamlObject, YamlSchemaDefinition schema, YamlValidationResult result)
     {
         if (yamlObject is not Dictionary<object, object> yamlDict)
         {
@@ -409,7 +409,7 @@ public sealed class YamlSchemaValidator
     /// <summary>
     /// Check if DSL feature key is valid (should exist in feature map authority)
     /// </summary>
-    private bool IsValidDslFeatureKey(string key)
+    private static bool IsValidDslFeatureKey(string key)
     {
         // Production validation of DSL key format - must match feature map authority patterns
         if (string.IsNullOrWhiteSpace(key))
@@ -432,7 +432,7 @@ public sealed class YamlSchemaValidator
     /// <summary>
     /// Generate comprehensive validation report
     /// </summary>
-    public string GenerateValidationReport(YamlDirectoryValidationResult result)
+    public static string GenerateValidationReport(YamlDirectoryValidationResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
         

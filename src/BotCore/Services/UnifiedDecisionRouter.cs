@@ -672,7 +672,7 @@ public class UnifiedDecisionRouter
         return context;
     }
     
-    private UnifiedTradingDecision ConvertFromEnhancedDecision(EnhancedTradingDecision enhanced)
+    private static UnifiedTradingDecision ConvertFromEnhancedDecision(EnhancedTradingDecision enhanced)
     {
         // Map enhanced decision timing signal to action
         var action = enhanced.MarketTimingSignal switch
@@ -700,7 +700,7 @@ public class UnifiedDecisionRouter
         };
     }
     
-    private UnifiedTradingDecision ConvertFromBrainDecision(BrainDecision brain)
+    private static UnifiedTradingDecision ConvertFromBrainDecision(BrainDecision brain)
     {
         // Convert brain decision to unified format
         var action = brain.PriceDirection switch
@@ -731,7 +731,7 @@ public class UnifiedDecisionRouter
         };
     }
     
-    private UnifiedTradingDecision ConvertFromAbstractionDecision(TradingBot.Abstractions.TradingDecision decision)
+    private static UnifiedTradingDecision ConvertFromAbstractionDecision(TradingBot.Abstractions.TradingDecision decision)
     {
         return new UnifiedTradingDecision
         {
@@ -745,7 +745,7 @@ public class UnifiedDecisionRouter
         };
     }
     
-    private Dictionary<string, StrategyConfig> InitializeStrategyConfigs()
+    private static Dictionary<string, StrategyConfig> InitializeStrategyConfigs()
     {
         return new Dictionary<string, StrategyConfig>
         {
