@@ -550,7 +550,7 @@ public class UnifiedDataIntegrationService : BackgroundService
     
     #region Helper Methods
     
-    private List<MarketBar> GenerateHistoricalBars(string symbol, int count)
+    private static List<MarketBar> GenerateHistoricalBars(string symbol, int count)
     {
         var bars = new List<MarketBar>();
         var basePrice = symbol == "ES" ? 4500m : 15000m;
@@ -574,7 +574,7 @@ public class UnifiedDataIntegrationService : BackgroundService
         return bars;
     }
     
-    private TradingBot.Abstractions.MarketData ConvertBarToMarketData(MarketBar bar)
+    private static TradingBot.Abstractions.MarketData ConvertBarToMarketData(MarketBar bar)
     {
         return new TradingBot.Abstractions.MarketData
         {
@@ -588,7 +588,7 @@ public class UnifiedDataIntegrationService : BackgroundService
         };
     }
     
-    private MarketBar ConvertMarketDataToBar(TradingBot.Abstractions.MarketData data)
+    private static MarketBar ConvertMarketDataToBar(TradingBot.Abstractions.MarketData data)
     {
         return new MarketBar(
             data.Timestamp,
@@ -628,7 +628,7 @@ public class ContractManager
         _logger = logger;
     }
     
-    public Task<Dictionary<string, string>> GetCurrentContractsAsync(CancellationToken cancellationToken)
+    public static Task<Dictionary<string, string>> GetCurrentContractsAsync(CancellationToken cancellationToken)
     {
         // In production, this would query TopstepX API for current front month contracts
         var contracts = new Dictionary<string, string>
@@ -639,7 +639,7 @@ public class ContractManager
         return Task.FromResult(contracts);
     }
     
-    public Task<RolloverCheck> CheckRolloverNeededAsync(string currentES, string currentNQ, CancellationToken cancellationToken)
+    public static Task<RolloverCheck> CheckRolloverNeededAsync(string currentES, string currentNQ, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(currentES);
         ArgumentNullException.ThrowIfNull(currentNQ);
@@ -675,7 +675,7 @@ public class BarCountManager
         _readinessTracker = readinessTracker;
     }
     
-    public Task ProcessBarAsync(MarketBar bar, bool isHistorical, CancellationToken cancellationToken)
+    public static Task ProcessBarAsync(MarketBar bar, bool isHistorical, CancellationToken cancellationToken)
     {
         // Unified bar processing logic
         return Task.CompletedTask;

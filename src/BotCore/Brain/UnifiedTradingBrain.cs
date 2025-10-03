@@ -1174,7 +1174,7 @@ namespace BotCore.Brain
             return ema;
         }
 
-        private decimal CalculateRSI(IList<Bar> bars, int period)
+        private static decimal CalculateRSI(IList<Bar> bars, int period)
         {
             if (bars.Count < period + 1) return TopStepConfig.DefaultRsiNeutral;
             
@@ -1194,7 +1194,7 @@ namespace BotCore.Brain
             return TopStepConfig.DefaultRsiMax - (TopStepConfig.DefaultRsiMax / (1 + rs));
         }
 
-        private decimal CalculateTrendStrength(IList<Bar> bars)
+        private static decimal CalculateTrendStrength(IList<Bar> bars)
         {
             if (bars.Count < TopStepConfig.MinBarsPeriod) return 0;
             
@@ -1203,7 +1203,7 @@ namespace BotCore.Brain
             return Math.Abs(slope) / (recent.Average(b => Math.Abs(b.High - b.Low)));
         }
 
-        private decimal CalculateVolatilityRank(IList<Bar> bars)
+        private static decimal CalculateVolatilityRank(IList<Bar> bars)
         {
             if (bars.Count < TopStepConfig.MinBarsExtended) return TopStepConfig.NeutralProbability;
             
@@ -1214,7 +1214,7 @@ namespace BotCore.Brain
             return rank;
         }
 
-        private decimal CalculateMomentum(IList<Bar> bars)
+        private static decimal CalculateMomentum(IList<Bar> bars)
         {
             if (bars.Count < 5) return 0;
             
@@ -1495,7 +1495,7 @@ namespace BotCore.Brain
             };
         }
         
-        private bool IsMarketOpen(DayOfWeek dayOfWeek, TimeSpan timeOfDay)
+        private static bool IsMarketOpen(DayOfWeek dayOfWeek, TimeSpan timeOfDay)
         {
             // CME ES/NQ: Sunday 6PM - Friday 5PM EST
             var marketOpenTime = new TimeSpan(18, 0, 0);  // 6:00 PM EST
@@ -1521,7 +1521,7 @@ namespace BotCore.Brain
             return true;
         }
         
-        private bool IsMaintenanceWindow(DayOfWeek dayOfWeek, TimeSpan timeOfDay)
+        private static bool IsMaintenanceWindow(DayOfWeek dayOfWeek, TimeSpan timeOfDay)
         {
             // Daily maintenance: 5:00-6:00 PM EST Monday-Thursday
             if (dayOfWeek >= DayOfWeek.Monday && dayOfWeek <= DayOfWeek.Thursday)
@@ -1635,7 +1635,7 @@ namespace BotCore.Brain
         /// <summary>
         /// Convert CVaR-PPO action result to contract count
         /// </summary>
-        private int ConvertCVaRActionToContracts(ActionResult actionResult, int baseContracts)
+        private static int ConvertCVaRActionToContracts(ActionResult actionResult, int baseContracts)
         {
             // CVaR-PPO actions map to position size multipliers
             // Action 0=No Trade, 1=Micro(0.25x), 2=Small(0.5x), 3=Normal(1x), 4=Large(1.5x), 5=Max(2x)
@@ -1665,7 +1665,7 @@ namespace BotCore.Brain
         /// <summary>
         /// Apply CVaR risk controls to position sizing
         /// </summary>
-        private int ApplyCVaRRiskControls(int contracts, ActionResult actionResult, MarketContext context)
+        private static int ApplyCVaRRiskControls(int contracts, ActionResult actionResult, MarketContext context)
         {
             if (contracts <= 0) return 0;
             
