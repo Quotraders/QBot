@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using TradingBot.Abstractions;
@@ -50,7 +51,7 @@ namespace TradingBot.BotCore.Services
             _config = config;
         }
 
-        public (double Lower, double Upper) GetConfidenceBands(string regimeType) => regimeType?.ToLower() switch
+        public (double Lower, double Upper) GetConfidenceBands(string regimeType) => regimeType?.ToLower(CultureInfo.InvariantCulture) switch
         {
             "bull" => (
                 _config.GetValue("Controller:ConfidenceBands:Bull:Lower", DefaultBullConfidenceLower),

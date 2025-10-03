@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using TradingBot.Abstractions;
@@ -67,7 +68,7 @@ namespace TradingBot.BotCore.Services
         public double GetMarketImpactMultiplier() => 
             _config.GetValue("ExecutionCost:MarketImpactMultiplier", DefaultMarketImpactMultiplier);
 
-        public double GetExpectedSlippageTicks(string orderType) => orderType?.ToUpper() switch
+        public double GetExpectedSlippageTicks(string orderType) => orderType?.ToUpper(CultureInfo.InvariantCulture) switch
         {
             "MARKET" => _config.GetValue("ExecutionCost:MarketOrderSlippageTicks", DefaultMarketOrderSlippageTicks),
             "LIMIT" => _config.GetValue("ExecutionCost:LimitOrderSlippageTicks", DefaultLimitOrderSlippageTicks),
