@@ -33,6 +33,7 @@ This ledger documents all fixes made during the analyzer compliance initiative i
     - Round 80: 1646 namespace collision fixes (BotCore.Math → BotCore.Financial)
     - Round 78: 96 RLAgent/S7 decimal/double fixes + Round 79: 16 analyzer violations
 - **Phase 2 Status**: ✅ **IN PROGRESS** - Moving to systematic analyzer violation elimination
+  - **Current Session (Round 117)**: 8 analyzer violations fixed (S109 magic numbers - Priority 1 continued)
   - **Current Session (Round 116)**: 6 analyzer violations fixed (S109 magic numbers - Priority 1 continued)
   - **Current Session (Round 115)**: 6 analyzer violations fixed (S109 magic numbers - Priority 1 continued)
   - **Current Session (Round 114)**: 6 analyzer violations fixed (S109 magic numbers - Priority 1)
@@ -60,6 +61,41 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Current Focus**: Session complete - CA1510 eliminated, S1144 cleaned, S125 removed
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
+
+### 🔧 Round 117 - Phase 2: S109 Magic Number Elimination Continued (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 1992 | 1984 | BracketAdjustmentService.cs, HttpClientConfiguration.cs | Added named constants for bracket validation thresholds and token expiry buffer |
+
+**Total Fixed: 8 violations (4 unique fixes in 2 files)**
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers inline
+if (HighVolatilityMultiplier <= 1.0m)
+if (Timestamp < DateTime.UtcNow.AddMinutes(-10))
+if (!string.IsNullOrEmpty(_currentToken) && DateTime.UtcNow < _tokenExpiry.AddMinutes(-5))
+
+// After (Compliant) - Named constants with clear intent
+private const decimal MinHighVolatilityMultiplier = 1.0m;
+private const int ConformalIntervalStalenessMinutes = 10;
+private const int TokenExpiryBufferMinutes = 5;
+
+if (HighVolatilityMultiplier <= MinHighVolatilityMultiplier)
+if (Timestamp < DateTime.UtcNow.AddMinutes(-ConformalIntervalStalenessMinutes))
+if (!string.IsNullOrEmpty(_currentToken) && DateTime.UtcNow < _tokenExpiry.AddMinutes(-TokenExpiryBufferMinutes))
+```
+
+**Rationale**: 
+- **S109**: Continued Priority 1 (Correctness & Invariants) magic number elimination
+- **Files Fixed**:
+  - `BracketAdjustmentService.cs` - Bracket validation thresholds (high volatility multiplier, conformal interval staleness)
+  - `HttpClientConfiguration.cs` - JWT token expiry buffer (used in 2 locations)
+- **Context**: Execution validation constants and authentication token management
+
+**Build Verification**: ✅ 0 CS errors maintained, 5948 analyzer violations remaining (8 violations fixed, reduced from 5953 to 5948)
+
+---
 
 ### 🔧 Round 116 - Phase 2: S109 Magic Number Elimination Continued (Current Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
