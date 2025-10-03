@@ -442,7 +442,7 @@ public class EnsembleMetaLearner
         // Populate features dictionary
         foreach (var kvp in context.TechnicalIndicators)
         {
-            modelPrediction.Features[kvp.Key] = kvp.Value;
+            modelPrediction.Features[kvp.Key] = (double)kvp.Value;
         }
 
         return modelPrediction;
@@ -452,10 +452,14 @@ public class EnsembleMetaLearner
         MarketContext context)
     {
         // Feature engineering based on model requirements
-        var features = new Dictionary<string, double>(context.TechnicalIndicators);
+        var features = new Dictionary<string, double>();
+        foreach (var kvp in context.TechnicalIndicators)
+        {
+            features[kvp.Key] = (double)kvp.Value;
+        }
         
         // Add derived features
-        features["price_momentum"] = context.Price / features.GetValueOrDefault("sma_20", context.Price) - 1.0;
+        features["price_momentum"] = (double)context.Price / features.GetValueOrDefault("sma_20", (double)context.Price) - 1.0;
         features["volatility_regime"] = features.GetValueOrDefault("atr", 1.0) / features.GetValueOrDefault("sma_atr", 1.0);
         
         return Task.FromResult(features);
