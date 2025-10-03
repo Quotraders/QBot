@@ -109,9 +109,17 @@ namespace BotCore.Services
                         _logger.LogWarning("[HISTORICAL-BRIDGE] ⚠️ No historical data available for {ContractId}", contractId);
                     }
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "[HISTORICAL-BRIDGE] ❌ Failed to seed {ContractId}: {Error}", contractId, ex.Message);
+                    _logger.LogError(ex, "[HISTORICAL-BRIDGE] ❌ Invalid operation seeding {ContractId}", contractId);
+                }
+                catch (TimeoutException ex)
+                {
+                    _logger.LogError(ex, "[HISTORICAL-BRIDGE] ❌ Timeout seeding {ContractId}", contractId);
+                }
+                catch (HttpRequestException ex)
+                {
+                    _logger.LogError(ex, "[HISTORICAL-BRIDGE] ❌ HTTP error seeding {ContractId}", contractId);
                 }
             }
 
@@ -163,9 +171,19 @@ namespace BotCore.Services
                 
                 return syntheticBars;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[HISTORICAL-BRIDGE] Error getting historical bars for {ContractId}", contractId);
+                _logger.LogError(ex, "[HISTORICAL-BRIDGE] Invalid operation getting historical bars for {ContractId}", contractId);
+                return new List<BotCore.Models.Bar>();
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogError(ex, "[HISTORICAL-BRIDGE] Timeout getting historical bars for {ContractId}", contractId);
+                return new List<BotCore.Models.Bar>();
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "[HISTORICAL-BRIDGE] HTTP error getting historical bars for {ContractId}", contractId);
                 return new List<BotCore.Models.Bar>();
             }
         }
@@ -190,9 +208,14 @@ namespace BotCore.Services
 
                 return isValid;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[HISTORICAL-BRIDGE] Validation failed for {ContractId}", contractId);
+                _logger.LogError(ex, "[HISTORICAL-BRIDGE] Invalid operation during validation for {ContractId}", contractId);
+                return false;
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "[HISTORICAL-BRIDGE] Invalid argument during validation for {ContractId}", contractId);
                 return false;
             }
         }

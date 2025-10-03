@@ -153,6 +153,13 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
             var holdRiskException = GetConfiguredHoldRiskLevel(_serviceProvider);
             return Task.FromResult(holdRiskException);
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk service unexpected failure - fail-closed: returning hold, Duration={Duration}ms", 
+                operationId, (DateTime.UtcNow - startTime).TotalMilliseconds);
+            var holdRiskException = GetConfiguredHoldRiskLevel(_serviceProvider);
+            return Task.FromResult(holdRiskException);
+        }
     }
 
     /// <summary>

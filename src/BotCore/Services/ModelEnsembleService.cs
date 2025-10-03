@@ -79,10 +79,19 @@ public class ModelEnsembleService
                         predictions.Add(prediction);
                     }
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
-                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Strategy prediction failed for model {ModelName}", model.Name);
-                    // Update model performance (penalize failures)
+                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Invalid model operation for {ModelName}", model.Name);
+                    UpdateModelPerformance(model.Name, 0.0, "prediction_failure");
+                }
+                catch (ArgumentException ex)
+                {
+                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Invalid prediction argument for model {ModelName}", model.Name);
+                    UpdateModelPerformance(model.Name, 0.0, "prediction_failure");
+                }
+                catch (NullReferenceException ex)
+                {
+                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Null reference in strategy prediction for model {ModelName}", model.Name);
                     UpdateModelPerformance(model.Name, 0.0, "prediction_failure");
                 }
             }
@@ -103,9 +112,19 @@ public class ModelEnsembleService
                 Timestamp = DateTime.UtcNow
             };
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "🔀 [ENSEMBLE] Strategy selection ensemble failed");
+            _logger.LogError(ex, "🔀 [ENSEMBLE] Invalid ensemble operation during strategy selection");
+            return CreateFallbackStrategyPrediction(availableStrategies);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "🔀 [ENSEMBLE] Invalid argument during strategy selection");
+            return CreateFallbackStrategyPrediction(availableStrategies);
+        }
+        catch (NullReferenceException ex)
+        {
+            _logger.LogError(ex, "🔀 [ENSEMBLE] Null reference during strategy selection");
             return CreateFallbackStrategyPrediction(availableStrategies);
         }
     }
@@ -146,9 +165,19 @@ public class ModelEnsembleService
                         predictions.Add(prediction);
                     }
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
-                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Price prediction failed for model {ModelName}", model.Name);
+                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Invalid model operation for {ModelName}", model.Name);
+                    UpdateModelPerformance(model.Name, 0.0, "prediction_failure");
+                }
+                catch (ArgumentException ex)
+                {
+                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Invalid prediction argument for model {ModelName}", model.Name);
+                    UpdateModelPerformance(model.Name, 0.0, "prediction_failure");
+                }
+                catch (NullReferenceException ex)
+                {
+                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Null reference in price prediction for model {ModelName}", model.Name);
                     UpdateModelPerformance(model.Name, 0.0, "prediction_failure");
                 }
             }
@@ -169,9 +198,19 @@ public class ModelEnsembleService
                 Timestamp = DateTime.UtcNow
             };
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "🔀 [ENSEMBLE] Price direction ensemble failed");
+            _logger.LogError(ex, "🔀 [ENSEMBLE] Invalid ensemble operation during price prediction");
+            return CreateFallbackPricePrediction();
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "🔀 [ENSEMBLE] Invalid argument during price prediction");
+            return CreateFallbackPricePrediction();
+        }
+        catch (NullReferenceException ex)
+        {
+            _logger.LogError(ex, "🔀 [ENSEMBLE] Null reference during price prediction");
             return CreateFallbackPricePrediction();
         }
     }
@@ -202,9 +241,19 @@ public class ModelEnsembleService
                         actions.Add(action);
                     }
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
-                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] CVaR-PPO action failed for model {ModelName}", model.Name);
+                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Invalid CVaR-PPO operation for model {ModelName}", model.Name);
+                    UpdateModelPerformance(model.Name, 0.0, "action_failure");
+                }
+                catch (ArgumentException ex)
+                {
+                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Invalid CVaR-PPO argument for model {ModelName}", model.Name);
+                    UpdateModelPerformance(model.Name, 0.0, "action_failure");
+                }
+                catch (NullReferenceException ex)
+                {
+                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Null reference in CVaR-PPO action for model {ModelName}", model.Name);
                     UpdateModelPerformance(model.Name, 0.0, "action_failure");
                 }
             }
@@ -228,9 +277,19 @@ public class ModelEnsembleService
                 Timestamp = DateTime.UtcNow
             };
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "🔀 [ENSEMBLE] CVaR ensemble failed");
+            _logger.LogError(ex, "🔀 [ENSEMBLE] Invalid ensemble operation during CVaR action");
+            return CreateFallbackAction();
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "🔀 [ENSEMBLE] Invalid argument during CVaR action");
+            return CreateFallbackAction();
+        }
+        catch (NullReferenceException ex)
+        {
+            _logger.LogError(ex, "🔀 [ENSEMBLE] Null reference during CVaR action");
             return CreateFallbackAction();
         }
     }
@@ -298,9 +357,21 @@ public class ModelEnsembleService
                 _logger.LogWarning("🔀 [ENSEMBLE] Failed to load model: {ModelName}", modelName);
             }
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "🔀 [ENSEMBLE] Error loading model {ModelName}", modelName);
+            _logger.LogError(ex, "🔀 [ENSEMBLE] I/O error loading model {ModelName}", modelName);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "🔀 [ENSEMBLE] Access denied loading model {ModelName}", modelName);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "🔀 [ENSEMBLE] Invalid model loading operation for {ModelName}", modelName);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "🔀 [ENSEMBLE] Invalid argument loading model {ModelName}", modelName);
         }
     }
 

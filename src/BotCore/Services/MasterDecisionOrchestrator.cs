@@ -131,9 +131,14 @@ public class MasterDecisionOrchestrator : BackgroundService
                 {
                     break;
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "❌ [MASTER-ORCHESTRATOR] Error in orchestration cycle");
+                    _logger.LogError(ex, "❌ [MASTER-ORCHESTRATOR] Invalid operation in orchestration cycle");
+                    await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken).ConfigureAwait(false);
+                }
+                catch (TimeoutException ex)
+                {
+                    _logger.LogError(ex, "❌ [MASTER-ORCHESTRATOR] Timeout in orchestration cycle");
                     await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken).ConfigureAwait(false);
                 }
             }
@@ -283,9 +288,13 @@ public class MasterDecisionOrchestrator : BackgroundService
                         bundleSelection.Bundle.BundleId, bundleSelection.Bundle.Strategy,
                         bundleSelection.Bundle.Mult, bundleSelection.Bundle.Thr);
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
-                    _logger.LogWarning(ex, "⚠️ [BUNDLE-SELECTION] Failed to select bundle, using fallback");
+                    _logger.LogWarning(ex, "⚠️ [BUNDLE-SELECTION] Invalid operation during bundle selection, using fallback");
+                }
+                catch (ArgumentException ex)
+                {
+                    _logger.LogWarning(ex, "⚠️ [BUNDLE-SELECTION] Invalid argument during bundle selection, using fallback");
                 }
             }
             
@@ -317,11 +326,19 @@ public class MasterDecisionOrchestrator : BackgroundService
             
             return decision;
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "❌ [MASTER-DECISION] Failed to make decision for {Symbol}", symbol);
-            
-            // Emergency fallback decision
+            _logger.LogError(ex, "❌ [MASTER-DECISION] Invalid operation making decision for {Symbol}", symbol);
+            return CreateEmergencyDecision(symbol, decisionId, startTime);
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogError(ex, "❌ [MASTER-DECISION] Timeout making decision for {Symbol}", symbol);
+            return CreateEmergencyDecision(symbol, decisionId, startTime);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "❌ [MASTER-DECISION] Invalid argument making decision for {Symbol}", symbol);
             return CreateEmergencyDecision(symbol, decisionId, startTime);
         }
     }
@@ -377,9 +394,13 @@ public class MasterDecisionOrchestrator : BackgroundService
             
             _logger.LogInformation("✅ [MASTER-FEEDBACK] Outcome recorded and queued for learning");
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "❌ [MASTER-FEEDBACK] Failed to submit trading outcome");
+            _logger.LogError(ex, "❌ [MASTER-FEEDBACK] Invalid operation submitting trading outcome");
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "❌ [MASTER-FEEDBACK] Invalid argument submitting trading outcome");
         }
     }
     
@@ -581,9 +602,13 @@ public class MasterDecisionOrchestrator : BackgroundService
             
             _logger.LogDebug("📊 [BUNDLE-TRACKING] Tracked bundle decision: {BundleId}", trackingInfo.BundleId);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "❌ [BUNDLE-TRACKING] Failed to track bundle decision");
+            _logger.LogError(ex, "❌ [BUNDLE-TRACKING] I/O error tracking bundle decision");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "❌ [BUNDLE-TRACKING] Access denied tracking bundle decision");
         }
     }
     
@@ -659,9 +684,13 @@ public class MasterDecisionOrchestrator : BackgroundService
                     bundleId, reward, realizedPnL, wasCorrect);
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "❌ [BUNDLE-FEEDBACK] Failed to update bundle performance");
+            _logger.LogError(ex, "❌ [BUNDLE-FEEDBACK] Invalid operation updating bundle performance");
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "❌ [BUNDLE-FEEDBACK] Invalid argument updating bundle performance");
         }
     }
     
@@ -874,9 +903,13 @@ public class MasterDecisionOrchestrator : BackgroundService
             
             _logger.LogInformation("✅ [RECOVERY] Recovery actions completed");
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "❌ [RECOVERY] Recovery actions failed");
+            _logger.LogError(ex, "❌ [RECOVERY] Invalid operation during recovery actions");
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogError(ex, "❌ [RECOVERY] Timeout during recovery actions");
         }
     }
     
