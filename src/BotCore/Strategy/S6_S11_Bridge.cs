@@ -57,21 +57,55 @@ namespace BotCore.Strategy
 
         #region S6 Strategy Interface Implementation
 
+        /// <summary>
+        /// Place market order synchronously - required by TopstepX.S6.IOrderRouter interface
+        /// </summary>
+        /// <remarks>
+        /// INTERFACE CONTRACT: This method MUST remain synchronous per TopstepX.S6.IOrderRouter.
+        /// Uses Task.Run with bounded timeout to execute async work on thread pool.
+        /// Acceptable here as bridge runs on background hosted worker, not UI/SignalR context.
+        /// For async callers, use PlaceMarketOrderInternalAsync directly.
+        /// </remarks>
         public string PlaceMarket(TopstepX.S6.Instrument instr, TopstepX.S6.Side side, int qty, string tag)
         {
-            // NOTE: This method MUST be synchronous per TopstepX.S6.IOrderRouter interface contract.
-            // Using Task.Run to safely execute async work on thread pool to avoid blocking the caller's context.
-            // This is acceptable here as the bridge runs on background hosted worker, not UI/SignalR context.
-            return Task.Run(async () => await PlaceMarketOrderInternalAsync(instr.ToString(), ConvertS6Side(side), qty, tag).ConfigureAwait(false)).GetAwaiter().GetResult();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            var task = PlaceMarketOrderInternalAsync(instr.ToString(), ConvertS6Side(side), qty, tag, cts.Token);
+            
+            try
+            {
+                return task.GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogError("PlaceMarket timed out after 30 seconds for {Instrument} {Side} {Qty}", instr, side, qty);
+                throw new TimeoutException($"Order placement timed out for {instr}");
+            }
         }
 
+        /// <summary>
+        /// Get position synchronously - required by TopstepX.S6.IOrderRouter interface
+        /// </summary>
+        /// <remarks>
+        /// INTERFACE CONTRACT: This method MUST remain synchronous per TopstepX.S6.IOrderRouter.
+        /// Uses bounded timeout to execute async work.
+        /// For async callers, use GetPositionInternalAsync directly.
+        /// </remarks>
         public (TopstepX.S6.Side side, int qty, double avgPx, DateTimeOffset openedAt, string positionId) GetPosition(TopstepX.S6.Instrument instr)
         {
-            // NOTE: This method MUST be synchronous per TopstepX.S6.IOrderRouter interface contract.
-            // Using Task.Run to safely execute async work on thread pool to avoid blocking the caller's context.
-            var position = Task.Run(async () => await GetPositionInternalAsync(instr.ToString()).ConfigureAwait(false)).GetAwaiter().GetResult();
-            var side = ConvertToS6Side(position?.Side ?? "FLAT");
-            return (side, position?.Quantity ?? 0, (double)(position?.AveragePrice ?? 0), position?.OpenTime ?? DateTimeOffset.MinValue, position?.Id ?? "");
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            var task = GetPositionInternalAsync(instr.ToString(), cts.Token);
+            
+            try
+            {
+                var position = task.GetAwaiter().GetResult();
+                var side = ConvertToS6Side(position?.Side ?? "FLAT");
+                return (side, position?.Quantity ?? 0, (double)(position?.AveragePrice ?? 0), position?.OpenTime ?? DateTimeOffset.MinValue, position?.Id ?? "");
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("GetPosition timed out after 10 seconds for {Instrument}", instr);
+                return (TopstepX.S6.Side.FLAT, 0, 0, DateTimeOffset.MinValue, string.Empty);
+            }
         }
 
         public double GetTickSize(TopstepX.S6.Instrument instr)
@@ -90,20 +124,54 @@ namespace BotCore.Strategy
 
         #region S11 Strategy Interface Implementation
 
+        /// <summary>
+        /// Place market order synchronously - required by TopstepX.S11.IOrderRouter interface
+        /// </summary>
+        /// <remarks>
+        /// INTERFACE CONTRACT: This method MUST remain synchronous per TopstepX.S11.IOrderRouter.
+        /// Uses bounded timeout to execute async work.
+        /// For async callers, use PlaceMarketOrderInternalAsync directly.
+        /// </remarks>
         public string PlaceMarket(TopstepX.S11.Instrument instr, TopstepX.S11.Side side, int qty, string tag)
         {
-            // NOTE: This method MUST be synchronous per TopstepX.S11.IOrderRouter interface contract.
-            // Using Task.Run to safely execute async work on thread pool to avoid blocking the caller's context.
-            return Task.Run(async () => await PlaceMarketOrderInternalAsync(instr.ToString(), ConvertS11Side(side), qty, tag).ConfigureAwait(false)).GetAwaiter().GetResult();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            var task = PlaceMarketOrderInternalAsync(instr.ToString(), ConvertS11Side(side), qty, tag, cts.Token);
+            
+            try
+            {
+                return task.GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogError("PlaceMarket timed out after 30 seconds for {Instrument} {Side} {Qty}", instr, side, qty);
+                throw new TimeoutException($"Order placement timed out for {instr}");
+            }
         }
 
+        /// <summary>
+        /// Get position synchronously - required by TopstepX.S11.IOrderRouter interface
+        /// </summary>
+        /// <remarks>
+        /// INTERFACE CONTRACT: This method MUST remain synchronous per TopstepX.S11.IOrderRouter.
+        /// Uses bounded timeout to execute async work.
+        /// For async callers, use GetPositionInternalAsync directly.
+        /// </remarks>
         public (TopstepX.S11.Side side, int qty, double avgPx, DateTimeOffset openedAt, string positionId) GetPosition(TopstepX.S11.Instrument instr)
         {
-            // NOTE: This method MUST be synchronous per TopstepX.S11.IOrderRouter interface contract.
-            // Using Task.Run to safely execute async work on thread pool to avoid blocking the caller's context.
-            var position = Task.Run(async () => await GetPositionInternalAsync(instr.ToString()).ConfigureAwait(false)).GetAwaiter().GetResult();
-            var side = ConvertToS11Side(position?.Side ?? "FLAT");
-            return (side, position?.Quantity ?? 0, (double)(position?.AveragePrice ?? 0), position?.OpenTime ?? DateTimeOffset.MinValue, position?.Id ?? "");
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            var task = GetPositionInternalAsync(instr.ToString(), cts.Token);
+            
+            try
+            {
+                var position = task.GetAwaiter().GetResult();
+                var side = ConvertToS11Side(position?.Side ?? "FLAT");
+                return (side, position?.Quantity ?? 0, (double)(position?.AveragePrice ?? 0), position?.OpenTime ?? DateTimeOffset.MinValue, position?.Id ?? "");
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("GetPosition timed out after 10 seconds for {Instrument}", instr);
+                return (TopstepX.S11.Side.FLAT, 0, 0, DateTimeOffset.MinValue, string.Empty);
+            }
         }
 
         public double GetTickSize(TopstepX.S11.Instrument instr)
@@ -122,7 +190,7 @@ namespace BotCore.Strategy
 
         #region Production Order Management Implementation
 
-        private async Task<string> PlaceMarketOrderInternalAsync(string instrument, string side, int qty, string tag)
+        private async Task<string> PlaceMarketOrderInternalAsync(string instrument, string side, int qty, string tag, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -178,14 +246,31 @@ namespace BotCore.Strategy
             }
         }
 
+        /// <summary>
+        /// Modify stop order synchronously - required by TopstepX IOrderRouter interface
+        /// </summary>
+        /// <remarks>
+        /// INTERFACE CONTRACT: This method MUST remain synchronous per TopstepX IOrderRouter.
+        /// Uses bounded timeout to execute async work.
+        /// For async callers, use ModifyStopOrderInternalAsync directly.
+        /// </remarks>
         public void ModifyStop(string positionId, double stopPrice)
         {
-            // NOTE: This method MUST be synchronous per TopstepX IOrderRouter interface contract.
-            // Using Task.Run to safely execute async work on thread pool to avoid blocking the caller's context.
-            Task.Run(async () => await ModifyStopOrderInternalAsync(positionId, (decimal)stopPrice).ConfigureAwait(false)).GetAwaiter().GetResult();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var task = ModifyStopOrderInternalAsync(positionId, (decimal)stopPrice, cts.Token);
+            
+            try
+            {
+                task.GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogError("ModifyStop timed out after 15 seconds for position {PositionId}", positionId);
+                throw new TimeoutException($"Stop modification timed out for position {positionId}");
+            }
         }
 
-        private async Task ModifyStopOrderInternalAsync(string positionId, decimal stopPrice)
+        private async Task ModifyStopOrderInternalAsync(string positionId, decimal stopPrice, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -217,14 +302,31 @@ namespace BotCore.Strategy
             }
         }
 
+        /// <summary>
+        /// Close position synchronously - required by TopstepX IOrderRouter interface
+        /// </summary>
+        /// <remarks>
+        /// INTERFACE CONTRACT: This method MUST remain synchronous per TopstepX IOrderRouter.
+        /// Uses bounded timeout to execute async work.
+        /// For async callers, use ClosePositionInternalAsync directly.
+        /// </remarks>
         public void ClosePosition(string positionId)
         {
-            // NOTE: This method MUST be synchronous per TopstepX IOrderRouter interface contract.
-            // Using Task.Run to safely execute async work on thread pool to avoid blocking the caller's context.
-            Task.Run(async () => await ClosePositionInternalAsync(positionId).ConfigureAwait(false)).GetAwaiter().GetResult();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var task = ClosePositionInternalAsync(positionId, cts.Token);
+            
+            try
+            {
+                task.GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogError("ClosePosition timed out after 15 seconds for position {PositionId}", positionId);
+                throw new TimeoutException($"Position close timed out for position {positionId}");
+            }
         }
 
-        private async Task ClosePositionInternalAsync(string positionId)
+        private async Task ClosePositionInternalAsync(string positionId, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -260,14 +362,31 @@ namespace BotCore.Strategy
             }
         }
 
+        /// <summary>
+        /// Get all positions synchronously - required by TopstepX IOrderRouter interface
+        /// </summary>
+        /// <remarks>
+        /// INTERFACE CONTRACT: This method MUST remain synchronous per TopstepX IOrderRouter.
+        /// Uses bounded timeout to execute async work.
+        /// For async callers, use GetPositionsInternalAsync directly.
+        /// </remarks>
         public List<(object Side, int Qty, double AvgPx, DateTime OpenedAt)> GetPositions()
         {
-            // NOTE: This method MUST be synchronous per TopstepX IOrderRouter interface contract.
-            // Using Task.Run to safely execute async work on thread pool to avoid blocking the caller's context.
-            return Task.Run(async () => await GetPositionsInternalAsync().ConfigureAwait(false)).GetAwaiter().GetResult();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            var task = GetPositionsInternalAsync(cts.Token);
+            
+            try
+            {
+                return task.GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("GetPositions timed out after 10 seconds");
+                return new List<(object Side, int Qty, double AvgPx, DateTime OpenedAt)>();
+            }
         }
 
-        private async Task<List<(object Side, int Qty, double AvgPx, DateTime OpenedAt)>> GetPositionsInternalAsync()
+        private async Task<List<(object Side, int Qty, double AvgPx, DateTime OpenedAt)>> GetPositionsInternalAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -295,7 +414,7 @@ namespace BotCore.Strategy
             }
         }
 
-        private async Task<TradingBot.Abstractions.Position?> GetPositionInternalAsync(string instrument)
+        private async Task<TradingBot.Abstractions.Position?> GetPositionInternalAsync(string instrument, CancellationToken cancellationToken = default)
         {
             try
             {
