@@ -14,6 +14,9 @@ namespace BotCore.Services;
 /// </summary>
 public class CloudModelSynchronizationService : BackgroundService
 {
+    // Version display constants
+    private const int GitShaDisplayLength = 8; // Number of git SHA characters to display
+    
     private readonly ILogger<CloudModelSynchronizationService> _logger;
     private readonly HttpClient _httpClient;
     private readonly IMLMemoryManager _memoryManager;
@@ -307,7 +310,7 @@ public class CloudModelSynchronizationService : BackgroundService
                     _currentModels[modelKey] = new ModelInfo
                     {
                         Name = artifact.Name,
-                        Version = run.HeadSha[..8],
+                        Version = run.HeadSha[..GitShaDisplayLength],
                         Path = targetPath,
                         DownloadedAt = DateTime.UtcNow,
                         WorkflowRun = run.Id,
@@ -378,7 +381,7 @@ public class CloudModelSynchronizationService : BackgroundService
                 _currentModels[dataKey] = new ModelInfo
                 {
                     Name = artifact.Name,
-                    Version = run.HeadSha[..8],
+                    Version = run.HeadSha[..GitShaDisplayLength],
                     Path = "datasets",
                     DownloadedAt = DateTime.UtcNow,
                     WorkflowRun = run.Id,

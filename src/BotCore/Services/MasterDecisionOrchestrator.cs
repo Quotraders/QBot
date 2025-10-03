@@ -38,6 +38,8 @@ public class MasterDecisionOrchestrator : BackgroundService
     private const double HoursInDay = 24.0;                 // Hours in a day for time calculations
     private const decimal MaxRewardBound = 1m;              // Maximum reward value boundary
     private const decimal MinRewardBound = -1m;             // Minimum reward value boundary
+    private const decimal EmergencyFallbackConfidence = 0.51m; // Minimum viable confidence for emergency fallback
+    private const decimal EmergencyFallbackQuantity = 1m;   // Very conservative emergency quantity
     
     // Decision ID generation constants  
     private const int DecisionIdRandomMin = 1000;           // Minimum random number for decision IDs
@@ -820,8 +822,8 @@ public class MasterDecisionOrchestrator : BackgroundService
             DecisionId = decisionId,
             Symbol = symbol,
             Action = TradingAction.Buy, // Conservative emergency bias
-            Confidence = 0.51m, // Minimum viable
-            Quantity = 1m, // Very conservative
+            Confidence = EmergencyFallbackConfidence,
+            Quantity = EmergencyFallbackQuantity,
             Strategy = "EMERGENCY",
             DecisionSource = "Emergency",
             Reasoning = new Dictionary<string, object>

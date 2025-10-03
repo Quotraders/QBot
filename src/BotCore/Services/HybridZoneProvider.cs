@@ -9,6 +9,9 @@ namespace BotCore.Services
     /// </summary>
     public sealed class HybridZoneProvider : IZoneProvider
     {
+        // Moving average smoothing factor
+        private const double MovingAverageSmoothingFactor = 2.0;
+        
         private readonly ModernZoneProvider _modernProvider;
         private readonly ILogger<HybridZoneProvider> _logger;
         private readonly ZoneProviderMetrics _metrics = new();
@@ -60,7 +63,7 @@ namespace BotCore.Services
 
         private void UpdateMetrics(double latencyMs)
         {
-            _metrics.AverageLatencyMs = (_metrics.AverageLatencyMs + latencyMs) / 2.0;
+            _metrics.AverageLatencyMs = (_metrics.AverageLatencyMs + latencyMs) / MovingAverageSmoothingFactor;
             _metrics.LastUpdate = DateTime.UtcNow;
         }
     }

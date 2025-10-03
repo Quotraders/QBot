@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using TradingBot.Abstractions;
@@ -63,7 +64,7 @@ namespace TradingBot.BotCore.Services
         public double GetCvarTargetRMultiple() => 
             _config.GetValue("Risk:CvarTargetRMultiple", DefaultCvarTargetRMultiple);
 
-        public double GetRegimeDrawdownMultiplier(string regimeType) => regimeType?.ToLower() switch
+        public double GetRegimeDrawdownMultiplier(string regimeType) => regimeType?.ToLower(CultureInfo.InvariantCulture) switch
         {
             "bull" => _config.GetValue("Risk:RegimeMultipliers:Bull", DefaultBullRegimeMultiplier),
             "bear" => _config.GetValue("Risk:RegimeMultipliers:Bear", DefaultBearRegimeMultiplier),

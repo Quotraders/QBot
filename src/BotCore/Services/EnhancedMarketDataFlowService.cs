@@ -37,6 +37,10 @@ namespace BotCore.Services
     /// </summary>
     public class EnhancedMarketDataFlowService : IEnhancedMarketDataFlowService, IDisposable
     {
+        // Data flow monitoring constants
+        private const int DataFlowCheckIntervalMilliseconds = 1000; // Check every 1 second
+        private const int SnapshotSimulationDelayMilliseconds = 100; // Snapshot API call simulation delay
+        
         private readonly ILogger<EnhancedMarketDataFlowService> _logger;
         private readonly DataFlowEnhancementConfiguration _config;
         private readonly HttpClient _httpClient;
@@ -302,7 +306,7 @@ namespace BotCore.Services
                         return true;
                     }
 
-                    await Task.Delay(1000).ConfigureAwait(false); // Check every second
+                    await Task.Delay(DataFlowCheckIntervalMilliseconds).ConfigureAwait(false);
                 }
 
                 _logger.LogWarning("[DATA-FLOW-VERIFY] ❌ Data flow verification failed for {Symbol} within {Timeout}", symbol, timeout);
@@ -582,7 +586,7 @@ namespace BotCore.Services
                 // For now, we'll simulate the request
                 
                 // Simulate API call delay
-                await Task.Delay(100).ConfigureAwait(false);
+                await Task.Delay(SnapshotSimulationDelayMilliseconds).ConfigureAwait(false);
 
                 // Simulate successful snapshot response
                 var snapshotData = new

@@ -14,6 +14,7 @@ public static class ProductionPriceService
     // Tick size constants following guardrails
     public const decimal ES_TICK = 0.25m;
     public const decimal MES_TICK = 0.25m;
+    public const decimal DEFAULT_TICK = 0.01m; // Default 1 cent tick for other instruments
     
     private static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
 
@@ -94,7 +95,7 @@ public static class ProductionPriceService
         }
         
         // Add other instruments here as needed
-        return 0.01m; // Default 1 cent tick
+        return DEFAULT_TICK;
     }
 
     /// <summary>

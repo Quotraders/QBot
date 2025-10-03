@@ -628,7 +628,7 @@ public class ContractManager
         _logger = logger;
     }
     
-    public static Task<Dictionary<string, string>> GetCurrentContractsAsync(CancellationToken cancellationToken)
+    public Task<Dictionary<string, string>> GetCurrentContractsAsync(CancellationToken cancellationToken)
     {
         // In production, this would query TopstepX API for current front month contracts
         var contracts = new Dictionary<string, string>
@@ -639,7 +639,7 @@ public class ContractManager
         return Task.FromResult(contracts);
     }
     
-    public static Task<RolloverCheck> CheckRolloverNeededAsync(string currentES, string currentNQ, CancellationToken cancellationToken)
+    public Task<RolloverCheck> CheckRolloverNeededAsync(string currentES, string currentNQ, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(currentES);
         ArgumentNullException.ThrowIfNull(currentNQ);
@@ -675,7 +675,7 @@ public class BarCountManager
         _readinessTracker = readinessTracker;
     }
     
-    public static Task ProcessBarAsync(MarketBar bar, bool isHistorical, CancellationToken cancellationToken)
+    public Task ProcessBarAsync(MarketBar bar, bool isHistorical, CancellationToken cancellationToken)
     {
         // Unified bar processing logic
         return Task.CompletedTask;

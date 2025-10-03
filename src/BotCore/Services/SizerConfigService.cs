@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using TradingBot.Abstractions;
@@ -47,7 +48,7 @@ namespace TradingBot.BotCore.Services
         public double GetCqlAlpha() => 
             _config.GetValue("Sizer:CQL:Alpha", DefaultCqlAlpha);
 
-        public double GetMetaCostWeight(string costType) => costType?.ToLower() switch
+        public double GetMetaCostWeight(string costType) => costType?.ToLower(CultureInfo.InvariantCulture) switch
         {
             "execution" => _config.GetValue("Sizer:MetaCost:ExecutionWeight", DefaultExecutionWeight),
             "market_impact" => _config.GetValue("Sizer:MetaCost:MarketImpactWeight", DefaultMarketImpactWeight),

@@ -26,6 +26,7 @@ public class EnhancedBayesianPriors : IBayesianPriors
     private const decimal UncertaintyMediumVariance = 0.02m;
     private const decimal UncertaintyLowThreshold = 100m;
     private const decimal UncertaintyLowVariance = 0.01m;
+    private const double GammaDistributionLogFactor = 0.5; // Factor for gamma distribution log calculation
     
     private readonly Dictionary<string, BayesianPosterior> _priors = new();
     private readonly Dictionary<string, HierarchicalGroup> _hierarchicalGroups = new();
@@ -357,7 +358,7 @@ public class EnhancedBayesianPriors : IBayesianPriors
             var z = (decimal)Math.Sqrt(-2.0 * Math.Log((double)x)) * (decimal)Math.Cos(2.0 * Math.PI * (double)y);
             var v = (1m + c * z) * (1m + c * z) * (1m + c * z);
 
-            if (v > 0 && Math.Log((double)y) < 0.5 * (double)(z * z) + (double)d * (1.0 - (double)v + Math.Log((double)v)))
+            if (v > 0 && Math.Log((double)y) < GammaDistributionLogFactor * (double)(z * z) + (double)d * (1.0 - (double)v + Math.Log((double)v)))
             {
                 return d * v;
             }

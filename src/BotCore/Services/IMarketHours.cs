@@ -19,6 +19,8 @@ public interface IMarketHours
 /// </summary>
 public class BasicMarketHours : IMarketHours
 {
+    // Time zone constants
+    private const int EasternStandardTimeOffsetHours = -5; // EST offset from UTC
     public async Task<bool> IsMarketOpenAsync(CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask.ConfigureAwait(false);
@@ -68,7 +70,7 @@ public class BasicMarketHours : IMarketHours
         }
         catch
         {
-            return DateTime.UtcNow.AddHours(-5); // Fallback to EST
+            return DateTime.UtcNow.AddHours(EasternStandardTimeOffsetHours); // Fallback to EST
         }
     }
     
@@ -81,7 +83,7 @@ public class BasicMarketHours : IMarketHours
         }
         catch
         {
-            return utcTime.AddHours(-5); // Fallback to EST
+            return utcTime.AddHours(EasternStandardTimeOffsetHours); // Fallback to EST
         }
     }
 }

@@ -11,6 +11,10 @@ namespace BotCore.Services;
 /// </summary>
 public class ProductionConfigurationService : IValidateOptions<ProductionTradingConfig>
 {
+    // Configuration validation constants
+    private const double EnsembleWeightTolerance = 0.001; // Tolerance for ensemble weight sum validation
+    private const double MinAccuracyThreshold = 0.1;      // Minimum accuracy threshold (10%)
+    
     private readonly IConfiguration _configuration;
     private readonly ILogger<ProductionConfigurationService> _logger;
 
@@ -43,7 +47,7 @@ public class ProductionConfigurationService : IValidateOptions<ProductionTrading
         if (options.Ensemble.LocalWeight < 0 || options.Ensemble.LocalWeight > 1)
             errors.Add("Ensemble.LocalWeight must be between 0 and 1");
         
-        if (Math.Abs(options.Ensemble.CloudWeight + options.Ensemble.LocalWeight - 1.0) > 0.001)
+        if (Math.Abs(options.Ensemble.CloudWeight + options.Ensemble.LocalWeight - 1.0) > EnsembleWeightTolerance)
             errors.Add("Ensemble.CloudWeight + LocalWeight must equal 1.0");
 
         // Validate model lifecycle
@@ -54,7 +58,7 @@ public class ProductionConfigurationService : IValidateOptions<ProductionTrading
             errors.Add("ModelLifecycle.ModelMaxAge must be at least 1 hour");
 
         // Validate performance thresholds
-        if (options.Performance.AccuracyThreshold < 0.1 || options.Performance.AccuracyThreshold > 1.0)
+        if (options.Performance.AccuracyThreshold < MinAccuracyThreshold || options.Performance.AccuracyThreshold > 1.0)
             errors.Add("Performance.AccuracyThreshold must be between 0.1 and 1.0");
 
         // Validate security settings
