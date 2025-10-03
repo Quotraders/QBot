@@ -53,7 +53,49 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 90 - Phase 2: Parameter Store File I/O Safety (Current Session)
+### 🔧 Round 91 - Phase 2: Historical Data Bridge Safety (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 775 | 772 | HistoricalDataBridgeService.cs | Specific exception types for data retrieval operations (InvalidOperationException, TimeoutException, HttpRequestException, ArgumentException) |
+
+**Total Fixed: 3 CA1031 violations**
+
+**Example Pattern Applied**:
+
+**CA1031 - Historical Data Bridge Exception Safety**:
+```csharp
+// Before (CA1031) - Generic exception catch
+catch (Exception ex)
+{
+    _logger.LogError(ex, "[HISTORICAL-BRIDGE] Error getting historical bars for {ContractId}", contractId);
+    return new List<BotCore.Models.Bar>();
+}
+
+// After (Compliant) - Specific exception types for data operations
+catch (InvalidOperationException ex)
+{
+    _logger.LogError(ex, "[HISTORICAL-BRIDGE] Invalid operation getting historical bars for {ContractId}", contractId);
+    return new List<BotCore.Models.Bar>();
+}
+catch (TimeoutException ex)
+{
+    _logger.LogError(ex, "[HISTORICAL-BRIDGE] Timeout getting historical bars for {ContractId}", contractId);
+    return new List<BotCore.Models.Bar>();
+}
+catch (HttpRequestException ex)
+{
+    _logger.LogError(ex, "[HISTORICAL-BRIDGE] HTTP error getting historical bars for {ContractId}", contractId);
+    return new List<BotCore.Models.Bar>();
+}
+```
+
+**Rationale**: 
+- **CA1031**: Historical data bridge performs best-effort data retrieval with multiple fallback sources. All exception handlers now catch specific expected exception types for data operations: InvalidOperationException (service state issues), TimeoutException (slow APIs), HttpRequestException (network failures), ArgumentException (validation failures).
+- **Fixed Methods**: SeedTradingSystemAsync, GetRecentHistoricalBarsAsync, ValidateHistoricalDataAsync - all critical for historical data retrieval reliability.
+
+---
+
+### 🔧 Round 90 - Phase 2: Parameter Store File I/O Safety (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA1031 | 784 | 775 | ParamStore.cs | Specific exception types for file I/O operations (IOException, UnauthorizedAccessException, JsonException, InvalidOperationException) |
