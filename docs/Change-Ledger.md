@@ -48,7 +48,56 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 78 - Phase 1 CRITICAL: CS Compiler Errors Fixed (Current Session)
+### 🔧 Round 79 - Phase 2: Analyzer Violations Fixed + IFeatureBus Compatibility (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 12 | 0 | S7FeaturePublisher.cs | Named constants for feature flag boolean-to-numeric conversions |
+| CA1849 | 1 | 0 | OnnxEnsembleWrapper.cs | CancelAsync instead of synchronous Cancel |
+| S6966 | 1 | 0 | OnnxEnsembleWrapper.cs | CancelAsync instead of synchronous Cancel |
+| AsyncFixer02 | 1 | 0 | OnnxEnsembleWrapper.cs | CancelAsync instead of synchronous Cancel |
+| CA1031 | 1 | 0 | OnnxEnsembleWrapper.cs | Specific exception types (ObjectDisposedException, InvalidOperationException) in Dispose |
+
+**Total Fixed: 16 analyzer violations**
+
+**Example Patterns Applied**:
+```csharp
+// Before (S109) - Magic numbers for boolean states
+_featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.actionable", ((dynamic)snapshot).IsActionable ? 1.0m : 0.0m);
+
+// After (Compliant) - Named constants
+private const decimal FeatureFlagActive = 1.0m;
+private const decimal FeatureFlagInactive = 0.0m;
+_featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.actionable", ((dynamic)snapshot).IsActionable ? FeatureFlagActive : FeatureFlagInactive);
+
+// Before (CA1849/S6966) - Synchronous cancel blocks async method
+_cancellationTokenSource.Cancel();
+
+// After (Compliant) - Async cancel
+await _cancellationTokenSource.CancelAsync().ConfigureAwait(false);
+
+// Before (CA1031) - Generic exception catch in Dispose
+catch (Exception ex) { LogMessages.BatchProcessingTimeout(_logger, ex); }
+
+// After (Compliant) - Specific exception types
+catch (ObjectDisposedException ex) { /* Expected during disposal */ }
+catch (InvalidOperationException ex) { /* Can occur if dispose is called multiple times */ }
+```
+
+**IFeatureBus Compatibility Enhancement**:
+Added `double` overload to IFeatureBus interface to maintain backward compatibility while supporting decimal precision:
+```csharp
+public interface IFeatureBus 
+{ 
+    void Publish(string symbol, DateTime utc, string name, decimal value);
+    void Publish(string symbol, DateTime utc, string name, double value); // Added for compatibility
+}
+```
+
+**Rationale**: S109 violations for boolean-to-numeric conversions (1.0/0.0) could be considered sentinel values per guidebook, but named constants improve code clarity. Async/await fixes eliminate potential deadlock risks. IFeatureBus double overload maintains compatibility with existing code while allowing new code to use decimal precision.
+
+---
+
+### 🔧 Round 78 - Phase 1 CRITICAL: CS Compiler Errors Fixed (Previous in Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CS1503 | 86 | 0 | FeatureEngineering.cs, S7FeaturePublisher.cs | Fixed decimal/double type mismatches |

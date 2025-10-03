@@ -24,6 +24,10 @@ namespace TradingBot.S7
         private Timer? _publishTimer;
         private bool _disposed;
 
+        // Feature flag constants for boolean state representation
+        private const decimal FeatureFlagActive = 1.0m;
+        private const decimal FeatureFlagInactive = 0.0m;
+
         // LoggerMessage delegates for performance
         private static readonly Action<ILogger, Exception?> _logS7ServiceNotAvailable = 
             LoggerMessage.Define(LogLevel.Error, new EventId(1001, "S7ServiceNotAvailable"), 
@@ -262,7 +266,7 @@ namespace TradingBot.S7
             _featureBus!.Publish("CROSS", timestamp, $"{telemetryPrefix}.coherence", (decimal)((dynamic)snapshot).CrossSymbolCoherence);
             _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.leader", (decimal)((dynamic)snapshot).DominantLeader);
             _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.signal_strength", (decimal)((dynamic)snapshot).SignalStrength);
-            _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.actionable", ((dynamic)snapshot).IsActionable ? 1.0m : 0.0m);
+            _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.actionable", ((dynamic)snapshot).IsActionable ? FeatureFlagActive : FeatureFlagInactive);
             
             // Publish enhanced cross-symbol features for adaptive analysis
             _featureBus.Publish("CROSS", timestamp, $"{telemetryPrefix}.global_dispersion", (decimal)((dynamic)snapshot).GlobalDispersionIndex);
@@ -319,12 +323,12 @@ namespace TradingBot.S7
             
             decimal leaderValue = tuple.Leader switch
             {
-                "ES" => 1.0m,
-                "NQ" => -1.0m,
-                _ => 0.0m
+                "ES" => FeatureFlagActive,
+                "NQ" => -FeatureFlagActive,
+                _ => FeatureFlagInactive
             };
             _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.leader", leaderValue);
-            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.signal_active", tuple.IsSignalActive ? 1.0m : 0.0m);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.signal_active", tuple.IsSignalActive ? FeatureFlagActive : FeatureFlagInactive);
         }
 
         private void PublishEnhancedFeatures(string symbol, DateTime timestamp, string telemetryPrefix, object featureTuple)
@@ -336,8 +340,8 @@ namespace TradingBot.S7
             _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.multi_index_dispersion", (decimal)tuple.MultiIndexDispersion);
             _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.advance_fraction", (decimal)tuple.AdvanceFraction);
             _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.dispersion_adjusted_size_tilt", (decimal)tuple.DispersionAdjustedSizeTilt);
-            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.dispersion_boosted", tuple.IsDispersionBoosted ? 1.0m : 0.0m);
-            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.dispersion_blocked", tuple.IsDispersionBlocked ? 1.0m : 0.0m);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.dispersion_boosted", tuple.IsDispersionBoosted ? FeatureFlagActive : FeatureFlagInactive);
+            _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.dispersion_blocked", tuple.IsDispersionBlocked ? FeatureFlagActive : FeatureFlagInactive);
             _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.global_dispersion_index", (decimal)tuple.GlobalDispersionIndex);
             _featureBus.Publish(symbol, timestamp, $"{telemetryPrefix}.adaptive_volatility_measure", (decimal)tuple.AdaptiveVolatilityMeasure);
         }

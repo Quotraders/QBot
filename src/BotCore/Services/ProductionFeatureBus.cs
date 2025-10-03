@@ -21,7 +21,17 @@ namespace BotCore.Services
             _logger = logger;
         }
 
+        public void Publish(string symbol, DateTime utc, string name, decimal value)
+        {
+            PublishInternal(symbol, utc, name, value);
+        }
+
         public void Publish(string symbol, DateTime utc, string name, double value)
+        {
+            PublishInternal(symbol, utc, name, (decimal)value);
+        }
+
+        private void PublishInternal(string symbol, DateTime utc, string name, decimal value)
         {
             if (string.IsNullOrWhiteSpace(symbol) || string.IsNullOrWhiteSpace(name))
             {
@@ -80,6 +90,6 @@ namespace BotCore.Services
         public string Symbol { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }
         public string FeatureName { get; set; } = string.Empty;
-        public double Value { get; set; }
+        public decimal Value { get; set; }
     }
 }
