@@ -84,7 +84,7 @@ public sealed class ShadowModeManager
             }
             
             // Emit registration telemetry
-            await EmitShadowRegistrationTelemetryAsync(shadowStrategy, cancellationToken);
+            await EmitShadowRegistrationTelemetryAsync(shadowStrategy, cancellationToken).ConfigureAwait(false);
             
             _logger.LogInformation("Shadow strategy registered: {StrategyName} - Auto-promotion: {AutoPromotion}, Min trades: {MinTrades}, Win rate threshold: {WinRate:P2}",
                 registration.StrategyName, shadowStrategy.AutoPromotionEnabled, shadowStrategy.MinTradesForPromotion, shadowStrategy.WinRateThreshold);
@@ -147,7 +147,7 @@ public sealed class ShadowModeManager
             };
             
             // Emit strategy.shadow_pick telemetry
-            await EmitShadowPickTelemetryAsync(shadowPick, cancellationToken);
+            await EmitShadowPickTelemetryAsync(shadowPick, cancellationToken).ConfigureAwait(false);
             
             // Increment counter
             Interlocked.Increment(ref _shadowPicksGenerated);
@@ -230,10 +230,10 @@ public sealed class ShadowModeManager
             }
             
             // Check for auto-promotion eligibility
-            await CheckAutoPromotionEligibilityAsync(strategyName, cancellationToken);
+            await CheckAutoPromotionEligibilityAsync(strategyName, cancellationToken).ConfigureAwait(false);
             
             // Emit trade telemetry
-            await EmitShadowTradeTelemetryAsync(shadowTrade, cancellationToken);
+            await EmitShadowTradeTelemetryAsync(shadowTrade, cancellationToken).ConfigureAwait(false);
             
             _logger.LogDebug("Shadow trade recorded: {StrategyName} - {TradeId} {Direction} {Symbol} PnL: {PnL:C} ({ExitReason})",
                 strategyName, outcome.TradeId, outcome.Direction, outcome.Symbol, outcome.PnL, outcome.ExitReason);
@@ -337,7 +337,7 @@ public sealed class ShadowModeManager
             Interlocked.Increment(ref _shadowPromotions);
             
             // Emit promotion telemetry
-            await EmitShadowPromotionTelemetryAsync(shadowStrategy, metrics, cancellationToken);
+            await EmitShadowPromotionTelemetryAsync(shadowStrategy, metrics, cancellationToken).ConfigureAwait(false);
             
             _logger.LogInformation("🎉 Shadow strategy PROMOTED to live trading: {StrategyName} - Win rate: {WinRate:P2}, Trades: {TotalTrades}, Total PnL: {TotalPnL:C}, Sharpe: {Sharpe:F2}",
                 strategyName, metrics.WinRate, metrics.TotalTrades, metrics.TotalPnL, metrics.SharpeRatio);
@@ -380,7 +380,7 @@ public sealed class ShadowModeManager
             Interlocked.Increment(ref _shadowDemotions);
             
             // Emit demotion telemetry
-            await EmitShadowDemotionTelemetryAsync(shadowStrategy, reason, cancellationToken);
+            await EmitShadowDemotionTelemetryAsync(shadowStrategy, reason, cancellationToken).ConfigureAwait(false);
             
             _logger.LogWarning("Shadow strategy DEMOTED back to shadow mode: {StrategyName} - Reason: {Reason}", strategyName, reason);
         }
@@ -504,7 +504,7 @@ public sealed class ShadowModeManager
             _logger.LogWarning(ex, "Error emitting shadow registration telemetry");
         }
         
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
     
     /// <summary>
@@ -533,7 +533,7 @@ public sealed class ShadowModeManager
             _logger.LogWarning(ex, "Error emitting shadow pick telemetry");
         }
         
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
     
     /// <summary>
@@ -565,7 +565,7 @@ public sealed class ShadowModeManager
             _logger.LogWarning(ex, "Error emitting shadow trade telemetry");
         }
         
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
     
     /// <summary>
@@ -594,7 +594,7 @@ public sealed class ShadowModeManager
             _logger.LogWarning(ex, "Error emitting shadow promotion telemetry");
         }
         
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
     
     /// <summary>
@@ -621,7 +621,7 @@ public sealed class ShadowModeManager
             _logger.LogWarning(ex, "Error emitting shadow demotion telemetry");
         }
         
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
     
     /// <summary>
