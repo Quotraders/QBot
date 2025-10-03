@@ -236,9 +236,6 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
                 // Get market condition thresholds from configuration
                 var trendingThreshold = configuration.GetValue<double>("Trading:TrendingRegimeThreshold", 0.7);
                 var highVolThreshold = configuration.GetValue<double>("Trading:HighVolatilityThreshold", 0.03);
-                var momentumConfidence = configuration.GetValue<double>("Trading:MomentumConfidenceScore", 0.6);
-                var volatilityConfidence = configuration.GetValue<double>("Trading:VolatilityConfidenceScore", 0.65);
-                var defaultConfidence = configuration.GetValue<double>("Trading:DefaultConfidenceScore", 0.5);
                 
                 // Select strategy based on market conditions with configured thresholds
                 var rangingThreshold = configuration.GetValue<double>("Trading:RangingRegimeThreshold", 0.3);
@@ -345,9 +342,6 @@ public sealed class ProductionPpoSizer : IPpoSizer
             var rlAdvisorSystem = _serviceProvider.GetService<TradingBot.IntelligenceStack.RLAdvisorSystem>();
             if (rlAdvisorSystem != null)
             {
-                // Create market context for RL system
-                var marketContext = CreateMarketContext(symbol, intent, risk);
-                
                 // Attempt to get size recommendation from RL system - fail-closed approach
                 _logger.LogDebug("Attempting ML position sizing for {Symbol} with intent {Intent}, risk {Risk:P2}", symbol, intent, risk);
                 

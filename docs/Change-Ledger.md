@@ -56,9 +56,9 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 ### 🔧 Round 105 - Phase 2: S1481 Unused Variables Cleanup (Current Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
-| S1481 | 94 | 62 | ComprehensiveTelemetryService.cs, ShadowModeManager.cs, ReversalPatternDetector.cs, BarAggregator.cs, RedundantDataFeedManager.cs | Removed unused local variables that were created for telemetry but never used after telemetry was replaced with logging (16 violations fixed) |
+| S1481 | 94 | 26 | ComprehensiveTelemetryService.cs (8 fixes), ShadowModeManager.cs (4 fixes), ReversalPatternDetector.cs (2 fixes), BarAggregator.cs (1 fix), RedundantDataFeedManager.cs (1 fix), UnifiedBarPipeline.cs (1 fix), EnhancedStrategyIntegration.cs (1 fix), OfiProxyResolver.cs (1 fix), MLConfiguration.cs (4 fixes), ProductionConfigurationValidation.cs (1 fix), MlPipelineHealthMonitor.cs (1 fix), TradingSystemBarConsumer.cs (1 fix), EnhancedProductionResilienceService.cs (1 fix), FeatureBusAdapter.cs (3 fixes), DecisionFusionCoordinator.cs (4 fixes) | Removed unused local variables across 15 files - telemetry preparation, calculation intermediates, and configuration values (34 unique violations fixed = 68 total including duplicates) |
 
-**Total Fixed This Round: 16 violations (S1481 only) across 5 files**
+**Total Fixed This Round: 34 unique violations (68 total including duplicates) - S1481 only across 15 files**
 
 **Example Pattern Applied**:
 

@@ -1197,9 +1197,10 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                 
                 // Use configured regime values instead of trying to call non-existent method
                 var defaultRegimeValue = configService.GetValue<double>("Regime:DefaultValue", 0.5);
-                var trendingValue = configService.GetValue<double>("Regime:TrendingValue", 1.0);
-                var rangingValue = configService.GetValue<double>("Regime:RangingValue", 0.0);
-                var volatileValue = configService.GetValue<double>("Regime:VolatileValue", -1.0);
+                // Additional regime values configured but not used in current detection logic
+                _ = configService.GetValue<double>("Regime:TrendingValue", 1.0);
+                _ = configService.GetValue<double>("Regime:RangingValue", 0.0);
+                _ = configService.GetValue<double>("Regime:VolatileValue", -1.0);
                 
                 // Since we can't detect the actual regime, use a configurable default
                 var regimeValue = defaultRegimeValue;

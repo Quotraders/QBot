@@ -95,7 +95,7 @@ public sealed class DecisionFusionCoordinator
             // Get configuration data instead of non-existent GetFusionRailsAsync
             var config = await _cfg.GetConfigurationAsync(cancellationToken).ConfigureAwait(false);
             var minConfidence = config.TryGetValue("fusion_min_confidence", out var minConfObj) && minConfObj is double minConf ? minConf : 0.6;
-            var maxRecommendations = config.TryGetValue("fusion_max_recommendations", out var maxRecObj) && maxRecObj is int maxRec ? maxRec : 5;
+            _ = config.TryGetValue("fusion_max_recommendations", out var maxRecObj) && maxRecObj is int maxRec ? maxRec : 5; // Reserved for future use
             var knowledgeWeight = config.TryGetValue("fusion_knowledge_weight", out var knowledgeWeightObj) && knowledgeWeightObj is double kWeight ? kWeight : 0.6;
             var ucbWeight = config.TryGetValue("fusion_ucb_weight", out var ucbWeightObj) && ucbWeightObj is double uWeight ? uWeight : 0.4;
             
@@ -196,8 +196,8 @@ public sealed class DecisionFusionCoordinator
             {
                 try
                 {
-                    // Calculate base position size from strategy intent
-                    var baseSize = finalRec.Intent == StrategyIntent.Buy 
+                    // Base position size configuration loaded for future use
+                    _ = finalRec.Intent == StrategyIntent.Buy 
                         ? GetConfigValue("Fusion:BuyBaseSize", 1.0) 
                         : finalRec.Intent == StrategyIntent.Sell 
                             ? GetConfigValue("Fusion:SellBaseSize", -1.0) 

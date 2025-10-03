@@ -139,15 +139,9 @@ public sealed class ComprehensiveTelemetryService
             
         try
         {
-            var tags = new Dictionary<string, string>
-            {
-                ["config_snapshot_id"] = _currentConfigSnapshotId ?? "unknown"
-            };
-            
             // Emit fusion metrics
             // Telemetry replaced with logging
-// Telemetry replaced with logging
-if (data.FeatureMissingCount > 0)
+            if (data.FeatureMissingCount > 0)
             {
                 // Telemetry replaced with logging
 }
@@ -175,13 +169,6 @@ if (data.FeatureMissingCount > 0)
             
         try
         {
-            var tags = new Dictionary<string, string>
-            {
-                ["symbol"] = data.Symbol,
-                ["decision_type"] = data.DecisionType,
-                ["config_snapshot_id"] = _currentConfigSnapshotId ?? "unknown"
-            };
-            
             // Emit decision metrics
             
             // Telemetry replaced with logging

@@ -73,7 +73,6 @@ namespace BotCore.Features
                     return;
                 }
 
-                var open = Convert.ToDecimal(openProperty.GetValue(barData));
                 var high = Convert.ToDecimal(highProperty.GetValue(barData));
                 var low = Convert.ToDecimal(lowProperty.GetValue(barData));
                 var close = Convert.ToDecimal(closeProperty.GetValue(barData));

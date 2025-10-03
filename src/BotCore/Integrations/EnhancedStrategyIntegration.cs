@@ -171,9 +171,6 @@ namespace BotCore.Integrations
         {
             if (entryPrice == 0) return 0;
 
-            var priceMove = Math.Abs(exitPrice - entryPrice);
-            var percentMove = priceMove / entryPrice;
-
             // Estimate R-multiple based on typical risk parameters
             var estimatedRisk = entryPrice * 0.01m; // 1% risk assumption
             var rMultiple = pnl / estimatedRisk;
