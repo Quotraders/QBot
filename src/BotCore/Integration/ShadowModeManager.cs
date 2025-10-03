@@ -293,7 +293,7 @@ public sealed class ShadowModeManager
                     SharpeRatio = sharpeRatio,
                     TotalTrades = tracker.Trades.Count,
                     TotalPnL = tracker.Trades.Sum(t => t.PnL)
-                }, cancellationToken);
+                }, cancellationToken).ConfigureAwait(false);
             }
             else
             {
