@@ -427,8 +427,8 @@ public class FeatureEngineering : IDisposable
         // Volume ratio (current vs average)
         var volumeWindow = Math.Min(profile.VolumeLookback, buffer.Count);
         var recentVolumes = buffer.GetLast(volumeWindow).Select(d => d.Volume).ToArray();
-        var avgVolume = recentVolumes.Length > 0 ? recentVolumes.Average() : 1.0;
-        var volumeRatio = avgVolume > 0 ? currentData.Volume / avgVolume : 1.0;
+        var avgVolume = recentVolumes.Length > 0 ? recentVolumes.Average() : 1.0m;
+        var volumeRatio = avgVolume > 0 ? (double)(currentData.Volume / avgVolume) : 1.0;
 
         // Volume trend
         var volumeTrend = CalculateTrend(recentVolumes);
@@ -491,8 +491,8 @@ public class FeatureEngineering : IDisposable
 
         // Bid-ask spread
         var spread = currentData.Ask - currentData.Bid;
-        var midPrice = (currentData.Bid + currentData.Ask) / 2.0;
-        var spreadBps = midPrice > 0 ? (spread / midPrice) * 10000.0 : 0.0;
+        var midPrice = (currentData.Bid + currentData.Ask) / 2.0m;
+        var spreadBps = midPrice > 0 ? (double)((spread / midPrice) * 10000.0m) : 0.0;
 
         // Spread z-score (spread relative to recent history)
         var spreadWindow = Math.Min(profile.MicrostructureLookback, buffer.Count);
@@ -505,8 +505,8 @@ public class FeatureEngineering : IDisposable
         if (recentSpreads.Length > 5)
         {
             var avgSpread = recentSpreads.Average();
-            var stdSpread = Math.Sqrt(recentSpreads.Select(s => Math.Pow(s - avgSpread, 2)).Average());
-            spreadZScore = stdSpread > 0 ? (spread - avgSpread) / stdSpread : 0.0;
+            var stdSpread = Math.Sqrt(recentSpreads.Select(s => Math.Pow((double)(s - avgSpread), 2)).Average());
+            spreadZScore = stdSpread > 0 ? (double)((spread - avgSpread) / (decimal)stdSpread) : 0.0;
         }
 
         // Order flow imbalance (approximated using tick direction)
@@ -659,12 +659,12 @@ public class FeatureEngineering : IDisposable
     }
 
     // Helper calculation methods
-    private static double CalculateReturn(double current, double previous)
+    private static double CalculateReturn(decimal current, decimal previous)
     {
-        return previous > 0 ? (current - previous) / previous : 0.0;
+        return previous > 0 ? (double)((current - previous) / previous) : 0.0;
     }
 
-    private static double CalculateVolatility(double[] prices)
+    private static double CalculateVolatility(decimal[] prices)
     {
         if (prices.Length < 2) return 0.0;
         
@@ -679,14 +679,14 @@ public class FeatureEngineering : IDisposable
         return Math.Sqrt(variance);
     }
 
-    private static double CalculateTrend(double[] values)
+    private static double CalculateTrend(decimal[] values)
     {
         if (values.Length < 2) return 0.0;
         
         // Simple linear trend calculation
         var n = values.Length;
         var x = Enumerable.Range(0, n).Select(i => (double)i).ToArray();
-        var y = values;
+        var y = values.Select(v => (double)v).ToArray();
         
         var sumX = x.Sum();
         var sumY = y.Sum();
@@ -707,7 +707,7 @@ public class FeatureEngineering : IDisposable
         
         for (int i = 1; i < allData.Length; i++)
         {
-            var change = allData[i].Close - allData[i - 1].Close;
+            var change = (double)(allData[i].Close - allData[i - 1].Close);
             if (change > 0)
             {
                 gains.Add(change);
@@ -735,15 +735,15 @@ public class FeatureEngineering : IDisposable
         if (prices.Length < config.DefaultMovingAveragePeriod) return config.DefaultMomentumThreshold; // Default middle position
         
         var sma = prices.TakeLast(config.DefaultMovingAveragePeriod).Average();
-        var variance = prices.TakeLast(config.DefaultMovingAveragePeriod).Select(p => Math.Pow(p - sma, 2)).Average();
+        var variance = prices.TakeLast(config.DefaultMovingAveragePeriod).Select(p => Math.Pow((double)(p - sma), 2)).Average();
         var stdDev = Math.Sqrt(variance);
         
-        var upperBand = sma + (2.0 * stdDev);
-        var lowerBand = sma - (2.0 * stdDev);
+        var upperBand = sma + (2.0m * (decimal)stdDev);
+        var lowerBand = sma - (2.0m * (decimal)stdDev);
         
         if (upperBand <= lowerBand) return BollingerBandMidpoint;
         
-        return (current.Close - lowerBand) / (upperBand - lowerBand);
+        return (double)((current.Close - lowerBand) / (upperBand - lowerBand));
     }
 
     private static double CalculateATR(MarketData[] buffer, MarketData current, FeatureConfig config)
@@ -754,9 +754,9 @@ public class FeatureEngineering : IDisposable
         var trueRanges = new List<double>();
         for (int i = 1; i < allData.Length; i++)
         {
-            var high = allData[i].High;
-            var low = allData[i].Low;
-            var prevClose = allData[i - 1].Close;
+            var high = (double)allData[i].High;
+            var low = (double)allData[i].Low;
+            var prevClose = (double)allData[i - 1].Close;
             
             var tr = Math.Max(high - low, Math.Max(Math.Abs(high - prevClose), Math.Abs(low - prevClose)));
             trueRanges.Add(tr);
@@ -781,16 +781,16 @@ public class FeatureEngineering : IDisposable
         return (macd, signal);
     }
 
-    private static double CalculateEMA(double[] prices, int period)
+    private static double CalculateEMA(decimal[] prices, int period)
     {
-        if (prices.Length < period) return prices.LastOrDefault();
+        if (prices.Length < period) return (double)(prices.LastOrDefault());
         
         var multiplier = 2.0 / (period + 1);
-        var ema = prices.Take(period).Average(); // Start with SMA
+        var ema = (double)prices.Take(period).Average(); // Start with SMA
         
         for (int i = period; i < prices.Length; i++)
         {
-            ema = (prices[i] * multiplier) + (ema * (1 - multiplier));
+            ema = ((double)prices[i] * multiplier) + (ema * (1 - multiplier));
         }
         
         return ema;
