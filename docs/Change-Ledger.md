@@ -43,10 +43,35 @@ This ledger documents all fixes made during the analyzer compliance initiative i
   - **Round 61**: CA1031 exception handling - 22 violations, CA1307 string operations - 22 violations
   - **Round 60**: S109 magic numbers - 64 violations, CA1031 exception handling - 1 violation
   - **Verified State**: ~12,741 analyzer violations (0 CS errors maintained, async blocking patterns eliminated)
-- **Current Focus**: CA1510 COMPLETE, S1144 unused members cleaned! Moving to other Priority 1 violations
+- **Current Focus**: Session complete - CA1510 eliminated, S1144 cleaned, S125 removed
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
+- **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 76 - Phase 2 Code Cleanliness: S1144 Unused Private Members Removal (Current Session)
+### 🔧 Round 77 - Phase 2 Code Cleanliness: S125 Commented Code Removal (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S125 | 2 | 0 | StrategyKnowledgeGraphNew.cs | Removed commented-out synchronous wrapper method |
+
+**Total Fixed: 2 violations (100% S125 elimination!)**
+
+**Example Pattern Applied**:
+```csharp
+// Before (Violation) - Commented code with explanation
+// Removed synchronous wrapper - use EvaluateAsync instead to prevent deadlocks
+// public IReadOnlyList<BotCore.Strategy.StrategyRecommendation> Evaluate(string symbol, DateTime utc)
+// {
+//     return EvaluateAsync(symbol, utc, CancellationToken.None).GetAwaiter().GetResult();
+// }
+
+// After (Compliant) - Removed entirely
+// (No replacement - comments explaining removal are acceptable, but commented code is not)
+```
+
+**Rationale**: Per guidebook rules and production standards, commented-out code must be removed. While the comment explained the reason for removal (preventing deadlocks), keeping the old synchronous implementation as commented code violates S125. The async version is the proper implementation, and version control preserves the history if needed.
+
+---
+
+### 🔧 Round 76 - Phase 2 Code Cleanliness: S1144 Unused Private Members Removal (Previous in Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | S1144 | 32 | 24 | EnhancedBayesianPriors.cs, AllStrategies.cs, TradingSystemIntegrationService.cs | Removed duplicate constants and unused stub methods |
