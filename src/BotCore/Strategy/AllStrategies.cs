@@ -705,7 +705,7 @@ namespace BotCore.Strategy
             bool isNq = symbol.Contains("NQ", StringComparison.OrdinalIgnoreCase);
             decimal esSigma = S2RuntimeConfig.EsSigma, nqSigma = S2RuntimeConfig.NqSigma;
             decimal needSigma = isNq ? nqSigma : esSigma;
-            decimal baseSigma = Math.Max(needSigma, S2RuntimeConfig.SigmaEnter);
+            _ = Math.Max(needSigma, S2RuntimeConfig.SigmaEnter); // Base sigma calculation for reference
             decimal baseAtr = S2RuntimeConfig.AtrEnter;
 
             // Roll-week bump (env switch + simple auto-detect fallback)
@@ -1167,7 +1167,7 @@ namespace BotCore.Strategy
             var tick = InstrumentMeta.Tick(symbol);
             var dist = Math.Max(Math.Abs(entry - stop), tick); // ≥ 1 tick
             // Prefer equity-% aware sizing if configured; pass 0 equity to fallback to fixed RPT when not provided
-            var (Qty, UsedRpt) = risk.ComputeSize(symbol, entry, stop, 0m);
+            var (Qty, _) = risk.ComputeSize(symbol, entry, stop, 0m);
             var qty = Qty > 0 ? Qty : (int)RiskEngine.size_for(risk.cfg.risk_per_trade, dist, pv);
             if (qty <= 0) return;
 

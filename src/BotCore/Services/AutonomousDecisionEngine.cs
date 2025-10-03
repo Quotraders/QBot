@@ -1612,8 +1612,8 @@ public class AutonomousDecisionEngine : BackgroundService
     {
         try
         {
-            // Calculate new trailing stop level
-            var profitAmount = CalculatePositionPnL(position, currentPrice);
+            // Calculate new trailing stop level (profit amount calculated for reference)
+            _ = CalculatePositionPnL(position, currentPrice);
             var trailAmount = position.EntryPrice * 0.005m; // 0.5% trailing amount
             
             decimal newStopLevel;

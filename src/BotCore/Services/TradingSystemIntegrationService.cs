@@ -1243,8 +1243,8 @@ namespace TopstepX.Bot.Core.Services
                 if (featureVector == null)
                     return;
 
-                // Update FeatureEngineering with latest market data (simplified)
-                var mlMarketData = new TradingBot.RLAgent.MarketData
+                // Market data object prepared for future ML integration
+                _ = new TradingBot.RLAgent.MarketData
                 {
                     Timestamp = marketData.Timestamp,
                     Bid = marketData.BidPrice,

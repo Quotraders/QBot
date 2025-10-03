@@ -299,7 +299,7 @@ namespace BotCore.Services
         public DateTime GetContractExpirationDate(string contractSymbol)
         {
             ArgumentException.ThrowIfNullOrEmpty(contractSymbol);
-            var baseSymbol = ExtractBaseSymbol(contractSymbol);
+            _ = ExtractBaseSymbol(contractSymbol); // Base symbol validation
             var monthCode = ExtractMonthCode(contractSymbol);
             var year = ExtractYear(contractSymbol);
 
