@@ -159,8 +159,8 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
                 "dist_to_supply_atr" => zoneFeatures.distToSupplyAtr,
                 "breakout_score" => zoneFeatures.breakoutScore,
                 "pressure" => zoneFeatures.zonePressure,
-                "test_count" => GetZoneTestCount(symbol, zoneFeatures), // Calculate or use default
-                "dist_to_opposing_atr" => Math.Max(zoneFeatures.distToDemandAtr, zoneFeatures.distToSupplyAtr),
+                "test_count" => GetZoneTestCount(symbol, ((double)zoneFeatures.distToDemandAtr, (double)zoneFeatures.distToSupplyAtr, (double)zoneFeatures.breakoutScore, (double)zoneFeatures.zonePressure)), // Calculate or use default
+                "dist_to_opposing_atr" => Math.Max((double)zoneFeatures.distToDemandAtr, (double)zoneFeatures.distToSupplyAtr),
                 _ => 0.0
             };
         }

@@ -385,18 +385,18 @@ public class FeatureEngineering : IDisposable
         }
 
         // Price returns with configurable lookbacks
-        var returns1 = CalculateReturn(currentData.Close, buffer.GetFromEnd(1)?.Close ?? currentData.Close);
-        var returns5 = buffer.Count >= 5 ? CalculateReturn(currentData.Close, buffer.GetFromEnd(5)?.Close ?? currentData.Close) : 0.0;
-        var returns20 = buffer.Count >= _config.DefaultMovingAveragePeriod ? CalculateReturn(currentData.Close, buffer.GetFromEnd(_config.DefaultMovingAveragePeriod)?.Close ?? currentData.Close) : 0.0;
+        var returns1 = CalculateReturn((double)currentData.Close, (double)(buffer.GetFromEnd(1)?.Close ?? currentData.Close));
+        var returns5 = buffer.Count >= 5 ? CalculateReturn((double)currentData.Close, (double)(buffer.GetFromEnd(5)?.Close ?? currentData.Close)) : 0.0;
+        var returns20 = buffer.Count >= _config.DefaultMovingAveragePeriod ? CalculateReturn((double)currentData.Close, (double)(buffer.GetFromEnd(_config.DefaultMovingAveragePeriod)?.Close ?? currentData.Close)) : 0.0;
 
         // Price volatility (configurable window)
         var volatilityWindow = Math.Min(profile.VolatilityLookback, buffer.Count);
-        var recentPrices = buffer.GetLast(volatilityWindow).Select(d => d.Close).ToArray();
+        var recentPrices = buffer.GetLast(volatilityWindow).Select(d => (double)d.Close).ToArray();
         var volatility = CalculateVolatility(recentPrices);
 
         // Price trend (using SMA difference)
         var trendWindow = Math.Min(profile.TrendLookback, buffer.Count);
-        var trend = CalculateTrend(buffer.GetLast(trendWindow).Select(d => d.Close).ToArray());
+        var trend = CalculateTrend(buffer.GetLast(trendWindow).Select(d => (double)d.Close).ToArray());
 
         features.AddRange(new[] { returns1, returns5, returns20, volatility, trend });
         featureNames.AddRange(PriceFeatureNames);
@@ -426,9 +426,9 @@ public class FeatureEngineering : IDisposable
 
         // Volume ratio (current vs average)
         var volumeWindow = Math.Min(profile.VolumeLookback, buffer.Count);
-        var recentVolumes = buffer.GetLast(volumeWindow).Select(d => d.Volume).ToArray();
+        var recentVolumes = buffer.GetLast(volumeWindow).Select(d => (double)d.Volume).ToArray();
         var avgVolume = recentVolumes.Length > 0 ? recentVolumes.Average() : 1.0;
-        var volumeRatio = avgVolume > 0 ? currentData.Volume / avgVolume : 1.0;
+        var volumeRatio = avgVolume > 0 ? (double)currentData.Volume / avgVolume : 1.0;
 
         // Volume trend
         var volumeTrend = CalculateTrend(recentVolumes);
@@ -491,8 +491,8 @@ public class FeatureEngineering : IDisposable
 
         // Bid-ask spread
         var spread = currentData.Ask - currentData.Bid;
-        var midPrice = (currentData.Bid + currentData.Ask) / 2.0;
-        var spreadBps = midPrice > 0 ? (spread / midPrice) * 10000.0 : 0.0;
+        var midPrice = (currentData.Bid + currentData.Ask) / 2.0m;
+        var spreadBps = midPrice > 0 ? ((double)spread / (double)midPrice) * 10000.0 : 0.0;
 
         // Spread z-score (spread relative to recent history)
         var spreadWindow = Math.Min(profile.MicrostructureLookback, buffer.Count);
@@ -505,8 +505,8 @@ public class FeatureEngineering : IDisposable
         if (recentSpreads.Length > 5)
         {
             var avgSpread = recentSpreads.Average();
-            var stdSpread = Math.Sqrt(recentSpreads.Select(s => Math.Pow(s - avgSpread, 2)).Average());
-            spreadZScore = stdSpread > 0 ? (spread - avgSpread) / stdSpread : 0.0;
+            var stdSpread = Math.Sqrt(recentSpreads.Select(s => Math.Pow((double)(s - avgSpread), 2)).Average());
+            spreadZScore = stdSpread > 0 ? (double)(spread - avgSpread) / stdSpread : 0.0;
         }
 
         // Order flow imbalance (approximated using tick direction)
@@ -710,13 +710,13 @@ public class FeatureEngineering : IDisposable
             var change = allData[i].Close - allData[i - 1].Close;
             if (change > 0)
             {
-                gains.Add(change);
+                gains.Add((double)change);
                 losses.Add(0);
             }
             else
             {
                 gains.Add(0);
-                losses.Add(-change);
+                losses.Add((double)(-change));
             }
         }
         
@@ -735,15 +735,15 @@ public class FeatureEngineering : IDisposable
         if (prices.Length < config.DefaultMovingAveragePeriod) return config.DefaultMomentumThreshold; // Default middle position
         
         var sma = prices.TakeLast(config.DefaultMovingAveragePeriod).Average();
-        var variance = prices.TakeLast(config.DefaultMovingAveragePeriod).Select(p => Math.Pow(p - sma, 2)).Average();
+        var variance = prices.TakeLast(config.DefaultMovingAveragePeriod).Select(p => Math.Pow((double)(p - sma), 2)).Average();
         var stdDev = Math.Sqrt(variance);
         
-        var upperBand = sma + (2.0 * stdDev);
-        var lowerBand = sma - (2.0 * stdDev);
+        var upperBand = sma + (2.0m * (decimal)stdDev);
+        var lowerBand = sma - (2.0m * (decimal)stdDev);
         
         if (upperBand <= lowerBand) return BollingerBandMidpoint;
         
-        return (current.Close - lowerBand) / (upperBand - lowerBand);
+        return (double)((current.Close - lowerBand) / (upperBand - lowerBand));
     }
 
     private static double CalculateATR(MarketData[] buffer, MarketData current, FeatureConfig config)
@@ -758,7 +758,7 @@ public class FeatureEngineering : IDisposable
             var low = allData[i].Low;
             var prevClose = allData[i - 1].Close;
             
-            var tr = Math.Max(high - low, Math.Max(Math.Abs(high - prevClose), Math.Abs(low - prevClose)));
+            var tr = Math.Max((double)(high - low), Math.Max((double)Math.Abs(high - prevClose), (double)Math.Abs(low - prevClose)));
             trueRanges.Add(tr);
         }
         
@@ -767,7 +767,7 @@ public class FeatureEngineering : IDisposable
 
     private static (double macd, double signal) CalculateMACD(MarketData[] buffer, MarketData current, FeatureConfig config)
     {
-        var prices = buffer.Select(d => d.Close).Append(current.Close).ToArray();
+        var prices = buffer.Select(d => d.Close).Append(current.Close).Select(p => (double)p).ToArray();
         if (prices.Length < config.MaxFeatureHistoryPeriods) return (0.0, 0.0);
         
         // Simplified MACD calculation
