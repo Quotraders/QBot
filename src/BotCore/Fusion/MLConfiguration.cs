@@ -381,31 +381,6 @@ public sealed class ProductionPpoSizer : IPpoSizer
         }
     }
 
-    private string GetMarketRegime(string symbol)
-    {
-        var featureBus = _serviceProvider.GetService<IFeatureBusWithProbe>();
-        var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
-        
-        if (configuration == null)
-        {
-            _logger.LogError("🚨 Configuration service unavailable for market regime - using fallback");
-            return "VOLATILE"; // Safe fallback when config unavailable
-        }
-        
-        var defaultRegimeValue = configuration.GetValue<double>("Trading:DefaultRegimeValue", 0.5);
-        var regimeValue = featureBus?.Probe(symbol, "regime.current") ?? defaultRegimeValue;
-        
-        var trendingThreshold = configuration.GetValue<double>("Trading:RegimeTrendingThreshold", 0.7);
-        var rangingThreshold = configuration.GetValue<double>("Trading:RegimeRangingThreshold", 0.3);
-        
-        return regimeValue switch
-        {
-            var val when val > trendingThreshold => "TRENDING",
-            var val when val < rangingThreshold => "RANGING", 
-            _ => "VOLATILE"
-        };
-    }
-    
     /// <summary>
     /// Check if RL system has position sizing capability - fail-closed validation
     /// </summary>
