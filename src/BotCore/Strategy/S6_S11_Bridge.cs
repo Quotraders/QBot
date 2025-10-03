@@ -73,12 +73,17 @@ namespace BotCore.Strategy
             
             try
             {
-                return task.GetAwaiter().GetResult();
+                if (!task.Wait(TimeSpan.FromSeconds(30)))
+                {
+                    _logger.LogError("PlaceMarket timed out after 30 seconds for {Instrument} {Side} {Qty}", instr, side, qty);
+                    throw new TimeoutException($"Order placement timed out for {instr}");
+                }
+                return task.Result;
             }
-            catch (OperationCanceledException)
+            catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogError("PlaceMarket timed out after 30 seconds for {Instrument} {Side} {Qty}", instr, side, qty);
-                throw new TimeoutException($"Order placement timed out for {instr}");
+                _logger.LogError("PlaceMarket cancelled for {Instrument} {Side} {Qty}", instr, side, qty);
+                throw new TimeoutException($"Order placement cancelled for {instr}");
             }
         }
 
@@ -97,13 +102,18 @@ namespace BotCore.Strategy
             
             try
             {
-                var position = task.GetAwaiter().GetResult();
+                if (!task.Wait(TimeSpan.FromSeconds(10)))
+                {
+                    _logger.LogWarning("GetPosition timed out after 10 seconds for {Instrument}", instr);
+                    return (TopstepX.S6.Side.FLAT, 0, 0, DateTimeOffset.MinValue, string.Empty);
+                }
+                var position = task.Result;
                 var side = ConvertToS6Side(position?.Side ?? "FLAT");
                 return (side, position?.Quantity ?? 0, (double)(position?.AveragePrice ?? 0), position?.OpenTime ?? DateTimeOffset.MinValue, position?.Id ?? "");
             }
-            catch (OperationCanceledException)
+            catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogWarning("GetPosition timed out after 10 seconds for {Instrument}", instr);
+                _logger.LogWarning("GetPosition cancelled for {Instrument}", instr);
                 return (TopstepX.S6.Side.FLAT, 0, 0, DateTimeOffset.MinValue, string.Empty);
             }
         }
@@ -139,12 +149,17 @@ namespace BotCore.Strategy
             
             try
             {
-                return task.GetAwaiter().GetResult();
+                if (!task.Wait(TimeSpan.FromSeconds(30)))
+                {
+                    _logger.LogError("PlaceMarket timed out after 30 seconds for {Instrument} {Side} {Qty}", instr, side, qty);
+                    throw new TimeoutException($"Order placement timed out for {instr}");
+                }
+                return task.Result;
             }
-            catch (OperationCanceledException)
+            catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogError("PlaceMarket timed out after 30 seconds for {Instrument} {Side} {Qty}", instr, side, qty);
-                throw new TimeoutException($"Order placement timed out for {instr}");
+                _logger.LogError("PlaceMarket cancelled for {Instrument} {Side} {Qty}", instr, side, qty);
+                throw new TimeoutException($"Order placement cancelled for {instr}");
             }
         }
 
@@ -163,13 +178,18 @@ namespace BotCore.Strategy
             
             try
             {
-                var position = task.GetAwaiter().GetResult();
+                if (!task.Wait(TimeSpan.FromSeconds(10)))
+                {
+                    _logger.LogWarning("GetPosition timed out after 10 seconds for {Instrument}", instr);
+                    return (TopstepX.S11.Side.FLAT, 0, 0, DateTimeOffset.MinValue, string.Empty);
+                }
+                var position = task.Result;
                 var side = ConvertToS11Side(position?.Side ?? "FLAT");
                 return (side, position?.Quantity ?? 0, (double)(position?.AveragePrice ?? 0), position?.OpenTime ?? DateTimeOffset.MinValue, position?.Id ?? "");
             }
-            catch (OperationCanceledException)
+            catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogWarning("GetPosition timed out after 10 seconds for {Instrument}", instr);
+                _logger.LogWarning("GetPosition cancelled for {Instrument}", instr);
                 return (TopstepX.S11.Side.FLAT, 0, 0, DateTimeOffset.MinValue, string.Empty);
             }
         }
@@ -184,6 +204,50 @@ namespace BotCore.Strategy
         {
             // NOTE: Interface requires double, but we use decimal internally for precision
             return (double)(instr == TopstepX.S11.Instrument.ES ? EsPointValue : NqPointValue); // ES $50/pt, NQ $20/pt
+        }
+
+        #endregion
+
+        #region Public Async-First Entry Points
+
+        /// <summary>
+        /// Places a market order asynchronously - recommended for async callers
+        /// </summary>
+        public async Task<string> PlaceMarketAsync(string instrument, string side, int qty, string tag, CancellationToken cancellationToken = default)
+        {
+            return await PlaceMarketOrderInternalAsync(instrument, side, qty, tag, cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Gets a position asynchronously - recommended for async callers
+        /// </summary>
+        public async Task<TradingBot.Abstractions.Position?> GetPositionAsync(string instrument, CancellationToken cancellationToken = default)
+        {
+            return await GetPositionInternalAsync(instrument, cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Gets all positions asynchronously - recommended for async callers
+        /// </summary>
+        public async Task<List<(object Side, int Qty, double AvgPx, DateTime OpenedAt)>> GetPositionsAsync(CancellationToken cancellationToken = default)
+        {
+            return await GetPositionsInternalAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Modifies stop price asynchronously - recommended for async callers
+        /// </summary>
+        public async Task ModifyStopAsync(string positionId, decimal stopPrice, CancellationToken cancellationToken = default)
+        {
+            await ModifyStopOrderInternalAsync(positionId, stopPrice, cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Closes a position asynchronously - recommended for async callers
+        /// </summary>
+        public async Task ClosePositionAsync(string positionId, CancellationToken cancellationToken = default)
+        {
+            await ClosePositionInternalAsync(positionId, cancellationToken).ConfigureAwait(false);
         }
 
         #endregion
@@ -261,12 +325,16 @@ namespace BotCore.Strategy
             
             try
             {
-                task.GetAwaiter().GetResult();
+                if (!task.Wait(TimeSpan.FromSeconds(15)))
+                {
+                    _logger.LogError("ModifyStop timed out after 15 seconds for position {PositionId}", positionId);
+                    throw new TimeoutException($"Stop modification timed out for position {positionId}");
+                }
             }
-            catch (OperationCanceledException)
+            catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogError("ModifyStop timed out after 15 seconds for position {PositionId}", positionId);
-                throw new TimeoutException($"Stop modification timed out for position {positionId}");
+                _logger.LogError("ModifyStop cancelled for position {PositionId}", positionId);
+                throw new TimeoutException($"Stop modification cancelled for position {positionId}");
             }
         }
 
@@ -317,12 +385,16 @@ namespace BotCore.Strategy
             
             try
             {
-                task.GetAwaiter().GetResult();
+                if (!task.Wait(TimeSpan.FromSeconds(15)))
+                {
+                    _logger.LogError("ClosePosition timed out after 15 seconds for position {PositionId}", positionId);
+                    throw new TimeoutException($"Position close timed out for position {positionId}");
+                }
             }
-            catch (OperationCanceledException)
+            catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogError("ClosePosition timed out after 15 seconds for position {PositionId}", positionId);
-                throw new TimeoutException($"Position close timed out for position {positionId}");
+                _logger.LogError("ClosePosition cancelled for position {PositionId}", positionId);
+                throw new TimeoutException($"Position close cancelled for position {positionId}");
             }
         }
 
@@ -377,11 +449,16 @@ namespace BotCore.Strategy
             
             try
             {
-                return task.GetAwaiter().GetResult();
+                if (!task.Wait(TimeSpan.FromSeconds(10)))
+                {
+                    _logger.LogWarning("GetPositions timed out after 10 seconds");
+                    return new List<(object Side, int Qty, double AvgPx, DateTime OpenedAt)>();
+                }
+                return task.Result;
             }
-            catch (OperationCanceledException)
+            catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogWarning("GetPositions timed out after 10 seconds");
+                _logger.LogWarning("GetPositions cancelled");
                 return new List<(object Side, int Qty, double AvgPx, DateTime OpenedAt)>();
             }
         }
