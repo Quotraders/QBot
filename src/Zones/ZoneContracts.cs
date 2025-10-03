@@ -7,7 +7,7 @@ public sealed record Zone(
     ZoneSide Side,
     decimal PriceLow,
     decimal PriceHigh,
-    double Pressure,     // 0..1 (touches, confluence, recency)
+    decimal Pressure,     // 0..1 (touches, confluence, recency)
     int TouchCount,
     DateTime LastTouchedUtc,
     ZoneState State)
