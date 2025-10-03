@@ -38,24 +38,24 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
     // Constants to avoid magic numbers  
     private const int DefaultPivotSize = 3;
     private const int DefaultAtrPeriod = 14;
-    private const double DefaultMergeAtr = 0.6;
+    private const decimal DefaultMergeAtr = 0.6m;
     private const int DefaultDecayHalfLife = 600;
-    private const double HalfDivisor = 2.0;
-    private const double BreakoutThresholdAtr = 0.2;
+    private const decimal HalfDivisor = 2.0m;
+    private const decimal BreakoutThresholdAtr = 0.2m;
     private const int MaxZonesPerSymbol = 200;
     private const int MinHistoryBars = 2;
-    private const double InitialZonePressure = 0.5;
+    private const decimal InitialZonePressure = 0.5m;
     private const int RingBufferSize = 3000;
     private const int MidpointDivisor = 2;
-    private const double MinTouchDecay = 0.01;
-    private const double ZoneMergingPressureFactor = 0.6;
-    private const double ZoneMergingPressureOffset = 0.4;
+    private const decimal MinTouchDecay = 0.01m;
+    private const decimal ZoneMergingPressureFactor = 0.6m;
+    private const decimal ZoneMergingPressureOffset = 0.4m;
     private const int MinTouchThreshold = 1;
 
     private readonly ConcurrentDictionary<string, SymbolState> _bySym = new(StringComparer.OrdinalIgnoreCase);
     private readonly int _pivotL, _pivotR, _decayHalfLife;
     private readonly int _atrPeriod;
-    private readonly double _mergeAtr;
+    private readonly decimal _mergeAtr;
 
     public ZoneServiceProduction([NotNull] IConfiguration cfg)
     {
@@ -105,7 +105,7 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
 
     private static ZoneSnapshot CreateEmptySnapshot()
     {
-        return new ZoneSnapshot(null, null, double.PositiveInfinity, double.PositiveInfinity, 0, 0, DateTime.UtcNow);
+        return new ZoneSnapshot(null, null, decimal.MaxValue, decimal.MaxValue, 0m, 0m, DateTime.UtcNow);
     }
 
     private static ZoneSnapshot CreateZoneSnapshot(SymbolState s)
@@ -121,9 +121,9 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
         return new ZoneSnapshot(demand, supply, distances.demandDist, distances.supplyDist, breakoutScore, pressure, s.LastUtc);
     }
 
-    private static double GetSnapshotAtr(SymbolState s)
+    private static decimal GetSnapshotAtr(SymbolState s)
     {
-        return (double)(s.Atr.Value == 0 ? 1m : s.Atr.Value);
+        return s.Atr.Value == 0 ? 1m : s.Atr.Value;
     }
 
     private static (Zone? demand, Zone? supply) FindNearestZones(SymbolState s, decimal px)
@@ -133,14 +133,14 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
         return (demand, supply);
     }
 
-    private static (double demandDist, double supplyDist) CalculateZoneDistances(Zone? demand, Zone? supply, decimal px, double atr)
+    private static (decimal demandDist, decimal supplyDist) CalculateZoneDistances(Zone? demand, Zone? supply, decimal px, decimal atr)
     {
-        double distDemand = demand is null ? double.PositiveInfinity : (double)((px - demand.PriceHigh) / (decimal)atr);
-        double distSupply = supply is null ? double.PositiveInfinity : (double)((supply.PriceLow - px) / (decimal)atr);
-        return (Math.Max(0, distDemand), Math.Max(0, distSupply));
+        decimal distDemand = demand is null ? decimal.MaxValue : (px - demand.PriceHigh) / atr;
+        decimal distSupply = supply is null ? decimal.MaxValue : (supply.PriceLow - px) / atr;
+        return (Math.Max(0m, distDemand), Math.Max(0m, distSupply));
     }
 
-    (double distToDemandAtr, double distToSupplyAtr, double breakoutScore, double zonePressure) IZoneFeatureSource.GetFeatures(string symbol)
+    (decimal distToDemandAtr, decimal distToSupplyAtr, decimal breakoutScore, decimal zonePressure) IZoneFeatureSource.GetFeatures(string symbol)
     {
         var snap = GetSnapshot(symbol);
         return (snap.DistToDemandAtr, snap.DistToSupplyAtr, snap.BreakoutScore, snap.ZonePressure);
