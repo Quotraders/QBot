@@ -677,13 +677,13 @@ namespace TopstepX.Bot.Core.Services
                 var mlMarketData = new TradingBot.RLAgent.MarketData
                 {
                     Timestamp = marketData.Timestamp,
-                    Bid = (double)marketData.BidPrice,
-                    Ask = (double)marketData.AskPrice,
-                    Close = (double)marketData.LastPrice,
-                    Volume = (double)marketData.Volume,
-                    Open = (double)marketData.LastPrice, // Using last price as proxy for open
-                    High = (double)marketData.LastPrice, // Using last price as proxy for high
-                    Low = (double)marketData.LastPrice   // Using last price as proxy for low
+                    Bid = marketData.BidPrice,
+                    Ask = marketData.AskPrice,
+                    Close = marketData.LastPrice,
+                    Volume = marketData.Volume,
+                    Open = marketData.LastPrice, // Using last price as proxy for open
+                    High = marketData.LastPrice, // Using last price as proxy for high
+                    Low = marketData.LastPrice   // Using last price as proxy for low
                 };
 
                 // Generate feature vector using the FeatureEngineering service
@@ -1247,13 +1247,13 @@ namespace TopstepX.Bot.Core.Services
                 var mlMarketData = new TradingBot.RLAgent.MarketData
                 {
                     Timestamp = marketData.Timestamp,
-                    Bid = (double)marketData.BidPrice,
-                    Ask = (double)marketData.AskPrice,
-                    Close = (double)marketData.LastPrice,
-                    Volume = (double)marketData.Volume,
-                    Open = (double)marketData.LastPrice,
-                    High = (double)marketData.LastPrice,
-                    Low = (double)marketData.LastPrice
+                    Bid = marketData.BidPrice,
+                    Ask = marketData.AskPrice,
+                    Close = marketData.LastPrice,
+                    Volume = marketData.Volume,
+                    Open = marketData.LastPrice,
+                    High = marketData.LastPrice,
+                    Low = marketData.LastPrice
                 };
 
                 // Note: UpdateStreamingFeaturesAsync method doesn't exist yet, so we skip this for now
