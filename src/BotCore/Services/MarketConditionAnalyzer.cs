@@ -375,7 +375,7 @@ public class MarketConditionAnalyzer
             regime, volatility, trend.Direction, trend.Strength);
     }
     
-    private decimal CalculateMovingAverage(decimal[] prices, int period)
+    private static decimal CalculateMovingAverage(decimal[] prices, int period)
     {
         if (prices.Length < period) return 0m;
         
@@ -406,17 +406,17 @@ public class MarketConditionAnalyzer
         return trueRanges.Average();
     }
     
-    private bool IsUptrend(decimal shortMA, decimal mediumMA, decimal longMA)
+    private static bool IsUptrend(decimal shortMA, decimal mediumMA, decimal longMA)
     {
         return shortMA > mediumMA && mediumMA > longMA;
     }
     
-    private bool IsDowntrend(decimal shortMA, decimal mediumMA, decimal longMA)
+    private static bool IsDowntrend(decimal shortMA, decimal mediumMA, decimal longMA)
     {
         return shortMA < mediumMA && mediumMA < longMA;
     }
     
-    private decimal GetVolatilityThreshold(MarketVolatility level)
+    private static decimal GetVolatilityThreshold(MarketVolatility level)
     {
         // ES futures typical ATR values (in points)
         return level switch
@@ -430,7 +430,7 @@ public class MarketConditionAnalyzer
         };
     }
     
-    private decimal GetRegimeScore(TradingMarketRegime regime)
+    private static decimal GetRegimeScore(TradingMarketRegime regime)
     {
         return regime switch
         {
@@ -443,7 +443,7 @@ public class MarketConditionAnalyzer
         };
     }
     
-    private decimal GetVolatilityScore(MarketVolatility volatility)
+    private static decimal GetVolatilityScore(MarketVolatility volatility)
     {
         return volatility switch
         {
@@ -456,7 +456,7 @@ public class MarketConditionAnalyzer
         };
     }
     
-    private decimal GetTrendScore(TrendAnalysis trend)
+    private static decimal GetTrendScore(TrendAnalysis trend)
     {
         var directionScore = trend.Direction == TrendDirection.Sideways ? 0.5m : 0.8m;
         var strengthScore = trend.Strength;
@@ -464,7 +464,7 @@ public class MarketConditionAnalyzer
         return (directionScore + strengthScore) / 2m;
     }
     
-    private decimal GetVolumeScore(VolumeAnalysis volume)
+    private static decimal GetVolumeScore(VolumeAnalysis volume)
     {
         return volume.LiquidityLevel switch
         {
@@ -477,7 +477,7 @@ public class MarketConditionAnalyzer
         };
     }
     
-    private DateTime GetEasternTime()
+    private static DateTime GetEasternTime()
     {
         try
         {

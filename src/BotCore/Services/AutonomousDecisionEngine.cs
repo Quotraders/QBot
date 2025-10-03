@@ -408,7 +408,7 @@ public class AutonomousDecisionEngine : BackgroundService
         return Math.Max(0, Math.Min(1, totalScore));
     }
     
-    private decimal CalculateRecentPerformanceScore(AutonomousStrategyMetrics metrics)
+    private static decimal CalculateRecentPerformanceScore(AutonomousStrategyMetrics metrics)
     {
         if (metrics.RecentTrades.Count == 0) return DefaultConfidenceThreshold;
         
@@ -439,7 +439,7 @@ public class AutonomousDecisionEngine : BackgroundService
         };
     }
     
-    private decimal CalculateConsistencyScore(AutonomousStrategyMetrics metrics)
+    private static decimal CalculateConsistencyScore(AutonomousStrategyMetrics metrics)
     {
         if (metrics.RecentTrades.Count < MinTradesForConsistency) return DefaultFitnessScore;
         
@@ -454,7 +454,7 @@ public class AutonomousDecisionEngine : BackgroundService
         return consistencyScore;
     }
     
-    private decimal CalculateProfitabilityScore(AutonomousStrategyMetrics metrics)
+    private static decimal CalculateProfitabilityScore(AutonomousStrategyMetrics metrics)
     {
         if (metrics.TotalTrades == 0) return DefaultFitnessScore;
         
@@ -907,7 +907,7 @@ public class AutonomousDecisionEngine : BackgroundService
     /// <summary>
     /// Map TradingMarketRegime to AutonomousMarketRegime
     /// </summary>
-    private AutonomousMarketRegime MapTradingRegimeToAutonomous(TradingMarketRegime tradingRegime)
+    private static AutonomousMarketRegime MapTradingRegimeToAutonomous(TradingMarketRegime tradingRegime)
     {
         return tradingRegime switch
         {
@@ -1251,7 +1251,7 @@ public class AutonomousDecisionEngine : BackgroundService
     /// <summary>
     /// Get strategy performance from analyzer
     /// </summary>
-    private StrategyPerformanceData? GetStrategyPerformanceFromAnalyzer(string strategy)
+    private static StrategyPerformanceData? GetStrategyPerformanceFromAnalyzer(string strategy)
     {
         try
         {
@@ -1365,7 +1365,7 @@ public class AutonomousDecisionEngine : BackgroundService
     /// <summary>
     /// Generate recent trades from performance data for immediate operation
     /// </summary>
-    private List<AutonomousTradeOutcome> GenerateRecentTradesFromPerformance(string strategy, StrategyPerformanceData performance)
+    private static List<AutonomousTradeOutcome> GenerateRecentTradesFromPerformance(string strategy, StrategyPerformanceData performance)
     {
         var recentTrades = new List<AutonomousTradeOutcome>();
         var random = new Random();
@@ -1487,7 +1487,7 @@ public class AutonomousDecisionEngine : BackgroundService
     }
     
     // Helper methods for technical indicators
-    private double CalculateRSI(List<Bar> bars, int period)
+    private static double CalculateRSI(List<Bar> bars, int period)
     {
         if (bars.Count < period + 1) return 50; // Neutral RSI
         
@@ -1509,7 +1509,7 @@ public class AutonomousDecisionEngine : BackgroundService
         return (double)(100 - (100 / (1 + rs)));
     }
     
-    private double CalculateMACD(List<Bar> bars)
+    private static double CalculateMACD(List<Bar> bars)
     {
         if (bars.Count < 26) return 0;
         
@@ -1536,7 +1536,7 @@ public class AutonomousDecisionEngine : BackgroundService
         return (double)((currentPrice - lowerBand) / (upperBand - lowerBand));
     }
     
-    private double CalculateATR(List<Bar> bars, int period)
+    private static double CalculateATR(List<Bar> bars, int period)
     {
         if (bars.Count < period + 1) return 0;
         
@@ -1557,7 +1557,7 @@ public class AutonomousDecisionEngine : BackgroundService
         return (double)trValues.TakeLast(period).Average();
     }
     
-    private double CalculateVolumeMA(List<Bar> bars, int period)
+    private static double CalculateVolumeMA(List<Bar> bars, int period)
     {
         if (bars.Count < period) return 0;
         return (double)bars.TakeLast(period).Select(b => b.Volume).Average();
@@ -1587,7 +1587,7 @@ public class AutonomousDecisionEngine : BackgroundService
         return priceDiff * position.Quantity;
     }
     
-    private bool ShouldTrailStop(Position position, decimal currentPrice)
+    private static bool ShouldTrailStop(Position position, decimal currentPrice)
     {
         // Implement trailing stop logic based on position performance
         var unrealizedPnL = CalculatePositionPnL(position, currentPrice);
