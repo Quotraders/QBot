@@ -19,6 +19,9 @@ namespace BotCore.ML;
 /// </summary>
 public class BatchedOnnxInferenceService : IDisposable
 {
+    // Batch processing constants
+    private const int BatchQueueOverflowMultiplier = 2; // Allow up to 2x batch size in queue
+    
     private readonly ILogger<BatchedOnnxInferenceService> _logger;
     private readonly OnnxModelLoader _modelLoader;
     private readonly BatchConfig _batchConfig;
@@ -121,7 +124,7 @@ public class BatchedOnnxInferenceService : IDisposable
         {
             // Collect pending requests
             var requests = new List<InferenceRequest>();
-            while (_requestQueue.Reader.TryRead(out var request) && requests.Count < _batchConfig.ModelInferenceBatchSize * 2)
+            while (_requestQueue.Reader.TryRead(out var request) && requests.Count < _batchConfig.ModelInferenceBatchSize * BatchQueueOverflowMultiplier)
             {
                 requests.Add(request);
             }

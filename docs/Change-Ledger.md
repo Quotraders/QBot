@@ -33,6 +33,7 @@ This ledger documents all fixes made during the analyzer compliance initiative i
     - Round 80: 1646 namespace collision fixes (BotCore.Math → BotCore.Financial)
     - Round 78: 96 RLAgent/S7 decimal/double fixes + Round 79: 16 analyzer violations
 - **Phase 2 Status**: ✅ **IN PROGRESS** - Moving to systematic analyzer violation elimination
+  - **Current Session (Round 115)**: 6 analyzer violations fixed (S109 magic numbers - Priority 1 continued)
   - **Current Session (Round 114)**: 6 analyzer violations fixed (S109 magic numbers - Priority 1)
   - **Current Session (Round 113)**: 4 analyzer violations fixed (S6580, CA1304, CA1311 globalization)
   - **Current Session (Round 112)**: 6 analyzer violations fixed (CA1304, CA1311 globalization)
@@ -58,6 +59,42 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Current Focus**: Session complete - CA1510 eliminated, S1144 cleaned, S125 removed
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
+
+### 🔧 Round 115 - Phase 2: S109 Magic Number Elimination Continued (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 2004 | 1998 | DecisionFusionCoordinator.cs, BatchedOnnxInferenceService.cs, ModelUpdaterService.cs | Added named constants for fusion max recommendations, batch queue overflow multiplier, checksum display length |
+
+**Total Fixed: 6 violations (3 unique fixes in 3 files)**
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers inline
+_ = config.TryGetValue("fusion_max_recommendations", out var maxRecObj) && maxRecObj is int maxRec ? maxRec : 5;
+while (_requestQueue.Reader.TryRead(out var request) && requests.Count < _batchConfig.ModelInferenceBatchSize * 2)
+modelInfo.Checksum[..8]
+
+// After (Compliant) - Named constants with clear intent
+private const int DefaultMaxRecommendations = 5;
+private const int BatchQueueOverflowMultiplier = 2;
+private const int ChecksumDisplayLength = 8;
+
+_ = config.TryGetValue("fusion_max_recommendations", out var maxRecObj) && maxRecObj is int maxRec ? maxRec : DefaultMaxRecommendations;
+while (_requestQueue.Reader.TryRead(out var request) && requests.Count < _batchConfig.ModelInferenceBatchSize * BatchQueueOverflowMultiplier)
+modelInfo.Checksum[..ChecksumDisplayLength]
+```
+
+**Rationale**: 
+- **S109**: Continued Priority 1 (Correctness & Invariants) magic number elimination
+- **Files Fixed**:
+  - `DecisionFusionCoordinator.cs` - Maximum recommendations to consider in fusion logic
+  - `BatchedOnnxInferenceService.cs` - Queue overflow multiplier for batch processing
+  - `ModelUpdaterService.cs` - Checksum display length in logs
+- **Context**: Configuration defaults and operational constants
+
+**Build Verification**: ✅ 0 CS errors maintained, 5955 analyzer violations remaining (6 violations fixed, reduced from 5958 to 5955)
+
+---
 
 ### 🔧 Round 114 - Phase 2: S109 Magic Number Elimination (Current Session)
 | Rule | Before | After | Files Affected | Pattern Applied |

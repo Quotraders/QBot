@@ -44,6 +44,9 @@ public sealed class FusionRails
 /// </summary>
 public sealed class DecisionFusionCoordinator
 {
+    // Fusion configuration constants
+    private const int DefaultMaxRecommendations = 5; // Maximum fusion recommendations to consider
+    
     private readonly IStrategyKnowledgeGraph _graph;
     private readonly IUcbStrategyChooser _ucb;
     private readonly IPpoSizer _ppo;
@@ -95,7 +98,7 @@ public sealed class DecisionFusionCoordinator
             // Get configuration data instead of non-existent GetFusionRailsAsync
             var config = await _cfg.GetConfigurationAsync(cancellationToken).ConfigureAwait(false);
             var minConfidence = config.TryGetValue("fusion_min_confidence", out var minConfObj) && minConfObj is double minConf ? minConf : 0.6;
-            _ = config.TryGetValue("fusion_max_recommendations", out var maxRecObj) && maxRecObj is int maxRec ? maxRec : 5; // Reserved for future use
+            _ = config.TryGetValue("fusion_max_recommendations", out var maxRecObj) && maxRecObj is int maxRec ? maxRec : DefaultMaxRecommendations; // Reserved for future use
             var knowledgeWeight = config.TryGetValue("fusion_knowledge_weight", out var knowledgeWeightObj) && knowledgeWeightObj is double kWeight ? kWeight : 0.6;
             var ucbWeight = config.TryGetValue("fusion_ucb_weight", out var ucbWeightObj) && ucbWeightObj is double uWeight ? uWeight : 0.4;
             

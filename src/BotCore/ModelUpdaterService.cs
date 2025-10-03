@@ -21,6 +21,7 @@ namespace BotCore
     {
         // Model update constants
         private const int MaxConsecutiveFailuresBeforeBackoff = 3;   // Threshold for exponential backoff
+        private const int ChecksumDisplayLength = 8;                  // Number of checksum characters to display in logs
         
         private readonly ILogger<ModelUpdaterService> _log;
         private readonly HttpClient _http;
@@ -312,7 +313,7 @@ namespace BotCore
                     else
                     {
                         _log.LogInformation("[ModelUpdater] Updated model: {ModelName} -> {Checksum}",
-                            modelName, modelInfo.Checksum[..8]);
+                            modelName, modelInfo.Checksum[..ChecksumDisplayLength]);
                     }
                 }
                 catch (Exception ex)
