@@ -221,3 +221,82 @@ Centralize tick rounding (`AlignForLimit`/`Stop`) inside these types. Ban passin
 **Perf budget test:** Hot decision path ≤ X ms at p95 (set X). Test fails on regression.
 
 ---
+
+## Solution-Level "Fail the Build" Rails
+
+### Directory.Build.props - Analyzer Enforcement
+
+Ensure these properties are set at solution level to enforce quality gates:
+
+```xml
+<Project>
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.*" PrivateAssets="all" />
+    <PackageReference Include="Meziantou.Analyzer" Version="2.*" PrivateAssets="all" />
+    <PackageReference Include="AsyncFixer" Version="1.*" PrivateAssets="all" />
+  </ItemGroup>
+</Project>
+```
+
+### Roslyn Banned API File
+
+Create `analyzers/BannedSymbols.txt` to prevent re-introducing bugs:
+
+```
+T:System.Threading.Thread.Sleep; Use Task.Delay with CancellationToken
+M:System.Threading.Tasks.Task.get_Result; Do not block on async
+M:System.Threading.Tasks.Task.Wait; Do not block on async
+M:System.Runtime.CompilerServices.TaskAwaiter.GetResult; Do not block on async
+M:System.DateTime.get_Now; Use DateTimeOffset.UtcNow or Stopwatch for latency
+T:System.Double; Disallowed in price/PnL paths (use decimal);#price-path
+```
+
+Reference it in `Directory.Build.props`:
+
+```xml
+<ItemGroup>
+  <AdditionalFiles Include="analyzers/BannedSymbols.txt" />
+</ItemGroup>
+```
+
+### .editorconfig - Culture, Naming, Decimal Literals
+
+Add these rules to enforce best practices:
+
+```ini
+[*.cs]
+# Culture-safe operations
+dotnet_style_prefer_invariant_globalization = true:suggestion
+dotnet_diagnostic.CA1305.severity = error
+dotnet_diagnostic.CA1307.severity = error
+
+# Code style
+dotnet_style_prefer_simplified_boolean_expressions = true:warning
+
+# Require 'm' suffix for financial literals (decimal enforcement)
+dotnet_diagnostic.IDE0004.severity = error
+
+# Async hygiene
+dotnet_diagnostic.VSTHRD002.severity = error   # Avoid blocking waits
+dotnet_diagnostic.VSTHRD103.severity = error   # Call async methods correctly
+dotnet_diagnostic.VSTHRD200.severity = error   # Use Async naming convention
+
+# Threading analyzers
+dotnet_diagnostic.MA0045.severity = error      # Use ConfigureAwait(false)
+dotnet_diagnostic.AsyncFixer01.severity = error # Unnecessary async/await
+dotnet_diagnostic.AsyncFixer02.severity = error # Long-running operations on thread pool
+```
+
+These rails ensure:
+- **Build-time prevention** of common bugs
+- **Cultural safety** in all string operations  
+- **Async hygiene** enforcement at compile time
+- **Type safety** for monetary values (decimal over double)
+- **Banned APIs** cannot be used without explicit suppression with justification
+
+---
