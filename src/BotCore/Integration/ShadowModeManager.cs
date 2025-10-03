@@ -487,17 +487,7 @@ public sealed class ShadowModeManager
     {
         try
         {
-            var metricsService = _serviceProvider.GetService(typeof(TradingBot.IntelligenceStack.RealTradingMetricsService)) as TradingBot.IntelligenceStack.RealTradingMetricsService;
-            if (metricsService != null)
-            {
-                var tags = new Dictionary<string, string>
-                {
-                    ["strategy_name"] = strategy.Name,
-                    ["auto_promotion"] = strategy.AutoPromotionEnabled.ToString().ToLowerInvariant()
-                };
-                
-                
-            }
+            // Telemetry emission removed - tags preparation no longer needed
         }
         catch (Exception ex)
         {
@@ -514,19 +504,7 @@ public sealed class ShadowModeManager
     {
         try
         {
-            var metricsService = _serviceProvider.GetService(typeof(TradingBot.IntelligenceStack.RealTradingMetricsService)) as TradingBot.IntelligenceStack.RealTradingMetricsService;
-            if (metricsService != null)
-            {
-                var tags = new Dictionary<string, string>
-                {
-                    ["strategy_name"] = pick.StrategyName,
-                    ["symbol"] = pick.Symbol,
-                    ["direction"] = pick.Direction.ToString().ToLowerInvariant()
-                };
-                
-                
-                
-            }
+            // Telemetry emission removed - tags preparation no longer needed
         }
         catch (Exception ex)
         {
@@ -543,22 +521,7 @@ public sealed class ShadowModeManager
     {
         try
         {
-            var metricsService = _serviceProvider.GetService(typeof(TradingBot.IntelligenceStack.RealTradingMetricsService)) as TradingBot.IntelligenceStack.RealTradingMetricsService;
-            if (metricsService != null)
-            {
-                var tags = new Dictionary<string, string>
-                {
-                    ["strategy_name"] = trade.StrategyName,
-                    ["symbol"] = trade.Symbol,
-                    ["direction"] = trade.Direction.ToString().ToLowerInvariant(),
-                    ["is_winner"] = trade.IsWinner.ToString().ToLowerInvariant(),
-                    ["exit_reason"] = trade.ExitReason
-                };
-                
-                
-                
-                
-            }
+            // Telemetry emission removed - tags preparation no longer needed
         }
         catch (Exception ex)
         {
@@ -575,19 +538,7 @@ public sealed class ShadowModeManager
     {
         try
         {
-            var metricsService = _serviceProvider.GetService(typeof(TradingBot.IntelligenceStack.RealTradingMetricsService)) as TradingBot.IntelligenceStack.RealTradingMetricsService;
-            if (metricsService != null)
-            {
-                var tags = new Dictionary<string, string>
-                {
-                    ["strategy_name"] = strategy.Name
-                };
-                
-                
-                
-                
-                
-            }
+            // Telemetry emission removed - tags preparation no longer needed
         }
         catch (Exception ex)
         {
@@ -604,17 +555,7 @@ public sealed class ShadowModeManager
     {
         try
         {
-            var metricsService = _serviceProvider.GetService(typeof(TradingBot.IntelligenceStack.RealTradingMetricsService)) as TradingBot.IntelligenceStack.RealTradingMetricsService;
-            if (metricsService != null)
-            {
-                var tags = new Dictionary<string, string>
-                {
-                    ["strategy_name"] = strategy.Name,
-                    ["reason"] = reason
-                };
-                
-                
-            }
+            // Telemetry emission removed - tags preparation no longer needed
         }
         catch (Exception ex)
         {

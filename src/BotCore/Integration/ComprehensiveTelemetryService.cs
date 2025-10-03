@@ -70,12 +70,6 @@ public sealed class ComprehensiveTelemetryService
             
         try
         {
-            var tags = new Dictionary<string, string>
-            {
-                ["symbol"] = symbol,
-                ["config_snapshot_id"] = _currentConfigSnapshotId ?? "unknown"
-            };
-            
             // Emit zone count and tests via logging
             _logger.LogInformation("Zone telemetry: Symbol={Symbol}, ZoneCount={ZoneCount}, TotalTests={TotalTests}", 
                 symbol, data.ZoneCount, data.TotalTests);
@@ -120,33 +114,9 @@ public sealed class ComprehensiveTelemetryService
             
         try
         {
-            var tags = new Dictionary<string, string>
-            {
-                ["symbol"] = symbol,
-                ["config_snapshot_id"] = _currentConfigSnapshotId ?? "unknown"
-            };
-            
-            // Emit pattern signals
-            foreach (var signal in data.PatternSignals)
-            {
-                var signalTags = new Dictionary<string, string>(tags)
-                {
-                    ["kind"] = signal.PatternName,
-                    ["confirmed"] = signal.IsConfirmed.ToString().ToLowerInvariant()
-                };
-                
-                
-            }
-            
-            // Emit pattern scores
-            // Telemetry replaced with logging
-// Telemetry replaced with logging
-// Emit pattern reliability metrics
-            foreach (var reliability in data.PatternReliabilities)
-            {
-                var reliabilityTags = new Dictionary<string, string>(tags) { ["kind"] = reliability.PatternName };
-                // Telemetry replaced with logging
-}
+            // Emit pattern signals - telemetry replaced with logging
+            // Emit pattern scores - telemetry replaced with logging
+            // Emit pattern reliability metrics - telemetry replaced with logging
             
             _logger.LogTrace("Pattern telemetry emitted for {Symbol}: Bull {BullScore:F2}, Bear {BearScore:F2}, {SignalCount} signals",
                 symbol, data.BullScore, data.BearScore, data.PatternSignals.Count);
@@ -182,12 +152,7 @@ if (data.FeatureMissingCount > 0)
                 // Telemetry replaced with logging
 }
             
-            // Emit risk rejection metrics
-            foreach (var rejection in data.RiskRejections)
-            {
-                var rejectionTags = new Dictionary<string, string>(tags) { ["reason"] = rejection.Reason };
-                
-            }
+            // Emit risk rejection metrics - telemetry replaced with logging
             
             _logger.LogTrace("Fusion/Risk telemetry emitted: Confidence {Confidence:F2}, Features {FeatureCount}, Rejections {RejectionCount}",
                 data.DecisionConfidence, data.FeatureCount, data.RiskRejections.Count);
@@ -220,16 +185,8 @@ if (data.FeatureMissingCount > 0)
             // Emit decision metrics
             
             // Telemetry replaced with logging
-if (!string.IsNullOrEmpty(data.OrderId))
+            if (!string.IsNullOrEmpty(data.OrderId))
             {
-                var orderTags = new Dictionary<string, string>(tags)
-                {
-                    ["order_id"] = data.OrderId,
-                    ["order_type"] = data.OrderType
-                };
-                
-                
-                
                 if (data.ExecutionLatencyMs.HasValue)
                 {
                     // Telemetry replaced with logging
@@ -270,22 +227,7 @@ if (!string.IsNullOrEmpty(data.OrderId))
                 _lastEmissionTimes[key] = DateTime.UtcNow;
             }
             
-            var tags = new Dictionary<string, string>
-            {
-                ["component"] = component,
-                ["reason"] = reason,
-                ["config_snapshot_id"] = _currentConfigSnapshotId ?? "unknown"
-            };
-            
-            var metricName = component.ToLowerInvariant() switch
-            {
-                "zones" => "zones.fail_closed",
-                "patterns" => "patterns.fail_closed",
-                "fusion" => "fusion.fail_closed",
-                _ => "system.fail_closed"
-            };
-            
-            
+            // Telemetry replaced with logging - tags and metricName preparation removed
             
             _logger.LogWarning("🚨 FAIL-CLOSED triggered: {Component} - {Reason}", component, reason);
         }
@@ -307,11 +249,6 @@ if (!string.IsNullOrEmpty(data.OrderId))
             
         try
         {
-            var tags = new Dictionary<string, string>
-            {
-                ["config_snapshot_id"] = _currentConfigSnapshotId ?? "unknown"
-            };
-            
             // Emit performance metrics
             if (data.DecisionLatencyMs.HasValue)
             {
