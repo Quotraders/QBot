@@ -100,7 +100,7 @@ namespace BotCore.Services
             }
         }
 
-        private string AnalyzeVolatilityRegime(string symbol)
+        private static string AnalyzeVolatilityRegime(string symbol)
         {
             // Analyze recent volatility patterns
             // High, stable volatility suggests trending
@@ -125,7 +125,7 @@ namespace BotCore.Services
             }
         }
 
-        private string AnalyzeTrendRegime(string symbol)
+        private static string AnalyzeTrendRegime(string symbol)
         {
             // Analyze price trend characteristics
             // Strong directional movement suggests trending
@@ -150,7 +150,7 @@ namespace BotCore.Services
             }
         }
 
-        private string AnalyzeVolumeRegime(string symbol)
+        private static string AnalyzeVolumeRegime(string symbol)
         {
             // Analyze volume patterns
             // High volume with direction suggests trending
@@ -170,7 +170,7 @@ namespace BotCore.Services
             }
         }
 
-        private void AddRegimeScore(Dictionary<string, double> scores, string regime, double weight)
+        private static void AddRegimeScore(Dictionary<string, double> scores, string regime, double weight)
         {
             if (scores.ContainsKey(regime))
             {
@@ -178,7 +178,7 @@ namespace BotCore.Services
             }
         }
 
-        private string ApplyRegimeSmoothing(RegimeState state, string newRegime)
+        private static string ApplyRegimeSmoothing(RegimeState state, string newRegime)
         {
             // Apply smoothing to prevent rapid regime changes
             if (state.CurrentRegime == null)
