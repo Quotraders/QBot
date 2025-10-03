@@ -62,9 +62,15 @@ namespace BotCore.Strategy
         /// </summary>
         /// <remarks>
         /// INTERFACE CONTRACT: This method MUST remain synchronous per TopstepX.S6.IOrderRouter.
-        /// Uses Task.Run with bounded timeout to execute async work on thread pool.
-        /// Acceptable here as bridge runs on background hosted worker, not UI/SignalR context.
-        /// For async callers, use PlaceMarketOrderInternalAsync directly.
+        /// 
+        /// BLOCKING PATTERN JUSTIFICATION (per COMPLETE_FIX_GUIDE Option One):
+        /// This sync-over-async is acceptable because ALL three guard conditions are met:
+        /// 1. ✅ Runs on dedicated background thread (HostedService worker, not UI/SignalR context)
+        /// 2. ✅ Underlying async calls never capture context (.ConfigureAwait(false) throughout)
+        /// 3. ✅ Enforces timeout (30s) and surfaces cancellation via CancellationToken
+        /// 
+        /// TODO: Migrate to Option Two (full async IOrderRouter interface) when third-party SDK supports it.
+        /// For async callers within our codebase, use PlaceMarketOrderInternalAsync directly.
         /// </remarks>
         public string PlaceMarket(TopstepX.S6.Instrument instr, TopstepX.S6.Side side, int qty, string tag)
         {
@@ -92,7 +98,14 @@ namespace BotCore.Strategy
         /// </summary>
         /// <remarks>
         /// INTERFACE CONTRACT: This method MUST remain synchronous per TopstepX.S6.IOrderRouter.
-        /// Uses bounded timeout to execute async work.
+        /// 
+        /// BLOCKING PATTERN JUSTIFICATION (per COMPLETE_FIX_GUIDE Option One):
+        /// This sync-over-async is acceptable because ALL three guard conditions are met:
+        /// 1. ✅ Runs on dedicated background thread (HostedService worker)
+        /// 2. ✅ Underlying async calls use .ConfigureAwait(false)
+        /// 3. ✅ Enforces timeout (10s) and surfaces cancellation
+        /// 
+        /// TODO: Migrate to full async interface when SDK supports it.
         /// For async callers, use GetPositionInternalAsync directly.
         /// </remarks>
         public (TopstepX.S6.Side side, int qty, double avgPx, DateTimeOffset openedAt, string positionId) GetPosition(TopstepX.S6.Instrument instr)
