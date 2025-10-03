@@ -553,26 +553,26 @@ public class AutonomousDecisionEngine : BackgroundService
         try
         {
             // Calculate technical indicators for decision making
-            var technicalIndicators = new Dictionary<string, double>
+            var technicalIndicators = new Dictionary<string, decimal>
             {
-                ["RSI"] = 50.0, // Neutral RSI when no data available
-                ["MACD"] = 0.0, // No signal when no data available  
-                ["BollingerPosition"] = 0.5, // Middle of bands when no data available
-                ["ATR"] = 0.0, // No volatility measure when no data available
-                ["VolumeMA"] = 0.0 // No volume data when unavailable
+                ["RSI"] = 50.0m, // Neutral RSI when no data available
+                ["MACD"] = 0.0m, // No signal when no data available  
+                ["BollingerPosition"] = 0.5m, // Middle of bands when no data available
+                ["ATR"] = 0.0m, // No volatility measure when no data available
+                ["VolumeMA"] = 0.0m // No volume data when unavailable
             };
             
             // Try to get real market data, use defaults if unavailable
-            double currentPrice = 4500.0; // Default ES price
-            double currentVolume = 1000.0; // Default volume
+            decimal currentPrice = 4500.0m; // Default ES price
+            decimal currentVolume = 1000.0m; // Default volume
             
             try
             {
                 // Attempt to get current market data
                 var priceDecimal = await GetCurrentMarketPriceAsync("ES", cancellationToken).ConfigureAwait(false);
                 var volumeLong = await GetCurrentVolumeAsync("ES", cancellationToken).ConfigureAwait(false);
-                currentPrice = (double)priceDecimal;
-                currentVolume = (double)volumeLong;
+                currentPrice = priceDecimal;
+                currentVolume = volumeLong;
                 technicalIndicators = await CalculateTechnicalIndicatorsAsync("ES", cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
@@ -1048,15 +1048,15 @@ public class AutonomousDecisionEngine : BackgroundService
     /// <summary>
     /// Calculate technical indicators for decision making
     /// </summary>
-    private async Task<Dictionary<string, double>> CalculateTechnicalIndicatorsAsync(string symbol, CancellationToken cancellationToken)
+    private async Task<Dictionary<string, decimal>> CalculateTechnicalIndicatorsAsync(string symbol, CancellationToken cancellationToken)
     {
         try
         {
             // Get recent bars for technical analysis
             var bars = await GetRecentBarsAsync(symbol, 50, cancellationToken).ConfigureAwait(false);
-            if (bars.Count < 20) return new Dictionary<string, double>();
+            if (bars.Count < 20) return new Dictionary<string, decimal>();
             
-            var indicators = new Dictionary<string, double>();
+            var indicators = new Dictionary<string, decimal>();
             
             // Calculate key technical indicators
             indicators["RSI"] = CalculateRSI(bars, 14);
@@ -1070,7 +1070,7 @@ public class AutonomousDecisionEngine : BackgroundService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "⚠️ [AUTONOMOUS-ENGINE] Failed to calculate technical indicators for {Symbol}", symbol);
-            return new Dictionary<string, double>();
+            return new Dictionary<string, decimal>();
         }
     }
     
@@ -1117,7 +1117,7 @@ public class AutonomousDecisionEngine : BackgroundService
             {
                 _logger.LogDebug("📊 [AUTONOMOUS-ENGINE] TopstepX adapter connected, using fallback price for {Symbol}", symbol);
                 // Use fallback price since GetPriceAsync is not available in the interface
-                var currentPrice = symbol == "ES" ? 4500.0 : 15000.0;
+                var currentPrice = symbol == "ES" ? 4500.0m : 15000.0m;
                 if (currentPrice > 0)
                 {
                     // Create a single current bar from real price data (SDK provides current pricing)
@@ -1126,10 +1126,10 @@ public class AutonomousDecisionEngine : BackgroundService
                         Symbol = symbol,
                         Start = DateTime.UtcNow,
                         Ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                        Open = (decimal)currentPrice,
-                        High = (decimal)currentPrice,
-                        Low = (decimal)currentPrice,
-                        Close = (decimal)currentPrice,
+                        Open = currentPrice,
+                        High = currentPrice,
+                        Low = currentPrice,
+                        Close = currentPrice,
                         Volume = 0 // Real volume would come from order book
                     };
                     
@@ -1487,9 +1487,9 @@ public class AutonomousDecisionEngine : BackgroundService
     }
     
     // Helper methods for technical indicators
-    private double CalculateRSI(List<Bar> bars, int period)
+    private decimal CalculateRSI(List<Bar> bars, int period)
     {
-        if (bars.Count < period + 1) return 50; // Neutral RSI
+        if (bars.Count < period + 1) return 50m; // Neutral RSI
         
         var gains = new List<decimal>();
         var losses = new List<decimal>();
@@ -1504,41 +1504,41 @@ public class AutonomousDecisionEngine : BackgroundService
         var avgGain = gains.TakeLast(period).Average();
         var avgLoss = losses.TakeLast(period).Average();
         
-        if (avgLoss == 0) return 100;
+        if (avgLoss == 0) return 100m;
         var rs = avgGain / avgLoss;
-        return (double)(100 - (100 / (1 + rs)));
+        return 100m - (100m / (1m + rs));
     }
     
-    private double CalculateMACD(List<Bar> bars)
+    private decimal CalculateMACD(List<Bar> bars)
     {
-        if (bars.Count < 26) return 0;
+        if (bars.Count < 26) return 0m;
         
         var ema12 = CalculateEMA(bars.Select(b => b.Close).ToList(), 12);
         var ema26 = CalculateEMA(bars.Select(b => b.Close).ToList(), 26);
         
-        return (double)(ema12 - ema26);
+        return ema12 - ema26;
     }
     
-    private static double CalculateBollingerPosition(List<Bar> bars, int period)
+    private static decimal CalculateBollingerPosition(List<Bar> bars, int period)
     {
-        if (bars.Count < period) return 0.5; // Neutral position
+        if (bars.Count < period) return 0.5m; // Neutral position
         
         var closes = bars.TakeLast(period).Select(b => b.Close).ToList();
         var sma = closes.Average();
         var stdDev = (decimal)Math.Sqrt((double)closes.Select(c => (c - sma) * (c - sma)).Average());
         
-        var upperBand = sma + (2 * stdDev);
-        var lowerBand = sma - (2 * stdDev);
+        var upperBand = sma + (2m * stdDev);
+        var lowerBand = sma - (2m * stdDev);
         var currentPrice = bars.Last().Close;
         
         // Return position between bands (0 = lower band, 1 = upper band)
-        if (upperBand == lowerBand) return 0.5;
-        return (double)((currentPrice - lowerBand) / (upperBand - lowerBand));
+        if (upperBand == lowerBand) return 0.5m;
+        return (currentPrice - lowerBand) / (upperBand - lowerBand);
     }
     
-    private double CalculateATR(List<Bar> bars, int period)
+    private decimal CalculateATR(List<Bar> bars, int period)
     {
-        if (bars.Count < period + 1) return 0;
+        if (bars.Count < period + 1) return 0m;
         
         var trValues = new List<decimal>();
         
@@ -1554,13 +1554,13 @@ public class AutonomousDecisionEngine : BackgroundService
             trValues.Add(tr);
         }
         
-        return (double)trValues.TakeLast(period).Average();
+        return trValues.TakeLast(period).Average();
     }
     
-    private double CalculateVolumeMA(List<Bar> bars, int period)
+    private decimal CalculateVolumeMA(List<Bar> bars, int period)
     {
-        if (bars.Count < period) return 0;
-        return (double)bars.TakeLast(period).Select(b => b.Volume).Average();
+        if (bars.Count < period) return 0m;
+        return bars.TakeLast(period).Select(b => b.Volume).Average();
     }
     
     private static decimal CalculateEMA(List<decimal> values, int period)

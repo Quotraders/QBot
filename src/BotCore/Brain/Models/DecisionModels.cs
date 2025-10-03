@@ -53,7 +53,7 @@ namespace BotCore.Brain.Models
         public double ConfidenceLevel { get; set; }
         public double ModelConfidence { get; set; }
         public double NewsIntensity { get; set; }
-        public Dictionary<string, double> TechnicalIndicators { get; } = new();
+        public Dictionary<string, decimal> TechnicalIndicators { get; } = new();
         public bool IsFomcDay { get; set; }
         public bool IsCpiDay { get; set; }
     }

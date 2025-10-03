@@ -33,11 +33,11 @@ public class MarketContext
 {
     public string Symbol { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
-    public double Price { get; set; }
-    public double Volume { get; set; }
+    public decimal Price { get; set; }
+    public decimal Volume { get; set; }
     public double Bid { get; set; }
     public double Ask { get; set; }
-    public Dictionary<string, double> TechnicalIndicators { get; } = new();
+    public Dictionary<string, decimal> TechnicalIndicators { get; } = new();
     public RegimeState? CurrentRegime { get; set; }
     
     // Additional properties for intelligence integration
