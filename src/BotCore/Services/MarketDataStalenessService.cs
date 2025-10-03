@@ -28,6 +28,9 @@ public interface IMarketDataStalenessService
 
 public class MarketDataStalenessService : IMarketDataStalenessService, IDisposable
 {
+    // Default configuration constants
+    private const int DefaultStalenessThresholdSeconds = 30;  // Default staleness threshold
+    private const int DefaultCheckIntervalMilliseconds = 5000; // Default check interval (5 seconds)
     private readonly ILogger<MarketDataStalenessService> _logger;
     private readonly ConcurrentDictionary<string, DateTime> _lastTickTimes = new();
     private readonly Timer _stalenessCheckTimer;
@@ -50,8 +53,8 @@ public class MarketDataStalenessService : IMarketDataStalenessService, IDisposab
         _logger = logger;
         
         // Get configuration from environment
-        _stalenessThresholdSeconds = EnvConfig.GetInt("MARKET_DATA_STALENESS_THRESHOLD_SEC", 30);
-        _checkIntervalMs = EnvConfig.GetInt("MARKET_DATA_CHECK_INTERVAL_MS", 5000);
+        _stalenessThresholdSeconds = EnvConfig.GetInt("MARKET_DATA_STALENESS_THRESHOLD_SEC", DefaultStalenessThresholdSeconds);
+        _checkIntervalMs = EnvConfig.GetInt("MARKET_DATA_CHECK_INTERVAL_MS", DefaultCheckIntervalMilliseconds);
 
         // Initialize timer but don't start it yet
         _stalenessCheckTimer = new Timer(CheckStaleness, null, Timeout.Infinite, Timeout.Infinite);
