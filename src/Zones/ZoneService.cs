@@ -38,24 +38,24 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
     // Constants to avoid magic numbers  
     private const int DefaultPivotSize = 3;
     private const int DefaultAtrPeriod = 14;
-    private const double DefaultMergeAtr = 0.6;
+    private const decimal DefaultMergeAtr = 0.6m;
     private const int DefaultDecayHalfLife = 600;
-    private const double HalfDivisor = 2.0;
-    private const double BreakoutThresholdAtr = 0.2;
+    private const decimal HalfDivisor = 2.0m;
+    private const decimal BreakoutThresholdAtr = 0.2m;
     private const int MaxZonesPerSymbol = 200;
     private const int MinHistoryBars = 2;
-    private const double InitialZonePressure = 0.5;
+    private const decimal InitialZonePressure = 0.5m;
     private const int RingBufferSize = 3000;
     private const int MidpointDivisor = 2;
-    private const double MinTouchDecay = 0.01;
-    private const double ZoneMergingPressureFactor = 0.6;
-    private const double ZoneMergingPressureOffset = 0.4;
+    private const decimal MinTouchDecay = 0.01m;
+    private const decimal ZoneMergingPressureFactor = 0.6m;
+    private const decimal ZoneMergingPressureOffset = 0.4m;
     private const int MinTouchThreshold = 1;
 
     private readonly ConcurrentDictionary<string, SymbolState> _bySym = new(StringComparer.OrdinalIgnoreCase);
     private readonly int _pivotL, _pivotR, _decayHalfLife;
     private readonly int _atrPeriod;
-    private readonly double _mergeAtr;
+    private readonly decimal _mergeAtr;
 
     public ZoneServiceProduction([NotNull] IConfiguration cfg)
     {
@@ -105,7 +105,7 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
 
     private static ZoneSnapshot CreateEmptySnapshot()
     {
-        return new ZoneSnapshot(null, null, double.PositiveInfinity, double.PositiveInfinity, 0, 0, DateTime.UtcNow);
+        return new ZoneSnapshot(null, null, decimal.MaxValue, decimal.MaxValue, 0m, 0m, DateTime.UtcNow);
     }
 
     private static ZoneSnapshot CreateZoneSnapshot(SymbolState s)
@@ -115,15 +115,15 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
         var (demand, supply) = FindNearestZones(s, px);
         var distances = CalculateZoneDistances(demand, supply, px, atr);
         var opposingZone = supply ?? demand;
-        var breakoutScore = opposingZone is null ? 0 : EstimateBreakoutScore(s, px, opposingZone, atr);
-        var pressure = opposingZone?.Pressure ?? 0.0;
+        var breakoutScore = opposingZone is null ? 0m : EstimateBreakoutScore(s, px, opposingZone, atr);
+        var pressure = opposingZone?.Pressure ?? 0.0m;
         
         return new ZoneSnapshot(demand, supply, distances.demandDist, distances.supplyDist, breakoutScore, pressure, s.LastUtc);
     }
 
-    private static double GetSnapshotAtr(SymbolState s)
+    private static decimal GetSnapshotAtr(SymbolState s)
     {
-        return (double)(s.Atr.Value == 0 ? 1m : s.Atr.Value);
+        return s.Atr.Value == 0 ? 1m : s.Atr.Value;
     }
 
     private static (Zone? demand, Zone? supply) FindNearestZones(SymbolState s, decimal px)
@@ -133,14 +133,14 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
         return (demand, supply);
     }
 
-    private static (double demandDist, double supplyDist) CalculateZoneDistances(Zone? demand, Zone? supply, decimal px, double atr)
+    private static (decimal demandDist, decimal supplyDist) CalculateZoneDistances(Zone? demand, Zone? supply, decimal px, decimal atr)
     {
-        double distDemand = demand is null ? double.PositiveInfinity : (double)((px - demand.PriceHigh) / (decimal)atr);
-        double distSupply = supply is null ? double.PositiveInfinity : (double)((supply.PriceLow - px) / (decimal)atr);
-        return (Math.Max(0, distDemand), Math.Max(0, distSupply));
+        decimal distDemand = demand is null ? decimal.MaxValue : (px - demand.PriceHigh) / atr;
+        decimal distSupply = supply is null ? decimal.MaxValue : (supply.PriceLow - px) / atr;
+        return (Math.Max(0m, distDemand), Math.Max(0m, distSupply));
     }
 
-    (double distToDemandAtr, double distToSupplyAtr, double breakoutScore, double zonePressure) IZoneFeatureSource.GetFeatures(string symbol)
+    (decimal distToDemandAtr, decimal distToSupplyAtr, decimal breakoutScore, decimal zonePressure) IZoneFeatureSource.GetFeatures(string symbol)
     {
         var snap = GetSnapshot(symbol);
         return (snap.DistToDemandAtr, snap.DistToSupplyAtr, snap.BreakoutScore, snap.ZonePressure);
@@ -205,7 +205,7 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
     private void CreateZonesFromPivot(SymbolState s, Bar center, bool isHigh, bool isLow)
     {
         var atr = GetEffectiveAtr(s, center);
-        var thickness = atr * (decimal)_mergeAtr;
+        var thickness = atr * _mergeAtr;
         
         if (isHigh)
         {
@@ -300,7 +300,7 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
         var low = Math.Min(existing.PriceLow, newZone.PriceLow);
         var high = Math.Max(existing.PriceHigh, newZone.PriceHigh);
         var touchCount = existing.TouchCount + newZone.TouchCount;
-        var pressure = Math.Min(1.0, (existing.Pressure + newZone.Pressure) * ZoneMergingPressureFactor + ZoneMergingPressureOffset);
+        var pressure = Math.Min(1.0m, (existing.Pressure + newZone.Pressure) * ZoneMergingPressureFactor + ZoneMergingPressureOffset);
         
         return new Zone(existing.Side, low, high, pressure, touchCount, DateTime.UtcNow, ZoneState.Test);
     }
@@ -325,12 +325,14 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
         return atr <= 0 ? 1 : atr;
     }
 
-    private double CalculateDecayFactor()
+    private decimal CalculateDecayFactor()
     {
-        return Math.Exp(-Math.Log(HalfDivisor) / Math.Max(1, _decayHalfLife));
+        // Use double for Math.Exp/Log, then convert back to decimal
+        var exponent = -Math.Log((double)HalfDivisor) / Math.Max(1, _decayHalfLife);
+        return (decimal)Math.Exp(exponent);
     }
 
-    private static void UpdateAllZones(SymbolState s, decimal close, DateTime utc, decimal atr, double decay)
+    private static void UpdateAllZones(SymbolState s, decimal close, DateTime utc, decimal atr, decimal decay)
     {
         for(int i = 0; i < s.Zones.Count; i++)
         {
@@ -340,7 +342,7 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
         }
     }
 
-    private static Zone UpdateSingleZone(Zone zone, decimal close, DateTime utc, decimal atr, double decay)
+    private static Zone UpdateSingleZone(Zone zone, decimal close, DateTime utc, decimal atr, decimal decay)
     {
         var newPressure = CalculateNewPressure(zone, decay);
         var newState = DetermineZoneState(zone, close, atr);
@@ -355,9 +357,9 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
         };
     }
 
-    private static double CalculateNewPressure(Zone zone, double decay)
+    private static decimal CalculateNewPressure(Zone zone, decimal decay)
     {
-        return Math.Clamp(zone.Pressure * decay + MinTouchDecay * zone.TouchCount, 0, 1);
+        return Math.Clamp(zone.Pressure * decay + MinTouchDecay * zone.TouchCount, 0m, 1m);
     }
 
     private static ZoneState DetermineZoneState(Zone zone, decimal close, decimal atr)
@@ -367,7 +369,7 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
             return ZoneState.Test;
         }
         
-        var breakoutThreshold = atr * (decimal)BreakoutThresholdAtr;
+        var breakoutThreshold = atr * BreakoutThresholdAtr;
         
         if (close > zone.PriceHigh + breakoutThreshold)
         {
@@ -390,17 +392,17 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
         }
     }
 
-    private static double EstimateBreakoutScore(SymbolState s, decimal px, Zone opp, double atr)
+    private static decimal EstimateBreakoutScore(SymbolState s, decimal px, Zone opp, decimal atr)
     {
         const int lookbackBars = 20;
-        const double defaultVdc = 1.0;
-        const double maxDistanceAtr = 3.0;
-        const double maxTestsForScore = 5.0;
-        const double momentumWeight = 1.5;
-        const double vdcWeight = 0.8;
-        const double testsWeight = 0.5;
-        const double distanceWeight = 1.0;
-        const double logisticBias = 0.5;
+        const decimal defaultVdc = 1.0m;
+        const decimal maxDistanceAtr = 3.0m;
+        const decimal maxTestsForScore = 5.0m;
+        const decimal momentumWeight = 1.5m;
+        const decimal vdcWeight = 0.8m;
+        const decimal testsWeight = 0.5m;
+        const decimal distanceWeight = 1.0m;
+        const decimal logisticBias = 0.5m;
         
         int k = Math.Min(lookbackBars, s.Bars.Count - 1);
         if (k <= MinHistoryBars) return InitialZonePressure;
@@ -414,28 +416,33 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
             momentumWeight, vdcWeight, testsWeight, distanceWeight, logisticBias);
     }
 
-    private static double CalculateMomentum(SymbolState s, int lookback, double atr)
+    private static decimal CalculateMomentum(SymbolState s, int lookback, decimal atr)
     {
         var last = s.Bars[s.Bars.Count - 1];
         var prev = s.Bars[s.Bars.Count - 1 - lookback];
-        return (double)((last.C - prev.C) / (decimal)atr);
+        return (last.C - prev.C) / atr;
     }
 
-    private static double CalculateNormalizedDistance(decimal price, Zone zone, double atr, double maxDistance)
+    private static decimal CalculateNormalizedDistance(decimal price, Zone zone, decimal atr, decimal maxDistance)
     {
-        double distance = (double)((zone.Side == ZoneSide.Supply ? zone.PriceLow - price : price - zone.PriceHigh) / (decimal)atr);
-        return Math.Clamp(distance, 0, maxDistance);
+        decimal distance = (zone.Side == ZoneSide.Supply ? zone.PriceLow - price : price - zone.PriceHigh) / atr;
+        return Math.Clamp(distance, 0m, maxDistance);
     }
 
-    private static double CalculateTestsFactor(Zone zone, double maxTests)
+    private static decimal CalculateTestsFactor(Zone zone, decimal maxTests)
     {
         return Math.Min(maxTests, zone.TouchCount) / maxTests;
     }
 
-    private static double CalculateLogisticScore(double momentum, double vdc, double tests, double distance,
-        double momWeight, double vdcWeight, double testsWeight, double distWeight, double bias)
+    private static decimal CalculateLogisticScore(decimal momentum, decimal vdc, decimal tests, decimal distance,
+        decimal momWeight, decimal vdcWeight, decimal testsWeight, decimal distWeight, decimal bias)
     {
-        var score = 1 / (1 + Math.Exp(-(momWeight * momentum + vdcWeight * (1 / vdc) + testsWeight * tests - distWeight * distance - bias)));
-        return Math.Clamp(score, 0.0, 1.0);
+        const decimal MinScore = 0.0m;
+        const decimal MaxScore = 1.0m;
+        
+        // Use double for Math.Exp, then convert back to decimal
+        var exponent = (double)(-(momWeight * momentum + vdcWeight * (1m / vdc) + testsWeight * tests - distWeight * distance - bias));
+        var score = (decimal)(1.0 / (1.0 + Math.Exp(exponent)));
+        return Math.Clamp(score, MinScore, MaxScore);
     }
 }

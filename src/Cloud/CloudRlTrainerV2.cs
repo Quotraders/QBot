@@ -188,6 +188,14 @@ namespace CloudTrainer
             await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// Attempts to acquire a token without blocking
+        /// </summary>
+        /// <remarks>
+        /// Uses Wait(0) which is a non-blocking synchronous check (returns immediately).
+        /// This is safe because timeout=0 means no blocking - it either succeeds instantly or returns false.
+        /// The interface requires a synchronous bool return, making this the appropriate pattern.
+        /// </remarks>
         public bool TryAcquire()
         {
             return _semaphore.Wait(0);

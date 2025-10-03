@@ -46,10 +46,12 @@ These files are in the direct trade execution path and must be fixed immediately
    - Priority: Critical - risk checks on every trade
    - Note: RiskManagement.cs also verified clean
 
-4. **CriticalSystemComponents.cs** ✅ IMPROVED
-   - Fixed 1 blocking call in emergency shutdown path
-   - Added proper timeout handling and error logging
-   - Note: Task.Run with Wait acceptable in crash handler
+4. **CriticalSystemComponents.cs** ✅ FIXED
+   - Fixed fire-and-forget regression in OnUnhandledException
+   - Changed from fire-and-forget to blocking wait with timeout
+   - Now guarantees emergency position protection completes before process termination
+   - Pattern matches TopstepXAdapterService.Dispose (Task.Run().Wait with timeout)
+   - Critical for production safety: prevents positions being left unprotected during crashes
 
 5. **UnifiedTradingBrain.cs** ⚠️ NEEDS AUDIT
    - Estimated blocking calls: 3-5
@@ -226,10 +228,12 @@ Lower priority, cosmetic improvements:
   - Made TryDecisionFusionAsync truly async (added async keyword)
   - **Impact**: 1 high priority file complete
 
-- ✅ **CriticalSystemComponents.cs** - Improved emergency shutdown
-  - Added proper timeout handling for emergency position protection
-  - Added error logging for crash scenarios
-  - Documented why Task.Run with Wait is acceptable here
+- ✅ **CriticalSystemComponents.cs** - Fixed fire-and-forget crash handler regression
+  - PREVIOUS: Fire-and-forget pattern allowed CLR to terminate before protection completed
+  - FIXED: Changed to blocking wait with timeout (Task.Run().Wait pattern)
+  - Pattern matches TopstepXAdapterService.Dispose implementation
+  - Guarantees emergency position protection completes before process termination
+  - Critical production safety fix - prevents positions left unprotected during crashes
 
 #### Round 71 (Previous Session)
 - ✅ **S6_S11_Bridge.cs** - Fixed async blocking + decimal precision
