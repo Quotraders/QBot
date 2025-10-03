@@ -155,10 +155,10 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
             var zoneFeatures = _zoneFeatures.GetFeatures(symbol);
             return featureName switch
             {
-                "dist_to_demand_atr" => zoneFeatures.distToDemandAtr,
-                "dist_to_supply_atr" => zoneFeatures.distToSupplyAtr,
-                "breakout_score" => zoneFeatures.breakoutScore,
-                "pressure" => zoneFeatures.zonePressure,
+                "dist_to_demand_atr" => (double)zoneFeatures.distToDemandAtr,
+                "dist_to_supply_atr" => (double)zoneFeatures.distToSupplyAtr,
+                "breakout_score" => (double)zoneFeatures.breakoutScore,
+                "pressure" => (double)zoneFeatures.zonePressure,
                 "test_count" => GetZoneTestCount(symbol, ((double)zoneFeatures.distToDemandAtr, (double)zoneFeatures.distToSupplyAtr, (double)zoneFeatures.breakoutScore, (double)zoneFeatures.zonePressure)), // Calculate or use default
                 "dist_to_opposing_atr" => Math.Max((double)zoneFeatures.distToDemandAtr, (double)zoneFeatures.distToSupplyAtr),
                 _ => 0.0
