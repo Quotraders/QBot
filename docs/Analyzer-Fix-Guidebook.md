@@ -140,3 +140,84 @@ rg -n 'catch\s*\(\s*Exception[^\)]*\)\s*\{(\s*//.*)?\s*\}'
 - Attach tools/analyzers/current.sarif + short "fixed rules → how" summary
 
 ---
+
+## Hedge-Fund-Grade Guardrails
+
+### Determinism, Time, and Clocks
+
+**Monotonic time in hot paths:** Use `Stopwatch.GetTimestamp()` for latency/SLA measurements. Reserve `DateTimeOffset.UtcNow`/NodaTime for wall-clock/session logic. Hold trading if clock skew > 300ms vs NTP.
+
+**Bar boundary discipline:** All features/gates evaluate on bar close using a single scheduler. Forbid ad-hoc timers. DST handled via exchange calendar—no local time math.
+
+### Types That Make Invalid States Unrepresentable
+
+**Money/Price/Ticks value objects:** Replace raw `decimal` with readonly struct wrappers:
+- `Price(decimal, TickSize)`
+- `Money(decimal, Currency)` 
+- `Ticks(int)`
+
+Centralize tick rounding (`AlignForLimit`/`Stop`) inside these types. Ban passing naked `decimal` to order APIs.
+
+**Banned types in price paths:** Disallow `double`/`float` in any method that touches orders, PnL, or SL/TP (use Roslyn banned-symbols analyzer).
+
+### Async + Cancellation Contracts
+
+**Every I/O method takes CancellationToken:** No timeouts via `.Wait()`/`Task.Delay(x)` without CT.
+
+**TCS hygiene:** Use `new TaskCompletionSource(..., TaskCreationOptions.RunContinuationsAsynchronously)` only.
+
+**IAsyncDisposable everywhere:** Sockets, SignalR, file streams, ONNX sessions → `await using`.
+
+### State Durability & Crash Consistency
+
+**Atomic writes only:** temp → `File.Replace`; fsync (`FileStream.Flush(true)`) for ledgers, snapshots, and state/*.
+
+**Warm restart contract:** On boot, load last-good snapshots for zones, patterns, positions. If missing → fail closed and alert.
+
+### Execution & Risk Circuit Breakers
+
+**Latency/queue SLAs:** Per order choose offset to target P(fill ≥ 0.8 in 3s). Cancel/replace if ETA breaches SLA.
+
+**Portfolio guards:** Correlation/β cap across ES/NQ. Daily loss lock enforced in policy and adapter. Halt after N rejects/min to prevent thrash.
+
+**Kill switch semantics:** File + remote + API. Idempotent. Flatten net position, stop new orders, and freeze config snapshot.
+
+### Data Quality & Lineage
+
+**Freshness & schema sentries:** If a feature feed is older than 2× cadence or schema hash changes → drop `knowledge_weight` to 0 and alert.
+
+**Lineage stamp on decisions:** Persist `{dataset_sha, model_sha, config.snapshot_id, code_version}` per trade for audit/replay.
+
+### Model Governance
+
+**Per-regime canary & rollback:** Promote only when canary beats control by pre-registered metrics. Auto-rollback on drift/latency spikes.
+
+**Reproducible inference:** Pin ONNX Runtime version. Verify model sha256 on load. Refuse to run on mismatch.
+
+### Observability Budgets (Avoid Cardinality Explosions)
+
+**Metric keys limited & bounded:** Whitelists for tags (symbol, strategy, reason). Drop free-form strings. Alerts on high-cardinality.
+
+**Explainability stamp:** Tiny JSON blob per decision (top 5 features + gates) stored with trade. Size-capped.
+
+### Security & Secrets
+
+**No secrets in logs:** Guard `ToString()` of configs. Redact token-like strings.
+
+**Device-bound live trading:** Enforce "local device only" check before any live order path. VPN/VPS → hard fail + audit.
+
+### Testing & Chaos
+
+**Golden parity tests:** Same snapshot → identical decisions in live vs backtest.
+
+**Chaos drills:** Inject slow network (p50→p95×3), dropped ticks, and reconnects. Assert the policy holds not trades.
+
+**Tick-grid tests:** Assert every submitted price is on grid for ES/MES/NQ/MNQ.
+
+### CI/CD Rails
+
+**Banned APIs file:** Block `.Result`/`.Wait()`/`GetAwaiter().GetResult()` and `double` in price paths.
+
+**Perf budget test:** Hot decision path ≤ X ms at p95 (set X). Test fails on regression.
+
+---
