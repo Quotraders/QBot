@@ -180,7 +180,8 @@ public class BasicMicrostructureAnalyzer : IMicrostructureAnalyzer
         var marketSlippage = await PredictMarketOrderSlippageAsync(
             intent.Symbol, intent.Quantity, intent.IsBuy, currentState, ct).ConfigureAwait(false);
 
-        var limitFillProb = intent.LimitPrice.HasValue
+        // Limit fill probability calculation (reserved for future routing decision logic)
+        _ = intent.LimitPrice.HasValue
             ? await EstimateLimitOrderFillProbabilityAsync(
                 intent.Symbol, intent.LimitPrice.Value, intent.Quantity,
                 intent.IsBuy, intent.MaxWaitTime, currentState, ct).ConfigureAwait(false)

@@ -555,7 +555,6 @@ namespace BotCore.Services
             if (series1.Length != series2.Length || series1.Length == 0)
                 return 0.85; // Fallback
                 
-            var n = series1.Length;
             var mean1 = series1.Average();
             var mean2 = series2.Average();
             

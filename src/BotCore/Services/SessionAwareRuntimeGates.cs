@@ -103,7 +103,6 @@ public class SessionAwareRuntimeGates
     public bool IsRthSession(DateTime? etTime = null)
     {
         var et = etTime ?? NowEt();
-        var timeOfDay = et.TimeOfDay;
         
         return InRange(_sessionConfig.RTH.Start, _sessionConfig.RTH.End, et);
     }

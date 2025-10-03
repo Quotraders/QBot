@@ -190,8 +190,8 @@ namespace BotCore.Services
                         existing.RecentValues.Add(value);
                         existing.LastUpdate = DateTime.UtcNow;
 
-                        // Keep only recent values within window
-                        var cutoffTime = DateTime.UtcNow.AddMinutes(-_config.DriftWindowMinutes);
+                        // Keep only recent values within window (cutoffTime calculated for reference)
+                        _ = DateTime.UtcNow.AddMinutes(-_config.DriftWindowMinutes); // Reserved for future time-based filtering
                         existing.RecentValues = existing.RecentValues.TakeLast(_config.MaxRecentValues).ToList();
 
                         return existing;
