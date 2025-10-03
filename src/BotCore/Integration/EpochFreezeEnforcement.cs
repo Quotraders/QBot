@@ -67,7 +67,7 @@ public sealed class EpochFreezeEnforcement
         try
         {
             // Capture zone anchors from zone service
-            await CaptureZoneAnchorsAsync(snapshot, cancellationToken);
+            await CaptureZoneAnchorsAsync(snapshot, cancellationToken).ConfigureAwait(false);
             
             // Capture bracket settings
             CaptureBracketSettings(snapshot, request);
@@ -79,7 +79,7 @@ public sealed class EpochFreezeEnforcement
             }
             
             // Emit telemetry
-            await EmitEpochSnapshotTelemetryAsync(snapshot, cancellationToken);
+            await EmitEpochSnapshotTelemetryAsync(snapshot, cancellationToken).ConfigureAwait(false);
             
             _logger.LogInformation("EpochFreeze snapshot captured for position {PositionId} on {Symbol} - Entry: {EntryPrice}, SL: {StopLoss}, TP: {TakeProfit}",
                 positionId, symbol, snapshot.EntryPrice, snapshot.BracketSettings.StopLossPrice, snapshot.BracketSettings.TakeProfitPrice);
@@ -136,7 +136,7 @@ public sealed class EpochFreezeEnforcement
             }
             
             // Validate zone anchors haven't drifted
-            await ValidateZoneAnchorFreezeAsync(snapshot, request, validationResult, cancellationToken);
+            await ValidateZoneAnchorFreezeAsync(snapshot, request, validationResult, cancellationToken).ConfigureAwait(false);
             
             // Validate bracket settings haven't changed
             ValidateBracketFreeze(snapshot, request, validationResult);
@@ -160,7 +160,7 @@ public sealed class EpochFreezeEnforcement
             // Emit telemetry for violations
             if (!validationResult.IsValid || warningViolations > 0)
             {
-                await EmitFreezeViolationTelemetryAsync(validationResult, cancellationToken);
+                await EmitFreezeViolationTelemetryAsync(validationResult, cancellationToken).ConfigureAwait(false);
             }
             
             if (validationResult.IsValid)
@@ -212,7 +212,7 @@ public sealed class EpochFreezeEnforcement
             if (releasedSnapshot != null)
             {
                 // Emit telemetry for epoch release
-                await EmitEpochReleaseTelemetryAsync(releasedSnapshot, cancellationToken);
+                await EmitEpochReleaseTelemetryAsync(releasedSnapshot, cancellationToken).ConfigureAwait(false);
                 
                 _logger.LogInformation("EpochFreeze released for position {PositionId} on {Symbol} - Duration: {Duration}",
                     positionId, releasedSnapshot.Symbol, DateTime.UtcNow - releasedSnapshot.CapturedAt);
@@ -270,7 +270,7 @@ public sealed class EpochFreezeEnforcement
                 };
             }
             
-            await Task.CompletedTask; // Satisfy async signature
+            await Task.CompletedTask.ConfigureAwait(false); // Satisfy async signature
         }
         catch (Exception ex)
         {
@@ -356,7 +356,7 @@ public sealed class EpochFreezeEnforcement
                 }
             }
             
-            await Task.CompletedTask; // Satisfy async signature
+            await Task.CompletedTask.ConfigureAwait(false); // Satisfy async signature
         }
         catch (Exception ex)
         {
@@ -461,8 +461,8 @@ public sealed class EpochFreezeEnforcement
                     ["direction"] = snapshot.Direction.ToString().ToLowerInvariant()
                 };
                 
-                await metricsService.RecordCounterAsync("epoch_freeze.snapshots_captured", 1, tags, cancellationToken);
-                await metricsService.RecordGaugeAsync("epoch_freeze.active_epochs", _activeEpochs.Count, tags, cancellationToken);
+                await metricsService.RecordCounterAsync("epoch_freeze.snapshots_captured", 1, tags, cancellationToken).ConfigureAwait(false);
+                await metricsService.RecordGaugeAsync("epoch_freeze.active_epochs", _activeEpochs.Count, tags, cancellationToken).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -490,7 +490,7 @@ public sealed class EpochFreezeEnforcement
                         ["severity"] = violation.Severity.ToString().ToLowerInvariant()
                     };
                     
-                    await metricsService.RecordCounterAsync("epoch_freeze.violations", 1, tags, cancellationToken);
+                    await metricsService.RecordCounterAsync("epoch_freeze.violations", 1, tags, cancellationToken).ConfigureAwait(false);
                 }
             }
         }
@@ -517,8 +517,8 @@ public sealed class EpochFreezeEnforcement
                     ["direction"] = snapshot.Direction.ToString().ToLowerInvariant()
                 };
                 
-                await metricsService.RecordCounterAsync("epoch_freeze.epochs_released", 1, tags, cancellationToken);
-                await metricsService.RecordGaugeAsync("epoch_freeze.epoch_duration_minutes", duration.TotalMinutes, tags, cancellationToken);
+                await metricsService.RecordCounterAsync("epoch_freeze.epochs_released", 1, tags, cancellationToken).ConfigureAwait(false);
+                await metricsService.RecordGaugeAsync("epoch_freeze.epoch_duration_minutes", duration.TotalMinutes, tags, cancellationToken).ConfigureAwait(false);
             }
         }
         catch (Exception ex)

@@ -133,7 +133,7 @@ namespace BotCore.Execution
                 }
 
                 // Get order status from TopstepX
-                var statusData = await GetOrderStatusFromTopstepXAsync(orderId);
+                var statusData = await GetOrderStatusFromTopstepXAsync(orderId).ConfigureAwait(false);
                 if (statusData == null)
                 {
                     _logger.LogError("Failed to get order status from TopstepX for order {OrderId}", orderId);
@@ -141,7 +141,7 @@ namespace BotCore.Execution
                 }
 
                 // Check for fill events
-                var fillEvents = await GetFillEventsFromTopstepXAsync(orderId);
+                var fillEvents = await GetFillEventsFromTopstepXAsync(orderId).ConfigureAwait(false);
                 if (fillEvents == null || !fillEvents.Any())
                 {
                     _logger.LogDebug("No fill events found for order {OrderId}", orderId);
@@ -158,7 +158,7 @@ namespace BotCore.Execution
                     _confirmedFills.TryAdd(orderId, fillRecord);
                     _pendingOrders.TryRemove(orderId, out _);
                     
-                    await PersistFillToDatabaseAsync(fillRecord);
+                    await PersistFillToDatabaseAsync(fillRecord).ConfigureAwait(false);
                     
                     _logger.LogInformation("Order {OrderId} execution verified and confirmed", orderId);
                 }
@@ -242,7 +242,7 @@ namespace BotCore.Execution
 
         private void StartReconciliationTimer()
         {
-            _reconciliationTimer = new Timer(async _ => await ReconcilePendingOrdersAsync(), 
+            _reconciliationTimer = new Timer(async _ => await ReconcilePendingOrdersAsync().ConfigureAwait(false), 
                 null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(5));
         }
 
@@ -257,8 +257,8 @@ namespace BotCore.Execution
                     // Check orders older than 1 minute
                     if (DateTime.UtcNow - orderRecord.SubmittedTime > TimeSpan.FromMinutes(1))
                     {
-                        await VerifyOrderExecutionAsync(orderId, orderRecord.Symbol);
-                        await Task.Delay(VerificationDelayMs); // Throttle API calls
+                        await VerifyOrderExecutionAsync(orderId, orderRecord.Symbol).ConfigureAwait(false);
+                        await Task.Delay(VerificationDelayMs).ConfigureAwait(false); // Throttle API calls
                     }
                 }
             }
@@ -382,7 +382,7 @@ namespace BotCore.Execution
             command.Parameters.AddWithValue("@LiquidityType", fillRecord.LiquidityType);
             command.Parameters.AddWithValue("@VerificationTime", DateTime.UtcNow.ToString("O"));
 
-            await Task.Run(() => command.ExecuteNonQuery());
+            await Task.Run(() => command.ExecuteNonQuery()).ConfigureAwait(false);
         }
 
         private bool _disposed;

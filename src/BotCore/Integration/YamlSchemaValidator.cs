@@ -116,7 +116,7 @@ public sealed class YamlSchemaValidator
                 return result;
             }
             
-            var yamlContent = await File.ReadAllTextAsync(filePath);
+            var yamlContent = await File.ReadAllTextAsync(filePath).ConfigureAwait(false);
             if (string.IsNullOrWhiteSpace(yamlContent))
             {
                 result.Errors.Add("YAML file is empty");
@@ -155,7 +155,7 @@ public sealed class YamlSchemaValidator
             }
             
             // Validate against schema
-            await ValidateAgainstSchemaAsync(yamlObject, schema, result);
+            await ValidateAgainstSchemaAsync(yamlObject, schema, result).ConfigureAwait(false);
             
             result.ValidationCompleted = DateTime.UtcNow;
             result.ValidationTimeMs = (result.ValidationCompleted - result.ValidationStarted).TotalMilliseconds;
@@ -212,7 +212,7 @@ public sealed class YamlSchemaValidator
             
             foreach (var filePath in yamlFiles)
             {
-                var fileResult = await ValidateYamlFileAsync(filePath);
+                var fileResult = await ValidateYamlFileAsync(filePath).ConfigureAwait(false);
                 result.FileResults.Add(fileResult);
             }
             
@@ -318,7 +318,7 @@ public sealed class YamlSchemaValidator
         // Set validity based on error count
         result.IsValid = result.Errors.Count == 0;
         
-        await Task.CompletedTask; // Satisfy async signature
+        await Task.CompletedTask.ConfigureAwait(false); // Satisfy async signature
     }
     
     /// <summary>

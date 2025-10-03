@@ -262,14 +262,14 @@ public sealed class FeatureMapAuthority
                 result.ShouldHoldDecision = true;
                 
                 // Emit fusion.feature_missing telemetry (once per session)
-                await EmitMissingFeatureTelemetryAsync(featureKey, cancellationToken);
+                await EmitMissingFeatureTelemetryAsync(featureKey, cancellationToken).ConfigureAwait(false);
                 
                 _logger.LogError("FEATURE MISSING: {FeatureKey} for {Symbol} - HOLDING DECISION", featureKey, symbol);
                 return result;
             }
             
             // Resolve feature using registered resolver
-            var value = await resolver.ResolveAsync(symbol, cancellationToken);
+            var value = await resolver.ResolveAsync(symbol, cancellationToken).ConfigureAwait(false);
             
             result.Value = value;
             result.Success = value.HasValue;
