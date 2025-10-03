@@ -588,7 +588,6 @@ public sealed class ProductionRegimeService : IRegimeService
 {
     private readonly ILogger<ProductionRegimeService> _logger;
     private readonly RegimeDetectorWithHysteresis _regimeDetector;
-    private readonly object _lockObject = new();
     private RegimeType _lastRegime = RegimeType.Range;
     private DateTime _lastUpdate = DateTime.MinValue;
     private readonly TimeSpan _cacheTime = TimeSpan.FromSeconds(30);
