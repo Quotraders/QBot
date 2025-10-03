@@ -54,6 +54,8 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
 
     public async Task<double> GetAsync(string symbol, string key, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(key);
+
         try
         {
             // Route feature requests to appropriate real sources

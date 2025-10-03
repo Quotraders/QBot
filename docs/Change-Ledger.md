@@ -53,7 +53,38 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 92 - Phase 2: Master Decision Orchestrator Safety (Current Session)
+### 🔧 Round 93 - Phase 2: Null Guard Completion (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1062 | 2 | 0 | StrategyKnowledgeGraphNew.cs | ArgumentNullException.ThrowIfNull() for public method parameters |
+
+**Total Fixed: 2 CA1062 violations (100% category elimination!)**
+
+**Example Pattern Applied**:
+
+**CA1062 - Null Guard with Modern Helper**:
+```csharp
+// Before (CA1062) - Missing null guard
+public async Task<double> GetAsync(string symbol, string key, CancellationToken cancellationToken = default)
+{
+    if (key.StartsWith("zone.", StringComparison.OrdinalIgnoreCase))
+
+// After (Compliant) - Using ArgumentNullException.ThrowIfNull
+public async Task<double> GetAsync(string symbol, string key, CancellationToken cancellationToken = default)
+{
+    ArgumentNullException.ThrowIfNull(key);
+    
+    if (key.StartsWith("zone.", StringComparison.OrdinalIgnoreCase))
+```
+
+**Rationale**: 
+- **CA1062**: Added null guard using .NET 6+ `ArgumentNullException.ThrowIfNull()` helper for public method parameters per guidebook Priority 1 (Correctness & Invariants)
+- **Fixed Method**: ProductionFeatureProbe.GetAsync() - critical path for strategy feature retrieval
+- **Pattern**: Modern null guard pattern (ArgumentNullException.ThrowIfNull) preferred over manual `if (x is null) throw new ArgumentNullException(nameof(x))`
+
+---
+
+### 🔧 Round 92 - Phase 2: Master Decision Orchestrator Safety (Previous Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA1031 | 760 | 753 | MasterDecisionOrchestrator.cs | Specific exception types for orchestration operations (InvalidOperationException, TimeoutException, ArgumentException, IOException, UnauthorizedAccessException) |
