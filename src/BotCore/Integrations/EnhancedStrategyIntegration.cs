@@ -12,6 +12,14 @@ namespace BotCore.Integrations
     /// </summary>
     public static class EnhancedStrategyIntegration
     {
+        // Trading calculation constants
+        private const decimal DefaultStopLossMultiplier = 0.99m; // 1% below entry
+        private const decimal DefaultTakeProfitMultiplier = 1.02m; // 2% above entry
+        private const decimal DefaultVixLevel = 20m; // Baseline VIX level
+        private const decimal HighVolatilityThreshold = 0.01m; // 1% price range
+        private const decimal LowVolatilityThreshold = 0.005m; // 0.5% price range
+        private const decimal NeutralRsiValue = 50m; // Neutral RSI baseline
+        
         /// <summary>
         /// Enhance a strategy signal with comprehensive data collection for RL training.
         /// Call this whenever a strategy generates a signal.
@@ -137,8 +145,8 @@ namespace BotCore.Integrations
                 Entry = signal.LimitPrice ?? currentBar.Close,
                 Size = signal.Size,
                 Strategy = signal.Strategy,
-                StopLoss = currentBar.Close * 0.99m, // Simplified stop loss
-                TakeProfit = currentBar.Close * 1.02m, // Simplified take profit
+                StopLoss = currentBar.Close * DefaultStopLossMultiplier, // Simplified stop loss
+                TakeProfit = currentBar.Close * DefaultTakeProfitMultiplier, // Simplified take profit
                 Regime = DetermineMarketRegime(currentBar),
                 Atr = CalculateAtr(currentBar),
                 Rsi = CalculateRsi(),
@@ -146,7 +154,7 @@ namespace BotCore.Integrations
                 Ema50 = currentBar.Close, // Simplified - could use actual EMA
                 Momentum = CalculateMomentum(currentBar),
                 TrendStrength = CalculateTrendStrength(currentBar),
-                VixLevel = 20m // Default VIX level - could be fetched from market data
+                VixLevel = DefaultVixLevel // Default VIX level - could be fetched from market data
             };
         }
 
@@ -162,8 +170,8 @@ namespace BotCore.Integrations
             var range = currentBar.High - currentBar.Low;
             var price = currentBar.Close;
 
-            if (range / price > 0.01m) return "HighVol";
-            if (range / price < 0.005m) return "LowVol";
+            if (range / price > HighVolatilityThreshold) return "HighVol";
+            if (range / price < LowVolatilityThreshold) return "LowVol";
             return "Range";
         }
 
@@ -180,7 +188,7 @@ namespace BotCore.Integrations
 
         // Helper calculation methods (simplified - could be enhanced with actual technical analysis)
         private static decimal CalculateAtr(Bar bar) => (bar.High - bar.Low);
-        private static decimal CalculateRsi() => 50m; // Neutral RSI - could be calculated from price history
+        private static decimal CalculateRsi() => NeutralRsiValue; // Neutral RSI - could be calculated from price history
         private static decimal CalculateMomentum(Bar bar) => (bar.Close - bar.Open) / bar.Open;
         private static decimal CalculateTrendStrength(Bar bar) => Math.Abs(bar.Close - bar.Open) / bar.Open;
     }
