@@ -72,6 +72,13 @@ public sealed class ZoneFeatureResolver : IFeatureResolver
 /// </summary>
 public sealed class ZoneCountResolver : IFeatureResolver
 {
+    // Zone proximity threshold constants (measured in ATR units)
+    private const double CloseProximityThreshold = 2.0;     // Close proximity: within 2 ATR
+    private const double MediumProximityThreshold = 3.0;    // Medium proximity: within 3 ATR
+    private const double FullZoneWeight = 1.0;              // Full weight for very close zones
+    private const double MediumZoneWeight = 0.5;            // Medium weight for close zones
+    private const double LowZoneWeight = 0.25;              // Low weight for medium distance zones
+    
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ZoneCountResolver> _logger;
     

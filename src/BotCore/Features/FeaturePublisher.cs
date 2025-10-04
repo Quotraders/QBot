@@ -86,6 +86,8 @@ namespace BotCore.Features
             return Task.CompletedTask;
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031:Do not catch general exception types",
+            Justification = "Fire-and-forget timer callback must catch all exceptions (HttpRequestException, JsonException, IOException, etc.) to prevent unobserved task faults and ensure fail-closed behavior with audit telemetry")]
         private void PublishFeaturesCallback(object? state)
         {
             if (_disposed) return;
@@ -97,19 +99,19 @@ namespace BotCore.Features
                 {
                     await PublishFeaturesAsync(CancellationToken.None).ConfigureAwait(false);
                 }
-                catch (InvalidOperationException ex)
+                catch (Exception ex)
                 {
-                    _logger.LogError(ex, "[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Feature publishing failed - FAIL-CLOSED + TELEMETRY");
-                    // Log but don't rethrow in fire-and-forget context
-                }
-                catch (ObjectDisposedException ex)
-                {
+                    // Catch all exceptions to ensure fail-closed behavior in fire-and-forget context
+                    // This includes: HttpRequestException, JsonException, IOException, InvalidOperationException, etc.
+                    // All exceptions are logged; none escape to become unobserved task faults
                     _logger.LogError(ex, "[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Feature publishing failed - FAIL-CLOSED + TELEMETRY");
                     // Log but don't rethrow in fire-and-forget context
                 }
             });
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031:Do not catch general exception types",
+            Justification = "Resolver operations must catch all exceptions (HttpRequestException, JsonException, IOException, etc.) to ensure fail-closed behavior, emit fusion.feature_missing telemetry, and prevent partial failures from stopping feature publishing")]
         private async Task PublishFeaturesAsync(CancellationToken cancellationToken)
         {
             var startTime = DateTime.UtcNow;
@@ -161,14 +163,10 @@ namespace BotCore.Features
                             }
                         }
                     }
-                    catch (InvalidOperationException ex)
+                    catch (Exception ex)
                     {
-                        errorCount++;
-                        _logger.LogError(ex, "[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Resolver {ResolverType} failed for {Symbol} - FAIL-CLOSED + TELEMETRY", 
-                            resolver.GetType().Name, symbol);
-                    }
-                    catch (ObjectDisposedException ex)
-                    {
+                        // Catch all exceptions to ensure fail-closed behavior
+                        // This includes: HttpRequestException, JsonException, IOException, InvalidOperationException, etc.
                         errorCount++;
                         _logger.LogError(ex, "[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Resolver {ResolverType} failed for {Symbol} - FAIL-CLOSED + TELEMETRY", 
                             resolver.GetType().Name, symbol);

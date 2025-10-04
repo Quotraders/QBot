@@ -153,13 +153,6 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
             var holdRiskException = GetConfiguredHoldRiskLevel(_serviceProvider);
             return Task.FromResult(holdRiskException);
         }
-        catch (ObjectDisposedException ex)
-        {
-            _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk service disposed - fail-closed: returning hold, Duration={Duration}ms", 
-                operationId, (DateTime.UtcNow - startTime).TotalMilliseconds);
-            var holdRiskException = GetConfiguredHoldRiskLevel(_serviceProvider);
-            return Task.FromResult(holdRiskException);
-        }
         catch (System.Net.Http.HttpRequestException ex)
         {
             _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk service HTTP failure - fail-closed: returning hold, Duration={Duration}ms", 
