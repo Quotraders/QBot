@@ -86,7 +86,7 @@ namespace BotCore
         {
             using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(hmacKey));
             var hashBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(canonicalJson));
-            return Convert.ToHexString(hashBytes).ToLowerInvariant();
+            return Convert.ToHexString(hashBytes).ToUpperInvariant();
         }
 
         /// <summary>
