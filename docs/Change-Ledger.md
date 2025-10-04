@@ -25,7 +25,7 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 ## Progress Summary
 - **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
 - **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (1820/1820 = 100%) - **VERIFIED & SECURED**
-  - **Current Session (Round 141)**: 14 S109 violations fixed (EnhancedBacktestService - market friction simulation constants)
+  - **Current Session (Rounds 141-142)**: 28 S109 violations fixed (EnhancedBacktestService, StrategyMlModelManager - market friction + ML model constants)
   - **Previous Session (Rounds 138-140)**: 76 analyzer violations fixed (S109 magic numbers - Priority 1 systematic cleanup)
     - Round 140: Fixed 28 S109 violations (ExecutionAnalyticsService, EpochFreezeEnforcement, SafeHoldDecisionPolicy)
     - Round 139: Fixed 24 S109 violations (WalkForwardTrainer, MarketTimeService, PerformanceMetricsService)
@@ -74,6 +74,52 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Current Focus**: Systematic S109 magic number elimination, following Analyzer-Fix-Guidebook priorities
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 76 violations eliminated across 9 files in 3 focused rounds
+
+### 🔧 Round 142 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (14 violations fixed, 1 file)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | ~1512 | ~1498 | StrategyMlModelManager.cs | Extracted ML model thresholds (quality scores, volume thresholds, execution quality parameters) |
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers inline
+return 1.0m; // Default multiplier
+if (qScore < 0.3m) return false;
+if (score < 0.5m) return false;
+if (latest.Volume < 100) return false;
+return 0.8m; // Default good execution quality
+if (spread > price * 0.001m) // > 0.1%
+if (volume < 1000)
+
+// After (S109) - Named constants
+private const decimal DefaultPositionSizeMultiplier = 1.0m;
+private const decimal MinimumQualityScore = 0.3m;
+private const decimal MinimumSignalScore = 0.5m;
+private const int MinimumVolume = 100;
+private const decimal DefaultExecutionQuality = 0.8m;
+private const decimal SpreadQualityThreshold = 0.001m; // 0.1% of price
+private const int VolumeQualityThreshold = 1000;
+
+return DefaultPositionSizeMultiplier;
+if (qScore < MinimumQualityScore) return false;
+if (score < MinimumSignalScore) return false;
+if (latest.Volume < MinimumVolume) return false;
+return DefaultExecutionQuality;
+if (spread > price * SpreadQualityThreshold)
+if (volume < VolumeQualityThreshold)
+```
+
+**Rationale**: Extracted ML model quality thresholds, signal filtering criteria, and execution quality parameters to improve maintainability and make model acceptance criteria explicit. This enables easier tuning of ML quality gates without code changes.
+
+**Files Changed**:
+- `src/BotCore/ML/StrategyMlModelManager.cs`: Position size multipliers, quality score thresholds, volume filters, execution quality scoring
+
+**Build Verification**: ✅ 0 CS errors maintained, 14 S109 violations fixed in StrategyMlModelManager.cs (all violations eliminated in this file)
+
+---
 
 ### 🔧 Round 141 - Phase 2: S109 Magic Numbers Elimination (Current Session)
 
