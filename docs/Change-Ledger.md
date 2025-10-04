@@ -64,7 +64,74 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 121 - Phase 2: CA1031 Exception Handling + S109 Magic Numbers Continued (Current Session)
+### 🔧 Round 122 - Phase 2: S109 + CA1031 Execution Router (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 1956 | 1942 | EvExecutionRouter.cs | Added named constants for execution routing configuration (slippage, confidence thresholds, win rate) |
+| CA1031 | 736 | 735 | EvExecutionRouter.cs | Replaced generic Exception catch with InvalidOperationException and ArgumentException |
+
+**Total Fixed: 15 violations (8 unique fixes in 1 file)**
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers for execution parameters
+ExpectedSlippageBps = 5m, // Conservative estimate
+FillProbability = 1.0m,
+if (predictionError > 3m)
+MaxSlippageBps = 10m, // Configurable per strategy
+ExpectedWinRate = signal.MetaWinProbability ?? 0.5m, // From meta-labeler
+if (signal.Confidence > 0.8m && marketContext.IsVolatile)
+if (signal.Confidence < 0.4m)
+
+// After (Compliant) - Named constants with clear intent
+private const decimal FallbackMarketOrderSlippageBps = 5m;
+private const decimal FallbackFillProbability = 1.0m;
+private const decimal SignificantPredictionErrorThresholdBps = 3m;
+private const decimal MaxSlippageBpsDefault = 10m;
+private const decimal DefaultWinRate = 0.5m;
+private const decimal HighUrgencyConfidenceThreshold = 0.8m;
+private const decimal LowUrgencyConfidenceThreshold = 0.4m;
+
+ExpectedSlippageBps = FallbackMarketOrderSlippageBps,
+FillProbability = FallbackFillProbability,
+if (predictionError > SignificantPredictionErrorThresholdBps)
+MaxSlippageBps = MaxSlippageBpsDefault,
+ExpectedWinRate = signal.MetaWinProbability ?? DefaultWinRate,
+if (signal.Confidence > HighUrgencyConfidenceThreshold && marketContext.IsVolatile)
+if (signal.Confidence < LowUrgencyConfidenceThreshold)
+
+// Before (CA1031) - Generic exception catch
+catch (Exception ex)
+{
+    Console.WriteLine($"[EV-ROUTER] Error routing order for {signal.SignalId}: {ex.Message}");
+    // Fallback logic
+}
+
+// After (Compliant) - Specific exception types for routing errors
+catch (InvalidOperationException ex)
+{
+    Console.WriteLine($"[EV-ROUTER] Error routing order for {signal.SignalId}: {ex.Message}");
+    // Fallback logic
+}
+catch (ArgumentException ex)
+{
+    Console.WriteLine($"[EV-ROUTER] Error routing order for {signal.SignalId}: {ex.Message}");
+    // Fallback logic
+}
+```
+
+**Rationale**: 
+- **S109**: Priority 1 (Correctness & Invariants) - Execution routing thresholds extracted to named constants for maintainability
+- **CA1031**: Priority 1 (Correctness & Invariants) - Specific exception handling for order routing errors
+- **Files Fixed**:
+  - `EvExecutionRouter.cs` - Expected value-based execution router with slippage, confidence, and urgency parameters
+- **Context**: Trading execution routing with EV optimization, slippage prediction, and urgency determination
+
+**Build Verification**: ✅ 0 CS errors maintained, ~5907 analyzer violations remaining (15 violations fixed)
+
+---
+
+### 🔧 Round 121 - Phase 2: CA1031 Exception Handling + S109 Magic Numbers Continued (Previous in Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA1031 | 739 | 736 | ProductionConfigurationValidation.cs | Replaced generic catches with specific file I/O exceptions (UnauthorizedAccessException, IOException, SecurityException, ArgumentException) |

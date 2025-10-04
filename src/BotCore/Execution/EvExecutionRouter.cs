@@ -11,6 +11,14 @@ namespace BotCore.Execution;
 /// </summary>
 public class EvExecutionRouter : IExecutionRouter
 {
+    private const decimal FallbackMarketOrderSlippageBps = 5m;
+    private const decimal FallbackFillProbability = 1.0m;
+    private const decimal SignificantPredictionErrorThresholdBps = 3m;
+    private const decimal MaxSlippageBpsDefault = 10m;
+    private const decimal DefaultWinRate = 0.5m;
+    private const decimal HighUrgencyConfidenceThreshold = 0.8m;
+    private const decimal LowUrgencyConfidenceThreshold = 0.4m;
+
     private readonly IMicrostructureAnalyzer _microstructureAnalyzer;
     private readonly IExecutionCostTracker _costTracker;
 
@@ -58,7 +66,7 @@ public class EvExecutionRouter : IExecutionRouter
 
             return decision;
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             Console.WriteLine($"[EV-ROUTER] Error routing order for {signal.SignalId}: {ex.Message}");
 
@@ -66,8 +74,25 @@ public class EvExecutionRouter : IExecutionRouter
             return new ExecutionDecision
             {
                 OrderType = OrderType.Market,
-                ExpectedSlippageBps = 5m, // Conservative estimate
-                FillProbability = 1.0m,
+                ExpectedSlippageBps = FallbackMarketOrderSlippageBps, // Conservative estimate
+                FillProbability = FallbackFillProbability,
+                ExpectedValue = 0m,
+                Reasoning = "Fallback to market order due to routing error",
+                RiskLevel = ExecutionRisk.Medium,
+                EstimatedFillTime = TimeSpan.FromSeconds(5),
+                ShouldExecute = true
+            };
+        }
+        catch (ArgumentException ex)
+        {
+            Console.WriteLine($"[EV-ROUTER] Error routing order for {signal.SignalId}: {ex.Message}");
+
+            // Fallback to market order
+            return new ExecutionDecision
+            {
+                OrderType = OrderType.Market,
+                ExpectedSlippageBps = FallbackMarketOrderSlippageBps, // Conservative estimate
+                FillProbability = FallbackFillProbability,
                 ExpectedValue = 0m,
                 Reasoning = "Fallback to market order due to routing error",
                 RiskLevel = ExecutionRisk.Medium,
@@ -99,7 +124,7 @@ public class EvExecutionRouter : IExecutionRouter
                         $"error={predictionError:F1}bps");
 
         // Learn from significant prediction errors
-        if (predictionError > 3m)
+        if (predictionError > SignificantPredictionErrorThresholdBps)
         {
             await _costTracker.AnalyzePredictionErrorAsync(signalId, originalDecision, actualResult, ct).ConfigureAwait(false);
         }
@@ -112,10 +137,10 @@ public class EvExecutionRouter : IExecutionRouter
             Symbol = signal.Symbol,
             Quantity = signal.Quantity,
             IsBuy = signal.Side == TradeSide.Buy,
-            MaxSlippageBps = 10m, // Configurable per strategy
+            MaxSlippageBps = MaxSlippageBpsDefault, // Configurable per strategy
             MaxWaitTime = TimeSpan.FromMinutes(3),
             Urgency = DetermineUrgency(signal, marketContext),
-            ExpectedWinRate = signal.MetaWinProbability ?? 0.5m, // From meta-labeler
+            ExpectedWinRate = signal.MetaWinProbability ?? DefaultWinRate, // From meta-labeler
             RMultiple = signal.RMultiple
         };
     }
@@ -123,11 +148,11 @@ public class EvExecutionRouter : IExecutionRouter
     private static ExecutionUrgency DetermineUrgency(TradeSignal signal, MarketContext marketContext)
     {
         // High urgency for strong signals in volatile markets
-        if (signal.Confidence > 0.8m && marketContext.IsVolatile)
+        if (signal.Confidence > HighUrgencyConfidenceThreshold && marketContext.IsVolatile)
             return ExecutionUrgency.High;
 
         // Low urgency for weak signals
-        if (signal.Confidence < 0.4m)
+        if (signal.Confidence < LowUrgencyConfidenceThreshold)
             return ExecutionUrgency.Low;
 
         return ExecutionUrgency.Normal;
@@ -136,7 +161,7 @@ public class EvExecutionRouter : IExecutionRouter
     private static string CreateReasoningText(TradeSignal signal, ExecutionRecommendation recommendation)
     {
         var confidence = signal.Confidence;
-        var winProb = signal.MetaWinProbability ?? 0.5m;
+        var winProb = signal.MetaWinProbability ?? DefaultWinRate;
 
         return $"{recommendation.Reasoning}. " +
                $"Signal confidence={confidence:P0}, meta p(win)={winProb:P0}, " +
