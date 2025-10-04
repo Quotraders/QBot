@@ -25,7 +25,7 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 ## Progress Summary
 - **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
 - **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (1820/1820 = 100%) - **VERIFIED & SECURED**
-  - **Current Session (Rounds 141-143)**: 40 S109 violations fixed (EnhancedBacktestService, StrategyMlModelManager, RegimeDetectionService)
+  - **Current Session (Rounds 141-144)**: 44 S109 violations fixed (EnhancedBacktestService, StrategyMlModelManager, RegimeDetectionService, OnnxModelValidationService)
   - **Previous Session (Rounds 138-140)**: 76 analyzer violations fixed (S109 magic numbers - Priority 1 systematic cleanup)
     - Round 140: Fixed 28 S109 violations (ExecutionAnalyticsService, EpochFreezeEnforcement, SafeHoldDecisionPolicy)
     - Round 139: Fixed 24 S109 violations (WalkForwardTrainer, MarketTimeService, PerformanceMetricsService)
@@ -74,6 +74,40 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Current Focus**: Systematic S109 magic number elimination, following Analyzer-Fix-Guidebook priorities
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 76 violations eliminated across 9 files in 3 focused rounds
+
+### 🔧 Round 144 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (4 violations fixed, 1 file)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | ~1472 | ~1461 | OnnxModelValidationService.cs | Extracted ONNX model validation thresholds (memory size constants, load time limits) |
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers inline
+result.MemoryUsage / 1024 / 1024
+result.LoadTime.TotalSeconds > 30
+result.MemoryUsage > 2L * 1024 * 1024 * 1024
+
+// After (S109) - Named constants
+private const int KilobytesToMegabytes = 1024;
+private const long GigabytesInBytes = 2L * 1024 * 1024 * 1024;
+private const int MaxLoadTimeSeconds = 30;
+
+result.MemoryUsage / KilobytesToMegabytes / KilobytesToMegabytes
+result.LoadTime.TotalSeconds > MaxLoadTimeSeconds
+result.MemoryUsage > GigabytesInBytes
+```
+
+**Rationale**: Extracted ONNX model validation thresholds (memory conversion factors, size limits, load time requirements) to improve maintainability and make model validation criteria explicit. This enables easier tuning of validation thresholds without code changes.
+
+**Files Changed**:
+- `src/BotCore/ML/OnnxModelValidationService.cs`: Memory conversion constants, size limits, load time thresholds
+
+**Build Verification**: ✅ 0 CS errors maintained, 4 S109 violations fixed in OnnxModelValidationService.cs (all violations eliminated in this file)
+
+---
 
 ### 🔧 Round 143 - Phase 2: S109 Magic Numbers Elimination (Current Session)
 
