@@ -64,7 +64,66 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 129 - Phase 2: CA1031 Model Updates + S109 MTF Config (Current Session)
+### 🔧 Round 130 - Phase 2: CA1031 Feature Publishing + S109 RL Collector (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 702 | 698 | FeaturePublisher.cs | Replaced generic Exception catches with InvalidOperationException, ObjectDisposedException for feature publishing operations |
+| S109 | 1882 | 1876 | MultiStrategyRlCollector.cs | Added named constants for feature calculation (PercentageConversionFactor, VolumeNormalizationFactor, NeutralRsiLevel, RsiStandardDeviation) |
+
+**Total Fixed: 10 violations (6 unique fixes in 2 files)**
+
+**Example Pattern Applied**:
+```csharp
+// Before (CA1031) - Generic exception in fire-and-forget context
+catch (Exception ex)
+{
+    _logger.LogError(ex, "[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Feature publishing failed - FAIL-CLOSED + TELEMETRY");
+    // Log but don't rethrow in fire-and-forget context
+}
+
+// After (Compliant) - Specific exceptions for service state
+catch (InvalidOperationException ex)
+{
+    _logger.LogError(ex, "[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Feature publishing failed - FAIL-CLOSED + TELEMETRY");
+    // Log but don't rethrow in fire-and-forget context
+}
+catch (ObjectDisposedException ex)
+{
+    _logger.LogError(ex, "[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Feature publishing failed - FAIL-CLOSED + TELEMETRY");
+    // Log but don't rethrow in fire-and-forget context
+}
+
+// Before (S109) - Magic numbers for feature calculation
+features.EmaSpread920 = (ema9 - ema20) / price * 100m; // % spread
+features.CrossStrength = Math.Abs(features.EmaSpread920) * (volume / 1000m);
+features.MeanReversionZ = (50m - rsi) / 10m; // Z-score from neutral
+features.VwapDistance = (price - vwap) / price * 100m;
+
+// After (Compliant) - Named constants with clear semantics
+private const decimal PercentageConversionFactor = 100m;      // Convert decimal to percentage
+private const decimal VolumeNormalizationFactor = 1000m;      // Normalize volume for cross strength
+private const decimal NeutralRsiLevel = 50m;                  // RSI neutral midpoint
+private const decimal RsiStandardDeviation = 10m;             // RSI standard deviation for z-score
+
+features.EmaSpread920 = (ema9 - ema20) / price * PercentageConversionFactor; // % spread
+features.CrossStrength = Math.Abs(features.EmaSpread920) * (volume / VolumeNormalizationFactor);
+features.MeanReversionZ = (NeutralRsiLevel - rsi) / RsiStandardDeviation; // Z-score from neutral
+features.VwapDistance = (price - vwap) / price * PercentageConversionFactor;
+```
+
+**Rationale**: 
+- **CA1031**: Priority 1 (Correctness & Invariants) - Specific exception handling for feature publishing service state
+- **S109**: Priority 1 (Correctness & Invariants) - Feature calculation constants for multi-strategy RL training data
+- **Files Fixed**:
+  - `FeaturePublisher.cs` - Feature publishing service with fail-closed behavior
+  - `MultiStrategyRlCollector.cs` - Multi-strategy reinforcement learning training data collector
+- **Context**: Feature publishing telemetry and RL training data collection for EmaCross, MeanReversion, Breakout, and Momentum strategies
+
+**Build Verification**: ✅ 0 CS errors maintained, 5906 analyzer violations remaining (10 violations fixed)
+
+---
+
+### 🔧 Round 129 - Phase 2: CA1031 Model Updates + S109 MTF Config (Previous in Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA1031 | 708 | 702 | ModelUpdaterService.cs | Replaced generic Exception catches with JsonException, CryptographicException, FormatException, InvalidOperationException, ObjectDisposedException, HttpRequestException, IOException, UnauthorizedAccessException for model update operations |
