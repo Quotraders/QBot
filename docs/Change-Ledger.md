@@ -78,7 +78,60 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 76 violations eliminated across 9 files in 3 focused rounds
 
-### 🔧 Round 150 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+### 🔧 Round 151 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (21 violations fixed, 2 files)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 1311 | 1304 | SessionAwareRuntimeGates.cs | Extracted time parsing indices, timezone offset, ETH/Sunday reopen config defaults |
+| S109 | 1304 | 1297 | ExecutionAnalyzer.cs | Extracted precision/rounding constants (price, success rate, percentage conversion) |
+
+**Example Pattern Applied - SessionAwareRuntimeGates.cs**:
+```csharp
+// Before (S109) - Magic numbers for time parsing and defaults
+var (h1, m1) = (int.Parse(hhmm[..2]), int.Parse(hhmm[3..]));
+return DateTime.UtcNow.AddHours(-5);
+CurbFirstMins = section.GetValue<int>("ETH:CurbFirstMins", 3)
+CurbMins = section.GetValue<int>("SundayReopen:CurbMins", 5)
+
+// After (S109) - Named constants
+private const int TimeStringHourStartIndex = 0;
+private const int TimeStringHourLength = 2;
+private const int TimeStringMinuteStartIndex = 3;
+private const int EasternTimeOffsetHours = -5;
+private const int DefaultEthCurbFirstMinutes = 3;
+private const int DefaultSundayReopenCurbMinutes = 5;
+
+var (h1, m1) = (int.Parse(hhmm[TimeStringHourStartIndex..TimeStringHourLength]), int.Parse(hhmm[TimeStringMinuteStartIndex..]));
+return DateTime.UtcNow.AddHours(EasternTimeOffsetHours);
+CurbFirstMins = section.GetValue<int>("ETH:CurbFirstMins", DefaultEthCurbFirstMinutes)
+```
+
+**Example Pattern Applied - ExecutionAnalyzer.cs**:
+```csharp
+// Before (S109) - Magic numbers for rounding and conversion
+Math.Round(zoneLevel, 2)
+Math.Round(pnlPercent, 2)
+Math.Round(newSuccessRate, 3)
+pnlPercent / 100
+
+// After (S109) - Named constants
+private const int PriceRoundingDecimals = 2;
+private const int SuccessRateRoundingDecimals = 3;
+private const decimal PercentToDecimalConversion = 100m;
+
+Math.Round(zoneLevel, PriceRoundingDecimals)
+Math.Round(pnlPercent, PriceRoundingDecimals)
+Math.Round(newSuccessRate, SuccessRateRoundingDecimals)
+pnlPercent / PercentToDecimalConversion
+```
+
+**Build Verification**: ✅ 0 CS errors maintained, 21 S109 violations fixed across 2 files (1311 → 1290 total)
+
+---
+
+### 🔧 Round 150 - Phase 2: S109 Magic Numbers Elimination (Previous Session)
 
 **S109: Magic Number to Named Constant Conversion (30 violations fixed, 2 files)**
 

@@ -11,6 +11,11 @@ namespace BotCore.Services;
 /// </summary>
 public class ExecutionAnalyzer
 {
+    // Precision and conversion constants
+    private const decimal PercentToDecimalConversion = 100m;    // Convert percentage to decimal (divide by 100)
+    private const int PriceRoundingDecimals = 2;                // Price rounding to 2 decimal places
+    private const int SuccessRateRoundingDecimals = 3;          // Success rate rounding to 3 decimal places
+
     private readonly ILogger<ExecutionAnalyzer> _logger;
     private readonly string _feedbackPath;
     private readonly JsonSerializerOptions _jsonOptions;
@@ -56,7 +61,7 @@ public class ExecutionAnalyzer
             };
 
             _logger.LogInformation("[EXEC_QUALITY] {Symbol} {Strategy} slippage={SlippagePercent:P2} quality={Quality}",
-                symbol, strategy, slippagePercent / 100, fillQuality.Quality);
+                symbol, strategy, slippagePercent / PercentToDecimalConversion, fillQuality.Quality);
 
             // Save to execution quality log
             await SaveExecutionMetricsAsync(fillQuality).ConfigureAwait(false);
@@ -81,18 +86,18 @@ public class ExecutionAnalyzer
             _ = new
             {
                 Symbol = symbol,
-                ZoneLevel = Math.Round(zoneLevel, 2),
+                ZoneLevel = Math.Round(zoneLevel, PriceRoundingDecimals),
                 ZoneType = zoneType, // "supply" or "demand"
                 TestTime = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture),
                 Successful = successful,
-                EntryPrice = Math.Round(entryPrice, 2),
-                ExitPrice = Math.Round(exitPrice, 2),
-                PnLPercent = Math.Round(pnlPercent, 2),
+                EntryPrice = Math.Round(entryPrice, PriceRoundingDecimals),
+                ExitPrice = Math.Round(exitPrice, PriceRoundingDecimals),
+                PnLPercent = Math.Round(pnlPercent, PriceRoundingDecimals),
                 Reason = reason
             };
 
             _logger.LogInformation("[ZONE_FEEDBACK] {Symbol} {ZoneType}@{ZoneLevel} success={Successful} pnl={PnLPercent:P2}",
-                symbol, zoneType, zoneLevel, successful, pnlPercent / 100);
+                symbol, zoneType, zoneLevel, successful, pnlPercent / PercentToDecimalConversion);
 
             // Update zone feedback data
             await UpdateZoneFeedbackAsync(symbol, zoneLevel, zoneType, successful).ConfigureAwait(false);
@@ -223,7 +228,7 @@ public class ExecutionAnalyzer
             {
                 success_count = newSuccessCount,
                 test_count = newTestCount,
-                success_rate = Math.Round(newSuccessRate, 3),
+                success_rate = Math.Round(newSuccessRate, SuccessRateRoundingDecimals),
                 last_test = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)
             };
 
