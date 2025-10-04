@@ -25,6 +25,7 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 ## Progress Summary
 - **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
 - **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (1820/1820 = 100%) - **VERIFIED & SECURED**
+  - **Current Session (Round 157)**: 74 S109 violations fixed (UnifiedTradingBrain - trading brain thresholds and CVaR-PPO constants)
   - **Current Session (Round 156)**: 84 S109 violations fixed (ContinuationPatternDetector - continuation pattern thresholds)
   - **Current Session (Round 155)**: 58 S109 violations fixed (CandlestickPatternDetector - candlestick pattern thresholds)
   - **Current Session (Round 154)**: 46 S109 violations fixed (ReversalPatternDetector - reversal pattern detection thresholds)
@@ -114,7 +115,65 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ---
 
-### 🔧 Round 156 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+### 🔧 Round 157 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (74 violations fixed, 1 file)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 992 | 918 | UnifiedTradingBrain.cs | Extracted trading brain thresholds (performance metrics, scheduling intervals, CVaR-PPO state normalization, risk adjustment thresholds) |
+
+**Example Pattern Applied - UnifiedTradingBrain.cs**:
+```csharp
+// Before (S109) - Magic numbers for trading brain logic
+if (metrics.WinRate < 0.4m)
+if (c.SuccessRate < 0.3m)
+if (bestPerformance.WinRate < 0.6m)
+.Where(c => c.SuccessRate > 0.6m && c.TotalCount >= 3)
+HistoricalLearningIntervalMinutes = 10,
+HistoricalLearningIntervalMinutes = 15,
+HistoricalLearningIntervalMinutes = 60,
+var unifiedTrainingData = _decisionHistory.TakeLast(2000)
+(double)Math.Min(1.0m, context.Volatility / 2.0m)
+strategy.SelectedStrategy switch { "S2_VWAP" => 0.25, "S3_Compression" => 0.5, ... }
+var probabilityAdjustment = (decimal)Math.Max(0.3, actionResult.ActionProbability);
+if (actionResult.CVaREstimate < -0.1)
+
+// After (S109) - Named constants
+public const decimal PoorPerformanceWinRateThreshold = 0.4m;
+public const decimal UnsuccessfulConditionThreshold = 0.3m;
+public const decimal MinimumWinRateToSharePatterns = 0.6m;
+public const decimal MinimumConditionSuccessRate = 0.6m;
+public const int MinimumConditionTrialCount = 3;
+public const int MaintenanceLearningIntervalMinutes = 10;
+public const int ClosedMarketLearningIntervalMinutes = 15;
+public const int OpenMarketLearningIntervalMinutes = 60;
+public const int TrainingDataHistorySize = 2000;
+public const double VolatilityNormalizationDivisor = 2.0;
+public const double S2VwapStrategyEncoding = 0.25;
+public const double S3CompressionStrategyEncoding = 0.5;
+public const decimal MinProbabilityAdjustment = 0.3m;
+public const decimal HighNegativeTailRiskThreshold = -0.1m;
+
+if (metrics.WinRate < TopStepConfig.PoorPerformanceWinRateThreshold)
+if (c.SuccessRate < TopStepConfig.UnsuccessfulConditionThreshold)
+if (bestPerformance.WinRate < TopStepConfig.MinimumWinRateToSharePatterns)
+.Where(c => c.SuccessRate > TopStepConfig.MinimumConditionSuccessRate && c.TotalCount >= TopStepConfig.MinimumConditionTrialCount)
+HistoricalLearningIntervalMinutes = TopStepConfig.MaintenanceLearningIntervalMinutes,
+HistoricalLearningIntervalMinutes = TopStepConfig.ClosedMarketLearningIntervalMinutes,
+HistoricalLearningIntervalMinutes = TopStepConfig.OpenMarketLearningIntervalMinutes,
+var unifiedTrainingData = _decisionHistory.TakeLast(TopStepConfig.TrainingDataHistorySize)
+(double)Math.Min(TopStepConfig.MaxNormalizationValue, context.Volatility / (decimal)TopStepConfig.VolatilityNormalizationDivisor)
+strategy.SelectedStrategy switch { "S2_VWAP" => TopStepConfig.S2VwapStrategyEncoding, "S3_Compression" => TopStepConfig.S3CompressionStrategyEncoding, ... }
+var probabilityAdjustment = (decimal)Math.Max((double)TopStepConfig.MinProbabilityAdjustment, actionResult.ActionProbability);
+if (actionResult.CVaREstimate < (double)TopStepConfig.HighNegativeTailRiskThreshold)
+```
+
+**Build Verification**: ✅ 0 CS errors maintained, 74 S109 violations fixed (992 → 918)
+
+---
+
+### 🔧 Round 156 - Phase 2: S109 Magic Numbers Elimination (Previous in Current Session)
 
 **S109: Magic Number to Named Constant Conversion (84 violations fixed, 1 file)**
 

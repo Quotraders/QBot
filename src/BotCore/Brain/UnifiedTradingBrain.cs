@@ -53,6 +53,62 @@ namespace BotCore.Brain
         public const decimal DefaultRsiMax = 100m;                 // Maximum RSI value
         public const int MinBarsPeriod = 10;                       // Minimum bars for period calculations
         public const int MinBarsExtended = 20;                     // Minimum bars for extended calculations
+        
+        // Strategy performance evaluation thresholds
+        public const decimal PoorPerformanceWinRateThreshold = 0.4m;  // Below this is considered poor performance
+        public const decimal UnsuccessfulConditionThreshold = 0.3m;   // Condition success rate below this is unsuccessful
+        public const decimal HighPerformanceWinRateThreshold = 0.7m;  // Above this is considered high performance
+        public const decimal MinimumWinRateToSharePatterns = 0.6m;   // Minimum win rate to share patterns with other strategies
+        public const decimal SharedPatternSuccessThreshold = 0.7m;   // Success rate threshold for cross-pollination
+        public const decimal CrossPollinationWeight = 0.1m;          // Lower weight for cross-pollinated patterns
+        public const decimal MinimumConditionSuccessRate = 0.6m;     // Minimum success rate for condition to be considered
+        public const int MinimumConditionTrialCount = 3;             // Minimum number of trials to trust condition
+        public const int TopConditionsToSelect = 5;                  // Number of top conditions to select per strategy
+        public const int MinimumDecisionsForTrend = 5;               // Minimum decisions needed to calculate performance trend
+        public const int RecentDecisionsLookbackHours = 24;          // Hours to look back for recent decisions
+        
+        // Scheduling and learning intervals
+        public const int MaintenanceLearningIntervalMinutes = 10;    // Learning interval during maintenance window
+        public const int ClosedMarketLearningIntervalMinutes = 15;   // Learning interval when market is closed
+        public const int OpenMarketLearningIntervalMinutes = 60;     // Learning interval when market is open
+        public const int TrainingDataHistorySize = 2000;             // Number of recent decisions to use for training
+        
+        // CVaR-PPO state vector normalization constants
+        public const double VolatilityNormalizationDivisor = 2.0;    // Divisor for volatility normalization
+        public const double PriceChangeMomentumDivisor = 20.0;       // Divisor for price change normalization
+        public const double VolumeSurgeNormalizationDivisor = 3.0;   // Divisor for volume ratio normalization
+        public const double AtrNormalizationDivisor = 50.0;          // Divisor for ATR normalization
+        public const double UcbValueNormalizationDivisor = 10.0;     // Divisor for UCB value normalization
+        public const double S2VwapStrategyEncoding = 0.25;           // Encoding value for S2_VWAP strategy
+        public const double S3CompressionStrategyEncoding = 0.5;     // Encoding value for S3_Compression strategy
+        public const double S11OpeningStrategyEncoding = 0.75;       // Encoding value for S11_Opening strategy
+        public const double S12MomentumStrategyEncoding = 1.0;       // Encoding value for S12_Momentum strategy
+        public const double DefaultStrategyEncoding = 0.0;           // Default encoding for unknown strategy
+        public const double DirectionEncodingDivisor = 2.0;          // Divisor for direction encoding
+        public const double DirectionEncodingOffset = 0.5;           // Offset for direction encoding (Down=0, Sideways=0.5, Up=1)
+        public const double HoursPerDay = 24.0;                      // Hours in a day for cyclical encoding
+        public const double MaxDecisionsPerDayNormalization = 50.0;  // Maximum decisions per day for normalization
+        
+        // CVaR-PPO action to position size multipliers
+        public const decimal NoTradeMultiplier = 0.0m;               // Action 0: No trade
+        public const decimal MicroPositionMultiplier = 0.25m;        // Action 1: Micro position (25%)
+        public const decimal SmallPositionMultiplier = 0.5m;         // Action 2: Small position (50%)
+        public const decimal NormalPositionMultiplier = 1.0m;        // Action 3: Normal position (100%)
+        public const decimal LargePositionMultiplier = 1.5m;         // Action 4: Large position (150%)
+        public const decimal MaxPositionMultiplier = 2.0m;           // Action 5: Maximum position (200%)
+        
+        // CVaR risk adjustment constants
+        public const decimal MaxNormalizationValue = 1.0m;           // Maximum value for Min() normalization
+        public const double MinNormalizationValue = 1.0;             // Minimum value for Min() normalization (double)
+        public const int CyclicalEncodingMultiplier = 2;             // Multiplier for sin/cos cyclical encoding
+        public const decimal MinProbabilityAdjustment = 0.3m;        // Minimum probability adjustment for position sizing
+        public const decimal MinValueAdjustment = 0.2m;              // Minimum value adjustment for position sizing
+        public const decimal MaxValueAdjustment = 1.5m;              // Maximum value adjustment for position sizing
+        public const decimal ValueEstimateOffset = 0.5m;             // Offset for value estimate adjustment
+        public const decimal HighNegativeTailRiskThreshold = -0.1m;  // Threshold for high negative tail risk (CVaR)
+        public const decimal ModerateTailRiskThreshold = -0.05m;     // Threshold for moderate tail risk (CVaR)
+        public const decimal HighRiskPositionReduction = 0.5m;       // Position reduction for high tail risk (50%)
+        public const decimal ModerateRiskPositionReduction = 0.75m;  // Position reduction for moderate tail risk (25%)
     }
     /// <summary>
     /// UNIFIED TRADING BRAIN - The ONE intelligence that controls all trading decisions
@@ -1274,14 +1330,14 @@ namespace BotCore.Brain
         {
             foreach (var (strategy, metrics) in analysis)
             {
-                if (metrics.WinRate < 0.4m) // Poor performing strategy
+                if (metrics.WinRate < TopStepConfig.PoorPerformanceWinRateThreshold) // Poor performing strategy
                 {
                     // Reduce confidence in current optimal conditions
                     if (_strategyOptimalConditions.TryGetValue(strategy, out var conditions))
                     {
                         // Remove conditions that have been consistently unsuccessful
                         var unsuccessfulConditions = conditions
-                            .Where(c => c.SuccessRate < 0.3m)
+                            .Where(c => c.SuccessRate < TopStepConfig.UnsuccessfulConditionThreshold)
                             .ToList();
                         
                         foreach (var condition in unsuccessfulConditions)
@@ -1293,7 +1349,7 @@ namespace BotCore.Brain
                             unsuccessfulConditions.Count, strategy);
                     }
                 }
-                else if (metrics.WinRate > 0.7m) // High performing strategy
+                else if (metrics.WinRate > TopStepConfig.HighPerformanceWinRateThreshold) // High performing strategy
                 {
                     // Strengthen successful conditions
                     foreach (var condition in metrics.BestConditions)
@@ -1318,13 +1374,13 @@ namespace BotCore.Brain
                 return;
                 
             var bestPerformance = _strategyPerformance[bestStrategy];
-            if (bestPerformance.WinRate < 0.6m)
+            if (bestPerformance.WinRate < TopStepConfig.MinimumWinRateToSharePatterns)
                 return; // Not good enough to share patterns
             
             // Share successful patterns with other strategies
             var successfulConditions = _strategyOptimalConditions
                 .GetValueOrDefault<string, List<BotCore.Brain.Models.MarketCondition>>(bestStrategy, new List<BotCore.Brain.Models.MarketCondition>())
-                .Where(c => c.SuccessRate > 0.7m)
+                .Where(c => c.SuccessRate > TopStepConfig.SharedPatternSuccessThreshold)
                 .ToList();
             
             foreach (var strategy in PrimaryStrategies.Where(s => s != bestStrategy))
@@ -1332,7 +1388,7 @@ namespace BotCore.Brain
                 foreach (var condition in successfulConditions)
                 {
                     // Add successful condition from best strategy to other strategies
-                    UpdateConditionSuccess(strategy, condition.ConditionName, true, 0.1m); // Lower weight for cross-pollination
+                    UpdateConditionSuccess(strategy, condition.ConditionName, true, TopStepConfig.CrossPollinationWeight); // Lower weight for cross-pollination
                 }
             }
             
@@ -1414,9 +1470,9 @@ namespace BotCore.Brain
         {
             return _strategyOptimalConditions
                 .GetValueOrDefault<string, List<BotCore.Brain.Models.MarketCondition>>(strategy, new List<BotCore.Brain.Models.MarketCondition>())
-                .Where(c => c.SuccessRate > 0.6m && c.TotalCount >= 3)
+                .Where(c => c.SuccessRate > TopStepConfig.MinimumConditionSuccessRate && c.TotalCount >= TopStepConfig.MinimumConditionTrialCount)
                 .OrderByDescending(c => c.SuccessRate)
-                .Take(5)
+                .Take(TopStepConfig.TopConditionsToSelect)
                 .Select(c => c.ConditionName)
                 .ToArray();
         }
@@ -1424,11 +1480,11 @@ namespace BotCore.Brain
         private decimal GetRecentPerformanceTrend(string strategy)
         {
             var recentDecisions = _decisionHistory
-                .Where(d => d.Strategy == strategy && d.Timestamp > DateTime.UtcNow.AddHours(-24))
+                .Where(d => d.Strategy == strategy && d.Timestamp > DateTime.UtcNow.AddHours(-TopStepConfig.RecentDecisionsLookbackHours))
                 .OrderBy(d => d.Timestamp)
                 .ToList();
                 
-            if (recentDecisions.Count < 5)
+            if (recentDecisions.Count < TopStepConfig.MinimumDecisionsForTrend)
                 return 0;
                 
             var recentHalf = recentDecisions.Skip(recentDecisions.Count / 2).ToList();
@@ -1461,7 +1517,7 @@ namespace BotCore.Brain
                 {
                     IsMarketOpen = false,
                     LearningIntensity = "INTENSIVE",
-                    HistoricalLearningIntervalMinutes = 10, // Very frequent during maintenance
+                    HistoricalLearningIntervalMinutes = TopStepConfig.MaintenanceLearningIntervalMinutes, // Very frequent during maintenance
                     LiveTradingActive = false,
                     RecommendedStrategies = new[] { "S2", "S3", "S6", "S11" }, // All strategies can be analyzed
                     Reasoning = "Maintenance window - intensive learning opportunity"
@@ -1475,7 +1531,7 @@ namespace BotCore.Brain
                 {
                     IsMarketOpen = false,
                     LearningIntensity = "INTENSIVE",
-                    HistoricalLearningIntervalMinutes = 15, // Every 15 minutes as requested
+                    HistoricalLearningIntervalMinutes = TopStepConfig.ClosedMarketLearningIntervalMinutes, // Every 15 minutes as requested
                     LiveTradingActive = false,
                     RecommendedStrategies = new[] { "S2", "S3", "S6", "S11" },
                     Reasoning = "Market closed - intensive historical learning across all strategies"
@@ -1488,7 +1544,7 @@ namespace BotCore.Brain
             {
                 IsMarketOpen = true,
                 LearningIntensity = "LIGHT",
-                HistoricalLearningIntervalMinutes = 60, // Every 60 minutes as requested
+                HistoricalLearningIntervalMinutes = TopStepConfig.OpenMarketLearningIntervalMinutes, // Every 60 minutes as requested
                 LiveTradingActive = true,
                 RecommendedStrategies = availableStrategies.ToArray(),
                 Reasoning = $"Market open - light historical learning every 60min, active live trading with {string.Join(",", availableStrategies)}"
@@ -1542,7 +1598,7 @@ namespace BotCore.Brain
                 _logger.LogInformation("🔄 [UNIFIED-RETRAIN] Starting unified model retraining across all strategies...");
                 
                 // Export comprehensive training data including all strategies
-                var unifiedTrainingData = _decisionHistory.TakeLast(2000).Select(d => new
+                var unifiedTrainingData = _decisionHistory.TakeLast(TopStepConfig.TrainingDataHistorySize).Select(d => new
                 {
                     features = CreateContextVector(d.Context).Features,
                     strategy = d.Strategy,
@@ -1600,34 +1656,37 @@ namespace BotCore.Brain
             return new double[]
             {
                 // Market microstructure features (normalized 0-1)
-                (double)Math.Min(1.0m, context.Volatility / 2.0m), // Volatility ratio [0-1]
-                Math.Tanh((double)(context.PriceChange / 20.0m)), // Price change momentum [-1,1]
-                (double)Math.Min(1.0m, context.VolumeRatio / 3.0m), // Volume surge ratio [0-1]
-                (double)Math.Min(1.0m, (context.Atr ?? 10.0m) / 50.0m), // ATR normalized [0-1]
+                (double)Math.Min(TopStepConfig.MaxNormalizationValue, context.Volatility / (decimal)TopStepConfig.VolatilityNormalizationDivisor), // Volatility ratio [0-1]
+                Math.Tanh((double)(context.PriceChange / (decimal)TopStepConfig.PriceChangeMomentumDivisor)), // Price change momentum [-1,1]
+                (double)Math.Min(TopStepConfig.MaxNormalizationValue, context.VolumeRatio / (decimal)TopStepConfig.VolumeSurgeNormalizationDivisor), // Volume surge ratio [0-1]
+                (double)Math.Min(TopStepConfig.MaxNormalizationValue, (context.Atr ?? TopStepConfig.DefaultAtrFallback) / (decimal)TopStepConfig.AtrNormalizationDivisor), // ATR normalized [0-1]
                 (double)context.TrendStrength, // Trend strength [0-1]
                 
                 // Strategy selection features  
                 (double)strategy.Confidence, // Neural UCB confidence [0-1]
-                Math.Min(1.0, (double)strategy.UcbValue / 10.0), // UCB exploration value normalized
+                Math.Min(TopStepConfig.MinNormalizationValue, (double)strategy.UcbValue / TopStepConfig.UcbValueNormalizationDivisor), // UCB exploration value normalized
                 strategy.SelectedStrategy switch { // Strategy type encoding
-                    "S2_VWAP" => 0.25, "S3_Compression" => 0.5, 
-                    "S11_Opening" => 0.75, "S12_Momentum" => 1.0, _ => 0.0
+                    "S2_VWAP" => TopStepConfig.S2VwapStrategyEncoding, 
+                    "S3_Compression" => TopStepConfig.S3CompressionStrategyEncoding, 
+                    "S11_Opening" => TopStepConfig.S11OpeningStrategyEncoding, 
+                    "S12_Momentum" => TopStepConfig.S12MomentumStrategyEncoding, 
+                    _ => TopStepConfig.DefaultStrategyEncoding
                 },
                 
                 // LSTM prediction features
                 (double)prediction.Probability, // Price direction confidence [0-1]
-                (int)prediction.Direction / 2.0 + 0.5, // Direction: Down=0, Sideways=0.5, Up=1
+                (int)prediction.Direction / TopStepConfig.DirectionEncodingDivisor + TopStepConfig.DirectionEncodingOffset, // Direction: Down=0, Sideways=0.5, Up=1
                 
                 // Temporal features (cyclical encoding)
-                Math.Sin(2 * Math.PI * context.TimeOfDay.TotalHours / 24.0), // Hour of day
-                Math.Cos(2 * Math.PI * context.TimeOfDay.TotalHours / 24.0),
+                Math.Sin(TopStepConfig.CyclicalEncodingMultiplier * Math.PI * context.TimeOfDay.TotalHours / TopStepConfig.HoursPerDay), // Hour of day
+                Math.Cos(TopStepConfig.CyclicalEncodingMultiplier * Math.PI * context.TimeOfDay.TotalHours / TopStepConfig.HoursPerDay),
                 
                 // Risk management features
-                (double)Math.Max(-1.0m, Math.Min(1.0m, _currentDrawdown / TopStepConfig.MaxDrawdown)), // Drawdown ratio [-1,1]
-                (double)Math.Max(-1.0m, Math.Min(1.0m, _dailyPnl / TopStepConfig.DailyLossLimit)), // Daily P&L ratio [-1,1]
+                (double)Math.Max(-TopStepConfig.MaxNormalizationValue, Math.Min(TopStepConfig.MaxNormalizationValue, _currentDrawdown / TopStepConfig.MaxDrawdown)), // Drawdown ratio [-1,1]
+                (double)Math.Max(-TopStepConfig.MaxNormalizationValue, Math.Min(TopStepConfig.MaxNormalizationValue, _dailyPnl / TopStepConfig.DailyLossLimit)), // Daily P&L ratio [-1,1]
                 
                 // Portfolio state features
-                Math.Min(1.0, DecisionsToday / 50.0), // Decision frequency normalized [0-1]
+                Math.Min(TopStepConfig.MinNormalizationValue, DecisionsToday / TopStepConfig.MaxDecisionsPerDayNormalization), // Decision frequency normalized [0-1]
                 (double)WinRateToday, // Current session win rate [0-1]
             };
         }
@@ -1641,20 +1700,20 @@ namespace BotCore.Brain
             // Action 0=No Trade, 1=Micro(0.25x), 2=Small(0.5x), 3=Normal(1x), 4=Large(1.5x), 5=Max(2x)
             var sizeMultiplier = actionResult.Action switch
             {
-                0 => 0.0m,   // No trade
-                1 => 0.25m,  // Micro position
-                2 => 0.5m,   // Small position  
-                3 => 1.0m,   // Normal position
-                4 => 1.5m,   // Large position
-                5 => 2.0m,   // Maximum position
-                _ => 1.0m    // Default to normal
+                0 => TopStepConfig.NoTradeMultiplier,        // No trade
+                1 => TopStepConfig.MicroPositionMultiplier,  // Micro position
+                2 => TopStepConfig.SmallPositionMultiplier,  // Small position  
+                3 => TopStepConfig.NormalPositionMultiplier, // Normal position
+                4 => TopStepConfig.LargePositionMultiplier,  // Large position
+                5 => TopStepConfig.MaxPositionMultiplier,    // Maximum position
+                _ => TopStepConfig.NormalPositionMultiplier  // Default to normal
             };
             
             // Apply action probability weighting - reduce size for uncertain actions
-            var probabilityAdjustment = (decimal)Math.Max(0.3, actionResult.ActionProbability);
+            var probabilityAdjustment = (decimal)Math.Max((double)TopStepConfig.MinProbabilityAdjustment, actionResult.ActionProbability);
             
             // Apply value estimate adjustment - reduce size for negative expected value
-            var valueAdjustment = (decimal)Math.Max(0.2, Math.Min(1.5, 0.5 + actionResult.ValueEstimate));
+            var valueAdjustment = (decimal)Math.Max((double)TopStepConfig.MinValueAdjustment, Math.Min((double)TopStepConfig.MaxValueAdjustment, (double)TopStepConfig.ValueEstimateOffset + actionResult.ValueEstimate));
             
             var adjustedMultiplier = sizeMultiplier * probabilityAdjustment * valueAdjustment;
             var contracts = (int)Math.Round(baseContracts * adjustedMultiplier);
@@ -1670,14 +1729,14 @@ namespace BotCore.Brain
             if (contracts <= 0) return 0;
             
             // CVaR tail risk adjustment - reduce position if high tail risk
-            var cvarAdjustment = 1.0m;
-            if (actionResult.CVaREstimate < -0.1) // High negative tail risk
+            var cvarAdjustment = TopStepConfig.NormalPositionMultiplier;
+            if (actionResult.CVaREstimate < (double)TopStepConfig.HighNegativeTailRiskThreshold) // High negative tail risk
             {
-                cvarAdjustment = 0.5m; // Cut position in half
+                cvarAdjustment = TopStepConfig.HighRiskPositionReduction; // Cut position in half
             }
-            else if (actionResult.CVaREstimate < -0.05) // Moderate tail risk
+            else if (actionResult.CVaREstimate < (double)TopStepConfig.ModerateTailRiskThreshold) // Moderate tail risk
             {
-                cvarAdjustment = 0.75m; // Reduce position by 25%
+                cvarAdjustment = TopStepConfig.ModerateRiskPositionReduction; // Reduce position by 25%
             }
             
             // Volatility regime adjustment
