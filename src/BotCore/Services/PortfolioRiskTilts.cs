@@ -179,9 +179,10 @@ namespace BotCore.Services
             {
                 lock (_reallocationLock)
                 {
+                    const decimal ReferencePositionSize = 100m;
                     foreach (var symbol in new[] { "ES", "NQ" })
                     {
-                        factors[symbol] = CalculatePositionMultiplierCore(symbol, 100m);
+                        factors[symbol] = CalculatePositionMultiplierCore(symbol, ReferencePositionSize);
                     }
                 }
 
@@ -356,9 +357,12 @@ namespace BotCore.Services
             double.TryParse(Environment.GetEnvironmentVariable("CORRELATION_SAFE_VALUE"), out var val) 
                 ? val : 0.0; // Explicit zero fallback for no correlation
         
-        private static int GetConfiguredMinCorrelationPoints() =>
-            int.TryParse(Environment.GetEnvironmentVariable("CORRELATION_MIN_POINTS"), out var points) && points > 0 
-                ? points : 2; // Minimal requirement fallback
+        private static int GetConfiguredMinCorrelationPoints()
+        {
+            const int MinimumCorrelationPoints = 2;
+            return int.TryParse(Environment.GetEnvironmentVariable("CORRELATION_MIN_POINTS"), out var points) && points > 0 
+                ? points : MinimumCorrelationPoints;
+        }
 
         private double CalculateReductionFactor(double correlation)
         {
@@ -521,13 +525,15 @@ namespace BotCore.Services
 
         private static double GetConfiguredEpsilon()
         {
+            const double MinimalDoublePrecision = 1e-6;
+            
             // Get epsilon from environment or use minimal precision value (fail-closed approach)
             var epsilonStr = Environment.GetEnvironmentVariable("CALCULATION_EPSILON");
             if (double.TryParse(epsilonStr, out var epsilon) && epsilon > 0)
                 return epsilon;
             
             // Minimal precision for double calculations
-            return 1e-6;
+            return MinimalDoublePrecision;
         }
     }
 
