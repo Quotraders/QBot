@@ -19,6 +19,12 @@ namespace BotCore.MetaLabeler;
 /// </summary>
 public class WalkForwardTrainer
 {
+    // Prediction thresholds and bounds
+    private const decimal DefaultPrediction = 0.5m;
+    private const decimal MinPredictionBound = 0.01m;
+    private const decimal MaxPredictionBound = 0.99m;
+    private const decimal BinaryClassificationThreshold = 0.5m;
+    
     private readonly TripleBarrierLabeler _labeler;
     private readonly string _modelsPath;
     private readonly WalkForwardConfig _config;
@@ -323,7 +329,7 @@ public class WalkForwardTrainer
     /// </summary>
     private static decimal CalculateAdvancedFeaturePrediction(LabeledTradeData sample)
     {
-        if (sample.Features.Count == 0) return 0.5m;
+        if (sample.Features.Count == 0) return DefaultPrediction;
 
         var features = sample.Features.Values.ToArray();
         
@@ -333,8 +339,8 @@ public class WalkForwardTrainer
         var skewness = features.Select(f => Math.Pow((double)(f - mean), 3)).Average() / Math.Pow(Math.Sqrt((double)variance), 3);
         
         // Advanced prediction combining multiple statistical moments
-        var prediction = 0.5m + (mean * 0.3m) + ((decimal)skewness * 0.2m);
-        return Math.Max(0.01m, Math.Min(0.99m, prediction));
+        var prediction = DefaultPrediction + (mean * 0.3m) + ((decimal)skewness * 0.2m);
+        return Math.Max(MinPredictionBound, Math.Min(MaxPredictionBound, prediction));
     }
 
     private static ValidationMetrics CalculateMetrics(List<decimal> predictions, List<decimal> actuals)
@@ -352,8 +358,8 @@ public class WalkForwardTrainer
         {
             var pred = Math.Max(0.001m, Math.Min(0.999m, predictions[i])); // Clip for stability
             var actual = actuals[i];
-            var actualBinary = actual > 0.5m ? 1m : 0m;
-            var predBinary = pred > 0.5m ? 1m : 0m;
+            var actualBinary = actual > BinaryClassificationThreshold ? 1m : 0m;
+            var predBinary = pred > BinaryClassificationThreshold ? 1m : 0m;
 
             if (predBinary == actualBinary)
                 correct++;
@@ -374,7 +380,7 @@ public class WalkForwardTrainer
             BrierScore = brierSum / predictions.Count,
             LogLoss = logLossSum / predictions.Count,
             SampleCount = predictions.Count,
-            PositiveRate = actuals.Count(a => a > 0.5m) / (decimal)actuals.Count
+            PositiveRate = actuals.Count(a => a > BinaryClassificationThreshold) / (decimal)actuals.Count
         };
     }
 

@@ -13,6 +13,12 @@ namespace BotCore.Services
     /// </summary>
     public class PerformanceMetricsService
     {
+        // Performance baseline constants
+        private const double BaselineDecisionLatencyMs = 12.5; // Typical ML-based decision latency
+        private const double BaselineOrderLatencyMs = 28.0; // Typical electronic execution latency
+        private const int MaxLatencyHistorySize = 1000;
+        private const int PerformanceSummaryPeriodMinutes = 30;
+        
         private readonly ILogger<PerformanceMetricsService> _logger;
         private readonly List<LatencyRecord> _latencyHistory = new();
         private readonly object _metricsLock = new();
@@ -39,7 +45,7 @@ namespace BotCore.Services
                 {
                     _logger.LogWarning("No recent decision latency data for {Symbol}, using system baseline", symbol);
                     // Return system baseline - typical decision latency
-                    return 12.5; // 12.5ms is reasonable for ML-based decisions
+                    return BaselineDecisionLatencyMs; // Typical ML-based decision latency
                 }
 
                 var avgLatency = recentDecisions.Average(l => l.LatencyMs);
@@ -67,7 +73,7 @@ namespace BotCore.Services
                 {
                     _logger.LogWarning("No recent order latency data for {Symbol}, using market baseline", symbol);
                     // Return market-based baseline - typical order execution latency
-                    return 28.0; // 28ms is reasonable for electronic execution
+                    return BaselineOrderLatencyMs; // Typical electronic execution latency
                 }
 
                 var avgLatency = recentOrders.Average(l => l.LatencyMs);
@@ -108,8 +114,8 @@ namespace BotCore.Services
             {
                 _latencyHistory.Add(record);
                 
-                // Keep only last 1000 measurements to prevent memory growth
-                if (_latencyHistory.Count > 1000)
+                // Keep only last MaxLatencyHistorySize measurements to prevent memory growth
+                if (_latencyHistory.Count > MaxLatencyHistorySize)
                 {
                     _latencyHistory.RemoveAt(0);
                 }
@@ -127,7 +133,7 @@ namespace BotCore.Services
             lock (_metricsLock)
             {
                 var recentRecords = _latencyHistory
-                    .Where(l => l.Timestamp > DateTime.UtcNow.AddMinutes(-30))
+                    .Where(l => l.Timestamp > DateTime.UtcNow.AddMinutes(-PerformanceSummaryPeriodMinutes))
                     .ToList();
 
                 return new PerformanceMetricsSummary
@@ -136,7 +142,7 @@ namespace BotCore.Services
                     AverageDecisionLatency = recentRecords.Where(l => l.Type == LatencyType.Decision).Select(l => l.LatencyMs).DefaultIfEmpty(0).Average(),
                     AverageOrderLatency = recentRecords.Where(l => l.Type == LatencyType.Order).Select(l => l.LatencyMs).DefaultIfEmpty(0).Average(),
                     MaxLatency = recentRecords.Select(l => l.LatencyMs).DefaultIfEmpty(0).Max(),
-                    TimePeriodMinutes = 30
+                    TimePeriodMinutes = PerformanceSummaryPeriodMinutes
                 };
             }
         }
