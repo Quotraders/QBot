@@ -47,6 +47,10 @@ namespace TopstepX.Bot.Core.Services
         private readonly ITopstepXAdapterService _topstepXAdapter;
         private readonly TradingBot.Abstractions.IS7Service? _s7Service;
         
+        // Risk Management Services - Portfolio Correlation and Volatility Guards
+        private readonly CorrelationAwareCapService _correlationCapService;
+        private readonly VolOfVolGuardService _volOfVolGuardService;
+        
         // Account/contract selection fields
         private string[] _chosenContracts = Array.Empty<string>();
 
@@ -184,9 +188,13 @@ namespace TopstepX.Bot.Core.Services
             ITopstepXAdapterService topstepXAdapter,
             IHistoricalDataBridgeService historicalBridge,
             IEnhancedMarketDataFlowService marketDataFlow,
-            IOptions<TradingReadinessConfiguration> readinessConfig)
+            IOptions<TradingReadinessConfiguration> readinessConfig,
+            CorrelationAwareCapService correlationCapService,
+            VolOfVolGuardService volOfVolGuardService)
         {
             ArgumentNullException.ThrowIfNull(readinessConfig);
+            ArgumentNullException.ThrowIfNull(correlationCapService);
+            ArgumentNullException.ThrowIfNull(volOfVolGuardService);
             
             _logger = logger;
             _serviceProvider = serviceProvider;
@@ -199,6 +207,10 @@ namespace TopstepX.Bot.Core.Services
             _featureEngineering = featureEngineering;
             _unifiedTradingBrain = unifiedTradingBrain;
             _topstepXAdapter = topstepXAdapter;
+            
+            // Inject Risk Management Services
+            _correlationCapService = correlationCapService;
+            _volOfVolGuardService = volOfVolGuardService;
             
             // Get S7 Service from DI for strategy gate integration
             _s7Service = serviceProvider.GetService<TradingBot.Abstractions.IS7Service>();
@@ -430,6 +442,59 @@ namespace TopstepX.Bot.Core.Services
                     _logger.LogWarning("[ORDER] Order rejected - invalid risk calculation. R = {RMultiple}", rMultiple);
                     return OrderResult.Failed($"Invalid risk: R = {rMultiple:F2}");
                 }
+                
+                // RISK-TILT: Apply correlation cap for ES/NQ pairs
+                var originalQuantity = request.Quantity;
+                var correlationMultiplier = 1.0;
+                var symbol = request.Symbol.ToUpperInvariant();
+                
+                if ((symbol == "ES" || symbol == "MES") && _priceCache.ContainsKey("NQ"))
+                {
+                    correlationMultiplier = await _correlationCapService.CheckCorrelationConstraintAsync(
+                        symbol, "NQ", request.Quantity, request.Quantity, cancellationToken).ConfigureAwait(false);
+                }
+                else if ((symbol == "NQ" || symbol == "MNQ") && _priceCache.ContainsKey("ES"))
+                {
+                    correlationMultiplier = await _correlationCapService.CheckCorrelationConstraintAsync(
+                        symbol, "ES", request.Quantity, request.Quantity, cancellationToken).ConfigureAwait(false);
+                }
+                
+                // RISK-TILT: Apply vol-of-vol adjustment for volatility spikes
+                var volOfVolAdjustment = new VolOfVolAdjustment { PositionSizeMultiplier = 1.0, StopLossMultiplier = 1.0, OffsetTightening = 1.0 };
+                
+                // Get bar data to calculate current ATR
+                if (_barCache.TryGetValue(symbol, out var symbolBars) && symbolBars.Count > 14)
+                {
+                    var currentAtr = CalculateATR(symbolBars);
+                    volOfVolAdjustment = await _volOfVolGuardService.CalculateVolOfVolAdjustmentAsync(
+                        symbol, currentAtr, cancellationToken).ConfigureAwait(false);
+                }
+                
+                // Apply both multipliers to quantity
+                var finalQuantity = (int)Math.Max(1, Math.Round((double)request.Quantity * correlationMultiplier * volOfVolAdjustment.PositionSizeMultiplier));
+                request.Quantity = finalQuantity;
+                
+                // Adjust stop loss based on vol-of-vol multiplier
+                if (volOfVolAdjustment.StopLossMultiplier > 1.0)
+                {
+                    var stopDistance = Math.Abs(entryPrice - stopPrice);
+                    var widenedStopDistance = stopDistance * (decimal)volOfVolAdjustment.StopLossMultiplier;
+                    stopPrice = isLong ? entryPrice - widenedStopDistance : entryPrice + widenedStopDistance;
+                    stopPrice = Px.RoundToTick(stopPrice);
+                }
+                
+                // Log risk adjustments
+                if (correlationMultiplier < 1.0 || volOfVolAdjustment.PositionSizeMultiplier < 1.0)
+                {
+                    _logger.LogWarning("[RISK-TILT] Adjustments applied: Original qty={OrigQty}, Correlation mult={CorrMult:F2}, VolOfVol mult={VolMult:F2}, Final qty={FinalQty}",
+                        originalQuantity, correlationMultiplier, volOfVolAdjustment.PositionSizeMultiplier, finalQuantity);
+                }
+                
+                if (volOfVolAdjustment.IsVolatilitySpike)
+                {
+                    _logger.LogWarning("[RISK-TILT] Volatility spike detected: Stop widened by {Multiplier:F2}x, Offset tightened by {Tightening:F2}x",
+                        volOfVolAdjustment.StopLossMultiplier, volOfVolAdjustment.OffsetTightening);
+                }
 
                 // Generate unique custom tag
                 var customTag = $"S11L-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid().ToString("N")[..8]}";
@@ -605,12 +670,26 @@ namespace TopstepX.Bot.Core.Services
                 // Note: Simplifying to use available methods
                 
                 // PHASE 3: Create enhanced environment for strategy evaluation
+                var currentAtr = CalculateATR(bars);
                 var env = new Env
                 {
                     Symbol = symbol,
-                    atr = CalculateATR(bars),
+                    atr = currentAtr,
                     volz = CalculateVolZ(bars)
                 };
+                
+                // Update vol-of-vol service with current ATR
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _volOfVolGuardService.CalculateVolOfVolAdjustmentAsync(symbol, currentAtr).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "[VOL-OF-VOL-GUARD] Failed to update volatility history for {Symbol}", symbol);
+                    }
+                }).ConfigureAwait(false);
 
                 // Create levels (enhanced with ML predictions)
                 var levels = new Levels();
@@ -1191,6 +1270,25 @@ namespace TopstepX.Bot.Core.Services
                     // Update price cache
                     _priceCache.AddOrUpdate(symbol, marketData, (key, old) => marketData);
                     _lastMarketDataUpdate = DateTime.UtcNow;
+                    
+                    // Update correlation service with price history for ES, NQ, MES, MNQ
+                    if (symbol.Equals("ES", StringComparison.OrdinalIgnoreCase) ||
+                        symbol.Equals("NQ", StringComparison.OrdinalIgnoreCase) ||
+                        symbol.Equals("MES", StringComparison.OrdinalIgnoreCase) ||
+                        symbol.Equals("MNQ", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _ = Task.Run(async () => 
+                        {
+                            try
+                            {
+                                await _correlationCapService.UpdatePriceDataAsync(symbol, marketData.LastPrice, DateTime.UtcNow).ConfigureAwait(false);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "[CORRELATION-CAP] Failed to update price history for {Symbol}", symbol);
+                            }
+                        }).ConfigureAwait(false);
+                    }
                     
                     // Update bar cache for strategy evaluation
                     UpdateBarCache(symbol, marketData);
