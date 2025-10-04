@@ -8,6 +8,65 @@ namespace BotCore.Patterns.Detectors;
 /// </summary>
 public class ContinuationPatternDetector : IPatternDetector
 {
+    // Pattern bar requirements
+    private const int FlagBars = 15;
+    private const int PennantBars = 20;
+    private const int WedgeBars = 25;
+    private const int CompressionBars = 12;
+    private const int ConsolidationBars = 10;
+    private const int BreakoutRetestBars = 8;
+    private const int UnknownPatternBars = 10;
+
+    // Flag pattern thresholds
+    private const int FlagLookback = 20;
+    private const int FlagMinBars = 15;
+    private const double FlagTrendPortionRatio = 0.6;
+    private const int FlagMinTrendBars = 5;
+    private const double FlagMaxSlopeRatio = 0.3;
+    private const double FlagMaxScore = 0.85;
+    private const double FlagBaseScore = 0.6;
+    private const double FlagSlopeWeight = 0.8;
+
+    // Pennant pattern thresholds
+    private const int PennantLookback = 25;
+    private const int PennantMinBars = 20;
+    private const double PennantTrendPortionRatio = 0.4;
+    private const int PennantMinTrendBars = 5;
+    private const int PennantMinConsolidationBars = 10;
+    private const int PennantRangeSampleSize = 3;
+    private const decimal PennantMinRangeDivisor = 0.01m;
+    private const double PennantMaxConvergenceRatio = 0.6;
+    private const double PennantMaxScore = 0.8;
+    private const double PennantBaseScore = 0.5;
+    private const double PennantConvergenceWeight = 0.5;
+
+    // Compression pattern thresholds
+    private const int CompressionLookback = 15;
+    private const int CompressionMinBars = 12;
+    private const double CompressionMaxRatio = 0.7;
+    private const double CompressionMaxScore = 0.8;
+    private const double CompressionBaseScore = 0.5;
+    private const double CompressionWeight = 0.4;
+    private const decimal CompressionMinAvgDivisor = 0.01m;
+
+    // Breakout retest thresholds
+    private const int BreakoutRetestMinBars = 10;
+    private const int BreakoutRetestStartIndex = 3;
+    private const int BreakoutRetestEndOffset = 2;
+    private const decimal BreakoutMoveMultiplier = 1.5m;
+    private const decimal RetestDistanceMultiplier = 0.5m;
+    private const double BreakoutRetestScore = 0.7;
+
+    // Wedge pattern thresholds
+    private const double WedgeScore = 0.6;
+
+    // Consolidation pattern thresholds
+    private const int ConsolidationLookback = 12;
+    private const int ConsolidationMinBars = 10;
+    private const double ConsolidationMaxUtilization = 0.3;
+    private const double ConsolidationScore = 0.65;
+    private const double ConsolidationMinRangeDivisor = 0.01;
+
     public string PatternName { get; }
     public PatternFamily Family => PatternFamily.Continuation;
     public int RequiredBars { get; }
@@ -19,18 +78,18 @@ public class ContinuationPatternDetector : IPatternDetector
         _type = type;
         (PatternName, RequiredBars) = type switch
         {
-            ContinuationType.BullFlag => ("BullFlag", 15),
-            ContinuationType.BearFlag => ("BearFlag", 15),
-            ContinuationType.BullPennant => ("BullPennant", 20),
-            ContinuationType.BearPennant => ("BearPennant", 20),
-            ContinuationType.BullWedge => ("BullWedge", 25),
-            ContinuationType.BearWedge => ("BearWedge", 25),
-            ContinuationType.RisingWedge => ("RisingWedge", 20),
-            ContinuationType.FallingWedge => ("FallingWedge", 20),
-            ContinuationType.Compression => ("Compression", 12),
-            ContinuationType.Consolidation => ("Consolidation", 10),
-            ContinuationType.BreakoutRetest => ("BreakoutRetest", 8),
-            _ => ("Unknown", 10)
+            ContinuationType.BullFlag => ("BullFlag", FlagBars),
+            ContinuationType.BearFlag => ("BearFlag", FlagBars),
+            ContinuationType.BullPennant => ("BullPennant", PennantBars),
+            ContinuationType.BearPennant => ("BearPennant", PennantBars),
+            ContinuationType.BullWedge => ("BullWedge", WedgeBars),
+            ContinuationType.BearWedge => ("BearWedge", WedgeBars),
+            ContinuationType.RisingWedge => ("RisingWedge", PennantBars),
+            ContinuationType.FallingWedge => ("FallingWedge", PennantBars),
+            ContinuationType.Compression => ("Compression", CompressionBars),
+            ContinuationType.Consolidation => ("Consolidation", ConsolidationBars),
+            ContinuationType.BreakoutRetest => ("BreakoutRetest", BreakoutRetestBars),
+            _ => ("Unknown", UnknownPatternBars)
         };
     }
 
@@ -63,16 +122,16 @@ public class ContinuationPatternDetector : IPatternDetector
     private static PatternResult DetectBullFlag(IReadOnlyList<Bar> bars)
     {
         // Bull flag: strong uptrend followed by sideways/slight downward consolidation
-        var lookback = Math.Min(bars.Count, 20);
+        var lookback = Math.Min(bars.Count, FlagLookback);
         var recent = bars.TakeLast(lookback).ToList();
         
-        if (recent.Count < 15) return new PatternResult { Score = 0, Confidence = 0 };
+        if (recent.Count < FlagMinBars) return new PatternResult { Score = 0, Confidence = 0 };
 
         // Check for prior uptrend (first 60% of period)
-        var trendPortion = (int)(recent.Count * 0.6);
+        var trendPortion = (int)(recent.Count * FlagTrendPortionRatio);
         var trendBars = recent.Take(trendPortion).ToList();
         
-        if (trendBars.Count < 5) return new PatternResult { Score = 0, Confidence = 0 };
+        if (trendBars.Count < FlagMinTrendBars) return new PatternResult { Score = 0, Confidence = 0 };
         
         var trendSlope = (double)(trendBars.Last().Close - trendBars.First().Close) / trendBars.Count;
         if (trendSlope <= 0) return new PatternResult { Score = 0, Confidence = 0 }; // Must be uptrend
@@ -85,9 +144,9 @@ public class ContinuationPatternDetector : IPatternDetector
         var slopeRatio = consolidationSlope / Math.Abs(trendSlope);
         
         var score = 0.0;
-        if (slopeRatio < 0.3) // Consolidation is much flatter than trend
+        if (slopeRatio < FlagMaxSlopeRatio) // Consolidation is much flatter than trend
         {
-            score = Math.Min(0.85, 0.6 + (0.3 - slopeRatio) * 0.8);
+            score = Math.Min(FlagMaxScore, FlagBaseScore + (FlagMaxSlopeRatio - slopeRatio) * FlagSlopeWeight);
         }
 
         return new PatternResult
@@ -106,15 +165,15 @@ public class ContinuationPatternDetector : IPatternDetector
 
     private static PatternResult DetectBearFlag(IReadOnlyList<Bar> bars)
     {
-        var lookback = Math.Min(bars.Count, 20);
+        var lookback = Math.Min(bars.Count, FlagLookback);
         var recent = bars.TakeLast(lookback).ToList();
         
-        if (recent.Count < 15) return new PatternResult { Score = 0, Confidence = 0 };
+        if (recent.Count < FlagMinBars) return new PatternResult { Score = 0, Confidence = 0 };
 
-        var trendPortion = (int)(recent.Count * 0.6);
+        var trendPortion = (int)(recent.Count * FlagTrendPortionRatio);
         var trendBars = recent.Take(trendPortion).ToList();
         
-        if (trendBars.Count < 5) return new PatternResult { Score = 0, Confidence = 0 };
+        if (trendBars.Count < FlagMinTrendBars) return new PatternResult { Score = 0, Confidence = 0 };
         
         var trendSlope = (double)(trendBars.Last().Close - trendBars.First().Close) / trendBars.Count;
         if (trendSlope >= 0) return new PatternResult { Score = 0, Confidence = 0 }; // Must be downtrend
@@ -125,9 +184,9 @@ public class ContinuationPatternDetector : IPatternDetector
         var slopeRatio = consolidationSlope / Math.Abs(trendSlope);
         
         var score = 0.0;
-        if (slopeRatio < 0.3)
+        if (slopeRatio < FlagMaxSlopeRatio)
         {
-            score = Math.Min(0.85, 0.6 + (0.3 - slopeRatio) * 0.8);
+            score = Math.Min(FlagMaxScore, FlagBaseScore + (FlagMaxSlopeRatio - slopeRatio) * FlagSlopeWeight);
         }
 
         return new PatternResult
@@ -156,17 +215,17 @@ public class ContinuationPatternDetector : IPatternDetector
 
     private static PatternResult DetectPennantPattern(IReadOnlyList<Bar> bars, bool bullish)
     {
-        var lookback = Math.Min(bars.Count, 25);
+        var lookback = Math.Min(bars.Count, PennantLookback);
         var recent = bars.TakeLast(lookback).ToList();
         
-        if (recent.Count < 20) return new PatternResult { Score = 0, Confidence = 0 };
+        if (recent.Count < PennantMinBars) return new PatternResult { Score = 0, Confidence = 0 };
 
         // Pennant: strong trend followed by converging price action (triangle-like)
-        var trendPortion = (int)(recent.Count * 0.4);
+        var trendPortion = (int)(recent.Count * PennantTrendPortionRatio);
         var trendBars = recent.Take(trendPortion).ToList();
         var pennantBars = recent.Skip(trendPortion).ToList();
 
-        if (trendBars.Count < 5 || pennantBars.Count < 10) 
+        if (trendBars.Count < PennantMinTrendBars || pennantBars.Count < PennantMinConsolidationBars) 
             return new PatternResult { Score = 0, Confidence = 0 };
 
         var trendSlope = (double)(trendBars.Last().Close - trendBars.First().Close) / trendBars.Count;
@@ -179,15 +238,15 @@ public class ContinuationPatternDetector : IPatternDetector
         var highs = pennantBars.Select(b => b.High).ToList();
         var lows = pennantBars.Select(b => b.Low).ToList();
         
-        var initialRange = (double)(highs.Take(3).Average() - lows.Take(3).Average());
-        var finalRange = (double)(highs.TakeLast(3).Average() - lows.TakeLast(3).Average());
+        var initialRange = (double)(highs.Take(PennantRangeSampleSize).Average() - lows.Take(PennantRangeSampleSize).Average());
+        var finalRange = (double)(highs.TakeLast(PennantRangeSampleSize).Average() - lows.TakeLast(PennantRangeSampleSize).Average());
         
-        var convergenceRatio = finalRange / Math.Max(initialRange, 0.01);
+        var convergenceRatio = finalRange / Math.Max(initialRange, (double)PennantMinRangeDivisor);
         
         var score = 0.0;
-        if (convergenceRatio < 0.6) // Range has contracted
+        if (convergenceRatio < PennantMaxConvergenceRatio) // Range has contracted
         {
-            score = Math.Min(0.8, 0.5 + (0.6 - convergenceRatio) * 0.5);
+            score = Math.Min(PennantMaxScore, PennantBaseScore + (PennantMaxConvergenceRatio - convergenceRatio) * PennantConvergenceWeight);
         }
 
         return new PatternResult
@@ -207,21 +266,21 @@ public class ContinuationPatternDetector : IPatternDetector
     private static PatternResult DetectCompression(IReadOnlyList<Bar> bars)
     {
         // Volatility compression - decreasing price ranges
-        var lookback = Math.Min(bars.Count, 15);
+        var lookback = Math.Min(bars.Count, CompressionLookback);
         var recent = bars.TakeLast(lookback).ToList();
         
-        if (recent.Count < 12) return new PatternResult { Score = 0, Confidence = 0 };
+        if (recent.Count < CompressionMinBars) return new PatternResult { Score = 0, Confidence = 0 };
 
         var ranges = recent.Select(b => (double)(b.High - b.Low)).ToList();
         var earlyAvg = ranges.Take(ranges.Count / 2).Average();
         var lateAvg = ranges.Skip(ranges.Count / 2).Average();
         
-        var compressionRatio = lateAvg / Math.Max(earlyAvg, 0.01);
+        var compressionRatio = lateAvg / Math.Max(earlyAvg, (double)CompressionMinAvgDivisor);
         
         var score = 0.0;
-        if (compressionRatio < 0.7) // Significant compression
+        if (compressionRatio < CompressionMaxRatio) // Significant compression
         {
-            score = Math.Min(0.8, 0.5 + (0.7 - compressionRatio) * 0.4);
+            score = Math.Min(CompressionMaxScore, CompressionBaseScore + (CompressionMaxRatio - compressionRatio) * CompressionWeight);
         }
 
         return new PatternResult
@@ -240,15 +299,15 @@ public class ContinuationPatternDetector : IPatternDetector
 
     private static PatternResult DetectBreakoutRetest(IReadOnlyList<Bar> bars)
     {
-        if (bars.Count < 10) return new PatternResult { Score = 0, Confidence = 0 };
+        if (bars.Count < BreakoutRetestMinBars) return new PatternResult { Score = 0, Confidence = 0 };
 
-        var recent = bars.TakeLast(10).ToList();
+        var recent = bars.TakeLast(BreakoutRetestMinBars).ToList();
         
         // Look for a breakout followed by a retest
         var potentialBreakout = false;
         var retestIndex = -1;
         
-        for (int i = 3; i < recent.Count - 2; i++)
+        for (int i = BreakoutRetestStartIndex; i < recent.Count - BreakoutRetestEndOffset; i++)
         {
             var current = recent[i];
             var prev = recent[i - 1];
@@ -257,7 +316,7 @@ public class ContinuationPatternDetector : IPatternDetector
             var moveSize = Math.Abs(current.Close - prev.Close);
             var avgRange = recent.Take(i).Select(b => b.High - b.Low).Average();
             
-            if (moveSize > avgRange * 1.5m) // Strong move
+            if (moveSize > avgRange * BreakoutMoveMultiplier) // Strong move
             {
                 potentialBreakout = true;
                 
@@ -268,7 +327,7 @@ public class ContinuationPatternDetector : IPatternDetector
                     var breakoutLevel = current.Close;
                     var distance = Math.Abs(testBar.Close - breakoutLevel);
                     
-                    if (distance < avgRange * 0.5m) // Close to breakout level
+                    if (distance < avgRange * RetestDistanceMultiplier) // Close to breakout level
                     {
                         retestIndex = j;
                         break;
@@ -278,7 +337,7 @@ public class ContinuationPatternDetector : IPatternDetector
             }
         }
 
-        var score = potentialBreakout && retestIndex > 0 ? 0.7 : 0.0;
+        var score = potentialBreakout && retestIndex > 0 ? BreakoutRetestScore : 0.0;
 
         return new PatternResult
         {
@@ -302,7 +361,7 @@ public class ContinuationPatternDetector : IPatternDetector
 
     private static PatternResult DetectWedgePattern(IReadOnlyList<Bar> bars, string type, int direction)
     {
-        var score = 0.6;
+        var score = WedgeScore;
         return new PatternResult
         {
             Score = score,
@@ -314,10 +373,10 @@ public class ContinuationPatternDetector : IPatternDetector
 
     private static PatternResult DetectRangePattern(IReadOnlyList<Bar> bars, string type)
     {
-        var lookback = Math.Min(bars.Count, 12);
+        var lookback = Math.Min(bars.Count, ConsolidationLookback);
         var recent = bars.TakeLast(lookback).ToList();
         
-        if (recent.Count < 10) return new PatternResult { Score = 0, Confidence = 0 };
+        if (recent.Count < ConsolidationMinBars) return new PatternResult { Score = 0, Confidence = 0 };
 
         var highs = recent.Select(b => b.High).ToList();
         var lows = recent.Select(b => b.Low).ToList();
@@ -328,10 +387,10 @@ public class ContinuationPatternDetector : IPatternDetector
         
         // Check how much of the range is actually used
         var usedRange = recent.Select(b => (double)(b.High - b.Low)).Average();
-        var rangeUtilization = usedRange / Math.Max(totalRange, 0.01);
+        var rangeUtilization = usedRange / Math.Max(totalRange, ConsolidationMinRangeDivisor);
         
         // Consolidation if price stays within a tight range
-        var score = rangeUtilization < 0.3 ? 0.65 : 0.0;
+        var score = rangeUtilization < ConsolidationMaxUtilization ? ConsolidationScore : 0.0;
 
         return new PatternResult
         {
