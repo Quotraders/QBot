@@ -33,6 +33,23 @@ namespace BotCore.Services
         private readonly BacktestEnhancementConfiguration _config;
         private readonly Random _random;
 
+        // S109: Market friction simulation constants
+        private const int MaxSimulationDelayMs = 100;
+        private const int MinimumTickDivisor = 4;
+        private const double BaseVolatilityScore = 0.5;
+        private const double VolatilityScoreRange = 0.5;
+        private const double MarketOpenLiquidityBase = 0.8;
+        private const double MarketOpenLiquidityRange = 0.2;
+        private const double MarketClosedLiquidityBase = 0.3;
+        private const double MarketClosedLiquidityRange = 0.4;
+        private const double MaxMarketStress = 0.3;
+        private const int BasisPointsToDecimal = 10000;
+        
+        // Tick sizes for common symbols
+        private const decimal EsTickSize = 0.25m;
+        private const decimal NqTickSize = 0.25m;
+        private const decimal DefaultTickSize = 0.01m;
+
         public EnhancedBacktestService(
             ILogger<EnhancedBacktestService> logger,
             IOptions<BacktestEnhancementConfiguration> config)
@@ -129,7 +146,7 @@ namespace BotCore.Services
             var commission = CalculateCommissions(order.Symbol, order.Quantity, order.IsEntry);
 
             // Simulate latency delay
-            await Task.Delay(Math.Min(latency, 100)).ConfigureAwait(false); // Cap simulation delay at 100ms
+            await Task.Delay(Math.Min(latency, MaxSimulationDelayMs)).ConfigureAwait(false); // Cap simulation delay
 
             // Determine execution price with slippage
             var isLong = order.Side.Equals("BUY", StringComparison.OrdinalIgnoreCase);
@@ -184,7 +201,7 @@ namespace BotCore.Services
             
             // Ensure minimum tick size
             var tickSize = GetTickSize(symbol);
-            slippageAmount = Math.Max(slippageAmount, tickSize / 4); // Minimum quarter tick
+            slippageAmount = Math.Max(slippageAmount, tickSize / MinimumTickDivisor); // Minimum quarter tick
 
             return slippageAmount;
         }
@@ -313,9 +330,9 @@ namespace BotCore.Services
             {
                 Timestamp = timestamp,
                 Symbol = symbol,
-                VolatilityScore = 0.5 + _random.NextDouble() * 0.5, // 0.5 to 1.0
-                LiquidityScore = isMarketOpen ? 0.8 + _random.NextDouble() * 0.2 : 0.3 + _random.NextDouble() * 0.4,
-                MarketStress = _random.NextDouble() * 0.3, // 0 to 0.3
+                VolatilityScore = BaseVolatilityScore + _random.NextDouble() * VolatilityScoreRange, // 0.5 to 1.0
+                LiquidityScore = isMarketOpen ? MarketOpenLiquidityBase + _random.NextDouble() * MarketOpenLiquidityRange : MarketClosedLiquidityBase + _random.NextDouble() * MarketClosedLiquidityRange,
+                MarketStress = _random.NextDouble() * MaxMarketStress, // 0 to 0.3
                 IsMarketOpen = isMarketOpen
             };
         }
@@ -344,8 +361,8 @@ namespace BotCore.Services
             result.ProfitFactor = result.AverageLoss != 0 ? result.AverageWin / Math.Abs(result.AverageLoss) : 0m;
             
             // Market friction impact analysis
-            result.SlippageImpactBps = result.TotalSlippage / Math.Max(1m, Math.Abs(result.GrossPnL)) * 10000;
-            result.CommissionImpactBps = result.TotalRealisticCommissions / Math.Max(1m, Math.Abs(result.GrossPnL)) * 10000;
+            result.SlippageImpactBps = result.TotalSlippage / Math.Max(1m, Math.Abs(result.GrossPnL)) * BasisPointsToDecimal;
+            result.CommissionImpactBps = result.TotalRealisticCommissions / Math.Max(1m, Math.Abs(result.GrossPnL)) * BasisPointsToDecimal;
         }
 
         /// <summary>
@@ -355,9 +372,9 @@ namespace BotCore.Services
         {
             return symbol.ToUpper() switch
             {
-                "ES" => 0.25m,
-                "NQ" => 0.25m,
-                _ => 0.01m
+                "ES" => EsTickSize,
+                "NQ" => NqTickSize,
+                _ => DefaultTickSize
             };
         }
     }
