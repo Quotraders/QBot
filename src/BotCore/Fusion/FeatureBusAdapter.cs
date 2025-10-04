@@ -35,6 +35,16 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
     
     // Pattern score cache for truly async execution
     private readonly ConcurrentDictionary<string, PatternScoreCache> _patternScoreCache = new();
+    
+    // S109: Technical indicator periods and time windows
+    private const int AtrPeriodShort = 14;                    // Standard ATR period
+    private const int AtrPeriodLong = 20;                     // Longer ATR period
+    private const int MinimumBarsForCalculation = 10;         // Minimum bars needed for calculations
+    private const int MinimumBarsForTechnicals = 20;          // Minimum bars for technical indicators
+    private const int MinimumBarsForPatterns = 30;            // Minimum bars for pattern detection
+    private const int MinimumBarsForVolumeAnalysis = 15;      // Minimum bars for volume analysis
+    private const int TradingDaysPerYear = 252;               // Trading days for annualization
+    private const int SecondsInTriggerWindow = 30;            // Seconds for trigger window checks
 
     public FeatureBusAdapter(Zones.IFeatureBus featureBus, ILogger<FeatureBusAdapter> logger, IServiceProvider serviceProvider)
     {
@@ -108,8 +118,8 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             ["volume.current"] = GetCurrentVolumeFromBars,
             
             // Technical indicators calculated from real bars
-            ["atr.14"] = symbol => CalculateATRFromBars(symbol, 14),
-            ["atr.20"] = symbol => CalculateATRFromBars(symbol, 20),
+            ["atr.14"] = symbol => CalculateATRFromBars(symbol, AtrPeriodShort),
+            ["atr.20"] = symbol => CalculateATRFromBars(symbol, AtrPeriodLong),
             ["volatility.realized"] = CalculateRealizedVolatilityFromBars,
             
             // Market microstructure from enhanced market data service
@@ -372,7 +382,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         var mean = returns.Average();
         var variance = returns.Select(r => Math.Pow(r - mean, 2)).Average();
         
-        return Math.Sqrt(variance * 252); // Annualized volatility
+        return Math.Sqrt(variance * TradingDaysPerYear); // Annualized volatility
     }
 
     /// <summary>
@@ -386,7 +396,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             foreach (var aggregator in barAggregators)
             {
                 var history = aggregator.GetHistory(symbol);
-                var minimumBarsRequired = GetConfigValue("FeatureBus:MinimumBarsForMomentum", 20);
+                var minimumBarsRequired = GetConfigValue("FeatureBus:MinimumBarsForMomentum", MinimumBarsForTechnicals);
                 if (history.Count >= minimumBarsRequired)
                 {
                     var recentBarsCount = GetConfigValue("FeatureBus:RecentBarsForMomentum", 20);
@@ -418,10 +428,10 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
     {
         try
         {
-            var history = GetBarHistory(symbol, 20);
-            if (history.Count >= 20)
+            var history = GetBarHistory(symbol, MinimumBarsForTechnicals);
+            if (history.Count >= MinimumBarsForTechnicals)
             {
-                var prices = history.TakeLast(20).Select(b => (double)b.Close).ToList();
+                var prices = history.TakeLast(MinimumBarsForTechnicals).Select(b => (double)b.Close).ToList();
                 var returns = new List<double>();
                 
                 for (int i = 1; i < prices.Count; i++)
@@ -500,9 +510,9 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             foreach (var aggregator in barAggregators)
             {
                 var history = aggregator.GetHistory(symbol);
-                if (history.Count >= 10)
+                if (history.Count >= MinimumBarsForCalculation)
                 {
-                    var recentBars = history.TakeLast(10).ToList();
+                    var recentBars = history.TakeLast(MinimumBarsForCalculation).ToList();
                     var avgVolume = recentBars.Average(b => b.Volume);
                     var latestVolume = recentBars[^1].Volume;
                     
@@ -573,9 +583,9 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             foreach (var aggregator in barAggregators)
             {
                 var history = aggregator.GetHistory(symbol);
-                if (history.Count >= 20)
+                if (history.Count >= MinimumBarsForTechnicals)
                 {
-                    var recentBars = history.TakeLast(20).ToList();
+                    var recentBars = history.TakeLast(MinimumBarsForTechnicals).ToList();
                     
                     // Calculate VWAP
                     decimal totalPriceVolume = 0;
@@ -622,9 +632,9 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             foreach (var aggregator in barAggregators)
             {
                 var history = aggregator.GetHistory(symbol);
-                if (history.Count >= 20)
+                if (history.Count >= MinimumBarsForTechnicals)
                 {
-                    var recentBars = history.TakeLast(20).ToList();
+                    var recentBars = history.TakeLast(MinimumBarsForTechnicals).ToList();
                     var ema = recentBars.Select(b => (double)b.Close).Average(); // Simplified EMA
                     var atr = CalculateATR(recentBars);
                     var currentPrice = (double)recentBars[^1].Close;
@@ -663,9 +673,9 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             foreach (var aggregator in barAggregators)
             {
                 var history = aggregator.GetHistory(symbol);
-                if (history.Count >= 20)
+                if (history.Count >= MinimumBarsForTechnicals)
                 {
-                    var recentBars = history.TakeLast(20).ToList();
+                    var recentBars = history.TakeLast(MinimumBarsForTechnicals).ToList();
                     var prices = recentBars.Select(b => (double)b.Close).ToList();
                     var sma = prices.Average();
                     var stdDev = Math.Sqrt(prices.Select(p => Math.Pow(p - sma, 2)).Average());
@@ -761,10 +771,10 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         try
         {
             // Use the improved GetBarHistory method for populated bar data
-            var recentBars = GetBarHistory(symbol, 10);
-            if (recentBars.Count >= 10)
+            var recentBars = GetBarHistory(symbol, MinimumBarsForCalculation);
+            if (recentBars.Count >= MinimumBarsForCalculation)
             {
-                var last10Bars = recentBars.TakeLast(10).ToList();
+                var last10Bars = recentBars.TakeLast(MinimumBarsForCalculation).ToList();
                 var avgVolume = last10Bars.Average(b => b.Volume);
                 
                 // Calculate liquidity score based on volume and price stability
@@ -847,11 +857,11 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
     {
         try
         {
-            var history = GetBarHistory(symbol, 20);
-            if (history.Count >= 20)
+            var history = GetBarHistory(symbol, MinimumBarsForTechnicals);
+            if (history.Count >= MinimumBarsForTechnicals)
             {
-                var recentBars = history.TakeLast(10).ToList();
-                var baselineVolume = (double)history.TakeLast(20).Take(10).Average(b => b.Volume);
+                var recentBars = history.TakeLast(MinimumBarsForCalculation).ToList();
+                var baselineVolume = (double)history.TakeLast(MinimumBarsForTechnicals).Take(MinimumBarsForCalculation).Average(b => b.Volume);
                 
                 // Get configuration values instead of hardcoded multipliers
                 var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
@@ -898,11 +908,11 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
     {
         try
         {
-            var history = GetBarHistory(symbol, 20);
-            if (history.Count >= 20)
+            var history = GetBarHistory(symbol, MinimumBarsForTechnicals);
+            if (history.Count >= MinimumBarsForTechnicals)
             {
-                var recentBars = history.TakeLast(10).ToList();
-                var baselineVolume = (double)history.TakeLast(20).Take(10).Average(b => b.Volume);
+                var recentBars = history.TakeLast(MinimumBarsForCalculation).ToList();
+                var baselineVolume = (double)history.TakeLast(MinimumBarsForTechnicals).Take(MinimumBarsForCalculation).Average(b => b.Volume);
                 
                 // Get configuration values instead of hardcoded multipliers (reuse from bull calculation)
                 var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
@@ -949,10 +959,10 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
     {
         try
         {
-            var history = GetBarHistory(symbol, 30);
-            if (history.Count >= 30)
+            var history = GetBarHistory(symbol, MinimumBarsForPatterns);
+            if (history.Count >= MinimumBarsForPatterns)
             {
-                var recentBars = history.TakeLast(30).ToList();
+                var recentBars = history.TakeLast(MinimumBarsForPatterns).ToList();
                 
                 // Create price-volume profile buckets
                 var minPrice = recentBars.Min(b => b.Low);
@@ -1006,10 +1016,10 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
     {
         try
         {
-            var history = GetBarHistory(symbol, 15);
-            if (history.Count >= 15)
+            var history = GetBarHistory(symbol, MinimumBarsForVolumeAnalysis);
+            if (history.Count >= MinimumBarsForVolumeAnalysis)
             {
-                var recentBars = history.TakeLast(10).ToList();
+                var recentBars = history.TakeLast(MinimumBarsForCalculation).ToList();
                 var imbalanceScore = 0.0;
                 
                 for (int i = 1; i < recentBars.Count; i++)
@@ -1068,9 +1078,9 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     // This ensures the feature bus stays non-blocking while waiting for pattern data
                     var cacheKey = $"{symbol}_{(bullish ? "bull" : "bear")}_pattern";
                     
-                    // Check if we have a recent cached value (within last 30 seconds)
+                    // Check if we have a recent cached value (within configured trigger window)
                     if (_patternScoreCache.TryGetValue(cacheKey, out var cachedScore) && 
-                        (DateTime.UtcNow - cachedScore.Timestamp).TotalSeconds < 30)
+                        (DateTime.UtcNow - cachedScore.Timestamp).TotalSeconds < SecondsInTriggerWindow)
                     {
                         _logger.LogTrace("[PATTERN-ENGINE] Using cached {Direction} pattern score for {Symbol}: {Score:F4}", 
                             bullish ? "bullish" : "bearish", symbol, cachedScore.Score);

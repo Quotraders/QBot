@@ -25,7 +25,8 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 ## Progress Summary
 - **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
 - **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (1820/1820 = 100%) - **VERIFIED & SECURED**
-  - **Current Session (Rounds 141-144)**: 44 S109 violations fixed (EnhancedBacktestService, StrategyMlModelManager, RegimeDetectionService, OnnxModelValidationService)
+  - **Current Session (Round 145)**: 14 S109 violations fixed (FeatureBusAdapter - feature calculation constants)
+  - **Previous Session (Rounds 141-144)**: 44 S109 violations fixed (EnhancedBacktestService, StrategyMlModelManager, RegimeDetectionService, OnnxModelValidationService)
   - **Previous Session (Rounds 138-140)**: 76 analyzer violations fixed (S109 magic numbers - Priority 1 systematic cleanup)
     - Round 140: Fixed 28 S109 violations (ExecutionAnalyticsService, EpochFreezeEnforcement, SafeHoldDecisionPolicy)
     - Round 139: Fixed 24 S109 violations (WalkForwardTrainer, MarketTimeService, PerformanceMetricsService)
@@ -75,7 +76,47 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 76 violations eliminated across 9 files in 3 focused rounds
 
-### 🔧 Round 144 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+### 🔧 Round 145 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (14 violations fixed, 1 file)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 719 | 705 | FeatureBusAdapter.cs | Extracted technical indicator periods, time windows, bar minimums for feature calculations |
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers inline
+["atr.14"] = symbol => CalculateATRFromBars(symbol, 14),
+["atr.20"] = symbol => CalculateATRFromBars(symbol, 20),
+Math.Sqrt(variance * 252); // Annualized volatility
+if (history.Count >= 20)
+if ((DateTime.UtcNow - cachedScore.Timestamp).TotalSeconds < 30)
+
+// After (S109) - Named constants
+private const int AtrPeriodShort = 14;
+private const int AtrPeriodLong = 20;
+private const int TradingDaysPerYear = 252;
+private const int MinimumBarsForTechnicals = 20;
+private const int SecondsInTriggerWindow = 30;
+
+["atr.14"] = symbol => CalculateATRFromBars(symbol, AtrPeriodShort),
+["atr.20"] = symbol => CalculateATRFromBars(symbol, AtrPeriodLong),
+Math.Sqrt(variance * TradingDaysPerYear);
+if (history.Count >= MinimumBarsForTechnicals)
+if ((DateTime.UtcNow - cachedScore.Timestamp).TotalSeconds < SecondsInTriggerWindow)
+```
+
+**Rationale**: Extracted feature calculation configuration constants (ATR periods, minimum bar requirements for different analysis types, time windows for caching, trading days for annualization) to improve maintainability and make feature calculation parameters explicit. This enables easier tuning of technical indicators without code changes.
+
+**Files Changed**:
+- `src/BotCore/Fusion/FeatureBusAdapter.cs`: Technical indicator periods, bar minimums, time windows, annualization factors
+
+**Build Verification**: ✅ 0 CS errors maintained, 14 S109 violations fixed in FeatureBusAdapter.cs (all violations eliminated in this file)
+
+---
+
+### 🔧 Round 144 - Phase 2: S109 Magic Numbers Elimination (Previous Session)
 
 **S109: Magic Number to Named Constant Conversion (4 violations fixed, 1 file)**
 
