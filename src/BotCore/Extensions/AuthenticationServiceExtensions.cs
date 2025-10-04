@@ -98,11 +98,15 @@ internal sealed class FuncTopstepAuthWrapper : ITopstepAuth
 
     private static byte[] Base64UrlDecode(string s)
     {
+        const int Base64BlockSize = 4;
+        const int Base64PaddingTwoChars = 2;
+        const int Base64PaddingOneChar = 3;
+        
         s = s.Replace('-', '+').Replace('_', '/');
-        switch (s.Length % 4) 
+        switch (s.Length % Base64BlockSize) 
         { 
-            case 2: s += "=="; break; 
-            case 3: s += "="; break; 
+            case Base64PaddingTwoChars: s += "=="; break; 
+            case Base64PaddingOneChar: s += "="; break; 
         }
         return Convert.FromBase64String(s);
     }
