@@ -16,6 +16,16 @@ namespace BotCore.Execution
     /// </summary>
     public sealed class ChildOrderScheduler : IDisposable
     {
+        // Child order scheduling constants
+        private const double MaximumUrgencyThreshold = 0.9; // Don't slice very urgent orders
+        private const double HighModelUncertaintyThreshold = 0.7; // Slice uncertain predictions
+        private const double ModerateUrgencyThreshold = 0.5; // Threshold for urgency-based delay reduction
+        private const double HighVolatilityDelayMultiplier = 1.5; // Delay multiplier in volatile markets
+        private const int MinimumChildDelaySeconds = 5; // Minimum delay between children
+        private const int FirstChildIndex = 0; // Immediate execution
+        private const int SecondChildIndex = 1; // Time-delayed execution
+        private const int ThirdChildIndex = 2; // Imbalance-triggered execution
+        
         private readonly ILogger<ChildOrderScheduler> _logger;
         private readonly S7ExecutionConfiguration _config;
         private readonly ConcurrentDictionary<Guid, ScheduledOrderExecution> _activeExecutions = new();
@@ -147,7 +157,7 @@ namespace BotCore.Execution
         private bool ShouldSliceOrder(ExecutionIntent intent)
         {
             // Don't slice if maximum urgency (market orders) - checked FIRST for fail-closed behavior
-            if (intent.UrgencyScore > 0.9)
+            if (intent.UrgencyScore > MaximumUrgencyThreshold)
                 return false;
 
             // Slice large orders to reduce market impact
@@ -155,7 +165,7 @@ namespace BotCore.Execution
                 return true;
 
             // Slice orders with high uncertainty for better price discovery
-            if (intent.ModelUncertainty.HasValue && intent.ModelUncertainty.Value > 0.7)
+            if (intent.ModelUncertainty.HasValue && intent.ModelUncertainty.Value > HighModelUncertaintyThreshold)
                 return true;
 
             return false;
@@ -192,23 +202,23 @@ namespace BotCore.Execution
             var baseDelay = 30; // 30 seconds default
 
             // Reduce delay for urgent orders
-            if (intent.UrgencyScore > 0.5)
+            if (intent.UrgencyScore > ModerateUrgencyThreshold)
                 baseDelay = (int)(baseDelay * (1.0 - intent.UrgencyScore));
 
             // Increase delay in volatile markets
             if (microstructure.IsHighVolatility)
-                baseDelay = (int)(baseDelay * 1.5);
+                baseDelay = (int)(baseDelay * HighVolatilityDelayMultiplier);
 
-            return Math.Max(5, baseDelay); // Minimum 5 seconds
+            return Math.Max(MinimumChildDelaySeconds, baseDelay); // Minimum delay
         }
 
         private static string DetermineChildTriggerType(int childIndex, ExecutionIntent intent, MicrostructureSnapshot microstructure)
         {
             return childIndex switch
             {
-                0 => "IMMEDIATE", // First child executes immediately
-                1 => "TIME_DELAY", // Second child after time delay
-                2 => "IMBALANCE_TRIGGER", // Third child on imbalance change
+                FirstChildIndex => "IMMEDIATE", // First child executes immediately
+                SecondChildIndex => "TIME_DELAY", // Second child after time delay
+                ThirdChildIndex => "IMBALANCE_TRIGGER", // Third child on imbalance change
                 _ => "TIME_DELAY"
             };
         }
@@ -217,9 +227,9 @@ namespace BotCore.Execution
         {
             return childIndex switch
             {
-                0 => "Execute immediately",
-                1 => $"Execute after {CalculateChildDelay(intent, microstructure)} seconds",
-                2 => "Execute when book imbalance changes by >20% or max time reached",
+                FirstChildIndex => "Execute immediately",
+                SecondChildIndex => $"Execute after {CalculateChildDelay(intent, microstructure)} seconds",
+                ThirdChildIndex => "Execute when book imbalance changes by >20% or max time reached",
                 _ => "Execute on timer"
             };
         }
