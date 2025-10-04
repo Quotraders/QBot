@@ -25,7 +25,8 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 ## Progress Summary
 - **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
 - **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (1820/1820 = 100%) - **VERIFIED & SECURED**
-  - **Current Session (Round 148)**: 8 S109 violations fixed (MicrostructureSnapshot - execution decision constants)
+  - **Current Session (Round 154)**: 46 S109 violations fixed (ReversalPatternDetector - reversal pattern detection thresholds)
+  - **Previous Session (Round 148)**: 8 S109 violations fixed (MicrostructureSnapshot - execution decision constants)
   - **Previous Session (Round 147)**: 9 S109 violations fixed (UnifiedDataIntegrationService - data integration constants)
   - **Previous Session (Rounds 145-146)**: 26 S109 violations fixed (FeatureBusAdapter, StructuralPatternDetector - feature & pattern constants)
   - **Previous Session (Rounds 141-144)**: 44 S109 violations fixed (EnhancedBacktestService, StrategyMlModelManager, RegimeDetectionService, OnnxModelValidationService)
@@ -111,7 +112,50 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ---
 
-### 🔧 Round 153 - Phase 2: S109 Magic Numbers Elimination (Completed Session)
+### 🔧 Round 154 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (46 violations fixed, 1 file)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 1180 | 1134 | ReversalPatternDetector.cs | Extracted reversal pattern detection thresholds (bar requirements, score thresholds, lookback periods, ratio thresholds) |
+
+**Example Pattern Applied - ReversalPatternDetector.cs**:
+```csharp
+// Before (S109) - Magic numbers for pattern detection
+ReversalType.KeyReversal => ("KeyReversal", 2),
+ReversalType.IslandReversal => ("IslandReversal", 5),
+var wickRatio = wickSize / Math.Max(rangeSize, 0.01);
+var score = Math.Min(0.9, 0.6 + wickRatio * 0.5);
+if (rangeMultiple < 1.5) return new PatternResult { Score = 0, Confidence = 0 };
+if (wickRatio > 0.4) // Large wick suggests rejection
+if (bars.Count < 15) return new PatternResult { Score = 0, Confidence = 0 };
+
+// After (S109) - Named constants
+private const int KeyReversalBars = 2;
+private const int IslandReversalBars = 5;
+private const double MinimumRangeDivisor = 0.01;
+private const double MaxKeyReversalScore = 0.9;
+private const double KeyReversalBaseScore = 0.6;
+private const double KeyReversalWickWeight = 0.5;
+private const double MinClimaxRangeMultiple = 1.5;
+private const double MinClimaxWickRatio = 0.4;
+private const int TrendExhaustionBars = 15;
+
+ReversalType.KeyReversal => ("KeyReversal", KeyReversalBars),
+ReversalType.IslandReversal => ("IslandReversal", IslandReversalBars),
+var wickRatio = wickSize / Math.Max(rangeSize, MinimumRangeDivisor);
+var score = Math.Min(MaxKeyReversalScore, KeyReversalBaseScore + wickRatio * KeyReversalWickWeight);
+if (rangeMultiple < MinClimaxRangeMultiple) return new PatternResult { Score = 0, Confidence = 0 };
+if (wickRatio > MinClimaxWickRatio) // Large wick suggests rejection
+if (bars.Count < TrendExhaustionBars) return new PatternResult { Score = 0, Confidence = 0 };
+```
+
+**Build Verification**: ✅ 0 CS errors maintained, 46 S109 violations fixed (1180 → 1134)
+
+---
+
+### 🔧 Round 153 - Phase 2: S109 Magic Numbers Elimination (Previous Session)
 
 **S109: Magic Number to Named Constant Conversion (42 violations fixed, 3 files)**
 

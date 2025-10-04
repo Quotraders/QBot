@@ -8,6 +8,58 @@ namespace BotCore.Patterns.Detectors;
 /// </summary>
 public class ReversalPatternDetector : IPatternDetector
 {
+    // Pattern bar requirements
+    private const int KeyReversalBars = 2;
+    private const int IslandReversalBars = 5;
+    private const int ExhaustionGapBars = 3;
+    private const int ClimaxReversalBars = 5;
+    private const int VolumeSpikeBars = 3;
+    private const int DivergenceReversalBars = 10;
+    private const int FailedBreakoutBars = 8;
+    private const int TrendExhaustionBars = 15;
+    private const int SpikeyTopBars = 3;
+    private const int SpikeyBottomBars = 3;
+    private const int UnknownPatternBars = 5;
+
+    // Detection thresholds
+    private const double MinimumRangeDivisor = 0.01;
+    private const double MaxKeyReversalScore = 0.9;
+    private const double KeyReversalBaseScore = 0.6;
+    private const double KeyReversalWickWeight = 0.5;
+    private const double MaxIslandReversalScore = 0.8;
+    private const double IslandReversalBaseScore = 0.5;
+    private const double IslandReversalGapWeight = 0.1;
+    private const double MaxExhaustionGapScore = 0.8;
+    private const double ExhaustionGapBaseScore = 0.6;
+    private const double ExhaustionGapSizeWeight = 0.05;
+    private const double MinClimaxRangeMultiple = 1.5;
+    private const double MinClimaxWickRatio = 0.4;
+    private const double MaxClimaxScore = 0.8;
+    private const double ClimaxBaseScore = 0.5;
+    private const double ClimaxWickWeight = 0.6;
+    private const double VolumeSpikeBaseScore = 0.5;
+    private const double FailedBreakoutScore = 0.75;
+    private const double TrendExhaustionScore = 0.6;
+    private const double TrendWeakeningThreshold = 0.3;
+    private const double SpikeyExtremeScore = 0.7;
+    private const decimal SpikeyExtremeCloseRatio = 0.6m;
+    private const double DivergenceReversalBaseScore = 0.6;
+
+    // Lookback periods
+    private const int IslandReversalLookback = 5;
+    private const int ExhaustionGapRecentBars = 5;
+    private const int ExhaustionGapTrendBars = 5;
+    private const int ExhaustionGapFullLookback = 10;
+    private const int ClimaxReversalLookback = 5;
+    private const int ClimaxReversalAvgBars = 4;
+    private const int FailedBreakoutLookback = 8;
+    private const int FailedBreakoutMinPrevBars = 2;
+    private const int FailedBreakoutMinFollowup = 2;
+    private const int FailedBreakoutStartIndex = 2;
+    private const int TrendExhaustionLookback = 15;
+    private const int TrendExhaustionSegmentBars = 5;
+    private const int SpikeyExtremeLookback = 3;
+
     public string PatternName { get; }
     public PatternFamily Family => PatternFamily.Reversal;
     public int RequiredBars { get; }
@@ -19,17 +71,17 @@ public class ReversalPatternDetector : IPatternDetector
         _type = type;
         (PatternName, RequiredBars) = type switch
         {
-            ReversalType.KeyReversal => ("KeyReversal", 2),
-            ReversalType.IslandReversal => ("IslandReversal", 5),
-            ReversalType.ExhaustionGap => ("ExhaustionGap", 3),
-            ReversalType.ClimaxReversal => ("ClimaxReversal", 5),
-            ReversalType.VolumeSpike => ("VolumeSpike", 3),
-            ReversalType.DivergenceReversal => ("DivergenceReversal", 10),
-            ReversalType.FailedBreakout => ("FailedBreakout", 8),
-            ReversalType.TrendExhaustion => ("TrendExhaustion", 15),
-            ReversalType.SpikeyTop => ("SpikeyTop", 3),
-            ReversalType.SpikeyBottom => ("SpikeyBottom", 3),
-            _ => ("Unknown", 5)
+            ReversalType.KeyReversal => ("KeyReversal", KeyReversalBars),
+            ReversalType.IslandReversal => ("IslandReversal", IslandReversalBars),
+            ReversalType.ExhaustionGap => ("ExhaustionGap", ExhaustionGapBars),
+            ReversalType.ClimaxReversal => ("ClimaxReversal", ClimaxReversalBars),
+            ReversalType.VolumeSpike => ("VolumeSpike", VolumeSpikeBars),
+            ReversalType.DivergenceReversal => ("DivergenceReversal", DivergenceReversalBars),
+            ReversalType.FailedBreakout => ("FailedBreakout", FailedBreakoutBars),
+            ReversalType.TrendExhaustion => ("TrendExhaustion", TrendExhaustionBars),
+            ReversalType.SpikeyTop => ("SpikeyTop", SpikeyTopBars),
+            ReversalType.SpikeyBottom => ("SpikeyBottom", SpikeyBottomBars),
+            _ => ("Unknown", UnknownPatternBars)
         };
     }
 
@@ -60,7 +112,7 @@ public class ReversalPatternDetector : IPatternDetector
 
     private static PatternResult DetectKeyReversal(IReadOnlyList<Bar> bars)
     {
-        if (bars.Count < 2) return new PatternResult { Score = 0, Confidence = 0 };
+        if (bars.Count < KeyReversalBars) return new PatternResult { Score = 0, Confidence = 0 };
 
         var prev = bars[^2];
         var current = bars[^1];
@@ -80,8 +132,8 @@ public class ReversalPatternDetector : IPatternDetector
         var wickSize = bullishKeyReversal ? (double)(current.High - Math.Max(current.Open, current.Close)) :
                                             (double)(Math.Min(current.Open, current.Close) - current.Low);
 
-        var wickRatio = wickSize / Math.Max(rangeSize, 0.01);
-        var score = Math.Min(0.9, 0.6 + wickRatio * 0.5);
+        var wickRatio = wickSize / Math.Max(rangeSize, MinimumRangeDivisor);
+        var score = Math.Min(MaxKeyReversalScore, KeyReversalBaseScore + wickRatio * KeyReversalWickWeight);
 
         return new PatternResult
         {
@@ -99,10 +151,10 @@ public class ReversalPatternDetector : IPatternDetector
 
     private static PatternResult DetectIslandReversal(IReadOnlyList<Bar> bars)
     {
-        if (bars.Count < 5) return new PatternResult { Score = 0, Confidence = 0 };
+        if (bars.Count < IslandReversalBars) return new PatternResult { Score = 0, Confidence = 0 };
 
         // Island reversal: gap up/down, isolated trading, then gap in opposite direction
-        var recent = bars.TakeLast(5).ToList();
+        var recent = bars.TakeLast(IslandReversalLookback).ToList();
         
         // Look for gaps
         var gaps = new List<GapInfo>();
@@ -122,7 +174,7 @@ public class ReversalPatternDetector : IPatternDetector
         }
 
         // Need at least 2 gaps in opposite directions
-        if (gaps.Count < 2) return new PatternResult { Score = 0, Confidence = 0 };
+        if (gaps.Count < KeyReversalBars) return new PatternResult { Score = 0, Confidence = 0 };
 
         var firstGap = gaps.First();
         var lastGap = gaps.Last();
@@ -131,7 +183,7 @@ public class ReversalPatternDetector : IPatternDetector
         if (firstGap.Direction == lastGap.Direction) 
             return new PatternResult { Score = 0, Confidence = 0 };
 
-        var score = Math.Min(0.8, 0.5 + (firstGap.Size + lastGap.Size) * 0.1);
+        var score = Math.Min(MaxIslandReversalScore, IslandReversalBaseScore + (firstGap.Size + lastGap.Size) * IslandReversalGapWeight);
 
         return new PatternResult
         {
@@ -149,13 +201,13 @@ public class ReversalPatternDetector : IPatternDetector
 
     private static PatternResult DetectExhaustionGap(IReadOnlyList<Bar> bars)
     {
-        if (bars.Count < 5) return new PatternResult { Score = 0, Confidence = 0 };
+        if (bars.Count < ExhaustionGapBars) return new PatternResult { Score = 0, Confidence = 0 };
 
-        var recent = bars.TakeLast(5).ToList();
+        var recent = bars.TakeLast(ExhaustionGapRecentBars).ToList();
         
         // Look for trend direction in earlier bars
-        var trendBars = bars.TakeLast(10).Take(5).ToList();
-        if (trendBars.Count < 5) return new PatternResult { Score = 0, Confidence = 0 };
+        var trendBars = bars.TakeLast(ExhaustionGapFullLookback).Take(ExhaustionGapTrendBars).ToList();
+        if (trendBars.Count < ExhaustionGapTrendBars) return new PatternResult { Score = 0, Confidence = 0 };
 
         var trendSlope = (double)(trendBars.Last().Close - trendBars.First().Close) / trendBars.Count;
         
@@ -182,7 +234,7 @@ public class ReversalPatternDetector : IPatternDetector
             if (reversal)
             {
                 var gapSize = upGap ? (double)(gapBar.Low - prev.High) : (double)(prev.Low - gapBar.High);
-                var score = Math.Min(0.8, 0.6 + gapSize * 0.05);
+                var score = Math.Min(MaxExhaustionGapScore, ExhaustionGapBaseScore + gapSize * ExhaustionGapSizeWeight);
 
                 return new PatternResult
                 {
@@ -204,19 +256,19 @@ public class ReversalPatternDetector : IPatternDetector
 
     private static PatternResult DetectClimaxReversal(IReadOnlyList<Bar> bars)
     {
-        if (bars.Count < 5) return new PatternResult { Score = 0, Confidence = 0 };
+        if (bars.Count < ClimaxReversalBars) return new PatternResult { Score = 0, Confidence = 0 };
 
-        var recent = bars.TakeLast(5).ToList();
+        var recent = bars.TakeLast(ClimaxReversalLookback).ToList();
         var current = recent.Last();
         
         // Look for unusually large bar with high volume (if available)
-        var avgRange = recent.Take(4).Select(b => (double)(b.High - b.Low)).Average();
+        var avgRange = recent.Take(ClimaxReversalAvgBars).Select(b => (double)(b.High - b.Low)).Average();
         var currentRange = (double)(current.High - current.Low);
         
-        var rangeMultiple = currentRange / Math.Max(avgRange, 0.01);
+        var rangeMultiple = currentRange / Math.Max(avgRange, MinimumRangeDivisor);
         
         // Climax: large range bar followed by inability to continue
-        if (rangeMultiple < 1.5) return new PatternResult { Score = 0, Confidence = 0 };
+        if (rangeMultiple < MinClimaxRangeMultiple) return new PatternResult { Score = 0, Confidence = 0 };
 
         // Check for reversal signs in the bar itself
         // Large wicks suggest rejection at extremes
@@ -226,9 +278,9 @@ public class ReversalPatternDetector : IPatternDetector
         var wickRatio = Math.Max(upperWick, lowerWick) / currentRange;
         
         var score = 0.0;
-        if (wickRatio > 0.4) // Large wick suggests rejection
+        if (wickRatio > MinClimaxWickRatio) // Large wick suggests rejection
         {
-            score = Math.Min(0.8, 0.5 + wickRatio * 0.6);
+            score = Math.Min(MaxClimaxScore, ClimaxBaseScore + wickRatio * ClimaxWickWeight);
         }
 
         var direction = upperWick > lowerWick ? -1 : 1; // Direction opposite to larger wick
@@ -252,23 +304,23 @@ public class ReversalPatternDetector : IPatternDetector
     {
         // Volume spike analysis would require volume data
         // Return pattern based on real price action analysis
-        return DetectGenericReversal(bars, "VolumeSpike", 0.5);
+        return DetectGenericReversal(bars, "VolumeSpike", VolumeSpikeBaseScore);
     }
 
     private static PatternResult DetectFailedBreakout(IReadOnlyList<Bar> bars)
     {
-        if (bars.Count < 8) return new PatternResult { Score = 0, Confidence = 0 };
+        if (bars.Count < FailedBreakoutBars) return new PatternResult { Score = 0, Confidence = 0 };
 
-        var recent = bars.TakeLast(8).ToList();
+        var recent = bars.TakeLast(FailedBreakoutLookback).ToList();
         
         // Look for breakout followed by failure to sustain
-        for (int i = 2; i < recent.Count - 2; i++)
+        for (int i = FailedBreakoutStartIndex; i < recent.Count - FailedBreakoutStartIndex; i++)
         {
             var breakoutBar = recent[i];
             var prevBars = recent.Take(i).ToList();
             var followupBars = recent.Skip(i + 1).ToList();
 
-            if (prevBars.Count < 2 || followupBars.Count < 2) continue;
+            if (prevBars.Count < FailedBreakoutMinPrevBars || followupBars.Count < FailedBreakoutMinFollowup) continue;
 
             var prevHigh = prevBars.Max(b => b.High);
             var prevLow = prevBars.Min(b => b.Low);
@@ -293,7 +345,7 @@ public class ReversalPatternDetector : IPatternDetector
 
             if (failedToSustain)
             {
-                var score = 0.75;
+                var score = FailedBreakoutScore;
                 return new PatternResult
                 {
                     Score = score,
@@ -314,13 +366,13 @@ public class ReversalPatternDetector : IPatternDetector
 
     private static PatternResult DetectTrendExhaustion(IReadOnlyList<Bar> bars)
     {
-        if (bars.Count < 15) return new PatternResult { Score = 0, Confidence = 0 };
+        if (bars.Count < TrendExhaustionBars) return new PatternResult { Score = 0, Confidence = 0 };
 
-        var recent = bars.TakeLast(15).ToList();
+        var recent = bars.TakeLast(TrendExhaustionLookback).ToList();
         
         // Look for weakening trend momentum
-        var firstThird = recent.Take(5).ToList();
-        var lastThird = recent.TakeLast(5).ToList();
+        var firstThird = recent.Take(TrendExhaustionSegmentBars).ToList();
+        var lastThird = recent.TakeLast(TrendExhaustionSegmentBars).ToList();
         
         var earlySlope = (double)(firstThird.Last().Close - firstThird.First().Close) / firstThird.Count;
         var lateSlope = (double)(lastThird.Last().Close - lastThird.First().Close) / lastThird.Count;
@@ -329,18 +381,18 @@ public class ReversalPatternDetector : IPatternDetector
         bool trendWeakening = false;
         var direction = 0;
         
-        if (earlySlope > 0 && lateSlope < earlySlope * 0.3) // Uptrend weakening
+        if (earlySlope > 0 && lateSlope < earlySlope * TrendWeakeningThreshold) // Uptrend weakening
         {
             trendWeakening = true;
             direction = -1;
         }
-        else if (earlySlope < 0 && lateSlope > earlySlope * 0.3) // Downtrend weakening
+        else if (earlySlope < 0 && lateSlope > earlySlope * TrendWeakeningThreshold) // Downtrend weakening
         {
             trendWeakening = true;
             direction = 1;
         }
 
-        var score = trendWeakening ? 0.6 : 0.0;
+        var score = trendWeakening ? TrendExhaustionScore : 0.0;
 
         return new PatternResult
         {
@@ -351,7 +403,7 @@ public class ReversalPatternDetector : IPatternDetector
             {
                 ["early_slope"] = earlySlope,
                 ["late_slope"] = lateSlope,
-                ["momentum_ratio"] = Math.Abs(earlySlope) > 0.01 ? lateSlope / earlySlope : 0
+                ["momentum_ratio"] = Math.Abs(earlySlope) > MinimumRangeDivisor ? lateSlope / earlySlope : 0
             }
         };
     }
@@ -368,20 +420,20 @@ public class ReversalPatternDetector : IPatternDetector
 
     private static PatternResult DetectSpikeyExtreme(IReadOnlyList<Bar> bars, bool isTop)
     {
-        if (bars.Count < 3) return new PatternResult { Score = 0, Confidence = 0 };
+        if (bars.Count < SpikeyExtremeLookback) return new PatternResult { Score = 0, Confidence = 0 };
 
-        var recent = bars.TakeLast(3).ToList();
+        var recent = bars.TakeLast(SpikeyExtremeLookback).ToList();
         var middle = recent[1];
         var before = recent[0];
         var after = recent[2];
 
         var spike = isTop ? 
             (middle.High > before.High && middle.High > after.High && 
-             middle.Close < middle.High - (middle.High - middle.Low) * 0.6m) :
+             middle.Close < middle.High - (middle.High - middle.Low) * SpikeyExtremeCloseRatio) :
             (middle.Low < before.Low && middle.Low < after.Low && 
-             middle.Close > middle.Low + (middle.High - middle.Low) * 0.6m);
+             middle.Close > middle.Low + (middle.High - middle.Low) * SpikeyExtremeCloseRatio);
 
-        var score = spike ? 0.7 : 0.0;
+        var score = spike ? SpikeyExtremeScore : 0.0;
 
         return new PatternResult
         {
@@ -397,7 +449,7 @@ public class ReversalPatternDetector : IPatternDetector
     }
 
     // Simplified implementations
-    private static PatternResult DetectDivergenceReversal(IReadOnlyList<Bar> bars) => DetectGenericReversal(bars, "DivergenceReversal", 0.6);
+    private static PatternResult DetectDivergenceReversal(IReadOnlyList<Bar> bars) => DetectGenericReversal(bars, "DivergenceReversal", DivergenceReversalBaseScore);
 
     private static PatternResult DetectGenericReversal(IReadOnlyList<Bar> bars, string type, double baseScore)
     {
