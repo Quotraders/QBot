@@ -127,11 +127,11 @@ namespace BotCore.Features
                 return null;
             }
 
-            return featureKey.ToLowerInvariant() switch
+            return featureKey.ToUpperInvariant() switch
             {
-                "liquidity.absorb_bull" => state.BullAbsorption,
-                "liquidity.absorb_bear" => state.BearAbsorption,
-                "liquidity.vpr" => state.VolumePerRange,
+                "LIQUIDITY.ABSORB_BULL" => state.BullAbsorption,
+                "LIQUIDITY.ABSORB_BEAR" => state.BearAbsorption,
+                "LIQUIDITY.VPR" => state.VolumePerRange,
                 _ => null
             };
         }

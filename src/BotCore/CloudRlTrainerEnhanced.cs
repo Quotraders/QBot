@@ -281,7 +281,7 @@ namespace BotCore
             using var sha256 = SHA256.Create();
             await using var fileStream = File.OpenRead(filePath);
             var hashBytes = await sha256.ComputeHashAsync(fileStream).ConfigureAwait(false);
-            return Convert.ToHexString(hashBytes).ToLowerInvariant();
+            return Convert.ToHexString(hashBytes).ToUpperInvariant();
         }
 
         /// <summary>

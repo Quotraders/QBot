@@ -211,8 +211,8 @@ namespace BotCore
             var parts = Path.GetFileNameWithoutExtension(filename).Split('_');
             if (parts.Length >= 2)
             {
-                var symbol = parts[1].ToLowerInvariant();
-                if (symbol == "es" || symbol == "nq")
+                var symbol = parts[1].ToUpperInvariant();
+                if (symbol == "ES" || symbol == "NQ")
                 {
                     return symbol;
                 }

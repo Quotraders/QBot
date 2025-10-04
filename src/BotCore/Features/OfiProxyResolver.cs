@@ -160,9 +160,9 @@ namespace BotCore.Features
                 return null;
             }
 
-            return featureKey.ToLowerInvariant() switch
+            return featureKey.ToUpperInvariant() switch
             {
-                "ofi.proxy" => state.NormalizedOfiProxy,
+                "OFI.PROXY" => state.NormalizedOfiProxy,
                 _ => null
             };
         }
