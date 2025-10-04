@@ -13,26 +13,36 @@ public class StructuralPatternDetector : IPatternDetector
     public int RequiredBars { get; }
 
     private readonly StructuralType _type;
+    
+    // Pattern detection bar requirements
+    private const int HeadAndShouldersBarRequirement = 25;
+    private const int DoubleTopBottomBarRequirement = 20;
+    private const int TripleTopBottomBarRequirement = 30;
+    private const int CupAndHandleBarRequirement = 40;
+    private const int RectangleBarRequirement = 15;
+    private const int TriangleBarRequirement = 20;
+    private const int RoundingBarRequirement = 30;
+    private const int DefaultBarRequirement = 10;
 
     public StructuralPatternDetector(StructuralType type)
     {
         _type = type;
         (PatternName, RequiredBars) = type switch
         {
-            StructuralType.HeadAndShoulders => ("HeadAndShoulders", 25),
-            StructuralType.InverseHeadAndShoulders => ("InverseHeadAndShoulders", 25),
-            StructuralType.DoubleTop => ("DoubleTop", 20),
-            StructuralType.DoubleBottom => ("DoubleBottom", 20),
-            StructuralType.TripleTop => ("TripleTop", 30),
-            StructuralType.TripleBottom => ("TripleBottom", 30),
-            StructuralType.CupAndHandle => ("CupAndHandle", 40),
-            StructuralType.Rectangle => ("Rectangle", 15),
-            StructuralType.AscendingTriangle => ("AscendingTriangle", 20),
-            StructuralType.DescendingTriangle => ("DescendingTriangle", 20),
-            StructuralType.SymmetricalTriangle => ("SymmetricalTriangle", 20),
-            StructuralType.RoundingBottom => ("RoundingBottom", 30),
-            StructuralType.RoundingTop => ("RoundingTop", 30),
-            _ => ("Unknown", 10)
+            StructuralType.HeadAndShoulders => ("HeadAndShoulders", HeadAndShouldersBarRequirement),
+            StructuralType.InverseHeadAndShoulders => ("InverseHeadAndShoulders", HeadAndShouldersBarRequirement),
+            StructuralType.DoubleTop => ("DoubleTop", DoubleTopBottomBarRequirement),
+            StructuralType.DoubleBottom => ("DoubleBottom", DoubleTopBottomBarRequirement),
+            StructuralType.TripleTop => ("TripleTop", TripleTopBottomBarRequirement),
+            StructuralType.TripleBottom => ("TripleBottom", TripleTopBottomBarRequirement),
+            StructuralType.CupAndHandle => ("CupAndHandle", CupAndHandleBarRequirement),
+            StructuralType.Rectangle => ("Rectangle", RectangleBarRequirement),
+            StructuralType.AscendingTriangle => ("AscendingTriangle", TriangleBarRequirement),
+            StructuralType.DescendingTriangle => ("DescendingTriangle", TriangleBarRequirement),
+            StructuralType.SymmetricalTriangle => ("SymmetricalTriangle", TriangleBarRequirement),
+            StructuralType.RoundingBottom => ("RoundingBottom", RoundingBarRequirement),
+            StructuralType.RoundingTop => ("RoundingTop", RoundingBarRequirement),
+            _ => ("Unknown", DefaultBarRequirement)
         };
     }
 

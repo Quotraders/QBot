@@ -268,6 +268,7 @@ public static class ResilienceExtensions
     // Retry policy constants
     private const double ExponentialBackoffBase = 2.0;            // Base for exponential backoff calculation
     private const int JitterMaxDelayMs = 1000;                   // Maximum jitter delay in milliseconds
+    private const int HttpTimeoutSeconds = 30;                   // HTTP timeout in seconds
     
     /// <summary>
     /// Add resilience policies to HttpClient factory
@@ -326,7 +327,7 @@ public static class ResilienceExtensions
 
     private static IAsyncPolicy<HttpResponseMessage> GetTimeoutPolicy()
     {
-        return Policy.TimeoutAsync<HttpResponseMessage>(30);
+        return Policy.TimeoutAsync<HttpResponseMessage>(HttpTimeoutSeconds);
     }
 }
 

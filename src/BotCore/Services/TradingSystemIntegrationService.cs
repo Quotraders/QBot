@@ -89,6 +89,9 @@ namespace TopstepX.Bot.Core.Services
         private const double StaleDataScoreMultiplier = 0.5;            // Score multiplier for stale data
         private const double DisconnectedHubsScoreMultiplier = 0.3;     // Score multiplier for disconnected hubs
         
+        // ATR calculation constants
+        private const int AtrPeriod = 14;                                // Standard ATR calculation period
+        
         // Market Data Cache - ENHANCED IMPLEMENTATION
         private readonly ConcurrentDictionary<string, MarketData> _priceCache = new();
         private volatile int _barsSeen;
@@ -463,7 +466,7 @@ namespace TopstepX.Bot.Core.Services
                 var volOfVolAdjustment = new VolOfVolAdjustment { PositionSizeMultiplier = 1.0, StopLossMultiplier = 1.0, OffsetTightening = 1.0 };
                 
                 // Get bar data to calculate current ATR
-                if (_barCache.TryGetValue(symbol, out var symbolBars) && symbolBars.Count > 14)
+                if (_barCache.TryGetValue(symbol, out var symbolBars) && symbolBars.Count > AtrPeriod)
                 {
                     var currentAtr = CalculateATR(symbolBars);
                     volOfVolAdjustment = await _volOfVolGuardService.CalculateVolOfVolAdjustmentAsync(
