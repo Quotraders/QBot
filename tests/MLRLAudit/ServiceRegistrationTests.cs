@@ -3,10 +3,14 @@ extern alias BotCoreTest;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Xunit;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Collections.Generic;
 using BotCoreTest::BotCore.Extensions;
+using TradingBot.RLAgent;
 
 namespace UnitTests.DI
 {
@@ -94,6 +98,82 @@ namespace UnitTests.DI
 
             // Assert
             Assert.Equal(testJwt, jwt);
+        }
+
+        [Fact]
+        public void ModelHotReloadManager_ShouldBeRegisteredAsSingleton()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+            services.AddLogging();
+            
+            var configData = new Dictionary<string, string?>
+            {
+                ["ModelHotReload:WatchDirectory"] = "models/rl",
+                ["ModelHotReload:DebounceDelayMs"] = "2000",
+                ["OnnxEnsemble:MaxBatchSize"] = "32"
+            };
+            var configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(configData)
+                .Build();
+
+            services.Configure<ModelHotReloadOptions>(configuration.GetSection("ModelHotReload"));
+            services.Configure<OnnxEnsembleOptions>(configuration.GetSection("OnnxEnsemble"));
+            services.AddSingleton<OnnxEnsembleWrapper>();
+            services.AddSingleton<ModelHotReloadManager>();
+            services.AddHostedService<ModelHotReloadManager>(provider => 
+                provider.GetRequiredService<ModelHotReloadManager>());
+
+            // Act
+            var serviceProvider = services.BuildServiceProvider();
+
+            // Assert - Verify ModelHotReloadManager can be resolved
+            var hotReloadManager = serviceProvider.GetService<ModelHotReloadManager>();
+            Assert.NotNull(hotReloadManager);
+
+            // Verify it's registered as IHostedService too
+            var hostedServices = serviceProvider.GetServices<IHostedService>();
+            Assert.Contains(hostedServices, service => service is ModelHotReloadManager);
+        }
+
+        [Fact]
+        public async Task ModelHotReloadManager_StartAsync_ShouldSucceed()
+        {
+            // Arrange
+            var services = new ServiceCollection();
+            services.AddLogging();
+            
+            var configData = new Dictionary<string, string?>
+            {
+                ["ModelHotReload:WatchDirectory"] = "/tmp/test-models",
+                ["ModelHotReload:DebounceDelayMs"] = "2000",
+                ["OnnxEnsemble:MaxBatchSize"] = "32"
+            };
+            var configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(configData)
+                .Build();
+
+            services.Configure<ModelHotReloadOptions>(configuration.GetSection("ModelHotReload"));
+            services.Configure<OnnxEnsembleOptions>(configuration.GetSection("OnnxEnsemble"));
+            services.AddSingleton<OnnxEnsembleWrapper>();
+            services.AddSingleton<ModelHotReloadManager>();
+
+            var serviceProvider = services.BuildServiceProvider();
+            var hotReloadManager = serviceProvider.GetRequiredService<ModelHotReloadManager>();
+
+            // Ensure directory exists
+            System.IO.Directory.CreateDirectory("/tmp/test-models");
+
+            // Act
+            var exception = await Record.ExceptionAsync(async () => 
+                await hotReloadManager.StartAsync(CancellationToken.None));
+
+            // Assert - StartAsync should complete without throwing
+            Assert.Null(exception);
+
+            // Cleanup
+            await hotReloadManager.StopAsync(CancellationToken.None);
+            hotReloadManager.Dispose();
         }
     }
 }
