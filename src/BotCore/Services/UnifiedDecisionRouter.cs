@@ -69,6 +69,10 @@ public class UnifiedDecisionRouter
     // Emergency state constants
     private const decimal EMERGENCY_CONFIDENCE = 0.0m;            // No confidence in emergency state
     private const decimal EMERGENCY_QUANTITY = 0m;                // No position sizing in emergency
+    
+    // Decision ID generation constants
+    private const int DECISION_ID_RANDOM_MIN = 1000;              // Minimum random number for decision ID
+    private const int DECISION_ID_RANDOM_MAX = 9999;              // Maximum random number for decision ID
 
     private readonly ILogger<UnifiedDecisionRouter> _logger;
     private readonly IServiceProvider _serviceProvider;
@@ -771,16 +775,16 @@ public class UnifiedDecisionRouter
     {
         return new Dictionary<string, StrategyConfig>
         {
-            ["S2"] = new StrategyConfig { Name = "VWAP Mean Reversion", OptimalHours = new[] { 11, 12, 13 } },
-            ["S3"] = new StrategyConfig { Name = "Bollinger Compression", OptimalHours = new[] { 9, 10, 14, 15 } },
-            ["S6"] = new StrategyConfig { Name = "Opening Drive", OptimalHours = new[] { 9, 10 } },
-            ["S11"] = new StrategyConfig { Name = "Afternoon Fade", OptimalHours = new[] { 14, 15, 16 } }
+            ["S2"] = new StrategyConfig { Name = "VWAP Mean Reversion", OptimalHours = new[] { LUNCH_MEAN_REVERSION_START, LUNCH_MEAN_REVERSION_START + 1, LUNCH_MEAN_REVERSION_END } },
+            ["S3"] = new StrategyConfig { Name = "Bollinger Compression", OptimalHours = new[] { OPENING_DRIVE_START_HOUR, OPENING_DRIVE_END_HOUR, AFTERNOON_TRADING_START, AFTERNOON_TRADING_START + 1 } },
+            ["S6"] = new StrategyConfig { Name = "Opening Drive", OptimalHours = new[] { OPENING_DRIVE_START_HOUR, OPENING_DRIVE_END_HOUR } },
+            ["S11"] = new StrategyConfig { Name = "Afternoon Fade", OptimalHours = new[] { AFTERNOON_TRADING_START, AFTERNOON_TRADING_START + 1, AFTERNOON_TRADING_END } }
         };
     }
     
     private static string GenerateDecisionId()
     {
-        return $"UD{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}_{Random.Shared.Next(1000, 9999)}";
+        return $"UD{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}_{Random.Shared.Next(DECISION_ID_RANDOM_MIN, DECISION_ID_RANDOM_MAX)}";
     }
     
     #endregion

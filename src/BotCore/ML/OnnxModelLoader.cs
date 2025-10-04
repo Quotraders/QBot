@@ -34,6 +34,30 @@ public sealed class OnnxModelLoader : IDisposable
     private static readonly Regex ModelVersionPattern = new(
         @"^(?<family>\w+)\.(?<symbol>\w+)\.(?<strategy>\w+)\.(?<regime>\w+)\.v(?<semver>\d+\.\d+\.\d+)\+(?<sha>[a-f0-9]{8})\.onnx$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    
+    // Health probe synthetic data constants
+    private const float HealthProbePriceReturn = 0.001f;        // 0.1% price return
+    private const float HealthProbeTimeInTrade = 2.5f;          // 2.5 trading hours
+    private const float HealthProbePnlPerUnit = 50.0f;          // PnL per unit
+    private const float HealthProbeVolatility = 0.15f;          // 15% volatility
+    private const float HealthProbeRsiValue = 0.6f;             // 60% RSI
+    private const float HealthProbeBollingerPosition = 0.3f;    // Bollinger position
+    private const float HealthProbeTrendingRegime = 1.0f;       // Trending regime indicator
+    private const float HealthProbeRangingRegime = 0.0f;        // Not ranging
+    private const float HealthProbeVolatileRegime = 0.0f;       // Not volatile
+    private const float HealthProbeDefaultValue = 0.1f;         // Default small value
+    private const int HealthProbeCategoricalModulus = 3;        // Modulus for categorical features (0, 1, 2)
+    
+    // Health probe feature indices
+    private const int FeatureIndexPriceReturn = 0;
+    private const int FeatureIndexTimeInTrade = 1;
+    private const int FeatureIndexPnlPerUnit = 2;
+    private const int FeatureIndexVolatility = 3;
+    private const int FeatureIndexRsiValue = 4;
+    private const int FeatureIndexBollingerPosition = 5;
+    private const int FeatureIndexTrendingRegime = 6;
+    private const int FeatureIndexRangingRegime = 7;
+    private const int FeatureIndexVolatileRegime = 8;
 
     public event Action<ModelHotReloadEvent>? ModelReloaded;
     public event Action<ModelHealthEvent>? ModelHealthChanged;
@@ -690,16 +714,16 @@ public sealed class OnnxModelLoader : IDisposable
                 {
                     data[i] = i switch
                     {
-                        0 => 0.001f,  // Price return: 0.1%
-                        1 => 2.5f,    // Time in trade: 2.5 trading hours
-                        2 => 50.0f,   // PnL per unit
-                        3 => 0.15f,   // Volatility: 15%
-                        4 => 0.6f,    // RSI: 60%
-                        5 => 0.3f,    // Bollinger position
-                        6 => 1.0f,    // Trending regime
-                        7 => 0.0f,    // Not ranging
-                        8 => 0.0f,    // Not volatile
-                        _ => 0.1f     // Default small value
+                        FeatureIndexPriceReturn => HealthProbePriceReturn,           // Price return: 0.1%
+                        FeatureIndexTimeInTrade => HealthProbeTimeInTrade,           // Time in trade: 2.5 trading hours
+                        FeatureIndexPnlPerUnit => HealthProbePnlPerUnit,             // PnL per unit
+                        FeatureIndexVolatility => HealthProbeVolatility,             // Volatility: 15%
+                        FeatureIndexRsiValue => HealthProbeRsiValue,                 // RSI: 60%
+                        FeatureIndexBollingerPosition => HealthProbeBollingerPosition, // Bollinger position
+                        FeatureIndexTrendingRegime => HealthProbeTrendingRegime,     // Trending regime
+                        FeatureIndexRangingRegime => HealthProbeRangingRegime,       // Not ranging
+                        FeatureIndexVolatileRegime => HealthProbeVolatileRegime,     // Not volatile
+                        _ => HealthProbeDefaultValue                                 // Default small value
                     };
                 }
                 
@@ -715,7 +739,7 @@ public sealed class OnnxModelLoader : IDisposable
                 // Fill with appropriate integer values
                 for (int i = 0; i < totalElements; i++)
                 {
-                    data[i] = i % 3; // Values 0, 1, 2 for typical categorical features
+                    data[i] = i % HealthProbeCategoricalModulus; // Values 0, 1, 2 for typical categorical features
                 }
                 
                 var tensor = new Microsoft.ML.OnnxRuntime.Tensors.DenseTensor<long>(data, shape);
@@ -729,7 +753,7 @@ public sealed class OnnxModelLoader : IDisposable
                 
                 for (int i = 0; i < totalElements; i++)
                 {
-                    data[i] = i % 3;
+                    data[i] = i % HealthProbeCategoricalModulus;
                 }
                 
                 var tensor = new Microsoft.ML.OnnxRuntime.Tensors.DenseTensor<int>(data, shape);

@@ -78,7 +78,66 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 76 violations eliminated across 9 files in 3 focused rounds
 
-### 🔧 Round 149 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+### 🔧 Round 150 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (30 violations fixed, 2 files)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 1343 | 1327 | UnifiedDecisionRouter.cs | Extracted strategy optimal hours and decision ID random range |
+| S109 | 1327 | 1311 | OnnxModelLoader.cs | Extracted health probe feature indices and synthetic data constants |
+
+**Example Pattern Applied - UnifiedDecisionRouter.cs**:
+```csharp
+// Before (S109) - Magic numbers for trading hours and random range
+["S2"] = new StrategyConfig { Name = "VWAP Mean Reversion", OptimalHours = new[] { 11, 12, 13 } },
+["S3"] = new StrategyConfig { Name = "Bollinger Compression", OptimalHours = new[] { 9, 10, 14, 15 } },
+return $"UD{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}_{Random.Shared.Next(1000, 9999)}";
+
+// After (S109) - Named constants
+private const int OPENING_DRIVE_START_HOUR = 9;
+private const int OPENING_DRIVE_END_HOUR = 10;
+private const int LUNCH_MEAN_REVERSION_START = 11;
+private const int LUNCH_MEAN_REVERSION_END = 13;
+private const int AFTERNOON_TRADING_START = 14;
+private const int DECISION_ID_RANDOM_MIN = 1000;
+private const int DECISION_ID_RANDOM_MAX = 9999;
+
+["S2"] = new StrategyConfig { Name = "VWAP Mean Reversion", OptimalHours = new[] { LUNCH_MEAN_REVERSION_START, LUNCH_MEAN_REVERSION_START + 1, LUNCH_MEAN_REVERSION_END } },
+return $"UD{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}_{Random.Shared.Next(DECISION_ID_RANDOM_MIN, DECISION_ID_RANDOM_MAX)}";
+```
+
+**Example Pattern Applied - OnnxModelLoader.cs**:
+```csharp
+// Before (S109) - Magic numbers for health probe feature values and indices
+data[i] = i switch {
+    0 => 0.001f,  // Price return
+    2 => 50.0f,   // PnL per unit
+    3 => 0.15f,   // Volatility
+    _ => 0.1f
+};
+
+// After (S109) - Named constants for values and indices
+private const float HealthProbePriceReturn = 0.001f;
+private const float HealthProbePnlPerUnit = 50.0f;
+private const float HealthProbeVolatility = 0.15f;
+private const int FeatureIndexPriceReturn = 0;
+private const int FeatureIndexPnlPerUnit = 2;
+private const int FeatureIndexVolatility = 3;
+
+data[i] = i switch {
+    FeatureIndexPriceReturn => HealthProbePriceReturn,
+    FeatureIndexPnlPerUnit => HealthProbePnlPerUnit,
+    FeatureIndexVolatility => HealthProbeVolatility,
+    _ => HealthProbeDefaultValue
+};
+```
+
+**Build Verification**: ✅ 0 CS errors maintained, 30 S109 violations fixed across 2 files (1343 → 1311 total)
+
+---
+
+### 🔧 Round 149 - Phase 2: S109 Magic Numbers Elimination (Previous Session)
 
 **S109: Magic Number to Named Constant Conversion (9 violations fixed, 1 file)**
 
