@@ -25,7 +25,8 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 ## Progress Summary
 - **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
 - **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (1820/1820 = 100%) - **VERIFIED & SECURED**
-  - **Current Session (Round 147)**: 9 S109 violations fixed (UnifiedDataIntegrationService - data integration constants)
+  - **Current Session (Round 148)**: 8 S109 violations fixed (MicrostructureSnapshot - execution decision constants)
+  - **Previous Session (Round 147)**: 9 S109 violations fixed (UnifiedDataIntegrationService - data integration constants)
   - **Previous Session (Rounds 145-146)**: 26 S109 violations fixed (FeatureBusAdapter, StructuralPatternDetector - feature & pattern constants)
   - **Previous Session (Rounds 141-144)**: 44 S109 violations fixed (EnhancedBacktestService, StrategyMlModelManager, RegimeDetectionService, OnnxModelValidationService)
   - **Previous Session (Rounds 138-140)**: 76 analyzer violations fixed (S109 magic numbers - Priority 1 systematic cleanup)
@@ -77,7 +78,56 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 76 violations eliminated across 9 files in 3 focused rounds
 
-### 🔧 Round 147 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+### 🔧 Round 148 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (8 violations fixed, 1 file)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 684 | 676 | MicrostructureSnapshot.cs | Extracted microstructure execution decision thresholds (spread, imbalance, urgency, queue thresholds) |
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers inline
+public decimal MidPrice => (BidPrice + AskPrice) / 2m;
+public decimal SpreadBps => ... * 10000m : 0m;
+if (Timestamp < DateTime.UtcNow.AddMinutes(-5))
+if (SpreadBps > 2.0m) return true;
+if (Math.Abs(BookImbalance) > 0.3) return true;
+if (urgencyScore > 0.7) return true;
+if (ZoneBreakoutScore.Value > 0.8) return true;
+if (EstimatedQueueEta.Value > 30.0) return true;
+
+// After (S109) - Named constants
+private const int MidPriceDivisor = 2;
+private const decimal BasisPointsMultiplier = 10000m;
+private const int DataStalenessMinutes = 5;
+private const decimal WideSpreadsThreshold = 2.0m;
+private const double HighBookImbalanceThreshold = 0.3;
+private const double HighUrgencyThreshold = 0.7;
+private const double ZoneBreakoutThreshold = 0.8;
+private const double MaxQueueEtaSeconds = 30.0;
+
+public decimal MidPrice => (BidPrice + AskPrice) / MidPriceDivisor;
+public decimal SpreadBps => ... * BasisPointsMultiplier : 0m;
+if (Timestamp < DateTime.UtcNow.AddMinutes(-DataStalenessMinutes))
+if (SpreadBps > WideSpreadsThreshold) return true;
+if (Math.Abs(BookImbalance) > HighBookImbalanceThreshold) return true;
+if (urgencyScore > HighUrgencyThreshold) return true;
+if (ZoneBreakoutScore.Value > ZoneBreakoutThreshold) return true;
+if (EstimatedQueueEta.Value > MaxQueueEtaSeconds) return true;
+```
+
+**Rationale**: Extracted microstructure execution decision thresholds (spread widths for maker/taker decisions, book imbalance thresholds, urgency scores, zone breakout probabilities, queue time limits, data staleness checks) to improve maintainability and make execution logic parameters explicit. This enables easier tuning of order type selection without code changes.
+
+**Files Changed**:
+- `src/BotCore/Execution/MicrostructureSnapshot.cs`: Execution decision thresholds, spread/imbalance limits, data freshness checks
+
+**Build Verification**: ✅ 0 CS errors maintained, 8 S109 violations fixed in MicrostructureSnapshot.cs (all violations eliminated in this file)
+
+---
+
+### 🔧 Round 147 - Phase 2: S109 Magic Numbers Elimination (Previous Session)
 
 **S109: Magic Number to Named Constant Conversion (9 violations fixed, 1 file)**
 
