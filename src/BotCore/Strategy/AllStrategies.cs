@@ -43,6 +43,14 @@ namespace BotCore.Strategy
         private const decimal MinRiskRewardRatio = 0.6m;                  // Minimum risk-reward ratio
         private const int RsiOverboughtLevel = 20;                        // RSI overbought level (inverted for short)
         private const decimal RsiMultiplier = 1.5m;                       // RSI condition multiplier
+        
+        // Bar count and quality thresholds
+        private const int MinimumBarCountForS2 = 60;                      // Minimum bars required for S2 strategy
+        private const int MinimumBarCountForS3 = 30;                      // Minimum bars required for S3 strategy
+        private const decimal HighQualityThreshold = 1.0m;                // High quality signal threshold
+        private const decimal VeryHighQualityThreshold = 1.1m;            // Very high quality signal threshold
+        private const decimal MediumQualityThreshold = 0.9m;              // Medium quality signal threshold
+        private const decimal LowQualityThreshold = 0.6m;                 // Low quality signal threshold
 
         // (attempt accounting moved to specific strategies as needed)
         static decimal rr_quality(decimal entry, decimal stop, decimal t1)
@@ -585,7 +593,7 @@ namespace BotCore.Strategy
             ArgumentNullException.ThrowIfNull(env);
             
             var lst = new List<Candidate>();
-            if (bars is null || bars.Count < 60) return lst;
+            if (bars is null || bars.Count < MinimumBarCountForS2) return lst;
             // Hard microstructure: require minimum 1m volume per config
             if (bars[^1].Volume < S2RuntimeConfig.MinVolume) return lst;
             // Normalize timestamps to ET for session anchoring
@@ -956,7 +964,7 @@ namespace BotCore.Strategy
             ArgumentNullException.ThrowIfNull(bars);
             
             var lst = new List<Candidate>();
-            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > 0.6m)
+            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > LowQualityThreshold)
             {
                 var entry = bars[^1].Close;
                 var stop = entry + env.atr.Value * 1.5m;
@@ -1016,7 +1024,7 @@ namespace BotCore.Strategy
         public static List<Candidate> S8(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
         {
             var lst = new List<Candidate>();
-            if (bars is null || bars.Count < 30) return lst;
+            if (bars is null || bars.Count < MinimumBarCountForS3) return lst;
             var (mid, up, dn) = Keltner(bars, RsiOverboughtLevel, RsiOverboughtLevel, RsiMultiplier);
             var px = bars[^1].Close;
             var ema20 = EmaNoWarmup(bars, 20);
@@ -1053,7 +1061,7 @@ namespace BotCore.Strategy
             ArgumentNullException.ThrowIfNull(bars);
             
             var lst = new List<Candidate>();
-            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > 0.9m)
+            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > MediumQualityThreshold)
             {
                 var entry = bars[^1].Close;
                 var stop = entry - env.atr.Value * 3.0m;
@@ -1113,7 +1121,7 @@ namespace BotCore.Strategy
             ArgumentNullException.ThrowIfNull(bars);
             
             var lst = new List<Candidate>();
-            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > 1.0m)
+            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > HighQualityThreshold)
             {
                 var entry = bars[^1].Close;
                 var stop = entry - env.atr.Value * 3.5m;
@@ -1129,7 +1137,7 @@ namespace BotCore.Strategy
             ArgumentNullException.ThrowIfNull(bars);
             
             var lst = new List<Candidate>();
-            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > 1.0m)
+            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > HighQualityThreshold)
             {
                 var entry = bars[^1].Close;
                 var stop = entry + env.atr.Value * 3.5m;
@@ -1145,7 +1153,7 @@ namespace BotCore.Strategy
             ArgumentNullException.ThrowIfNull(bars);
             
             var lst = new List<Candidate>();
-            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > 1.1m)
+            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > VeryHighQualityThreshold)
             {
                 var entry = bars[^1].Close;
                 var stop = entry - env.atr.Value * 4.0m;

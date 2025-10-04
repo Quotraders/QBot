@@ -20,6 +20,23 @@ public class BasicMicrostructureAnalyzer : IMicrostructureAnalyzer
     private readonly IExecutionCostConfig _costConfig;
     private readonly Dictionary<string, List<ExecutionHistory>> _executionHistory = new();
     private readonly object _historyLock = new();
+    
+    // Execution recommendation constants
+    private const decimal LimitOrderEvThreshold = 1.02m;              // Limit order must be 2% better EV than market
+    private const decimal LimitOrderMinFillProbability = 0.7m;        // Minimum fill probability for limit orders
+    private const decimal MarketOrderGuaranteedFillProbability = 1.0m; // Market orders have 100% fill probability
+    private const decimal PercentageConversionFactor = 100m;          // Convert decimal to percentage
+    private const decimal FillTimeEstimateDivisor = 5m;               // Divisor for fill time estimation
+    private const decimal MinFillProbabilityDivisor = 0.1m;           // Minimum fill probability for time calculation
+    
+    // History management constants
+    private const int MaxExecutionHistorySize = 1000;                 // Maximum execution history records to keep
+    
+    // Volatility calculation constants
+    private const int TradingDaysPerYear = 252;                       // Trading days for annualized volatility
+    private const int HoursPerDay = 24;                               // Hours per day for volatility scaling
+    private const int MinutesPerHour = 60;                            // Minutes per hour for volatility scaling
+    private const int MinMicroVolatilityTrades = 10;                  // Minimum trades for micro volatility calculation
 
     public BasicMicrostructureAnalyzer(
         IMarketDataProvider marketData, 
@@ -258,14 +275,14 @@ public class BasicMicrostructureAnalyzer : IMicrostructureAnalyzer
         var reasoning = "Market order for immediate execution";
 
         // Prefer limit order if significantly better EV and reasonable fill probability
-        if (limitEV > marketEV * 1.02m && limitFillProb > 0.7m)
+        if (limitEV > marketEV * LimitOrderEvThreshold && limitFillProb > LimitOrderMinFillProbability)
         {
             orderType = OrderType.Limit;
             recommendedPrice = limitPrice;
             expectedSlippage = limitSlippage;
             fillProb = limitFillProb;
             expectedEV = limitEV;
-            reasoning = $"Limit order offers {(limitEV - marketEV) * 100:F1}% better EV";
+            reasoning = $"Limit order offers {(limitEV - marketEV) * PercentageConversionFactor:F1}% better EV";
         }
 
         // Force market order for urgent execution
@@ -274,7 +291,7 @@ public class BasicMicrostructureAnalyzer : IMicrostructureAnalyzer
             orderType = OrderType.Market;
             recommendedPrice = null;
             expectedSlippage = marketSlippage;
-            fillProb = 1.0m;
+            fillProb = MarketOrderGuaranteedFillProbability;
             expectedEV = marketEV;
             reasoning = "Market order due to high urgency";
         }
@@ -300,7 +317,7 @@ public class BasicMicrostructureAnalyzer : IMicrostructureAnalyzer
             RiskAssessment = risk,
             EstimatedFillTime = orderType == OrderType.Market
                 ? TimeSpan.FromSeconds(1)
-                : TimeSpan.FromMinutes((double)(5 / Math.Max(0.1m, fillProb)))
+                : TimeSpan.FromMinutes((double)(FillTimeEstimateDivisor / Math.Max(MinFillProbabilityDivisor, fillProb)))
         };
     }
 
@@ -324,9 +341,9 @@ public class BasicMicrostructureAnalyzer : IMicrostructureAnalyzer
 
             // Keep only recent history
             var history = _executionHistory[intent.Symbol];
-            if (history.Count > 1000)
+            if (history.Count > MaxExecutionHistorySize)
             {
-                history.RemoveRange(0, history.Count - 1000);
+                history.RemoveRange(0, history.Count - MaxExecutionHistorySize);
             }
         }
     }
@@ -343,12 +360,12 @@ public class BasicMicrostructureAnalyzer : IMicrostructureAnalyzer
         var mean = returns.Average();
         var variance = returns.Sum(r => (r - mean) * (r - mean)) / returns.Count;
 
-        return (decimal)Math.Sqrt(variance) * (decimal)Math.Sqrt(252 * 24 * 60); // Annualized
+        return (decimal)Math.Sqrt(variance) * (decimal)Math.Sqrt(TradingDaysPerYear * HoursPerDay * MinutesPerHour); // Annualized
     }
 
     private static decimal CalculateMicroVolatility(List<Trade> trades)
     {
-        if (trades.Count < 10) return 0m;
+        if (trades.Count < MinMicroVolatilityTrades) return 0m;
 
         var recentTrades = trades.TakeLast(20).ToList();
         var priceRange = recentTrades.Max(t => t.Price) - recentTrades.Min(t => t.Price);

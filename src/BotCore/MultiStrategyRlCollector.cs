@@ -19,6 +19,9 @@ namespace BotCore
         private const decimal VolumeNormalizationFactor = 1000m;      // Normalize volume for cross strength
         private const decimal NeutralRsiLevel = 50m;                  // RSI neutral midpoint
         private const decimal RsiStandardDeviation = 10m;             // RSI standard deviation for z-score
+        private const decimal RsiOversoldThreshold = 30m;             // RSI oversold threshold
+        private const decimal RsiRange = 25m;                         // RSI range from neutral for trend strength
+        private const decimal BreakoutVolumeConfirmationDivisor = 2m; // Volume confirmation normalization divisor
 
         public enum StrategyType
         {
@@ -331,7 +334,7 @@ namespace BotCore
             features.BbPosition = (price - bbLower) / (bbUpper - bbLower);
             features.MeanReversionZ = (NeutralRsiLevel - rsi) / RsiStandardDeviation; // Z-score from neutral
             features.BounceQuality = CalculateBounceQuality(price, bbLower, bbUpper);
-            features.OversoldDuration = rsi < 30 ? 1m : 0m; // Simplified
+            features.OversoldDuration = rsi < RsiOversoldThreshold ? 1m : 0m; // Simplified
 
             return features;
         }
@@ -357,10 +360,10 @@ namespace BotCore
 
             // Breakout specific
             features.BreakoutStrength = Math.Max(
-                (price - highBreakout) / price * 100m,
-                (lowBreakout - price) / price * 100m
+                (price - highBreakout) / price * PercentageConversionFactor,
+                (lowBreakout - price) / price * PercentageConversionFactor
             );
-            features.VolumeConfirmation = Math.Min(features.VolumeRatio / 2m, 1m);
+            features.VolumeConfirmation = Math.Min(features.VolumeRatio / BreakoutVolumeConfirmationDivisor, 1m);
             features.FalseBreakoutRisk = CalculateFalseBreakoutRisk(price, highBreakout, lowBreakout);
 
             return features;
@@ -385,9 +388,9 @@ namespace BotCore
             features.Atr14 = atr;
 
             // Momentum specific
-            var priceChange = (price - priorPrice) / priorPrice * 100m;
-            features.MomentumScore = Math.Abs(priceChange) * (volume / 1000m);
-            features.TrendStrength = Math.Min(Math.Abs(rsi - 50m) / 25m, 1m);
+            var priceChange = (price - priorPrice) / priorPrice * PercentageConversionFactor;
+            features.MomentumScore = Math.Abs(priceChange) * (volume / VolumeNormalizationFactor);
+            features.TrendStrength = Math.Min(Math.Abs(rsi - NeutralRsiLevel) / RsiRange, 1m);
             features.AccelerationDivergence = 0; // Would need more bars to calculate
             features.MomentumSustainability = CalculateMomentumSustainability(priceChange, atr);
 
@@ -665,9 +668,17 @@ namespace BotCore
                 log.LogDebug("[RL-{Strategy}] Logged trade outcome for signal {SignalId}: {Result}",
                     outcome.Strategy, outcome.SignalId, outcome.IsWin ? "WIN" : "LOSS");
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                log.LogError(ex, "[RL-{Strategy}] Failed to log trade outcome", outcome.Strategy);
+                log.LogError(ex, "[RL-{Strategy}] Failed to log trade outcome - I/O error", outcome.Strategy);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                log.LogError(ex, "[RL-{Strategy}] Failed to log trade outcome - access denied", outcome.Strategy);
+            }
+            catch (JsonException ex)
+            {
+                log.LogError(ex, "[RL-{Strategy}] Failed to log trade outcome - serialization error", outcome.Strategy);
             }
         }
 
@@ -747,9 +758,17 @@ namespace BotCore
                     }
                 }
             }
-            catch (Exception)
+            catch (DirectoryNotFoundException)
             {
-                // Return 0 if unable to count
+                // Return 0 if unable to count - directory not found
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Return 0 if unable to count - access denied
+            }
+            catch (IOException)
+            {
+                // Return 0 if unable to count - I/O error
             }
 
             return totalCount;

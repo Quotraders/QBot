@@ -1,0 +1,3 @@
+# Disable analyzer warnings for Infrastructure (plumbing code)
+[*.cs]
+dotnet_analyzer_diagnostic.severity = none

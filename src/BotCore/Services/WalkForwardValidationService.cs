@@ -33,6 +33,19 @@ namespace BotCore.Services
         private const int MaxValidationWindows = 1000;
         private const int PercentageMultiplier = 100;
         
+        // Performance metric thresholds
+        private const double MinSharpeRatio = 0.1;
+        private const double MaxDrawdownThreshold = 0.2;
+        private const double MinWinRate = 0.3;
+        private const double MaxWinRate = 0.8;
+        private const int MinTradeValuePerTrade = 10;
+        private const int MaxBonusPerTrade = 40;
+        private const int WindowSeedMultiplier = 1000;
+        private const double NumericPrecisionEpsilon = 1E-10;
+        private const double MinPassRate = 0.7;  // At least 70% of windows should pass
+        private const double MinStabilityThreshold = 0.5;  // Minimum stability for Sharpe/Drawdown
+        private const int MaxHistoryRecords = 100;  // Maximum validation history records to keep
+        
         private readonly ILogger<WalkForwardValidationService> _logger;
         private readonly WalkForwardValidationConfiguration _config;
         private readonly IEnhancedBacktestService _backtestService;
@@ -485,11 +498,11 @@ namespace BotCore.Services
 
             return Task.FromResult(new WalkForwardModelPerformance
             {
-                SharpeRatio = Math.Max(0.1, baseSharpe - stressPenalty),
-                MaxDrawdown = Math.Min(0.2, baseDrawdown + stressPenalty),
-                WinRate = Math.Max(0.3, Math.Min(0.8, baseWinRate - stressPenalty)),
+                SharpeRatio = Math.Max(MinSharpeRatio, baseSharpe - stressPenalty),
+                MaxDrawdown = Math.Min(MaxDrawdownThreshold, baseDrawdown + stressPenalty),
+                WinRate = Math.Max(MinWinRate, Math.Min(MaxWinRate, baseWinRate - stressPenalty)),
                 TotalTrades = baseTrades,
-                TotalPnL = baseTrades * (10 + random.Next(40)), // $10-50 per trade average
+                TotalPnL = baseTrades * (MinTradeValuePerTrade + random.Next(MaxBonusPerTrade)), // $10-50 per trade average
                 ValidationStartDate = window.ValidationStart,
                 ValidationEndDate = window.ValidationEnd,
                 ValidationDays = window.TotalValidationDays
@@ -504,7 +517,7 @@ namespace BotCore.Services
             var baseDate = DateTime.UtcNow.Date;
             var daysSinceEpoch = (int)(baseDate - new DateTime(2020, 1, 1)).TotalDays;
             
-            return _config.SeedRotation.GenerateNewSeed() + windowIndex * 1000 + daysSinceEpoch;
+            return _config.SeedRotation.GenerateNewSeed() + windowIndex * WindowSeedMultiplier + daysSinceEpoch;
         }
 
         /// <summary>
@@ -550,7 +563,7 @@ namespace BotCore.Services
                 return 1.0;
 
             var mean = valuesList.Average();
-            if (Math.Abs(mean) < 1e-10)
+            if (Math.Abs(mean) < NumericPrecisionEpsilon)
                 return 0.0;
 
             var variance = valuesList.Sum(v => Math.Pow(v - mean, 2)) / (valuesList.Count - 1);
@@ -568,15 +581,14 @@ namespace BotCore.Services
             try
             {
                 var thresholds = _config.PerformanceThresholds;
-                var minPassRate = 0.7; // At least 70% of windows should pass
 
                 var passesOverall = 
-                    result.PassRate >= minPassRate &&
+                    result.PassRate >= MinPassRate &&
                     result.AggregateSharpeRatio >= thresholds.MinSharpeRatio &&
-                    result.AggregateMaxDrawdown <= (thresholds.MaxDrawdownPct / 100.0) &&
+                    result.AggregateMaxDrawdown <= (thresholds.MaxDrawdownPct / PercentageMultiplier) &&
                     result.AggregateWinRate >= thresholds.MinWinRate &&
-                    result.SharpeStability >= 0.5 && // Require reasonable stability
-                    result.DrawdownStability >= 0.5;
+                    result.SharpeStability >= MinStabilityThreshold && // Require reasonable stability
+                    result.DrawdownStability >= MinStabilityThreshold;
 
                 return Task.FromResult(passesOverall);
             }
@@ -609,10 +621,10 @@ namespace BotCore.Services
 
                 history.Add(result);
 
-                // Keep only recent history (last 100 runs)
-                if (history.Count > 100)
+                // Keep only recent history
+                if (history.Count > MaxHistoryRecords)
                 {
-                    history = history.OrderByDescending(h => h.ValidationStarted).Take(100).ToList();
+                    history = history.OrderByDescending(h => h.ValidationStarted).Take(MaxHistoryRecords).ToList();
                 }
 
                 var historyJson = JsonSerializer.Serialize(history, new JsonSerializerOptions { WriteIndented = true });

@@ -47,6 +47,28 @@ public class UnifiedDecisionRouter
     private const decimal SUPPORT_RESISTANCE_TICK_OFFSET_1 = 10;  // First level support/resistance offset
     private const decimal SUPPORT_RESISTANCE_TICK_OFFSET_2 = 20;  // Second level support/resistance offset
     private const decimal SUPPORT_RESISTANCE_TICK_OFFSET_3 = 30;  // Third level support/resistance offset
+    private const int WEEKLY_PIVOT_OFFSET_TICKS = 5;              // Weekly pivot offset in ticks
+    private const int MONTHLY_PIVOT_OFFSET_TICKS = 5;             // Monthly pivot offset in ticks
+    
+    // Environment defaults
+    private const decimal DEFAULT_ATR_VALUE = 5.0m;               // Default ATR value when not available
+    private const decimal DEFAULT_VOLUME_Z_VALUE = 0.5m;          // Default volume z-score
+    
+    // Bar synthesis constants
+    private const int SYNTHETIC_BAR_COUNT = 10;                   // Number of synthetic bars to generate
+    private const decimal SYNTHETIC_BAR_VARIATION = 2m;           // Max price variation for synthetic bars
+    private const decimal SYNTHETIC_BAR_RANGE = 1m;               // High-low range for synthetic bars
+    private const decimal MIN_VOLUME_MULTIPLIER = 0.8m;           // Minimum volume multiplier
+    private const decimal VOLUME_MULTIPLIER_RANGE = 0.4m;         // Volume multiplier range
+    
+    // Risk engine defaults
+    private const decimal DEFAULT_RISK_PER_TRADE = 100m;          // Default risk per trade
+    private const decimal DEFAULT_MAX_DAILY_DRAWDOWN = 1000m;     // Default max daily drawdown
+    private const int DEFAULT_MAX_OPEN_POSITIONS = 1;             // Default max open positions
+    
+    // Emergency state constants
+    private const decimal EMERGENCY_CONFIDENCE = 0.0m;            // No confidence in emergency state
+    private const decimal EMERGENCY_QUANTITY = 0m;                // No position sizing in emergency
 
     private readonly ILogger<UnifiedDecisionRouter> _logger;
     private readonly IServiceProvider _serviceProvider;
@@ -369,8 +391,8 @@ public class UnifiedDecisionRouter
         {
             Symbol = symbol,
             Action = TradingAction.Hold, // Safe default - don't trade when all systems fail
-            Confidence = 0.0m, // No confidence in emergency state
-            Quantity = 0m, // No position sizing in emergency
+            Confidence = EMERGENCY_CONFIDENCE, // No confidence in emergency state
+            Quantity = EMERGENCY_QUANTITY, // No position sizing in emergency
             Strategy = "EMERGENCY_STANDDOWN",
             Reasoning = new Dictionary<string, object>
             {
@@ -578,8 +600,8 @@ public class UnifiedDecisionRouter
         return new Env
         {
             Symbol = context.Symbol,
-            atr = (decimal)(context.TechnicalIndicators.GetValueOrDefault("atr", 5.0)),
-            volz = (decimal)(context.TechnicalIndicators.GetValueOrDefault("volume_z", 0.5))
+            atr = (decimal)(context.TechnicalIndicators.GetValueOrDefault("atr", (double)DEFAULT_ATR_VALUE)),
+            volz = (decimal)(context.TechnicalIndicators.GetValueOrDefault("volume_z", (double)DEFAULT_VOLUME_Z_VALUE))
         };
     }
     
@@ -596,8 +618,8 @@ public class UnifiedDecisionRouter
             Resistance3 = price + SUPPORT_RESISTANCE_TICK_OFFSET_3,
             VWAP = price,
             DailyPivot = price,
-            WeeklyPivot = price + 5, // Small weekly pivot offset
-            MonthlyPivot = price - 5  // Small monthly pivot offset
+            WeeklyPivot = price + WEEKLY_PIVOT_OFFSET_TICKS, // Small weekly pivot offset
+            MonthlyPivot = price - MONTHLY_PIVOT_OFFSET_TICKS  // Small monthly pivot offset
         };
     }
     
@@ -608,19 +630,19 @@ public class UnifiedDecisionRouter
         var volume = (decimal)context.Volume;
         
         // Create synthetic bars for the brain
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < SYNTHETIC_BAR_COUNT; i++)
         {
-            var variation = (decimal)(_random.NextDouble() - 0.5) * 2;
+            var variation = (decimal)(_random.NextDouble() - 0.5) * SYNTHETIC_BAR_VARIATION;
             bars.Add(new ModelBar
             {
                 Symbol = context.Symbol,
                 Start = context.Timestamp.AddMinutes(-i),
                 Ts = ((DateTimeOffset)context.Timestamp.AddMinutes(-i)).ToUnixTimeMilliseconds(),
                 Open = price + variation,
-                High = price + variation + 1,
-                Low = price + variation - 1,
+                High = price + variation + SYNTHETIC_BAR_RANGE,
+                Low = price + variation - SYNTHETIC_BAR_RANGE,
                 Close = price + variation,
-                Volume = (int)(volume * (0.8m + (decimal)_random.NextDouble() * 0.4m))
+                Volume = (int)(volume * (MIN_VOLUME_MULTIPLIER + (decimal)_random.NextDouble() * VOLUME_MULTIPLIER_RANGE))
             });
         }
         
@@ -630,9 +652,9 @@ public class UnifiedDecisionRouter
     private static RiskEngine CreateRiskEngine()
     {
         var riskEngine = new RiskEngine();
-        riskEngine.cfg.risk_per_trade = 100m;
-        riskEngine.cfg.max_daily_drawdown = 1000m;
-        riskEngine.cfg.max_open_positions = 1;
+        riskEngine.cfg.risk_per_trade = DEFAULT_RISK_PER_TRADE;
+        riskEngine.cfg.max_daily_drawdown = DEFAULT_MAX_DAILY_DRAWDOWN;
+        riskEngine.cfg.max_open_positions = DEFAULT_MAX_OPEN_POSITIONS;
         return riskEngine;
     }
     

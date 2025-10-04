@@ -113,9 +113,13 @@ namespace BotCore.ML
             {
                 _logger.LogWarning("⏰ [UCB] Timeout updating P&L - continuing without update");
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
             {
-                _logger.LogWarning(ex, "⚠️ [UCB] Failed to update P&L - continuing");
+                _logger.LogWarning(ex, "⚠️ [UCB] HTTP error updating P&L - continuing");
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogWarning(ex, "⚠️ [UCB] Cancelled updating P&L - continuing");
             }
         }
 
@@ -132,9 +136,13 @@ namespace BotCore.ML
             {
                 _logger.LogWarning("⏰ [UCB] Timeout resetting daily stats");
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
             {
-                _logger.LogWarning(ex, "⚠️ [UCB] Failed to reset daily stats");
+                _logger.LogWarning(ex, "⚠️ [UCB] HTTP error resetting daily stats");
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogWarning(ex, "⚠️ [UCB] Cancelled resetting daily stats");
             }
         }
 
