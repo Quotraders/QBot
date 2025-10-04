@@ -118,6 +118,13 @@ public class AutonomousDecisionEngine : BackgroundService
     // Performance-based position sizing constants
     private const int MinWinsForSizeIncrease = 3;        // Minimum wins to increase position size
     private const int MinLossesForSizeDecrease = 3;      // Minimum losses to decrease position size
+    
+    // Technical indicator calculation constants
+    private const int MinimumBarsForTechnicalAnalysis = 20;  // Minimum bars needed for technical indicators
+    private const int RsiPeriod = 14;                        // RSI period for momentum analysis
+    private const int AtrPeriod = 14;                        // ATR period for volatility analysis
+    private const int BollingerPeriod = 20;                  // Bollinger bands period
+    private const int VolumeMaPeriod = 20;                   // Volume moving average period
     private const decimal BaseSizeMultiplier = 1.0m;     // Base position size multiplier
     private const decimal PositionSizeIncrement = 0.1m;  // Position size increment per win/loss
     private const decimal MinSizeMultiplier = 0.5m;      // Minimum position size multiplier  
@@ -1054,16 +1061,16 @@ public class AutonomousDecisionEngine : BackgroundService
         {
             // Get recent bars for technical analysis
             var bars = await GetRecentBarsAsync(symbol, 50, cancellationToken).ConfigureAwait(false);
-            if (bars.Count < 20) return new Dictionary<string, double>();
+            if (bars.Count < MinimumBarsForTechnicalAnalysis) return new Dictionary<string, double>();
             
             var indicators = new Dictionary<string, double>();
             
             // Calculate key technical indicators
-            indicators["RSI"] = CalculateRSI(bars, 14);
+            indicators["RSI"] = CalculateRSI(bars, RsiPeriod);
             indicators["MACD"] = CalculateMACD(bars);
-            indicators["BollingerPosition"] = CalculateBollingerPosition(bars, 20);
-            indicators["ATR"] = CalculateATR(bars, 14);
-            indicators["VolumeMA"] = CalculateVolumeMA(bars, 20);
+            indicators["BollingerPosition"] = CalculateBollingerPosition(bars, BollingerPeriod);
+            indicators["ATR"] = CalculateATR(bars, AtrPeriod);
+            indicators["VolumeMA"] = CalculateVolumeMA(bars, VolumeMaPeriod);
             
             return indicators;
         }
