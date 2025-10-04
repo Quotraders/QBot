@@ -64,7 +64,64 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 119 - Phase 2: S109 Magic Number Elimination Continued (Current Session)
+### 🔧 Round 120 - Phase 2: S109 Magic Numbers + CA1031 Exception Handling (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 1968 | 1962 | EnhancedProductionResilienceService.cs | Added named constants for exponential backoff base, HTTP timeout buffer, and default timeout |
+| CA1031 | 742 | 739 | OnnxModelLoader.cs | Replaced generic Exception catches with JsonException and IOException for specific error handling |
+
+**Total Fixed: 9 violations (6 unique fixes in 2 files)**
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers inline
+Math.Pow(2, retryAttempt - 1)  // Exponential backoff base
+httpClient.Timeout = TimeSpan.FromMilliseconds(_config.HttpTimeoutMs + 5000);
+return Policy.TimeoutAsync<HttpResponseMessage>(30);
+
+// After (Compliant) - Named constants with clear intent
+private const int ExponentialBackoffBase = 2;
+private const int HttpTimeoutBufferMilliseconds = 5000;
+private const int DefaultTimeoutSeconds = 30;
+
+Math.Pow(ExponentialBackoffBase, retryAttempt - 1)
+httpClient.Timeout = TimeSpan.FromMilliseconds(_config.HttpTimeoutMs + HttpTimeoutBufferMilliseconds);
+return Policy.TimeoutAsync<HttpResponseMessage>(DefaultTimeoutSeconds);
+
+// Before (CA1031) - Generic exception catch
+catch (Exception ex)
+{
+    _logger.LogWarning(ex, "[MODEL_RELOAD] Failed to parse metadata from {File}", metadataFile);
+}
+
+// After (Compliant) - Specific exception types
+catch (JsonException ex)
+{
+    _logger.LogWarning(ex, "[MODEL_RELOAD] Failed to parse metadata from {File}", metadataFile);
+}
+catch (UnauthorizedAccessException ex)
+{
+    _logger.LogError(ex, "[SAC_RELOAD] Failed to trigger SAC model reload for {File}", sacFile);
+}
+catch (IOException ex)
+{
+    _logger.LogError(ex, "[SAC_RELOAD] Failed to trigger SAC model reload for {File}", sacFile);
+}
+```
+
+**Rationale**: 
+- **S109**: Priority 1 (Correctness & Invariants) - Resilience configuration values extracted to named constants for clarity and maintainability
+- **CA1031**: Priority 1 (Correctness & Invariants) - Specific exception handling for JSON parsing and file I/O operations in model loader
+- **Files Fixed**:
+  - `EnhancedProductionResilienceService.cs` - Resilience policy configuration constants
+  - `OnnxModelLoader.cs` - Model metadata parsing and notification file operations
+- **Context**: Production resilience configuration and ML model hot-reload file operations
+
+**Build Verification**: ✅ 0 CS errors maintained, ~5931 analyzer violations remaining (9 violations fixed)
+
+---
+
+### 🔧 Round 119 - Phase 2: S109 Magic Number Elimination Continued (Previous in Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | S109 | 1976 | 1968 | EnhancedMarketDataFlowService.cs, ProductionConfigurationService.cs | Added named constants for data flow monitoring and configuration validation |
