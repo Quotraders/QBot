@@ -603,6 +603,14 @@ internal static class LogMessages
         LoggerMessage.Define(LogLevel.Information, new EventId(6030, nameof(ModelHotReloadManagerDisposed)),
             "[HOT_RELOAD] Model hot-reload manager disposed");
 
+    private static readonly Action<ILogger, string, Exception?> _modelHotReloadServiceStarted =
+        LoggerMessage.Define<string>(LogLevel.Information, new EventId(6031, nameof(ModelHotReloadServiceStarted)),
+            "🟢 Model hot-reload service started - watching {Directory}");
+
+    private static readonly Action<ILogger, Exception?> _modelHotReloadServiceStopped =
+        LoggerMessage.Define(LogLevel.Information, new EventId(6032, nameof(ModelHotReloadServiceStopped)),
+            "🔴 Model hot-reload service stopped");
+
     // Public methods for the new messages
     public static void CVaRPPOTrainingArgumentError(ILogger logger, Exception ex) => _cvarPpoTrainingArgumentError(logger, ex);
     public static void CVaRPPOActionSelectionArgumentError(ILogger logger, Exception ex) => _cvarPpoActionSelectionArgumentError(logger, ex);
@@ -675,4 +683,6 @@ internal static class LogMessages
     public static void ModelHotReloadRegistryDirectoryNotFound(ILogger logger, Exception ex) => _modelHotReloadRegistryDirectoryNotFound(logger, ex);
     public static void ModelHotReloadRegistryIOError(ILogger logger, Exception ex) => _modelHotReloadRegistryIOError(logger, ex);
     public static void ModelHotReloadManagerDisposed(ILogger logger) => _modelHotReloadManagerDisposed(logger, null);
+    public static void ModelHotReloadServiceStarted(ILogger logger, string directory) => _modelHotReloadServiceStarted(logger, directory, null);
+    public static void ModelHotReloadServiceStopped(ILogger logger) => _modelHotReloadServiceStopped(logger, null);
 }
