@@ -10,6 +10,61 @@ using IntelligenceMarketContext = TradingBot.Abstractions.MarketContext;
 namespace BotCore.Services;
 
 /// <summary>
+/// Constants for intelligence service trading adjustments
+/// </summary>
+public static class IntelligenceServiceConstants
+{
+    // Default multipliers
+    public const decimal DefaultMultiplier = 1.0m;
+    
+    // Position sizing thresholds and multipliers
+    public const decimal HighConfidenceThreshold = 0.8m;
+    public const decimal LowConfidenceThreshold = 0.4m;
+    public const decimal HighConfidenceMultiplier = 1.5m;
+    public const decimal LowConfidenceMultiplier = 0.6m;
+    public const decimal VolatilityEventMultiplier = 0.5m;
+    public const decimal HighNewsIntensityThreshold = 70m;
+    public const decimal LowNewsIntensityThreshold = 20m;
+    public const decimal HighNewsMultiplier = 0.7m;
+    public const decimal LowNewsMultiplier = 1.2m;
+    public const decimal VolatileRegimeMultiplier = 0.75m;
+    public const decimal TrendingRegimeMultiplier = 1.1m;
+    public const decimal NeutralBiasMultiplier = 0.95m;
+    
+    // Time-based adjustment hours (UTC)
+    public const int MorningInstitutionalStartHour = 9;
+    public const int MorningInstitutionalEndHour = 11;
+    public const decimal MorningInstitutionalMultiplier = 1.05m;
+    public const int PowerHourStartHour = 15;
+    public const int PowerHourEndHour = 16;
+    public const decimal PowerHourMultiplier = 1.02m;
+    
+    // Position size bounds
+    public const decimal MinPositionSizeMultiplier = 0.2m;
+    public const decimal MaxPositionSizeMultiplier = 2.0m;
+    
+    // Stop loss multipliers
+    public const decimal FomcDayStopMultiplier = 2.0m;
+    public const decimal CpiDayStopMultiplier = 1.5m;
+    public const decimal VolatileStopMultiplier = 1.5m;
+    public const decimal HighNewsStopThreshold = 80m;
+    public const decimal HighNewsStopMultiplier = 1.3m;
+    public const decimal MinStopLossMultiplier = 1.0m;
+    public const decimal MaxStopLossMultiplier = 3.0m;
+    
+    // Take profit multipliers
+    public const decimal FomcDayTakeProfitMultiplier = 3.0m;
+    public const decimal CpiDayTakeProfitMultiplier = 2.0m;
+    public const decimal TrendingHighConfidenceTakeProfitMultiplier = 2.0m;
+    public const decimal VolatileTakeProfitMultiplier = 1.5m;
+    public const decimal MinTakeProfitMultiplier = 1.0m;
+    public const decimal MaxTakeProfitMultiplier = 4.0m;
+    
+    // High volatility event detection threshold
+    public const decimal HighVolatilityNewsIntensityThreshold = 80m;
+}
+
+/// <summary>
 /// Interface for intelligence service
 /// </summary>
 public interface IIntelligenceService
@@ -178,45 +233,45 @@ public class IntelligenceService : IIntelligenceService
     public decimal GetPositionSizeMultiplier(IntelligenceMarketContext? intelligence = null)
     {
         if (intelligence == null)
-            return 1.0m; // Default size when no intelligence
+            return IntelligenceServiceConstants.DefaultMultiplier; // Default size when no intelligence
 
-        decimal multiplier = 1.0m;
+        decimal multiplier = IntelligenceServiceConstants.DefaultMultiplier;
 
         // Adjust based on confidence (single check)
-        if ((decimal)intelligence.ModelConfidence >= 0.8m)
-            multiplier *= 1.5m; // High confidence
-        else if ((decimal)intelligence.ModelConfidence <= 0.4m)
-            multiplier *= 0.6m; // Low confidence
+        if ((decimal)intelligence.ModelConfidence >= IntelligenceServiceConstants.HighConfidenceThreshold)
+            multiplier *= IntelligenceServiceConstants.HighConfidenceMultiplier; // High confidence
+        else if ((decimal)intelligence.ModelConfidence <= IntelligenceServiceConstants.LowConfidenceThreshold)
+            multiplier *= IntelligenceServiceConstants.LowConfidenceMultiplier; // Low confidence
 
         // Adjust based on volatility events (single check)
         if (intelligence.IsFomcDay || intelligence.IsCpiDay)
-            multiplier *= 0.5m; // Reduce size on major events
+            multiplier *= IntelligenceServiceConstants.VolatilityEventMultiplier; // Reduce size on major events
 
         // Adjust based on news intensity
-        if ((decimal)intelligence.NewsIntensity >= 70m)
-            multiplier *= 0.7m; // High news intensity = reduce size
-        else if ((decimal)intelligence.NewsIntensity <= 20m)
-            multiplier *= 1.2m; // Low news intensity = increase size
+        if ((decimal)intelligence.NewsIntensity >= IntelligenceServiceConstants.HighNewsIntensityThreshold)
+            multiplier *= IntelligenceServiceConstants.HighNewsMultiplier; // High news intensity = reduce size
+        else if ((decimal)intelligence.NewsIntensity <= IntelligenceServiceConstants.LowNewsIntensityThreshold)
+            multiplier *= IntelligenceServiceConstants.LowNewsMultiplier; // Low news intensity = increase size
         
         // Market regime adjustments
         if (intelligence.Regime == "Volatile")
-            multiplier *= 0.75m; // Volatile markets = reduce size
+            multiplier *= IntelligenceServiceConstants.VolatileRegimeMultiplier; // Volatile markets = reduce size
         else if (intelligence.Regime == "Trending")
-            multiplier *= 1.1m; // Trending markets = increase size
+            multiplier *= IntelligenceServiceConstants.TrendingRegimeMultiplier; // Trending markets = increase size
         
         // Bias strength consideration
         if (intelligence.PrimaryBias == "Neutral")
-            multiplier *= 0.95m; // Neutral bias = slight decrease
+            multiplier *= IntelligenceServiceConstants.NeutralBiasMultiplier; // Neutral bias = slight decrease
         
         // Time-based adjustments (institutional activity patterns)
         var hour = DateTime.UtcNow.Hour;
-        if (hour >= 9 && hour <= 11) // Morning institutional activity
-            multiplier *= 1.05m;
-        else if (hour >= 15 && hour <= 16) // Power hour
-            multiplier *= 1.02m;
+        if (hour >= IntelligenceServiceConstants.MorningInstitutionalStartHour && hour <= IntelligenceServiceConstants.MorningInstitutionalEndHour) // Morning institutional activity
+            multiplier *= IntelligenceServiceConstants.MorningInstitutionalMultiplier;
+        else if (hour >= IntelligenceServiceConstants.PowerHourStartHour && hour <= IntelligenceServiceConstants.PowerHourEndHour) // Power hour
+            multiplier *= IntelligenceServiceConstants.PowerHourMultiplier;
 
         // Clamp to reasonable bounds
-        return Math.Max(0.2m, Math.Min(multiplier, 2.0m));
+        return Math.Max(IntelligenceServiceConstants.MinPositionSizeMultiplier, Math.Min(multiplier, IntelligenceServiceConstants.MaxPositionSizeMultiplier));
     }
 
     /// <summary>
@@ -225,25 +280,25 @@ public class IntelligenceService : IIntelligenceService
     public decimal GetStopLossMultiplier(IntelligenceMarketContext? intelligence = null)
     {
         if (intelligence == null)
-            return 1.0m;
+            return IntelligenceServiceConstants.DefaultMultiplier;
 
-        decimal multiplier = 1.0m;
+        decimal multiplier = IntelligenceServiceConstants.DefaultMultiplier;
 
         // Wider stops on FOMC/CPI days
         if (intelligence.IsFomcDay)
-            multiplier *= 2.0m;
+            multiplier *= IntelligenceServiceConstants.FomcDayStopMultiplier;
         else if (intelligence.IsCpiDay)
-            multiplier *= 1.5m;
+            multiplier *= IntelligenceServiceConstants.CpiDayStopMultiplier;
 
         // Wider stops in volatile regimes
         if (intelligence.Regime.Equals("Volatile", StringComparison.OrdinalIgnoreCase))
-            multiplier *= 1.5m;
+            multiplier *= IntelligenceServiceConstants.VolatileStopMultiplier;
 
         // High news intensity requires wider stops
-        if ((decimal)intelligence.NewsIntensity >= 80m)
-            multiplier *= 1.3m;
+        if ((decimal)intelligence.NewsIntensity >= IntelligenceServiceConstants.HighNewsStopThreshold)
+            multiplier *= IntelligenceServiceConstants.HighNewsStopMultiplier;
 
-        return Math.Max(1.0m, Math.Min(multiplier, 3.0m));
+        return Math.Max(IntelligenceServiceConstants.MinStopLossMultiplier, Math.Min(multiplier, IntelligenceServiceConstants.MaxStopLossMultiplier));
     }
 
     /// <summary>
@@ -252,26 +307,26 @@ public class IntelligenceService : IIntelligenceService
     public decimal GetTakeProfitMultiplier(IntelligenceMarketContext? intelligence = null)
     {
         if (intelligence == null)
-            return 1.0m;
+            return IntelligenceServiceConstants.DefaultMultiplier;
 
-        decimal multiplier = 1.0m;
+        decimal multiplier = IntelligenceServiceConstants.DefaultMultiplier;
 
         // Extended targets on FOMC days (capture full move)
         if (intelligence.IsFomcDay)
-            multiplier *= 3.0m;
+            multiplier *= IntelligenceServiceConstants.FomcDayTakeProfitMultiplier;
         else if (intelligence.IsCpiDay)
-            multiplier *= 2.0m;
+            multiplier *= IntelligenceServiceConstants.CpiDayTakeProfitMultiplier;
 
         // Extended targets in trending markets with high confidence
         if (intelligence.Regime.Equals("Trending", StringComparison.OrdinalIgnoreCase) &&
             (decimal)intelligence.ModelConfidence >= (decimal)_mlConfig.GetAIConfidenceThreshold())
-            multiplier *= 2.0m;
+            multiplier *= IntelligenceServiceConstants.TrendingHighConfidenceTakeProfitMultiplier;
 
         // Volatile regimes get extended targets
         if (intelligence.Regime.Equals("Volatile", StringComparison.OrdinalIgnoreCase))
-            multiplier *= 1.5m;
+            multiplier *= IntelligenceServiceConstants.VolatileTakeProfitMultiplier;
 
-        return Math.Max(1.0m, Math.Min(multiplier, 4.0m));
+        return Math.Max(IntelligenceServiceConstants.MinTakeProfitMultiplier, Math.Min(multiplier, IntelligenceServiceConstants.MaxTakeProfitMultiplier));
     }
 
     /// <summary>
@@ -301,7 +356,7 @@ public class IntelligenceService : IIntelligenceService
 
         return intelligence.IsFomcDay ||
                intelligence.IsCpiDay ||
-               (decimal)intelligence.NewsIntensity >= 80m ||
+               (decimal)intelligence.NewsIntensity >= IntelligenceServiceConstants.HighVolatilityNewsIntensityThreshold ||
                intelligence.Regime.Equals("Volatile", StringComparison.OrdinalIgnoreCase);
     }
 }

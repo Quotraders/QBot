@@ -25,7 +25,12 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 ## Progress Summary
 - **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
 - **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (1820/1820 = 100%) - **VERIFIED & SECURED**
-  - **Current Session (Round 148)**: 8 S109 violations fixed (MicrostructureSnapshot - execution decision constants)
+  - **Current Session (Round 158)**: 74 S109 violations fixed (IntelligenceService - position sizing and risk management multipliers)
+  - **Current Session (Round 157)**: 74 S109 violations fixed (UnifiedTradingBrain - trading brain thresholds and CVaR-PPO constants)
+  - **Current Session (Round 156)**: 84 S109 violations fixed (ContinuationPatternDetector - continuation pattern thresholds)
+  - **Current Session (Round 155)**: 58 S109 violations fixed (CandlestickPatternDetector - candlestick pattern thresholds)
+  - **Current Session (Round 154)**: 46 S109 violations fixed (ReversalPatternDetector - reversal pattern detection thresholds)
+  - **Previous Session (Round 148)**: 8 S109 violations fixed (MicrostructureSnapshot - execution decision constants)
   - **Previous Session (Round 147)**: 9 S109 violations fixed (UnifiedDataIntegrationService - data integration constants)
   - **Previous Session (Rounds 145-146)**: 26 S109 violations fixed (FeatureBusAdapter, StructuralPatternDetector - feature & pattern constants)
   - **Previous Session (Rounds 141-144)**: 44 S109 violations fixed (EnhancedBacktestService, StrategyMlModelManager, RegimeDetectionService, OnnxModelValidationService)
@@ -111,7 +116,273 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ---
 
-### 🔧 Round 153 - Phase 2: S109 Magic Numbers Elimination (Completed Session)
+### 🔧 Round 158 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (74 violations fixed, 1 file)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 918 | 844 | IntelligenceService.cs | Extracted intelligence service constants (position sizing, stop loss, take profit multipliers, thresholds) |
+
+**Example Pattern Applied - IntelligenceService.cs**:
+```csharp
+// Before (S109) - Magic numbers for intelligence-driven trading adjustments
+if (intelligence == null) return 1.0m;
+decimal multiplier = 1.0m;
+if ((decimal)intelligence.ModelConfidence >= 0.8m)
+    multiplier *= 1.5m;
+else if ((decimal)intelligence.ModelConfidence <= 0.4m)
+    multiplier *= 0.6m;
+if ((decimal)intelligence.NewsIntensity >= 70m)
+    multiplier *= 0.7m;
+else if ((decimal)intelligence.NewsIntensity <= 20m)
+    multiplier *= 1.2m;
+if (hour >= 9 && hour <= 11)
+    multiplier *= 1.05m;
+return Math.Max(0.2m, Math.Min(multiplier, 2.0m));
+if (intelligence.IsFomcDay) multiplier *= 2.0m;
+if ((decimal)intelligence.NewsIntensity >= 80m) multiplier *= 1.3m;
+return Math.Max(1.0m, Math.Min(multiplier, 3.0m));
+
+// After (S109) - Named constants in IntelligenceServiceConstants
+public const decimal DefaultMultiplier = 1.0m;
+public const decimal HighConfidenceThreshold = 0.8m;
+public const decimal HighConfidenceMultiplier = 1.5m;
+public const decimal LowConfidenceThreshold = 0.4m;
+public const decimal LowConfidenceMultiplier = 0.6m;
+public const decimal HighNewsIntensityThreshold = 70m;
+public const decimal HighNewsMultiplier = 0.7m;
+public const decimal LowNewsIntensityThreshold = 20m;
+public const decimal LowNewsMultiplier = 1.2m;
+public const int MorningInstitutionalStartHour = 9;
+public const int MorningInstitutionalEndHour = 11;
+public const decimal MorningInstitutionalMultiplier = 1.05m;
+public const decimal MinPositionSizeMultiplier = 0.2m;
+public const decimal MaxPositionSizeMultiplier = 2.0m;
+public const decimal FomcDayStopMultiplier = 2.0m;
+public const decimal HighNewsStopThreshold = 80m;
+public const decimal HighNewsStopMultiplier = 1.3m;
+public const decimal MinStopLossMultiplier = 1.0m;
+public const decimal MaxStopLossMultiplier = 3.0m;
+
+if (intelligence == null) return IntelligenceServiceConstants.DefaultMultiplier;
+decimal multiplier = IntelligenceServiceConstants.DefaultMultiplier;
+if ((decimal)intelligence.ModelConfidence >= IntelligenceServiceConstants.HighConfidenceThreshold)
+    multiplier *= IntelligenceServiceConstants.HighConfidenceMultiplier;
+else if ((decimal)intelligence.ModelConfidence <= IntelligenceServiceConstants.LowConfidenceThreshold)
+    multiplier *= IntelligenceServiceConstants.LowConfidenceMultiplier;
+if ((decimal)intelligence.NewsIntensity >= IntelligenceServiceConstants.HighNewsIntensityThreshold)
+    multiplier *= IntelligenceServiceConstants.HighNewsMultiplier;
+else if ((decimal)intelligence.NewsIntensity <= IntelligenceServiceConstants.LowNewsIntensityThreshold)
+    multiplier *= IntelligenceServiceConstants.LowNewsMultiplier;
+if (hour >= IntelligenceServiceConstants.MorningInstitutionalStartHour && hour <= IntelligenceServiceConstants.MorningInstitutionalEndHour)
+    multiplier *= IntelligenceServiceConstants.MorningInstitutionalMultiplier;
+return Math.Max(IntelligenceServiceConstants.MinPositionSizeMultiplier, Math.Min(multiplier, IntelligenceServiceConstants.MaxPositionSizeMultiplier));
+if (intelligence.IsFomcDay) multiplier *= IntelligenceServiceConstants.FomcDayStopMultiplier;
+if ((decimal)intelligence.NewsIntensity >= IntelligenceServiceConstants.HighNewsStopThreshold) multiplier *= IntelligenceServiceConstants.HighNewsStopMultiplier;
+return Math.Max(IntelligenceServiceConstants.MinStopLossMultiplier, Math.Min(multiplier, IntelligenceServiceConstants.MaxStopLossMultiplier));
+```
+
+**Build Verification**: ✅ 0 CS errors maintained, 74 S109 violations fixed (918 → 844)
+
+---
+
+### 🔧 Round 157 - Phase 2: S109 Magic Numbers Elimination (Previous in Current Session)
+
+**S109: Magic Number to Named Constant Conversion (74 violations fixed, 1 file)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 992 | 918 | UnifiedTradingBrain.cs | Extracted trading brain thresholds (performance metrics, scheduling intervals, CVaR-PPO state normalization, risk adjustment thresholds) |
+
+**Example Pattern Applied - UnifiedTradingBrain.cs**:
+```csharp
+// Before (S109) - Magic numbers for trading brain logic
+if (metrics.WinRate < 0.4m)
+if (c.SuccessRate < 0.3m)
+if (bestPerformance.WinRate < 0.6m)
+.Where(c => c.SuccessRate > 0.6m && c.TotalCount >= 3)
+HistoricalLearningIntervalMinutes = 10,
+HistoricalLearningIntervalMinutes = 15,
+HistoricalLearningIntervalMinutes = 60,
+var unifiedTrainingData = _decisionHistory.TakeLast(2000)
+(double)Math.Min(1.0m, context.Volatility / 2.0m)
+strategy.SelectedStrategy switch { "S2_VWAP" => 0.25, "S3_Compression" => 0.5, ... }
+var probabilityAdjustment = (decimal)Math.Max(0.3, actionResult.ActionProbability);
+if (actionResult.CVaREstimate < -0.1)
+
+// After (S109) - Named constants
+public const decimal PoorPerformanceWinRateThreshold = 0.4m;
+public const decimal UnsuccessfulConditionThreshold = 0.3m;
+public const decimal MinimumWinRateToSharePatterns = 0.6m;
+public const decimal MinimumConditionSuccessRate = 0.6m;
+public const int MinimumConditionTrialCount = 3;
+public const int MaintenanceLearningIntervalMinutes = 10;
+public const int ClosedMarketLearningIntervalMinutes = 15;
+public const int OpenMarketLearningIntervalMinutes = 60;
+public const int TrainingDataHistorySize = 2000;
+public const double VolatilityNormalizationDivisor = 2.0;
+public const double S2VwapStrategyEncoding = 0.25;
+public const double S3CompressionStrategyEncoding = 0.5;
+public const decimal MinProbabilityAdjustment = 0.3m;
+public const decimal HighNegativeTailRiskThreshold = -0.1m;
+
+if (metrics.WinRate < TopStepConfig.PoorPerformanceWinRateThreshold)
+if (c.SuccessRate < TopStepConfig.UnsuccessfulConditionThreshold)
+if (bestPerformance.WinRate < TopStepConfig.MinimumWinRateToSharePatterns)
+.Where(c => c.SuccessRate > TopStepConfig.MinimumConditionSuccessRate && c.TotalCount >= TopStepConfig.MinimumConditionTrialCount)
+HistoricalLearningIntervalMinutes = TopStepConfig.MaintenanceLearningIntervalMinutes,
+HistoricalLearningIntervalMinutes = TopStepConfig.ClosedMarketLearningIntervalMinutes,
+HistoricalLearningIntervalMinutes = TopStepConfig.OpenMarketLearningIntervalMinutes,
+var unifiedTrainingData = _decisionHistory.TakeLast(TopStepConfig.TrainingDataHistorySize)
+(double)Math.Min(TopStepConfig.MaxNormalizationValue, context.Volatility / (decimal)TopStepConfig.VolatilityNormalizationDivisor)
+strategy.SelectedStrategy switch { "S2_VWAP" => TopStepConfig.S2VwapStrategyEncoding, "S3_Compression" => TopStepConfig.S3CompressionStrategyEncoding, ... }
+var probabilityAdjustment = (decimal)Math.Max((double)TopStepConfig.MinProbabilityAdjustment, actionResult.ActionProbability);
+if (actionResult.CVaREstimate < (double)TopStepConfig.HighNegativeTailRiskThreshold)
+```
+
+**Build Verification**: ✅ 0 CS errors maintained, 74 S109 violations fixed (992 → 918)
+
+---
+
+### 🔧 Round 156 - Phase 2: S109 Magic Numbers Elimination (Previous in Current Session)
+
+**S109: Magic Number to Named Constant Conversion (84 violations fixed, 1 file)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 1076 | 992 | ContinuationPatternDetector.cs | Extracted continuation pattern thresholds (bar requirements, lookback periods, trend ratios, score thresholds, convergence ratios) |
+
+**Example Pattern Applied - ContinuationPatternDetector.cs**:
+```csharp
+// Before (S109) - Magic numbers for continuation patterns
+ContinuationType.BullFlag => ("BullFlag", 15),
+ContinuationType.BullPennant => ("BullPennant", 20),
+var lookback = Math.Min(bars.Count, 20);
+if (recent.Count < 15) return new PatternResult { Score = 0, Confidence = 0 };
+var trendPortion = (int)(recent.Count * 0.6);
+if (slopeRatio < 0.3)
+score = Math.Min(0.85, 0.6 + (0.3 - slopeRatio) * 0.8);
+if (convergenceRatio < 0.6)
+if (moveSize > avgRange * 1.5m)
+
+// After (S109) - Named constants
+private const int FlagBars = 15;
+private const int PennantBars = 20;
+private const int FlagLookback = 20;
+private const int FlagMinBars = 15;
+private const double FlagTrendPortionRatio = 0.6;
+private const double FlagMaxSlopeRatio = 0.3;
+private const double FlagMaxScore = 0.85;
+private const double FlagBaseScore = 0.6;
+private const double FlagSlopeWeight = 0.8;
+private const double PennantMaxConvergenceRatio = 0.6;
+private const decimal BreakoutMoveMultiplier = 1.5m;
+
+ContinuationType.BullFlag => ("BullFlag", FlagBars),
+ContinuationType.BullPennant => ("BullPennant", PennantBars),
+var lookback = Math.Min(bars.Count, FlagLookback);
+if (recent.Count < FlagMinBars) return new PatternResult { Score = 0, Confidence = 0 };
+var trendPortion = (int)(recent.Count * FlagTrendPortionRatio);
+if (slopeRatio < FlagMaxSlopeRatio)
+score = Math.Min(FlagMaxScore, FlagBaseScore + (FlagMaxSlopeRatio - slopeRatio) * FlagSlopeWeight);
+if (convergenceRatio < PennantMaxConvergenceRatio)
+if (moveSize > avgRange * BreakoutMoveMultiplier)
+```
+
+**Build Verification**: ✅ 0 CS errors maintained, 84 S109 violations fixed (1076 → 992)
+
+---
+
+### 🔧 Round 155 - Phase 2: S109 Magic Numbers Elimination (Previous in Current Session)
+
+**S109: Magic Number to Named Constant Conversion (58 violations fixed, 1 file)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 1134 | 1076 | CandlestickPatternDetector.cs | Extracted candlestick pattern thresholds (bar requirements, body ratios, shadow thresholds, pattern scores) |
+
+**Example Pattern Applied - CandlestickPatternDetector.cs**:
+```csharp
+// Before (S109) - Magic numbers for candlestick patterns
+CandlestickType.Hammer => ("Hammer", 2),
+CandlestickType.Doji => ("Doji", 1),
+var score = bodyRatio < 0.05m ? 0.9 : bodyRatio < 0.1m ? 0.7 : bodyRatio < 0.15m ? 0.5 : 0.0;
+if (bodyRatio < 0.3m && lowerShadowRatio > 0.6m && upperShadowRatio < 0.1m)
+score = Math.Min(0.95, 0.7 + (double)(lowerShadowRatio - 0.6m) * 2);
+var score = Math.Min(0.95, 0.6 + Math.Min(0.35, (double)(sizeRatio - 1) * 0.1));
+
+// After (S109) - Named constants
+private const int TwoBarPattern = 2;
+private const int SingleBarPattern = 1;
+private const decimal DojiBodyRatioTiny = 0.05m;
+private const double DojiScoreTiny = 0.9;
+private const decimal HammerBodyRatioMax = 0.3m;
+private const decimal HammerLowerShadowMin = 0.6m;
+private const decimal HammerUpperShadowMax = 0.1m;
+private const double HammerMaxScore = 0.95;
+private const double HammerBaseScore = 0.7;
+private const double HammerShadowWeight = 2.0;
+private const double EngulfingMaxScore = 0.95;
+private const double EngulfingBaseScore = 0.6;
+private const double EngulfingSizeWeight = 0.1;
+
+CandlestickType.Hammer => ("Hammer", TwoBarPattern),
+CandlestickType.Doji => ("Doji", SingleBarPattern),
+var score = bodyRatio < DojiBodyRatioTiny ? DojiScoreTiny : bodyRatio < DojiBodyRatioSmall ? DojiScoreSmall : bodyRatio < DojiBodyRatioMedium ? DojiScoreMedium : 0.0;
+if (bodyRatio < HammerBodyRatioMax && lowerShadowRatio > HammerLowerShadowMin && upperShadowRatio < HammerUpperShadowMax)
+score = Math.Min(HammerMaxScore, HammerBaseScore + (double)(lowerShadowRatio - HammerLowerShadowMin) * HammerShadowWeight);
+var score = Math.Min(EngulfingMaxScore, EngulfingBaseScore + Math.Min(EngulfingMaxBonus, ((double)sizeRatio - EngulfingSizeMinimum) * EngulfingSizeWeight));
+```
+
+**Build Verification**: ✅ 0 CS errors maintained, 58 S109 violations fixed (1134 → 1076)
+
+---
+
+### 🔧 Round 154 - Phase 2: S109 Magic Numbers Elimination (Previous in Current Session)
+
+**S109: Magic Number to Named Constant Conversion (46 violations fixed, 1 file)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 1180 | 1134 | ReversalPatternDetector.cs | Extracted reversal pattern detection thresholds (bar requirements, score thresholds, lookback periods, ratio thresholds) |
+
+**Example Pattern Applied - ReversalPatternDetector.cs**:
+```csharp
+// Before (S109) - Magic numbers for pattern detection
+ReversalType.KeyReversal => ("KeyReversal", 2),
+ReversalType.IslandReversal => ("IslandReversal", 5),
+var wickRatio = wickSize / Math.Max(rangeSize, 0.01);
+var score = Math.Min(0.9, 0.6 + wickRatio * 0.5);
+if (rangeMultiple < 1.5) return new PatternResult { Score = 0, Confidence = 0 };
+if (wickRatio > 0.4) // Large wick suggests rejection
+if (bars.Count < 15) return new PatternResult { Score = 0, Confidence = 0 };
+
+// After (S109) - Named constants
+private const int KeyReversalBars = 2;
+private const int IslandReversalBars = 5;
+private const double MinimumRangeDivisor = 0.01;
+private const double MaxKeyReversalScore = 0.9;
+private const double KeyReversalBaseScore = 0.6;
+private const double KeyReversalWickWeight = 0.5;
+private const double MinClimaxRangeMultiple = 1.5;
+private const double MinClimaxWickRatio = 0.4;
+private const int TrendExhaustionBars = 15;
+
+ReversalType.KeyReversal => ("KeyReversal", KeyReversalBars),
+ReversalType.IslandReversal => ("IslandReversal", IslandReversalBars),
+var wickRatio = wickSize / Math.Max(rangeSize, MinimumRangeDivisor);
+var score = Math.Min(MaxKeyReversalScore, KeyReversalBaseScore + wickRatio * KeyReversalWickWeight);
+if (rangeMultiple < MinClimaxRangeMultiple) return new PatternResult { Score = 0, Confidence = 0 };
+if (wickRatio > MinClimaxWickRatio) // Large wick suggests rejection
+if (bars.Count < TrendExhaustionBars) return new PatternResult { Score = 0, Confidence = 0 };
+```
+
+**Build Verification**: ✅ 0 CS errors maintained, 46 S109 violations fixed (1180 → 1134)
+
+---
+
+### 🔧 Round 153 - Phase 2: S109 Magic Numbers Elimination (Previous Session)
 
 **S109: Magic Number to Named Constant Conversion (42 violations fixed, 3 files)**
 
