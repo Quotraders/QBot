@@ -248,7 +248,17 @@ namespace BotCore
 
                 return isValid;
             }
-            catch (Exception ex)
+            catch (JsonException ex)
+            {
+                _log.LogError(ex, "[ModelUpdater] Signature verification error");
+                return false;
+            }
+            catch (CryptographicException ex)
+            {
+                _log.LogError(ex, "[ModelUpdater] Signature verification error");
+                return false;
+            }
+            catch (FormatException ex)
             {
                 _log.LogError(ex, "[ModelUpdater] Signature verification error");
                 return false;
@@ -289,7 +299,12 @@ namespace BotCore
                 var hasPositions = await _positionAgent.HasActivePositionsAsync(cancellationToken).ConfigureAwait(false);
                 return !hasPositions;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
+            {
+                _log.LogError(ex, "[ModelUpdater] Error checking position status");
+                return false; // Fail safe - don't update if we can't verify
+            }
+            catch (ObjectDisposedException ex)
             {
                 _log.LogError(ex, "[ModelUpdater] Error checking position status");
                 return false; // Fail safe - don't update if we can't verify
@@ -316,7 +331,17 @@ namespace BotCore
                             modelName, modelInfo.Checksum[..ChecksumDisplayLength]);
                     }
                 }
-                catch (Exception ex)
+                catch (HttpRequestException ex)
+                {
+                    _log.LogError(ex, "[ModelUpdater] Error updating model {ModelName}", modelName);
+                    allSuccessful = false;
+                }
+                catch (IOException ex)
+                {
+                    _log.LogError(ex, "[ModelUpdater] Error updating model {ModelName}", modelName);
+                    allSuccessful = false;
+                }
+                catch (UnauthorizedAccessException ex)
                 {
                     _log.LogError(ex, "[ModelUpdater] Error updating model {ModelName}", modelName);
                     allSuccessful = false;

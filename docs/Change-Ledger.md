@@ -64,7 +64,87 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 128 - Phase 2: S109 Zone Proximity + CA1860 Performance (Current Session)
+### 🔧 Round 129 - Phase 2: CA1031 Model Updates + S109 MTF Config (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 708 | 702 | ModelUpdaterService.cs | Replaced generic Exception catches with JsonException, CryptographicException, FormatException, InvalidOperationException, ObjectDisposedException, HttpRequestException, IOException, UnauthorizedAccessException for model update operations |
+| S109 | 1888 | 1882 | MtfStructureResolver.cs | Added named constants for multi-timeframe configuration (DefaultMinDataPoints, DefaultCalculationEpsilon, PriceHistoryBufferSize) |
+
+**Total Fixed: 12 violations (6 unique fixes in 2 files)**
+
+**Example Pattern Applied**:
+```csharp
+// Before (CA1031) - Generic exception for model verification
+catch (Exception ex)
+{
+    _log.LogError(ex, "[ModelUpdater] Signature verification error");
+    return false;
+}
+
+// After (Compliant) - Specific exceptions for crypto and JSON operations
+catch (JsonException ex)
+{
+    _log.LogError(ex, "[ModelUpdater] Signature verification error");
+    return false;
+}
+catch (CryptographicException ex)
+{
+    _log.LogError(ex, "[ModelUpdater] Signature verification error");
+    return false;
+}
+catch (FormatException ex)
+{
+    _log.LogError(ex, "[ModelUpdater] Signature verification error");
+    return false;
+}
+
+// Before (CA1031) - Generic exception for position checking
+catch (Exception ex)
+{
+    _log.LogError(ex, "[ModelUpdater] Error checking position status");
+    return false; // Fail safe - don't update if we can't verify
+}
+
+// After (Compliant) - Specific exceptions for service operations
+catch (InvalidOperationException ex)
+{
+    _log.LogError(ex, "[ModelUpdater] Error checking position status");
+    return false; // Fail safe - don't update if we can't verify
+}
+catch (ObjectDisposedException ex)
+{
+    _log.LogError(ex, "[ModelUpdater] Error checking position status");
+    return false; // Fail safe - don't update if we can't verify
+}
+
+// Before (S109) - Magic numbers for MTF configuration
+? points : 2; // Minimal requirement fallback
+? eps : 1e-10; // Minimal precision fallback
+while (state.PriceHistory.Count > MediumHorizonBars + 10) // Keep buffer
+
+// After (Compliant) - Named constants with clear semantics
+private const int DefaultMinDataPoints = 2;              // Minimal data points required for calculation
+private const double DefaultCalculationEpsilon = 1e-10;  // Minimal precision for floating point comparisons
+private const int PriceHistoryBufferSize = 10;           // Additional bars to keep for memory efficiency
+
+? points : DefaultMinDataPoints; // Minimal requirement fallback
+? eps : DefaultCalculationEpsilon; // Minimal precision fallback
+while (state.PriceHistory.Count > MediumHorizonBars + PriceHistoryBufferSize) // Keep buffer
+```
+
+**Rationale**: 
+- **CA1031**: Priority 1 (Correctness & Invariants) - Specific exception handling for model update operations (crypto, JSON, HTTP, I/O)
+- **S109**: Priority 1 (Correctness & Invariants) - Multi-timeframe configuration thresholds extracted to named constants
+- **Files Fixed**:
+  - `ModelUpdaterService.cs` - Model manifest verification, position checking, and model file updates
+  - `MtfStructureResolver.cs` - Multi-timeframe structure feature resolver configuration
+- **Context**: Production model hot-reload system with fail-safe position checking and multi-timeframe technical analysis
+
+**Build Verification**: ✅ 0 CS errors maintained, ~5897 analyzer violations remaining (12 violations fixed)
+
+---
+
+### 🔧 Round 128 - Phase 2: S109 Zone Proximity + CA1860 Performance (Previous in Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | S109 | 1904 | 1888 | ZoneFeatureResolvers.cs | Added named constants for zone proximity thresholds (CloseProximityThreshold, MediumProximityThreshold, FullZoneWeight, MediumZoneWeight, LowZoneWeight) |

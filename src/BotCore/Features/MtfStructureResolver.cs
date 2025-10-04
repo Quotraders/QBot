@@ -26,6 +26,11 @@ namespace BotCore.Features
             // Add more TopstepX contract mappings as needed
         };
         
+        // Multi-timeframe configuration constants
+        private const int DefaultMinDataPoints = 2;              // Minimal data points required for calculation
+        private const double DefaultCalculationEpsilon = 1e-10;  // Minimal precision for floating point comparisons
+        private const int PriceHistoryBufferSize = 10;           // Additional bars to keep for memory efficiency
+        
         // Configuration-driven constants (fail-closed requirement)
         private static readonly double SafeZeroValue = GetConfiguredSafeValue();
         private static readonly int MinDataPointsRequired = GetConfiguredMinDataPoints();
@@ -36,11 +41,11 @@ namespace BotCore.Features
         
         private static int GetConfiguredMinDataPoints() =>
             int.TryParse(Environment.GetEnvironmentVariable("MTF_MIN_DATA_POINTS"), out var points) && points > 0 
-                ? points : 2; // Minimal requirement fallback
+                ? points : DefaultMinDataPoints; // Minimal requirement fallback
         
         private static double GetConfiguredEpsilon() => 
             double.TryParse(Environment.GetEnvironmentVariable("MTF_CALCULATION_EPSILON"), out var eps) && eps > 0 
-                ? eps : 1e-10; // Minimal precision fallback
+                ? eps : DefaultCalculationEpsilon; // Minimal precision fallback
         
         private const int ShortHorizonBars = 10;
         private const int MediumHorizonBars = 30;
@@ -101,7 +106,7 @@ namespace BotCore.Features
                 state.PriceHistory.Add(new PricePoint { Price = (double)close, Timestamp = timestamp });
                 
                 // Keep only required bars for memory efficiency
-                while (state.PriceHistory.Count > MediumHorizonBars + 10) // Keep buffer
+                while (state.PriceHistory.Count > MediumHorizonBars + PriceHistoryBufferSize) // Keep buffer
                 {
                     state.PriceHistory.RemoveAt(0);
                 }
