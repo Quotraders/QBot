@@ -64,7 +64,64 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 125 - Phase 2: S109 Config Validation + CA1031 Risk/Auth (Current Session)
+### 🔧 Round 126 - Phase 2: S109 Instrument Specs + CA1860 Performance (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 1934 | 1924 | InstrumentMeta.cs | Added named constants for futures contract specifications (ESPointValue, NQPointValue, StandardTickSize, StandardPriceDecimals) |
+| CA1860 | 110 | 104 | TripleBarrierLabeler.cs, MlPipelineHealthMonitor.cs | Replaced .Any() with .Count > 0 and .Length > 0 for performance |
+
+**Total Fixed: 16 violations (8 unique fixes in 3 files)**
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers for contract specifications
+return symbol.Equals("ES", ...) ? 50m  // E-mini S&P 500
+     : symbol.Equals("NQ", ...) ? 20m  // E-mini NASDAQ-100
+     : 1m;
+return 0.25m;  // Standard tick
+return 2;      // Display decimals
+if (t <= 0) t = 0.25m;
+
+// After (Compliant) - Named constants with clear contract specifications
+private const decimal ESPointValue = 50m;           // E-mini S&P 500: $50 per full point
+private const decimal NQPointValue = 20m;           // E-mini NASDAQ-100: $20 per full point
+private const decimal StandardTickSize = 0.25m;     // ES/NQ standard tick increment
+private const int StandardPriceDecimals = 2;        // Price display precision
+
+return symbol.Equals("ES", ...) ? ESPointValue
+     : symbol.Equals("NQ", ...) ? NQPointValue
+     : 1m;
+return StandardTickSize;
+return StandardPriceDecimals;
+if (t <= 0) t = StandardTickSize;
+
+// Before (CA1860) - Using .Any() for collection check
+if (!priceData.Any())
+    return null;
+if (backupFiles.Any())
+if (backupFiles.Any())
+
+// After (Compliant) - Using .Count/.Length comparison for performance
+if (priceData.Count == 0)
+    return null;
+if (backupFiles.Length > 0)
+if (backupFiles.Count > 0)
+```
+
+**Rationale**: 
+- **S109**: Priority 1 (Correctness & Invariants) - Critical trading contract specifications extracted to named constants
+- **CA1860**: Priority 5 (Resource Safety & Performance) - Count/Length comparison is more performant than .Any()
+- **Files Fixed**:
+  - `InstrumentMeta.cs` - E-mini S&P 500 and NASDAQ-100 futures contract specifications (point values, tick sizes)
+  - `TripleBarrierLabeler.cs` - Meta-labeling price data validation
+  - `MlPipelineHealthMonitor.cs` - ML model backup file checking (2 locations)
+- **Context**: Trading instrument metadata for ES/NQ futures and ML pipeline health monitoring
+
+**Build Verification**: ✅ 0 CS errors maintained, 5906 analyzer violations remaining (16 violations fixed, 8 unique changes)
+
+---
+
+### 🔧 Round 125 - Phase 2: S109 Config Validation + CA1031 Risk/Auth (Previous in Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | S109 | 1940 | 1934 | ProductionConfigurationValidation.cs | Added named constants for trading configuration thresholds (MinimumDailyLoss, ProfitTargetMinimumRatio, MinimumCircuitBreakerThreshold) |

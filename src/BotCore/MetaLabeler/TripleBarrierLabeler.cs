@@ -71,7 +71,7 @@ public class TripleBarrierLabeler
                 endTime,
                 ct).ConfigureAwait(false);
 
-            if (!priceData.Any())
+            if (priceData.Count == 0)
                 return null;
 
             // Calculate barriers
