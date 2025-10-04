@@ -10,12 +10,22 @@ namespace BotCore.Execution
     /// </summary>
     public sealed class MicrostructureSnapshot
     {
+        // S109: Microstructure analysis constants
+        private const int MidPriceDivisor = 2;                        // Divisor for mid-price calculation
+        private const decimal BasisPointsMultiplier = 10000m;         // Multiplier to convert to basis points
+        private const int DataStalenessMinutes = 5;                   // Maximum age for microstructure data
+        private const decimal WideSpreadsThreshold = 2.0m;            // Spread threshold for maker orders (bps)
+        private const double HighBookImbalanceThreshold = 0.3;        // Book imbalance threshold
+        private const double HighUrgencyThreshold = 0.7;              // Urgency score threshold for aggressive execution
+        private const double ZoneBreakoutThreshold = 0.8;             // Zone breakout probability threshold
+        private const double MaxQueueEtaSeconds = 30.0;               // Maximum queue ETA for limit orders
+        
         // Price and spread data
         public decimal BidPrice { get; set; }
         public decimal AskPrice { get; set; }
         public decimal LastPrice { get; set; }
-        public decimal MidPrice => (BidPrice + AskPrice) / 2m;
-        public decimal SpreadBps => BidPrice > 0 ? ((AskPrice - BidPrice) / MidPrice) * 10000m : 0m;
+        public decimal MidPrice => (BidPrice + AskPrice) / MidPriceDivisor;
+        public decimal SpreadBps => BidPrice > 0 ? ((AskPrice - BidPrice) / MidPrice) * BasisPointsMultiplier : 0m;
         
         // Order book depth
         public long BidSize { get; set; }
@@ -64,8 +74,8 @@ namespace BotCore.Execution
             if (AskPrice <= BidPrice)
                 errors.Add("Ask price must be greater than bid price");
                 
-            if (Timestamp < DateTime.UtcNow.AddMinutes(-5))
-                errors.Add("Microstructure data is stale (older than 5 minutes)");
+            if (Timestamp < DateTime.UtcNow.AddMinutes(-DataStalenessMinutes))
+                errors.Add($"Microstructure data is stale (older than {DataStalenessMinutes} minutes)");
                 
             if (string.IsNullOrWhiteSpace(ZoneRole))
                 errors.Add("ZoneRole is required for S7 execution");
@@ -87,13 +97,13 @@ namespace BotCore.Execution
         public bool FavorsMakerOrders()
         {
             // Wide spreads favor maker orders
-            if (SpreadBps > 2.0m) return true;
+            if (SpreadBps > WideSpreadsThreshold) return true;
             
             // Inside zone bands with stable regime favors maker
             if (ZoneRole == "NEUTRAL" && MarketRegime == "RANGE") return true;
             
             // High book imbalance against our direction favors maker
-            if (Math.Abs(BookImbalance) > 0.3) return true;
+            if (Math.Abs(BookImbalance) > HighBookImbalanceThreshold) return true;
             
             return false;
         }
@@ -105,16 +115,16 @@ namespace BotCore.Execution
         public bool RequiresAggressiveExecution(double urgencyScore)
         {
             // High urgency always requires aggressive execution
-            if (urgencyScore > 0.7) return true;
+            if (urgencyScore > HighUrgencyThreshold) return true;
             
             // Strong breakout signals require aggressive execution
-            if (ZoneBreakoutScore.HasValue && ZoneBreakoutScore.Value > 0.8) return true;
+            if (ZoneBreakoutScore.HasValue && ZoneBreakoutScore.Value > ZoneBreakoutThreshold) return true;
             
             // High volatility with trend favors aggressive execution
             if (IsHighVolatility && MarketRegime == "BREAKOUT") return true;
             
             // Poor queue conditions require aggressive execution
-            if (EstimatedQueueEta.HasValue && EstimatedQueueEta.Value > 30.0) return true;
+            if (EstimatedQueueEta.HasValue && EstimatedQueueEta.Value > MaxQueueEtaSeconds) return true;
             
             return false;
         }

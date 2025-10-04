@@ -15,6 +15,11 @@ public sealed class OnnxModelValidationService
     private readonly List<string> _modelPaths = new();
     private readonly Dictionary<string, ValidationResult> _validationResults = new();
 
+    // S109: ONNX model validation thresholds
+    private const int KilobytesToMegabytes = 1024;
+    private const long GigabytesInBytes = 2L * 1024 * 1024 * 1024; // 2GB limit per model
+    private const int MaxLoadTimeSeconds = 30; // Maximum acceptable load time
+
     public class ValidationResult
     {
         public string ModelPath { get; set; } = string.Empty;
@@ -119,7 +124,7 @@ public sealed class OnnxModelValidationService
             {
                 _logger.LogInformation("[ONNX-Validation] Model validation SUCCESS: {ModelPath} " +
                     "(Load: {LoadTime}ms, Memory: {MemoryMB}MB, I/O: {InputCount}/{OutputCount})",
-                    result.ModelPath, result.LoadTime.TotalMilliseconds, result.MemoryUsage / 1024 / 1024,
+                    result.ModelPath, result.LoadTime.TotalMilliseconds, result.MemoryUsage / KilobytesToMegabytes / KilobytesToMegabytes,
                     result.InputCount, result.OutputCount);
             }
         }
@@ -179,15 +184,15 @@ public sealed class OnnxModelValidationService
                     result.IsValid = false;
                     result.ErrorMessage = "Model has no outputs";
                 }
-                else if (result.LoadTime.TotalSeconds > 30)
+                else if (result.LoadTime.TotalSeconds > MaxLoadTimeSeconds)
                 {
                     result.IsValid = false;
                     result.ErrorMessage = $"Model load time too slow: {result.LoadTime.TotalSeconds:F1}s";
                 }
-                else if (result.MemoryUsage > 2L * 1024 * 1024 * 1024) // 2GB limit per model
+                else if (result.MemoryUsage > GigabytesInBytes)
                 {
                     result.IsValid = false;
-                    result.ErrorMessage = $"Model memory usage too high: {result.MemoryUsage / 1024 / 1024}MB";
+                    result.ErrorMessage = $"Model memory usage too high: {result.MemoryUsage / KilobytesToMegabytes / KilobytesToMegabytes}MB";
                 }
             }
             else
@@ -301,7 +306,7 @@ STATUS: {(success ? "✅ ALL MODELS VALID" : "❌ SOME MODELS FAILED")}
             var status = result.IsValid ? "✅" : "❌";
             report += $"{status} {Path.GetFileName(result.ModelPath)} " +
                      $"({result.LoadTime.TotalMilliseconds:F0}ms, " +
-                     $"{result.MemoryUsage / 1024 / 1024}MB, " +
+                     $"{result.MemoryUsage / KilobytesToMegabytes / KilobytesToMegabytes}MB, " +
                      $"{result.InputCount}→{result.OutputCount})\n";
             
             if (!result.IsValid)

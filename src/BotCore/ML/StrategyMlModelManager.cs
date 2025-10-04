@@ -59,6 +59,19 @@ namespace BotCore.ML
         private readonly string _metaClassifierPath;
         private readonly string _execQualityPath;
 
+        // S109: ML model thresholds and defaults
+        private const decimal DefaultPositionSizeMultiplier = 1.0m;
+        private const decimal MinimumQualityScore = 0.3m;
+        private const decimal MinimumSignalScore = 0.5m;
+        private const int MinimumVolume = 100;
+        private const decimal DefaultExecutionQuality = 0.8m;
+        private const decimal SpreadQualityThreshold = 0.001m; // 0.1% of price
+        private const decimal SpreadQualityPenalty = 0.2m;
+        private const int VolumeQualityThreshold = 1000;
+        private const decimal VolumeQualityPenalty = 0.3m;
+        private const decimal MinimumQualityClamp = 0.1m;
+        private const decimal MaximumQualityClamp = 1.0m;
+
         public static bool IsEnabled => Environment.GetEnvironmentVariable("RL_ENABLED") == "1";
 
         public StrategyMlModelManager(ILogger logger, IMLMemoryManager? memoryManager = null, OnnxModelLoader? onnxLoader = null)
@@ -101,7 +114,7 @@ namespace BotCore.ML
             {
                 if (!IsEnabled || !File.Exists(_rlSizerPath))
                 {
-                    return 1.0m; // Default multiplier
+                    return DefaultPositionSizeMultiplier; // Default multiplier
                 }
 
                 // 🚀 USE REAL ONNX MODEL FOR POSITION SIZING
@@ -142,13 +155,13 @@ namespace BotCore.ML
                 }
                 
                 _logger.LogWarning("[ML-Manager] ONNX model not available, using fallback multiplier");
-                return 1.0m;
+                return DefaultPositionSizeMultiplier;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[ML-Manager] Error getting position size multiplier for {Strategy}-{Symbol}",
                     strategyId, symbol);
-                return 1.0m; // Fallback to default
+                return DefaultPositionSizeMultiplier; // Fallback to default
             }
         }
 
@@ -209,14 +222,14 @@ namespace BotCore.ML
                 }
 
                 // Fallback to basic quality gates
-                if (qScore < 0.3m) return false; // Very low quality signals
-                if (score < 0.5m) return false; // Very low score signals
+                if (qScore < MinimumQualityScore) return false; // Very low quality signals
+                if (score < MinimumSignalScore) return false; // Very low score signals
 
                 // Volume validation
                 if (bars.Any())
                 {
                     var latest = bars.Last();
-                    if (latest.Volume < 100) return false; // Very low volume
+                    if (latest.Volume < MinimumVolume) return false; // Very low volume
                 }
 
                 return true;
@@ -243,7 +256,7 @@ namespace BotCore.ML
             {
                 if (!IsEnabled)
                 {
-                    return 0.8m; // Default good execution quality
+                    return DefaultExecutionQuality; // Default good execution quality
                 }
 
                 // 🚀 USE REAL ONNX EXECUTION QUALITY PREDICTOR
@@ -283,26 +296,26 @@ namespace BotCore.ML
                 }
 
                 // Fallback to rule-based scoring
-                decimal qualityScore = 1.0m;
+                decimal qualityScore = MaximumQualityClamp;
 
                 // Penalize wide spreads
-                if (spread > price * 0.001m) // > 0.1%
+                if (spread > price * SpreadQualityThreshold) // > 0.1%
                 {
-                    qualityScore -= 0.2m;
+                    qualityScore -= SpreadQualityPenalty;
                 }
 
                 // Penalize low volume
-                if (volume < 1000)
+                if (volume < VolumeQualityThreshold)
                 {
-                    qualityScore -= 0.3m;
+                    qualityScore -= VolumeQualityPenalty;
                 }
 
-                return Math.Clamp(qualityScore, 0.1m, 1.0m);
+                return Math.Clamp(qualityScore, MinimumQualityClamp, MaximumQualityClamp);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[ML-Manager] Error calculating execution quality for {Symbol}", symbol);
-                return 0.8m; // Default score
+                return DefaultExecutionQuality; // Default score
             }
         }
 

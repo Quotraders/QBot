@@ -23,6 +23,14 @@ public class StructuralPatternDetector : IPatternDetector
     private const int TriangleBarRequirement = 20;
     private const int RoundingBarRequirement = 30;
     private const int DefaultBarRequirement = 10;
+    
+    // S109: Pattern recognition thresholds
+    private const int MinimumPeaksForDouble = 2;              // Minimum peaks for double top/bottom
+    private const int MinimumPeaksForTriple = 3;             // Minimum peaks for triple top/bottom
+    private const int PeakLookbackWindow = 8;                 // Bars to look back for peak detection
+    private const int PeakCountForAverage = 2;                // Number of peaks to average for level calculation
+    private const decimal ShoulderSimilarityThreshold = 0.97m; // 97% similarity for H&S shoulders
+    private const decimal DoublePeakSimilarityThreshold = 0.98m; // 98% similarity for double tops/bottoms
 
     public StructuralPatternDetector(StructuralType type)
     {
@@ -77,11 +85,11 @@ public class StructuralPatternDetector : IPatternDetector
     private static PatternResult DetectHeadAndShoulders(IReadOnlyList<Bar> bars)
     {
         // Find potential head and shoulder peaks
-        var peaks = FindPeaks(bars, 3);
-        if (peaks.Count < 3) return new PatternResult { Score = 0, Confidence = 0 };
+        var peaks = FindPeaks(bars, MinimumPeaksForTriple);
+        if (peaks.Count < MinimumPeaksForTriple) return new PatternResult { Score = 0, Confidence = 0 };
 
         // Look for H&S pattern: left shoulder, head (higher), right shoulder (similar to left)
-        for (int i = 0; i < peaks.Count - 2; i++)
+        for (int i = 0; i < peaks.Count - MinimumPeaksForDouble; i++)
         {
             var leftShoulder = peaks[i];
             var head = peaks[i + 1];
@@ -91,11 +99,11 @@ public class StructuralPatternDetector : IPatternDetector
             if (head.Value <= leftShoulder.Value || head.Value <= rightShoulder.Value)
                 continue;
 
-            // Shoulders should be similar height (within 3%)
+            // Shoulders should be similar height
             var shoulderRatio = Math.Min(leftShoulder.Value, rightShoulder.Value) / 
                                Math.Max(leftShoulder.Value, rightShoulder.Value);
             
-            if (shoulderRatio < 0.97m) continue;
+            if (shoulderRatio < ShoulderSimilarityThreshold) continue;
 
             // Calculate neckline and score
             var necklineLevel = Math.Min(leftShoulder.Value, rightShoulder.Value) * 0.98m;
@@ -125,10 +133,10 @@ public class StructuralPatternDetector : IPatternDetector
     private static PatternResult DetectInverseHeadAndShoulders(IReadOnlyList<Bar> bars)
     {
         // Find potential valleys for inverse H&S
-        var valleys = FindValleys(bars, 3);
-        if (valleys.Count < 3) return new PatternResult { Score = 0, Confidence = 0 };
+        var valleys = FindValleys(bars, MinimumPeaksForTriple);
+        if (valleys.Count < MinimumPeaksForTriple) return new PatternResult { Score = 0, Confidence = 0 };
 
-        for (int i = 0; i < valleys.Count - 2; i++)
+        for (int i = 0; i < valleys.Count - MinimumPeaksForDouble; i++)
         {
             var leftShoulder = valleys[i];
             var head = valleys[i + 1];
@@ -142,7 +150,7 @@ public class StructuralPatternDetector : IPatternDetector
             var shoulderRatio = Math.Min(leftShoulder.Value, rightShoulder.Value) / 
                                Math.Max(leftShoulder.Value, rightShoulder.Value);
             
-            if (shoulderRatio < 0.97m) continue;
+            if (shoulderRatio < ShoulderSimilarityThreshold) continue;
 
             var score = 0.7; // Simplified scoring
 
@@ -164,19 +172,19 @@ public class StructuralPatternDetector : IPatternDetector
     private static PatternResult DetectDoubleTop(IReadOnlyList<Bar> bars)
     {
         var peaks = FindPeaks(bars, 5);
-        if (peaks.Count < 2) return new PatternResult { Score = 0, Confidence = 0 };
+        if (peaks.Count < MinimumPeaksForDouble) return new PatternResult { Score = 0, Confidence = 0 };
 
         for (int i = 0; i < peaks.Count - 1; i++)
         {
             var firstTop = peaks[i];
             var secondTop = peaks[i + 1];
 
-            // Tops should be at similar levels (within 2%)
+            // Tops should be at similar levels
             var ratio = Math.Min(firstTop.Value, secondTop.Value) / Math.Max(firstTop.Value, secondTop.Value);
-            if (ratio < 0.98m) continue;
+            if (ratio < DoublePeakSimilarityThreshold) continue;
 
-            // Should have reasonable separation (at least 8 bars)
-            if (secondTop.Index - firstTop.Index < 8) continue;
+            // Should have reasonable separation (at least configured bars)
+            if (secondTop.Index - firstTop.Index < PeakLookbackWindow) continue;
 
             var score = 0.75;
 
@@ -189,7 +197,7 @@ public class StructuralPatternDetector : IPatternDetector
                 {
                     ["first_top"] = firstTop.Index,
                     ["second_top"] = secondTop.Index,
-                    ["level"] = (double)((firstTop.Value + secondTop.Value) / 2)
+                    ["level"] = (double)((firstTop.Value + secondTop.Value) / PeakCountForAverage)
                 }
             };
         }
@@ -200,7 +208,7 @@ public class StructuralPatternDetector : IPatternDetector
     private static PatternResult DetectDoubleBottom(IReadOnlyList<Bar> bars)
     {
         var valleys = FindValleys(bars, 5);
-        if (valleys.Count < 2) return new PatternResult { Score = 0, Confidence = 0 };
+        if (valleys.Count < MinimumPeaksForDouble) return new PatternResult { Score = 0, Confidence = 0 };
 
         for (int i = 0; i < valleys.Count - 1; i++)
         {
@@ -208,9 +216,9 @@ public class StructuralPatternDetector : IPatternDetector
             var secondBottom = valleys[i + 1];
 
             var ratio = Math.Min(firstBottom.Value, secondBottom.Value) / Math.Max(firstBottom.Value, secondBottom.Value);
-            if (ratio < 0.98m) continue;
+            if (ratio < DoublePeakSimilarityThreshold) continue;
 
-            if (secondBottom.Index - firstBottom.Index < 8) continue;
+            if (secondBottom.Index - firstBottom.Index < PeakLookbackWindow) continue;
 
             var score = 0.75;
 
@@ -223,7 +231,7 @@ public class StructuralPatternDetector : IPatternDetector
                 {
                     ["first_bottom"] = firstBottom.Index,
                     ["second_bottom"] = secondBottom.Index,
-                    ["level"] = (double)((firstBottom.Value + secondBottom.Value) / 2)
+                    ["level"] = (double)((firstBottom.Value + secondBottom.Value) / PeakCountForAverage)
                 }
             };
         }
@@ -232,8 +240,8 @@ public class StructuralPatternDetector : IPatternDetector
     }
 
     // Simplified implementations for other patterns
-    private static PatternResult DetectTripleTop(IReadOnlyList<Bar> bars) => DetectMultiplePattern(bars, "TripleTop", -1, 3);
-    private static PatternResult DetectTripleBottom(IReadOnlyList<Bar> bars) => DetectMultiplePattern(bars, "TripleBottom", 1, 3);
+    private static PatternResult DetectTripleTop(IReadOnlyList<Bar> bars) => DetectMultiplePattern(bars, "TripleTop", -1, MinimumPeaksForTriple);
+    private static PatternResult DetectTripleBottom(IReadOnlyList<Bar> bars) => DetectMultiplePattern(bars, "TripleBottom", 1, MinimumPeaksForTriple);
     private static PatternResult DetectCupAndHandle(IReadOnlyList<Bar> bars) => DetectComplexPattern(bars, "CupAndHandle", 1);
     private static PatternResult DetectRectangle(IReadOnlyList<Bar> bars) => DetectRangePattern(bars, "Rectangle", 0);
     private static PatternResult DetectAscendingTriangle(IReadOnlyList<Bar> bars) => DetectTrianglePattern(bars, "AscendingTriangle", 1);

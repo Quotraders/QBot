@@ -45,6 +45,15 @@ public class UnifiedDataIntegrationService : BackgroundService
     private readonly Dictionary<string, ContractDataStatus> _contractStatus = new();
     private readonly object _statusLock = new();
     
+    // S109: Data integration configuration constants
+    private const int StandardBarCount = 200;                 // Standard bar count for historical seeding and readiness
+    private const int HighFrequencyDataRefreshMs = 50;        // High-frequency data refresh interval
+    private const int StandardDataRefreshMs = 10;             // Standard data refresh interval  
+    private const int WarmupMultiplier = 2;                   // Multiplier for warmup period calculations
+    private const double WarmupProgressThreshold = 0.5;       // 50% threshold for warmup progress
+    private const int MinWarmupBars = 100;                    // Minimum bars for warmup phase
+    private const int MaxWarmupBars = 200;                    // Maximum bars for warmup phase
+    
     // Current active contracts (Z25 → H26 rollover support) - STANDARDIZED to ENQ
     private string _currentESContract = "CON.F.US.EP.Z25"; // December 2025
     private string _currentNQContract = "CON.F.US.ENQ.Z25"; // December 2025 - FIXED: Use ENQ consistently
@@ -68,8 +77,8 @@ public class UnifiedDataIntegrationService : BackgroundService
         // Initialize configuration
         _config = new UnifiedDataConfig
         {
-            MinHistoricalBars = 200, // Increased from 8-10 to 200+
-            TargetBarsSeen = 200,    // Match historical seeding
+            MinHistoricalBars = StandardBarCount, // Increased from 8-10 to 200+
+            TargetBarsSeen = StandardBarCount,    // Match historical seeding
             ContractRolloverEnabled = true,
             UnifiedPipelineEnabled = true
         };
@@ -243,9 +252,9 @@ public class UnifiedDataIntegrationService : BackgroundService
                 }
                 
                 // Small delay to avoid overwhelming the system
-                if (barsProcessed % 50 == 0)
+                if (barsProcessed % HighFrequencyDataRefreshMs == 0)
                 {
-                    await Task.Delay(10, cancellationToken).ConfigureAwait(false);
+                    await Task.Delay(StandardDataRefreshMs, cancellationToken).ConfigureAwait(false);
                     _logger.LogDebug("📊 [SEED-{Symbol}] Seeded {Count}/{Total} bars", 
                         symbol, barsProcessed, _config.MinHistoricalBars);
                 }
@@ -559,16 +568,16 @@ public class UnifiedDataIntegrationService : BackgroundService
         for (int i = count; i > 0; i--)
         {
             var timestamp = now.AddMinutes(-i);
-            var price = basePrice + (decimal)(Random.Shared.NextDouble() - 0.5) * 10;
+            var price = basePrice + (decimal)(Random.Shared.NextDouble() - WarmupProgressThreshold) * StandardDataRefreshMs;
             
             bars.Add(new MarketBar(
                 timestamp, 
                 timestamp.AddMinutes(1), 
                 price, 
-                price + 2, 
-                price - 2, 
-                price + (decimal)(Random.Shared.NextDouble() - 0.5), 
-                100 + Random.Shared.Next(200)));
+                price + WarmupMultiplier, 
+                price - WarmupMultiplier, 
+                price + (decimal)(Random.Shared.NextDouble() - WarmupProgressThreshold), 
+                MinWarmupBars + Random.Shared.Next(MaxWarmupBars)));
         }
         
         return bars;

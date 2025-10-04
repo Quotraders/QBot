@@ -16,6 +16,25 @@ namespace BotCore.Services
         private readonly Dictionary<string, RegimeState> _regimeStates = new();
         private readonly object _regimeLock = new();
 
+        // S109: Regime detection configuration constants
+        private const double VolatilityRegimeWeight = 0.4;    // 40% weight to volatility
+        private const double TrendRegimeWeight = 0.4;         // 40% weight to trend  
+        private const double VolumeRegimeWeight = 0.2;        // 20% weight to volume
+        
+        // Market hours configuration (UTC hours for US market)
+        private const int MarketOpenHour = 14;                // 9:30 AM ET in UTC
+        private const int MarketCloseHour = 21;               // 4:00 PM ET in UTC
+        private const int PreMarketStartHour = 9;             // Pre-market start
+        
+        // Time-based regime detection thresholds
+        private const int EarlyMinuteThreshold = 5;           // First 5 minutes of hour
+        private const int HalfHourStartMinute = 25;           // Half-hour activity start
+        private const int HalfHourEndMinute = 35;             // Half-hour activity end
+        private const int LateMinuteThreshold = 55;           // Last 5 minutes of hour
+        
+        // Regime smoothing configuration
+        private const int RegimeStabilityThreshold = 3;       // Require 3 consecutive confirmations
+
         public RegimeDetectionService(ILogger<RegimeDetectionService> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -68,9 +87,9 @@ namespace BotCore.Services
                 };
 
                 // Weight the different regime indicators
-                AddRegimeScore(regimeScores, volatilityRegime, 0.4); // 40% weight to volatility
-                AddRegimeScore(regimeScores, trendRegime, 0.4);      // 40% weight to trend
-                AddRegimeScore(regimeScores, volumeRegime, 0.2);     // 20% weight to volume
+                AddRegimeScore(regimeScores, volatilityRegime, VolatilityRegimeWeight);
+                AddRegimeScore(regimeScores, trendRegime, TrendRegimeWeight);
+                AddRegimeScore(regimeScores, volumeRegime, VolumeRegimeWeight);
 
                 // Find the regime with highest score
                 var bestRegime = "Range"; // default
@@ -110,12 +129,12 @@ namespace BotCore.Services
             var currentHour = DateTime.UtcNow.Hour;
             
             // Market hours tend to have higher volatility (trending conditions)
-            if (currentHour >= 14 && currentHour <= 21) // 9:30 AM - 4:00 PM ET in UTC
+            if (currentHour >= MarketOpenHour && currentHour <= MarketCloseHour)
             {
                 return "Trend";
             }
             // Pre-market and after-hours tend to be more ranging
-            else if (currentHour >= 9 && currentHour < 14) // Pre-market
+            else if (currentHour >= PreMarketStartHour && currentHour < MarketOpenHour)
             {
                 return "Range";
             }
@@ -160,7 +179,7 @@ namespace BotCore.Services
             var minute = DateTime.UtcNow.Minute;
             
             // On the hour and half-hour often have higher activity
-            if (minute <= 5 || (minute >= 25 && minute <= 35) || minute >= 55)
+            if (minute <= EarlyMinuteThreshold || (minute >= HalfHourStartMinute && minute <= HalfHourEndMinute) || minute >= LateMinuteThreshold)
             {
                 return "Trend";
             }
@@ -194,7 +213,7 @@ namespace BotCore.Services
             }
 
             // If regime is changing, require some stability before switching
-            if (state.RegimeStability < 3) // Require 3 consecutive confirmations
+            if (state.RegimeStability < RegimeStabilityThreshold)
             {
                 return state.CurrentRegime; // Keep previous regime
             }
