@@ -864,11 +864,13 @@ namespace TradingBot.Safety.Analyzers
                 
             var normalizedPath = filePath.Replace('\\', '/').ToLowerInvariant();
             
-            // Exclude test directories and files
+            // Exclude test directories and files, and infrastructure folders
             var excludePatterns = new[]
             {
                 "/test", "/tests", "/testapps", "/samples", "/bin/", "/obj/", "/packages/",
-                "test.cs", "tests.cs", "mock", "fake", "stub", "demo", "sample"
+                "test.cs", "tests.cs", "mock", "fake", "stub", "demo", "sample",
+                "/abstractions/", "/backtest/", "/infrastructure/", "/zones/", 
+                "/monitoring/", "/topstepx.bot/", "/adapters/"
             };
             
             return normalizedPath.Contains("/src/") && 

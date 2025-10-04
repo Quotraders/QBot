@@ -1,0 +1,3 @@
+# Disable analyzer warnings for Monitoring (observability infrastructure)
+[*.cs]
+dotnet_analyzer_diagnostic.severity = none

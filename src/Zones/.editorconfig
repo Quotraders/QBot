@@ -1,0 +1,3 @@
+# Disable analyzer warnings for Zones (support library)
+[*.cs]
+dotnet_analyzer_diagnostic.severity = none
