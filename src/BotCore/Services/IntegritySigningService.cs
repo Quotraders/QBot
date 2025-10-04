@@ -44,7 +44,7 @@ namespace TradingBot.BotCore.Services
                 using var sha256 = SHA256.Create();
                 using var fileStream = File.OpenRead(filePath);
                 var hashBytes = await Task.Run(() => sha256.ComputeHash(fileStream)).ConfigureAwait(false);
-                var hash = Convert.ToHexString(hashBytes).ToLowerInvariant();
+                var hash = Convert.ToHexString(hashBytes).ToUpperInvariant();
                 
                 _logger.LogDebug("📋 [INTEGRITY] File hash calculated: {File} -> {Hash}", 
                     Path.GetFileName(filePath), hash[..HashPrefixLength] + "...");
@@ -67,7 +67,7 @@ namespace TradingBot.BotCore.Services
             {
                 var contentBytes = Encoding.UTF8.GetBytes(content);
                 var hashBytes = SHA256.HashData(contentBytes);
-                return Convert.ToHexString(hashBytes).ToLowerInvariant();
+                return Convert.ToHexString(hashBytes).ToUpperInvariant();
             }
             catch (Exception ex)
             {

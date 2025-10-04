@@ -279,7 +279,7 @@ public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, I
         
         // Check environment variables with DRY_RUN precedence
         var dryRun = Environment.GetEnvironmentVariable("DRY_RUN");
-        if (dryRun?.ToLowerInvariant() == "true")
+        if (dryRun?.ToUpperInvariant() == "TRUE")
         {
             return true;
         }
@@ -288,7 +288,7 @@ public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, I
         var autoExecute = Environment.GetEnvironmentVariable("AUTO_EXECUTE");
         
         // Default to DRY_RUN if execution flags are not explicitly true
-        return execute?.ToLowerInvariant() != "true" && autoExecute?.ToLowerInvariant() != "true";
+        return execute?.ToUpperInvariant() != "TRUE" && autoExecute?.ToUpperInvariant() != "TRUE";
     }
 
     // IKillSwitchWatcher interface implementation

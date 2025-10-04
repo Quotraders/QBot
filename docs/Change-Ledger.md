@@ -72,11 +72,11 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ### 🔧 Round 135 - Phase 2: CA1308 String Normalization Security Fix (Current Session)
 
-**CA1308: ToLowerInvariant → ToUpperInvariant Conversion (10 violations fixed)**
+**CA1308: ToLowerInvariant → ToUpperInvariant Conversion (69 violations fixed)**
 
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
-| CA1308 | 102 | 92 | ManifestVerifier.cs, ModelUpdaterService.cs, OnnxModelLoader.cs | Changed ToLowerInvariant() to ToUpperInvariant() for hash/checksum normalization |
+| CA1308 | 102 | 33 | ManifestVerifier.cs, ModelUpdaterService.cs, OnnxModelLoader.cs, IntegritySigningService.cs, SecurityService.cs, SecretsValidationService.cs, ProductionKillSwitchService.cs | Changed ToLowerInvariant() to ToUpperInvariant() for hash/checksum normalization and string comparisons |
 
 **Pattern Applied**:
 ```csharp
@@ -90,11 +90,17 @@ return Convert.ToHexString(hashBytes).ToUpperInvariant();
 **Rationale**: CA1308 is a security-focused rule recommending ToUpperInvariant() for string normalization to avoid potential security issues with lowercase conversions. Hash/checksum comparisons remain valid since hex string parsing is case-insensitive.
 
 **Files Changed**:
-- `src/BotCore/ManifestVerifier.cs` (1 violation): HMAC signature generation
-- `src/BotCore/ModelUpdaterService.cs` (2 violations): Hash computation methods
-- `src/BotCore/ML/OnnxModelLoader.cs` (2 violations): File checksum/hash calculations
+- `src/BotCore/ManifestVerifier.cs` (5 violations): HMAC signature generation
+- `src/BotCore/ModelUpdaterService.cs` (10 violations): Hash computation methods
+- `src/BotCore/ML/OnnxModelLoader.cs` (10 violations): File checksum/hash calculations
+- `src/BotCore/Services/IntegritySigningService.cs` (2 violations): File and content hash calculations
+- `src/BotCore/Services/SecurityService.cs` (10 violations): VPN/VM detection string comparisons
+- `src/BotCore/Services/SecretsValidationService.cs` (2 violations): Secret store type switch statement
+- `src/BotCore/Services/ProductionKillSwitchService.cs` (30 violations): DRY_RUN mode environment variable checks
 
-**Build Verification**: ✅ 0 CS errors maintained, 10 CA1308 violations fixed (102 → 92)
+**Critical Safety Fix**: ProductionKillSwitchService now uses ToUpperInvariant() for environment variable comparisons (DRY_RUN, EXECUTE, AUTO_EXECUTE), ensuring consistent and secure string normalization in kill switch logic.
+
+**Build Verification**: ✅ 0 CS errors maintained, 69 CA1308 violations fixed (102 → 33), 67.6% of CA1308 violations eliminated
 
 ---
 

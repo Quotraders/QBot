@@ -238,15 +238,15 @@ namespace TradingBot.BotCore.Services
                 
                 var secretStoreType = Environment.GetEnvironmentVariable("SECRET_STORE_TYPE") ?? "environment";
                 
-                switch (secretStoreType.ToLowerInvariant())
+                switch (secretStoreType.ToUpperInvariant())
                 {
-                    case "azurekeyvault":
+                    case "AZUREKEYVAULT":
                         ValidateAzureKeyVault(result);
                         break;
-                    case "hashicorpvault":
+                    case "HASHICORPVAULT":
                         ValidateHashiCorpVault(result);
                         break;
-                    case "environment":
+                    case "ENVIRONMENT":
                         // Environment variables are always accessible if process has permissions
                         result.AddValidatedSecret("EnvironmentVariables");
                         _logger.LogDebug("✅ [SECRETS] Using environment variables for secrets");
