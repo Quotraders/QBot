@@ -116,7 +116,46 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ---
 
-### 🔧 Round 160 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+### 🔧 Round 161 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (20 violations fixed, 1 file)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 760 | 740 | ContractRolloverService.cs | Extracted contract rollover thresholds (front month days, active contract months, contract specifications for ES/NQ tick sizes and contract sizes) |
+
+**Total Fixed: 20 analyzer violations (20 unique S109 fixes in 1 file)**
+
+**Remaining S109 in File**: 30 (calendar month numbers 1-12 left as obvious sentinel values per guidebook)
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers inline
+IsFrontMonth = daysToExpiration > 0 && daysToExpiration <= 60
+expirationDate <= currentDate.AddMonths(12)
+TickSize = 0.25m,
+ContractSize = 50,
+return firstFriday.AddDays(14);
+
+// After (S109) - Named constants
+private const int FrontMonthMaxDaysToExpiration = 60;
+private const int MonthsAheadForActiveContracts = 12;
+private const decimal EsTickSize = 0.25m;
+private const int EsContractSize = 50;
+private const int DaysAfterFirstFridayForThirdFriday = 14;
+
+IsFrontMonth = daysToExpiration > 0 && daysToExpiration <= FrontMonthMaxDaysToExpiration
+expirationDate <= currentDate.AddMonths(MonthsAheadForActiveContracts)
+TickSize = EsTickSize,
+ContractSize = EsContractSize,
+return firstFriday.AddDays(DaysAfterFirstFridayForThirdFriday);
+```
+
+**Build Verification**: ✅ 0 CS errors maintained, 20 S109 violations fixed (reduced from 760 to 740)
+
+---
+
+### 🔧 Round 160 - Phase 2: S109 Magic Numbers Elimination (Previous in Current Session)
 
 **S109: Magic Number to Named Constant Conversion (44 violations fixed, 1 file)**
 
