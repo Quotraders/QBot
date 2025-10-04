@@ -20,6 +20,12 @@ namespace BotCore
         // Retry Configuration Constants
         private const double ExponentialBackoffBase = 2.0;  // Base for exponential backoff calculation
         
+        // Cached JSON serializer options
+        private static readonly JsonSerializerOptions CaseInsensitiveJsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true
+        };
+        
         private readonly HttpClient _http = http;
         private readonly ILogger<ApiClient> _log = log;
         private readonly string _apiBase = apiBase;
@@ -87,7 +93,7 @@ namespace BotCore
                     return null;
                 }
 
-                var data = JsonSerializer.Deserialize<AvailableResp>(body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                var data = JsonSerializer.Deserialize<AvailableResp>(body, CaseInsensitiveJsonOptions);
                 var list = data?.contracts ?? [];
 
                 // Filter by symbolId if we know it; prefer active front-month (name like ES?U5 / NQ?U5)
@@ -141,7 +147,7 @@ namespace BotCore
                     return null;
                 }
 
-                var data = JsonSerializer.Deserialize<SearchResp>(body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                var data = JsonSerializer.Deserialize<SearchResp>(body, CaseInsensitiveJsonOptions);
                 var list = data?.contracts ?? [];
 
                 // Prefer ES*/NQ* exact/starts-with, active first

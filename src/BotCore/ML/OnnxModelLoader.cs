@@ -1170,7 +1170,7 @@ public sealed class OnnxModelLoader : IDisposable
                 await NotifyModelUpdateAsync(metadataFile, metadata).ConfigureAwait(false);
             }
         }
-        catch (Exception ex)
+        catch (JsonException ex)
         {
             _logger.LogWarning(ex, "[MODEL_RELOAD] Failed to parse metadata from {File}", metadataFile);
         }
@@ -1191,7 +1191,11 @@ public sealed class OnnxModelLoader : IDisposable
             
             _logger.LogInformation("[SAC_RELOAD] Reload signal sent for SAC model");
         }
-        catch (Exception ex)
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "[SAC_RELOAD] Failed to trigger SAC model reload for {File}", sacFile);
+        }
+        catch (IOException ex)
         {
             _logger.LogError(ex, "[SAC_RELOAD] Failed to trigger SAC model reload for {File}", sacFile);
         }
@@ -1223,7 +1227,15 @@ public sealed class OnnxModelLoader : IDisposable
             await File.WriteAllTextAsync(notificationFile, notificationJson).ConfigureAwait(false);
             _logger.LogInformation("[MODEL_NOTIFICATION] Model update notification created: {File}", notificationFile);
         }
-        catch (Exception ex)
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "[MODEL_NOTIFICATION] Failed to create model update notification");
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "[MODEL_NOTIFICATION] Failed to create model update notification");
+        }
+        catch (JsonException ex)
         {
             _logger.LogError(ex, "[MODEL_NOTIFICATION] Failed to create model update notification");
         }

@@ -187,7 +187,7 @@ namespace BotCore.Infra
                 // Look for training logs or backup files as evidence of training activity
                 var backupFiles = Directory.GetFiles(_modelDir, "backup_rl_sizer_*.onnx");
 
-                if (backupFiles.Any())
+                if (backupFiles.Length > 0)
                 {
                     var latestBackup = backupFiles.Max(f => File.GetCreationTime(f));
                     _lastTrainingAttempt = latestBackup;
@@ -333,7 +333,7 @@ namespace BotCore.Infra
                     .OrderByDescending(f => File.GetCreationTime(f))
                     .ToList();
 
-                if (backupFiles.Any())
+                if (backupFiles.Count > 0)
                 {
                     var latestBackup = backupFiles.First();
                     var latestModel = Path.Combine(_modelDir, "latest_rl_sizer.onnx");

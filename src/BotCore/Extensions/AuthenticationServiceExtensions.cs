@@ -80,9 +80,17 @@ internal sealed class FuncTopstepAuthWrapper : ITopstepAuth
                 return DateTimeOffset.FromUnixTimeSeconds(exp);
             }
         }
-        catch
+        catch (JsonException)
         {
             // Fallback on parse errors
+        }
+        catch (FormatException)
+        {
+            // Fallback on Base64 decode errors
+        }
+        catch (ArgumentException)
+        {
+            // Fallback on invalid JWT format
         }
         return DateTimeOffset.UtcNow.AddHours(1);
     }

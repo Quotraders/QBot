@@ -293,7 +293,12 @@ public class TopstepXSignalRHealthCheck : IHealthCheck
                 return HealthCheckResult.Unhealthy("All SignalR hubs unavailable", data: data);
             }
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "SignalR health check failed");
+            return HealthCheckResult.Unhealthy($"SignalR health check error: {ex.Message}", ex);
+        }
+        catch (TaskCanceledException ex)
         {
             _logger.LogWarning(ex, "SignalR health check failed");
             return HealthCheckResult.Unhealthy($"SignalR health check error: {ex.Message}", ex);
@@ -310,7 +315,11 @@ public class TopstepXSignalRHealthCheck : IHealthCheck
             using var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
             return (response.IsSuccessStatusCode, $"Status: {response.StatusCode}");
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            return (false, ex.Message);
+        }
+        catch (TaskCanceledException ex)
         {
             return (false, ex.Message);
         }
@@ -418,7 +427,12 @@ public class DiskSpaceHealthCheck : IHealthCheck
                 return Task.FromResult(HealthCheckResult.Unhealthy($"Critical disk space: {freeSpaceGb:F1}GB free", data: data));
             }
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            _logger.LogWarning(ex, "Disk space health check failed");
+            return Task.FromResult(HealthCheckResult.Unhealthy($"Disk space check error: {ex.Message}", ex));
+        }
+        catch (UnauthorizedAccessException ex)
         {
             _logger.LogWarning(ex, "Disk space health check failed");
             return Task.FromResult(HealthCheckResult.Unhealthy($"Disk space check error: {ex.Message}", ex));

@@ -371,6 +371,9 @@ public class HealthCheckConfiguration
 /// </summary>
 public class TradingConfigurationValidator : IValidateOptions<TradingConfiguration>
 {
+    private const decimal MinimumDailyLoss = 100m;
+    private const decimal ProfitTargetMinimumRatio = 0.1m;
+
     public ValidateOptionsResult Validate(string? name, TradingConfiguration options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -390,12 +393,12 @@ public class TradingConfigurationValidator : IValidateOptions<TradingConfigurati
         }
 
         // Business logic validation
-        if (Math.Abs(options.MaxDailyLoss) < 100)
+        if (Math.Abs(options.MaxDailyLoss) < MinimumDailyLoss)
         {
             failures.Add("MaxDailyLoss must be at least -100 for meaningful risk management");
         }
 
-        if (options.DailyProfitTarget <= Math.Abs(options.MaxDailyLoss) * 0.1m)
+        if (options.DailyProfitTarget <= Math.Abs(options.MaxDailyLoss) * ProfitTargetMinimumRatio)
         {
             failures.Add("DailyProfitTarget should be reasonable relative to MaxDailyLoss (at least 10% of loss limit)");
         }
@@ -437,7 +440,19 @@ public class TradingConfigurationValidator : IValidateOptions<TradingConfigurati
 
             return true;
         }
-        catch
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (System.Security.SecurityException)
+        {
+            return false;
+        }
+        catch (ArgumentException)
         {
             return false;
         }
@@ -510,7 +525,15 @@ public class SecurityConfigurationValidator : IValidateOptions<SecurityConfigura
                     failures.Add($"KeyStorePath directory does not exist: {directory}");
                 }
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
+            {
+                failures.Add($"Invalid KeyStorePath: {ex.Message}");
+            }
+            catch (System.Security.SecurityException ex)
+            {
+                failures.Add($"Invalid KeyStorePath: {ex.Message}");
+            }
+            catch (NotSupportedException ex)
             {
                 failures.Add($"Invalid KeyStorePath: {ex.Message}");
             }
@@ -525,6 +548,8 @@ public class SecurityConfigurationValidator : IValidateOptions<SecurityConfigura
 /// </summary>
 public class ResilienceConfigurationValidator : IValidateOptions<ResilienceConfiguration>
 {
+    private const int MinimumCircuitBreakerThreshold = 3;
+
     public ValidateOptionsResult Validate(string? name, ResilienceConfiguration options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -538,7 +563,7 @@ public class ResilienceConfigurationValidator : IValidateOptions<ResilienceConfi
         }
 
         // Validate circuit breaker makes sense
-        if (options.CircuitBreakerThreshold < 3)
+        if (options.CircuitBreakerThreshold < MinimumCircuitBreakerThreshold)
         {
             failures.Add("CircuitBreakerThreshold should be at least 3 for meaningful protection");
         }
@@ -594,7 +619,19 @@ public class ObservabilityConfigurationValidator : IValidateOptions<Observabilit
 
             return true;
         }
-        catch
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (System.Security.SecurityException)
+        {
+            return false;
+        }
+        catch (ArgumentException)
         {
             return false;
         }

@@ -382,7 +382,7 @@ public class WalkForwardTrainer
     {
         var completedFolds = folds.Where(f => f.Status == FoldStatus.Completed && f.Metrics != null).ToList();
 
-        if (!completedFolds.Any())
+        if (completedFolds.Count == 0)
         {
             return new ValidationMetrics();
         }

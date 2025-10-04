@@ -14,6 +14,12 @@ namespace BotCore
     /// </summary>
     public static class MultiStrategyRlCollector
     {
+        // Feature calculation constants
+        private const decimal PercentageConversionFactor = 100m;      // Convert decimal to percentage
+        private const decimal VolumeNormalizationFactor = 1000m;      // Normalize volume for cross strength
+        private const decimal NeutralRsiLevel = 50m;                  // RSI neutral midpoint
+        private const decimal RsiStandardDeviation = 10m;             // RSI standard deviation for z-score
+
         public enum StrategyType
         {
             EmaCross,
@@ -291,10 +297,10 @@ namespace BotCore
             features.Atr14 = atr;
 
             // EmaCross specific calculations
-            features.EmaSpread920 = (ema9 - ema20) / price * 100m; // % spread
+            features.EmaSpread920 = (ema9 - ema20) / price * PercentageConversionFactor; // % spread
             features.EmaSlope9 = CalculateSlope(ema9, price); // Simplified slope
             features.EmaSlope20 = CalculateSlope(ema20, price);
-            features.CrossStrength = Math.Abs(features.EmaSpread920) * (volume / 1000m);
+            features.CrossStrength = Math.Abs(features.EmaSpread920) * (volume / VolumeNormalizationFactor);
             features.MaAlignment = CalculateMaAlignment(ema9, ema20, ema50);
 
             return features;
@@ -318,12 +324,12 @@ namespace BotCore
             features.Rsi14 = rsi;
             features.BbUpper = bbUpper;
             features.BbLower = bbLower;
-            features.VwapDistance = (price - vwap) / price * 100m;
+            features.VwapDistance = (price - vwap) / price * PercentageConversionFactor;
             features.Volume = volume;
 
             // MeanReversion specific
             features.BbPosition = (price - bbLower) / (bbUpper - bbLower);
-            features.MeanReversionZ = (50m - rsi) / 10m; // Z-score from neutral
+            features.MeanReversionZ = (NeutralRsiLevel - rsi) / RsiStandardDeviation; // Z-score from neutral
             features.BounceQuality = CalculateBounceQuality(price, bbLower, bbUpper);
             features.OversoldDuration = rsi < 30 ? 1m : 0m; // Simplified
 

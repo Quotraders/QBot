@@ -19,6 +19,9 @@ namespace BotCore.Resilience;
 /// </summary>
 public class EnhancedProductionResilienceService
 {
+    private const int ExponentialBackoffBase = 2;
+    private const int HttpTimeoutBufferMilliseconds = 5000;
+    private const int DefaultTimeoutSeconds = 30;
 
     private readonly ILogger<EnhancedProductionResilienceService> _logger;
     private readonly ResilienceConfiguration _config;
@@ -111,7 +114,7 @@ public class EnhancedProductionResilienceService
             .WaitAndRetryAsync(
                 retryCount: _config.MaxRetries,
                 sleepDurationProvider: retryAttempt => TimeSpan.FromMilliseconds(Math.Min(
-                    _config.BaseRetryDelayMs * Math.Pow(2, retryAttempt - 1),
+                    _config.BaseRetryDelayMs * Math.Pow(ExponentialBackoffBase, retryAttempt - 1),
                     _config.MaxRetryDelayMs)));
 
         var timeoutPolicy = Policy.TimeoutAsync<T>(
@@ -161,7 +164,7 @@ public class EnhancedProductionResilienceService
     public HttpClient CreateResilientHttpClient(string clientName)
     {
         var httpClient = new HttpClient();
-        httpClient.Timeout = TimeSpan.FromMilliseconds(_config.HttpTimeoutMs + 5000); // Add buffer for Polly timeout
+        httpClient.Timeout = TimeSpan.FromMilliseconds(_config.HttpTimeoutMs + HttpTimeoutBufferMilliseconds); // Add buffer for Polly timeout
 
         // Add default headers for better debugging
         httpClient.DefaultRequestHeaders.Add("User-Agent", $"TradingBot-Resilient/{clientName}");
@@ -323,7 +326,7 @@ public static class ResilienceExtensions
 
     private static IAsyncPolicy<HttpResponseMessage> GetTimeoutPolicy()
     {
-        return Policy.TimeoutAsync<HttpResponseMessage>(30);
+        return Policy.TimeoutAsync<HttpResponseMessage>(DefaultTimeoutSeconds);
     }
 }
 

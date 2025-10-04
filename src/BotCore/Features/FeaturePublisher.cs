@@ -97,7 +97,12 @@ namespace BotCore.Features
                 {
                     await PublishFeaturesAsync(CancellationToken.None).ConfigureAwait(false);
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
+                {
+                    _logger.LogError(ex, "[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Feature publishing failed - FAIL-CLOSED + TELEMETRY");
+                    // Log but don't rethrow in fire-and-forget context
+                }
+                catch (ObjectDisposedException ex)
                 {
                     _logger.LogError(ex, "[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Feature publishing failed - FAIL-CLOSED + TELEMETRY");
                     // Log but don't rethrow in fire-and-forget context
@@ -156,7 +161,13 @@ namespace BotCore.Features
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (InvalidOperationException ex)
+                    {
+                        errorCount++;
+                        _logger.LogError(ex, "[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Resolver {ResolverType} failed for {Symbol} - FAIL-CLOSED + TELEMETRY", 
+                            resolver.GetType().Name, symbol);
+                    }
+                    catch (ObjectDisposedException ex)
                     {
                         errorCount++;
                         _logger.LogError(ex, "[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Resolver {ResolverType} failed for {Symbol} - FAIL-CLOSED + TELEMETRY", 
