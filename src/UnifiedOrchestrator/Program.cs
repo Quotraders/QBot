@@ -20,6 +20,8 @@ using BotCore.Compatibility;  // Add this for CompatibilityKitServiceExtensions
 using TradingBot.BotCore.Extensions;  // Add this for EnhancedTradingBotServiceExtensions
 using UnifiedOrchestrator.Services;  // Add this for BacktestLearningService
 using TopstepX.Bot.Authentication;
+using TradingBot.RLAgent;  // Add this for ModelHotReloadManager
+using CloudTrainer;  // Add this for CloudRlTrainerV2
 using DotNetEnv;
 using static DotNetEnv.Env;
 
@@ -1401,6 +1403,31 @@ Please check the configuration and ensure all required services are registered.
         services.AddHostedService<BotCore.Services.CloudModelSynchronizationService>(provider => 
             provider.GetRequiredService<BotCore.Services.CloudModelSynchronizationService>());
         
+        // Register OnnxEnsembleWrapper for model hot-reload support
+        services.Configure<TradingBot.RLAgent.OnnxEnsembleOptions>(configuration.GetSection("OnnxEnsemble"));
+        services.AddSingleton<TradingBot.RLAgent.OnnxEnsembleWrapper>();
+        
+        // Register ModelHotReloadManager (File Watching) - Monitors models/rl directory for changes
+        services.Configure<TradingBot.RLAgent.ModelHotReloadOptions>(configuration.GetSection("ModelHotReload"));
+        services.AddSingleton<TradingBot.RLAgent.ModelHotReloadManager>();
+        
+        // Register CloudRlTrainerV2 (Cloud Training Service) - Polls GitHub for model updates
+        services.Configure<CloudTrainer.CloudRlTrainerOptions>(configuration.GetSection("CloudRlTrainer"));
+        services.AddSingleton<CloudTrainer.IModelDownloader, CloudTrainer.HttpModelDownloader>();
+        services.AddSingleton<CloudTrainer.IModelHotSwapper, CloudTrainer.DefaultModelHotSwapper>();
+        services.AddSingleton<CloudTrainer.IPerformanceStore>(serviceProvider =>
+        {
+            var options = serviceProvider.GetRequiredService<IOptions<CloudTrainer.CloudRlTrainerOptions>>().Value;
+            var logger = serviceProvider.GetRequiredService<ILogger<CloudTrainer.FileBasedPerformanceStore>>();
+            return new CloudTrainer.FileBasedPerformanceStore(options.Performance.PerformanceStore, logger);
+        });
+        services.AddSingleton<CloudTrainer.CloudRlTrainerV2>();
+        services.AddHostedService<CloudTrainer.CloudRlTrainerV2>(provider => 
+            provider.GetRequiredService<CloudTrainer.CloudRlTrainerV2>());
+        
+        Console.WriteLine("🔄 [MODEL-HOT-RELOAD] File watching service registered - Monitors models/rl for changes!");
+        Console.WriteLine("☁️ [CLOUD-RL-TRAINER] Cloud model upgrade service registered - Polls GitHub for updates!");
+        
         // Register Model Ensemble Service - Intelligent model blending (70% cloud, 30% local)
         services.AddSingleton<BotCore.Services.ModelEnsembleService>();
         
@@ -1541,24 +1568,11 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<BotCore.ML.OnnxModelLoader>();
         services.AddHostedService<BrainHotReloadService>();
         
-        // Cloud model integration service to connect CloudRlTrainerV2 to model registry
-        services.AddHostedService<CloudTrainer.CloudRlTrainerV2>();
+        // Cloud model integration service (CloudRlTrainerV2 already registered above after CloudModelSynchronizationService)
         services.AddHostedService<CloudModelIntegrationService>();
-
-        // CloudRlTrainerV2 configuration and dependencies
-        services.Configure<CloudTrainer.CloudRlTrainerOptions>(configuration.GetSection("CloudRlTrainer"));
-        services.AddSingleton<CloudTrainer.IModelDownloader, CloudTrainer.HttpModelDownloader>();
-        services.AddSingleton<CloudTrainer.IModelHotSwapper, CloudTrainer.DefaultModelHotSwapper>();
-        services.AddSingleton<CloudTrainer.IPerformanceStore>(serviceProvider =>
-        {
-            var options = serviceProvider.GetRequiredService<IOptions<CloudTrainer.CloudRlTrainerOptions>>().Value;
-            var logger = serviceProvider.GetRequiredService<ILogger<CloudTrainer.FileBasedPerformanceStore>>();
-            return new CloudTrainer.FileBasedPerformanceStore(options.Performance.PerformanceStore, logger);
-        });
 
         // Hosted services (append-only) - Enhanced learning services
         services.AddHostedService<EnhancedBacktestLearningService>();
-        services.AddHostedService<CloudTrainer.CloudRlTrainerV2>();
 
     }
 
