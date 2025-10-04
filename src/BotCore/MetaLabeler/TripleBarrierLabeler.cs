@@ -14,6 +14,12 @@ namespace BotCore.MetaLabeler;
 /// </summary>
 public class TripleBarrierLabeler
 {
+    // Label constants for triple barrier outcomes
+    private const decimal WinLabel = 1.0m;
+    private const decimal LossLabel = 0.0m;
+    private const decimal PartialWinLabel = 0.7m;
+    private const decimal PartialLossLabel = 0.3m;
+    
     private readonly IHistoricalDataProvider _dataProvider;
     private readonly decimal _defaultProfitRatio;
     private readonly decimal _defaultStopRatio;
@@ -131,7 +137,7 @@ public class TripleBarrierLabeler
                         ExitTime = bar.Timestamp,
                         ExitPrice = profitTarget,
                         ExitReason = "PROFIT_TARGET",
-                        Label = 1.0m // Win
+                        Label = WinLabel // Win
                     };
                 }
                 if (bar.Low <= stopLoss)
@@ -141,7 +147,7 @@ public class TripleBarrierLabeler
                         ExitTime = bar.Timestamp,
                         ExitPrice = stopLoss,
                         ExitReason = "STOP_LOSS",
-                        Label = 0.0m // Loss
+                        Label = LossLabel // Loss
                     };
                 }
             }
@@ -155,7 +161,7 @@ public class TripleBarrierLabeler
                         ExitTime = bar.Timestamp,
                         ExitPrice = profitTarget,
                         ExitReason = "PROFIT_TARGET",
-                        Label = 1.0m // Win
+                        Label = WinLabel // Win
                     };
                 }
                 if (bar.High >= stopLoss)
@@ -165,7 +171,7 @@ public class TripleBarrierLabeler
                         ExitTime = bar.Timestamp,
                         ExitPrice = stopLoss,
                         ExitReason = "STOP_LOSS",
-                        Label = 0.0m // Loss
+                        Label = LossLabel // Loss
                     };
                 }
             }
@@ -182,7 +188,7 @@ public class TripleBarrierLabeler
             ExitTime = lastBar.Timestamp,
             ExitPrice = lastBar.Close,
             ExitReason = "TIME_EXIT",
-            Label = finalPnL > 0 ? 0.7m : 0.3m // Partial win/loss for time exits
+            Label = finalPnL > 0 ? PartialWinLabel : PartialLossLabel // Partial win/loss for time exits
         };
     }
 

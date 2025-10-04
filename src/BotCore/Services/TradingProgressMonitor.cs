@@ -15,6 +15,15 @@ namespace BotCore.Services
     /// </summary>
     public class TradingProgressMonitor : IDisposable
     {
+        // Trading metrics thresholds
+        private const double SignificantTradeThreshold = 100.0; // Minimum PnL to log trade
+        private const int PeriodicLoggingInterval = 10; // Log every N trades
+        private const int TopTradingTimesToShow = 5; // Top hours to display
+        private const double HighWinRateThreshold = 0.6; // 60% win rate for best times
+        private const int MinimumTradesForAnalysis = 10; // Min trades before analysis
+        private const double MaxRecentWinRateClamp = 0.7; // Cap for recent win rate
+        private const double BaselineWinRateThreshold = 0.5; // 50% win rate baseline
+        
         private readonly ILogger<TradingProgressMonitor> _logger;
         private readonly ITradingLogger? _tradingLogger;
         private readonly Dictionary<string, TradingMetrics> _metrics = new();
@@ -108,7 +117,7 @@ namespace BotCore.Services
                 };
 
                 // Log significant trades with structured data (fire and forget)
-                if (Math.Abs(result.PnL) > 100 || metrics.TotalTrades % 10 == 0)
+                if (Math.Abs(result.PnL) > SignificantTradeThreshold || metrics.TotalTrades % PeriodicLoggingInterval == 0)
                 {
                     _ = Task.Run(async () => await LogProgressAsync(metricsSnapshot).ConfigureAwait(false)).ConfigureAwait(false);
                 }
@@ -152,7 +161,7 @@ namespace BotCore.Services
                             mlConfidence = m.MLConfidenceAvg,
                             isImproving = m.IsImproving
                         }).ToArray()),
-                    bestTimes = GetBestTradingTimes().Take(5).ToArray(),
+                    bestTimes = GetBestTradingTimes().Take(TopTradingTimesToShow).ToArray(),
                     activeStrategies = _metrics.Values.Select(m => m.StrategyId).Distinct().Count(),
                     currentSession = EsNqTradingSchedule.GetCurrentSession(DateTime.UtcNow.TimeOfDay)?.Description ?? "MARKET CLOSED"
                 };
@@ -198,7 +207,7 @@ namespace BotCore.Services
 
             foreach (var metric in _metrics.Values)
             {
-                foreach (var hourWinRate in metric.WinRateByHour.Where(h => h.Value > 0.6))
+                foreach (var hourWinRate in metric.WinRateByHour.Where(h => h.Value > HighWinRateThreshold))
                 {
                     bestTimes.Add(new BestTime
                     {
@@ -231,11 +240,11 @@ namespace BotCore.Services
             // Simple improvement check - could be enhanced with more sophisticated analysis
             var metric = _metrics[key];
 
-            if (metric.TotalTrades < 10) return true; // Assume improving with few trades
+            if (metric.TotalTrades < MinimumTradesForAnalysis) return true; // Assume improving with few trades
 
             // Check if recent performance is better than overall
-            var recentWinRate = metric.TotalTrades > 0 ? Math.Min(0.7, (double)metric.WinningTrades / metric.TotalTrades) : 0;
-            return recentWinRate > 0.5 && latestPnL > 0;
+            var recentWinRate = metric.TotalTrades > 0 ? Math.Min(MaxRecentWinRateClamp, (double)metric.WinningTrades / metric.TotalTrades) : 0;
+            return recentWinRate > BaselineWinRateThreshold && latestPnL > 0;
         }
 
         private static void UpdateDrawdown(TradingMetrics metrics, double pnl)

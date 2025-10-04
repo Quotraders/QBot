@@ -25,7 +25,11 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 ## Progress Summary
 - **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
 - **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (1820/1820 = 100%) - **VERIFIED & SECURED**
-  - **Current Session (Rounds 132-134)**: 84 analyzer violations fixed (S109 magic numbers + CA1031 exception handling)
+  - **Current Session (Rounds 138-140)**: 76 analyzer violations fixed (S109 magic numbers - Priority 1 systematic cleanup)
+    - Round 140: Fixed 28 S109 violations (ExecutionAnalyticsService, EpochFreezeEnforcement, SafeHoldDecisionPolicy)
+    - Round 139: Fixed 24 S109 violations (WalkForwardTrainer, MarketTimeService, PerformanceMetricsService)
+    - Round 138: Fixed 24 S109 violations (ExecutionVerificationSystem, PatternFeatureResolvers, YamlSchemaValidator)
+  - **Previous Session (Rounds 132-134)**: 84 analyzer violations fixed (S109 magic numbers + CA1031 exception handling)
     - Round 134: Fixed 4 CA1031 generic exception violations (UCBManager, MultiStrategyRlCollector)
     - Round 133: Fixed 34 S109 magic number violations (BasicMicrostructureAnalyzer, AutonomousDecisionEngine)
     - Round 132: Fixed 46 S109 magic number violations (StructuralPatternDetector, TradingSystemIntegrationService, EnhancedProductionResilienceService, MultiStrategyRlCollector)
@@ -66,11 +70,117 @@ This ledger documents all fixes made during the analyzer compliance initiative i
   - **Round 61**: CA1031 exception handling - 22 violations, CA1307 string operations - 22 violations
   - **Round 60**: S109 magic numbers - 64 violations, CA1031 exception handling - 1 violation
   - **Verified State**: ~12,741 analyzer violations (0 CS errors maintained, async blocking patterns eliminated)
-- **Current Focus**: Session complete - CA1510 eliminated, S1144 cleaned, S125 removed
+- **Current Focus**: Systematic S109 magic number elimination, following Analyzer-Fix-Guidebook priorities
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
-- **Session Result**: 469 violations eliminated, systematic approach established
+- **Session Result**: 76 violations eliminated across 9 files in 3 focused rounds
 
-### 🔧 Round 137 - Phase 2: S109 Magic Numbers Elimination Batch 2 (Current Session)
+### 🔧 Round 140 - Phase 2: S109 Magic Numbers Elimination Round 3 (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (28 violations fixed, 3 files)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 1664 | 1636 | ExecutionAnalyticsService.cs, EpochFreezeEnforcement.cs, SafeHoldDecisionPolicy.cs | Extracted execution baselines, market data defaults, and neutral band thresholds |
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers inline
+return symbol.StartsWith("ES") ? 0.25 : 0.05; // ES has higher slippage
+return 0.94; // 94% fill rate is typical
+
+// After (S109) - Named constants
+private const double EstimatedSlippageEsSymbols = 0.25;
+private const double EstimatedSlippageOtherSymbols = 0.05;
+private const double EstimatedFillRate = 0.94;
+return symbol.StartsWith("ES") ? EstimatedSlippageEsSymbols : EstimatedSlippageOtherSymbols;
+return EstimatedFillRate;
+```
+
+**Rationale**: Extracted execution performance baselines, market data defaults (ATR, tick sizes), and neutral band configuration defaults to improve maintainability and make business thresholds explicit.
+
+**Files Changed**:
+- `src/BotCore/Services/ExecutionAnalyticsService.cs`: Slippage estimates, fill rates, history size limits
+- `src/BotCore/Integration/EpochFreezeEnforcement.cs`: Default ATR value, standard futures tick size
+- `src/BotCore/Services/SafeHoldDecisionPolicy.cs`: Zone proximity thresholds, neutral band defaults
+
+**Build Verification**: ✅ 0 CS errors maintained, 28 S109 violations fixed (1664 → 1636), 5752 total violations remaining
+
+---
+
+### 🔧 Round 139 - Phase 2: S109 Magic Numbers Elimination Round 2 (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (24 violations fixed, 3 files)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 1688 | 1664 | WalkForwardTrainer.cs, MarketTimeService.cs, PerformanceMetricsService.cs | Extracted prediction thresholds, holiday dates, and performance baselines |
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers inline
+if (sample.Features.Count == 0) return 0.5m;
+return Math.Max(0.01m, Math.Min(0.99m, prediction));
+if (easternDate.Month == 7 && easternDate.Day == 4) return true;
+
+// After (S109) - Named constants
+private const decimal DefaultPrediction = 0.5m;
+private const decimal MinPredictionBound = 0.01m;
+private const decimal MaxPredictionBound = 0.99m;
+private const int JulyMonth = 7;
+private const int IndependenceDayDate = 4;
+if (sample.Features.Count == 0) return DefaultPrediction;
+return Math.Max(MinPredictionBound, Math.Min(MaxPredictionBound, prediction));
+if (easternDate.Month == JulyMonth && easternDate.Day == IndependenceDayDate) return true;
+```
+
+**Rationale**: Extracted ML prediction boundaries, market holiday dates, and performance metric baselines to improve code clarity and maintainability.
+
+**Files Changed**:
+- `src/BotCore/MetaLabeler/WalkForwardTrainer.cs`: Prediction thresholds and classification bounds
+- `src/BotCore/Services/MarketTimeService.cs`: Market holiday calendar dates
+- `src/BotCore/Services/PerformanceMetricsService.cs`: Decision/order latency baselines, history limits
+
+**Build Verification**: ✅ 0 CS errors maintained, 24 S109 violations fixed (1688 → 1664), 5766 total violations remaining
+
+---
+
+### 🔧 Round 138 - Phase 2: S109 Magic Numbers Elimination Round 1 (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (24 violations fixed, 3 files)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 1712 | 1688 | ExecutionVerificationSystem.cs, PatternFeatureResolvers.cs, YamlSchemaValidator.cs | Extracted mock test values, pattern thresholds, and validation constraints |
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers inline
+AveragePrice = 4500.25m;
+Commission = 2.50m;
+return scoreDifference <= 0.1 && confidence >= 0.7;
+priority <= 100 && timeout <= 60000
+
+// After (S109) - Named constants
+private const decimal MockOrderPrice = 4500.25m;
+private const decimal MockCommission = 2.50m;
+private const double DojiMaxScoreDifference = 0.1;
+private const double DojiMinConfidence = 0.7;
+private const int MaxPriority = 100;
+private const int MaxTimeoutMs = 60000;
+```
+
+**Rationale**: Extracted test data constants, pattern detection thresholds, and schema validation limits to improve code maintainability and make business rules explicit.
+
+**Files Changed**:
+- `src/BotCore/Execution/ExecutionVerificationSystem.cs`: Mock test data for order price and commission
+- `src/BotCore/Integration/PatternFeatureResolvers.cs`: Pattern detection thresholds (Doji, Hammer)
+- `src/BotCore/Integration/YamlSchemaValidator.cs`: Schema validation constraints (priority, timeout, bars)
+
+**Build Verification**: ✅ 0 CS errors maintained, 24 S109 violations fixed (1712 → 1688), 5778 total violations remaining
+
+---
+
+### 🔧 Round 137 - Phase 2: S109 Magic Numbers Elimination Batch 2 (Previous Session)
 
 **S109: Magic Number to Named Constant Conversion (9 violations fixed)**
 

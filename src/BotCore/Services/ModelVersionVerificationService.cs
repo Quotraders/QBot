@@ -31,6 +31,14 @@ namespace BotCore.Services
     /// </summary>
     public class ModelVersionVerificationService : IModelVersionVerificationService
     {
+        // Model validation constants
+        private const int HashDisplayLength = 8; // Characters to show from hash
+        private const int HeaderByteLength = 8; // Protobuf header length
+        private const byte ProtobufMagicByte1 = 0x08; // Common protobuf prefix
+        private const byte ProtobufMagicByte2 = 0x0A; // Common protobuf prefix
+        private const long MinimumModelSizeBytes = 100; // Minimum reasonable model file size
+        private const int GuidShortLength = 8; // Characters to use from GUID
+        
         private readonly ILogger<ModelVersionVerificationService> _logger;
         private readonly ModelVersioningConfiguration _config;
         private readonly string _versionRegistryPath;
@@ -149,7 +157,7 @@ namespace BotCore.Services
                     await SaveVersionRegistryAsync(registry).ConfigureAwait(false);
 
                     _logger.LogInformation("[MODEL-VERSION] ✅ Model version verified successfully: {Version} (Hash: {Hash})",
-                        result.Version, result.ModelHash[..8]);
+                        result.Version, result.ModelHash[..HashDisplayLength]);
                 }
                 else
                 {
@@ -260,20 +268,20 @@ namespace BotCore.Services
                 // For ONNX models, verify file format
                 if (modelPath.EndsWith(".onnx", StringComparison.OrdinalIgnoreCase))
                 {
-                    var header = new byte[8];
+                    var header = new byte[HeaderByteLength];
                     using var fs = File.OpenRead(modelPath);
-                    fs.ReadExactly(header, 0, 8);
+                    fs.ReadExactly(header, 0, HeaderByteLength);
                     
                     // ONNX files should start with protobuf magic bytes or model structure
                     // This is a simplified check - in production you might use ONNX runtime validation
-                    if (header[0] == 0x08 || header[0] == 0x0A) // Common protobuf prefixes
+                    if (header[0] == ProtobufMagicByte1 || header[0] == ProtobufMagicByte2) // Common protobuf prefixes
                     {
                         return Task.FromResult(true);
                     }
                 }
 
                 // For other model types, just verify it's not corrupted
-                return Task.FromResult(fileInfo.Length > 100); // Minimum reasonable model size
+                return Task.FromResult(fileInfo.Length > MinimumModelSizeBytes); // Minimum reasonable model size
             }
             catch (Exception ex)
             {
@@ -345,7 +353,7 @@ namespace BotCore.Services
         /// </summary>
         private static string GenerateVersion()
         {
-            return $"v{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Guid.NewGuid().ToString("N")[..8]}";
+            return $"v{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Guid.NewGuid().ToString("N")[..GuidShortLength]}";
         }
 
         /// <summary>

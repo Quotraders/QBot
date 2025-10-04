@@ -18,6 +18,12 @@ namespace BotCore.Integration;
 /// </summary>
 public sealed class YamlSchemaValidator
 {
+    // Validation constraints
+    private const int MaxPriority = 100;
+    private const int MaxTimeoutMs = 60000;
+    private const int MaxLookbackBars = 500;
+    private const int MaxConfirmationBars = 10;
+    
     private readonly ILogger<YamlSchemaValidator> _logger;
     private readonly IDeserializer _yamlDeserializer;
     
@@ -57,8 +63,8 @@ public sealed class YamlSchemaValidator
                 ["name"] = value => value is string name && !string.IsNullOrWhiteSpace(name),
                 ["enabled"] = value => value is bool,
                 ["shadow"] = value => value is bool,
-                ["priority"] = value => value is int priority && priority >= 0 && priority <= 100,
-                ["timeout_ms"] = value => value is int timeout && timeout > 0 && timeout <= 60000,
+                ["priority"] = value => value is int priority && priority >= 0 && priority <= MaxPriority,
+                ["timeout_ms"] = value => value is int timeout && timeout > 0 && timeout <= MaxTimeoutMs,
                 ["when"] = ValidateWhenClause,
                 ["then"] = ValidateThenClause
             }
@@ -82,8 +88,8 @@ public sealed class YamlSchemaValidator
                 ["type"] = value => value is string type && IsValidPatternType(type),
                 ["enabled"] = value => value is bool,
                 ["reliability"] = value => value is double rel && rel >= 0.0 && rel <= 1.0,
-                ["lookback_bars"] = value => value is int bars && bars > 0 && bars <= 500,
-                ["confirmation_bars"] = value => value is int bars && bars >= 0 && bars <= 10,
+                ["lookback_bars"] = value => value is int bars && bars > 0 && bars <= MaxLookbackBars,
+                ["confirmation_bars"] = value => value is int bars && bars >= 0 && bars <= MaxConfirmationBars,
                 ["conditions"] = ValidatePatternConditions
             }
         };

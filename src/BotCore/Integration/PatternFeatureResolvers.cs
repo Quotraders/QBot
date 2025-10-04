@@ -49,6 +49,12 @@ public sealed class PatternScoreResolver : IFeatureResolver
 /// </summary>
 public sealed class PatternSignalResolver : IFeatureResolver
 {
+    // Pattern detection thresholds
+    private const double DojiMaxScoreDifference = 0.1;
+    private const double DojiMinConfidence = 0.7;
+    private const double HammerMinBullScore = 0.7;
+    private const double HammerMinConfidence = 0.75;
+    
     private readonly IServiceProvider _serviceProvider;
     private readonly string _patternType;
     private readonly ILogger<PatternSignalResolver> _logger;
@@ -94,7 +100,7 @@ public sealed class PatternSignalResolver : IFeatureResolver
         var confidence = (double)patternScores.OverallConfidence;
         
         var scoreDifference = Math.Abs(bullScore - bearScore);
-        return scoreDifference <= 0.1 && confidence >= 0.7; // Balanced scores with high confidence
+        return scoreDifference <= DojiMaxScoreDifference && confidence >= DojiMinConfidence; // Balanced scores with high confidence
     }
     
     private static bool DetectHammerPattern(dynamic patternScores)
@@ -103,7 +109,7 @@ public sealed class PatternSignalResolver : IFeatureResolver
         var bullScore = (double)patternScores.BullScore;
         var confidence = (double)patternScores.OverallConfidence;
         
-        return bullScore >= 0.7 && confidence >= 0.75; // Strong bullish sentiment
+        return bullScore >= HammerMinBullScore && confidence >= HammerMinConfidence; // Strong bullish sentiment
     }
 }
 

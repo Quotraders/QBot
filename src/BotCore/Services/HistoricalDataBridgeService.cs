@@ -42,6 +42,11 @@ namespace BotCore.Services
 
     public class HistoricalDataBridgeService : IHistoricalDataBridgeService
     {
+        // Base price constants for major futures contracts
+        private const decimal EsFuturesBasePrice = 5800m;
+        private const decimal NqFuturesBasePrice = 20000m;
+        private const decimal GenericContractFallbackPrice = 100m;
+        
         private readonly ILogger<HistoricalDataBridgeService> _logger;
         private readonly TradingReadinessConfiguration _config;
         private readonly HttpClient _httpClient;
@@ -585,11 +590,11 @@ namespace BotCore.Services
             // Get reasonable base prices for major contracts
             return contractId switch
             {
-                "CON.F.US.EP.Z25" => 5800m, // ES futures
-                "CON.F.US.ENQ.Z25" => 20000m, // NQ futures
-                _ when contractId.Contains("EP") => 5800m, // ES variants
-                _ when contractId.Contains("ENQ") => 20000m, // NQ variants
-                _ => 100m // Generic fallback
+                "CON.F.US.EP.Z25" => EsFuturesBasePrice, // ES futures
+                "CON.F.US.ENQ.Z25" => NqFuturesBasePrice, // NQ futures
+                _ when contractId.Contains("EP") => EsFuturesBasePrice, // ES variants
+                _ when contractId.Contains("ENQ") => NqFuturesBasePrice, // NQ variants
+                _ => GenericContractFallbackPrice // Generic fallback
             };
         }
 

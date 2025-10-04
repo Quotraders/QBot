@@ -19,6 +19,13 @@ namespace BotCore.Bandits;
 /// </summary>
 public class NeuralUcbBandit : IFunctionApproximationBandit, IDisposable
 {
+    // Default values and constants
+    private const decimal DefaultUncertaintyValue = 0.5m;
+    private const decimal MaxUncertaintyValue = 1.0m;
+    private const decimal ComplexityNormalizationFactor = 10m;
+    private const int BitShiftForRandomSeed = 11;
+    private const int BitShiftForRandomScale = 53;
+    
     private readonly Dictionary<string, NeuralUcbArm> _arms = new();
     private readonly NeuralUcbConfig _config;
     private readonly INeuralNetwork _networkTemplate;
@@ -218,6 +225,11 @@ internal sealed class NeuralUcbArm
     // Neural UCB default values for fallback scenarios
     private const decimal DefaultPrediction = 0.5m; // Default prediction when insufficient data
     private const decimal HighUncertainty = 1m; // High uncertainty value for insufficient data cases
+    private const decimal DefaultUncertaintyValue = 0.5m;
+    private const decimal MaxUncertaintyValue = 1.0m;
+    private const decimal ComplexityNormalizationFactor = 10m;
+    private const int BitShiftForRandomSeed = 11;
+    private const int BitShiftForRandomScale = 53;
     
     private readonly INeuralNetwork _network;
     private readonly NeuralUcbConfig _config;
@@ -351,12 +363,12 @@ internal sealed class NeuralUcbArm
 
         // Calculate variance as uncertainty measure
         if (predictions.Count <= 1)
-            return 0.5m;
+            return DefaultUncertaintyValue;
 
         var mean = predictions.Average();
         var variance = predictions.Sum(p => (p - mean) * (p - mean)) / (predictions.Count - 1);
 
-        return Math.Min(1m, (decimal)Math.Sqrt((double)variance));
+        return Math.Min(MaxUncertaintyValue, (decimal)Math.Sqrt((double)variance));
     }
 
     private bool ShouldRetrain()
@@ -416,13 +428,13 @@ internal sealed class NeuralUcbArm
     private async Task<decimal> GetAverageUncertaintyAsync(CancellationToken ct)
     {
         if (UpdateCount == 0)
-            return 1m;
+            return MaxUncertaintyValue;
 
         // Estimate average uncertainty using recent contexts
         var recentContexts = _trainingData.TakeLast(10).Select(d => d.context).ToList();
 
         if (recentContexts.Count == 0)
-            return 0.5m;
+            return DefaultUncertaintyValue;
 
         var uncertainties = new List<decimal>();
         foreach (var context in recentContexts)
@@ -481,6 +493,12 @@ public interface INeuralNetwork
 /// </summary>
 public class OnnxNeuralNetwork : INeuralNetwork, IDisposable
 {
+    // Constants for complexity calculation and random number generation
+    private const decimal MaxUncertaintyValue = 1.0m;
+    private const decimal ComplexityNormalizationFactor = 10m;
+    private const int BitShiftForRandomSeed = 11;
+    private const int BitShiftForRandomScale = 53;
+    
     private readonly OnnxModelLoader _onnxLoader;
     private readonly ILogger<OnnxNeuralNetwork> _logger;
     private InferenceSession? _session;
@@ -620,10 +638,10 @@ public class OnnxNeuralNetwork : INeuralNetwork, IDisposable
             var outputNodes = _session.OutputMetadata.Count;
             var estimatedParams = inputNodes * outputNodes * 100; // Rough estimate
             
-            return (decimal)Math.Log(estimatedParams) / 10m; // Normalize complexity
+            return (decimal)Math.Log(estimatedParams) / ComplexityNormalizationFactor; // Normalize complexity
         }
         
-        return 1.0m; // Default complexity for fallback
+        return MaxUncertaintyValue; // Default complexity for fallback
     }
 
     private static decimal PredictFallback(decimal[] features)
@@ -719,6 +737,8 @@ public static class RandomExtensions
     // Box-Muller transform mathematical constants
     private const double BoxMullerMultiplier = -2.0;
     private const double BoxMullerCircleMultiplier = 2.0;
+    private const int BitShiftForRandomSeed = 11;
+    private const int BitShiftForRandomScale = 53;
     
     public static double NextGaussian(this Random random)
     {
@@ -739,6 +759,6 @@ public static class RandomExtensions
         var bytes = new byte[8];
         rng.GetBytes(bytes);
         var uint64 = BitConverter.ToUInt64(bytes, 0);
-        return (uint64 >> 11) * (1.0 / (1UL << 53));
+        return (uint64 >> BitShiftForRandomSeed) * (1.0 / (1UL << BitShiftForRandomScale));
     }
 }

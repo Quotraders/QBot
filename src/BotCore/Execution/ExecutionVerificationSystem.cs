@@ -23,6 +23,10 @@ namespace BotCore.Execution
         // Execution Verification Constants
         private const int VerificationDelayMs = 100;  // Brief delay during verification processing
         
+        // Mock test data constants (used in GetOrderStatusFromTopstepXAsync and GetFillEventsFromTopstepXAsync)
+        private const decimal MockOrderPrice = 4500.25m;
+        private const decimal MockCommission = 2.50m;
+        
         private readonly ConcurrentDictionary<string, OrderRecord> _pendingOrders = new();
         private readonly ConcurrentDictionary<string, FillRecord> _confirmedFills = new();
         private readonly SQLiteConnection _database;
@@ -281,7 +285,7 @@ namespace BotCore.Execution
                     Status = "FILLED",
                     FilledQuantity = 1,
                     RemainingQuantity = 0,
-                    AveragePrice = 4500.25m,
+                    AveragePrice = MockOrderPrice,
                     LastUpdate = DateTime.UtcNow
                 };
             }
@@ -304,12 +308,12 @@ namespace BotCore.Execution
                     new FillEventData
                     {
                         OrderId = orderId,
-                        Price = 4500.25m,
-                        FillPrice = 4500.25m,
+                        Price = MockOrderPrice,
+                        FillPrice = MockOrderPrice,
                         Quantity = 1,
                         Symbol = "ES",
                         Timestamp = DateTime.UtcNow,
-                        Commission = 2.50m,
+                        Commission = MockCommission,
                         Exchange = "CME",
                         LiquidityType = "MAKER"
                     }

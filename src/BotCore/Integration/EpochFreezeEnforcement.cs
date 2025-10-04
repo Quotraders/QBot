@@ -17,6 +17,10 @@ namespace BotCore.Integration;
 /// </summary>
 public sealed class EpochFreezeEnforcement
 {
+    // Market data defaults
+    private const double DefaultAtrValue = 15.0;
+    private const double StandardFuturesTickSize = 0.25;
+    
     private readonly ILogger<EpochFreezeEnforcement> _logger;
     private readonly IServiceProvider _serviceProvider;
     
@@ -413,11 +417,11 @@ public sealed class EpochFreezeEnforcement
         try
         {
             var featureBusAdapter = _serviceProvider.GetService<BotCore.Fusion.IFeatureBusWithProbe>();
-            return featureBusAdapter?.Probe(symbol, "atr.14") ?? 15.0; // Default ATR
+            return featureBusAdapter?.Probe(symbol, "atr.14") ?? DefaultAtrValue; // Default ATR
         }
         catch
         {
-            return 15.0; // Default ATR
+            return DefaultAtrValue; // Default ATR
         }
     }
     
@@ -428,9 +432,9 @@ public sealed class EpochFreezeEnforcement
     {
         return symbol switch
         {
-            "ES" => 0.25,
-            "NQ" => 0.25,
-            _ => 0.25
+            "ES" => StandardFuturesTickSize,
+            "NQ" => StandardFuturesTickSize,
+            _ => StandardFuturesTickSize
         };
     }
     

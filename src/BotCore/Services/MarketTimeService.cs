@@ -11,6 +11,14 @@ namespace BotCore.Services
     /// </summary>
     public class MarketTimeService
     {
+        // Market holiday constants
+        private const int JanuaryMonth = 1;
+        private const int NewYearsDay = 1;
+        private const int JulyMonth = 7;
+        private const int IndependenceDayDate = 4;
+        private const int DecemberMonth = 12;
+        private const int ChristmasDay = 25;
+        
         private readonly ILogger<MarketTimeService> _logger;
         private readonly TimeZoneInfo _easternTimeZone;
 
@@ -169,15 +177,15 @@ namespace BotCore.Services
             var easternDate = TimeZoneInfo.ConvertTimeFromUtc(date, _easternTimeZone).Date;
             
             // New Year's Day
-            if (easternDate.Month == 1 && easternDate.Day == 1)
+            if (easternDate.Month == JanuaryMonth && easternDate.Day == NewYearsDay)
                 return true;
                 
             // Independence Day
-            if (easternDate.Month == 7 && easternDate.Day == 4)
+            if (easternDate.Month == JulyMonth && easternDate.Day == IndependenceDayDate)
                 return true;
                 
             // Christmas Day
-            if (easternDate.Month == 12 && easternDate.Day == 25)
+            if (easternDate.Month == DecemberMonth && easternDate.Day == ChristmasDay)
                 return true;
             
             // Note: This is a simplified implementation
