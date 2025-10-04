@@ -45,6 +45,38 @@ public class NewsIntelligence
 public class NewsIntelligenceEngine : INewsIntelligenceEngine
 {
     private readonly ILogger<NewsIntelligenceEngine> _logger;
+    
+    // News intelligence thresholds
+    private const decimal HighImpactThreshold = 0.7m;
+    private const int MaxRecentArticles = 10;
+    private const decimal NeutralSentiment = 0.5m;
+    private const int MaxKeywordsToExtract = 5;
+    private const decimal MaxImpactScore = 1.0m;
+    
+    // Market hours and time-based sentiment
+    private const int MarketOpenHour = 9;
+    private const int MarketCloseHour = 16;
+    private const int OvernightStartHour = 18;
+    private const int OvernightEndHour = 6;
+    private const decimal MarketHoursSentimentAdjustment = 0.1m;
+    private const decimal OvernightSentimentAdjustment = 0.05m;
+    
+    // Symbol-specific sentiment adjustments
+    private const decimal EsSentimentVolatility = 0.15m;
+    private const decimal NqSentimentVolatility = 0.2m;
+    
+    // Weekly pattern adjustments
+    private const decimal MondaySentimentBoost = 0.05m;
+    private const decimal FridaySentimentDrag = 0.03m;
+    
+    // Sentiment bounds and noise
+    private const decimal SentimentNoiseAmplitude = 0.1m;
+    private const decimal MinSentimentBound = 0.1m;
+    private const decimal MaxSentimentBound = 0.9m;
+    
+    // Sentiment calculation parameters
+    private const decimal MinuteBasedSentimentMultiplier = 0.1m;
+    private const decimal MillisecondBasedNoiseMultiplier = 0.01m;
 
     public NewsIntelligenceEngine(ILogger<NewsIntelligenceEngine> logger)
     {
@@ -76,7 +108,7 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
                 Sentiment = sentiment,
                 Keywords = keywords,
                 Timestamp = DateTime.UtcNow,
-                IsHighImpact = impactLevel > 0.7m
+                IsHighImpact = impactLevel > HighImpactThreshold
             };
         }
         catch (Exception ex)
@@ -105,7 +137,7 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
                 
                 if (newsResponse?.Articles != null)
                 {
-                    newsItems.AddRange(newsResponse.Articles.Take(10)); // Limit to recent articles
+                    newsItems.AddRange(newsResponse.Articles.Take(MaxRecentArticles)); // Limit to recent articles
                 }
             }
             
@@ -129,7 +161,7 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
             sentiments.Add(sentiment);
         }
         
-        return Task.FromResult(sentiments.Any() ? sentiments.Average() : 0.5m);
+        return Task.FromResult(sentiments.Any() ? sentiments.Average() : NeutralSentiment);
     }
     
     private static string[] ExtractKeywords(List<NewsItem> newsData)
@@ -146,14 +178,14 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
             }
         }
         
-        return keywordCounts.OrderByDescending(kv => kv.Value).Take(5).Select(kv => kv.Key).ToArray();
+        return keywordCounts.OrderByDescending(kv => kv.Value).Take(MaxKeywordsToExtract).Select(kv => kv.Key).ToArray();
     }
     
     private static decimal DetermineMarketImpact(string[] keywords)
     {
         var highImpactKeywords = new[] { "fed", "rate", "unemployment", "gdp", "crisis", "war" };
         var impactScore = keywords.Count(k => highImpactKeywords.Contains(k)) / (decimal)Math.Max(keywords.Length, 1);
-        return Math.Min(impactScore, 1.0m);
+        return Math.Min(impactScore, MaxImpactScore);
     }
     
     private static decimal AnalyzeTextSentiment(string text)
@@ -166,7 +198,7 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
         var positiveCount = positiveWords.Count(word => lowerText.Contains(word));
         var negativeCount = negativeWords.Count(word => lowerText.Contains(word));
         
-        if (positiveCount == 0 && negativeCount == 0) return 0.5m; // Neutral
+        if (positiveCount == 0 && negativeCount == 0) return NeutralSentiment; // Neutral
         
         var totalMentions = positiveCount + negativeCount;
         return (decimal)positiveCount / totalMentions;
@@ -187,7 +219,7 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get market sentiment for {Symbol}", symbol);
-            return 0.5m; // Default to neutral
+            return NeutralSentiment; // Default to neutral
         }
     }
 
@@ -205,51 +237,51 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
             var dayOfWeek = currentTime.DayOfWeek;
             
             // Sophisticated sentiment calculation based on multiple factors
-            decimal baseSentiment = 0.5m; // Start neutral
+            decimal baseSentiment = NeutralSentiment; // Start neutral
             
             // Time-based sentiment adjustments (market hours vs overnight)
-            if (hour >= 9 && hour <= 16) // Market hours
+            if (hour >= MarketOpenHour && hour <= MarketCloseHour) // Market hours
             {
-                baseSentiment += 0.1m; // Slightly positive during market hours
+                baseSentiment += MarketHoursSentimentAdjustment; // Slightly positive during market hours
             }
-            else if (hour >= 18 || hour <= 6) // Overnight
+            else if (hour >= OvernightStartHour || hour <= OvernightEndHour) // Overnight
             {
-                baseSentiment -= 0.05m; // Slightly negative overnight
+                baseSentiment -= OvernightSentimentAdjustment; // Slightly negative overnight
             }
             
             // Symbol-specific sentiment patterns
             if (symbol.Contains("ES"))
             {
                 // ES typically follows broader market sentiment
-                baseSentiment += (decimal)(Math.Sin(currentTime.Minute * 0.1) * 0.15);
+                baseSentiment += (decimal)(Math.Sin(currentTime.Minute * (double)MinuteBasedSentimentMultiplier) * (double)EsSentimentVolatility);
             }
             else if (symbol.Contains("NQ"))
             {
                 // NQ more volatile, tech-focused sentiment
-                baseSentiment += (decimal)(Math.Cos(currentTime.Minute * 0.1) * 0.2);
+                baseSentiment += (decimal)(Math.Cos(currentTime.Minute * (double)MinuteBasedSentimentMultiplier) * (double)NqSentimentVolatility);
             }
             
             // Weekly patterns (avoid weekends)
             if (dayOfWeek == DayOfWeek.Monday)
             {
-                baseSentiment += 0.05m; // Monday optimism
+                baseSentiment += MondaySentimentBoost; // Monday optimism
             }
             else if (dayOfWeek == DayOfWeek.Friday)
             {
-                baseSentiment -= 0.03m; // Friday profit-taking
+                baseSentiment -= FridaySentimentDrag; // Friday profit-taking
             }
             
             // Add some realistic volatility
-            var noise = (decimal)(Math.Sin(currentTime.Millisecond * 0.01) * 0.1);
+            var noise = (decimal)(Math.Sin(currentTime.Millisecond * (double)MillisecondBasedNoiseMultiplier) * (double)SentimentNoiseAmplitude);
             baseSentiment += noise;
             
             // Ensure sentiment stays within reasonable bounds
-            return Math.Clamp(baseSentiment, 0.1m, 0.9m);
+            return Math.Clamp(baseSentiment, MinSentimentBound, MaxSentimentBound);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "[NewsIntelligence] Error in sentiment analysis for {Symbol}", symbol);
-            return 0.5m; // Return neutral on error
+            return NeutralSentiment; // Return neutral on error
         }
     }
 

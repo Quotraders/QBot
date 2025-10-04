@@ -116,7 +116,51 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ---
 
-### 🔧 Round 159 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+### 🔧 Round 160 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (44 violations fixed, 1 file)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 804 | 760 | NewsIntelligenceEngine.cs | Extracted news intelligence thresholds (sentiment bounds, market hours, time-based adjustments, symbol volatility factors) |
+
+**Total Fixed: 44 analyzer violations (44 unique S109 fixes in 1 file)**
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers inline
+IsHighImpact = impactLevel > 0.7m
+newsItems.AddRange(newsResponse.Articles.Take(10));
+if (hour >= 9 && hour <= 16) { baseSentiment += 0.1m; }
+else if (hour >= 18 || hour <= 6) { baseSentiment -= 0.05m; }
+baseSentiment += (decimal)(Math.Sin(currentTime.Minute * 0.1) * 0.15);
+return Math.Clamp(baseSentiment, 0.1m, 0.9m);
+
+// After (S109) - Named constants
+private const decimal HighImpactThreshold = 0.7m;
+private const int MaxRecentArticles = 10;
+private const int MarketOpenHour = 9;
+private const int MarketCloseHour = 16;
+private const decimal MarketHoursSentimentAdjustment = 0.1m;
+private const decimal OvernightSentimentAdjustment = 0.05m;
+private const decimal MinuteBasedSentimentMultiplier = 0.1m;
+private const decimal EsSentimentVolatility = 0.15m;
+private const decimal MinSentimentBound = 0.1m;
+private const decimal MaxSentimentBound = 0.9m;
+
+IsHighImpact = impactLevel > HighImpactThreshold
+newsItems.AddRange(newsResponse.Articles.Take(MaxRecentArticles));
+if (hour >= MarketOpenHour && hour <= MarketCloseHour) { baseSentiment += MarketHoursSentimentAdjustment; }
+else if (hour >= OvernightStartHour || hour <= OvernightEndHour) { baseSentiment -= OvernightSentimentAdjustment; }
+baseSentiment += (decimal)(Math.Sin(currentTime.Minute * (double)MinuteBasedSentimentMultiplier) * (double)EsSentimentVolatility);
+return Math.Clamp(baseSentiment, MinSentimentBound, MaxSentimentBound);
+```
+
+**Build Verification**: ✅ 0 CS errors maintained, 44 S109 violations fixed (reduced from 804 to 760)
+
+---
+
+### 🔧 Round 159 - Phase 2: S109 Magic Numbers Elimination (Previous in Current Session)
 
 **S109: Magic Number to Named Constant Conversion (40 violations fixed, 1 file)**
 
