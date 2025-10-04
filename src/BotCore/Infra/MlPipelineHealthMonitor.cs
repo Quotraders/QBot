@@ -34,6 +34,18 @@ namespace BotCore.Infra
         private const int MaxHoursWithoutData = 2;
         private const int MaxHoursWithoutModelUpdate = 48;
         private const int MaxConsecutiveFailures = 5;
+        
+        // File size and count thresholds
+        private const long MinimumDataSizeBytes = 1024;                 // Minimum 1KB data size
+        private const long MinimumModelSizeBytes = 1024;                // Minimum 1KB model size
+        private const int MaxTrainingIntervalHours = 8;                 // Maximum hours between training
+        private const int DelayForGitHubStatusCheckMs = 50;             // Delay for GitHub status check
+        private const int MinimumDiskSpaceGb = 1;                       // Critical disk space threshold (GB)
+        private const int LowDiskSpaceWarningGb = 5;                    // Low disk space warning threshold (GB)
+        private const int MaxDataFileCount = 1000;                      // Maximum data files before cleanup
+        private const int MaxModelFileCount = 50;                       // Maximum model files before cleanup
+        private const int MaxHealthMetricsRecords = 1000;               // Maximum health metrics records to keep
+        private const long BytesPerGigabyte = 1024 * 1024 * 1024;      // Bytes in a gigabyte
 
         public MlPipelineHealthMonitor(ILogger logger)
         {
@@ -135,7 +147,7 @@ namespace BotCore.Infra
 
                     // Check data quality
                     var totalSize = recentFiles.Sum(f => new FileInfo(f).Length);
-                    if (totalSize < 1024) // Less than 1KB suggests minimal data
+                    if (totalSize < MinimumDataSizeBytes) // Minimal data threshold
                     {
                         warnings.Add("Data collection volume is very low");
                     }
@@ -169,7 +181,7 @@ namespace BotCore.Infra
 
                 // Check model file integrity
                 var modelInfo = new FileInfo(latestModel);
-                if (modelInfo.Length < 1024) // Very small model suggests corruption
+                if (modelInfo.Length < MinimumModelSizeBytes) // Very small model suggests corruption
                 {
                     issues.Add("Latest model file appears corrupted (too small)");
                 }
@@ -193,7 +205,7 @@ namespace BotCore.Infra
                     _lastTrainingAttempt = latestBackup;
 
                     var timeSinceTraining = DateTime.Now - latestBackup;
-                    if (timeSinceTraining.TotalHours > 8) // Should train every 6 hours
+                    if (timeSinceTraining.TotalHours > MaxTrainingIntervalHours) // Should train regularly
                     {
                         warnings.Add($"No training activity detected in {timeSinceTraining.TotalHours:F1} hours");
                         _consecutiveTrainingFailures++; // Track consecutive failures
@@ -242,7 +254,7 @@ namespace BotCore.Infra
             try
             {
                 // Simulate GitHub Actions API check
-                await Task.Delay(50).ConfigureAwait(false);
+                await Task.Delay(DelayForGitHubStatusCheckMs).ConfigureAwait(false);
                 
                 // Check for workflow status indicators (files, environment variables, etc.)
                 var githubToken = Environment.GetEnvironmentVariable("GITHUB_TOKEN");
@@ -269,13 +281,13 @@ namespace BotCore.Infra
                 var dataDir = new DirectoryInfo(_dataDir);
 
                 var drive = new DriveInfo(dataDir.Root.FullName);
-                var freeSpaceGB = drive.AvailableFreeSpace / (1024 * 1024 * 1024);
+                var freeSpaceGB = drive.AvailableFreeSpace / BytesPerGigabyte;
 
-                if (freeSpaceGB < 1)
+                if (freeSpaceGB < MinimumDiskSpaceGb)
                 {
                     issues.Add($"Low disk space: {freeSpaceGB:F1} GB remaining");
                 }
-                else if (freeSpaceGB < 5)
+                else if (freeSpaceGB < LowDiskSpaceWarningGb)
                 {
                     warnings.Add($"Disk space getting low: {freeSpaceGB:F1} GB remaining");
                 }
@@ -284,12 +296,12 @@ namespace BotCore.Infra
                 var dataFileCount = Directory.GetFiles(_dataDir, "*.jsonl").Length;
                 var modelFileCount = Directory.GetFiles(_modelDir, "*.onnx").Length;
 
-                if (dataFileCount > 1000)
+                if (dataFileCount > MaxDataFileCount)
                 {
                     warnings.Add($"Many data files ({dataFileCount}) - cleanup may be needed");
                 }
 
-                if (modelFileCount > 50)
+                if (modelFileCount > MaxModelFileCount)
                 {
                     warnings.Add($"Many model files ({modelFileCount}) - cleanup may be needed");
                 }
@@ -375,11 +387,11 @@ namespace BotCore.Infra
                 var json = JsonSerializer.Serialize(metrics);
                 File.AppendAllText(metricsPath, json + Environment.NewLine);
 
-                // Keep only last 1000 health records
+                // Keep only last N health records
                 var lines = File.ReadAllLines(metricsPath);
-                if (lines.Length > 1000)
+                if (lines.Length > MaxHealthMetricsRecords)
                 {
-                    File.WriteAllLines(metricsPath, lines.TakeLast(1000));
+                    File.WriteAllLines(metricsPath, lines.TakeLast(MaxHealthMetricsRecords));
                 }
             }
             catch (Exception ex)

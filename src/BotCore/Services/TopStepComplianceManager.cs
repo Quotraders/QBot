@@ -31,6 +31,20 @@ public class TopStepComplianceManager
     private const decimal TopStepDrawdownLimit = -2500m;
     private const decimal SafeDrawdownLimit = -2000m;     // Conservative safety buffer
     
+    // Compliance threshold percentages
+    private const decimal WarningThresholdPercent = 0.8m;  // 80% threshold for warning
+    private const decimal CriticalThresholdPercent = 0.9m; // 90% threshold for critical
+    private const decimal PercentToDecimalConversion = 100m; // Convert decimal to percentage
+    
+    // TopStep evaluation requirements
+    private const decimal ProfitTargetAmount = 3000m;      // $3,000 profit target for $50K account
+    private const int MinimumTradingDays = 5;              // Minimum 5 trading days required
+    private const decimal DailyLossWarningThreshold = 200m; // Warning when remaining < $200
+    private const decimal DrawdownWarningThreshold = 300m;  // Warning when remaining < $300
+    
+    // Timezone constants
+    private const int EasternTimeOffsetHours = -5;         // EST offset from UTC
+    
     // Approved contracts for TopStep evaluation
     private readonly string[] ApprovedContracts = { "ES", "NQ" };
     
@@ -81,18 +95,18 @@ public class TopStepComplianceManager
                 return false;
             }
             
-            // Check if approaching limits (80% threshold)
-            if (_todayPnL <= SafeDailyLossLimit * 0.8m)
+            // Check if approaching limits (warning threshold)
+            if (_todayPnL <= SafeDailyLossLimit * WarningThresholdPercent)
             {
-                _logger.LogWarning("⚠️ [TOPSTEP-COMPLIANCE] Approaching daily loss limit: ${PnL} (80% of ${Limit})",
-                    _todayPnL, SafeDailyLossLimit);
+                _logger.LogWarning("⚠️ [TOPSTEP-COMPLIANCE] Approaching daily loss limit: ${PnL} ({Percent}% of ${Limit})",
+                    _todayPnL, WarningThresholdPercent * PercentToDecimalConversion, SafeDailyLossLimit);
                 // Still allow trading but with caution
             }
             
-            if (_currentDrawdown <= SafeDrawdownLimit * 0.8m)
+            if (_currentDrawdown <= SafeDrawdownLimit * WarningThresholdPercent)
             {
-                _logger.LogWarning("⚠️ [TOPSTEP-COMPLIANCE] Approaching drawdown limit: ${Drawdown} (80% of ${Limit})",
-                    _currentDrawdown, SafeDrawdownLimit);
+                _logger.LogWarning("⚠️ [TOPSTEP-COMPLIANCE] Approaching drawdown limit: ${Drawdown} ({Percent}% of ${Limit})",
+                    _currentDrawdown, WarningThresholdPercent * PercentToDecimalConversion, SafeDrawdownLimit);
                 // Still allow trading but with caution
             }
             
@@ -223,7 +237,7 @@ public class TopStepComplianceManager
         // TopStep evaluation profit targets
         // Evaluation: $3,000 profit target for $50K account
         // Funded: No specific target, but consistent profitability expected
-        return 3000m;
+        return ProfitTargetAmount;
     }
     
     /// <summary>
@@ -323,14 +337,14 @@ public class TopStepComplianceManager
             // Could trigger emergency stop
         }
         
-        // Check for approaching violations (90% threshold)
-        if (_todayPnL <= TopStepDailyLossLimit * 0.9m)
+        // Check for approaching violations (critical threshold)
+        if (_todayPnL <= TopStepDailyLossLimit * CriticalThresholdPercent)
         {
             _logger.LogError("🔴 [TOPSTEP-COMPLIANCE] CRITICAL: Approaching daily loss limit: ${PnL}",
                 _todayPnL);
         }
         
-        if (_currentDrawdown <= TopStepDrawdownLimit * 0.9m)
+        if (_currentDrawdown <= TopStepDrawdownLimit * CriticalThresholdPercent)
         {
             _logger.LogError("🔴 [TOPSTEP-COMPLIANCE] CRITICAL: Approaching drawdown limit: ${Drawdown}",
                 _currentDrawdown);
@@ -344,7 +358,7 @@ public class TopStepComplianceManager
         // TopStep evaluation requirements
         // Evaluation: Minimum 5 trading days
         // Express Funded: Minimum 5 trading days
-        return 5;
+        return MinimumTradingDays;
     }
     
     private static DateTime GetEasternTime()
@@ -357,7 +371,7 @@ public class TopStepComplianceManager
         catch
         {
             // Fallback to UTC-5 (EST) if timezone not found
-            return DateTime.UtcNow.AddHours(-5);
+            return DateTime.UtcNow.AddHours(EasternTimeOffsetHours);
         }
     }
     
@@ -371,12 +385,12 @@ public class TopStepComplianceManager
             return recommendations;
         }
         
-        if (status.DailyLossRemaining < 200m)
+        if (status.DailyLossRemaining < DailyLossWarningThreshold)
         {
             recommendations.Add("Reduce position size - approaching daily loss limit");
         }
         
-        if (status.DrawdownRemaining < 300m)
+        if (status.DrawdownRemaining < DrawdownWarningThreshold)
         {
             recommendations.Add("Consider defensive trading - approaching drawdown limit");
         }

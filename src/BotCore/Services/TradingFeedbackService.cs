@@ -24,6 +24,18 @@ public class TradingFeedbackService : BackgroundService
     private readonly double _performanceThreshold = 0.6; // 60% accuracy threshold
     private readonly double _volatilityThreshold = 0.3; // 30% volatility threshold
     
+    // Feedback processing constants
+    private const double MinimumPredictionAccuracyThreshold = 0.5;  // Minimum accuracy to count as successful
+    private const int RollingAccuracyWindowSize = 100;              // Keep last 100 trades for rolling accuracy
+    private const int MinimumSamplesForVolatility = 10;             // Minimum samples to calculate volatility
+    private const int RecentPerformanceWindowSize = 20;             // Window size for recent performance comparison
+    private const double PerformanceDropThreshold = 0.1;            // 10% drop threshold for performance degradation
+    
+    // Severity calculation thresholds
+    private const double CriticalSeverityThreshold = 0.5;           // >50% deviation = critical
+    private const double HighSeverityThreshold = 0.3;               // >30% deviation = high
+    private const double MediumSeverityThreshold = 0.1;             // >10% deviation = medium
+    
     private readonly string _feedbackDataPath;
     private DateTime _lastRetrainingTrigger = DateTime.MinValue;
     
@@ -192,7 +204,7 @@ public class TradingFeedbackService : BackgroundService
         metrics.LastUpdate = outcome.Timestamp;
         metrics.TotalPnL += outcome.RealizedPnL;
         
-        if (outcome.PredictionAccuracy >= 0.5)
+        if (outcome.PredictionAccuracy >= MinimumPredictionAccuracyThreshold)
         {
             metrics.SuccessfulTrades++;
         }
@@ -204,7 +216,7 @@ public class TradingFeedbackService : BackgroundService
         
         // Calculate rolling accuracy
         metrics.AccuracyHistory.Add(outcome.PredictionAccuracy);
-        if (metrics.AccuracyHistory.Count > 100) // Keep last 100 trades
+        if (metrics.AccuracyHistory.Count > RollingAccuracyWindowSize) // Keep last N trades
         {
             metrics.AccuracyHistory.RemoveAt(0);
         }
@@ -214,7 +226,7 @@ public class TradingFeedbackService : BackgroundService
         metrics.WinRate = (double)metrics.ProfitableTrades / metrics.TotalTrades;
         
         // Calculate volatility of predictions
-        if (metrics.AccuracyHistory.Count >= 10)
+        if (metrics.AccuracyHistory.Count >= MinimumSamplesForVolatility)
         {
             // Phase 6A: Exception Guards - Add .Count > 0 check before .Average()
             var variance = metrics.AccuracyHistory.Count > 0 ? 
@@ -267,16 +279,16 @@ public class TradingFeedbackService : BackgroundService
             }
             
             // Check for recent performance drops
-            if (metrics.AccuracyHistory.Count >= 20)
+            if (metrics.AccuracyHistory.Count >= RecentPerformanceWindowSize)
             {
                 // Phase 6A: Exception Guards - Add .Count > 0 checks before .Average()
-                var recentHistory = metrics.AccuracyHistory.TakeLast(10).ToList();
-                var previousHistory = metrics.AccuracyHistory.Take(10).ToList();
+                var recentHistory = metrics.AccuracyHistory.TakeLast(MinimumSamplesForVolatility).ToList();
+                var previousHistory = metrics.AccuracyHistory.Take(MinimumSamplesForVolatility).ToList();
                 
                 var recent = recentHistory.Count > 0 ? recentHistory.Average() : 0.0;
                 var previous = previousHistory.Count > 0 ? previousHistory.Average() : 0.0;
                 
-                if (recent < previous - 0.1) // 10% drop
+                if (recent < previous - PerformanceDropThreshold) // Performance drop threshold
                 {
                     performanceIssues.Add(new PerformanceIssue
                     {
@@ -505,9 +517,9 @@ public class TradingFeedbackService : BackgroundService
         
         return deviation switch
         {
-            > 0.5 => "critical",
-            > 0.3 => "high",
-            > 0.1 => "medium",
+            > CriticalSeverityThreshold => "critical",
+            > HighSeverityThreshold => "high",
+            > MediumSeverityThreshold => "medium",
             _ => "low"
         };
     }

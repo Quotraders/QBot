@@ -13,6 +13,17 @@ namespace BotCore.Services;
 /// </summary>
 public class SessionAwareRuntimeGates
 {
+    // Time parsing constants (HHMM format)
+    private const int TimeStringHourStartIndex = 0;
+    private const int TimeStringHourLength = 2;
+    private const int TimeStringMinuteStartIndex = 3;
+    private const int TimeStringMinuteLength = 2;
+    
+    // Timezone and configuration defaults
+    private const int EasternTimeOffsetHours = -5;           // EST offset from UTC
+    private const int DefaultEthCurbFirstMinutes = 3;        // Default ETH curb first minutes
+    private const int DefaultSundayReopenCurbMinutes = 5;    // Default Sunday reopen curb minutes
+
     private readonly ILogger<SessionAwareRuntimeGates> _logger;
     private readonly IConfiguration _configuration;
     private readonly SessionConfiguration _sessionConfig;
@@ -161,7 +172,7 @@ public class SessionAwareRuntimeGates
         catch
         {
             // Fallback if timezone not found
-            return DateTime.UtcNow.AddHours(-5);
+            return DateTime.UtcNow.AddHours(EasternTimeOffsetHours);
         }
     }
 
@@ -170,8 +181,8 @@ public class SessionAwareRuntimeGates
     /// </summary>
     private static bool InRange(string hhmm, string hhmm2, DateTime et)
     {
-        var (h1, m1) = (int.Parse(hhmm[..2]), int.Parse(hhmm[3..]));
-        var (h2, m2) = (int.Parse(hhmm2[..2]), int.Parse(hhmm2[3..]));
+        var (h1, m1) = (int.Parse(hhmm[TimeStringHourStartIndex..TimeStringHourLength]), int.Parse(hhmm[TimeStringMinuteStartIndex..(TimeStringMinuteStartIndex + TimeStringMinuteLength)]));
+        var (h2, m2) = (int.Parse(hhmm2[TimeStringHourStartIndex..TimeStringHourLength]), int.Parse(hhmm2[TimeStringMinuteStartIndex..(TimeStringMinuteStartIndex + TimeStringMinuteLength)]));
         var a = new TimeSpan(h1, m1, 0);
         var b = new TimeSpan(h2, m2, 0);
         var t = et.TimeOfDay;
@@ -355,12 +366,12 @@ public class SessionAwareRuntimeGates
             ETH = new EthConfig
             {
                 Allow = section.GetValue<bool>("ETH:Allow", true),
-                CurbFirstMins = section.GetValue<int>("ETH:CurbFirstMins", 3)
+                CurbFirstMins = section.GetValue<int>("ETH:CurbFirstMins", DefaultEthCurbFirstMinutes)
             },
             SundayReopen = new SundayReopenConfig
             {
                 Enable = section.GetValue<bool>("SundayReopen:Enable", true),
-                CurbMins = section.GetValue<int>("SundayReopen:CurbMins", 5)
+                CurbMins = section.GetValue<int>("SundayReopen:CurbMins", DefaultSundayReopenCurbMinutes)
             }
         };
     }
