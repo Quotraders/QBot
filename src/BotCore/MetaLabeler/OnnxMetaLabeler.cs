@@ -15,6 +15,16 @@ namespace BotCore.MetaLabeler;
 /// </summary>
 public class OnnxMetaLabeler : IMetaLabeler, IDisposable
 {
+    // Calibration and threshold constants
+    private const decimal NeutralProbabilityOnError = 0.5m;         // Fallback probability on error
+    private const int MinPredictionsForCalibration = 100;           // Minimum predictions before calibration adjustment
+    private const decimal PoorCalibrationBrierThreshold = 0.25m;    // Brier score threshold for poor calibration
+    private const decimal CalibrationAdjustmentUp = 0.02m;          // Threshold increase for poor calibration
+    private const decimal CalibrationAdjustmentDown = -0.01m;       // Threshold decrease for good calibration
+    private const decimal MinWinProbThresholdBound = 0.5m;          // Minimum win probability threshold bound
+    private const decimal MaxWinProbThresholdBound = 0.8m;          // Maximum win probability threshold bound
+    private const int VolumeNormalizationDivisor = 1000;            // Volume normalization divisor
+
     private readonly InferenceSession _session;
     private readonly CalibrationTracker _calibration;
     private decimal _minWinProbThreshold;
@@ -78,7 +88,7 @@ public class OnnxMetaLabeler : IMetaLabeler, IDisposable
         catch (Exception ex)
         {
             Console.WriteLine($"[META-LABELER] Error estimating win probability: {ex.Message}");
-            return 0.5m; // Neutral probability on error
+            return NeutralProbabilityOnError; // Neutral probability on error
         }
     }
 
@@ -96,11 +106,11 @@ public class OnnxMetaLabeler : IMetaLabeler, IDisposable
 
         // Update threshold based on calibration if needed
         var metrics = await GetCalibrationMetricsAsync(ct).ConfigureAwait(false);
-        if (metrics.TotalPredictions > 100 && !metrics.IsWellCalibrated)
+        if (metrics.TotalPredictions > MinPredictionsForCalibration && !metrics.IsWellCalibrated)
         {
             // Adjust threshold if model is poorly calibrated
-            var adjustment = metrics.BrierScore > 0.25m ? 0.02m : -0.01m;
-            _minWinProbThreshold = Math.Max(0.5m, Math.Min(0.8m, _minWinProbThreshold + adjustment));
+            var adjustment = metrics.BrierScore > PoorCalibrationBrierThreshold ? CalibrationAdjustmentUp : CalibrationAdjustmentDown;
+            _minWinProbThreshold = Math.Max(MinWinProbThresholdBound, Math.Min(MaxWinProbThresholdBound, _minWinProbThreshold + adjustment));
 
             Console.WriteLine($"[META-LABELER] Adjusted threshold to {_minWinProbThreshold:P1} " +
                             $"(Brier={metrics.BrierScore:F3})");
@@ -131,7 +141,7 @@ public class OnnxMetaLabeler : IMetaLabeler, IDisposable
             marketContext.IsSessionEnd ? 1f : 0f,
             signal.IsLong ? 1f : 0f,
             // Add more features as needed
-            (float)(marketContext.Volume / 1000), // Normalized volume
+            (float)(marketContext.Volume / VolumeNormalizationDivisor), // Normalized volume
             (float)Math.Log((double)marketContext.BidAskSpread + 1) // Log spread
         };
     }
@@ -162,6 +172,10 @@ public class OnnxMetaLabeler : IMetaLabeler, IDisposable
 /// </summary>
 internal sealed class CalibrationTracker
 {
+    private const int MaxCalibrationPredictions = 1000;             // Maximum predictions to keep in sliding window
+    private const decimal WellCalibratedBrierThreshold = 0.2m;      // Brier score threshold for well-calibrated model
+    private const decimal WellCalibratedReliabilityThreshold = 0.05m; // Reliability threshold for well-calibrated model
+
     private readonly List<(decimal predicted, bool actual)> _predictions = new();
     private readonly object _lock = new();
 
@@ -172,7 +186,7 @@ internal sealed class CalibrationTracker
             _predictions.Add((predicted, actual));
 
             // Keep only recent predictions (sliding window)
-            if (_predictions.Count > 1000)
+            if (_predictions.Count > MaxCalibrationPredictions)
             {
                 _predictions.RemoveAt(0);
             }
@@ -208,7 +222,7 @@ internal sealed class CalibrationTracker
                 ResolutionScore: resolution,
                 TotalPredictions: _predictions.Count,
                 LastUpdated: DateTime.UtcNow,
-                IsWellCalibrated: brierScore < 0.2m && reliability < 0.05m
+                IsWellCalibrated: brierScore < WellCalibratedBrierThreshold && reliability < WellCalibratedReliabilityThreshold
             );
         }
     }

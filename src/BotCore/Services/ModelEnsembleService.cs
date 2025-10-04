@@ -28,6 +28,12 @@ public class ModelEnsembleService
     private const double FallbackConfidenceScore = 0.5;
     private const double RandomPredictionBase = 0.6;
     private const double RandomPredictionRange = 0.3;
+    private const double NormalizedConfidenceFallback = 0.5;        // Fallback when totalWeight is 0
+    private const double MinProbabilityBound = 0.1;                 // Minimum probability clamp
+    private const double MaxProbabilityBound = 0.9;                 // Maximum probability clamp
+    private const double MinLogProbabilityEpsilon = 1e-8;           // Epsilon to avoid log(0)
+    private const double ContextFeatureAdjustment = 0.1;            // Context adjustment for confidence
+    private const double VolatilityProbabilityBoost = 0.1;          // Probability boost with volatility data
     private static readonly Random SharedRandom = new();
     
     public ModelEnsembleService(
@@ -444,7 +450,7 @@ public class ModelEnsembleService
     {
         if (!predictions.Any())
         {
-            return new StrategyPrediction { SelectedStrategy = "S3", Confidence = 0.5 }; // Default fallback
+            return new StrategyPrediction { SelectedStrategy = "S3", Confidence = FallbackConfidenceScore }; // Default fallback
         }
         
         // Weighted voting by strategy
@@ -467,7 +473,7 @@ public class ModelEnsembleService
         
         // Select strategy with highest weighted vote
         var selectedStrategy = strategyVotes.OrderByDescending(kvp => kvp.Value).First();
-        var normalizedConfidence = totalWeight > 0 ? selectedStrategy.Value / totalWeight : 0.5;
+        var normalizedConfidence = totalWeight > 0 ? selectedStrategy.Value / totalWeight : NormalizedConfidenceFallback;
         
         return new StrategyPrediction
         {
@@ -485,7 +491,7 @@ public class ModelEnsembleService
     {
         if (!predictions.Any())
         {
-            return new PriceDirectionPrediction { Direction = "Sideways", Probability = 0.5 };
+            return new PriceDirectionPrediction { Direction = "Sideways", Probability = FallbackConfidenceScore };
         }
         
         // Convert directions to numeric values for averaging
@@ -524,7 +530,7 @@ public class ModelEnsembleService
         return new PriceDirectionPrediction
         {
             Direction = finalDirection,
-            Probability = Math.Max(0.1, Math.Min(0.9, averageProbability)),
+            Probability = Math.Max(MinProbabilityBound, Math.Min(MaxProbabilityBound, averageProbability)),
             Weight = totalWeight,
             ModelName = "ensemble"
         };
@@ -583,7 +589,7 @@ public class ModelEnsembleService
         {
             Action = selectedAction,
             ActionProbability = blendedProbs[selectedAction],
-            LogProbability = Math.Log(Math.Max(blendedProbs[selectedAction], 1e-8)),
+            LogProbability = Math.Log(Math.Max(blendedProbs[selectedAction], MinLogProbabilityEpsilon)),
             ValueEstimate = totalValue,
             CVaREstimate = totalCVaR,
             ActionProbabilities = blendedProbs,
@@ -632,12 +638,12 @@ public class ModelEnsembleService
             Result = new StrategyPrediction 
             { 
                 SelectedStrategy = fallbackStrategy, 
-                Confidence = 0.5,
+                Confidence = FallbackConfidenceScore,
                 ModelName = "fallback"
             },
             ModelCount = 0,
             BlendingMethod = "fallback",
-            Confidence = 0.5m,
+            Confidence = (decimal)FallbackConfidenceScore,
             Timestamp = DateTime.UtcNow
         };
     }
@@ -694,7 +700,7 @@ public class ModelEnsembleService
         var baseConfidence = _mlConfig.GetAIConfidenceThreshold(); // Base confidence from model calibration
         
         // Use contextVector to adjust confidence based on market conditions
-        var contextAdjustment = contextVector.Features.Count > 0 ? 0.1 : 0.0;
+        var contextAdjustment = contextVector.Features.Count > 0 ? ContextFeatureAdjustment : 0.0;
         var confidenceVariation = SharedRandom.NextDouble() * RandomPredictionRange;
         
         return Task.FromResult<StrategyPrediction?>(new StrategyPrediction
@@ -720,7 +726,7 @@ public class ModelEnsembleService
         var baseProb = RandomPredictionBase;
         if (marketFeatures?.Volatility > 0)
         {
-            baseProb += 0.1; // Higher confidence with volatility data
+            baseProb += VolatilityProbabilityBoost; // Higher confidence with volatility data
         }
         
         return Task.FromResult<PriceDirectionPrediction?>(new PriceDirectionPrediction
