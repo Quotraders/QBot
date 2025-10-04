@@ -14,6 +14,19 @@ namespace BotCore
     /// </summary>
     public static class ManifestVerifier
     {
+        private static readonly JsonSerializerOptions CanonicalJsonOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = false
+        };
+
+        private static readonly JsonSerializerOptions SortedJsonOptions = new()
+        {
+            WriteIndented = false,
+            PropertyNamingPolicy = null,
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+
         /// <summary>
         /// Verify HMAC-SHA256 signature for a manifest JSON object.
         /// </summary>
@@ -32,11 +45,7 @@ namespace BotCore
                 var manifestWithoutSig = CreateManifestWithoutSignature(jsonDoc.RootElement);
 
                 // Generate canonical JSON (sorted keys, no whitespace)
-                var canonicalJson = JsonSerializer.Serialize(manifestWithoutSig, new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    WriteIndented = false
-                });
+                var canonicalJson = JsonSerializer.Serialize(manifestWithoutSig, CanonicalJsonOptions);
 
                 // Sort the JSON properties manually for true canonical form
                 var sortedJson = SortJsonProperties(canonicalJson);
@@ -50,7 +59,17 @@ namespace BotCore
                     Convert.FromHexString(actualSignature)
                 );
             }
-            catch (Exception ex)
+            catch (JsonException ex)
+            {
+                Console.WriteLine($"[SECURITY] Manifest signature verification failed: {ex.Message}");
+                return false;
+            }
+            catch (FormatException ex)
+            {
+                Console.WriteLine($"[SECURITY] Manifest signature verification failed: {ex.Message}");
+                return false;
+            }
+            catch (CryptographicException ex)
             {
                 Console.WriteLine($"[SECURITY] Manifest signature verification failed: {ex.Message}");
                 return false;
@@ -128,14 +147,9 @@ namespace BotCore
             try
             {
                 var jsonDoc = JsonDocument.Parse(json);
-                return JsonSerializer.Serialize(jsonDoc.RootElement, new JsonSerializerOptions
-                {
-                    WriteIndented = false,
-                    PropertyNamingPolicy = null,
-                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                });
+                return JsonSerializer.Serialize(jsonDoc.RootElement, SortedJsonOptions);
             }
-            catch
+            catch (JsonException)
             {
                 // Fallback to original if sorting fails
                 return json;
@@ -161,7 +175,7 @@ namespace BotCore
 
                 return null;
             }
-            catch
+            catch (JsonException)
             {
                 return null;
             }
@@ -205,7 +219,7 @@ namespace BotCore
 
                 return true;
             }
-            catch (Exception ex)
+            catch (JsonException ex)
             {
                 Console.WriteLine($"[SECURITY] Manifest structure validation failed: {ex.Message}");
                 return false;

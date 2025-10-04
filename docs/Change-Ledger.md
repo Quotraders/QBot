@@ -64,7 +64,69 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 122 - Phase 2: S109 + CA1031 Execution Router (Current Session)
+### 🔧 Round 123 - Phase 2: CA1869 JsonSerializerOptions + CA1031 Security (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1869 | 114 | 110 | ManifestVerifier.cs | Cached JsonSerializerOptions instances as static readonly fields |
+| CA1031 | 735 | 732 | ManifestVerifier.cs | Replaced generic Exception catches with JsonException, FormatException, CryptographicException |
+
+**Total Fixed: 7 violations (5 unique fixes in 1 file)**
+
+**Example Pattern Applied**:
+```csharp
+// Before (CA1869) - Creating new JsonSerializerOptions on every call
+var canonicalJson = JsonSerializer.Serialize(manifestWithoutSig, new JsonSerializerOptions
+{
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    WriteIndented = false
+});
+
+// After (Compliant) - Reusing cached static readonly instance
+private static readonly JsonSerializerOptions CanonicalJsonOptions = new()
+{
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    WriteIndented = false
+};
+
+var canonicalJson = JsonSerializer.Serialize(manifestWithoutSig, CanonicalJsonOptions);
+
+// Before (CA1031) - Generic exception catch for security verification
+catch (Exception ex)
+{
+    Console.WriteLine($"[SECURITY] Manifest signature verification failed: {ex.Message}");
+    return false;
+}
+
+// After (Compliant) - Specific exception types for signature verification
+catch (JsonException ex)
+{
+    Console.WriteLine($"[SECURITY] Manifest signature verification failed: {ex.Message}");
+    return false;
+}
+catch (FormatException ex)
+{
+    Console.WriteLine($"[SECURITY] Manifest signature verification failed: {ex.Message}");
+    return false;
+}
+catch (CryptographicException ex)
+{
+    Console.WriteLine($"[SECURITY] Manifest signature verification failed: {ex.Message}");
+    return false;
+}
+```
+
+**Rationale**: 
+- **CA1869**: Priority 5 (Resource Safety & Performance) - JsonSerializerOptions caching improves performance
+- **CA1031**: Priority 1 (Correctness & Invariants) - Specific exception handling for manifest verification operations
+- **Files Fixed**:
+  - `ManifestVerifier.cs` - Model manifest HMAC-SHA256 signature verification and structure validation
+- **Context**: Security-critical manifest verification with JSON parsing, signature validation, and format checking
+
+**Build Verification**: ✅ 0 CS errors maintained, ~5900 analyzer violations remaining (7 violations fixed)
+
+---
+
+### 🔧 Round 122 - Phase 2: S109 + CA1031 Execution Router (Previous in Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | S109 | 1956 | 1942 | EvExecutionRouter.cs | Added named constants for execution routing configuration (slippage, confidence thresholds, win rate) |
