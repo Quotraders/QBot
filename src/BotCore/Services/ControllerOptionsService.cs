@@ -51,13 +51,13 @@ namespace TradingBot.BotCore.Services
             _config = config;
         }
 
-        public (double Lower, double Upper) GetConfidenceBands(string regimeType) => regimeType?.ToLower(CultureInfo.InvariantCulture) switch
+        public (double Lower, double Upper) GetConfidenceBands(string regimeType) => regimeType?.ToUpperInvariant() switch
         {
-            "bull" => (
+            "BULL" => (
                 _config.GetValue("Controller:ConfidenceBands:Bull:Lower", DefaultBullConfidenceLower),
                 _config.GetValue("Controller:ConfidenceBands:Bull:Upper", DefaultBullConfidenceUpper)
             ),
-            "bear" => (
+            "BEAR" => (
                 _config.GetValue("Controller:ConfidenceBands:Bear:Lower", DefaultBearConfidenceLower),
                 _config.GetValue("Controller:ConfidenceBands:Bear:Upper", DefaultBearConfidenceUpper)
             ),

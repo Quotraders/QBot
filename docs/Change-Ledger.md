@@ -72,11 +72,11 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ### 🔧 Round 135 - Phase 2: CA1308 String Normalization Security Fix (Current Session)
 
-**CA1308: ToLowerInvariant → ToUpperInvariant Conversion (69 violations fixed)**
+**CA1308: ToLowerInvariant → ToUpperInvariant Conversion (73 violations fixed)**
 
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
-| CA1308 | 102 | 33 | ManifestVerifier.cs, ModelUpdaterService.cs, OnnxModelLoader.cs, IntegritySigningService.cs, SecurityService.cs, SecretsValidationService.cs, ProductionKillSwitchService.cs | Changed ToLowerInvariant() to ToUpperInvariant() for hash/checksum normalization and string comparisons |
+| CA1308 | 102 | 29 | 11 files: ManifestVerifier.cs, ModelUpdaterService.cs, OnnxModelLoader.cs, IntegritySigningService.cs, SecurityService.cs, SecretsValidationService.cs, ProductionKillSwitchService.cs, CloudRlTrainerEnhanced.cs, CloudDataUploader.cs, OnnxModelCompatibilityService.cs, Feature Resolvers (3 files) | Changed ToLowerInvariant() to ToUpperInvariant() for hash/checksum normalization and string comparisons |
 
 **Pattern Applied**:
 ```csharp
