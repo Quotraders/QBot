@@ -64,7 +64,84 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 124 - Phase 2: CA1869 JsonSerializerOptions Caching Continued (Current Session)
+### 🔧 Round 125 - Phase 2: S109 Config Validation + CA1031 Risk/Auth (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 1940 | 1934 | ProductionConfigurationValidation.cs | Added named constants for trading configuration thresholds (MinimumDailyLoss, ProfitTargetMinimumRatio, MinimumCircuitBreakerThreshold) |
+| CA1031 | 720 | 717 | AuthenticationServiceExtensions.cs, RiskManagement.cs | Replaced generic catches with JsonException, FormatException, ArgumentException, ObjectDisposedException, HttpRequestException |
+
+**Total Fixed: 9 violations (6 unique fixes in 3 files)**
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers in configuration validation
+if (Math.Abs(options.MaxDailyLoss) < 100)
+if (options.DailyProfitTarget <= Math.Abs(options.MaxDailyLoss) * 0.1m)
+if (options.CircuitBreakerThreshold < 3)
+
+// After (Compliant) - Named constants with clear business meaning
+private const decimal MinimumDailyLoss = 100m;
+private const decimal ProfitTargetMinimumRatio = 0.1m;
+private const int MinimumCircuitBreakerThreshold = 3;
+
+if (Math.Abs(options.MaxDailyLoss) < MinimumDailyLoss)
+if (options.DailyProfitTarget <= Math.Abs(options.MaxDailyLoss) * ProfitTargetMinimumRatio)
+if (options.CircuitBreakerThreshold < MinimumCircuitBreakerThreshold)
+
+// Before (CA1031) - Generic catch for JWT parsing
+catch
+{
+    // Fallback on parse errors
+}
+
+// After (Compliant) - Specific exception types for JWT parsing
+catch (JsonException)
+{
+    // Fallback on parse errors
+}
+catch (FormatException)
+{
+    // Fallback on Base64 decode errors
+}
+catch (ArgumentException)
+{
+    // Fallback on invalid JWT format
+}
+
+// Before (CA1031) - Generic catch in fail-closed risk service
+catch (Exception ex)
+{
+    _logger.LogError(ex, "Risk service unexpected failure - fail-closed: returning hold");
+    return Task.FromResult(holdRiskException);
+}
+
+// After (Compliant) - Specific exception types for risk service failures
+catch (ObjectDisposedException ex)
+{
+    _logger.LogError(ex, "Risk service disposed - fail-closed: returning hold");
+    return Task.FromResult(holdRiskException);
+}
+catch (HttpRequestException ex)
+{
+    _logger.LogError(ex, "Risk service HTTP failure - fail-closed: returning hold");
+    return Task.FromResult(holdRiskException);
+}
+```
+
+**Rationale**: 
+- **S109**: Priority 1 (Correctness & Invariants) - Configuration validation thresholds extracted to named constants
+- **CA1031**: Priority 1 (Correctness & Invariants) - Specific exception handling for JWT parsing and fail-closed risk service
+- **Files Fixed**:
+  - `ProductionConfigurationValidation.cs` - Trading and resilience configuration validators
+  - `AuthenticationServiceExtensions.cs` - JWT expiry extraction with Base64 decoding
+  - `RiskManagement.cs` - Fail-closed risk assessment with service provider fallback
+- **Context**: Configuration validation, authentication token parsing, and production risk management with fail-closed semantics
+
+**Build Verification**: ✅ 0 CS errors maintained, ~5908 analyzer violations remaining (9 violations fixed)
+
+---
+
+### 🔧 Round 124 - Phase 2: CA1869 JsonSerializerOptions Caching Continued (Previous in Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | CA1869 | 110 | 108 | ApiClient.cs | Cached JsonSerializerOptions instance as static readonly field for case-insensitive deserialization |
