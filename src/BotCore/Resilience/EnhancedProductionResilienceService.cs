@@ -326,7 +326,7 @@ public static class ResilienceExtensions
 
     private static IAsyncPolicy<HttpResponseMessage> GetTimeoutPolicy()
     {
-        return Policy.TimeoutAsync<HttpResponseMessage>(DefaultTimeoutSeconds);
+        return Policy.TimeoutAsync<HttpResponseMessage>(30);
     }
 }
 

@@ -304,11 +304,6 @@ namespace BotCore
                 _log.LogError(ex, "[ModelUpdater] Error checking position status");
                 return false; // Fail safe - don't update if we can't verify
             }
-            catch (ObjectDisposedException ex)
-            {
-                _log.LogError(ex, "[ModelUpdater] Error checking position status");
-                return false; // Fail safe - don't update if we can't verify
-            }
         }
 
         private async Task<bool> UpdateModelsAsync(ModelManifest manifest, CancellationToken cancellationToken)
