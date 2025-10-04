@@ -78,7 +78,51 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 76 violations eliminated across 9 files in 3 focused rounds
 
-### 🔧 Round 148 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+### 🔧 Round 149 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (9 violations fixed, 1 file)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 1352 | 1343 | TopStepComplianceManager.cs | Extracted TopStep compliance thresholds (warning/critical percentages, profit target, minimum days, UTC offset) |
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers inline
+if (_todayPnL <= SafeDailyLossLimit * 0.8m)
+if (_currentDrawdown <= SafeDrawdownLimit * 0.8m)
+if (_todayPnL <= TopStepDailyLossLimit * 0.9m)
+return 3000m; // Profit target
+return 5; // Minimum days
+return DateTime.UtcNow.AddHours(-5); // EST offset
+if (status.DailyLossRemaining < 200m)
+if (status.DrawdownRemaining < 300m)
+
+// After (S109) - Named constants
+private const decimal WarningThresholdPercent = 0.8m;
+private const decimal CriticalThresholdPercent = 0.9m;
+private const decimal PercentToDecimalConversion = 100m;
+private const decimal ProfitTargetAmount = 3000m;
+private const int MinimumTradingDays = 5;
+private const int EasternTimeOffsetHours = -5;
+private const decimal DailyLossWarningThreshold = 200m;
+private const decimal DrawdownWarningThreshold = 300m;
+
+if (_todayPnL <= SafeDailyLossLimit * WarningThresholdPercent)
+if (_currentDrawdown <= SafeDrawdownLimit * WarningThresholdPercent)
+if (_todayPnL <= TopStepDailyLossLimit * CriticalThresholdPercent)
+return ProfitTargetAmount;
+return MinimumTradingDays;
+return DateTime.UtcNow.AddHours(EasternTimeOffsetHours);
+if (status.DailyLossRemaining < DailyLossWarningThreshold)
+if (status.DrawdownRemaining < DrawdownWarningThreshold)
+```
+
+**Build Verification**: ✅ 0 CS errors maintained, 9 S109 violations fixed in TopStepComplianceManager.cs (1352 → 1343 total)
+
+---
+
+### 🔧 Round 148 - Phase 2: S109 Magic Numbers Elimination (Previous Session)
 
 **S109: Magic Number to Named Constant Conversion (8 violations fixed, 1 file)**
 
