@@ -133,7 +133,7 @@ namespace BotCore
                 });
 
                 // Create symbol-specific files for better organization
-                var fileName = $"features_{features.Symbol.ToLowerInvariant()}_{DateTime.UtcNow:yyyyMMdd}.jsonl";
+                var fileName = $"features_{features.Symbol.ToUpperInvariant()}_{DateTime.UtcNow:yyyyMMdd}.jsonl";
                 var filePath = Path.Combine(DataPath, fileName);
 
                 lock (FileLock)
@@ -174,7 +174,7 @@ namespace BotCore
 
                 // Create symbol-specific outcome files
                 var symbol = ExtractSymbolFromSignalId(outcome.SignalId);
-                var fileName = $"outcomes_{symbol.ToLowerInvariant()}_{DateTime.UtcNow:yyyyMMdd}.jsonl";
+                var fileName = $"outcomes_{symbol.ToUpperInvariant()}_{DateTime.UtcNow:yyyyMMdd}.jsonl";
                 var filePath = Path.Combine(DataPath, fileName);
 
                 lock (FileLock)

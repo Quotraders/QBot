@@ -418,7 +418,7 @@ namespace BotCore
         {
             using var sha256 = SHA256.Create();
             var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(input));
-            return Convert.ToHexString(hashBytes).ToLowerInvariant();
+            return Convert.ToHexString(hashBytes).ToUpperInvariant();
         }
 
         private static async Task<string> ComputeFileChecksumAsync(string filePath)
@@ -426,7 +426,7 @@ namespace BotCore
             using var sha256 = SHA256.Create();
             await using var fileStream = File.OpenRead(filePath);
             var hashBytes = await sha256.ComputeHashAsync(fileStream).ConfigureAwait(false);
-            return Convert.ToHexString(hashBytes).ToLowerInvariant();
+            return Convert.ToHexString(hashBytes).ToUpperInvariant();
         }
 
         public class ModelManifest

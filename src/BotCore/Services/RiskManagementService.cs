@@ -78,10 +78,14 @@ namespace BotCore.Services
         /// </summary>
         public async Task<bool> ShouldRejectTradeAsync(string symbol, decimal quantity, decimal price, string strategy, CancellationToken cancellationToken = default)
         {
+            const decimal MaxPositionSize = 100m;
+            const int MaxDailyRejectionsPerSymbol = 50;
+            const decimal HighRiskStrategyMaxQuantity = 10m;
+            
             try
             {
                 // Position size limits
-                if (Math.Abs(quantity) > 100) // Max 100 shares/contracts
+                if (Math.Abs(quantity) > MaxPositionSize)
                 {
                     RecordRiskRejection(symbol, "position_size", $"Quantity {quantity} exceeds maximum allowed");
                     return true;
@@ -96,14 +100,14 @@ namespace BotCore.Services
 
                 // Daily rejection limit per symbol
                 var dailyRejections = await GetRiskRejectCountAsync(symbol, "all_types", cancellationToken).ConfigureAwait(false);
-                if (dailyRejections > 50) // Max 50 rejections per day per symbol
+                if (dailyRejections > MaxDailyRejectionsPerSymbol)
                 {
                     RecordRiskRejection(symbol, "rejection_limit", "Daily rejection limit exceeded");
                     return true;
                 }
 
                 // Strategy-specific limits
-                if (strategy == "high_risk" && Math.Abs(quantity) > 10)
+                if (strategy == "high_risk" && Math.Abs(quantity) > HighRiskStrategyMaxQuantity)
                 {
                     RecordRiskRejection(symbol, "strategy_limit", "High risk strategy quantity limit");
                     return true;

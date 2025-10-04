@@ -414,11 +414,14 @@ public class DiskSpaceHealthCheck : IHealthCheck
                 ["usedSpacePercent"] = Math.Round(usedSpacePercent, 1)
             };
 
-            if (freeSpaceGb > 5.0) // 5GB threshold
+            const double SufficientDiskSpaceGb = 5.0;
+            const double LowDiskSpaceGb = 1.0;
+            
+            if (freeSpaceGb > SufficientDiskSpaceGb)
             {
                 return Task.FromResult(HealthCheckResult.Healthy($"Sufficient disk space: {freeSpaceGb:F1}GB free", data));
             }
-            else if (freeSpaceGb > 1.0) // 1GB threshold
+            else if (freeSpaceGb > LowDiskSpaceGb)
             {
                 return Task.FromResult(HealthCheckResult.Degraded($"Low disk space: {freeSpaceGb:F1}GB free", data: data));
             }
@@ -480,11 +483,14 @@ public class MemoryHealthCheck : IHealthCheck
                 ["gcGen2Collections"] = GC.CollectionCount(2)
             };
 
-            if (workingSetMb < 500) // 500MB threshold
+            const double NormalMemoryUsageMb = 500.0;
+            const double ElevatedMemoryUsageMb = 1000.0;
+            
+            if (workingSetMb < NormalMemoryUsageMb)
             {
                 return HealthCheckResult.Healthy($"Memory usage normal: {workingSetMb:F1}MB", data);
             }
-            else if (workingSetMb < 1000) // 1GB threshold
+            else if (workingSetMb < ElevatedMemoryUsageMb)
             {
                 return HealthCheckResult.Degraded($"Memory usage elevated: {workingSetMb:F1}MB", data: data);
             }

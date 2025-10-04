@@ -191,7 +191,7 @@ namespace TradingBot.BotCore.Services
                 using var sha256 = SHA256.Create();
                 using var fileStream = File.OpenRead(modelPath);
                 var hashBytes = sha256.ComputeHash(fileStream);
-                return Convert.ToHexString(hashBytes).ToLowerInvariant();
+                return Convert.ToHexString(hashBytes).ToUpperInvariant();
             }
             catch (FileNotFoundException ex)
             {

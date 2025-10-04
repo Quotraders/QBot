@@ -23,9 +23,9 @@ namespace BotCore.Supervisor
         public void Set(string key, object value) => _vals[key] = value;
         public T? Get<T>(string key) => _vals.TryGetValue(key, out var v) ? (T?)v : default;
 
-        private static bool Concise() => (Environment.GetEnvironmentVariable("APP_CONCISE_CONSOLE") ?? "true").Trim().ToLowerInvariant() is "1" or "true" or "yes";
-        private static bool ShowStatusTick() => (Environment.GetEnvironmentVariable("APP_SHOW_STATUS_TICK") ?? "false").Trim().ToLowerInvariant() is "1" or "true" or "yes";
-        private static bool QuietJson() => (Environment.GetEnvironmentVariable("QUIET_JSON_STATUS") ?? "false").Trim().ToLowerInvariant() is "1" or "true" or "yes";
+        private static bool Concise() => (Environment.GetEnvironmentVariable("APP_CONCISE_CONSOLE") ?? "true").Trim().ToUpperInvariant() is "1" or "TRUE" or "YES";
+        private static bool ShowStatusTick() => (Environment.GetEnvironmentVariable("APP_SHOW_STATUS_TICK") ?? "false").Trim().ToUpperInvariant() is "1" or "TRUE" or "YES";
+        private static bool QuietJson() => (Environment.GetEnvironmentVariable("QUIET_JSON_STATUS") ?? "false").Trim().ToUpperInvariant() is "1" or "TRUE" or "YES";
 
         public void Heartbeat()
         {

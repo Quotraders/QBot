@@ -654,7 +654,7 @@ public sealed class OnnxModelLoader : IDisposable
         using var stream = File.OpenRead(filePath);
         using var sha256 = SHA256.Create();
         var hash = await Task.Run(() => sha256.ComputeHash(stream)).ConfigureAwait(false);
-        return Convert.ToHexString(hash).ToLowerInvariant();
+        return Convert.ToHexString(hash).ToUpperInvariant();
     }
 
     /// <summary>
@@ -1095,7 +1095,7 @@ public sealed class OnnxModelLoader : IDisposable
         using var sha256 = SHA256.Create();
         using var fileStream = File.OpenRead(filePath);
         var hashBytes = await Task.Run(() => sha256.ComputeHash(fileStream), cancellationToken).ConfigureAwait(false);
-        return Convert.ToHexString(hashBytes).ToLowerInvariant();
+        return Convert.ToHexString(hashBytes).ToUpperInvariant();
     }
 
     private async Task CompressModelAsync(string modelPath, CancellationToken cancellationToken)

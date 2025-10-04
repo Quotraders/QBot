@@ -357,8 +357,9 @@ public class PerformanceTracker
         }
         catch (Exception ex)
         {
+            const double DefaultWinRate = 0.65;
             _logger.LogError(ex, "Error calculating win rate for strategy {Strategy}", strategy);
-            return 0.65; // Fallback value
+            return DefaultWinRate;
         }
     }
 
@@ -375,8 +376,9 @@ public class PerformanceTracker
         }
         catch (Exception ex)
         {
+            const decimal DefaultAvgWinDollars = 150m;
             _logger.LogError(ex, "Error calculating average win for strategy {Strategy}", strategy);
-            return 150m; // Fallback value
+            return DefaultAvgWinDollars;
         }
     }
 
@@ -393,8 +395,9 @@ public class PerformanceTracker
         }
         catch (Exception ex)
         {
+            const decimal DefaultAvgLossDollars = -75m;
             _logger.LogError(ex, "Error calculating average loss for strategy {Strategy}", strategy);
-            return -75m; // Fallback value
+            return DefaultAvgLossDollars;
         }
     }
 

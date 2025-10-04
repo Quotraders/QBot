@@ -244,7 +244,7 @@ namespace BotCore
             await File.AppendAllTextAsync(completedFile, json + Environment.NewLine).ConfigureAwait(false);
 
             // Also save to strategy-specific file
-            var strategy = tradeData.StrategyUsed?.ToLowerInvariant() ?? "unknown";
+            var strategy = tradeData.StrategyUsed?.ToUpperInvariant() ?? "UNKNOWN";
             var strategyFile = Path.Combine(_liveDataPath, $"completed_{strategy}_trades.jsonl");
             await File.AppendAllTextAsync(strategyFile, json + Environment.NewLine).ConfigureAwait(false);
 
@@ -299,12 +299,12 @@ namespace BotCore
 
         private static decimal GetRegimeScore(string? regime)
         {
-            return regime?.ToLowerInvariant() switch
+            return regime?.ToUpperInvariant() switch
             {
-                "trend" => BullRegimeScore,
-                "range" => BearRegimeScore,
-                "highvol" => HighVolatilityRegimeScore,
-                "lowvol" => LowVolatilityRegimeScore,
+                "TREND" => BullRegimeScore,
+                "RANGE" => BearRegimeScore,
+                "HIGHVOL" => HighVolatilityRegimeScore,
+                "LOWVOL" => LowVolatilityRegimeScore,
                 _ => BearRegimeScore
             };
         }

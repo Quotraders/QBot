@@ -182,10 +182,10 @@ namespace BotCore.Features
                 return null;
             }
 
-            return featureKey.ToLowerInvariant() switch
+            return featureKey.ToUpperInvariant() switch
             {
-                "mtf.align" => state.Alignment,
-                "mtf.bias" => state.Bias,
+                "MTF.ALIGN" => state.Alignment,
+                "MTF.BIAS" => state.Bias,
                 _ => null
             };
         }

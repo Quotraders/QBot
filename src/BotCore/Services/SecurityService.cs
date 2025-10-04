@@ -242,8 +242,8 @@ public class SecurityService : ISecurityService
         {
             var vpnIndicators = new[]
             {
-                "vpn", "tunnel", "tap", "tun", "openvpn", "nordvpn", "expressvpn",
-                "wireguard", "pptp", "l2tp", "ipsec", "cisco", "checkpoint"
+                "VPN", "TUNNEL", "TAP", "TUN", "OPENVPN", "NORDVPN", "EXPRESSVPN",
+                "WIREGUARD", "PPTP", "L2TP", "IPSEC", "CISCO", "CHECKPOINT"
             };
 
             var networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
@@ -251,8 +251,8 @@ public class SecurityService : ISecurityService
 
             foreach (var adapter in networkInterfaces)
             {
-                var name = adapter.Name.ToLowerInvariant();
-                var description = adapter.Description.ToLowerInvariant();
+                var name = adapter.Name.ToUpperInvariant();
+                var description = adapter.Description.ToUpperInvariant();
 
                 if (vpnIndicators.Any(indicator => name.Contains(indicator) || description.Contains(indicator)))
                 {
@@ -280,8 +280,8 @@ public class SecurityService : ISecurityService
             var vmIndicators = new List<string>();
 
             // Check for common VM/VPS indicators
-            var computerName = Environment.MachineName.ToLowerInvariant();
-            var vmNames = new[] { "vm", "vps", "cloud", "aws", "azure", "gcp", "digitalocean", "vultr" };
+            var computerName = Environment.MachineName.ToUpperInvariant();
+            var vmNames = new[] { "VM", "VPS", "CLOUD", "AWS", "AZURE", "GCP", "DIGITALOCEAN", "VULTR" };
             
             if (vmNames.Any(vm => computerName.Contains(vm)))
             {
@@ -289,14 +289,14 @@ public class SecurityService : ISecurityService
             }
 
             // Check for virtualization process indicators
-            var vmProcesses = new[] { "vmware", "vbox", "virtualbox", "qemu", "hyperv", "xen" };
+            var vmProcesses = new[] { "VMWARE", "VBOX", "VIRTUALBOX", "QEMU", "HYPERV", "XEN" };
             var runningProcesses = Process.GetProcesses();
             
             foreach (var process in runningProcesses)
             {
                 try
                 {
-                    var processName = process.ProcessName.ToLowerInvariant();
+                    var processName = process.ProcessName.ToUpperInvariant();
                     if (vmProcesses.Any(vm => processName.Contains(vm)))
                     {
                         vmIndicators.Add($"VM process detected: {process.ProcessName}");
@@ -370,9 +370,9 @@ public class SecurityService : ISecurityService
 
             // Check user domain for enterprise/remote indicators
             var userDomain = Environment.UserDomainName;
-            var remoteDomains = new[] { "aws", "azure", "gcp", "cloud", "vps" };
+            var remoteDomains = new[] { "AWS", "AZURE", "GCP", "CLOUD", "VPS" };
             
-            if (remoteDomains.Any(domain => userDomain.ToLowerInvariant().Contains(domain)))
+            if (remoteDomains.Any(domain => userDomain.ToUpperInvariant().Contains(domain)))
             {
                 remoteIndicators.Add($"Remote domain: {userDomain}");
             }
