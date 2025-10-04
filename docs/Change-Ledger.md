@@ -64,7 +64,95 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 126 - Phase 2: S109 Instrument Specs + CA1860 Performance (Current Session)
+### 🔧 Round 127 - Phase 2: S109 Readiness Config + CA1031 Health Checks (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 1924 | 1904 | ProductionReadinessServiceExtensions.cs | Added named constants for trading readiness configuration (ProductionMinBarsSeen, ProductionMinSeededBars, ProductionMinLiveTicks, MaxHistoricalDataAgeHours, MarketDataTimeoutSeconds, DevMinBarsSeen, DevMinSeededBars, DevMinLiveTicks) |
+| CA1031 | 714 | 711 | ProductionHealthChecks.cs | Replaced generic Exception catches with HttpRequestException, TaskCanceledException, IOException, UnauthorizedAccessException for health check operations |
+
+**Total Fixed: 23 violations (11 unique fixes in 2 files)**
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers for trading readiness configuration
+config.MinBarsSeen = 10;
+config.MinSeededBars = 8;
+config.MinLiveTicks = 2;
+config.MaxHistoricalDataAgeHours = 24;
+config.MarketDataTimeoutSeconds = 300;
+Dev = new DevEnvironmentSettings
+{
+    MinBarsSeen = 5,
+    MinSeededBars = 3,
+    MinLiveTicks = 1,
+}
+
+// After (Compliant) - Named constants for production and dev environments
+private const int ProductionMinBarsSeen = 10;
+private const int ProductionMinSeededBars = 8;
+private const int ProductionMinLiveTicks = 2;
+private const int MaxHistoricalDataAgeHours = 24;
+private const int MarketDataTimeoutSeconds = 300;
+private const int DevMinBarsSeen = 5;
+private const int DevMinSeededBars = 3;
+private const int DevMinLiveTicks = 1;
+
+config.MinBarsSeen = ProductionMinBarsSeen;
+config.MinSeededBars = ProductionMinSeededBars;
+config.MinLiveTicks = ProductionMinLiveTicks;
+config.MaxHistoricalDataAgeHours = MaxHistoricalDataAgeHours;
+config.MarketDataTimeoutSeconds = MarketDataTimeoutSeconds;
+Dev = new DevEnvironmentSettings
+{
+    MinBarsSeen = DevMinBarsSeen,
+    MinSeededBars = DevMinSeededBars,
+    MinLiveTicks = DevMinLiveTicks,
+}
+
+// Before (CA1031) - Generic exception in health check
+catch (Exception ex)
+{
+    _logger.LogWarning(ex, "SignalR health check failed");
+    return HealthCheckResult.Unhealthy($"SignalR health check error: {ex.Message}", ex);
+}
+
+// After (Compliant) - Specific exceptions for HTTP and disk I/O operations
+catch (HttpRequestException ex)
+{
+    _logger.LogWarning(ex, "SignalR health check failed");
+    return HealthCheckResult.Unhealthy($"SignalR health check error: {ex.Message}", ex);
+}
+catch (TaskCanceledException ex)
+{
+    _logger.LogWarning(ex, "SignalR health check failed");
+    return HealthCheckResult.Unhealthy($"SignalR health check error: {ex.Message}", ex);
+}
+// For disk operations:
+catch (IOException ex)
+{
+    _logger.LogWarning(ex, "Disk space health check failed");
+    return Task.FromResult(HealthCheckResult.Unhealthy($"Disk space check error: {ex.Message}", ex));
+}
+catch (UnauthorizedAccessException ex)
+{
+    _logger.LogWarning(ex, "Disk space health check failed");
+    return Task.FromResult(HealthCheckResult.Unhealthy($"Disk space check error: {ex.Message}", ex));
+}
+```
+
+**Rationale**: 
+- **S109**: Priority 1 (Correctness & Invariants) - Trading readiness configuration thresholds extracted to named constants for production vs dev environments
+- **CA1031**: Priority 1 (Correctness & Invariants) - Specific exception handling for health check HTTP operations and disk I/O
+- **Files Fixed**:
+  - `ProductionReadinessServiceExtensions.cs` - Trading readiness default configuration for production and dev environments
+  - `ProductionHealthChecks.cs` - Health check operations for SignalR endpoints, disk space monitoring
+- **Context**: Production readiness configuration with environment-specific defaults and health monitoring for system resources
+
+**Build Verification**: ✅ 0 CS errors maintained, ~5883 analyzer violations remaining (23 violations fixed)
+
+---
+
+### 🔧 Round 126 - Phase 2: S109 Instrument Specs + CA1860 Performance (Previous in Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | S109 | 1934 | 1924 | InstrumentMeta.cs | Added named constants for futures contract specifications (ESPointValue, NQPointValue, StandardTickSize, StandardPriceDecimals) |

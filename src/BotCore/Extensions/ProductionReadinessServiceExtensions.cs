@@ -10,6 +10,16 @@ namespace BotCore.Extensions
     /// </summary>
     public static class ProductionReadinessServiceExtensions
     {
+        // Production readiness default configuration constants
+        private const int ProductionMinBarsSeen = 10;
+        private const int ProductionMinSeededBars = 8;
+        private const int ProductionMinLiveTicks = 2;
+        private const int MaxHistoricalDataAgeHours = 24;
+        private const int MarketDataTimeoutSeconds = 300;
+        private const int DevMinBarsSeen = 5;
+        private const int DevMinSeededBars = 3;
+        private const int DevMinLiveTicks = 1;
+
         /// <summary>
         /// Register all production readiness services
         /// Adds configuration, historical data bridge, and enhanced market data flow services
@@ -48,11 +58,11 @@ namespace BotCore.Extensions
             services.Configure<TradingReadinessConfiguration>(config =>
             {
                 // Production defaults
-                config.MinBarsSeen = 10;
-                config.MinSeededBars = 8;
-                config.MinLiveTicks = 2;
-                config.MaxHistoricalDataAgeHours = 24;
-                config.MarketDataTimeoutSeconds = 300;
+                config.MinBarsSeen = ProductionMinBarsSeen;
+                config.MinSeededBars = ProductionMinSeededBars;
+                config.MinLiveTicks = ProductionMinLiveTicks;
+                config.MaxHistoricalDataAgeHours = MaxHistoricalDataAgeHours;
+                config.MarketDataTimeoutSeconds = MarketDataTimeoutSeconds;
                 config.EnableHistoricalSeeding = true;
                 config.EnableProgressiveReadiness = true;
                 config.SeedingContracts = new[] { "CON.F.US.EP.Z25", "CON.F.US.ENQ.Z25" };
@@ -63,16 +73,16 @@ namespace BotCore.Extensions
                     Name = "production",
                     Dev = new DevEnvironmentSettings
                     {
-                        MinBarsSeen = 5,
-                        MinSeededBars = 3,
-                        MinLiveTicks = 1,
+                        MinBarsSeen = DevMinBarsSeen,
+                        MinSeededBars = DevMinSeededBars,
+                        MinLiveTicks = DevMinLiveTicks,
                         AllowMockData = true
                     },
                     Production = new ProductionEnvironmentSettings
                     {
-                        MinBarsSeen = 10,
-                        MinSeededBars = 8,
-                        MinLiveTicks = 2,
+                        MinBarsSeen = ProductionMinBarsSeen,
+                        MinSeededBars = ProductionMinSeededBars,
+                        MinLiveTicks = ProductionMinLiveTicks,
                         AllowMockData = false
                     }
                 };
