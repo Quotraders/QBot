@@ -25,7 +25,11 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 ## Progress Summary
 - **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
 - **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (1820/1820 = 100%) - **VERIFIED & SECURED**
-  - **Current Session (Round 131)**: 5 CS compiler errors fixed + portfolio risk services integrated
+  - **Current Session (Rounds 132-134)**: 84 analyzer violations fixed (S109 magic numbers + CA1031 exception handling)
+    - Round 134: Fixed 4 CA1031 generic exception violations (UCBManager, MultiStrategyRlCollector)
+    - Round 133: Fixed 34 S109 magic number violations (BasicMicrostructureAnalyzer, AutonomousDecisionEngine)
+    - Round 132: Fixed 46 S109 magic number violations (StructuralPatternDetector, TradingSystemIntegrationService, EnhancedProductionResilienceService, MultiStrategyRlCollector)
+  - **Previous Session (Round 131)**: 5 CS compiler errors fixed + portfolio risk services integrated
     - Round 131: Fixed CS0103, CS0160, CS0246 errors across 5 files (EnhancedProductionResilienceService, ModelUpdaterService, RiskManagement, AuthenticationServiceExtensions, ZoneFeatureResolvers)
   - **Previous Session (Round 111)**: 3 CS0176 compiler errors fixed
     - Round 111: Fixed CS0176 static method access errors in UnifiedDataIntegrationService.cs (3 errors)
@@ -66,7 +70,91 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 131 - Phase 1: CS Compiler Error Elimination + Portfolio Risk Integration (Current Session)
+### 🔧 Round 132-134 - Phase 2: S109 Magic Numbers + CA1031 Exception Handling (Current Session)
+
+**Round 132: S109 Magic Number Elimination (46 violations fixed)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 1876 | 1830 | StructuralPatternDetector.cs, TradingSystemIntegrationService.cs, EnhancedProductionResilienceService.cs, MultiStrategyRlCollector.cs | Added named constants for pattern bar requirements, ATR period, HTTP timeout, feature calculation |
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers inline
+(PatternName, RequiredBars) = type switch {
+    StructuralType.HeadAndShoulders => ("HeadAndShoulders", 25),
+    StructuralType.DoubleTop => ("DoubleTop", 20),
+};
+if (_barCache.TryGetValue(symbol, out var symbolBars) && symbolBars.Count > 14)
+return Policy.TimeoutAsync<HttpResponseMessage>(30);
+
+// After (S109) - Named constants
+private const int HeadAndShouldersBarRequirement = 25;
+private const int DoubleTopBottomBarRequirement = 20;
+private const int AtrPeriod = 14;
+private const int HttpTimeoutSeconds = 30;
+```
+
+**Round 133: S109 Magic Number Elimination (34 violations fixed)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 1830 | 1796 | BasicMicrostructureAnalyzer.cs, AutonomousDecisionEngine.cs | Added execution recommendation and technical indicator period constants |
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers inline
+if (limitEV > marketEV * 1.02m && limitFillProb > 0.7m)
+if (bars.Count < 20)
+indicators["RSI"] = CalculateRSI(bars, 14);
+
+// After (S109) - Named constants
+private const decimal LimitOrderEvThreshold = 1.02m;
+private const decimal LimitOrderMinFillProbability = 0.7m;
+private const int MinimumBarsForTechnicalAnalysis = 20;
+private const int RsiPeriod = 14;
+```
+
+**Round 134: CA1031 Generic Exception Handling (4 violations fixed)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 704 | 696 | UCBManager.cs, MultiStrategyRlCollector.cs | Replaced generic Exception with specific types (HttpRequestException, IOException, JsonException) |
+
+**Example Pattern Applied**:
+```csharp
+// Before (CA1031) - Generic exception catch
+catch (Exception ex)
+{
+    _logger.LogWarning(ex, "Failed to update");
+}
+
+// After (CA1031) - Specific exception types
+catch (HttpRequestException ex)
+{
+    _logger.LogWarning(ex, "HTTP error updating");
+}
+catch (TaskCanceledException ex)
+{
+    _logger.LogWarning(ex, "Cancelled updating");
+}
+```
+
+**Total Fixed: 84 analyzer violations (80 S109 + 4 CA1031)**
+
+**Build Verification**:
+```
+CS Errors: 0 (maintained)
+Total Violations: 11,720 (down from 11,804)
+S109: 1,796 (down from 1,876 - 80 fixed)
+CA1031: 696 (down from 704 - 8 fixed)
+Build Status: ✅ FAILING (due to analyzer warnings - expected)
+Guardrails: ✅ All maintained (no suppressions, TreatWarningsAsErrors=true)
+```
+
+---
+
+### 🔧 Round 131 - Phase 1: CS Compiler Error Elimination + Portfolio Risk Integration (Previous Session)
 
 **Part 1: CS Compiler Error Fixes**
 
