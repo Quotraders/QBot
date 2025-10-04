@@ -437,7 +437,19 @@ public class TradingConfigurationValidator : IValidateOptions<TradingConfigurati
 
             return true;
         }
-        catch
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (System.Security.SecurityException)
+        {
+            return false;
+        }
+        catch (ArgumentException)
         {
             return false;
         }
@@ -510,7 +522,15 @@ public class SecurityConfigurationValidator : IValidateOptions<SecurityConfigura
                     failures.Add($"KeyStorePath directory does not exist: {directory}");
                 }
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
+            {
+                failures.Add($"Invalid KeyStorePath: {ex.Message}");
+            }
+            catch (System.Security.SecurityException ex)
+            {
+                failures.Add($"Invalid KeyStorePath: {ex.Message}");
+            }
+            catch (NotSupportedException ex)
             {
                 failures.Add($"Invalid KeyStorePath: {ex.Message}");
             }
@@ -594,7 +614,19 @@ public class ObservabilityConfigurationValidator : IValidateOptions<Observabilit
 
             return true;
         }
-        catch
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (System.Security.SecurityException)
+        {
+            return false;
+        }
+        catch (ArgumentException)
         {
             return false;
         }

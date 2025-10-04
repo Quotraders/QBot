@@ -64,7 +64,61 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 120 - Phase 2: S109 Magic Numbers + CA1031 Exception Handling (Current Session)
+### 🔧 Round 121 - Phase 2: CA1031 Exception Handling + S109 Magic Numbers Continued (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 739 | 736 | ProductionConfigurationValidation.cs | Replaced generic catches with specific file I/O exceptions (UnauthorizedAccessException, IOException, SecurityException, ArgumentException) |
+| S109 | 1962 | 1956 | ExpoRetry.cs | Added named constants for retry configuration (MaxRetryAttempts, SecondRetryAttempt, ThirdRetryAttempt) |
+
+**Total Fixed: 9 violations (6 unique fixes in 2 files)**
+
+**Example Pattern Applied**:
+```csharp
+// Before (CA1031) - Generic catch swallowing all exceptions
+catch
+{
+    return false;
+}
+
+// After (Compliant) - Specific exception handling for file operations
+catch (UnauthorizedAccessException)
+{
+    return false;
+}
+catch (IOException)
+{
+    return false;
+}
+catch (System.Security.SecurityException)
+{
+    return false;
+}
+catch (ArgumentException)
+{
+    return false;
+}
+
+// Before (S109) - Magic number in configuration
+MaxRetryAttempts = 4,
+
+// After (Compliant) - Named constant
+private const int MaxRetryAttempts = 4;
+MaxRetryAttempts = MaxRetryAttempts,
+```
+
+**Rationale**: 
+- **CA1031**: Priority 1 (Correctness & Invariants) - Directory validation methods now catch only file system-related exceptions
+- **S109**: Priority 1 (Correctness & Invariants) - Retry policy configuration extracted to named constants
+- **Files Fixed**:
+  - `ProductionConfigurationValidation.cs` - ValidateDirectory, ValidateLogDirectory, and Validate methods (3 fixes)
+  - `ExpoRetry.cs` - Exponential backoff retry policy configuration (3 fixes)
+- **Context**: Configuration validation file operations and resilience retry policies
+
+**Build Verification**: ✅ 0 CS errors maintained, ~5922 analyzer violations remaining (9 violations fixed)
+
+---
+
+### 🔧 Round 120 - Phase 2: S109 Magic Numbers + CA1031 Exception Handling (Previous in Session)
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
 | S109 | 1968 | 1962 | EnhancedProductionResilienceService.cs | Added named constants for exponential backoff base, HTTP timeout buffer, and default timeout |

@@ -8,6 +8,10 @@ namespace BotCore
     /// </summary>
     public static class ExpoRetry
     {
+        private const int MaxRetryAttempts = 4;
+        private const int SecondRetryAttempt = 2;
+        private const int ThirdRetryAttempt = 3;
+
         /// <summary>
         /// Creates an exponential backoff retry policy
         /// </summary>
@@ -17,7 +21,7 @@ namespace BotCore
             return new ResiliencePipelineBuilder()
                 .AddRetry(new Polly.Retry.RetryStrategyOptions
                 {
-                    MaxRetryAttempts = 4,
+                    MaxRetryAttempts = MaxRetryAttempts,
                     BackoffType = DelayBackoffType.Exponential,
                     Delay = TimeSpan.FromSeconds(1),
                     MaxDelay = TimeSpan.FromSeconds(30)
@@ -34,8 +38,8 @@ namespace BotCore
         {
             0 => TimeSpan.FromSeconds(1),
             1 => TimeSpan.FromSeconds(2),
-            2 => TimeSpan.FromSeconds(5),
-            3 => TimeSpan.FromSeconds(10),
+            SecondRetryAttempt => TimeSpan.FromSeconds(5),
+            ThirdRetryAttempt => TimeSpan.FromSeconds(10),
             _ => TimeSpan.FromSeconds(30),
         };
     }
