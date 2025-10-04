@@ -11,6 +11,13 @@ namespace BotCore.Integration;
 /// </summary>
 public sealed class ZoneFeatureResolver : IFeatureResolver
 {
+    // Zone proximity threshold constants (measured in ATR units)
+    private const double CloseProximityThreshold = 2.0;     // Close proximity: within 2 ATR
+    private const double MediumProximityThreshold = 3.0;    // Medium proximity: within 3 ATR
+    private const double FullZoneWeight = 1.0;              // Full weight for very close zones
+    private const double MediumZoneWeight = 0.5;            // Medium weight for close zones
+    private const double LowZoneWeight = 0.25;              // Low weight for medium distance zones
+
     private readonly IServiceProvider _serviceProvider;
     private readonly string _featureName;
     private readonly ILogger<ZoneFeatureResolver> _logger;
@@ -88,17 +95,17 @@ public sealed class ZoneCountResolver : IFeatureResolver
             var activeZoneCount = 0.0;
             
             // Demand zone contribution (closer = higher weight)
-            if (demandProximity <= 1.0) activeZoneCount += 1.0;
-            else if (demandProximity <= 2.0) activeZoneCount += 0.5;
-            else if (demandProximity <= 3.0) activeZoneCount += 0.25;
+            if (demandProximity <= FullZoneWeight) activeZoneCount += FullZoneWeight;
+            else if (demandProximity <= CloseProximityThreshold) activeZoneCount += MediumZoneWeight;
+            else if (demandProximity <= MediumProximityThreshold) activeZoneCount += LowZoneWeight;
             
             // Supply zone contribution (closer = higher weight)  
-            if (supplyProximity <= 1.0) activeZoneCount += 1.0;
-            else if (supplyProximity <= 2.0) activeZoneCount += 0.5;
-            else if (supplyProximity <= 3.0) activeZoneCount += 0.25;
+            if (supplyProximity <= FullZoneWeight) activeZoneCount += FullZoneWeight;
+            else if (supplyProximity <= CloseProximityThreshold) activeZoneCount += MediumZoneWeight;
+            else if (supplyProximity <= MediumProximityThreshold) activeZoneCount += LowZoneWeight;
             
             // Pressure multiplier - higher pressure indicates more significant zones
-            activeZoneCount *= Math.Max(1.0, (double)features.zonePressure);
+            activeZoneCount *= Math.Max(FullZoneWeight, (double)features.zonePressure);
             
             _logger.LogTrace("Zone count for {Symbol}: {Count} (demand: {Demand}ATR, supply: {Supply}ATR)", 
                 symbol, activeZoneCount, demandProximity, supplyProximity);
