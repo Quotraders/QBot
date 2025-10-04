@@ -25,7 +25,7 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 ## Progress Summary
 - **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
 - **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (1820/1820 = 100%) - **VERIFIED & SECURED**
-  - **Current Session (Round 145)**: 14 S109 violations fixed (FeatureBusAdapter - feature calculation constants)
+  - **Current Session (Rounds 145-146)**: 26 S109 violations fixed (FeatureBusAdapter, StructuralPatternDetector - feature & pattern constants)
   - **Previous Session (Rounds 141-144)**: 44 S109 violations fixed (EnhancedBacktestService, StrategyMlModelManager, RegimeDetectionService, OnnxModelValidationService)
   - **Previous Session (Rounds 138-140)**: 76 analyzer violations fixed (S109 magic numbers - Priority 1 systematic cleanup)
     - Round 140: Fixed 28 S109 violations (ExecutionAnalyticsService, EpochFreezeEnforcement, SafeHoldDecisionPolicy)
@@ -75,6 +75,51 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Current Focus**: Systematic S109 magic number elimination, following Analyzer-Fix-Guidebook priorities
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 76 violations eliminated across 9 files in 3 focused rounds
+
+### 🔧 Round 146 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (12 violations fixed, 1 file)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 705 | 693 | StructuralPatternDetector.cs | Extracted pattern recognition thresholds (peak counts, similarity ratios, lookback windows) |
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers inline
+var peaks = FindPeaks(bars, 3);
+if (peaks.Count < 3)
+for (int i = 0; i < peaks.Count - 2; i++)
+if (shoulderRatio < 0.97m) continue;
+if (ratio < 0.98m) continue;
+if (secondTop.Index - firstTop.Index < 8) continue;
+["level"] = (double)((firstTop.Value + secondTop.Value) / 2)
+
+// After (S109) - Named constants
+private const int MinimumPeaksForDouble = 2;
+private const int MinimumPeaksForTriple = 3;
+private const int PeakLookbackWindow = 8;
+private const int PeakCountForAverage = 2;
+private const decimal ShoulderSimilarityThreshold = 0.97m;
+private const decimal DoublePeakSimilarityThreshold = 0.98m;
+
+var peaks = FindPeaks(bars, MinimumPeaksForTriple);
+if (peaks.Count < MinimumPeaksForTriple)
+for (int i = 0; i < peaks.Count - MinimumPeaksForDouble; i++)
+if (shoulderRatio < ShoulderSimilarityThreshold) continue;
+if (ratio < DoublePeakSimilarityThreshold) continue;
+if (secondTop.Index - firstTop.Index < PeakLookbackWindow) continue;
+["level"] = (double)((firstTop.Value + secondTop.Value) / PeakCountForAverage)
+```
+
+**Rationale**: Extracted structural pattern detection thresholds (minimum peak requirements for different patterns, similarity ratios for matching peaks/shoulders, bar separation requirements, averaging calculations) to improve maintainability and make pattern recognition criteria explicit. This enables easier tuning of pattern detection without code changes.
+
+**Files Changed**:
+- `src/BotCore/Patterns/Detectors/StructuralPatternDetector.cs`: Peak counts, similarity thresholds, separation windows, averaging constants
+
+**Build Verification**: ✅ 0 CS errors maintained, 12 S109 violations fixed in StructuralPatternDetector.cs (all violations eliminated in this file)
+
+---
 
 ### 🔧 Round 145 - Phase 2: S109 Magic Numbers Elimination (Current Session)
 
