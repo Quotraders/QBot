@@ -485,23 +485,54 @@ public class CloudModelSynchronizationService : BackgroundService
     }
 
     /// <summary>
-    /// Extract and save file from zip entry
+    /// Extract and save file from zip entry with atomic write operation
     /// </summary>
     private async Task ExtractAndSaveFileAsync(ZipArchiveEntry entry, string targetPath, CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
         
-        // Create backup if file exists
-        if (File.Exists(targetPath))
-        {
-            var backupPath = targetPath + $".backup_{DateTime.UtcNow:yyyyMMdd_HHmmss}";
-            File.Move(targetPath, backupPath);
-            _logger.LogDebug("🌐 [CLOUD-SYNC] Created backup: {BackupPath}", backupPath);
-        }
+        // Write to temporary file first for atomic operation
+        var tempPath = targetPath + $".tmp_{Guid.NewGuid():N}";
         
-        using var entryStream = entry.Open();
-        using var fileStream = File.Create(targetPath);
-        await entryStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            // Extract to temp file
+            using (var entryStream = entry.Open())
+            using (var fileStream = File.Create(tempPath))
+            {
+                await entryStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+                await fileStream.FlushAsync(cancellationToken).ConfigureAwait(false);
+            }
+            
+            // Create backup if original exists
+            if (File.Exists(targetPath))
+            {
+                var backupPath = targetPath + $".backup_{DateTime.UtcNow:yyyyMMdd_HHmmss}";
+                File.Move(targetPath, backupPath);
+                _logger.LogDebug("🌐 [CLOUD-SYNC] Created backup: {BackupPath}", backupPath);
+            }
+            
+            // Atomic replace: temp to target in single operation
+            File.Move(tempPath, targetPath, overwrite: true);
+            _logger.LogDebug("🌐 [CLOUD-SYNC] Atomically saved: {TargetPath}", targetPath);
+        }
+        catch (Exception ex)
+        {
+            // Cleanup temp file on failure
+            if (File.Exists(tempPath))
+            {
+                try
+                {
+                    File.Delete(tempPath);
+                }
+                catch
+                {
+                    // Best effort cleanup
+                }
+            }
+            _logger.LogError(ex, "🌐 [CLOUD-SYNC] Failed to save file: {TargetPath}", targetPath);
+            throw;
+        }
     }
 
     /// <summary>
