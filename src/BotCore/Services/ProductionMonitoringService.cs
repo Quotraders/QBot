@@ -12,6 +12,15 @@ namespace BotCore.Services;
 /// </summary>
 public class ProductionMonitoringService : IHealthCheck
 {
+    // Monitoring thresholds and constants
+    private const int PeriodicLoggingInterval = 10; // Log every N predictions
+    private const double FailureRateWarningThreshold = 0.1; // 10% failure rate
+    private const int MinimumCallsForAlert = 10;
+    private const int Gen0GarbageCollection = 0;
+    private const int Gen1GarbageCollection = 1;
+    private const int Gen2GarbageCollection = 2;
+    private const int MemoryWarningThresholdMb = 2048; // 2GB memory limit
+    
     private readonly ILogger<ProductionMonitoringService> _logger;
     private readonly ProductionTradingConfig _config;
     private readonly Dictionary<string, HealthMetric> _healthMetrics = new();
@@ -92,7 +101,7 @@ public class ProductionMonitoringService : IHealthCheck
             metric.LastUpdated = DateTime.UtcNow;
 
             // Log performance statistics periodically
-            if (metric.TotalPredictions % 10 == 0)
+            if (metric.TotalPredictions % PeriodicLoggingInterval == 0)
             {
                 var accuracy = (double)metric.CorrectPredictions / metric.TotalPredictions;
                 var avgConfidence = metric.TotalConfidence / metric.TotalPredictions;
@@ -138,7 +147,7 @@ public class ProductionMonitoringService : IHealthCheck
 
             // Alert on high failure rate
             var failureRate = (double)metric.FailedCalls / metric.TotalCalls;
-            if (failureRate > 0.1 && metric.TotalCalls >= 10)
+            if (failureRate > FailureRateWarningThreshold && metric.TotalCalls >= MinimumCallsForAlert)
             {
                 _logger.LogWarning("⚠️ [MONITORING] High failure rate for {Operation}: {FailureRate:P1} ({Failed}/{Total})",
                     operationName, failureRate, metric.FailedCalls, metric.TotalCalls);
@@ -203,9 +212,9 @@ public class ProductionMonitoringService : IHealthCheck
                 metrics.PerformanceMetrics.Add(performance);
             }
             
-            metrics.GCCollections[0] = GC.CollectionCount(0);
-            metrics.GCCollections[1] = GC.CollectionCount(1);
-            metrics.GCCollections[2] = GC.CollectionCount(2);
+            metrics.GCCollections[Gen0GarbageCollection] = GC.CollectionCount(Gen0GarbageCollection);
+            metrics.GCCollections[Gen1GarbageCollection] = GC.CollectionCount(Gen1GarbageCollection);
+            metrics.GCCollections[Gen2GarbageCollection] = GC.CollectionCount(Gen2GarbageCollection);
             
             return metrics;
         }
@@ -294,7 +303,7 @@ public class ProductionMonitoringService : IHealthCheck
             var memoryMB = process.WorkingSet64 / 1024 / 1024;
             
             // Alert if memory usage is excessive
-            if (memoryMB > 2048) // 2GB threshold
+            if (memoryMB > MemoryWarningThresholdMb) // 2GB threshold
             {
                 return (false, $"High memory usage: {memoryMB}MB");
             }
