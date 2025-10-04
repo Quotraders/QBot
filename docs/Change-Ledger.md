@@ -142,7 +142,54 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ---
 
-### 🔧 Round 161 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+### 🔧 Round 162 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (56 violations fixed, 1 file)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 740 | 684 | MultiStrategyRlCollector.cs | Extracted RL training data collection thresholds (MA alignment values, bounce/breakout factors, momentum calculations, regime detection, signal quality, trade defaults) |
+
+**Total Fixed: 56 analyzer violations (56 unique S109 fixes in 1 file)**
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers inline
+if (ema9 > ema20 && ema20 > ema50) return 1.0m;
+if (ema9 < ema20 && ema20 < ema50) return -1.0m;
+return Math.Min(distanceFromLower / (range * 0.2m), 1m);
+return Math.Min(Math.Abs(priceChange) / (atr * 100m), 2m);
+if (features.HistVol20 > 0.02m) return MarketRegime.HighVol;
+if (features.Rsi14 > 40 && features.Rsi14 < 60) return MarketRegime.Range;
+Size = 1.0m, StopLoss = features.Price * 0.99m, TakeProfit = features.Price * 1.02m
+
+// After (S109) - Named constants
+private const decimal BullishAlignmentValue = 1.0m;
+private const decimal BearishAlignmentValue = -1.0m;
+private const decimal BounceQualityRangeMultiplier = 0.2m;
+private const decimal MomentumAtrMultiplier = 100m;
+private const decimal MaxMomentumSustainability = 2m;
+private const decimal HighVolatilityThreshold = 0.02m;
+private const decimal RsiRangeLowerBound = 40m;
+private const decimal RsiRangeUpperBound = 60m;
+private const decimal DefaultTradeSize = 1.0m;
+private const decimal DefaultStopLossMultiplier = 0.99m;
+private const decimal DefaultTakeProfitMultiplier = 1.02m;
+
+if (ema9 > ema20 && ema20 > ema50) return BullishAlignmentValue;
+if (ema9 < ema20 && ema20 < ema50) return BearishAlignmentValue;
+return Math.Min(distanceFromLower / (range * BounceQualityRangeMultiplier), 1m);
+return Math.Min(Math.Abs(priceChange) / (atr * MomentumAtrMultiplier), MaxMomentumSustainability);
+if (features.HistVol20 > HighVolatilityThreshold) return MarketRegime.HighVol;
+if (features.Rsi14 > RsiRangeLowerBound && features.Rsi14 < RsiRangeUpperBound) return MarketRegime.Range;
+Size = DefaultTradeSize, StopLoss = features.Price * DefaultStopLossMultiplier, TakeProfit = features.Price * DefaultTakeProfitMultiplier
+```
+
+**Build Verification**: ✅ 0 CS errors maintained, 56 S109 violations fixed (reduced from 740 to 684)
+
+---
+
+### 🔧 Round 161 - Phase 2: S109 Magic Numbers Elimination (Previous in Current Session)
 
 **S109: Magic Number to Named Constant Conversion (20 violations fixed, 1 file)**
 
