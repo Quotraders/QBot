@@ -15,6 +15,14 @@ namespace BotCore.Services;
 /// </summary>
 public class SafeHoldDecisionPolicy
 {
+    // Zone proximity thresholds
+    private const double ZoneProximityThresholdAtr = 1.0;
+    
+    // Neutral band configuration defaults
+    private const double DefaultBearishThreshold = 0.45; // 45%
+    private const double DefaultBullishThreshold = 0.55; // 55%
+    private const double DefaultHysteresisBuffer = 0.02; // 2% buffer
+    
     private readonly ILogger<SafeHoldDecisionPolicy> _logger;
     private readonly IConfiguration _configuration;
     private readonly NeutralBandConfiguration _config;
@@ -208,7 +216,7 @@ public class SafeHoldDecisionPolicy
         }
 
         // Apply size tilt if near supply
-        if (snap.DistToSupplyAtr < 1.0m)
+        if (snap.DistToSupplyAtr < (decimal)ZoneProximityThresholdAtr)
         {
             return ApplyZoneSizeTilt(decision, (double)snap.DistToSupplyAtr, sizeTiltFactor);
         }
@@ -234,7 +242,7 @@ public class SafeHoldDecisionPolicy
         }
 
         // Apply size tilt if near demand
-        if (snap.DistToDemandAtr < 1.0m)
+        if (snap.DistToDemandAtr < (decimal)ZoneProximityThresholdAtr)
         {
             return ApplyZoneSizeTilt(decision, (double)snap.DistToDemandAtr, sizeTiltFactor);
         }
@@ -302,10 +310,10 @@ public class SafeHoldDecisionPolicy
         
         return new NeutralBandConfiguration
         {
-            BearishThreshold = section.GetValue<double>("BearishThreshold", 0.45), // 45%
-            BullishThreshold = section.GetValue<double>("BullishThreshold", 0.55), // 55%
+            BearishThreshold = section.GetValue<double>("BearishThreshold", DefaultBearishThreshold), // 45%
+            BullishThreshold = section.GetValue<double>("BullishThreshold", DefaultBullishThreshold), // 55%
             EnableHysteresis = section.GetValue<bool>("EnableHysteresis", true),
-            HysteresisBuffer = section.GetValue<double>("HysteresisBuffer", 0.02) // 2% buffer
+            HysteresisBuffer = section.GetValue<double>("HysteresisBuffer", DefaultHysteresisBuffer) // 2% buffer
         };
     }
 }

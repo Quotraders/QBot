@@ -14,6 +14,12 @@ namespace BotCore.Services
     /// </summary>
     public class ExecutionAnalyticsService
     {
+        // Execution performance baselines
+        private const double EstimatedSlippageEsSymbols = 0.25; // Basis points for ES futures
+        private const double EstimatedSlippageOtherSymbols = 0.05; // Basis points for typical stocks
+        private const double EstimatedFillRate = 0.94; // 94% fill rate for liquid markets
+        private const int MaxExecutionHistorySize = 1000;
+        
         private readonly ILogger<ExecutionAnalyticsService> _logger;
         private readonly List<ExecutionRecord> _executionHistory = new();
         private readonly object _executionLock = new();
@@ -42,7 +48,7 @@ namespace BotCore.Services
                 {
                     _logger.LogWarning("No recent execution data for {Symbol}, using estimated slippage", symbol);
                     // Return market-based estimate for the symbol
-                    return symbol.StartsWith("ES") ? 0.25 : 0.05; // ES has higher slippage than typical stocks
+                    return symbol.StartsWith("ES") ? EstimatedSlippageEsSymbols : EstimatedSlippageOtherSymbols; // ES has higher slippage than typical stocks
                 }
 
                 var avgSlippage = recentExecutions.Average(e => e.SlippageBasisPoints);
@@ -70,7 +76,7 @@ namespace BotCore.Services
                 {
                     _logger.LogWarning("No recent order data for {Symbol}, using market estimate", symbol);
                     // Return market-based estimate
-                    return 0.94; // 94% fill rate is typical for liquid markets
+                    return EstimatedFillRate; // Typical fill rate for liquid markets
                 }
 
                 var fillRate = (double)recentOrders.Count(e => e.WasFilled) / recentOrders.Count;
@@ -102,8 +108,8 @@ namespace BotCore.Services
             {
                 _executionHistory.Add(record);
                 
-                // Keep only last 1000 records to prevent memory growth
-                if (_executionHistory.Count > 1000)
+                // Keep only last MaxExecutionHistorySize records to prevent memory growth
+                if (_executionHistory.Count > MaxExecutionHistorySize)
                 {
                     _executionHistory.RemoveAt(0);
                 }
