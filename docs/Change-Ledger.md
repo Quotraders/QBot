@@ -25,7 +25,7 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 ## Progress Summary
 - **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
 - **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (1820/1820 = 100%) - **VERIFIED & SECURED**
-  - **Current Session (Rounds 141-142)**: 28 S109 violations fixed (EnhancedBacktestService, StrategyMlModelManager - market friction + ML model constants)
+  - **Current Session (Rounds 141-143)**: 40 S109 violations fixed (EnhancedBacktestService, StrategyMlModelManager, RegimeDetectionService)
   - **Previous Session (Rounds 138-140)**: 76 analyzer violations fixed (S109 magic numbers - Priority 1 systematic cleanup)
     - Round 140: Fixed 28 S109 violations (ExecutionAnalyticsService, EpochFreezeEnforcement, SafeHoldDecisionPolicy)
     - Round 139: Fixed 24 S109 violations (WalkForwardTrainer, MarketTimeService, PerformanceMetricsService)
@@ -74,6 +74,51 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Current Focus**: Systematic S109 magic number elimination, following Analyzer-Fix-Guidebook priorities
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 76 violations eliminated across 9 files in 3 focused rounds
+
+### 🔧 Round 143 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (12 violations fixed, 1 file)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | ~1498 | ~1472 | RegimeDetectionService.cs | Extracted regime detection weights, market hours, time thresholds, stability requirements |
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers inline
+AddRegimeScore(regimeScores, volatilityRegime, 0.4);
+AddRegimeScore(regimeScores, trendRegime, 0.4);
+AddRegimeScore(regimeScores, volumeRegime, 0.2);
+if (currentHour >= 14 && currentHour <= 21)
+if (minute <= 5 || (minute >= 25 && minute <= 35) || minute >= 55)
+if (state.RegimeStability < 3)
+
+// After (S109) - Named constants
+private const double VolatilityRegimeWeight = 0.4;
+private const double TrendRegimeWeight = 0.4;
+private const double VolumeRegimeWeight = 0.2;
+private const int MarketOpenHour = 14;
+private const int MarketCloseHour = 21;
+private const int EarlyMinuteThreshold = 5;
+private const int HalfHourStartMinute = 25;
+private const int HalfHourEndMinute = 35;
+private const int LateMinuteThreshold = 55;
+private const int RegimeStabilityThreshold = 3;
+
+AddRegimeScore(regimeScores, volatilityRegime, VolatilityRegimeWeight);
+if (currentHour >= MarketOpenHour && currentHour <= MarketCloseHour)
+if (minute <= EarlyMinuteThreshold || (minute >= HalfHourStartMinute && minute <= HalfHourEndMinute) || minute >= LateMinuteThreshold)
+if (state.RegimeStability < RegimeStabilityThreshold)
+```
+
+**Rationale**: Extracted market regime detection configuration parameters (weights for different factors, market hours in UTC, time-based activity thresholds, regime smoothing requirements) to improve maintainability and make regime classification criteria explicit. This enables easier tuning of regime detection without code changes.
+
+**Files Changed**:
+- `src/BotCore/Services/RegimeDetectionService.cs`: Regime weights, market hours, time thresholds, stability requirements
+
+**Build Verification**: ✅ 0 CS errors maintained, 12 S109 violations fixed in RegimeDetectionService.cs (all violations eliminated in this file)
+
+---
 
 ### 🔧 Round 142 - Phase 2: S109 Magic Numbers Elimination (Current Session)
 
