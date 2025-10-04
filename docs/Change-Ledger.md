@@ -25,6 +25,7 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 ## Progress Summary
 - **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
 - **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (1820/1820 = 100%) - **VERIFIED & SECURED**
+  - **Current Session (Round 158)**: 74 S109 violations fixed (IntelligenceService - position sizing and risk management multipliers)
   - **Current Session (Round 157)**: 74 S109 violations fixed (UnifiedTradingBrain - trading brain thresholds and CVaR-PPO constants)
   - **Current Session (Round 156)**: 84 S109 violations fixed (ContinuationPatternDetector - continuation pattern thresholds)
   - **Current Session (Round 155)**: 58 S109 violations fixed (CandlestickPatternDetector - candlestick pattern thresholds)
@@ -115,7 +116,78 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ---
 
-### 🔧 Round 157 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+### 🔧 Round 158 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (74 violations fixed, 1 file)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 918 | 844 | IntelligenceService.cs | Extracted intelligence service constants (position sizing, stop loss, take profit multipliers, thresholds) |
+
+**Example Pattern Applied - IntelligenceService.cs**:
+```csharp
+// Before (S109) - Magic numbers for intelligence-driven trading adjustments
+if (intelligence == null) return 1.0m;
+decimal multiplier = 1.0m;
+if ((decimal)intelligence.ModelConfidence >= 0.8m)
+    multiplier *= 1.5m;
+else if ((decimal)intelligence.ModelConfidence <= 0.4m)
+    multiplier *= 0.6m;
+if ((decimal)intelligence.NewsIntensity >= 70m)
+    multiplier *= 0.7m;
+else if ((decimal)intelligence.NewsIntensity <= 20m)
+    multiplier *= 1.2m;
+if (hour >= 9 && hour <= 11)
+    multiplier *= 1.05m;
+return Math.Max(0.2m, Math.Min(multiplier, 2.0m));
+if (intelligence.IsFomcDay) multiplier *= 2.0m;
+if ((decimal)intelligence.NewsIntensity >= 80m) multiplier *= 1.3m;
+return Math.Max(1.0m, Math.Min(multiplier, 3.0m));
+
+// After (S109) - Named constants in IntelligenceServiceConstants
+public const decimal DefaultMultiplier = 1.0m;
+public const decimal HighConfidenceThreshold = 0.8m;
+public const decimal HighConfidenceMultiplier = 1.5m;
+public const decimal LowConfidenceThreshold = 0.4m;
+public const decimal LowConfidenceMultiplier = 0.6m;
+public const decimal HighNewsIntensityThreshold = 70m;
+public const decimal HighNewsMultiplier = 0.7m;
+public const decimal LowNewsIntensityThreshold = 20m;
+public const decimal LowNewsMultiplier = 1.2m;
+public const int MorningInstitutionalStartHour = 9;
+public const int MorningInstitutionalEndHour = 11;
+public const decimal MorningInstitutionalMultiplier = 1.05m;
+public const decimal MinPositionSizeMultiplier = 0.2m;
+public const decimal MaxPositionSizeMultiplier = 2.0m;
+public const decimal FomcDayStopMultiplier = 2.0m;
+public const decimal HighNewsStopThreshold = 80m;
+public const decimal HighNewsStopMultiplier = 1.3m;
+public const decimal MinStopLossMultiplier = 1.0m;
+public const decimal MaxStopLossMultiplier = 3.0m;
+
+if (intelligence == null) return IntelligenceServiceConstants.DefaultMultiplier;
+decimal multiplier = IntelligenceServiceConstants.DefaultMultiplier;
+if ((decimal)intelligence.ModelConfidence >= IntelligenceServiceConstants.HighConfidenceThreshold)
+    multiplier *= IntelligenceServiceConstants.HighConfidenceMultiplier;
+else if ((decimal)intelligence.ModelConfidence <= IntelligenceServiceConstants.LowConfidenceThreshold)
+    multiplier *= IntelligenceServiceConstants.LowConfidenceMultiplier;
+if ((decimal)intelligence.NewsIntensity >= IntelligenceServiceConstants.HighNewsIntensityThreshold)
+    multiplier *= IntelligenceServiceConstants.HighNewsMultiplier;
+else if ((decimal)intelligence.NewsIntensity <= IntelligenceServiceConstants.LowNewsIntensityThreshold)
+    multiplier *= IntelligenceServiceConstants.LowNewsMultiplier;
+if (hour >= IntelligenceServiceConstants.MorningInstitutionalStartHour && hour <= IntelligenceServiceConstants.MorningInstitutionalEndHour)
+    multiplier *= IntelligenceServiceConstants.MorningInstitutionalMultiplier;
+return Math.Max(IntelligenceServiceConstants.MinPositionSizeMultiplier, Math.Min(multiplier, IntelligenceServiceConstants.MaxPositionSizeMultiplier));
+if (intelligence.IsFomcDay) multiplier *= IntelligenceServiceConstants.FomcDayStopMultiplier;
+if ((decimal)intelligence.NewsIntensity >= IntelligenceServiceConstants.HighNewsStopThreshold) multiplier *= IntelligenceServiceConstants.HighNewsStopMultiplier;
+return Math.Max(IntelligenceServiceConstants.MinStopLossMultiplier, Math.Min(multiplier, IntelligenceServiceConstants.MaxStopLossMultiplier));
+```
+
+**Build Verification**: ✅ 0 CS errors maintained, 74 S109 violations fixed (918 → 844)
+
+---
+
+### 🔧 Round 157 - Phase 2: S109 Magic Numbers Elimination (Previous in Current Session)
 
 **S109: Magic Number to Named Constant Conversion (74 violations fixed, 1 file)**
 
