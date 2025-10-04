@@ -668,9 +668,17 @@ namespace BotCore
                 log.LogDebug("[RL-{Strategy}] Logged trade outcome for signal {SignalId}: {Result}",
                     outcome.Strategy, outcome.SignalId, outcome.IsWin ? "WIN" : "LOSS");
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                log.LogError(ex, "[RL-{Strategy}] Failed to log trade outcome", outcome.Strategy);
+                log.LogError(ex, "[RL-{Strategy}] Failed to log trade outcome - I/O error", outcome.Strategy);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                log.LogError(ex, "[RL-{Strategy}] Failed to log trade outcome - access denied", outcome.Strategy);
+            }
+            catch (JsonException ex)
+            {
+                log.LogError(ex, "[RL-{Strategy}] Failed to log trade outcome - serialization error", outcome.Strategy);
             }
         }
 
@@ -750,9 +758,17 @@ namespace BotCore
                     }
                 }
             }
-            catch (Exception)
+            catch (DirectoryNotFoundException)
             {
-                // Return 0 if unable to count
+                // Return 0 if unable to count - directory not found
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Return 0 if unable to count - access denied
+            }
+            catch (IOException)
+            {
+                // Return 0 if unable to count - I/O error
             }
 
             return totalCount;
