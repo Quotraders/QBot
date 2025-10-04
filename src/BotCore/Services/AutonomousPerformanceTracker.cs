@@ -45,6 +45,37 @@ public class AutonomousPerformanceTracker
     private const decimal SessionPerformanceThreshold = 1.5m;
     private const int RiskManagementOptimizationPriority = 10; // Priority for high drawdown risk management
     
+    // Win rate thresholds
+    private const decimal DefaultWinRateNoTrades = 0.5m;
+    private const decimal ExcellentWinRateThreshold = 0.7m;
+    private const decimal LowWinRateThreshold = 0.4m;
+    
+    // Performance history limits
+    private const int MaxRecentInsightsToReturn = 20;
+    private const int MaxOptimizationRecommendations = 10;
+    private const int MaxPerformanceSnapshots = 1000;
+    private const int MaxInsightsPerStrategy = 100;
+    
+    // Strategy analysis thresholds
+    private const int MinTradesForUnderperformanceAnalysis = 20;
+    private const int MinTradesForProfitFactorAnalysis = 10;
+    private const decimal LowProfitFactorThreshold = 1.2m;
+    private const decimal RecentPerformanceImprovementRatio = 0.1m;
+    private const int StrategyUnderperformPriority = 9;
+    private const int LowProfitFactorPriority = 8;
+    private const int RecentImprovementPriority = 7;
+    
+    // Sharpe ratio and risk calculations
+    private const int MinTradesForSharpeRatio = 30;
+    private const int TradingDaysPerYear = 252; // Annualization factor
+    
+    // Drawdown analysis
+    private const int MinTradesForDrawdownAnalysis = 10;
+    private const decimal HighDrawdownRatio = 0.3m;
+    
+    // Profit factor fallback
+    private const decimal MaxProfitFactorWhenNoLosses = 99m;
+    
     // Performance tracking collections
     private readonly List<AutonomousTradeOutcome> _allTrades = new();
     private readonly Dictionary<string, List<AutonomousTradeOutcome>> _tradesByStrategy = new();
@@ -179,7 +210,7 @@ public class AutonomousPerformanceTracker
                 .Where(t => t.EntryTime >= DateTime.UtcNow - period)
                 .ToArray();
             
-            if (recentTrades.Length == 0) return 0.5m; // Default 50% if no trades
+            if (recentTrades.Length == 0) return DefaultWinRateNoTrades; // Default 50% if no trades
             
             var wins = recentTrades.Count(t => t.PnL > 0);
             return (decimal)wins / recentTrades.Length;
@@ -317,7 +348,7 @@ public class AutonomousPerformanceTracker
                 insights.AddRange(strategyLearning.Insights);
             }
             
-            return insights.OrderByDescending(i => i.Timestamp).Take(20).ToList();
+            return insights.OrderByDescending(i => i.Timestamp).Take(MaxRecentInsightsToReturn).ToList();
         }
     }
     
@@ -346,7 +377,7 @@ public class AutonomousPerformanceTracker
             var riskRecommendations = AnalyzeRiskManagement();
             recommendations.AddRange(riskRecommendations);
             
-            return recommendations.OrderByDescending(r => r.Priority).Take(10).ToList();
+            return recommendations.OrderByDescending(r => r.Priority).Take(MaxOptimizationRecommendations).ToList();
         }
     }
     
@@ -397,7 +428,7 @@ public class AutonomousPerformanceTracker
         });
         
         // Keep limited history
-        while (_performanceHistory.Count > 1000)
+        while (_performanceHistory.Count > MaxPerformanceSnapshots)
         {
             _performanceHistory.Dequeue();
         }
@@ -408,18 +439,18 @@ public class AutonomousPerformanceTracker
         var totalWins = winningTrades.Sum(t => t.PnL);
         var totalLosses = Math.Abs(losingTrades.Sum(t => t.PnL));
         
-        return totalLosses > 0 ? totalWins / totalLosses : totalWins > 0 ? 99m : 0m;
+        return totalLosses > 0 ? totalWins / totalLosses : totalWins > 0 ? MaxProfitFactorWhenNoLosses : 0m;
     }
     
     private decimal CalculateSharpeRatio()
     {
-        if (_allTrades.Count < 30) return 0m; // Need minimum trades for reliable calculation
+        if (_allTrades.Count < MinTradesForSharpeRatio) return 0m; // Need minimum trades for reliable calculation
         
         var returns = _allTrades.Select(t => t.PnL).ToArray();
         var avgReturn = returns.Average();
         var stdDev = CalculateStandardDeviation(returns);
         
-        return stdDev > 0 ? avgReturn / stdDev * (decimal)Math.Sqrt(252) : 0m; // Annualized
+        return stdDev > 0 ? avgReturn / stdDev * (decimal)Math.Sqrt(TradingDaysPerYear) : 0m; // Annualized
     }
     
     private decimal CalculateMaxDrawdown()
@@ -509,7 +540,7 @@ public class AutonomousPerformanceTracker
             learning.AddInsight(insight);
             
             // Keep limited insights per strategy
-            while (learning.Insights.Count > 100)
+            while (learning.Insights.Count > MaxInsightsPerStrategy)
             {
                 var insights = learning.Insights.Skip(1).ToList();
                 learning.ReplaceInsights(insights);
@@ -571,11 +602,11 @@ public class AutonomousPerformanceTracker
         
         // Performance insights
         var winRate = (decimal)trades.Count(t => t.PnL > 0) / trades.Length;
-        if (winRate > 0.7m)
+        if (winRate > ExcellentWinRateThreshold)
         {
             insights.Add($"Excellent win rate today: {winRate:P1}");
         }
-        else if (winRate < 0.4m)
+        else if (winRate < LowWinRateThreshold)
         {
             insights.Add($"Low win rate today: {winRate:P1} - review strategy selection");
         }
@@ -637,36 +668,36 @@ public class AutonomousPerformanceTracker
     {
         var recommendations = new List<OptimizationRecommendation>();
         
-        if (performance.WinRate < 0.4m && performance.TotalTrades > 20)
+        if (performance.WinRate < LowWinRateThreshold && performance.TotalTrades > MinTradesForUnderperformanceAnalysis)
         {
             recommendations.Add(new OptimizationRecommendation
             {
                 Type = "STRATEGY_UNDERPERFORM",
-                Priority = 9,
+                Priority = StrategyUnderperformPriority,
                 Description = $"Strategy {performance.StrategyName} has low win rate: {performance.WinRate:P1}",
                 Action = "Consider reducing allocation or reviewing entry criteria",
                 Strategy = performance.StrategyName
             });
         }
         
-        if (performance.ProfitFactor < 1.2m && performance.TotalTrades > 10)
+        if (performance.ProfitFactor < LowProfitFactorThreshold && performance.TotalTrades > MinTradesForProfitFactorAnalysis)
         {
             recommendations.Add(new OptimizationRecommendation
             {
                 Type = "PROFIT_FACTOR_LOW",
-                Priority = 8,
+                Priority = LowProfitFactorPriority,
                 Description = $"Strategy {performance.StrategyName} has low profit factor: {performance.ProfitFactor:F2}",
                 Action = "Review risk management and exit criteria",
                 Strategy = performance.StrategyName
             });
         }
         
-        if (performance.RecentPerformance > performance.TotalPnL * 0.1m)
+        if (performance.RecentPerformance > performance.TotalPnL * RecentPerformanceImprovementRatio)
         {
             recommendations.Add(new OptimizationRecommendation
             {
                 Type = "RECENT_IMPROVEMENT",
-                Priority = 7,
+                Priority = RecentImprovementPriority,
                 Description = $"Strategy {performance.StrategyName} showing recent improvement",
                 Action = "Consider increasing allocation",
                 Strategy = performance.StrategyName
@@ -710,7 +741,7 @@ public class AutonomousPerformanceTracker
     {
         var recommendations = new List<OptimizationRecommendation>();
         
-        if (_maxDrawdown > _totalPnL * 0.3m && _totalTrades > 10)
+        if (_maxDrawdown > _totalPnL * HighDrawdownRatio && _totalTrades > MinTradesForDrawdownAnalysis)
         {
             recommendations.Add(new OptimizationRecommendation
             {
