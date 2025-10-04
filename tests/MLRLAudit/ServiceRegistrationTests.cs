@@ -24,9 +24,10 @@ namespace UnitTests.DI
             services.AddLogging();
             
             var configuration = new ConfigurationBuilder().Build();
+            var customAuthProvider = (CancellationToken ct) => Task.FromResult("test-jwt");
 
             // Act
-            services.AddTopstepAuthenticationLegacy(configuration);
+            services.AddTopstepAuthentication(configuration, customAuthProvider);
             var serviceProvider = services.BuildServiceProvider();
 
             // Assert
@@ -65,9 +66,10 @@ namespace UnitTests.DI
             services.AddLogging();
             
             var configuration = new ConfigurationBuilder().Build();
+            var customAuthProvider = (CancellationToken ct) => Task.FromResult("test-jwt");
 
             // Act
-            services.AddTopstepAuthenticationLegacy(configuration);
+            services.AddTopstepAuthentication(configuration, customAuthProvider);
             var serviceProvider = services.BuildServiceProvider();
 
             // Assert - Should return same instance

@@ -237,31 +237,4 @@ public static class AuthenticationServiceExtensions
         return services;
     }
 
-    /// <summary>
-    /// Register authentication services without DI (legacy support)
-    /// </summary>
-    public static IServiceCollection AddTopstepAuthenticationLegacy(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        // Register without auth service integration for backward compatibility
-        services.AddHttpClient("Topstep", httpClient =>
-        {
-            var baseAddress = Environment.GetEnvironmentVariable("TOPSTEPX_API_BASE") ?? "https://api.topstepx.com";
-            httpClient.BaseAddress = new Uri(baseAddress);
-            httpClient.DefaultRequestHeaders.Add("User-Agent", "TradingBot/1.0");
-            httpClient.Timeout = TimeSpan.FromSeconds(30);
-        });
-
-        services.AddSingleton<ITopstepXHttpClient>(serviceProvider =>
-        {
-            var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-            var httpClient = httpClientFactory.CreateClient("Topstep");
-            var logger = serviceProvider.GetRequiredService<ILogger<TopstepXHttpClient>>();
-            
-            return new TopstepXHttpClient(httpClient, logger, null);
-        });
-
-        return services;
-    }
 }
