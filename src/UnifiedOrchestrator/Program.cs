@@ -636,8 +636,8 @@ Please check the configuration and ensure all required services are registered.
         
         services.Configure<BotCore.Services.ModelRotationConfiguration>(configuration.GetSection("Rotation"));
         services.Configure<BotCore.Services.BreadthReallocationConfiguration>(configuration.GetSection("Portfolio:BreadthReallocation"));
-        services.Configure<BotCore.Services.CorrelationCapConfiguration>(configuration.GetSection("Portfolio:CorrelationCap"));
-        services.Configure<BotCore.Services.VolOfVolConfiguration>(configuration.GetSection("Portfolio:VolOfVol"));
+        services.Configure<BotCore.Services.CorrelationCapConfiguration>(configuration.GetSection("CorrelationCapConfiguration"));
+        services.Configure<BotCore.Services.VolOfVolConfiguration>(configuration.GetSection("VolOfVolConfiguration"));
         services.Configure<BotCore.Services.DriftMonitorConfiguration>(configuration.GetSection("DataHygiene:DriftMonitor"));
         
         services.AddSingleton<BotCore.Services.ModelRotationService>();
