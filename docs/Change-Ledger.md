@@ -70,7 +70,38 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 469 violations eliminated, systematic approach established
 
-### 🔧 Round 136 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+### 🔧 Round 137 - Phase 2: S109 Magic Numbers Elimination Batch 2 (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (9 violations fixed)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 1736 | 1727 | PerformanceTracker.cs, PortfolioRiskTilts.cs, RiskManagementService.cs | Extracted magic numbers to well-named constants for performance fallbacks, risk limits, and calculation precision |
+
+**Example Pattern Applied**:
+```csharp
+// Before (S109) - Magic numbers inline  
+if (Math.Abs(quantity) > 100) { /* reject */ }
+return -75m; // Fallback value
+
+// After (S109) - Named constants
+const decimal MaxPositionSize = 100m;
+const decimal DefaultAvgLossDollars = -75m;
+if (Math.Abs(quantity) > MaxPositionSize) { /* reject */ }
+```
+
+**Rationale**: Extracted performance metric fallback values, risk management limits, and numerical precision constants to improve code maintainability and make thresholds more explicit.
+
+**Files Changed**:
+- `src/BotCore/Services/PerformanceTracker.cs`: Default win rate, avg win/loss fallback values
+- `src/BotCore/Services/PortfolioRiskTilts.cs`: Reference position size, correlation points, calculation epsilon
+- `src/BotCore/Services/RiskManagementService.cs`: Position size limits, rejection thresholds
+
+**Build Verification**: ✅ 0 CS errors maintained, 9 S109 violations fixed (1736 → 1727), 5790 total violations remaining
+
+---
+
+### 🔧 Round 136 - Phase 2: S109 Magic Numbers Elimination (Previous Session)
 
 **S109: Magic Number to Named Constant Conversion (6 violations fixed)**
 
