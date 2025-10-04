@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -15,7 +16,7 @@ namespace TradingBot.RLAgent;
 /// Hot-reload manager for ONNX models with smoke testing and atomic swapping
 /// Implements requirement: Safe hot-reload of ONNX models using OnnxEnsembleWrapper
 /// </summary>
-public class ModelHotReloadManager : IDisposable
+public class ModelHotReloadManager : IHostedService, IDisposable
 {
     private const double TestFeatureRangeMultiplier = 2.0;
     
@@ -52,6 +53,24 @@ public class ModelHotReloadManager : IDisposable
         _fileWatcher.Changed += OnModelFileChanged;
 
         LogMessages.ModelHotReloadInitialized(_logger, _options.WatchDirectory);
+    }
+
+    /// <summary>
+    /// Start the hot-reload service
+    /// </summary>
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+        LogMessages.ModelHotReloadServiceStarted(_logger, _options.WatchDirectory);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Stop the hot-reload service
+    /// </summary>
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+        LogMessages.ModelHotReloadServiceStopped(_logger);
+        return Task.CompletedTask;
     }
 
     /// <summary>

@@ -1410,6 +1410,8 @@ Please check the configuration and ensure all required services are registered.
         // Register ModelHotReloadManager (File Watching) - Monitors models/rl directory for changes
         services.Configure<TradingBot.RLAgent.ModelHotReloadOptions>(configuration.GetSection("ModelHotReload"));
         services.AddSingleton<TradingBot.RLAgent.ModelHotReloadManager>();
+        services.AddHostedService<TradingBot.RLAgent.ModelHotReloadManager>(provider => 
+            provider.GetRequiredService<TradingBot.RLAgent.ModelHotReloadManager>());
         
         // Register CloudRlTrainerV2 (Cloud Training Service) - Polls GitHub for model updates
         services.Configure<CloudTrainer.CloudRlTrainerOptions>(configuration.GetSection("CloudRlTrainer"));
