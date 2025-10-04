@@ -25,6 +25,7 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 ## Progress Summary
 - **Starting State**: ~300+ critical CS compiler errors + ~7000+ SonarQube violations
 - **Phase 1 Status**: ✅ **COMPLETE** - All CS compiler errors eliminated (1820/1820 = 100%) - **VERIFIED & SECURED**
+  - **Current Session (Round 155)**: 58 S109 violations fixed (CandlestickPatternDetector - candlestick pattern thresholds)
   - **Current Session (Round 154)**: 46 S109 violations fixed (ReversalPatternDetector - reversal pattern detection thresholds)
   - **Previous Session (Round 148)**: 8 S109 violations fixed (MicrostructureSnapshot - execution decision constants)
   - **Previous Session (Round 147)**: 9 S109 violations fixed (UnifiedDataIntegrationService - data integration constants)
@@ -112,7 +113,52 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ---
 
-### 🔧 Round 154 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+### 🔧 Round 155 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+
+**S109: Magic Number to Named Constant Conversion (58 violations fixed, 1 file)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S109 | 1134 | 1076 | CandlestickPatternDetector.cs | Extracted candlestick pattern thresholds (bar requirements, body ratios, shadow thresholds, pattern scores) |
+
+**Example Pattern Applied - CandlestickPatternDetector.cs**:
+```csharp
+// Before (S109) - Magic numbers for candlestick patterns
+CandlestickType.Hammer => ("Hammer", 2),
+CandlestickType.Doji => ("Doji", 1),
+var score = bodyRatio < 0.05m ? 0.9 : bodyRatio < 0.1m ? 0.7 : bodyRatio < 0.15m ? 0.5 : 0.0;
+if (bodyRatio < 0.3m && lowerShadowRatio > 0.6m && upperShadowRatio < 0.1m)
+score = Math.Min(0.95, 0.7 + (double)(lowerShadowRatio - 0.6m) * 2);
+var score = Math.Min(0.95, 0.6 + Math.Min(0.35, (double)(sizeRatio - 1) * 0.1));
+
+// After (S109) - Named constants
+private const int TwoBarPattern = 2;
+private const int SingleBarPattern = 1;
+private const decimal DojiBodyRatioTiny = 0.05m;
+private const double DojiScoreTiny = 0.9;
+private const decimal HammerBodyRatioMax = 0.3m;
+private const decimal HammerLowerShadowMin = 0.6m;
+private const decimal HammerUpperShadowMax = 0.1m;
+private const double HammerMaxScore = 0.95;
+private const double HammerBaseScore = 0.7;
+private const double HammerShadowWeight = 2.0;
+private const double EngulfingMaxScore = 0.95;
+private const double EngulfingBaseScore = 0.6;
+private const double EngulfingSizeWeight = 0.1;
+
+CandlestickType.Hammer => ("Hammer", TwoBarPattern),
+CandlestickType.Doji => ("Doji", SingleBarPattern),
+var score = bodyRatio < DojiBodyRatioTiny ? DojiScoreTiny : bodyRatio < DojiBodyRatioSmall ? DojiScoreSmall : bodyRatio < DojiBodyRatioMedium ? DojiScoreMedium : 0.0;
+if (bodyRatio < HammerBodyRatioMax && lowerShadowRatio > HammerLowerShadowMin && upperShadowRatio < HammerUpperShadowMax)
+score = Math.Min(HammerMaxScore, HammerBaseScore + (double)(lowerShadowRatio - HammerLowerShadowMin) * HammerShadowWeight);
+var score = Math.Min(EngulfingMaxScore, EngulfingBaseScore + Math.Min(EngulfingMaxBonus, ((double)sizeRatio - EngulfingSizeMinimum) * EngulfingSizeWeight));
+```
+
+**Build Verification**: ✅ 0 CS errors maintained, 58 S109 violations fixed (1134 → 1076)
+
+---
+
+### 🔧 Round 154 - Phase 2: S109 Magic Numbers Elimination (Previous in Current Session)
 
 **S109: Magic Number to Named Constant Conversion (46 violations fixed, 1 file)**
 

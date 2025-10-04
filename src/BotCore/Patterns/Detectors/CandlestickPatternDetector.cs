@@ -8,6 +8,50 @@ namespace BotCore.Patterns.Detectors;
 /// </summary>
 public class CandlestickPatternDetector : IPatternDetector
 {
+    // Pattern bar requirements
+    private const int SingleBarPattern = 1;
+    private const int TwoBarPattern = 2;
+    private const int ThreeBarPattern = 3;
+
+    // Doji thresholds
+    private const decimal DojiBodyRatioTiny = 0.05m;
+    private const decimal DojiBodyRatioSmall = 0.1m;
+    private const decimal DojiBodyRatioMedium = 0.15m;
+    private const double DojiScoreTiny = 0.9;
+    private const double DojiScoreSmall = 0.7;
+    private const double DojiScoreMedium = 0.5;
+
+    // Hammer/Shooting Star thresholds
+    private const decimal HammerBodyRatioMax = 0.3m;
+    private const decimal HammerLowerShadowMin = 0.6m;
+    private const decimal HammerUpperShadowMax = 0.1m;
+    private const double HammerMaxScore = 0.95;
+    private const double HammerBaseScore = 0.7;
+    private const double HammerShadowWeight = 2.0;
+    private const double HammerMinDirectionalScore = 0.5;
+
+    // Engulfing thresholds
+    private const decimal MinBodySize = 0.01m;
+    private const double EngulfingMaxScore = 0.95;
+    private const double EngulfingBaseScore = 0.6;
+    private const double EngulfingMaxBonus = 0.35;
+    private const double EngulfingSizeWeight = 0.1;
+    private const double EngulfingSizeMinimum = 1.0;
+
+    // Marubozu thresholds
+    private const double MarubozuMaxScore = 0.9;
+
+    // Pattern scores for simplified implementations
+    private const double HaramiScore = 0.5;
+    private const double PiercingLineScore = 0.6;
+    private const double DarkCloudCoverScore = 0.6;
+    private const double TweezerTopsScore = 0.4;
+    private const double TweezerBottomsScore = 0.4;
+    private const double DefaultTwoBarScore = 0.3;
+    private const double MorningStarScore = 0.7;
+    private const double EveningStarScore = 0.7;
+    private const double DefaultThreeBarScore = 0.4;
+
     // S109 Magic Number Constants - Candlestick Pattern Thresholds
     private const decimal MinSpinningTopBodyRatio = 0.1m;
     private const decimal MaxSpinningTopBodyRatio = 0.3m;
@@ -25,22 +69,22 @@ public class CandlestickPatternDetector : IPatternDetector
         _type = type;
         (PatternName, RequiredBars) = type switch
         {
-            CandlestickType.Doji => ("Doji", 1),
-            CandlestickType.Hammer => ("Hammer", 2),
-            CandlestickType.ShootingStar => ("ShootingStar", 2),
-            CandlestickType.Engulfing => ("Engulfing", 2),
-            CandlestickType.Harami => ("Harami", 2),
-            CandlestickType.Marubozu => ("Marubozu", 1),
-            CandlestickType.SpinningTop => ("SpinningTop", 1),
-            CandlestickType.ThreeBlackCrows => ("ThreeBlackCrows", 3),
-            CandlestickType.ThreeWhiteSoldiers => ("ThreeWhiteSoldiers", 3),
-            CandlestickType.MorningStar => ("MorningStar", 3),
-            CandlestickType.EveningStar => ("EveningStar", 3),
-            CandlestickType.PiercingLine => ("PiercingLine", 2),
-            CandlestickType.DarkCloudCover => ("DarkCloudCover", 2),
-            CandlestickType.TweezerTops => ("TweezerTops", 2),
-            CandlestickType.TweezerBottoms => ("TweezerBottoms", 2),
-            _ => ("Unknown", 1)
+            CandlestickType.Doji => ("Doji", SingleBarPattern),
+            CandlestickType.Hammer => ("Hammer", TwoBarPattern),
+            CandlestickType.ShootingStar => ("ShootingStar", TwoBarPattern),
+            CandlestickType.Engulfing => ("Engulfing", TwoBarPattern),
+            CandlestickType.Harami => ("Harami", TwoBarPattern),
+            CandlestickType.Marubozu => ("Marubozu", SingleBarPattern),
+            CandlestickType.SpinningTop => ("SpinningTop", SingleBarPattern),
+            CandlestickType.ThreeBlackCrows => ("ThreeBlackCrows", ThreeBarPattern),
+            CandlestickType.ThreeWhiteSoldiers => ("ThreeWhiteSoldiers", ThreeBarPattern),
+            CandlestickType.MorningStar => ("MorningStar", ThreeBarPattern),
+            CandlestickType.EveningStar => ("EveningStar", ThreeBarPattern),
+            CandlestickType.PiercingLine => ("PiercingLine", TwoBarPattern),
+            CandlestickType.DarkCloudCover => ("DarkCloudCover", TwoBarPattern),
+            CandlestickType.TweezerTops => ("TweezerTops", TwoBarPattern),
+            CandlestickType.TweezerBottoms => ("TweezerBottoms", TwoBarPattern),
+            _ => ("Unknown", SingleBarPattern)
         };
     }
 
@@ -83,7 +127,9 @@ public class CandlestickPatternDetector : IPatternDetector
         if (range == 0) return new PatternResult { Score = 0, Confidence = 0 };
 
         var bodyRatio = bodySize / range;
-        var score = bodyRatio < 0.05m ? 0.9 : bodyRatio < 0.1m ? 0.7 : bodyRatio < 0.15m ? 0.5 : 0.0;
+        var score = bodyRatio < DojiBodyRatioTiny ? DojiScoreTiny : 
+                    bodyRatio < DojiBodyRatioSmall ? DojiScoreSmall : 
+                    bodyRatio < DojiBodyRatioMedium ? DojiScoreMedium : 0.0;
 
         return new PatternResult
         {
@@ -100,7 +146,7 @@ public class CandlestickPatternDetector : IPatternDetector
 
     private static PatternResult DetectHammer(IReadOnlyList<Bar> bars)
     {
-        if (bars.Count < 2) return new PatternResult { Score = 0, Confidence = 0 };
+        if (bars.Count < TwoBarPattern) return new PatternResult { Score = 0, Confidence = 0 };
         
         var prev = bars[^2];
         var current = bars[^1];
@@ -121,15 +167,15 @@ public class CandlestickPatternDetector : IPatternDetector
 
         // Hammer criteria: small body, long lower shadow, minimal upper shadow
         var score = 0.0;
-        if (bodyRatio < 0.3m && lowerShadowRatio > 0.6m && upperShadowRatio < 0.1m)
+        if (bodyRatio < HammerBodyRatioMax && lowerShadowRatio > HammerLowerShadowMin && upperShadowRatio < HammerUpperShadowMax)
         {
-            score = Math.Min(0.95, 0.7 + (double)(lowerShadowRatio - 0.6m) * 2);
+            score = Math.Min(HammerMaxScore, HammerBaseScore + (double)(lowerShadowRatio - HammerLowerShadowMin) * HammerShadowWeight);
         }
 
         return new PatternResult
         {
             Score = score,
-            Direction = score > 0.5 ? 1 : 0, // Bullish reversal
+            Direction = score > HammerMinDirectionalScore ? 1 : 0, // Bullish reversal
             Confidence = score,
             Metadata = new Dictionary<string, object>
             {
@@ -142,7 +188,7 @@ public class CandlestickPatternDetector : IPatternDetector
 
     private static PatternResult DetectShootingStar(IReadOnlyList<Bar> bars)
     {
-        if (bars.Count < 2) return new PatternResult { Score = 0, Confidence = 0 };
+        if (bars.Count < TwoBarPattern) return new PatternResult { Score = 0, Confidence = 0 };
         
         var prev = bars[^2];
         var current = bars[^1];
@@ -163,15 +209,15 @@ public class CandlestickPatternDetector : IPatternDetector
 
         // Shooting star criteria: small body, long upper shadow, minimal lower shadow
         var score = 0.0;
-        if (bodyRatio < 0.3m && upperShadowRatio > 0.6m && lowerShadowRatio < 0.1m)
+        if (bodyRatio < HammerBodyRatioMax && upperShadowRatio > HammerLowerShadowMin && lowerShadowRatio < HammerUpperShadowMax)
         {
-            score = Math.Min(0.95, 0.7 + (double)(upperShadowRatio - 0.6m) * 2);
+            score = Math.Min(HammerMaxScore, HammerBaseScore + (double)(upperShadowRatio - HammerLowerShadowMin) * HammerShadowWeight);
         }
 
         return new PatternResult
         {
             Score = score,
-            Direction = score > 0.5 ? -1 : 0, // Bearish reversal
+            Direction = score > HammerMinDirectionalScore ? -1 : 0, // Bearish reversal
             Confidence = score,
             Metadata = new Dictionary<string, object>
             {
@@ -184,7 +230,7 @@ public class CandlestickPatternDetector : IPatternDetector
 
     private static PatternResult DetectEngulfing(IReadOnlyList<Bar> bars)
     {
-        if (bars.Count < 2) return new PatternResult { Score = 0, Confidence = 0 };
+        if (bars.Count < TwoBarPattern) return new PatternResult { Score = 0, Confidence = 0 };
         
         var first = bars[^2];
         var second = bars[^1];
@@ -200,8 +246,8 @@ public class CandlestickPatternDetector : IPatternDetector
 
         if (!bullishEngulfing && !bearishEngulfing) return new PatternResult { Score = 0, Confidence = 0 };
 
-        var sizeRatio = secondBody / Math.Max(firstBody, 0.01m);
-        var score = Math.Min(0.95, 0.6 + Math.Min(0.35, (double)(sizeRatio - 1) * 0.1));
+        var sizeRatio = secondBody / Math.Max(firstBody, MinBodySize);
+        var score = Math.Min(EngulfingMaxScore, EngulfingBaseScore + Math.Min(EngulfingMaxBonus, ((double)sizeRatio - EngulfingSizeMinimum) * EngulfingSizeWeight));
 
         return new PatternResult
         {
@@ -252,12 +298,12 @@ public class CandlestickPatternDetector : IPatternDetector
     {
         var score = type switch
         {
-            "Harami" => 0.5,
-            "PiercingLine" => 0.6,
-            "DarkCloudCover" => 0.6,
-            "TweezerTops" => 0.4,
-            "TweezerBottoms" => 0.4,
-            _ => 0.3
+            "Harami" => HaramiScore,
+            "PiercingLine" => PiercingLineScore,
+            "DarkCloudCover" => DarkCloudCoverScore,
+            "TweezerTops" => TweezerTopsScore,
+            "TweezerBottoms" => TweezerBottomsScore,
+            _ => DefaultTwoBarScore
         };
 
         return new PatternResult
@@ -271,15 +317,15 @@ public class CandlestickPatternDetector : IPatternDetector
 
     private static PatternResult DetectThreeBarPattern(IReadOnlyList<Bar> bars, string type, int direction)
     {
-        if (bars.Count < 3) return new PatternResult { Score = 0, Confidence = 0 };
+        if (bars.Count < ThreeBarPattern) return new PatternResult { Score = 0, Confidence = 0 };
 
         var score = type switch
         {
             "ThreeBlackCrows" => DetectThreeConsecutive(bars, false),
             "ThreeWhiteSoldiers" => DetectThreeConsecutive(bars, true),
-            "MorningStar" => 0.7,
-            "EveningStar" => 0.7,
-            _ => 0.4
+            "MorningStar" => MorningStarScore,
+            "EveningStar" => EveningStarScore,
+            _ => DefaultThreeBarScore
         };
 
         return new PatternResult
@@ -295,7 +341,7 @@ public class CandlestickPatternDetector : IPatternDetector
     {
         var bodySize = Math.Abs(bar.Close - bar.Open);
         var range = bar.High - bar.Low;
-        return range > 0 ? Math.Min(0.9, (double)(bodySize / range)) : 0.0;
+        return range > 0 ? Math.Min(MarubozuMaxScore, (double)(bodySize / range)) : 0.0;
     }
 
     private static double DetectSpinningTopLogic(Bar bar)
