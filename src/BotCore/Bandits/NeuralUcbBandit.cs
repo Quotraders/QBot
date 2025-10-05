@@ -19,13 +19,6 @@ namespace BotCore.Bandits;
 /// </summary>
 public class NeuralUcbBandit : IFunctionApproximationBandit, IDisposable
 {
-    // Default values and constants
-    private const decimal DefaultUncertaintyValue = 0.5m;
-    private const decimal MaxUncertaintyValue = 1.0m;
-    private const decimal ComplexityNormalizationFactor = 10m;
-    private const int BitShiftForRandomSeed = 11;
-    private const int BitShiftForRandomScale = 53;
-    
     private readonly Dictionary<string, NeuralUcbArm> _arms = new();
     private readonly NeuralUcbConfig _config;
     private readonly INeuralNetwork _networkTemplate;
@@ -227,9 +220,6 @@ internal sealed class NeuralUcbArm
     private const decimal HighUncertainty = 1m; // High uncertainty value for insufficient data cases
     private const decimal DefaultUncertaintyValue = 0.5m;
     private const decimal MaxUncertaintyValue = 1.0m;
-    private const decimal ComplexityNormalizationFactor = 10m;
-    private const int BitShiftForRandomSeed = 11;
-    private const int BitShiftForRandomScale = 53;
     
     private readonly INeuralNetwork _network;
     private readonly NeuralUcbConfig _config;
