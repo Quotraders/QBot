@@ -192,28 +192,10 @@ public class AutonomousDecisionEngine : BackgroundService
     private const decimal DefaultBaselineMaxDrawdown = -200m;   // Default baseline max drawdown
     private const int DefaultLastTradeDaysOffset = 1;           // Default days offset for last trade
     
-    // Risk and confidence thresholds
-    private const decimal CriticalRiskMultiplier = 0.3m;        // Critical risk - 30% position size
-    private const decimal ModerateRiskMultiplier = 0.5m;        // Moderate risk - 50% position size
-    private const decimal ModerateConfidenceMultiplier = 0.6m;  // Moderate confidence multiplier
-    
-    // Market timing constants  
-    private const int MinutesForTradeGap = 5;                   // Minimum minutes between trades
-    private const int MinimumCheckIntervalMinutes = 15;         // Minimum check interval (minutes)
-    private const int MinimumIdleWaitSeconds = 4;               // Minimum idle wait time (seconds)
-    private const int DefaultIdleWaitSeconds = 5;               // Default idle wait time (seconds)
-    
     // Account balance thresholds
-    private const decimal DefaultBaselineBalance = 4500m;       // Default baseline account balance
     private const decimal MinimumAccountBalanceForScaling = 500m;  // Minimum balance for risk scaling
     private const decimal AccountBalanceScalingFactor = 1000m;  // Factor for account balance scaling
-    private const decimal BaseRiskScalingUnit = 100m;           // Base unit for risk scaling ($100)
-    private const decimal RiskScalingIncrement = 0.01m;         // Risk scaling increment per unit (0.01)
     private const decimal MaxAccountBalanceScaling = 15000m;    // Maximum account balance for scaling
-    private const int PerformanceNormalizationFactor = 15;      // Factor for normalizing performance metrics
-    private const int PnLNormalizationFactor = 100;             // Factor for normalizing P&L ($100 units)
-    private const int ConsistencyTradeThreshold = 26;           // Minimum trades for consistency bonus
-    private const int ConsistencyDollarNormalizationFactor = 240; // Factor for normalizing consistency ($240 units)
     
     // Sample trade generation constants
     private const double ESSymbolProbability = 0.3;             // Probability threshold for ES symbol (30% NQ, 70% ES)
@@ -239,7 +221,6 @@ public class AutonomousDecisionEngine : BackgroundService
     // Technical indicator constants
     private const double NeutralRSIValue = 50.0;                // Neutral RSI value (midpoint)
     private const double MaxRSIValue = 100.0;                   // Maximum RSI value
-    private const double MinMACDValue = 0.0;                    // Minimum MACD value
     private const int EMA12Period = 12;                         // EMA 12-period for MACD
     private const int EMA26Period = 26;                         // EMA 26-period for MACD
     private const int MinimumBarsForMACD = 26;                  // Minimum bars for MACD calculation
