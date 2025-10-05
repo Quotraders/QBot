@@ -14,6 +14,11 @@ using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using TradingBot.Abstractions;
 
+// Type aliases to resolve ambiguity between BotCore.Brain.Models and TradingBot.Abstractions
+using MarketContext = BotCore.Brain.Models.MarketContext;
+using MarketRegime = BotCore.Brain.Models.MarketRegime;
+using TradingDecision = BotCore.Brain.Models.TradingDecision;
+
 namespace BotCore.Brain
 {
     /// <summary>
@@ -2203,7 +2208,7 @@ namespace BotCore.Brain
             }
         }
 
-        private async Task<(bool Success, string OldVersion, string NewVersion)> AtomicModelSwapAsync(
+        private Task<(bool Success, string OldVersion, string NewVersion)> AtomicModelSwapAsync(
             string currentModelPath,
             string newModelPath,
             CancellationToken cancellationToken)
@@ -2227,12 +2232,12 @@ namespace BotCore.Brain
 
                 _logger.LogInformation("  Atomic swap completed: {Old} → {New}", oldVersion, newVersion);
 
-                return (true, oldVersion, newVersion);
+                return Task.FromResult((true, oldVersion, newVersion));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "  Atomic swap failed");
-                return (false, string.Empty, string.Empty);
+                return Task.FromResult((false, string.Empty, string.Empty));
             }
         }
 
