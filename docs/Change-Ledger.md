@@ -144,7 +144,37 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ---
 
-### 🔧 Round 162 - Phase 2: S109 Magic Numbers Elimination (Current Session)
+### 🔧 Round 163 - Phase 2: S2139 Exception Log-and-Rethrow Fixes (Current Session)
+
+**S2139: Exception Handling with Context (10 violations fixed, 6 files)**
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S2139 | 86 | 76 | CloudModelSynchronizationService.cs, EnhancedBacktestService.cs, ModelRotationService.cs, FeatureDriftMonitorService.cs, ProductionResilienceService.cs, UnifiedDataIntegrationService.cs | Replaced log-and-rethrow with context-wrapped exceptions |
+
+**Total Fixed: 10 analyzer violations (10 unique S2139 fixes in 6 files)**
+
+**Example Pattern Applied**:
+```csharp
+// Before (S2139) - Log and rethrow without context
+catch (Exception ex)
+{
+    _logger.LogError(ex, "[SERVICE] Operation failed");
+    throw; // S2139: Either log and handle, or rethrow with context
+}
+
+// After (Compliant) - Rethrow with contextual information
+catch (Exception ex)
+{
+    throw new InvalidOperationException($"[SERVICE] Operation failed with context", ex);
+}
+```
+
+**Build Verification**: ✅ 0 CS errors maintained, 10 S2139 violations fixed (reduced from 86 to 76)
+
+---
+
+### 🔧 Round 162 - Phase 2: S109 Magic Numbers Elimination (Previous in Current Session)
 
 **S109: Magic Number to Named Constant Conversion (56 violations fixed, 1 file)**
 
