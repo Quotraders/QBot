@@ -13,7 +13,7 @@ namespace TradingBot.Monitoring;
 
 /// <summary>
 /// Monitors live performance of current parameters and triggers automatic rollback if degradation detected.
-/// Runs hourly during market hours to track rolling performance metrics.
+/// Runs hourly during CME futures market hours (Sun 6 PM - Fri 5 PM ET, excluding daily 5-6 PM maintenance).
 /// </summary>
 public class ParameterPerformanceMonitor : BackgroundService
 {
@@ -364,19 +364,45 @@ public class ParameterPerformanceMonitor : BackgroundService
             TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time")
         );
         
-        // Market closed on weekends
-        if (nowEt.DayOfWeek == DayOfWeek.Saturday || nowEt.DayOfWeek == DayOfWeek.Sunday)
+        var time = nowEt.TimeOfDay;
+        var dayOfWeek = nowEt.DayOfWeek;
+        
+        // CME Futures Market Hours (ES/NQ operate nearly 24/7)
+        // Opens: Sunday 6:00 PM ET
+        // Closes: Friday 5:00 PM ET
+        // Daily maintenance: 5:00 PM - 6:00 PM ET (no trading)
+        
+        var maintenanceStart = new TimeSpan(17, 0, 0);  // 5:00 PM ET
+        var maintenanceEnd = new TimeSpan(18, 0, 0);    // 6:00 PM ET
+        var sundayOpen = new TimeSpan(18, 0, 0);        // 6:00 PM ET
+        var fridayClose = new TimeSpan(17, 0, 0);       // 5:00 PM ET
+        
+        // Saturday: Market fully closed
+        if (dayOfWeek == DayOfWeek.Saturday)
         {
             return false;
         }
         
-        var time = nowEt.TimeOfDay;
+        // Sunday: Opens at 6:00 PM ET
+        if (dayOfWeek == DayOfWeek.Sunday)
+        {
+            return time >= sundayOpen;
+        }
         
-        // Market hours: 9:30 AM - 4:00 PM ET
-        var marketOpen = new TimeSpan(9, 30, 0);
-        var marketClose = new TimeSpan(16, 0, 0);
+        // Friday: Closes at 5:00 PM ET
+        if (dayOfWeek == DayOfWeek.Friday)
+        {
+            return time < fridayClose;
+        }
         
-        return time >= marketOpen && time < marketClose;
+        // Monday-Thursday: Open 24/7 except maintenance break
+        // Daily maintenance: 5:00 PM - 6:00 PM ET
+        if (time >= maintenanceStart && time < maintenanceEnd)
+        {
+            return false; // Maintenance break
+        }
+        
+        return true; // Open during all other times Mon-Thu
     }
     
     private class StrategyPerformance

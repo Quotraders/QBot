@@ -8,7 +8,8 @@ The Parameter Performance Monitor is a background service that continuously trac
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ Every Hour During Market Hours                                   │
+│ Every Hour During CME Futures Market Hours                       │
+│ (Sun 6 PM - Fri 5 PM ET, excluding daily 5-6 PM maintenance)    │
 └────────────────────┬─────────────────────────────────────────────┘
                      │
 ┌────────────────────▼─────────────────────────────────────────────┐
@@ -223,7 +224,7 @@ for (int i = 0; i < 10; i++)
 ```
 
 2. **Wait for Check Interval:**
-   - Monitor runs every hour during market hours
+   - Monitor runs every hour during CME futures market hours (Sun 6 PM - Fri 5 PM ET, excluding daily 5-6 PM maintenance)
    - Or manually trigger by restarting service
 
 3. **Verify Logs:**
