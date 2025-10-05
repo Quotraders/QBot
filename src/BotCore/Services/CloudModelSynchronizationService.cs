@@ -516,6 +516,22 @@ public class CloudModelSynchronizationService : BackgroundService
             File.Move(tempPath, targetPath, overwrite: true);
             _logger.LogDebug("🌐 [CLOUD-SYNC] Atomically saved: {TargetPath}", targetPath);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Expected cancellation during shutdown - cleanup and rethrow to allow graceful termination
+            if (File.Exists(tempPath))
+            {
+                try
+                {
+                    File.Delete(tempPath);
+                }
+                catch
+                {
+                    // Best effort cleanup
+                }
+            }
+            throw;
+        }
         catch (Exception ex)
         {
             // Cleanup temp file on failure

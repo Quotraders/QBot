@@ -122,6 +122,11 @@ public class UnifiedDataIntegrationService : BackgroundService
                 }
             }
         }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Expected cancellation during shutdown - rethrow to allow graceful termination
+            throw;
+        }
         catch (Exception ex)
         {
             throw new InvalidOperationException("💥 [UNIFIED-DATA] Critical error in unified data integration", ex);

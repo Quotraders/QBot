@@ -385,6 +385,11 @@ public class CVaRPPO : IDisposable
             
             return modelPath;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Expected cancellation during shutdown - rethrow to allow graceful termination
+            throw;
+        }
         catch (UnauthorizedAccessException ex)
         {
             LogMessages.CVaRPPOModelSaveAccessDenied(_logger, ex);
