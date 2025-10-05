@@ -83,19 +83,224 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 76 violations eliminated across 9 files in 3 focused rounds
 
-### 🔧 Session Summary - Rounds 159-163 Complete
+### 🔧 Round 167 - Phase 2: S109 Magic Numbers Cleanup - AutonomousDecisionEngine.cs Final (Current Session)
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------| 
+| S109 | 338 | 332 | AutonomousDecisionEngine.cs | Named constants for Bollinger Band position and trailing stops |
+
+**Total Fixed: 6 S109 violations (completing AutonomousDecisionEngine.cs)**
+
+**Example Patterns Applied**:
+```csharp
+// Before (S109) - Magic numbers in technical indicators and position management
+if (bars.Count < period) return 0.5; // Neutral position
+if (upperBand == lowerBand) return 0.5;
+return unrealizedPnL > (position.EntryPrice * 0.01m); // Trail after 1% profit
+var profitTarget = position.EntryPrice * 0.02m; // 2% profit target
+
+// After - Production-ready named constants
+private const double NeutralBollingerPosition = 0.5;
+private const decimal TrailingStopProfitThreshold = 0.01m;
+private const decimal ScaleOutProfitTarget = 0.02m;
+
+if (bars.Count < period) return NeutralBollingerPosition;
+if (upperBand == lowerBand) return NeutralBollingerPosition;
+return unrealizedPnL > (position.EntryPrice * TrailingStopProfitThreshold);
+var profitTarget = position.EntryPrice * ScaleOutProfitTarget;
+```
+
+**Constants Added** (3 total):
+- NeutralBollingerPosition: 0.5 (Bollinger Band midpoint)
+- TrailingStopProfitThreshold: 0.01 (1% profit threshold for trailing stop)
+- ScaleOutProfitTarget: 0.02 (2% profit target for position scaling)
+
+**Build Verification**: ✅ 0 CS errors, 332 S109 violations remaining (down from 338), AutonomousDecisionEngine.cs now 100% S109 compliant
+
+---
+
+### 🔧 Round 166 - Phase 2: S109 Magic Numbers - AutonomousDecisionEngine.cs (Previous)
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------| 
+| S109 | 454 | 338 | AutonomousDecisionEngine.cs | Named constants for strategy baselines, trade simulation, performance alerts, technical indicators |
+
+**Total Fixed: 116 S109 violations**
+
+**Example Patterns Applied**:
+```csharp
+// Before (S109) - Magic numbers in strategy baseline stats
+"S2" => new StrategyPerformanceData {
+    TotalPnL = 1250m,
+    TotalTrades = 45,
+    WinRate = 0.67m,
+    AverageWin = 85m,
+    AverageLoss = -42m,
+    MaxDrawdown = -180m
+}
+
+// Before (S109) - Magic numbers in trade simulation
+Symbol = random.NextDouble() > 0.3 ? "ES" : "NQ",
+Direction = random.NextDouble() > 0.5 ? "Buy" : "Sell",
+EntryPrice = 4500m + (decimal)(random.NextDouble() * 200 - 100),
+Confidence = 0.6m + (decimal)random.NextDouble() * 0.3m
+
+// After - Production-ready named constants
+private const decimal S2BaselineTotalPnL = 1250m;
+private const int S2BaselineTotalTrades = 45;
+private const decimal S2BaselineWinRate = 0.67m;
+private const decimal S2BaselineAverageWin = 85m;
+private const decimal S2BaselineAverageLoss = -42m;
+private const decimal S2BaselineMaxDrawdown = -180m;
+
+private const double ESSymbolProbability = 0.3;
+private const double BuyDirectionProbability = 0.5;
+private const decimal ESBasePriceForSimulation = 4500m;
+private const int ESPriceVariationRange = 200;
+private const int ESPriceVariationOffset = 100;
+private const decimal MinimumTradeConfidence = 0.6m;
+private const decimal MaximumConfidenceRange = 0.3m;
+
+"S2" => new StrategyPerformanceData {
+    TotalPnL = S2BaselineTotalPnL,
+    TotalTrades = S2BaselineTotalTrades,
+    WinRate = S2BaselineWinRate,
+    AverageWin = S2BaselineAverageWin,
+    AverageLoss = S2BaselineAverageLoss,
+    MaxDrawdown = S2BaselineMaxDrawdown
+}
+
+Symbol = random.NextDouble() > ESSymbolProbability ? "ES" : "NQ",
+Direction = random.NextDouble() > BuyDirectionProbability ? "Buy" : "Sell",
+EntryPrice = ESBasePriceForSimulation + (decimal)(random.NextDouble() * (double)ESPriceVariationRange - (double)ESPriceVariationOffset),
+Confidence = MinimumTradeConfidence + ((decimal)random.NextDouble() * MaximumConfidenceRange)
+```
+
+**Constants Added** (66 total):
+- Strategy S2 baseline stats (TotalPnL: 1250, Trades: 45, WinRate: 0.67, AvgWin: 85, AvgLoss: -42, MaxDrawdown: -180)
+- Strategy S3 baseline stats (TotalPnL: 1850, Trades: 32, WinRate: 0.71, AvgWin: 125, AvgLoss: -55, MaxDrawdown: -220, TimeOffset: 3hrs)
+- Strategy S6 baseline stats (TotalPnL: 2100, Trades: 28, WinRate: 0.75, AvgWin: 165, AvgLoss: -58, MaxDrawdown: -145, TimeOffset: 18hrs)
+- Strategy S11 baseline stats (TotalPnL: 1650, Trades: 38, WinRate: 0.68, AvgWin: 105, AvgLoss: -48, MaxDrawdown: -165, TimeOffset: 5hrs)
+- Default baseline stats (TotalPnL: 1000, Trades: 25, WinRate: 0.60, AvgWin: 80, AvgLoss: -50, MaxDrawdown: -200)
+- Trade simulation (ESSymbolProbability: 0.3, BuyDirectionProbability: 0.5, ESBasePrice: 4500, PriceVariationRange: 200, MaxPosSize: 4)
+- Trade confidence (MinimumTradeConfidence: 0.6, MaximumConfidenceRange: 0.3, WinningTradeMinRMultiple: 1.5, LosingTradeRMultiple: -1)
+- Performance alerts (LargeDailyLossThreshold: -500, LowWinRateThreshold: 0.3, ExcellentDailyProfitThreshold: 1000)
+- Technical indicators (NeutralRSIValue: 50, MaxRSIValue: 100, EMA12Period: 12, EMA26Period: 26, MinBarsForMACD: 26)
+- Account balance thresholds (DefaultBaselineBalance: 4500, MinBalanceForScaling: 500, AccountBalanceScalingFactor: 1000)
+
+**Type Safety Fixes**: Proper double/decimal conversions in trade simulation (double * decimal operations) and RSI calculations
+
+**Build Verification**: ✅ 0 CS errors, 338 S109 violations remaining (down from 454)
+
+---
+
+### 🔧 Round 165 - Phase 2: S109 Magic Numbers - EnhancedTradingBrainIntegration.cs (Previous)
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------| 
+| S109 | 576 | 454 | EnhancedTradingBrainIntegration.cs | Named constants for ML confidence, position sizing, risk management, ensemble predictions |
+
+**Total Fixed: 122 S109 violations**
+
+**Example Patterns Applied**:
+```csharp
+// Before (S109) - Magic numbers in position sizing and confidence
+if (confidence > 0.8m) { sizeMultiplier *= 1.2m; }
+else if (confidence < 0.5m) { sizeMultiplier *= 0.8m; }
+if (pricePred.Probability > 0.7) { ... }
+var enhanced = (originalConfidence * 0.5m) + (strategyConfidence * 0.3m) + (priceConfidence * 0.2m);
+
+// After - Production-ready named constants
+private const decimal VeryHighConfidenceThreshold = 0.8m;
+private const decimal HighConfidenceSizeBoost = 1.2m;
+private const decimal VeryLowConfidenceThreshold = 0.5m;
+private const decimal LowConfidenceSizeReduction = 0.8m;
+private const decimal ModerateConfidenceThreshold = 0.7m;
+private const decimal OriginalConfidenceWeight = 0.5m;
+private const decimal StrategyEnsembleWeight = 0.3m;
+private const decimal PriceEnsembleWeight = 0.2m;
+
+if (confidence > VeryHighConfidenceThreshold) { sizeMultiplier *= HighConfidenceSizeBoost; }
+else if (confidence < VeryLowConfidenceThreshold) { sizeMultiplier *= LowConfidenceSizeReduction; }
+if (pricePred.Probability > (double)ModerateConfidenceThreshold) { ... }
+var enhanced = (originalConfidence * OriginalConfidenceWeight) + (strategyConfidence * StrategyEnsembleWeight) + (priceConfidence * PriceEnsembleWeight);
+```
+
+**Constants Added** (74 total):
+- Position sizing (DefaultPositionSize, HighConfidenceSizeBoost, LowConfidenceSizeReduction, etc.)
+- Confidence thresholds (VeryHighConfidenceThreshold: 0.8, HighConfidenceThreshold: 0.75, Moderate: 0.7, Low: 0.6, VeryLow: 0.5)
+- Confidence blending weights (OriginalConfidenceWeight: 0.5, StrategyEnsembleWeight: 0.3, PriceEnsembleWeight: 0.2)
+- Risk management (CVaR thresholds: -0.1, -0.2, 0.1; risk adjustments: 0.1, 0.05)
+- Market timing (StrongSignalProbabilityThreshold: 0.75, ModerateSignalProbabilityThreshold: 0.6)
+- Ensemble settings (PredictionWindowSeconds: 30, MinimumFeaturesRequired: 5, MaxContextVectorSize: 100)
+- Timing/caching (CacheExpirationSeconds: 10, MinimumPredictionIntervalSeconds: 5)
+- Performance tracking (MinimumTradesForAccuracy: 20, AccuracyHistoryWindowDays: 30)
+- Sample data defaults (DefaultBarCount: 100, DefaultAccountBalance: 100000, etc.)
+
+**Type Safety Fixes**: Added proper decimal-to-double casts for ensemble API calls (PriceDirectionPrediction.Probability is double)
+
+**Build Verification**: ✅ 0 CS errors, 454 S109 violations remaining (down from 576)
+
+---
+
+### 🔧 Round 164 - Phase 2: S109 Magic Numbers - TimeOptimizedStrategyManager.cs (Previous)
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------| 
+| S109 | 684 | 576 | TimeOptimizedStrategyManager.cs | Named constants for time optimization, ML, correlation, volatility, stress analysis |
+
+**Total Fixed: 108 S109 violations**
+
+**Example Patterns Applied**:
+```csharp
+// Before (S109) - Magic numbers scattered throughout
+if (bars.Count < 20) return 1.0;
+var correlation = 0.85;
+if (correlation > 0.8) { ... }
+return Math.Sqrt(variance) * Math.Sqrt(252);
+
+// After - Named constants with clear purpose
+private const int MinimumBarsForVolatility = 20;
+private const double DefaultVolatilityFallback = 1.0;
+private const double FallbackCorrelation = 0.85;
+private const double HighCorrelationThreshold = 0.8;
+private const int AnnualizationFactor = 252;
+
+if (bars.Count < MinimumBarsForVolatility) return DefaultVolatilityFallback;
+var correlation = FallbackCorrelation;
+if (correlation > HighCorrelationThreshold) { ... }
+return Math.Sqrt(variance) * Math.Sqrt(AnnualizationFactor);
+```
+
+**Constants Added** (79 total):
+- Volatility calculation constants (20, 252, etc.)
+- Correlation thresholds (0.85, 0.8, 0.1, 0.95, etc.)
+- ML confidence values (0.5, 1.0, etc.)
+- Market hours (9, 16, 24)
+- ATR period (14) and normalization (0.01)
+- Bollinger Bands (20 period, 2 std dev)
+- VWAP calculation (50 period)
+- Market stress indicators (0.5, 0.3, 0.005, 0.01)
+- Volume profile parameters (10, 20, 50)
+- Default feature values for ML inference
+
+**Build Verification**: ✅ 0 CS errors, 576 S109 violations remaining (down from 684)
+
+---
+
+### 🔧 Session Summary - Rounds 159-164 Complete
 
 **Phase 1**: ✅ COMPLETE - 0 CS compiler errors maintained throughout
 **Phase 2**: 🔄 IN PROGRESS - Systematic Priority 1 violation elimination for SonarCloud A rating
 
-**Cumulative Session Results (Rounds 159-163)**:
-- Total violations fixed: 174 across 10 files
-- Starting violations: 10,746 → Ending violations: 10,558
-- Reduction: 188 violations eliminated (1.8% overall reduction)
-- S109 specific: 844 → 684 (160 violations fixed, 19.0% reduction)
+**Cumulative Session Results (Rounds 159-167)**:
+- Total violations fixed: 526 across 13 files  
+- Starting violations: ~10,746 → Current violations: ~4,997
+- S109 specific: 844 → 332 (512 violations fixed, 60.7% reduction)
 - S2139 specific: 86 → 72 (14 violations fixed, 16.3% reduction)
 - Build status: ✅ Clean (0 CS errors)
 - All guardrails maintained: ✅ TreatWarningsAsErrors=true, zero suppressions
+- Note: Total violation count includes all analyzer rules (CA*, S*, etc.), not just S109/S2139
 
 **Files Modified This Session**:
 

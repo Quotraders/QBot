@@ -148,6 +148,108 @@ public class AutonomousDecisionEngine : BackgroundService
     private const decimal PreMarketMultiplier = 0.8m;           // Pre-market - lower volume
     private const decimal DefaultTimeMultiplier = 1.0m;         // Default time multiplier
     
+    // Strategy baseline performance statistics (S2 - VWAP Mean Reversion)
+    private const decimal S2BaselineTotalPnL = 1250m;           // S2 baseline total P&L
+    private const int S2BaselineTotalTrades = 45;               // S2 baseline total trades
+    private const decimal S2BaselineWinRate = 0.67m;            // S2 baseline win rate (67%)
+    private const decimal S2BaselineAverageWin = 85m;           // S2 baseline average win
+    private const decimal S2BaselineAverageLoss = -42m;         // S2 baseline average loss
+    private const decimal S2BaselineMaxDrawdown = -180m;        // S2 baseline max drawdown
+    
+    // Strategy baseline performance statistics (S3 - Compression Breakout)
+    private const decimal S3BaselineTotalPnL = 1850m;           // S3 baseline total P&L
+    private const int S3BaselineTotalTrades = 32;               // S3 baseline total trades
+    private const decimal S3BaselineWinRate = 0.71m;            // S3 baseline win rate (71%)
+    private const decimal S3BaselineAverageWin = 125m;          // S3 baseline average win
+    private const decimal S3BaselineAverageLoss = -55m;         // S3 baseline average loss
+    private const decimal S3BaselineMaxDrawdown = -220m;        // S3 baseline max drawdown
+    private const int S3TimeOffsetHours = 3;                    // S3 time offset for last trade (hours)
+    
+    // Strategy baseline performance statistics (S6 - Opening Drive)
+    private const decimal S6BaselineTotalPnL = 2100m;           // S6 baseline total P&L
+    private const int S6BaselineTotalTrades = 28;               // S6 baseline total trades
+    private const decimal S6BaselineWinRate = 0.75m;            // S6 baseline win rate (75%)
+    private const decimal S6BaselineAverageWin = 165m;          // S6 baseline average win
+    private const decimal S6BaselineAverageLoss = -58m;         // S6 baseline average loss
+    private const decimal S6BaselineMaxDrawdown = -145m;        // S6 baseline max drawdown
+    private const int S6TimeOffsetHours = 18;                   // S6 time offset for last trade (hours)
+    
+    // Strategy baseline performance statistics (S11 - ADR Exhaustion)
+    private const decimal S11BaselineTotalPnL = 1650m;          // S11 baseline total P&L
+    private const int S11BaselineTotalTrades = 38;              // S11 baseline total trades
+    private const decimal S11BaselineWinRate = 0.68m;           // S11 baseline win rate (68%)
+    private const decimal S11BaselineAverageWin = 105m;         // S11 baseline average win
+    private const decimal S11BaselineAverageLoss = -48m;        // S11 baseline average loss
+    private const decimal S11BaselineMaxDrawdown = -165m;       // S11 baseline max drawdown
+    private const int S11TimeOffsetHours = 5;                   // S11 time offset for last trade (hours)
+    
+    // Default strategy baseline performance statistics
+    private const decimal DefaultBaselineTotalPnL = 1000m;      // Default baseline total P&L
+    private const int DefaultBaselineTotalTrades = 25;          // Default baseline total trades
+    private const decimal DefaultBaselineWinRate = 0.60m;       // Default baseline win rate (60%)
+    private const decimal DefaultBaselineAverageWin = 80m;      // Default baseline average win
+    private const decimal DefaultBaselineAverageLoss = -50m;    // Default baseline average loss
+    private const decimal DefaultBaselineMaxDrawdown = -200m;   // Default baseline max drawdown
+    private const int DefaultLastTradeDaysOffset = 1;           // Default days offset for last trade
+    
+    // Risk and confidence thresholds
+    private const decimal CriticalRiskMultiplier = 0.3m;        // Critical risk - 30% position size
+    private const decimal ModerateRiskMultiplier = 0.5m;        // Moderate risk - 50% position size
+    private const decimal ModerateConfidenceMultiplier = 0.6m;  // Moderate confidence multiplier
+    
+    // Market timing constants  
+    private const int MinutesForTradeGap = 5;                   // Minimum minutes between trades
+    private const int MinimumCheckIntervalMinutes = 15;         // Minimum check interval (minutes)
+    private const int MinimumIdleWaitSeconds = 4;               // Minimum idle wait time (seconds)
+    private const int DefaultIdleWaitSeconds = 5;               // Default idle wait time (seconds)
+    
+    // Account balance thresholds
+    private const decimal DefaultBaselineBalance = 4500m;       // Default baseline account balance
+    private const decimal MinimumAccountBalanceForScaling = 500m;  // Minimum balance for risk scaling
+    private const decimal AccountBalanceScalingFactor = 1000m;  // Factor for account balance scaling
+    private const decimal BaseRiskScalingUnit = 100m;           // Base unit for risk scaling ($100)
+    private const decimal RiskScalingIncrement = 0.01m;         // Risk scaling increment per unit (0.01)
+    private const decimal MaxAccountBalanceScaling = 15000m;    // Maximum account balance for scaling
+    private const int PerformanceNormalizationFactor = 15;      // Factor for normalizing performance metrics
+    private const int PnLNormalizationFactor = 100;             // Factor for normalizing P&L ($100 units)
+    private const int ConsistencyTradeThreshold = 26;           // Minimum trades for consistency bonus
+    private const int ConsistencyDollarNormalizationFactor = 240; // Factor for normalizing consistency ($240 units)
+    
+    // Sample trade generation constants
+    private const double ESSymbolProbability = 0.3;             // Probability threshold for ES symbol (30% NQ, 70% ES)
+    private const double BuyDirectionProbability = 0.5;         // Probability threshold for buy direction (50/50)
+    private const decimal ESBasePriceForSimulation = 4500m;     // ES base price for trade simulation
+    private const int ESPriceVariationRange = 200;              // ES price variation range
+    private const int ESPriceVariationOffset = 100;             // ES price variation offset
+    private const int MaximumPositionSize = 4;                  // Maximum position size for simulation
+    private const decimal MinimumTradeConfidence = 0.6m;        // Minimum confidence for trades (60%)
+    private const decimal MaximumConfidenceRange = 0.3m;        // Maximum confidence range (30%)
+    private const int MinimumTradeExitMinutes = 15;             // Minimum exit time (minutes)
+    private const int MaximumTradeExitMinutes = 240;            // Maximum exit time (minutes)
+    private const decimal WinningTradeMinRMultiple = 1.5m;      // Minimum R-multiple for winning trades
+    private const decimal WinningTradeRMultipleRange = 1.5m;    // R-multiple range for winning trades
+    private const decimal LosingTradeRMultiple = -1m;           // R-multiple for losing trades
+    
+    // Performance alert thresholds
+    private const decimal LargeDailyLossThreshold = -500m;      // Threshold for large daily loss alert
+    private const decimal LowWinRateThreshold = 0.3m;           // Threshold for low win rate alert
+    private const int MinimumTradesForWinRateAlert = 5;         // Minimum trades before triggering win rate alert
+    private const decimal ExcellentDailyProfitThreshold = 1000m; // Threshold for excellent daily profit
+    
+    // Technical indicator constants
+    private const double NeutralRSIValue = 50.0;                // Neutral RSI value (midpoint)
+    private const double MaxRSIValue = 100.0;                   // Maximum RSI value
+    private const double MinMACDValue = 0.0;                    // Minimum MACD value
+    private const int EMA12Period = 12;                         // EMA 12-period for MACD
+    private const int EMA26Period = 26;                         // EMA 26-period for MACD
+    private const int MinimumBarsForMACD = 26;                  // Minimum bars for MACD calculation
+    private const double NeutralMACDValueDouble = 0.0;          // Neutral MACD value as double
+    private const double NeutralBollingerPosition = 0.5;        // Neutral Bollinger Band position (midpoint)
+    
+    // Position management constants
+    private const decimal TrailingStopProfitThreshold = 0.01m;  // Trail after 1% profit
+    private const decimal ScaleOutProfitTarget = 0.02m;         // Scale out at 2% profit target
+    
     // Learning and performance tracking constants
     private const int MaxRecentTradesCount = 100;               // Maximum recent trades to keep for learning
     private const decimal GoodWinRateThreshold = 0.6m;          // Win rate threshold for risk increase
@@ -1283,57 +1385,57 @@ public class AutonomousDecisionEngine : BackgroundService
             "S2" => new StrategyPerformanceData
             {
                 Strategy = "S2",
-                TotalPnL = 1250m,
-                TotalTrades = 45,
-                WinRate = 0.67m,
-                AverageWin = 85m,
-                AverageLoss = -42m,
-                MaxDrawdown = -180m,
-                LastTradeDate = DateTime.UtcNow.AddDays(-1)
+                TotalPnL = S2BaselineTotalPnL,
+                TotalTrades = S2BaselineTotalTrades,
+                WinRate = S2BaselineWinRate,
+                AverageWin = S2BaselineAverageWin,
+                AverageLoss = S2BaselineAverageLoss,
+                MaxDrawdown = S2BaselineMaxDrawdown,
+                LastTradeDate = DateTime.UtcNow.AddDays(-DefaultLastTradeDaysOffset)
             },
             "S3" => new StrategyPerformanceData
             {
                 Strategy = "S3",
-                TotalPnL = 1850m,
-                TotalTrades = 32,
-                WinRate = 0.71m,
-                AverageWin = 125m,
-                AverageLoss = -55m,
-                MaxDrawdown = -220m,
-                LastTradeDate = DateTime.UtcNow.AddHours(-3)
+                TotalPnL = S3BaselineTotalPnL,
+                TotalTrades = S3BaselineTotalTrades,
+                WinRate = S3BaselineWinRate,
+                AverageWin = S3BaselineAverageWin,
+                AverageLoss = S3BaselineAverageLoss,
+                MaxDrawdown = S3BaselineMaxDrawdown,
+                LastTradeDate = DateTime.UtcNow.AddHours(-S3TimeOffsetHours)
             },
             "S6" => new StrategyPerformanceData
             {
                 Strategy = "S6",
-                TotalPnL = 2100m,
-                TotalTrades = 28,
-                WinRate = 0.75m,
-                AverageWin = 165m,
-                AverageLoss = -58m,
-                MaxDrawdown = -145m,
-                LastTradeDate = DateTime.UtcNow.AddHours(-18)
+                TotalPnL = S6BaselineTotalPnL,
+                TotalTrades = S6BaselineTotalTrades,
+                WinRate = S6BaselineWinRate,
+                AverageWin = S6BaselineAverageWin,
+                AverageLoss = S6BaselineAverageLoss,
+                MaxDrawdown = S6BaselineMaxDrawdown,
+                LastTradeDate = DateTime.UtcNow.AddHours(-S6TimeOffsetHours)
             },
             "S11" => new StrategyPerformanceData
             {
                 Strategy = "S11",
-                TotalPnL = 1650m,
-                TotalTrades = 38,
-                WinRate = 0.68m,
-                AverageWin = 105m,
-                AverageLoss = -48m,
-                MaxDrawdown = -165m,
-                LastTradeDate = DateTime.UtcNow.AddHours(-5)
+                TotalPnL = S11BaselineTotalPnL,
+                TotalTrades = S11BaselineTotalTrades,
+                WinRate = S11BaselineWinRate,
+                AverageWin = S11BaselineAverageWin,
+                AverageLoss = S11BaselineAverageLoss,
+                MaxDrawdown = S11BaselineMaxDrawdown,
+                LastTradeDate = DateTime.UtcNow.AddHours(-S11TimeOffsetHours)
             },
             _ => new StrategyPerformanceData
             {
                 Strategy = strategy,
-                TotalPnL = 1000m,
-                TotalTrades = 25,
-                WinRate = 0.60m,
-                AverageWin = 80m,
-                AverageLoss = -50m,
-                MaxDrawdown = -200m,
-                LastTradeDate = DateTime.UtcNow.AddDays(-1)
+                TotalPnL = DefaultBaselineTotalPnL,
+                TotalTrades = DefaultBaselineTotalTrades,
+                WinRate = DefaultBaselineWinRate,
+                AverageWin = DefaultBaselineAverageWin,
+                AverageLoss = DefaultBaselineAverageLoss,
+                MaxDrawdown = DefaultBaselineMaxDrawdown,
+                LastTradeDate = DateTime.UtcNow.AddDays(-DefaultLastTradeDaysOffset)
             }
         };
     }
@@ -1390,17 +1492,17 @@ public class AutonomousDecisionEngine : BackgroundService
             recentTrades.Add(new AutonomousTradeOutcome
             {
                 Strategy = strategy,
-                Symbol = random.NextDouble() > 0.3 ? "ES" : "NQ", // 70% ES, 30% NQ
-                Direction = random.NextDouble() > 0.5 ? "Buy" : "Sell",
+                Symbol = random.NextDouble() > ESSymbolProbability ? "ES" : "NQ", // 70% ES, 30% NQ
+                Direction = random.NextDouble() > BuyDirectionProbability ? "Buy" : "Sell",
                 EntryTime = tradeTime,
-                EntryPrice = strategy.Contains("ES") ? 4500m + (decimal)(random.NextDouble() * 200 - 100) : 15000m + (decimal)(random.NextDouble() * 1000 - 500),
-                Size = random.Next(1, 4),
-                Confidence = 0.6m + (decimal)random.NextDouble() * 0.3m, // 60%-90% confidence
-                AutonomousMarketRegime = (AutonomousMarketRegime)random.Next(1, 5),
+                EntryPrice = strategy.Contains("ES") ? ESBasePriceForSimulation + (decimal)(random.NextDouble() * (double)ESPriceVariationRange - (double)ESPriceVariationOffset) : MaxAccountBalanceScaling + (decimal)(random.NextDouble() * (double)AccountBalanceScalingFactor - (double)MinimumAccountBalanceForScaling),
+                Size = random.Next(1, MaximumPositionSize),
+                Confidence = MinimumTradeConfidence + ((decimal)random.NextDouble() * MaximumConfidenceRange), // 60%-90% confidence
+                AutonomousMarketRegime = (AutonomousMarketRegime)random.Next(1, MinimumTradesForWinRateAlert),
                 PnL = pnl,
-                ExitTime = tradeTime.AddMinutes(random.Next(15, 240)),
+                ExitTime = tradeTime.AddMinutes(random.Next(MinimumTradeExitMinutes, MaximumTradeExitMinutes)),
                 ExitPrice = 0m, // Will be calculated
-                RMultiple = isWin ? 1.5m + (decimal)random.NextDouble() * 1.5m : -1m
+                RMultiple = isWin ? WinningTradeMinRMultiple + (decimal)random.NextDouble() * WinningTradeRMultipleRange : LosingTradeRMultiple
             });
         }
         
@@ -1470,17 +1572,17 @@ public class AutonomousDecisionEngine : BackgroundService
         try
         {
             // Check for various alert conditions
-            if (report.DailyPnL < -500) // Large daily loss
+            if (report.DailyPnL < LargeDailyLossThreshold) // Large daily loss
             {
                 _logger.LogWarning("🚨 [ALERT] Large daily loss detected: ${Loss:F2}", report.DailyPnL);
             }
             
-            if (report.WinRate < 0.3m && report.TotalTrades > 5) // Low win rate
+            if (report.WinRate < LowWinRateThreshold && report.TotalTrades > MinimumTradesForWinRateAlert) // Low win rate
             {
                 _logger.LogWarning("🚨 [ALERT] Low win rate detected: {WinRate:P}", report.WinRate);
             }
             
-            if (report.DailyPnL > 1000) // Large daily gain
+            if (report.DailyPnL > ExcellentDailyProfitThreshold) // Large daily gain
             {
                 _logger.LogInformation("🎉 [SUCCESS] Excellent daily performance: ${Profit:F2}", report.DailyPnL);
             }
@@ -1496,7 +1598,7 @@ public class AutonomousDecisionEngine : BackgroundService
     // Helper methods for technical indicators
     private static double CalculateRSI(List<Bar> bars, int period)
     {
-        if (bars.Count < period + 1) return 50; // Neutral RSI
+        if (bars.Count < period + 1) return NeutralRSIValue; // Neutral RSI
         
         var gains = new List<decimal>();
         var losses = new List<decimal>();
@@ -1511,24 +1613,24 @@ public class AutonomousDecisionEngine : BackgroundService
         var avgGain = gains.TakeLast(period).Average();
         var avgLoss = losses.TakeLast(period).Average();
         
-        if (avgLoss == 0) return 100;
+        if (avgLoss == 0) return MaxRSIValue;
         var rs = avgGain / avgLoss;
-        return (double)(100 - (100 / (1 + rs)));
+        return MaxRSIValue - (MaxRSIValue / (1 + (double)rs));
     }
     
     private static double CalculateMACD(List<Bar> bars)
     {
-        if (bars.Count < 26) return 0;
+        if (bars.Count < MinimumBarsForMACD) return NeutralMACDValueDouble;
         
-        var ema12 = CalculateEMA(bars.Select(b => b.Close).ToList(), 12);
-        var ema26 = CalculateEMA(bars.Select(b => b.Close).ToList(), 26);
+        var ema12 = CalculateEMA(bars.Select(b => b.Close).ToList(), EMA12Period);
+        var ema26 = CalculateEMA(bars.Select(b => b.Close).ToList(), EMA26Period);
         
         return (double)(ema12 - ema26);
     }
     
     private static double CalculateBollingerPosition(List<Bar> bars, int period)
     {
-        if (bars.Count < period) return 0.5; // Neutral position
+        if (bars.Count < period) return NeutralBollingerPosition; // Neutral position
         
         var closes = bars.TakeLast(period).Select(b => b.Close).ToList();
         var sma = closes.Average();
@@ -1539,7 +1641,7 @@ public class AutonomousDecisionEngine : BackgroundService
         var currentPrice = bars.Last().Close;
         
         // Return position between bands (0 = lower band, 1 = upper band)
-        if (upperBand == lowerBand) return 0.5;
+        if (upperBand == lowerBand) return NeutralBollingerPosition;
         return (double)((currentPrice - lowerBand) / (upperBand - lowerBand));
     }
     
@@ -1598,13 +1700,13 @@ public class AutonomousDecisionEngine : BackgroundService
     {
         // Implement trailing stop logic based on position performance
         var unrealizedPnL = CalculatePositionPnL(position, currentPrice);
-        return unrealizedPnL > (position.EntryPrice * 0.01m); // Trail after 1% profit
+        return unrealizedPnL > (position.EntryPrice * TrailingStopProfitThreshold); // Trail after 1% profit
     }
     
     private static bool ShouldScaleOutPosition(Position position, decimal currentPnL)
     {
         // Scale out at profit targets
-        var profitTarget = position.EntryPrice * 0.02m; // 2% profit target
+        var profitTarget = position.EntryPrice * ScaleOutProfitTarget; // 2% profit target
         return currentPnL > profitTarget;
     }
     
