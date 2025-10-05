@@ -1598,6 +1598,21 @@ namespace BotCore.Brain
         /// <summary>
         /// Gate 4: Validate model before hot-reload to ensure safe deployment
         /// Implements comprehensive safety checks before swapping models
+        /// 
+        /// IMPLEMENTATION STATUS:
+        /// ✅ Check 1/4: Feature specification compatibility - COMPLETE
+        /// ✅ Check 2/4: Sanity test with 200 deterministic vectors - COMPLETE
+        /// ⚠️ Check 3/4: Prediction distribution comparison - PLACEHOLDER (needs ONNX Runtime)
+        /// ✅ Check 4/4: NaN/Infinity validation - COMPLETE
+        /// ❌ MISSING: 5000-bar historical replay simulation with drawdown check (2x threshold)
+        /// ❌ MISSING: Model swap with backup creation after validation passes
+        /// 
+        /// TODO for production:
+        /// 1. Implement actual ONNX inference in ComparePredictionDistributionsAsync()
+        /// 2. Add RunHistoricalSimulation() method with 5000 bars + drawdown tracking
+        /// 3. Create ReloadModels() method that calls this validation then swaps
+        /// 4. Add backup model saving before swap
+        /// 5. Log version identifiers and metric deltas
         /// </summary>
         public async Task<(bool IsValid, string Reason)> ValidateModelForReloadAsync(
             string newModelPath,

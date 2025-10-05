@@ -229,6 +229,21 @@ public class MasterDecisionOrchestrator : BackgroundService
         // Check for model updates
         await CheckModelUpdatesAsync(cancellationToken).ConfigureAwait(false);
         
+        // TODO: GATE 5 - Live First-Hour Auto-Rollback Monitoring
+        // Required implementation:
+        // 1. Track canary state (flag, baseline metrics, start timestamp)
+        // 2. Activate when parameters/models upgraded
+        // 3. Accumulate live metrics: trades completed, win rate, P/L, drawdown
+        // 4. Wait for 50 trades OR 60 minutes (whichever comes LATER)
+        // 5. Trigger rollback if:
+        //    - BOTH: Win rate drop >15% AND drawdown >$500
+        //    - OR: Sharpe drop >30% (independent trigger)
+        // 6. Create kill.txt if catastrophic (win rate <30% OR drawdown >$1000)
+        // 7. Atomic rollback: restore backup parameters/models
+        // 8. Send high-priority alerts with metrics
+        // Note: CanaryWatchdog exists separately but has different thresholds
+        // await MonitorCanaryPeriodAsync(cancellationToken).ConfigureAwait(false);
+        
         // Generate performance reports
         await GeneratePerformanceReportsAsync(cancellationToken).ConfigureAwait(false);
         
