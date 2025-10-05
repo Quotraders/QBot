@@ -6,6 +6,7 @@ using BotCore.Services;
 using BotCore.Bandits;
 using TradingBot.Abstractions;
 using System.Text.Json;
+using TradingBot.Abstractions;
 
 namespace BotCore.Services;
 
@@ -82,18 +83,21 @@ public class MasterDecisionOrchestrator : BackgroundService
     private double _baselineSharpeRatio;
     private double _baselineDrawdown;
     private readonly List<TradeResult> _canaryTrades = new();
+    private readonly IGate5Config _gate5Config;
     
     public MasterDecisionOrchestrator(
         ILogger<MasterDecisionOrchestrator> logger,
         IServiceProvider serviceProvider,
         UnifiedDecisionRouter unifiedRouter,
-        BotCore.Brain.UnifiedTradingBrain unifiedBrain)
+        BotCore.Brain.UnifiedTradingBrain unifiedBrain,
+        IGate5Config? gate5Config = null)
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
         _unifiedRouter = unifiedRouter;
         _serviceStatus = new TradingBot.Abstractions.DecisionServiceStatus();
         _unifiedBrain = unifiedBrain;
+        _gate5Config = gate5Config ?? Gate5Config.LoadFromEnvironment();
         
         // Try to get optional enhanced services
         _enhancedBrain = serviceProvider.GetService<EnhancedTradingBrainIntegration>();
@@ -809,28 +813,28 @@ public class MasterDecisionOrchestrator : BackgroundService
     
     private async Task MonitorCanaryPeriodAsync(CancellationToken cancellationToken)
     {
-        if (!_canaryActive)
+        if (!_canaryActive || !_gate5Config.Enabled)
         {
             return;
         }
 
-        const int MinTrades = 50;
-        const int MinMinutes = 60;
-        const int MaxMinutes = 90;
-        const double WinRateDropThreshold = 0.15;
-        const double MaxDrawdownDollars = 500.0;
-        const double SharpeDropThreshold = 0.30;
-        const double CatastrophicWinRateThreshold = 0.30;
-        const double CatastrophicDrawdownDollars = 1000.0;
+        var minTrades = _gate5Config.MinTrades;
+        var minMinutes = _gate5Config.MinMinutes;
+        var maxMinutes = _gate5Config.MaxMinutes;
+        var winRateDropThreshold = _gate5Config.WinRateDropThreshold;
+        var maxDrawdownDollars = _gate5Config.MaxDrawdownDollars;
+        var sharpeDropThreshold = _gate5Config.SharpeDropThreshold;
+        var catastrophicWinRateThreshold = _gate5Config.CatastrophicWinRateThreshold;
+        var catastrophicDrawdownDollars = _gate5Config.CatastrophicDrawdownDollars;
 
         var elapsedMinutes = (DateTime.UtcNow - _canaryStartTime).TotalMinutes;
 
-        if (_canaryTradesCompleted < MinTrades && elapsedMinutes < MinMinutes)
+        if (_canaryTradesCompleted < minTrades && elapsedMinutes < minMinutes)
         {
             return;
         }
 
-        if (elapsedMinutes > MaxMinutes)
+        if (elapsedMinutes > maxMinutes)
         {
             _logger.LogInformation("🕐 [GATE-5] Canary period max duration reached, evaluating metrics");
         }
@@ -843,11 +847,11 @@ public class MasterDecisionOrchestrator : BackgroundService
         _logger.LogInformation("📊 [GATE-5] Canary metrics - Trades: {Trades}, WinRate: {WR:F2}%, Sharpe: {SR:F2}, Drawdown: ${DD:F2}",
             _canaryTradesCompleted, currentMetrics.WinRate * 100, currentMetrics.SharpeRatio, currentMetrics.MaxDrawdown);
 
-        var isCatastrophic = currentMetrics.WinRate < CatastrophicWinRateThreshold || 
-                            currentMetrics.MaxDrawdown > CatastrophicDrawdownDollars;
+        var isCatastrophic = currentMetrics.WinRate < catastrophicWinRateThreshold || 
+                            currentMetrics.MaxDrawdown > catastrophicDrawdownDollars;
         
-        var shouldRollback = (winRateDrop > WinRateDropThreshold && drawdownIncrease > MaxDrawdownDollars) ||
-                            sharpeRatioDrop > SharpeDropThreshold ||
+        var shouldRollback = (winRateDrop > winRateDropThreshold && drawdownIncrease > maxDrawdownDollars) ||
+                            sharpeRatioDrop > sharpeDropThreshold ||
                             isCatastrophic;
 
         if (isCatastrophic)
@@ -860,7 +864,7 @@ public class MasterDecisionOrchestrator : BackgroundService
         {
             await ExecuteCanaryRollbackAsync(currentMetrics, cancellationToken);
         }
-        else if (_canaryTradesCompleted >= MinTrades && elapsedMinutes >= MinMinutes)
+        else if (_canaryTradesCompleted >= minTrades && elapsedMinutes >= minMinutes)
         {
             _logger.LogInformation("✅ [GATE-5] Canary period completed successfully - deployment validated");
             _canaryActive = false;

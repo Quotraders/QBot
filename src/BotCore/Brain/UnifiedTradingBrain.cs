@@ -12,6 +12,7 @@ using System.Text.Json;
 using TradingBot.RLAgent; // For CVaRPPO and ActionResult
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
+using TradingBot.Abstractions;
 
 namespace BotCore.Brain
 {
@@ -196,6 +197,9 @@ namespace BotCore.Brain
         private readonly Dictionary<string, List<BotCore.Brain.Models.MarketCondition>> _strategyOptimalConditions = new();
         private DateTime _lastUnifiedLearningUpdate = DateTime.MinValue;
         
+        // Gate 4 configuration
+        private readonly IGate4Config _gate4Config;
+        
         // Primary strategies for focused learning
         private readonly string[] PrimaryStrategies = { "S2", "S3", "S6", "S11" };
         
@@ -241,12 +245,14 @@ namespace BotCore.Brain
             ILogger<UnifiedTradingBrain> logger,
             IMLMemoryManager memoryManager,
             StrategyMlModelManager modelManager,
-            CVaRPPO cvarPPO)
+            CVaRPPO cvarPPO,
+            IGate4Config? gate4Config = null)
         {
             _logger = logger;
             _memoryManager = memoryManager;
             _modelManager = modelManager;
             _cvarPPO = cvarPPO; // Direct injection
+            _gate4Config = gate4Config ?? Gate4Config.LoadFromEnvironment();
             
             // Initialize Neural UCB for strategy selection using ONNX-based neural network
             var onnxLoader = new OnnxModelLoader(new Microsoft.Extensions.Logging.Abstractions.NullLogger<OnnxModelLoader>());
@@ -1625,7 +1631,7 @@ namespace BotCore.Brain
 
                 // Check 2: Sanity test with deterministic dataset
                 _logger.LogInformation("[2/4] Running sanity tests with deterministic dataset...");
-                var sanityTestVectors = LoadOrGenerateSanityTestVectors(200);
+                var sanityTestVectors = LoadOrGenerateSanityTestVectors(_gate4Config.SanityTestVectors);
                 _logger.LogInformation("  Loaded {Count} sanity test vectors", sanityTestVectors.Count);
 
                 // Check 3: Prediction distribution comparison
@@ -1802,9 +1808,9 @@ namespace BotCore.Brain
             
             try
             {
-                const double MaxTotalVariation = 0.20;
-                const double MaxKLDivergence = 0.25;
-                const double MinProbability = 1e-10;
+                var maxTotalVariation = _gate4Config.MaxTotalVariation;
+                var maxKLDivergence = _gate4Config.MaxKLDivergence;
+                var minProbability = _gate4Config.MinProbability;
 
                 currentSession = new InferenceSession(currentModelPath);
                 newSession = new InferenceSession(newModelPath);
@@ -1822,21 +1828,21 @@ namespace BotCore.Brain
                 }
 
                 var totalVariation = CalculateTotalVariationDistance(currentPredictions, newPredictions);
-                var klDivergence = CalculateKLDivergence(currentPredictions, newPredictions, MinProbability);
+                var klDivergence = CalculateKLDivergence(currentPredictions, newPredictions, minProbability);
 
                 _logger.LogInformation("  Total Variation: {TV:F4}, KL Divergence: {KL:F4}", totalVariation, klDivergence);
 
-                if (totalVariation > MaxTotalVariation)
+                if (totalVariation > maxTotalVariation)
                 {
                     _logger.LogWarning("  Total variation {TV:F4} exceeds threshold {Max:F2}", 
-                        totalVariation, MaxTotalVariation);
+                        totalVariation, maxTotalVariation);
                     return (false, totalVariation);
                 }
 
-                if (klDivergence > MaxKLDivergence)
+                if (klDivergence > maxKLDivergence)
                 {
                     _logger.LogWarning("  KL divergence {KL:F4} exceeds threshold {Max:F2}", 
-                        klDivergence, MaxKLDivergence);
+                        klDivergence, maxKLDivergence);
                     return (false, klDivergence);
                 }
 
@@ -1973,10 +1979,10 @@ namespace BotCore.Brain
             
             try
             {
-                const int SimulationBars = 5000;
-                const double MaxDrawdownMultiplier = 2.0;
+                var simulationBars = _gate4Config.SimulationBars;
+                var maxDrawdownMultiplier = _gate4Config.MaxDrawdownMultiplier;
                 
-                var historicalData = await LoadHistoricalDataAsync(SimulationBars, cancellationToken);
+                var historicalData = await LoadHistoricalDataAsync(simulationBars, cancellationToken);
                 if (historicalData.Count < 100)
                 {
                     _logger.LogWarning("  Insufficient historical data for simulation - using available {Count} bars", historicalData.Count);
@@ -1993,7 +1999,7 @@ namespace BotCore.Brain
                 _logger.LogInformation("  Baseline drawdown: {Current:F2}, New drawdown: {New:F2}, Ratio: {Ratio:F2}x", 
                     currentMaxDrawdown, newMaxDrawdown, drawdownRatio);
 
-                return (drawdownRatio <= MaxDrawdownMultiplier, drawdownRatio);
+                return (drawdownRatio <= maxDrawdownMultiplier, drawdownRatio);
             }
             catch (Exception ex)
             {
