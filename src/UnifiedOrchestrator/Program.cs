@@ -1355,11 +1355,38 @@ Please check the configuration and ensure all required services are registered.
                 }
             };
         });
+        
+        // Register FeatureComputationConfig with bounds validation
+        services.AddSingleton<BotCore.Features.FeatureComputationConfig>(provider =>
+        {
+            var config = new BotCore.Features.FeatureComputationConfig
+            {
+                RsiPeriod = 14,
+                AtrPeriod = 14,
+                BollingerPeriod = 20,
+                VwapBars = 20,
+                AdrDays = 14,
+                MinutesPerDay = 390,
+                CurrentRangeBars = 20,
+                HoursPerDay = 24,
+                S7ZScoreThresholdBullish = 1.0m,
+                S7ZScoreThresholdBearish = -1.0m,
+                S7CoherenceThreshold = 0.6m
+            };
+            
+            // Validate configuration on startup
+            config.Validate();
+            
+            return config;
+        });
+        
         services.AddSingleton<BotCore.Features.FeatureBuilder>(provider =>
         {
             var spec = provider.GetRequiredService<BotCore.Features.FeatureSpec>();
+            var config = provider.GetRequiredService<BotCore.Features.FeatureComputationConfig>();
+            var logger = provider.GetRequiredService<ILogger<BotCore.Features.FeatureBuilder>>();
             var s7Service = provider.GetService<TradingBot.Abstractions.IS7Service>();
-            return new BotCore.Features.FeatureBuilder(spec, s7Service);
+            return new BotCore.Features.FeatureBuilder(spec, config, logger, s7Service);
         });
         
         services.AddSingleton<BotCore.ML.StrategyMlModelManager>(provider =>

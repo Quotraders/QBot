@@ -1,6 +1,7 @@
 using BotCore.Market;
 using BotCore.Config;
 using TradingBot.Abstractions;
+using Microsoft.Extensions.Logging;
 
 namespace BotCore.Features;
 
@@ -13,12 +14,26 @@ public class FeatureBuilder
 {
     private readonly FeatureSpec _spec;
     private readonly IS7Service? _s7Service;
+    private readonly FeatureComputationConfig _config;
+    private readonly ILogger<FeatureBuilder> _logger;
 
-    public FeatureBuilder(FeatureSpec spec, IS7Service? s7Service = null)
+    public FeatureBuilder(
+        FeatureSpec spec, 
+        FeatureComputationConfig config,
+        ILogger<FeatureBuilder> logger,
+        IS7Service? s7Service = null)
     {
         ArgumentNullException.ThrowIfNull(spec);
+        ArgumentNullException.ThrowIfNull(config);
+        ArgumentNullException.ThrowIfNull(logger);
+        
         _spec = spec;
+        _config = config;
+        _logger = logger;
         _s7Service = s7Service;
+        
+        // Validate configuration on construction
+        _config.Validate();
     }
 
     /// <summary>
@@ -71,9 +86,13 @@ public class FeatureBuilder
             
             return features;
         }
-        catch
+        catch (Exception ex)
         {
-            // On any exception, return features filled with default fill values
+            // Fail-closed: Log error with telemetry and return fill values
+            _logger.LogError(ex, "[FEATURE-BUILDER] Feature computation failed for symbol {Symbol}. Returning fill values. Exception: {ExceptionType}", 
+                symbol, ex.GetType().Name);
+            
+            // Fill with default values as fallback
             for (int i = 0; i < features.Length; i++)
             {
                 features[i] = _spec.Columns[i].FillValue;
@@ -124,10 +143,10 @@ public class FeatureBuilder
         }
         
         // Compute ATR manually if not available
-        if (bars.Count < 15) return _spec.Columns[2].FillValue;
+        if (bars.Count < _config.AtrPeriod + 1) return _spec.Columns[2].FillValue;
         
         decimal sum = 0;
-        for (int i = bars.Count - 14; i < bars.Count; i++)
+        for (int i = bars.Count - _config.AtrPeriod; i < bars.Count; i++)
         {
             var trueRange = bars[i].High - bars[i].Low;
             if (i > 0)
@@ -139,17 +158,17 @@ public class FeatureBuilder
             sum += trueRange;
         }
         
-        return sum / 14;
+        return sum / _config.AtrPeriod;
     }
 
     private decimal ComputeRsi14(List<Bar> bars)
     {
-        if (bars.Count < 15) return _spec.Columns[3].FillValue;
+        if (bars.Count < _config.RsiPeriod + 1) return _spec.Columns[3].FillValue;
         
         decimal gainSum = 0;
         decimal lossSum = 0;
         
-        for (int i = bars.Count - 14; i < bars.Count; i++)
+        for (int i = bars.Count - _config.RsiPeriod; i < bars.Count; i++)
         {
             var change = bars[i].Close - bars[i - 1].Close;
             if (change > 0)
@@ -158,8 +177,8 @@ public class FeatureBuilder
                 lossSum += Math.Abs(change);
         }
         
-        var avgGain = gainSum / 14;
-        var avgLoss = lossSum / 14;
+        var avgGain = gainSum / _config.RsiPeriod;
+        var avgLoss = lossSum / _config.RsiPeriod;
         
         if (avgLoss == 0) return 100;
         
@@ -173,8 +192,8 @@ public class FeatureBuilder
     {
         if (bars.Count < 1) return _spec.Columns[4].FillValue;
         
-        // Compute VWAP from available bars (simplified - use last 20 bars)
-        var barsToUse = Math.Min(20, bars.Count);
+        // Compute VWAP from available bars
+        var barsToUse = Math.Min(_config.VwapBars, bars.Count);
         decimal volumeSum = 0;
         decimal volumePriceSum = 0;
         
@@ -198,24 +217,24 @@ public class FeatureBuilder
 
     private decimal ComputeBollingerWidth(List<Bar> bars)
     {
-        if (bars.Count < 20) return _spec.Columns[5].FillValue;
+        if (bars.Count < _config.BollingerPeriod) return _spec.Columns[5].FillValue;
         
-        // Compute 20-period Bollinger Bands
+        // Compute Bollinger Bands
         decimal sum = 0;
-        for (int i = bars.Count - 20; i < bars.Count; i++)
+        for (int i = bars.Count - _config.BollingerPeriod; i < bars.Count; i++)
         {
             sum += bars[i].Close;
         }
-        var middle = sum / 20;
+        var middle = sum / _config.BollingerPeriod;
         
         // Compute standard deviation
         decimal varianceSum = 0;
-        for (int i = bars.Count - 20; i < bars.Count; i++)
+        for (int i = bars.Count - _config.BollingerPeriod; i < bars.Count; i++)
         {
             var diff = bars[i].Close - middle;
             varianceSum += diff * diff;
         }
-        var stdDev = (decimal)Math.Sqrt((double)(varianceSum / 20));
+        var stdDev = (decimal)Math.Sqrt((double)(varianceSum / _config.BollingerPeriod));
         
         var upper = middle + (2 * stdDev);
         var lower = middle - (2 * stdDev);
@@ -241,14 +260,22 @@ public class FeatureBuilder
                 var bids = bidsProp.GetValue(levels);
                 var asks = asksProp.GetValue(levels);
                 
-                // Simplified: assume we have bid/ask volumes
-                // In reality, you'd sum up the sizes from the orderbook levels
-                return 1.0m; // Placeholder - neutral imbalance
+                // If orderbook data structure is not as expected, use fill value
+                if (bids == null || asks == null)
+                {
+                    _logger.LogWarning("[FEATURE-BUILDER] Orderbook levels data structure unexpected. Using fill value.");
+                    return _spec.Columns[6].FillValue;
+                }
+                
+                // Calculate imbalance if both sides exist
+                // This would need proper implementation based on actual orderbook structure
+                // For now, return neutral (1.0) as orderbook processing requires full implementation
+                return 1.0m;
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Fall through to default
+            _logger.LogWarning(ex, "[FEATURE-BUILDER] Failed to compute orderbook imbalance: {ExceptionType}. Using fill value.", ex.GetType().Name);
         }
         
         return _spec.Columns[6].FillValue;
@@ -256,26 +283,28 @@ public class FeatureBuilder
 
     private decimal ComputeAdrPct(List<Bar> bars)
     {
-        // Compute ADR percentage: (current range) / (average daily range over 14 days)
+        // Compute ADR percentage: (current range) / (average daily range over configured days)
         // This is used by S11 exhaustion strategy
-        if (bars.Count < 15) return _spec.Columns[7].FillValue;
+        if (bars.Count < _config.AdrDays + 1) return _spec.Columns[7].FillValue;
         
         try
         {
             // Calculate current intraday range
-            var recentBars = bars.TakeLast(20).ToList();
+            var recentBars = bars.TakeLast(_config.CurrentRangeBars).ToList();
             var currentHigh = recentBars.Max(b => b.High);
             var currentLow = recentBars.Min(b => b.Low);
             var currentRange = currentHigh - currentLow;
             
-            // Calculate average daily range over last 14 days
+            // Calculate average daily range over configured period
             // Approximate by taking max-min over rolling windows
             decimal totalRange = 0;
             int validDays = 0;
             
-            for (int i = Math.Max(0, bars.Count - 14 * 390); i < bars.Count - 390; i += 390) // ~390 minutes per trading day
+            for (int i = Math.Max(0, bars.Count - _config.AdrDays * _config.MinutesPerDay); 
+                 i < bars.Count - _config.MinutesPerDay; 
+                 i += _config.MinutesPerDay)
             {
-                var dayBars = bars.Skip(i).Take(390).ToList();
+                var dayBars = bars.Skip(i).Take(_config.MinutesPerDay).ToList();
                 if (dayBars.Count > 0)
                 {
                     var dayHigh = dayBars.Max(b => b.High);
@@ -292,15 +321,16 @@ public class FeatureBuilder
             
             return currentRange / avgDailyRange;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "[FEATURE-BUILDER] Failed to compute ADR percentage: {ExceptionType}. Using fill value.", ex.GetType().Name);
             return _spec.Columns[7].FillValue;
         }
     }
 
     private decimal ComputeHourFraction(DateTime currentTime)
     {
-        return currentTime.Hour / 24.0m;
+        return currentTime.Hour / (decimal)_config.HoursPerDay;
     }
 
     private decimal ComputeSessionFlag(DateTime currentTime)
@@ -314,7 +344,11 @@ public class FeatureBuilder
             var timeSpan = currentTime.TimeOfDay;
             var session = EsNqTradingSchedule.GetCurrentSession(timeSpan);
             
-            if (session == null) return _spec.Columns[9].FillValue;
+            if (session == null)
+            {
+                _logger.LogWarning("[FEATURE-BUILDER] No trading session found for time {Time}. Using fill value.", currentTime);
+                return _spec.Columns[9].FillValue;
+            }
             
             // Map session names to integers
             var sessionName = string.Empty;
@@ -343,8 +377,9 @@ public class FeatureBuilder
                 _ => _spec.Columns[9].FillValue
             };
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "[FEATURE-BUILDER] Failed to compute session flag: {ExceptionType}. Using fill value.", ex.GetType().Name);
             return _spec.Columns[9].FillValue;
         }
     }
@@ -356,25 +391,32 @@ public class FeatureBuilder
         
         try
         {
-            if (!_s7Service.IsReady()) return _spec.Columns[11].FillValue;
+            if (!_s7Service.IsReady())
+            {
+                _logger.LogDebug("[FEATURE-BUILDER] S7Service not ready for symbol {Symbol}. Using fill value.", symbol);
+                return _spec.Columns[11].FillValue;
+            }
             
             var featureTuple = _s7Service.GetFeatureTuple(symbol);
             
-            // Determine regime based on S7 signal strength and coherence
-            // Use relative strength and signal active status
+            // Determine regime based on S7 signal strength and coherence using configured thresholds
             if (featureTuple.IsSignalActive)
             {
                 // Use the ZScore and coherence to determine regime
-                if (featureTuple.ZScore > 1.0m && featureTuple.Coherence > 0.6m)
+                if (featureTuple.ZScore > _config.S7ZScoreThresholdBullish && 
+                    featureTuple.Coherence > _config.S7CoherenceThreshold)
                     return 1; // Bullish
-                else if (featureTuple.ZScore < -1.0m && featureTuple.Coherence > 0.6m)
+                else if (featureTuple.ZScore < _config.S7ZScoreThresholdBearish && 
+                         featureTuple.Coherence > _config.S7CoherenceThreshold)
                     return -1; // Bearish
             }
             
             return 0; // Neutral
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "[FEATURE-BUILDER] Failed to compute S7 regime for symbol {Symbol}: {ExceptionType}. Using fill value.", 
+                symbol, ex.GetType().Name);
             return _spec.Columns[11].FillValue;
         }
     }
