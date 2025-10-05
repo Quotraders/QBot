@@ -47,8 +47,9 @@
     <None Include="build\TradingBot.ProductionRuleEnforcement.targets" Pack="true" PackagePath="build\" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- Analyzer files should be compiled, not included directly -->
+  <!-- <ItemGroup>
     <Analyzer Include="Analyzers\*.cs" />
-  </ItemGroup>
+  </ItemGroup> -->
 
 </Project>
