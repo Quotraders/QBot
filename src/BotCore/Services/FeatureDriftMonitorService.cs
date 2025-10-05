@@ -155,9 +155,7 @@ namespace BotCore.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[FEATURE-DRIFT] [AUDIT-VIOLATION] Failed to update baseline for feature {FeatureName} - FAIL-CLOSED + TELEMETRY", 
-                    featureName);
-                throw;
+                throw new InvalidOperationException($"[AUDIT-VIOLATION] Failed to update baseline for feature {featureName} - FAIL-CLOSED + TELEMETRY", ex);
             }
         }
 

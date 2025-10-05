@@ -124,8 +124,7 @@ public class UnifiedDataIntegrationService : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogCritical(ex, "💥 [UNIFIED-DATA] Critical error in unified data integration");
-            throw;
+            throw new InvalidOperationException("💥 [UNIFIED-DATA] Critical error in unified data integration", ex);
         }
         finally
         {
@@ -185,8 +184,7 @@ public class UnifiedDataIntegrationService : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ [UNIFIED-DATA] Failed to initialize unified pipeline");
-            throw;
+            throw new InvalidOperationException("❌ [UNIFIED-DATA] Failed to initialize unified pipeline", ex);
         }
     }
     

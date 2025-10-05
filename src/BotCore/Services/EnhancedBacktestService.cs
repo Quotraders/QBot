@@ -110,8 +110,7 @@ namespace BotCore.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[ENHANCED-BACKTEST] Error running enhanced backtest for {Strategy}", request.StrategyName);
-                throw;
+                throw new InvalidOperationException($"Error running enhanced backtest for {request.StrategyName}", ex);
             }
         }
 
