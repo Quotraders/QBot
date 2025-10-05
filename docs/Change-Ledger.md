@@ -83,7 +83,56 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 76 violations eliminated across 9 files in 3 focused rounds
 
-### 🔧 Round 164 - Phase 2: S109 Magic Numbers - TimeOptimizedStrategyManager.cs (Current Session)
+### 🔧 Round 165 - Phase 2: S109 Magic Numbers - EnhancedTradingBrainIntegration.cs (Current Session)
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------| 
+| S109 | 576 | 454 | EnhancedTradingBrainIntegration.cs | Named constants for ML confidence, position sizing, risk management, ensemble predictions |
+
+**Total Fixed: 122 S109 violations**
+
+**Example Patterns Applied**:
+```csharp
+// Before (S109) - Magic numbers in position sizing and confidence
+if (confidence > 0.8m) { sizeMultiplier *= 1.2m; }
+else if (confidence < 0.5m) { sizeMultiplier *= 0.8m; }
+if (pricePred.Probability > 0.7) { ... }
+var enhanced = (originalConfidence * 0.5m) + (strategyConfidence * 0.3m) + (priceConfidence * 0.2m);
+
+// After - Production-ready named constants
+private const decimal VeryHighConfidenceThreshold = 0.8m;
+private const decimal HighConfidenceSizeBoost = 1.2m;
+private const decimal VeryLowConfidenceThreshold = 0.5m;
+private const decimal LowConfidenceSizeReduction = 0.8m;
+private const decimal ModerateConfidenceThreshold = 0.7m;
+private const decimal OriginalConfidenceWeight = 0.5m;
+private const decimal StrategyEnsembleWeight = 0.3m;
+private const decimal PriceEnsembleWeight = 0.2m;
+
+if (confidence > VeryHighConfidenceThreshold) { sizeMultiplier *= HighConfidenceSizeBoost; }
+else if (confidence < VeryLowConfidenceThreshold) { sizeMultiplier *= LowConfidenceSizeReduction; }
+if (pricePred.Probability > (double)ModerateConfidenceThreshold) { ... }
+var enhanced = (originalConfidence * OriginalConfidenceWeight) + (strategyConfidence * StrategyEnsembleWeight) + (priceConfidence * PriceEnsembleWeight);
+```
+
+**Constants Added** (74 total):
+- Position sizing (DefaultPositionSize, HighConfidenceSizeBoost, LowConfidenceSizeReduction, etc.)
+- Confidence thresholds (VeryHighConfidenceThreshold: 0.8, HighConfidenceThreshold: 0.75, Moderate: 0.7, Low: 0.6, VeryLow: 0.5)
+- Confidence blending weights (OriginalConfidenceWeight: 0.5, StrategyEnsembleWeight: 0.3, PriceEnsembleWeight: 0.2)
+- Risk management (CVaR thresholds: -0.1, -0.2, 0.1; risk adjustments: 0.1, 0.05)
+- Market timing (StrongSignalProbabilityThreshold: 0.75, ModerateSignalProbabilityThreshold: 0.6)
+- Ensemble settings (PredictionWindowSeconds: 30, MinimumFeaturesRequired: 5, MaxContextVectorSize: 100)
+- Timing/caching (CacheExpirationSeconds: 10, MinimumPredictionIntervalSeconds: 5)
+- Performance tracking (MinimumTradesForAccuracy: 20, AccuracyHistoryWindowDays: 30)
+- Sample data defaults (DefaultBarCount: 100, DefaultAccountBalance: 100000, etc.)
+
+**Type Safety Fixes**: Added proper decimal-to-double casts for ensemble API calls (PriceDirectionPrediction.Probability is double)
+
+**Build Verification**: ✅ 0 CS errors, 454 S109 violations remaining (down from 576)
+
+---
+
+### 🔧 Round 164 - Phase 2: S109 Magic Numbers - TimeOptimizedStrategyManager.cs (Previous)
 
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------| 
@@ -133,10 +182,10 @@ return Math.Sqrt(variance) * Math.Sqrt(AnnualizationFactor);
 **Phase 1**: ✅ COMPLETE - 0 CS compiler errors maintained throughout
 **Phase 2**: 🔄 IN PROGRESS - Systematic Priority 1 violation elimination for SonarCloud A rating
 
-**Cumulative Session Results (Rounds 159-164)**:
-- Total violations fixed: 282 across 11 files  
-- Starting violations: ~10,746 → Current violations: ~5,241
-- S109 specific: 844 → 576 (268 violations fixed, 31.8% reduction)
+**Cumulative Session Results (Rounds 159-165)**:
+- Total violations fixed: 404 across 12 files  
+- Starting violations: ~10,746 → Current violations: ~5,119
+- S109 specific: 844 → 454 (390 violations fixed, 46.2% reduction)
 - S2139 specific: 86 → 72 (14 violations fixed, 16.3% reduction)
 - Build status: ✅ Clean (0 CS errors)
 - All guardrails maintained: ✅ TreatWarningsAsErrors=true, zero suppressions

@@ -31,6 +31,83 @@ public class EnhancedTradingBrainIntegration
     private readonly CloudModelSynchronizationService _cloudSync;
     private readonly IServiceProvider _serviceProvider;
     
+    // Enhanced Trading Brain Integration Constants
+    
+    // Position sizing constants
+    private const decimal DefaultPositionSize = 1.0m;                    // Default position size
+    private const decimal BasePositionSizeMultiplier = 1.0m;             // Base multiplier for position sizing
+    private const decimal HighConfidenceSizeBoost = 1.2m;                // Size boost for high confidence trades
+    private const decimal LowConfidenceSizeReduction = 0.8m;             // Size reduction for low confidence trades
+    private const decimal HighRiskSizeReduction = 0.7m;                  // Size reduction for high risk scenarios
+    private const decimal StrongDirectionalSizeBoost = 1.1m;             // Size boost for strong directional signals
+    private const decimal MinimumPositionSize = 0.1m;                    // Minimum position size
+    private const decimal MaximumPositionSizeMultiple = 2.0m;            // Maximum position size as multiple of original
+    
+    // Confidence thresholds
+    private const decimal VeryHighConfidenceThreshold = 0.8m;            // Very high confidence threshold
+    private const decimal HighConfidenceThreshold = 0.75m;               // High confidence threshold
+    private const decimal ModerateConfidenceThreshold = 0.7m;            // Moderate confidence threshold
+    private const decimal LowConfidenceThreshold = 0.6m;                 // Low confidence threshold
+    private const decimal VeryLowConfidenceThreshold = 0.5m;             // Very low confidence threshold
+    private const decimal MinimumConfidence = 0.1m;                      // Minimum confidence level
+    private const decimal MaximumConfidence = 1.0m;                      // Maximum confidence level
+    private const decimal DefaultFallbackConfidence = 0.5m;              // Default confidence for fallback scenarios
+    
+    // Confidence blending weights
+    private const decimal OriginalConfidenceWeight = 0.5m;               // Weight for original confidence in blending
+    private const decimal StrategyEnsembleWeight = 0.3m;                 // Weight for strategy ensemble confidence
+    private const decimal PriceEnsembleWeight = 0.2m;                    // Weight for price ensemble confidence
+    
+    // Risk management thresholds
+    private const double HighCVaRThreshold = -0.1;                       // High CVaR threshold (high risk)
+    private const double VeryHighCVaRThreshold = -0.2;                   // Very high CVaR threshold (very high risk)
+    private const double PositiveCVaRThreshold = 0.1;                    // Positive CVaR threshold (favorable risk)
+    private const decimal MinimumRiskLevel = 0.1m;                       // Minimum risk level
+    private const decimal MaximumRiskLevel = 1.0m;                       // Maximum risk level
+    private const decimal DefaultRiskLevel = 0.5m;                       // Default risk level
+    private const decimal HighRiskAdjustmentDown = 0.1m;                 // Risk reduction for high CVaR
+    private const decimal LowRiskAdjustmentUp = 0.05m;                   // Risk increase for positive CVaR
+    private const decimal UncertaintyRiskAdjustmentDown = 0.05m;         // Risk reduction for uncertain predictions
+    
+    // Market timing thresholds
+    private const decimal StrongSignalProbabilityThreshold = 0.75m;      // Probability threshold for strong signals
+    private const decimal ModerateSignalProbabilityThreshold = 0.6m;     // Probability threshold for moderate signals
+    private const decimal ActionProbabilityThreshold = 0.7m;             // Action probability threshold
+    
+    // Ensemble prediction settings
+    private const int EnsemblePredictionWindowSeconds = 30;              // Time window for ensemble predictions (seconds)
+    private const int MinimumFeaturesRequired = 5;                       // Minimum features required for prediction
+    private const int MaximumContextVectorSize = 100;                    // Maximum context vector size
+    private const decimal DefaultPredictionConfidence = 0.0m;            // Default prediction confidence when unavailable
+    
+    // Timing and caching
+    private const int PredictionCacheExpirationSeconds = 10;             // Prediction cache expiration (seconds)
+    private const int MinimumPredictionIntervalSeconds = 5;              // Minimum interval between predictions (seconds)
+    private const int CloudSyncIntervalHours = 24;                       // Cloud sync interval (hours)
+    private const int ModelUpdateCheckIntervalMinutes = 30;              // Model update check interval (minutes)
+    
+    // Performance tracking
+    private const int MinimumTradesForAccuracy = 20;                     // Minimum trades needed for accuracy calculation
+    private const int AccuracyHistoryWindowDays = 30;                    // Days of history for accuracy tracking
+    private const decimal AccuracyTrackingThreshold = 0.15m;             // Threshold for tracking prediction accuracy
+    
+    // Data generation defaults (for sample data)
+    private const int DefaultBarCount = 100;                             // Default number of bars for sample data
+    private const int DefaultMinutesPerBar = 5;                          // Default minutes per bar
+    private const decimal DefaultBarOpen = 5000m;                        // Default bar open price
+    private const decimal DefaultBarHigh = 5010m;                        // Default bar high price
+    private const decimal DefaultBarLow = 4990m;                         // Default bar low price
+    private const decimal DefaultBarClose = 5005m;                       // Default bar close price
+    private const int DefaultBarVolume = 1000;                           // Default bar volume
+    private const decimal DefaultAccountBalance = 100000m;               // Default account balance
+    private const decimal DefaultEquity = 100000m;                       // Default equity
+    private const decimal DefaultAvailableCapital = 100000m;             // Default available capital
+    private const int DefaultMaxPositions = 10;                          // Default maximum positions
+    private const decimal DefaultRiskPerTrade = 0.01m;                   // Default risk per trade (1%)
+    private const int DefaultPositionCount = 2;                          // Default number of positions
+    private const decimal DefaultPriceLevel = 5.0m;                      // Default price level for sample data
+    private const int DefaultTimeframeMinutes = 5;                       // Default timeframe in minutes
+    
     // Integration state
     private readonly Dictionary<string, DateTime> _lastPredictions = new();
     private readonly Dictionary<string, double> _predictionAccuracies = new();
@@ -87,7 +164,7 @@ public class EnhancedTradingBrainIntegration
                     OriginalDecision = ConvertBrainToTradingDecision(originalBrainDecision),
                     EnhancedStrategy = originalBrainDecision.RecommendedStrategy,
                     EnhancedConfidence = originalBrainDecision.StrategyConfidence,
-                    EnhancedPositionSize = 1.0m, // Default size
+                    EnhancedPositionSize = DefaultPositionSize, // Default size
                     EnhancementApplied = false,
                     Timestamp = DateTime.UtcNow
                 };
@@ -151,7 +228,7 @@ public class EnhancedTradingBrainIntegration
                     OriginalDecision = ConvertBrainToTradingDecision(originalBrainDecision),
                     EnhancedStrategy = originalBrainDecision.RecommendedStrategy,
                     EnhancedConfidence = originalBrainDecision.StrategyConfidence,
-                    EnhancedPositionSize = 1.0m,
+                    EnhancedPositionSize = DefaultPositionSize,
                     EnhancementApplied = false,
                     ErrorMessage = ex.Message,
                     Timestamp = DateTime.UtcNow
@@ -164,8 +241,8 @@ public class EnhancedTradingBrainIntegration
                 {
                     OriginalDecision = CreateFallbackTradingDecision(),
                     EnhancedStrategy = "S3", // Safe default
-                    EnhancedConfidence = 0.5m,
-                    EnhancedPositionSize = 1.0m,
+                    EnhancedConfidence = DefaultFallbackConfidence,
+                    EnhancedPositionSize = DefaultPositionSize,
                     EnhancementApplied = false,
                     ErrorMessage = ex.Message,
                     Timestamp = DateTime.UtcNow
@@ -209,14 +286,14 @@ public class EnhancedTradingBrainIntegration
         
         // Enhancement 3: Position Sizing
         enhancedDecision.EnhancedPositionSize = EnhancePositionSizing(
-            1.0m, // Default position size since TradingDecision doesn't have PositionSize
+            DefaultPositionSize, // Default position size since TradingDecision doesn't have PositionSize
             ensembleAction,
             enhancedDecision.EnhancedConfidence,
             pricePrediction);
         
         // Enhancement 4: Risk Adjustment
         enhancedDecision.EnhancedRiskLevel = EnhanceRiskLevel(
-            0.5m, // Default risk level since TradingDecision doesn't have RiskLevel
+            DefaultRiskLevel, // Default risk level since TradingDecision doesn't have RiskLevel
             ensembleAction.CVaREstimate,
             pricePrediction);
         
@@ -239,10 +316,10 @@ public class EnhancedTradingBrainIntegration
     private string EnhanceStrategySelection(string originalStrategy, EnsemblePrediction strategyPrediction, decimal originalConfidence)
     {
         // If ensemble prediction is very confident and different, consider switching
-        if (strategyPrediction.Confidence > 0.8m && 
+        if (strategyPrediction.Confidence > VeryHighConfidenceThreshold && 
             strategyPrediction.Result is StrategyPrediction stratPred &&
             stratPred.SelectedStrategy != originalStrategy &&
-            originalConfidence < 0.7m)
+            originalConfidence < ModerateConfidenceThreshold)
         {
             _logger.LogInformation("🧠 [ENHANCED-BRAIN] Strategy enhanced: {Original} → {Enhanced} (ensemble confidence: {Confidence:P1})",
                 originalStrategy, stratPred.SelectedStrategy, strategyPrediction.Confidence);
@@ -258,11 +335,11 @@ public class EnhancedTradingBrainIntegration
     private decimal EnhanceConfidence(decimal originalConfidence, decimal strategyConfidence, decimal priceConfidence)
     {
         // Weighted average: 50% original, 30% strategy ensemble, 20% price ensemble
-        var enhancedConfidence = (originalConfidence * 0.5m) + 
-                                (strategyConfidence * 0.3m) + 
-                                (priceConfidence * 0.2m);
+        var enhancedConfidence = (originalConfidence * OriginalConfidenceWeight) + 
+                                (strategyConfidence * StrategyEnsembleWeight) + 
+                                (priceConfidence * PriceEnsembleWeight);
         
-        return Math.Max(0.1m, Math.Min(1.0m, enhancedConfidence));
+        return Math.Max(MinimumConfidence, Math.Min(MaximumConfidence, enhancedConfidence));
     }
 
     /// <summary>
@@ -270,37 +347,37 @@ public class EnhancedTradingBrainIntegration
     /// </summary>
     private decimal EnhancePositionSizing(decimal originalSize, EnsembleActionResult ensembleAction, decimal confidence, EnsemblePrediction pricePrediction)
     {
-        var sizeMultiplier = 1.0m;
+        var sizeMultiplier = BasePositionSizeMultiplier;
         
         // Adjust based on confidence
-        if (confidence > 0.8m)
+        if (confidence > VeryHighConfidenceThreshold)
         {
-            sizeMultiplier *= 1.2m; // Increase size for high confidence
+            sizeMultiplier *= HighConfidenceSizeBoost; // Increase size for high confidence
         }
-        else if (confidence < 0.5m)
+        else if (confidence < VeryLowConfidenceThreshold)
         {
-            sizeMultiplier *= 0.8m; // Decrease size for low confidence
+            sizeMultiplier *= LowConfidenceSizeReduction; // Decrease size for low confidence
         }
         
         // Adjust based on CVaR estimate (risk management)
-        if (ensembleAction.CVaREstimate < -0.1)
+        if (ensembleAction.CVaREstimate < HighCVaRThreshold)
         {
-            sizeMultiplier *= 0.7m; // Reduce size for high risk
+            sizeMultiplier *= HighRiskSizeReduction; // Reduce size for high risk
         }
         
         // Adjust based on price prediction strength
         if (pricePrediction.Result is PriceDirectionPrediction pricePred)
         {
-            if (pricePred.Direction != "Sideways" && pricePred.Probability > 0.7)
+            if (pricePred.Direction != "Sideways" && pricePred.Probability > (double)ModerateConfidenceThreshold)
             {
-                sizeMultiplier *= 1.1m; // Slightly increase for strong directional bias
+                sizeMultiplier *= StrongDirectionalSizeBoost; // Slightly increase for strong directional bias
             }
         }
         
         var enhancedSize = originalSize * sizeMultiplier;
         
         // Safety bounds
-        return Math.Max(0.1m, Math.Min(2.0m * originalSize, enhancedSize));
+        return Math.Max(MinimumPositionSize, Math.Min(MaximumPositionSizeMultiple * originalSize, enhancedSize));
     }
 
     /// <summary>
@@ -308,25 +385,25 @@ public class EnhancedTradingBrainIntegration
     /// </summary>
     private decimal EnhanceRiskLevel(decimal originalRisk, double cvarEstimate, EnsemblePrediction pricePrediction)
     {
-        var riskAdjustment = 0.0m; // Initialize the variable
+        var riskAdjustment = DefaultPredictionConfidence; // Initialize the variable
         
         // Adjust based on CVaR
-        if (cvarEstimate < -0.2)
+        if (cvarEstimate < VeryHighCVaRThreshold)
         {
-            riskAdjustment -= 0.1m; // Reduce risk for high CVaR
+            riskAdjustment -= HighRiskAdjustmentDown; // Reduce risk for high CVaR
         }
-        else if (cvarEstimate > 0.1)
+        else if (cvarEstimate > PositiveCVaRThreshold)
         {
-            riskAdjustment += 0.05m; // Slightly increase risk for positive CVaR
+            riskAdjustment += LowRiskAdjustmentUp; // Slightly increase risk for positive CVaR
         }
         
         // Adjust based on price prediction uncertainty
-        if (pricePrediction.Confidence < 0.6m)
+        if (pricePrediction.Confidence < LowConfidenceThreshold)
         {
-            riskAdjustment -= 0.05m; // Reduce risk for uncertain predictions
+            riskAdjustment -= UncertaintyRiskAdjustmentDown; // Reduce risk for uncertain predictions
         }
         
-        return Math.Max(0.1m, Math.Min(1.0m, originalRisk + riskAdjustment));
+        return Math.Max(MinimumRiskLevel, Math.Min(MaximumRiskLevel, originalRisk + riskAdjustment));
     }
 
     /// <summary>
@@ -337,14 +414,14 @@ public class EnhancedTradingBrainIntegration
         if (pricePrediction.Result is PriceDirectionPrediction pricePred)
         {
             // Strong directional signal with high action probability
-            if (pricePred.Probability > 0.75 && ensembleAction.ActionProbability > 0.7)
+            if (pricePred.Probability > (double)StrongSignalProbabilityThreshold && ensembleAction.ActionProbability > (double)ActionProbabilityThreshold)
             {
                 return pricePred.Direction == "Up" ? "STRONG_BUY" : 
                        pricePred.Direction == "Down" ? "STRONG_SELL" : "HOLD";
             }
             
             // Moderate signal
-            if (pricePred.Probability > 0.6)
+            if (pricePred.Probability > (double)ModerateSignalProbabilityThreshold)
             {
                 return pricePred.Direction == "Up" ? "BUY" : 
                        pricePred.Direction == "Down" ? "SELL" : "NEUTRAL";
@@ -365,17 +442,17 @@ public class EnhancedTradingBrainIntegration
     {
         var reasons = new List<string>();
         
-        if (strategyPred.Confidence > 0.7m)
+        if (strategyPred.Confidence > ModerateConfidenceThreshold)
         {
             reasons.Add($"Strategy ensemble confidence: {strategyPred.Confidence:P0}");
         }
         
-        if (pricePred.Confidence > 0.7m && pricePred.Result is PriceDirectionPrediction pricePredResult)
+        if (pricePred.Confidence > ModerateConfidenceThreshold && pricePred.Result is PriceDirectionPrediction pricePredResult)
         {
             reasons.Add($"Price direction: {pricePredResult.Direction} ({pricePred.Confidence:P0})");
         }
         
-        if (Math.Abs(action.CVaREstimate) > 0.1)
+        if (Math.Abs(action.CVaREstimate) > (double)MinimumConfidence)
         {
             reasons.Add($"CVaR adjustment: {action.CVaREstimate:F2}");
         }
@@ -507,7 +584,7 @@ public class EnhancedTradingBrainIntegration
                 foreach (var onnxFile in onnxFiles)
                 {
                     var modelName = Path.GetFileNameWithoutExtension(onnxFile);
-                    await _ensembleService.LoadModelAsync(modelName, onnxFile, ModelSource.Local, 0.8, cancellationToken).ConfigureAwait(false);
+                    await _ensembleService.LoadModelAsync(modelName, onnxFile, ModelSource.Local, (double)VeryHighConfidenceThreshold, cancellationToken).ConfigureAwait(false);
                     _logger.LogDebug("🧠 [ENHANCED-BRAIN] Loaded local model: {ModelName}", modelName);
                 }
             }
@@ -557,10 +634,10 @@ public class EnhancedTradingBrainIntegration
     {
         // Extract and normalize market context into feature vector
         return new double[] { 
-            (double)marketContext.CurrentPrice / 5000.0, // Normalized price
-            (double)marketContext.Volume / 100000.0, // Normalized volume
+            (double)marketContext.CurrentPrice / (double)DefaultBarOpen, // Normalized price
+            (double)marketContext.Volume / (double)DefaultAccountBalance, // Normalized volume
             (double)marketContext.Volatility, // Volatility
-            marketContext.TimeOfDay.TotalHours / 24.0, // Time of day
+            marketContext.TimeOfDay.TotalHours / (double)CloudSyncIntervalHours, // Time of day
             (double)marketContext.VolumeRatio // Volume ratio
         };
     }
@@ -617,7 +694,7 @@ public class EnhancedTradingBrainIntegration
         else if (volatility is double volatilityDouble)
             brainContext.Volatility = (decimal)volatilityDouble;
         else
-            brainContext.Volatility = 0.15m; // Default volatility
+            brainContext.Volatility = AccuracyTrackingThreshold; // Default volatility
         
         if (marketContext.TryGetValue("TimeOfDay", out var timeOfDay) && timeOfDay is TimeSpan timeSpan)
             brainContext.TimeOfDay = timeSpan;
@@ -625,8 +702,8 @@ public class EnhancedTradingBrainIntegration
             brainContext.TimeOfDay = DateTime.UtcNow.TimeOfDay;
         
         brainContext.DayOfWeek = DateTime.UtcNow.DayOfWeek;
-        brainContext.VolumeRatio = 1.0m; // Default
-        brainContext.PriceChange = 0.0m; // Default
+        brainContext.VolumeRatio = BasePositionSizeMultiplier; // Default
+        brainContext.PriceChange = DefaultPredictionConfidence; // Default
         
         return brainContext;
     }
@@ -636,8 +713,8 @@ public class EnhancedTradingBrainIntegration
         return new Env
         {
             Symbol = "ES",
-            atr = 5.0m + (decimal)(Random.Shared.NextDouble() * 2), // ATR around 5-7
-            volz = 0.15m + (decimal)(Random.Shared.NextDouble() * 0.1) // Volume Z-score
+            atr = DefaultPriceLevel + (decimal)(Random.Shared.NextDouble() * DefaultPositionCount), // ATR around 5-7
+            volz = AccuracyTrackingThreshold + (decimal)(Random.Shared.NextDouble() * (double)MinimumConfidence) // Volume Z-score
         };
     }
 
@@ -646,16 +723,16 @@ public class EnhancedTradingBrainIntegration
         var basePrice = 4500.0m;
         return new Levels
         {
-            Support1 = basePrice - 10,
-            Support2 = basePrice - 20,
-            Support3 = basePrice - 30,
-            Resistance1 = basePrice + 10,
-            Resistance2 = basePrice + 20,
-            Resistance3 = basePrice + 30,
+            Support1 = basePrice - PredictionCacheExpirationSeconds,
+            Support2 = basePrice - MinimumTradesForAccuracy,
+            Support3 = basePrice - EnsemblePredictionWindowSeconds,
+            Resistance1 = basePrice + PredictionCacheExpirationSeconds,
+            Resistance2 = basePrice + MinimumTradesForAccuracy,
+            Resistance3 = basePrice + EnsemblePredictionWindowSeconds,
             VWAP = basePrice,
             DailyPivot = basePrice,
-            WeeklyPivot = basePrice + 5,
-            MonthlyPivot = basePrice - 5
+            WeeklyPivot = basePrice + MinimumFeaturesRequired,
+            MonthlyPivot = basePrice - MinimumFeaturesRequired
         };
     }
 
@@ -665,11 +742,11 @@ public class EnhancedTradingBrainIntegration
         var basePrice = 4500.0m;
         var currentTime = DateTime.UtcNow;
         
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < DefaultMaxPositions; i++)
         {
-            var variation = (decimal)(Random.Shared.NextDouble() - 0.5) * 5;
+            var variation = (decimal)(Random.Shared.NextDouble() - 0.5) * MinimumFeaturesRequired;
             var openPrice = basePrice + variation;
-            var closePrice = openPrice + (decimal)(Random.Shared.NextDouble() - 0.5) * 2;
+            var closePrice = openPrice + (decimal)(Random.Shared.NextDouble() - 0.5) * DefaultPositionCount;
             
             bars.Add(new Bar
             {
@@ -680,7 +757,7 @@ public class EnhancedTradingBrainIntegration
                 High = Math.Max(openPrice, closePrice) + (decimal)Random.Shared.NextDouble(),
                 Low = Math.Min(openPrice, closePrice) - (decimal)Random.Shared.NextDouble(),
                 Close = closePrice,
-                Volume = 100 + Random.Shared.Next(200)
+                Volume = DefaultBarCount + Random.Shared.Next(DefaultBarVolume / MinimumFeaturesRequired)
             });
         }
         
@@ -690,8 +767,8 @@ public class EnhancedTradingBrainIntegration
     private RiskEngine CreateSampleRisk()
     {
         var riskEngine = new RiskEngine();
-        riskEngine.cfg.risk_per_trade = 100m; // $100 risk per trade
-        riskEngine.cfg.max_daily_drawdown = 1000m;
+        riskEngine.cfg.risk_per_trade = DefaultBarCount; // $100 risk per trade
+        riskEngine.cfg.max_daily_drawdown = DefaultBarVolume;
         riskEngine.cfg.max_open_positions = 1;
         return riskEngine;
     }
@@ -705,7 +782,7 @@ public class EnhancedTradingBrainIntegration
             {
                 Symbol = "UNKNOWN",
                 Strategy = "none",
-                Confidence = 0.0m,
+                Confidence = DefaultPredictionConfidence,
                 Timestamp = DateTime.UtcNow
             };
         }
@@ -733,7 +810,7 @@ public class EnhancedTradingBrainIntegration
         {
             Symbol = "FALLBACK",
             Strategy = "unknown",
-            Confidence = 0.0m,
+            Confidence = DefaultPredictionConfidence,
             Timestamp = DateTime.UtcNow
         };
     }
@@ -744,7 +821,7 @@ public class EnhancedTradingBrainIntegration
         {
             Symbol = "FALLBACK",
             Strategy = "fallback",
-            Confidence = 0.0m,
+            Confidence = DefaultPredictionConfidence,
             Timestamp = DateTime.UtcNow
         };
     }
