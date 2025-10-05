@@ -1,4 +1,6 @@
 using BotCore.Market;
+using BotCore.Config;
+using TradingBot.Abstractions;
 
 namespace BotCore.Features;
 
@@ -10,11 +12,13 @@ namespace BotCore.Features;
 public class FeatureBuilder
 {
     private readonly FeatureSpec _spec;
+    private readonly IS7Service? _s7Service;
 
-    public FeatureBuilder(FeatureSpec spec)
+    public FeatureBuilder(FeatureSpec spec, IS7Service? s7Service = null)
     {
         ArgumentNullException.ThrowIfNull(spec);
         _spec = spec;
+        _s7Service = s7Service;
     }
 
     /// <summary>
@@ -24,13 +28,15 @@ public class FeatureBuilder
     /// <param name="symbol">Trading symbol (e.g., "ES", "NQ")</param>
     /// <param name="bars">Historical bars (must have at least 20 bars for indicators)</param>
     /// <param name="currentPos">Current position (-1 short, 0 flat, 1 long)</param>
+    /// <param name="currentTime">Current time for session detection</param>
     /// <param name="env">Optional environment data for ATR</param>
     /// <param name="levels">Optional order book levels for imbalance</param>
-    /// <returns>Standardized feature array of length 10</returns>
+    /// <returns>Standardized feature array of length 12</returns>
     public decimal[] BuildFeatures(
         string symbol,
         List<Bar> bars,
         int currentPos,
+        DateTime currentTime,
         object? env = null,
         object? levels = null)
     {
@@ -40,7 +46,7 @@ public class FeatureBuilder
         
         try
         {
-            // Compute raw features
+            // Compute raw features (12 features optimized for S2/S3/S6/S11)
             features[0] = ComputeReturn1m(bars);
             features[1] = ComputeReturn5m(bars);
             features[2] = ComputeAtr14(bars, env);
@@ -48,9 +54,11 @@ public class FeatureBuilder
             features[4] = ComputeVwapDist(bars);
             features[5] = ComputeBollingerWidth(bars);
             features[6] = ComputeOrderbookImbalance(levels);
-            features[7] = ComputeHourFraction();
-            features[8] = currentPos;
-            features[9] = ComputeSessionFlag();
+            features[7] = ComputeAdrPct(bars);
+            features[8] = ComputeHourFraction(currentTime);
+            features[9] = ComputeSessionFlag(currentTime);
+            features[10] = currentPos;
+            features[11] = ComputeS7Regime(symbol);
             
             // Apply standardization: (x - mean) / std
             for (int i = 0; i < features.Length; i++)
@@ -246,25 +254,128 @@ public class FeatureBuilder
         return _spec.Columns[6].FillValue;
     }
 
-    private decimal ComputeHourFraction()
+    private decimal ComputeAdrPct(List<Bar> bars)
     {
-        var now = DateTime.UtcNow;
-        return now.Hour / 24.0m;
+        // Compute ADR percentage: (current range) / (average daily range over 14 days)
+        // This is used by S11 exhaustion strategy
+        if (bars.Count < 15) return _spec.Columns[7].FillValue;
+        
+        try
+        {
+            // Calculate current intraday range
+            var recentBars = bars.TakeLast(20).ToList();
+            var currentHigh = recentBars.Max(b => b.High);
+            var currentLow = recentBars.Min(b => b.Low);
+            var currentRange = currentHigh - currentLow;
+            
+            // Calculate average daily range over last 14 days
+            // Approximate by taking max-min over rolling windows
+            decimal totalRange = 0;
+            int validDays = 0;
+            
+            for (int i = Math.Max(0, bars.Count - 14 * 390); i < bars.Count - 390; i += 390) // ~390 minutes per trading day
+            {
+                var dayBars = bars.Skip(i).Take(390).ToList();
+                if (dayBars.Count > 0)
+                {
+                    var dayHigh = dayBars.Max(b => b.High);
+                    var dayLow = dayBars.Min(b => b.Low);
+                    totalRange += (dayHigh - dayLow);
+                    validDays++;
+                }
+            }
+            
+            if (validDays == 0) return _spec.Columns[7].FillValue;
+            
+            var avgDailyRange = totalRange / validDays;
+            if (avgDailyRange == 0) return _spec.Columns[7].FillValue;
+            
+            return currentRange / avgDailyRange;
+        }
+        catch
+        {
+            return _spec.Columns[7].FillValue;
+        }
     }
 
-    private decimal ComputeSessionFlag()
+    private decimal ComputeHourFraction(DateTime currentTime)
     {
-        // Simplified session detection
-        // ES/NQ main session is roughly 9:30 AM - 4:00 PM ET (13:30 - 20:00 UTC)
-        var now = DateTime.UtcNow;
-        var hour = now.Hour;
+        return currentTime.Hour / 24.0m;
+    }
+
+    private decimal ComputeSessionFlag(DateTime currentTime)
+    {
+        // Map to EsNqTradingSchedule sessions (0-10)
+        // AsianSession=0, EuropeanPreOpen=1, EuropeanOpen=2, LondonMorning=3, USPreMarket=4,
+        // OpeningDrive=5, MorningTrend=6, LunchChop=7, AfternoonTrend=8, PowerHour=9, MarketClose=10
         
-        // Return 1 if in main session, 0 otherwise
-        if (hour >= 13 && hour < 20)
+        try
         {
-            return 1;
+            var timeSpan = currentTime.TimeOfDay;
+            var session = EsNqTradingSchedule.GetCurrentSession(timeSpan);
+            
+            if (session == null) return _spec.Columns[9].FillValue;
+            
+            // Map session names to integers
+            var sessionName = string.Empty;
+            foreach (var kvp in EsNqTradingSchedule.Sessions)
+            {
+                if (kvp.Value == session)
+                {
+                    sessionName = kvp.Key;
+                    break;
+                }
+            }
+            
+            return sessionName switch
+            {
+                "AsianSession" => 0,
+                "EuropeanPreOpen" => 1,
+                "EuropeanOpen" => 2,
+                "LondonMorning" => 3,
+                "USPreMarket" => 4,
+                "OpeningDrive" => 5,
+                "MorningTrend" => 6,
+                "LunchChop" => 7,
+                "AfternoonTrend" => 8,
+                "PowerHour" => 9,
+                "MarketClose" => 10,
+                _ => _spec.Columns[9].FillValue
+            };
         }
+        catch
+        {
+            return _spec.Columns[9].FillValue;
+        }
+    }
+
+    private decimal ComputeS7Regime(string symbol)
+    {
+        // Get S7 regime signal: -1 (bearish), 0 (neutral), 1 (bullish)
+        if (_s7Service == null) return _spec.Columns[11].FillValue;
         
-        return 0;
+        try
+        {
+            if (!_s7Service.IsReady()) return _spec.Columns[11].FillValue;
+            
+            var featureTuple = _s7Service.GetFeatureTuple(symbol);
+            
+            // Determine regime based on S7 signal strength and coherence
+            // Use relative strength and signal active status
+            if (featureTuple.IsSignalActive)
+            {
+                // Use the ZScore and coherence to determine regime
+                if (featureTuple.ZScore > 1.0m && featureTuple.Coherence > 0.6m)
+                    return 1; // Bullish
+                else if (featureTuple.ZScore < -1.0m && featureTuple.Coherence > 0.6m)
+                    return -1; // Bearish
+            }
+            
+            return 0; // Neutral
+        }
+        catch
+        {
+            return _spec.Columns[11].FillValue;
+        }
     }
 }

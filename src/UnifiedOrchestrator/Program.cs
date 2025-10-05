@@ -1325,7 +1325,7 @@ Please check the configuration and ensure all required services are registered.
                 logger.LogWarning(ex, "⚠️ [FEATURE-SPEC] Failed to load feature spec from {Path}, using default", featureSpecPath);
             }
             
-            // Return default spec if loading fails
+            // Return default spec if loading fails (12 features for S2/S3/S6/S11 optimization)
             return new BotCore.Features.FeatureSpec
             {
                 Version = "features:v1",
@@ -1338,14 +1338,16 @@ Please check the configuration and ensure all required services are registered.
                     new() { Name = "vwap_dist", Index = 4, FillValue = 0 },
                     new() { Name = "bb_width", Index = 5, FillValue = 0.01m },
                     new() { Name = "ob_imbalance", Index = 6, FillValue = 1.0m },
-                    new() { Name = "hour_frac", Index = 7, FillValue = 0.5m },
-                    new() { Name = "pos", Index = 8, FillValue = 0 },
-                    new() { Name = "session_flag", Index = 9, FillValue = 0 }
+                    new() { Name = "adr_pct", Index = 7, FillValue = 0.5m },
+                    new() { Name = "hour_frac", Index = 8, FillValue = 0.5m },
+                    new() { Name = "session_flag", Index = 9, FillValue = 0 },
+                    new() { Name = "pos", Index = 10, FillValue = 0 },
+                    new() { Name = "s7_regime", Index = 11, FillValue = 0 }
                 },
                 Scaler = new BotCore.Features.Scaler
                 {
-                    Mean = new decimal[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-                    Std = new decimal[] { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }
+                    Mean = new decimal[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+                    Std = new decimal[] { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }
                 },
                 Inference = new BotCore.Features.InferenceConfig
                 {
@@ -1353,7 +1355,12 @@ Please check the configuration and ensure all required services are registered.
                 }
             };
         });
-        services.AddSingleton<BotCore.Features.FeatureBuilder>();
+        services.AddSingleton<BotCore.Features.FeatureBuilder>(provider =>
+        {
+            var spec = provider.GetRequiredService<BotCore.Features.FeatureSpec>();
+            var s7Service = provider.GetService<TradingBot.Abstractions.IS7Service>();
+            return new BotCore.Features.FeatureBuilder(spec, s7Service);
+        });
         
         services.AddSingleton<BotCore.ML.StrategyMlModelManager>(provider =>
         {
