@@ -84,6 +84,43 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 76 violations eliminated across 9 files in 3 focused rounds
 
+### 🔧 Round 172 - Phase 2: Unused Private Fields Cleanup (Current Session)
+
+| Rule | Before | After | Files Affected | Fix Applied |
+|------|--------|-------|----------------|-------------|
+| CA1823 | 86 | ~33 | AutonomousDecisionEngine.cs, ZoneFeatureResolvers.cs, NeuralUcbBandit.cs, EnhancedProductionResilienceService.cs, EnhancedTradingBrainIntegration.cs, TimeOptimizedStrategyManager.cs | Removed unused private const fields |
+| S1144 | ~86 | ~33 | (same files as above) | Removed unused private fields |
+
+**Total Fixed: ~53 analyzer violations (CA1823 + S1144 overlap)**
+
+**Rationale**: These constants were created during previous S109 magic number elimination rounds but were never actually used in the codebase. Removing unused fields improves code maintainability and reduces confusion about which constants are actively used.
+
+**Example Pattern Applied**:
+```csharp
+// Before (CA1823/S1144 Violations)
+private const int MinimumCheckIntervalMinutes = 15;         // UNUSED
+private const int MinimumIdleWaitSeconds = 4;               // UNUSED  
+private const int DefaultIdleWaitSeconds = 5;               // UNUSED
+private const decimal DefaultBaselineBalance = 4500m;       // UNUSED
+private const decimal BaseRiskScalingUnit = 100m;           // UNUSED
+private const decimal RiskScalingIncrement = 0.01m;         // UNUSED
+
+// After (Compliant) - Removed unused constants
+// Only constants that are actually referenced in code remain
+```
+
+**Files Modified**:
+1. AutonomousDecisionEngine.cs: Removed 11 unused constants (timing, balance thresholds, performance normalization)
+2. ZoneFeatureResolvers.cs: Removed 5 unused zone proximity threshold constants
+3. NeuralUcbBandit.cs: Removed 2 unused random number generation bit shift constants
+4. EnhancedProductionResilienceService.cs: Removed 1 unused timeout constant
+5. EnhancedTradingBrainIntegration.cs: Removed 6 unused constants (confidence, timing, data generation)
+6. TimeOptimizedStrategyManager.cs: Removed 7 unused constants (time decay, signal persistence, ML adjustment)
+
+**Build Verification**: ✅ 0 CS compiler errors, ~5,312 analyzer violations remaining (53 violations eliminated)
+
+---
+
 ### 🔧 Round 171 - Phase 1: CS Compiler Errors - S3 Strategy Method Signature (Current Session)
 
 | Error Code | Before | After | Files Affected | Fix Applied |
