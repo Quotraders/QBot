@@ -113,9 +113,14 @@ public class UnifiedDecisionRouter
                 _logger.LogInformation("🧠 [DECISION-FUSION] Strategy Knowledge Graph & Decision Fusion system available");
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Decision Fusion Coordinator not available, continuing without it");
+            _logger.LogWarning(ex, "Decision Fusion Coordinator service resolution failed, continuing without it");
+            _decisionFusion = null;
+        }
+        catch (ObjectDisposedException ex)
+        {
+            _logger.LogWarning(ex, "Service provider disposed during initialization, continuing without Decision Fusion");
             _decisionFusion = null;
         }
         
@@ -213,9 +218,21 @@ public class UnifiedDecisionRouter
                 symbol);
             return standdownDecision;
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "❌ [DECISION-ROUTER] Error routing decision for {Symbol}", symbol);
+            _logger.LogError(ex, "❌ [DECISION-ROUTER] Invalid arguments for decision routing: {Symbol}", symbol);
+            
+            // Emergency fallback
+            var emergencyDecision = CreateEmergencyDecision(symbol);
+            emergencyDecision.DecisionId = decisionId;
+            emergencyDecision.DecisionSource = "Emergency";
+            emergencyDecision.ProcessingTimeMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            
+            return emergencyDecision;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "❌ [DECISION-ROUTER] Operation error during decision routing: {Symbol}", symbol);
             
             // Emergency fallback
             var emergencyDecision = CreateEmergencyDecision(symbol);
@@ -275,9 +292,14 @@ public class UnifiedDecisionRouter
             _logger.LogTrace("🧠 [STRATEGY-FUSION] No fusion recommendation for {Symbol}", symbol);
             return null;
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "⚠️ [STRATEGY-FUSION] Failed to get fusion decision for {Symbol}", symbol);
+            _logger.LogWarning(ex, "⚠️ [STRATEGY-FUSION] Fusion service operation error for {Symbol}", symbol);
+            return null;
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "⚠️ [STRATEGY-FUSION] Invalid arguments for fusion decision: {Symbol}", symbol);
             return null;
         }
     }
@@ -306,9 +328,14 @@ public class UnifiedDecisionRouter
             
             return null;
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "⚠️ [ENHANCED-BRAIN] Failed to get decision");
+            _logger.LogWarning(ex, "⚠️ [ENHANCED-BRAIN] Brain operation error");
+            return null;
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "⚠️ [ENHANCED-BRAIN] Invalid arguments for decision");
             return null;
         }
     }
@@ -334,9 +361,14 @@ public class UnifiedDecisionRouter
             
             return ConvertFromBrainDecision(brainDecision);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "⚠️ [UNIFIED-BRAIN] Failed to get decision");
+            _logger.LogWarning(ex, "⚠️ [UNIFIED-BRAIN] Brain operation error");
+            return null;
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "⚠️ [UNIFIED-BRAIN] Invalid arguments for decision");
             return null;
         }
     }
@@ -355,9 +387,14 @@ public class UnifiedDecisionRouter
             
             return ConvertFromAbstractionDecision(decision);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "⚠️ [INTELLIGENCE-ORCHESTRATOR] Failed to get decision");
+            _logger.LogWarning(ex, "⚠️ [INTELLIGENCE-ORCHESTRATOR] Orchestrator operation error");
+            return null;
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "⚠️ [INTELLIGENCE-ORCHESTRATOR] Invalid arguments for decision");
             return null;
         }
     }
@@ -444,9 +481,13 @@ public class UnifiedDecisionRouter
             _logger.LogDebug("📊 [DECISION-TRACKING] Tracked {Source} decision: {Action} {Symbol}", 
                 source, decision.Action, decision.Symbol);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "❌ [DECISION-TRACKING] Failed to track decision");
+            _logger.LogError(ex, "❌ [DECISION-TRACKING] Tracking service operation error");
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "❌ [DECISION-TRACKING] Invalid decision for tracking");
         }
 
         return Task.CompletedTask;
@@ -489,9 +530,13 @@ public class UnifiedDecisionRouter
             _logger.LogInformation("📈 [DECISION-FEEDBACK] Outcome submitted: {DecisionId} PnL={PnL:C2} Correct={Correct}",
                 decisionId, realizedPnL, wasCorrect);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "❌ [DECISION-FEEDBACK] Failed to submit outcome");
+            _logger.LogError(ex, "❌ [DECISION-FEEDBACK] Feedback service operation error");
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "❌ [DECISION-FEEDBACK] Invalid outcome data");
         }
     }
     
@@ -537,9 +582,13 @@ public class UnifiedDecisionRouter
                     break;
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "❌ [DECISION-FEEDBACK] Failed to submit feedback to {Source}", outcome.Source);
+            _logger.LogError(ex, "❌ [DECISION-FEEDBACK] Brain feedback operation error for {Source}", outcome.Source);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "❌ [DECISION-FEEDBACK] Invalid feedback data for {Source}", outcome.Source);
         }
     }
     

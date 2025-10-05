@@ -84,7 +84,55 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 76 violations eliminated across 9 files in 3 focused rounds
 
-### 🔧 Round 173 - Phase 2: S109 Magic Numbers & CA1031 Exception Handling (Current Session)
+### 🔧 Round 174 - Phase 2: CA1031 Exception Handling - UnifiedDecisionRouter (Current Session)
+
+| Rule | Before | After | Files Affected | Fix Applied |
+|------|--------|-------|----------------|-------------|
+| CA1031 | 700 | 682 | UnifiedDecisionRouter.cs | Replaced generic Exception catches with specific exception types (ArgumentException, InvalidOperationException, ObjectDisposedException) |
+
+**Total Fixed: 18 analyzer violations (18 CA1031)**
+
+**Rationale**: Applied specific exception handling to decision routing service to prevent swallowing critical exceptions while maintaining graceful fallback behavior for ML/RL decision failures. Each brain integration point (DecisionFusion, EnhancedBrain, UnifiedBrain, IntelligenceOrchestrator) now catches specific exceptions with appropriate logging.
+
+**Example Pattern Applied**:
+```csharp
+// Before (CA1031 Violation)
+catch (Exception ex)
+{
+    _logger.LogWarning(ex, "⚠️ [UNIFIED-BRAIN] Failed to get decision");
+    return null;
+}
+
+// After (Compliant)
+catch (InvalidOperationException ex)
+{
+    _logger.LogWarning(ex, "⚠️ [UNIFIED-BRAIN] Brain operation error");
+    return null;
+}
+catch (ArgumentException ex)
+{
+    _logger.LogWarning(ex, "⚠️ [UNIFIED-BRAIN] Invalid arguments for decision");
+    return null;
+}
+```
+
+**Files Modified**:
+1. **UnifiedDecisionRouter.cs**: 18 CA1031 violations fixed
+   - Constructor: InvalidOperationException, ObjectDisposedException (service resolution errors)
+   - RouteDecisionAsync: ArgumentException, InvalidOperationException (with emergency fallback)
+   - TryDecisionFusionAsync: InvalidOperationException, ArgumentException
+   - TryEnhancedBrainAsync: InvalidOperationException, ArgumentException
+   - TryUnifiedBrainAsync: InvalidOperationException, ArgumentException
+   - TryIntelligenceOrchestratorAsync: InvalidOperationException, ArgumentException
+   - TrackDecisionAsync: InvalidOperationException, ArgumentException
+   - SubmitTradingOutcomeAsync: InvalidOperationException, ArgumentException
+   - SubmitFeedbackToBrainAsync: InvalidOperationException, ArgumentException
+
+**Build Verification**: ✅ 0 CS compiler errors, 18 CA1031 violations eliminated (700→682)
+
+---
+
+### 🔧 Round 173 - Phase 2: S109 Magic Numbers & CA1031 Exception Handling (Previous Session)
 
 | Rule | Before | After | Files Affected | Fix Applied |
 |------|--------|-------|----------------|-------------|
