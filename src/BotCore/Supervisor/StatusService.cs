@@ -18,7 +18,7 @@ namespace BotCore.Supervisor
         private string _lastSig = string.Empty;
 
         public long AccountId { get; set; }
-        public Dictionary<string, string> Contracts { get; set; } = [];
+        public IReadOnlyDictionary<string, string> Contracts { get; init; } = new Dictionary<string, string>();
 
         public void Set(string key, object value) => _vals[key] = value;
         public T? Get<T>(string key) => _vals.TryGetValue(key, out var v) ? (T?)v : default;

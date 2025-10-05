@@ -48,7 +48,7 @@ public record FeatureSpec
     public required string Version { get; init; }
     
     [JsonPropertyName("columns")]
-    public required List<Column> Columns { get; init; }
+    public required IReadOnlyList<Column> Columns { get; init; }
     
     [JsonPropertyName("scaler")]
     public required Scaler Scaler { get; init; }
