@@ -995,8 +995,8 @@ namespace BotCore.Strategy
         public static Func<string, int>? ExternalSpreadTicks { get; set; }
         public static Func<string, decimal>? ExternalTickSize { get; set; }
 
-        public static List<Candidate> S3(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk, BotCore.Services.MarketTimeService? marketTimeService = null)
-            => S3Strategy.S3(symbol, env, levels, bars, risk, marketTimeService);
+        public static List<Candidate> S3(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
+            => S3Strategy.S3(symbol, env, levels, bars, risk);
 
         // S3 internals moved to S3Strategy.cs
 
