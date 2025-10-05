@@ -244,6 +244,11 @@ public class AutonomousDecisionEngine : BackgroundService
     private const int EMA26Period = 26;                         // EMA 26-period for MACD
     private const int MinimumBarsForMACD = 26;                  // Minimum bars for MACD calculation
     private const double NeutralMACDValueDouble = 0.0;          // Neutral MACD value as double
+    private const double NeutralBollingerPosition = 0.5;        // Neutral Bollinger Band position (midpoint)
+    
+    // Position management constants
+    private const decimal TrailingStopProfitThreshold = 0.01m;  // Trail after 1% profit
+    private const decimal ScaleOutProfitTarget = 0.02m;         // Scale out at 2% profit target
     
     // Learning and performance tracking constants
     private const int MaxRecentTradesCount = 100;               // Maximum recent trades to keep for learning
@@ -1625,7 +1630,7 @@ public class AutonomousDecisionEngine : BackgroundService
     
     private static double CalculateBollingerPosition(List<Bar> bars, int period)
     {
-        if (bars.Count < period) return 0.5; // Neutral position
+        if (bars.Count < period) return NeutralBollingerPosition; // Neutral position
         
         var closes = bars.TakeLast(period).Select(b => b.Close).ToList();
         var sma = closes.Average();
@@ -1636,7 +1641,7 @@ public class AutonomousDecisionEngine : BackgroundService
         var currentPrice = bars.Last().Close;
         
         // Return position between bands (0 = lower band, 1 = upper band)
-        if (upperBand == lowerBand) return 0.5;
+        if (upperBand == lowerBand) return NeutralBollingerPosition;
         return (double)((currentPrice - lowerBand) / (upperBand - lowerBand));
     }
     
@@ -1695,13 +1700,13 @@ public class AutonomousDecisionEngine : BackgroundService
     {
         // Implement trailing stop logic based on position performance
         var unrealizedPnL = CalculatePositionPnL(position, currentPrice);
-        return unrealizedPnL > (position.EntryPrice * 0.01m); // Trail after 1% profit
+        return unrealizedPnL > (position.EntryPrice * TrailingStopProfitThreshold); // Trail after 1% profit
     }
     
     private static bool ShouldScaleOutPosition(Position position, decimal currentPnL)
     {
         // Scale out at profit targets
-        var profitTarget = position.EntryPrice * 0.02m; // 2% profit target
+        var profitTarget = position.EntryPrice * ScaleOutProfitTarget; // 2% profit target
         return currentPnL > profitTarget;
     }
     
