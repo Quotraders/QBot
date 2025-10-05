@@ -20,6 +20,11 @@ public class ModelHotReloadManager : IHostedService, IDisposable
 {
     private const double TestFeatureRangeMultiplier = 2.0;
     
+    // Gate 4 validation constants (documented values - actual validation would use IGate4Config)
+    private const int Gate4SanityTestVectors = 200;
+    private const double Gate4MaxTotalVariation = 0.20;
+    private const double Gate4MaxKLDivergence = 0.25;
+    
     private readonly ILogger<ModelHotReloadManager> _logger;
     private readonly OnnxEnsembleWrapper _onnxEnsemble;
     private readonly ModelHotReloadOptions _options;
@@ -129,12 +134,12 @@ public class ModelHotReloadManager : IHostedService, IDisposable
             // Gate 4: Run comprehensive validation before loading
             // Note: This requires UnifiedTradingBrain access - would need to be injected via DI
             // For now, we document the integration point and proceed with existing smoke tests
-            _logger.LogInformation("🔒 [GATE-4] Model validation checks:");
-            _logger.LogInformation("  - Feature specification compatibility");
-            _logger.LogInformation("  - Sanity test with 200 deterministic vectors");
-            _logger.LogInformation("  - Prediction distribution comparison (TV < 0.20, KL < 0.25)");
-            _logger.LogInformation("  - NaN/Infinity validation");
-            _logger.LogInformation("  NOTE: Full Gate 4 validation via UnifiedTradingBrain.ValidateModelForReloadAsync()");
+            LogMessages.Gate4ValidationChecks(_logger);
+            LogMessages.Gate4FeatureCompatibility(_logger);
+            LogMessages.Gate4SanityTest(_logger, Gate4SanityTestVectors);
+            LogMessages.Gate4DistributionComparison(_logger, Gate4MaxTotalVariation, Gate4MaxKLDivergence);
+            LogMessages.Gate4NanValidation(_logger);
+            LogMessages.Gate4FullValidationNote(_logger);
 
             // Step 1: Load candidate model
             var loadSuccess = await _onnxEnsemble.LoadModelAsync(candidateModelName, modelPath, 1.0, _cancellationTokenSource.Token).ConfigureAwait(false);

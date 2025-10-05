@@ -78,6 +78,30 @@ internal static class LogMessages
         LoggerMessage.Define(LogLevel.Information, new EventId(6007, nameof(ModelHotReloadDisposed)),
             "[HOT_RELOAD] Model hot-reload manager disposed");
 
+    private static readonly Action<ILogger, Exception?> _gate4ValidationChecks =
+        LoggerMessage.Define(LogLevel.Information, new EventId(6033, nameof(Gate4ValidationChecks)),
+            "[GATE-4] Model validation checks:");
+
+    private static readonly Action<ILogger, Exception?> _gate4FeatureCompatibility =
+        LoggerMessage.Define(LogLevel.Information, new EventId(6034, nameof(Gate4FeatureCompatibility)),
+            "Feature specification compatibility check");
+
+    private static readonly Action<ILogger, int, Exception?> _gate4SanityTest =
+        LoggerMessage.Define<int>(LogLevel.Information, new EventId(6035, nameof(Gate4SanityTest)),
+            "Sanity test with {VectorCount} deterministic vectors");
+
+    private static readonly Action<ILogger, double, double, Exception?> _gate4DistributionComparison =
+        LoggerMessage.Define<double, double>(LogLevel.Information, new EventId(6036, nameof(Gate4DistributionComparison)),
+            "Prediction distribution comparison (TV < {TvThreshold}, KL < {KlThreshold})");
+
+    private static readonly Action<ILogger, Exception?> _gate4NanValidation =
+        LoggerMessage.Define(LogLevel.Information, new EventId(6037, nameof(Gate4NanValidation)),
+            "NaN/Infinity validation check");
+
+    private static readonly Action<ILogger, Exception?> _gate4FullValidationNote =
+        LoggerMessage.Define(LogLevel.Information, new EventId(6038, nameof(Gate4FullValidationNote)),
+            "NOTE: Full Gate 4 validation via UnifiedTradingBrain.ValidateModelForReloadAsync()");
+
     // CVaR-PPO Training Messages
     private static readonly Action<ILogger, int, int, Exception?> _cvarPpoTrainingStarted =
         LoggerMessage.Define<int, int>(LogLevel.Information, new EventId(3002, nameof(CVaRPPOTrainingStarted)),
@@ -280,6 +304,12 @@ internal static class LogMessages
     public static void HotReloadCompleted(ILogger logger, string candidateName) => _hotReloadCompleted(logger, candidateName, null);
     public static void SmokeTestsPassed(ILogger logger, string modelName) => _smokeTestsPassed(logger, modelName, null);
     public static void ModelHotReloadDisposed(ILogger logger) => _modelHotReloadDisposed(logger, null);
+    public static void Gate4ValidationChecks(ILogger logger) => _gate4ValidationChecks(logger, null);
+    public static void Gate4FeatureCompatibility(ILogger logger) => _gate4FeatureCompatibility(logger, null);
+    public static void Gate4SanityTest(ILogger logger, int vectorCount) => _gate4SanityTest(logger, vectorCount, null);
+    public static void Gate4DistributionComparison(ILogger logger, double tvThreshold, double klThreshold) => _gate4DistributionComparison(logger, tvThreshold, klThreshold, null);
+    public static void Gate4NanValidation(ILogger logger) => _gate4NanValidation(logger, null);
+    public static void Gate4FullValidationNote(ILogger logger) => _gate4FullValidationNote(logger, null);
     public static void CVaRPPOTrainingStarted(ILogger logger, int episode, int experienceCount) => _cvarPpoTrainingStarted(logger, episode, experienceCount, null);
     public static void CVaRPPOTrainingCompleted(ILogger logger, int episode, double loss, double policyLoss, double valueLoss, double cvarLoss, double reward) => _cvarPpoTrainingCompleted(logger, episode, loss, policyLoss, valueLoss, cvarLoss, reward, null);
     public static void CVaRPPOModelSaved(ILogger logger, string modelPath, string version) => _cvarPpoModelSaved(logger, modelPath, version, null);
