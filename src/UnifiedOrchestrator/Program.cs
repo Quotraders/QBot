@@ -758,7 +758,7 @@ Please check the configuration and ensure all required services are registered.
             
             options.ScriptPaths = new Dictionary<string, string>
             {
-                ["decisionService"] = Path.Combine("python", "decision_service", "simple_decision_service.py"),
+                // decision_service removed - functionality consolidated into UnifiedTradingBrain
                 ["modelInference"] = Path.Combine("python", "ucb", "neural_ucb_topstep.py")
             };
             options.Timeout = int.Parse(Environment.GetEnvironmentVariable("PYTHON_TIMEOUT") ?? "30");
@@ -1052,17 +1052,18 @@ Please check the configuration and ensure all required services are registered.
         // ML/RL DECISION SERVICE INTEGRATION - FULLY AUTOMATED
         // ================================================================================
         
-        // Configure Decision Service options from environment
+        // Decision Service removed - functionality consolidated into UnifiedTradingBrain
+        // Legacy decision_service folder and configuration removed as part of Phase 1 cleanup
         var decisionServiceLauncherOptions = new DecisionServiceLauncherOptions
         {
-            Enabled = Environment.GetEnvironmentVariable("ENABLE_DECISION_SERVICE") != "false",
+            Enabled = false, // Disabled - using UnifiedTradingBrain instead
             Host = Environment.GetEnvironmentVariable("DECISION_SERVICE_HOST") ?? "127.0.0.1",
             Port = int.Parse(Environment.GetEnvironmentVariable("DECISION_SERVICE_PORT") ?? "7080"),
             PythonExecutable = Environment.GetEnvironmentVariable("PYTHON_EXECUTABLE") ?? "python",
             ScriptPath = Environment.GetEnvironmentVariable("DECISION_SERVICE_SCRIPT") ?? "",
             ConfigFile = Environment.GetEnvironmentVariable("DECISION_SERVICE_CONFIG") ?? "decision_service_config.yaml",
             StartupTimeoutSeconds = int.Parse(Environment.GetEnvironmentVariable("DECISION_SERVICE_STARTUP_TIMEOUT") ?? "30"),
-            AutoRestart = Environment.GetEnvironmentVariable("DECISION_SERVICE_AUTO_RESTART") != "false"
+            AutoRestart = false // Disabled
         };
         services.Configure<DecisionServiceLauncherOptions>(options =>
         {
