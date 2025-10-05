@@ -1633,6 +1633,16 @@ Please check the configuration and ensure all required services are registered.
         services.AddHostedService<BotCore.Services.TradingFeedbackService>(provider => 
             provider.GetRequiredService<BotCore.Services.TradingFeedbackService>());
         
+        // Gate 2: Register CloudModelDownloader - ONNX model validation before deployment
+        services.AddSingleton<BotCore.Services.ICloudModelDownloader, BotCore.Services.CloudModelDownloader>();
+        Console.WriteLine("🔒 [GATE-2] CloudModelDownloader with validation gates registered!");
+        
+        // Gate 3: Register S15 Shadow Learning Service - Validates S15 before promotion
+        services.AddSingleton<BotCore.Services.S15ShadowLearningService>();
+        services.AddHostedService<BotCore.Services.S15ShadowLearningService>(provider => 
+            provider.GetRequiredService<BotCore.Services.S15ShadowLearningService>());
+        Console.WriteLine("🔒 [GATE-3] S15ShadowLearningService with promotion validation registered!");
+        
         // Enhanced Trading Brain Integration already registered above with UnifiedDecisionRouter dependencies
         
         Console.WriteLine("🚀 [ENHANCED-BRAIN] Production ML/RL/Cloud automation services registered successfully!");
