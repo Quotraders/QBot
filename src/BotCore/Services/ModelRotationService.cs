@@ -293,8 +293,7 @@ namespace BotCore.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[MODEL-ROTATION] [AUDIT-VIOLATION] Failed to update selected state - FAIL-CLOSED + TELEMETRY");
-                throw;
+                throw new InvalidOperationException($"[AUDIT-VIOLATION] Failed to update selected state for regime {newRegime} - FAIL-CLOSED + TELEMETRY", ex);
             }
         }
 

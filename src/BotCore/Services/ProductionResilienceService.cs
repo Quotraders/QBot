@@ -113,8 +113,7 @@ public class ProductionResilienceService
             catch (Exception ex)
             {
                 // Non-retriable exception
-                _logger.LogError(ex, "❌ [RESILIENCE] Non-retriable error in {Operation}: {Error}", operationName, ex.Message);
-                throw;
+                throw new InvalidOperationException($"❌ [RESILIENCE] Non-retriable error in {operationName}", ex);
             }
         }
         

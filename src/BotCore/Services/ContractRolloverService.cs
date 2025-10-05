@@ -33,6 +33,20 @@ namespace BotCore.Services
         private readonly ILogger<ContractRolloverService> _logger;
         private readonly DataFlowEnhancementConfiguration _config;
         private readonly Dictionary<string, ContractSpec> _contractSpecs;
+        
+        // Contract rollover thresholds
+        private const int FrontMonthMaxDaysToExpiration = 60;
+        private const int MonthsAheadForActiveContracts = 12;
+        private const int DaysAfterFirstFridayForThirdFriday = 14;
+        private const int YearModuloForTwoDigitYear = 100;
+        
+        // ES contract specifications
+        private const decimal EsTickSize = 0.25m;
+        private const int EsContractSize = 50;
+        
+        // NQ contract specifications
+        private const decimal NqTickSize = 0.25m;
+        private const int NqContractSize = 20;
 
         public ContractRolloverService(
             ILogger<ContractRolloverService> logger,
@@ -129,7 +143,7 @@ namespace BotCore.Services
                     ExpirationDate = expirationDate,
                     DaysToExpiration = daysToExpiration,
                     IsActive = isActive,
-                    IsFrontMonth = daysToExpiration > 0 && daysToExpiration <= 60, // Simplified logic
+                    IsFrontMonth = daysToExpiration > 0 && daysToExpiration <= FrontMonthMaxDaysToExpiration, // Simplified logic
                     TickSize = spec.TickSize,
                     ContractSize = spec.ContractSize,
                     Currency = spec.Currency
@@ -271,7 +285,7 @@ namespace BotCore.Services
                         var expirationDate = CalculateExpirationDate(monthCode, year);
                         
                         // Only include contracts that haven't expired and are within 12 months
-                        if (expirationDate > currentDate && expirationDate <= currentDate.AddMonths(12))
+                        if (expirationDate > currentDate && expirationDate <= currentDate.AddMonths(MonthsAheadForActiveContracts))
                         {
                             var contractInfo = await GetContractInfoAsync(contractSymbol).ConfigureAwait(false);
                             activeContracts.Add(contractInfo);
@@ -349,8 +363,8 @@ namespace BotCore.Services
                     BaseSymbol = "ES",
                     FullName = "E-mini S&P 500",
                     MonthSequence = new[] { "H", "M", "U", "Z" }, // Mar, Jun, Sep, Dec
-                    TickSize = 0.25m,
-                    ContractSize = 50,
+                    TickSize = EsTickSize,
+                    ContractSize = EsContractSize,
                     Currency = "USD",
                     ExpirationRule = ContractExpirationRule.ThirdFridayOfMonth
                 },
@@ -359,8 +373,8 @@ namespace BotCore.Services
                     BaseSymbol = "NQ",
                     FullName = "E-mini NASDAQ-100",
                     MonthSequence = new[] { "H", "M", "U", "Z" }, // Mar, Jun, Sep, Dec
-                    TickSize = 0.25m,
-                    ContractSize = 20,
+                    TickSize = NqTickSize,
+                    ContractSize = NqContractSize,
                     Currency = "USD",
                     ExpirationRule = ContractExpirationRule.ThirdFridayOfMonth
                 }
@@ -386,7 +400,7 @@ namespace BotCore.Services
             
             if (currentQuarterIndex == 0) // Past December, go to next year March
             {
-                return $"{baseSymbol}H{(currentDate.Year + 1) % 100:D2}";
+                return $"{baseSymbol}H{(currentDate.Year + 1) % YearModuloForTwoDigitYear:D2}";
             }
 
             var monthIndex = Array.IndexOf(quarterlyMonths, currentQuarterIndex);
@@ -400,10 +414,10 @@ namespace BotCore.Services
                 monthIndex = (monthIndex + 1) % spec.MonthSequence.Length;
                 monthCode = spec.MonthSequence[monthIndex];
                 var year = monthIndex == 0 ? currentDate.Year + 1 : currentDate.Year;
-                return $"{baseSymbol}{monthCode}{year % 100:D2}";
+                return $"{baseSymbol}{monthCode}{year % YearModuloForTwoDigitYear:D2}";
             }
 
-            return $"{baseSymbol}{monthCode}{currentDate.Year % 100:D2}";
+            return $"{baseSymbol}{monthCode}{currentDate.Year % YearModuloForTwoDigitYear:D2}";
         }
 
         /// <summary>
@@ -427,7 +441,7 @@ namespace BotCore.Services
         {
             var firstDay = new DateTime(year, month, 1);
             var firstFriday = firstDay.AddDays((DayOfWeek.Friday - firstDay.DayOfWeek + 7) % 7);
-            return firstFriday.AddDays(14); // Third Friday is 2 weeks after first Friday
+            return firstFriday.AddDays(DaysAfterFirstFridayForThirdFriday); // Third Friday is 2 weeks after first Friday
         }
 
         /// <summary>

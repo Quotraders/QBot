@@ -530,8 +530,8 @@ public class CloudModelSynchronizationService : BackgroundService
                     // Best effort cleanup
                 }
             }
-            _logger.LogError(ex, "🌐 [CLOUD-SYNC] Failed to save file: {TargetPath}", targetPath);
-            throw;
+            // Rethrow with context - caller will log with appropriate context
+            throw new InvalidOperationException($"Failed to save file: {targetPath}", ex);
         }
     }
 

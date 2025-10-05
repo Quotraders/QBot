@@ -22,6 +22,47 @@ namespace BotCore
         private const decimal RsiOversoldThreshold = 30m;             // RSI oversold threshold
         private const decimal RsiRange = 25m;                         // RSI range from neutral for trend strength
         private const decimal BreakoutVolumeConfirmationDivisor = 2m; // Volume confirmation normalization divisor
+        
+        // Trade history and collection limits
+        private const int MaxRecentTradesPerStrategy = 50;            // Keep last 50 trades per strategy
+        private const int MaxRecentTradesForPerformance = 100;        // Keep last 100 trades for performance tracking
+        
+        // MA alignment values
+        private const decimal BullishAlignmentValue = 1.0m;           // Fully bullish MA alignment
+        private const decimal BearishAlignmentValue = -1.0m;          // Fully bearish MA alignment
+        
+        // Bounce and breakout calculation factors
+        private const decimal BounceQualityRangeMultiplier = 0.2m;    // Range multiplier for bounce quality
+        private const decimal BreakoutRiskRangeMultiplier = 0.1m;     // Range multiplier for breakout risk
+        
+        // Momentum and signal quality thresholds
+        private const decimal MomentumAtrMultiplier = 100m;           // ATR multiplier for momentum calculation
+        private const decimal MaxMomentumSustainability = 2m;         // Maximum momentum sustainability value
+        private const decimal VolumeConfirmationRatio = 1.5m;         // Volume ratio for signal confirmation
+        private const decimal MaAlignmentNormalizationDivisor = 2m;   // Divisor for MA alignment normalization
+        private const decimal DefaultSignalQuality = 0.5m;            // Default signal quality when no factors
+        
+        // Market regime detection thresholds
+        private const decimal HighVolatilityThreshold = 0.02m;        // Historical volatility threshold for high vol
+        private const decimal LowVolatilityThreshold = 0.005m;        // Historical volatility threshold for low vol
+        private const decimal TrendAlignmentThreshold = 0.5m;         // MA alignment threshold for trend detection
+        private const decimal SqueezeThreshold = 0.8m;                // BB squeeze threshold
+        private const decimal RsiRangeLowerBound = 40m;               // RSI lower bound for range regime
+        private const decimal RsiRangeUpperBound = 60m;               // RSI upper bound for range regime
+        
+        // Session hours (Eastern Time)
+        private const int MarketOpenHourET = 9;                       // Market open hour (9 AM ET)
+        private const int MarketCloseHourET = 16;                     // Market close hour (4 PM ET)
+        
+        // Trade signal defaults
+        private const decimal DefaultTradeSize = 1.0m;                // Base trade size
+        private const decimal DefaultStopLossMultiplier = 0.99m;      // Stop loss at 1% below entry
+        private const decimal DefaultTakeProfitMultiplier = 1.02m;    // Take profit at 2% above entry
+        private const decimal DefaultVixLevel = 20m;                  // Default VIX level
+        
+        // RSI overbought/oversold for direction determination
+        private const decimal RsiOverboughtThreshold = 70m;           // RSI overbought threshold
+        private const decimal MomentumDirectionThreshold = 0.5m;      // Momentum threshold for direction
 
         public enum StrategyType
         {
@@ -510,7 +551,7 @@ namespace BotCore
             if (RecentTrades.TryGetValue(outcome.Strategy, out var trades))
             {
                 trades.Add(outcome);
-                if (trades.Count > 50) // Keep last 50 trades
+                if (trades.Count > MaxRecentTradesPerStrategy) // Keep last 50 trades
                 {
                     trades.RemoveAt(0);
                 }
@@ -519,13 +560,13 @@ namespace BotCore
 
         private static decimal CalculateSlope(decimal ma, decimal price)
         {
-            return (ma - price) / price * 100m; // Simplified slope calculation
+            return (ma - price) / price * PercentageConversionFactor; // Simplified slope calculation
         }
 
         private static decimal CalculateMaAlignment(decimal ema9, decimal ema20, decimal ema50)
         {
-            if (ema9 > ema20 && ema20 > ema50) return 1.0m; // Bullish alignment
-            if (ema9 < ema20 && ema20 < ema50) return -1.0m; // Bearish alignment
+            if (ema9 > ema20 && ema20 > ema50) return BullishAlignmentValue; // Bullish alignment
+            if (ema9 < ema20 && ema20 < ema50) return BearishAlignmentValue; // Bearish alignment
             return 0m; // Mixed
         }
 
@@ -535,7 +576,7 @@ namespace BotCore
             if (range == 0) return 0m;
 
             var distanceFromLower = price - bbLower;
-            return Math.Min(distanceFromLower / (range * 0.2m), 1m); // Quality based on distance from lower band
+            return Math.Min(distanceFromLower / (range * BounceQualityRangeMultiplier), 1m); // Quality based on distance from lower band
         }
 
         private static decimal CalculateFalseBreakoutRisk(decimal price, decimal high, decimal low)
@@ -545,13 +586,13 @@ namespace BotCore
 
             // Risk higher if breakout is marginal
             var breakoutDistance = Math.Max(price - high, low - price);
-            return Math.Max(0m, 1m - (breakoutDistance / (range * 0.1m)));
+            return Math.Max(0m, 1m - (breakoutDistance / (range * BreakoutRiskRangeMultiplier)));
         }
 
         private static decimal CalculateMomentumSustainability(decimal priceChange, decimal atr)
         {
             if (atr == 0) return 0m;
-            return Math.Min(Math.Abs(priceChange) / (atr * 100m), 2m); // Momentum relative to volatility
+            return Math.Min(Math.Abs(priceChange) / (atr * MomentumAtrMultiplier), MaxMomentumSustainability); // Momentum relative to volatility
         }
 
         private static decimal CalculateSignalQuality(ComprehensiveFeatures features)
@@ -561,25 +602,25 @@ namespace BotCore
 
             // Volume confirmation
             if (features.Volume > 0)
-                qualityFactors.Add(Math.Min(features.VolumeRatio / 1.5m, 1m));
+                qualityFactors.Add(Math.Min(features.VolumeRatio / VolumeConfirmationRatio, 1m));
 
             // Technical alignment
-            qualityFactors.Add((Math.Abs(features.MaAlignment) + 1m) / 2m);
+            qualityFactors.Add((Math.Abs(features.MaAlignment) + 1m) / MaAlignmentNormalizationDivisor);
 
             // Prior performance
             qualityFactors.Add(features.PriorWinRate);
 
-            return qualityFactors.Count > 0 ? qualityFactors.Average() : 0.5m;
+            return qualityFactors.Count > 0 ? qualityFactors.Average() : DefaultSignalQuality;
         }
 
         private static MarketRegime DetectMarketRegime(ComprehensiveFeatures features)
         {
             // Simple regime detection based on available indicators
-            if (features.HistVol20 > 0.02m) return MarketRegime.HighVol;
-            if (features.HistVol20 < 0.005m) return MarketRegime.LowVol;
-            if (Math.Abs(features.MaAlignment) > 0.5m) return MarketRegime.Trend;
-            if (features.BbSqueeze > 0.8m) return MarketRegime.Squeeze;
-            if (features.Rsi14 > 40 && features.Rsi14 < 60) return MarketRegime.Range;
+            if (features.HistVol20 > HighVolatilityThreshold) return MarketRegime.HighVol;
+            if (features.HistVol20 < LowVolatilityThreshold) return MarketRegime.LowVol;
+            if (Math.Abs(features.MaAlignment) > TrendAlignmentThreshold) return MarketRegime.Trend;
+            if (features.BbSqueeze > SqueezeThreshold) return MarketRegime.Squeeze;
+            if (features.Rsi14 > RsiRangeLowerBound && features.Rsi14 < RsiRangeUpperBound) return MarketRegime.Range;
 
             return MarketRegime.Choppy;
         }
@@ -590,7 +631,7 @@ namespace BotCore
                 TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time"));
             var hour = et.Hour;
 
-            return (hour >= 9 && hour < 16) ? "RTH" : "ETH";
+            return (hour >= MarketOpenHourET && hour < MarketCloseHourET) ? "RTH" : "ETH";
         }
 
         private static int CalculateMinutesFromOpen()
@@ -638,7 +679,7 @@ namespace BotCore
                         trades.Add(outcome);
 
                         // Keep only last 100 trades per strategy
-                        if (trades.Count > 100)
+                        if (trades.Count > MaxRecentTradesForPerformance)
                         {
                             trades.RemoveAt(0);
                         }
@@ -695,10 +736,10 @@ namespace BotCore
                 Symbol = features.Symbol,
                 Direction = DetermineDirection(features),
                 Entry = features.Price,
-                Size = 1.0m, // Base size, will be adjusted by position sizing
+                Size = DefaultTradeSize, // Base size, will be adjusted by position sizing
                 Strategy = features.Strategy.ToString(),
-                StopLoss = features.Price * 0.99m, // Approximate stop loss
-                TakeProfit = features.Price * 1.02m, // Approximate take profit
+                StopLoss = features.Price * DefaultStopLossMultiplier, // Approximate stop loss
+                TakeProfit = features.Price * DefaultTakeProfitMultiplier, // Approximate take profit
                 Regime = features.Regime.ToString(),
                 Atr = features.Atr14,
                 Rsi = features.Rsi14,
@@ -708,7 +749,7 @@ namespace BotCore
                 BbLower = features.BbLower,
                 Momentum = features.MomentumStrength,
                 TrendStrength = features.TrendStrength,
-                VixLevel = 20m // Default VIX level
+                VixLevel = DefaultVixLevel // Default VIX level
             };
         }
 
@@ -777,13 +818,13 @@ namespace BotCore
         private static string DetermineDirection(ComprehensiveFeatures features)
         {
             // Simple logic to determine trade direction based on features
-            if (features.Rsi14 < 30 && features.Price < features.BbLower)
+            if (features.Rsi14 < RsiOversoldThreshold && features.Price < features.BbLower)
                 return "BUY"; // Oversold
-            else if (features.Rsi14 > 70 && features.Price > features.BbUpper)
+            else if (features.Rsi14 > RsiOverboughtThreshold && features.Price > features.BbUpper)
                 return "SELL"; // Overbought
-            else if (features.MomentumStrength > 0.5m)
+            else if (features.MomentumStrength > MomentumDirectionThreshold)
                 return "BUY"; // Positive momentum
-            else if (features.MomentumStrength < -0.5m)
+            else if (features.MomentumStrength < -MomentumDirectionThreshold)
                 return "SELL"; // Negative momentum
             else
                 return "HOLD"; // Neutral
