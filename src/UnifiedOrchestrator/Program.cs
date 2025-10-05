@@ -1780,6 +1780,16 @@ Please check the configuration and ensure all required services are registered.
                 Console.WriteLine("⚠️ [RL-SAFETY] WARNING: Training mode enabled in Production environment!");
             }
         }
+        
+        // ================================================================================
+        // PHASE 6: PARAMETER PERFORMANCE MONITORING & AUTOMATIC ROLLBACK
+        // ================================================================================
+        // Monitors live parameter performance and triggers automatic rollback if degradation detected
+        // - Runs hourly during market hours
+        // - Calculates rolling 3-day Sharpe ratio
+        // - Rolls back if >20% degradation for 3 consecutive days
+        // - Archives failed parameters and logs rollback events
+        services.AddHostedService<TradingBot.Monitoring.ParameterPerformanceMonitor>();
 
     }
 
