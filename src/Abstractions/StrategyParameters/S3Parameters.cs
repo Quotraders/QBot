@@ -24,6 +24,14 @@ public sealed class S3Parameters
     private const decimal MinTargetR = 1.0m;
     private const decimal MaxTargetR = 4.0m;
     
+    // JSON serialization options (cached to avoid CA1869)
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true
+    };
+    
     // Default values matching current S3RuntimeConfig
     public int BbLen { get; set; } = 20;
     public decimal BbMult { get; set; } = 2.0m;
@@ -62,8 +70,8 @@ public sealed class S3Parameters
     public int RollDaysBefore { get; set; } = 2;
     public int RollDaysAfter { get; set; } = 1;
     public decimal RollRankTighten { get; set; } = 0.02m;
-    public decimal BreakQ_MinClosePos { get; set; } = 0.65m;
-    public decimal BreakQ_MaxOppWick { get; set; } = 0.35m;
+    public decimal BreakQMinClosePos { get; set; } = 0.65m;
+    public decimal BreakQMaxOppWick { get; set; } = 0.35m;
     public int ValidityBars { get; set; } = 3;
     public int CooldownBars { get; set; } = 5;
     public int MaxBarsInTrade { get; set; } = 45;
@@ -81,14 +89,15 @@ public sealed class S3Parameters
     public string TargetsMode { get; set; } = "expansion";
     public decimal ExpansionQuantile { get; set; } = 0.60m;
     public decimal GivebackAfterT1R { get; set; } = 0.20m;
+    private const decimal DefaultVolZMin = -0.5m;
     public decimal MinSlopeTf2 { get; set; } = 0.15m;
-    public decimal VolZMin { get; set; } = -0.5m;
+    public decimal VolZMin { get; set; } = DefaultVolZMin;
     public decimal VolZMax { get; set; } = 2.5m;
     
     /// <summary>
     /// Session-specific parameter overrides. Key is session name (Overnight, RTH, PostRTH).
     /// </summary>
-    public Dictionary<string, S3Parameters> SessionOverrides { get; set; } = new();
+    public Dictionary<string, S3Parameters> SessionOverrides { get; init; } = new();
     
     /// <summary>
     /// Timestamp of last parameter load
@@ -117,14 +126,7 @@ public sealed class S3Parameters
             if (File.Exists(ParameterFilePath))
             {
                 var json = File.ReadAllText(ParameterFilePath);
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                    ReadCommentHandling = JsonCommentHandling.Skip,
-                    AllowTrailingCommas = true
-                };
-                
-                var parameters = JsonSerializer.Deserialize<S3Parameters>(json, options);
+                var parameters = JsonSerializer.Deserialize<S3Parameters>(json, JsonOptions);
                 if (parameters != null && parameters.Validate())
                 {
                     _cachedParameters = parameters;
@@ -133,9 +135,13 @@ public sealed class S3Parameters
                 }
             }
         }
-        catch (Exception)
+        catch (JsonException)
         {
-            // Fail silently, return defaults
+            // JSON parsing error - return defaults
+        }
+        catch (IOException)
+        {
+            // File access error - return defaults
         }
         
         // Return default parameters if load fails
@@ -170,40 +176,34 @@ public sealed class S3Parameters
     /// </summary>
     public bool Validate()
     {
-        // Validate width rank range
-        if (WidthRankEnter < MinWidthRank || WidthRankEnter > MaxWidthRank)
-        {
-            return false;
-        }
-        
-        // Validate squeeze bars
-        if (MinSqueezeBars < MinSqueezeBarsValidation || MinSqueezeBars > MaxSqueezeBarsValidation)
-        {
-            return false;
-        }
-        
-        // Validate stop and target relationship
+        return ValidateWidthRank() && ValidateSqueezeBars() && ValidateStopAndTargets();
+    }
+    
+    private bool ValidateWidthRank()
+    {
+        return WidthRankEnter >= MinWidthRank && WidthRankEnter <= MaxWidthRank;
+    }
+    
+    private bool ValidateSqueezeBars()
+    {
+        return MinSqueezeBars >= MinSqueezeBarsValidation && MinSqueezeBars <= MaxSqueezeBarsValidation;
+    }
+    
+    private bool ValidateStopAndTargets()
+    {
+        // Check stop is in range
         if (StopAtrMult < MinStopAtrMult || StopAtrMult > MaxStopAtrMult)
         {
             return false;
         }
         
-        if (TargetR1 < MinTargetR || TargetR1 > MaxTargetR)
-        {
-            return false;
-        }
-        
-        if (TargetR2 < MinTargetR || TargetR2 > MaxTargetR)
+        // Check targets are in range
+        if (TargetR1 < MinTargetR || TargetR1 > MaxTargetR || TargetR2 < MinTargetR || TargetR2 > MaxTargetR)
         {
             return false;
         }
         
         // Target R2 should be greater than R1
-        if (TargetR2 <= TargetR1)
-        {
-            return false;
-        }
-        
-        return true;
+        return TargetR2 > TargetR1;
     }
 }

@@ -72,7 +72,7 @@ namespace BotCore.Strategy
         public static void ResetDebugCounters() => _rejects.Clear();
         public static IReadOnlyDictionary<string, int> GetDebugCounters() => new Dictionary<string, int>(_rejects);
 
-        public static List<Candidate> S3(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk, BotCore.Services.IMarketTimeService? marketTimeService = null)
+        public static List<Candidate> S3(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk, BotCore.Services.MarketTimeService? marketTimeService = null)
         {
             ArgumentNullException.ThrowIfNull(symbol);
             ArgumentNullException.ThrowIfNull(env);

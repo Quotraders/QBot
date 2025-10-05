@@ -26,12 +26,20 @@ public sealed class S6Parameters
     private const double MinTargetAdrFrac = 0.05;
     private const double MaxTargetAdrFrac = 0.5;
     
+    // JSON serialization options (cached to avoid CA1869)
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true
+    };
+    
     // Default values matching current S6Config
     public TimeSpan WindowStart { get; set; } = TimeSpan.Parse("09:28", CultureInfo.InvariantCulture);
     public TimeSpan RTHOpen { get; set; } = TimeSpan.Parse("09:30", CultureInfo.InvariantCulture);
     public TimeSpan WindowEnd { get; set; } = TimeSpan.Parse("10:00", CultureInfo.InvariantCulture);
-    public TimeSpan ON_WindowStart { get; set; } = TimeSpan.Parse("18:00", CultureInfo.InvariantCulture);
-    public TimeSpan ON_WindowEnd { get; set; } = TimeSpan.Parse("09:28", CultureInfo.InvariantCulture);
+    public TimeSpan ONWindowStart { get; set; } = TimeSpan.Parse("18:00", CultureInfo.InvariantCulture);
+    public TimeSpan ONWindowEnd { get; set; } = TimeSpan.Parse("09:28", CultureInfo.InvariantCulture);
     
     // Risk parameters
     public int BaseQty { get; set; } = 1;
@@ -58,13 +66,13 @@ public sealed class S6Parameters
     public int RvolLookbackDays { get; set; } = 20;
     
     // Failed breakout
-    public int FailBreakPenetrationTicks_ES { get; set; } = 3;
-    public int FailBreakPenetrationTicks_NQ { get; set; } = 4;
+    public int FailBreakPenetrationTicksES { get; set; } = 3;
+    public int FailBreakPenetrationTicksNQ { get; set; } = 4;
     
     /// <summary>
     /// Session-specific parameter overrides. Key is session name (Overnight, RTH, PostRTH).
     /// </summary>
-    public Dictionary<string, S6Parameters> SessionOverrides { get; set; } = new();
+    public Dictionary<string, S6Parameters> SessionOverrides { get; init; } = new();
     
     /// <summary>
     /// Timestamp of last parameter load
@@ -93,14 +101,7 @@ public sealed class S6Parameters
             if (File.Exists(ParameterFilePath))
             {
                 var json = File.ReadAllText(ParameterFilePath);
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                    ReadCommentHandling = JsonCommentHandling.Skip,
-                    AllowTrailingCommas = true
-                };
-                
-                var parameters = JsonSerializer.Deserialize<S6Parameters>(json, options);
+                var parameters = JsonSerializer.Deserialize<S6Parameters>(json, JsonOptions);
                 if (parameters != null && parameters.Validate())
                 {
                     _cachedParameters = parameters;
@@ -109,9 +110,13 @@ public sealed class S6Parameters
                 }
             }
         }
-        catch (Exception)
+        catch (JsonException)
         {
-            // Fail silently, return defaults
+            // JSON parsing error - return defaults
+        }
+        catch (IOException)
+        {
+            // File access error - return defaults
         }
         
         // Return default parameters if load fails

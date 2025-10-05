@@ -26,6 +26,14 @@ public sealed class S11Parameters
     private const double MinTargetAdrFrac = 0.05;
     private const double MaxTargetAdrFrac = 0.3;
     
+    // JSON serialization options (cached to avoid CA1869)
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true
+    };
+    
     // Default values matching current S11Config
     public TimeSpan WindowStart { get; set; } = TimeSpan.Parse("13:30", CultureInfo.InvariantCulture);
     public TimeSpan WindowEnd { get; set; } = TimeSpan.Parse("15:30", CultureInfo.InvariantCulture);
@@ -63,7 +71,7 @@ public sealed class S11Parameters
     /// <summary>
     /// Session-specific parameter overrides. Key is session name (Overnight, RTH, PostRTH).
     /// </summary>
-    public Dictionary<string, S11Parameters> SessionOverrides { get; set; } = new();
+    public Dictionary<string, S11Parameters> SessionOverrides { get; init; } = new();
     
     /// <summary>
     /// Timestamp of last parameter load
@@ -92,14 +100,7 @@ public sealed class S11Parameters
             if (File.Exists(ParameterFilePath))
             {
                 var json = File.ReadAllText(ParameterFilePath);
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                    ReadCommentHandling = JsonCommentHandling.Skip,
-                    AllowTrailingCommas = true
-                };
-                
-                var parameters = JsonSerializer.Deserialize<S11Parameters>(json, options);
+                var parameters = JsonSerializer.Deserialize<S11Parameters>(json, JsonOptions);
                 if (parameters != null && parameters.Validate())
                 {
                     _cachedParameters = parameters;
@@ -108,9 +109,13 @@ public sealed class S11Parameters
                 }
             }
         }
-        catch (Exception)
+        catch (JsonException)
         {
-            // Fail silently, return defaults
+            // JSON parsing error - return defaults
+        }
+        catch (IOException)
+        {
+            // File access error - return defaults
         }
         
         // Return default parameters if load fails

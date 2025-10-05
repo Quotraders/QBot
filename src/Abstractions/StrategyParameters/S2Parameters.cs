@@ -15,15 +15,19 @@ public sealed class S2Parameters
     private const string ParameterFilePath = "artifacts/current/parameters/S2_parameters.json";
     
     // Validation ranges
-    private const decimal MinVwapThreshold = 0.05m;
-    private const decimal MaxVwapThreshold = 0.3m;
-    private const decimal MinRsi = 20m;
-    private const decimal MaxRsi = 80m;
     private const decimal MinStopAtrMult = 1.0m;
     private const decimal MaxStopAtrMult = 4.0m;
     private const decimal MinTargetAtrMult = 2.0m;
     private const decimal MaxTargetAtrMult = 6.0m;
     private const decimal MinAtrDifference = 0.5m;
+    
+    // JSON serialization options (cached to avoid CA1869)
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true
+    };
     
     // Default values matching current S2RuntimeConfig
     public decimal SigmaEnter { get; set; } = 2.0m;
@@ -31,7 +35,8 @@ public sealed class S2Parameters
     public int AtrLen { get; set; } = 14;
     public decimal SigmaForceTrend { get; set; } = 2.8m;
     public decimal MinSlopeTf2 { get; set; } = 0.18m;
-    public decimal VolZMin { get; set; } = -0.3m;
+    private const decimal DefaultVolZMin = -0.3m;
+    public decimal VolZMin { get; set; } = DefaultVolZMin;
     public decimal VolZMax { get; set; } = 2.2m;
     public int ConfirmLookback { get; set; } = 3;
     public int ValidityBars { get; set; } = 3;
@@ -53,7 +58,7 @@ public sealed class S2Parameters
     /// <summary>
     /// Session-specific parameter overrides. Key is session name (Overnight, RTH, PostRTH).
     /// </summary>
-    public Dictionary<string, S2Parameters> SessionOverrides { get; set; } = new();
+    public Dictionary<string, S2Parameters> SessionOverrides { get; init; } = new();
     
     /// <summary>
     /// Timestamp of last parameter load
@@ -82,14 +87,7 @@ public sealed class S2Parameters
             if (File.Exists(ParameterFilePath))
             {
                 var json = File.ReadAllText(ParameterFilePath);
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                    ReadCommentHandling = JsonCommentHandling.Skip,
-                    AllowTrailingCommas = true
-                };
-                
-                var parameters = JsonSerializer.Deserialize<S2Parameters>(json, options);
+                var parameters = JsonSerializer.Deserialize<S2Parameters>(json, JsonOptions);
                 if (parameters != null && parameters.Validate())
                 {
                     _cachedParameters = parameters;
@@ -98,9 +96,13 @@ public sealed class S2Parameters
                 }
             }
         }
-        catch (Exception)
+        catch (JsonException)
         {
-            // Fail silently, return defaults
+            // JSON parsing error - return defaults
+        }
+        catch (IOException)
+        {
+            // File access error - return defaults
         }
         
         // Return default parameters if load fails
