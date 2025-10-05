@@ -83,7 +83,57 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 76 violations eliminated across 9 files in 3 focused rounds
 
-### 🔧 Round 169 - Phase 2: CA1819 Array Properties Elimination (Current Session)
+### 🔧 Round 170 - Phase 2: CA1031 Generic Exception Handling (Current Session)
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 718 | 713 | Persistence.cs, EnhancedStrategyIntegration.cs | Generic catch replaced with specific exceptions + exception filters |
+
+**Total Fixed: 5 CA1031 violations**
+
+**Example Pattern Applied**:
+```csharp
+// Before (CA1031) - Swallows ALL exceptions including critical ones
+public static void Save<T>(string name, T obj) {
+    try {
+        // ... file operations ...
+    }
+    catch { }  // ❌ Dangerous - swallows OutOfMemoryException, etc.
+}
+
+// After - Specific exceptions with documentation
+public static void Save<T>(string name, T obj) {
+    try {
+        // ... file operations ...
+    }
+    catch (IOException) {
+        // Silently fail on IO errors (disk full, access issues)
+    }
+    catch (UnauthorizedAccessException) {
+        // Silently fail on permission issues
+    }
+    catch (JsonException) {
+        // Silently fail on serialization errors
+    }
+}
+
+// For integration points - use exception filters
+catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) {
+    logger.LogError(ex, "Unexpected error");
+    return fallback;
+}
+```
+
+**Rationale**: 
+- Prevents accidentally swallowing critical exceptions (OOM, StackOverflow)
+- Documents expected failure modes
+- Allows recovery from known exception types
+
+**Build Verification**: ✅ 0 CS errors, 5 CA1031 violations fixed
+
+---
+
+### 🔧 Round 169 - Phase 2: CA1819 Array Properties Elimination (Previous Session)
 
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
