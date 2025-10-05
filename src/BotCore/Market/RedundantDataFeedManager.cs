@@ -127,9 +127,13 @@ public class RedundantDataFeedManager : IDisposable
                     _logger.LogInformation("[DataFeed] Primary data feed set to: {FeedName}", feed.FeedName);
                 }
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[DataFeed] Failed to connect to {FeedName}", feed.FeedName);
+                _logger.LogError(ex, "[DataFeed] Connection operation error for {FeedName}", feed.FeedName);
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogError(ex, "[DataFeed] Connection timeout for {FeedName}", feed.FeedName);
             }
         }
 
@@ -168,7 +172,12 @@ public class RedundantDataFeedManager : IDisposable
                     return data;
                 }
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
+            {
+                lastError = ex;
+                await HandleFeedFailureAsync(_primaryFeed, ex).ConfigureAwait(false);
+            }
+            catch (TimeoutException ex)
             {
                 lastError = ex;
                 await HandleFeedFailureAsync(_primaryFeed, ex).ConfigureAwait(false);
@@ -194,7 +203,12 @@ public class RedundantDataFeedManager : IDisposable
                         return data;
                     }
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
+                {
+                    lastError = ex;
+                    await HandleFeedFailureAsync(feed, ex).ConfigureAwait(false);
+                }
+                catch (TimeoutException ex)
                 {
                     lastError = ex;
                     await HandleFeedFailureAsync(feed, ex).ConfigureAwait(false);
@@ -250,9 +264,13 @@ public class RedundantDataFeedManager : IDisposable
                 OnConsolidatedData?.Invoke(this, data);
             }
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "[DataFeed] Error processing received data");
+            _logger.LogError(ex, "[DataFeed] Invalid data received");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "[DataFeed] Operation error processing received data");
         }
     }
 

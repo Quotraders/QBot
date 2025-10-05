@@ -84,7 +84,50 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 76 violations eliminated across 9 files in 3 focused rounds
 
-### 🔧 Round 174 - Phase 2: CA1031 Exception Handling - UnifiedDecisionRouter (Current Session)
+### 🔧 Round 175 - Phase 2: CA1031 Exception Handling - Additional Services (Current Session)
+
+| Rule | Before | After | Files Affected | Fix Applied |
+|------|--------|-------|----------------|-------------|
+| CA1031 | 682 | 672 | CriticalSystemComponents.cs, RedundantDataFeedManager.cs | Replaced generic Exception catches with specific exception types (InvalidOperationException, TimeoutException, ArgumentException, AggregateException with filter) |
+
+**Total Fixed: 10 analyzer violations (10 CA1031)**
+
+**Rationale**: Applied specific exception handling to critical system components and data feed management to prevent swallowing critical exceptions while maintaining resilience for network and service failures.
+
+**Example Pattern Applied**:
+```csharp
+// Before (CA1031 Violation)
+catch (Exception ex)
+{
+    _logger.LogError(ex, "[DataFeed] Failed to connect to {FeedName}", feed.FeedName);
+}
+
+// After (Compliant)
+catch (InvalidOperationException ex)
+{
+    _logger.LogError(ex, "[DataFeed] Connection operation error for {FeedName}", feed.FeedName);
+}
+catch (TimeoutException ex)
+{
+    _logger.LogError(ex, "[DataFeed] Connection timeout for {FeedName}", feed.FeedName);
+}
+```
+
+**Files Modified**:
+1. **CriticalSystemComponents.cs**: 1 CA1031 violation fixed
+   - OnUnhandledException: InvalidOperationException, AggregateException (with filter for known exceptions)
+   
+2. **RedundantDataFeedManager.cs**: 9 CA1031 violations fixed
+   - InitializeDataFeedsAsync: InvalidOperationException, TimeoutException
+   - GetMarketDataAsync (primary feed): InvalidOperationException, TimeoutException
+   - GetMarketDataAsync (backup feeds): InvalidOperationException, TimeoutException
+   - OnDataReceived: ArgumentException, InvalidOperationException
+
+**Build Verification**: ✅ 0 CS compiler errors, 10 CA1031 violations eliminated (682→672)
+
+---
+
+### 🔧 Round 174 - Phase 2: CA1031 Exception Handling - UnifiedDecisionRouter (Previous Session)
 
 | Rule | Before | After | Files Affected | Fix Applied |
 |------|--------|-------|----------------|-------------|

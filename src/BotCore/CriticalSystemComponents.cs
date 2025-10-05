@@ -1164,9 +1164,13 @@ namespace TradingBot.Critical
                 {
                     _logger.LogWarning("Emergency position protection timed out after {Timeout}ms", EmergencyProtectionTimeoutMs);
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "Emergency position protection failed during crash handling");
+                    _logger.LogError(ex, "Emergency position protection operation error during crash handling");
+                }
+                catch (AggregateException ex) when (ex.InnerExceptions.All(e => e is OperationCanceledException || e is InvalidOperationException))
+                {
+                    _logger.LogError(ex, "Emergency position protection failed with known exceptions during crash handling");
                 }
             });
             
