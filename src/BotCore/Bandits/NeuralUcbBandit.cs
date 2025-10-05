@@ -501,15 +501,17 @@ public class OnnxNeuralNetwork : INeuralNetwork, IDisposable
     
     private readonly OnnxModelLoader _onnxLoader;
     private readonly ILogger<OnnxNeuralNetwork> _logger;
+    private readonly TradingBot.Abstractions.RlRuntimeMode _runtimeMode;
     private InferenceSession? _session;
     private readonly string _modelPath;
     private readonly Random _random = new();
     private bool _isInitialized;
 
-    public OnnxNeuralNetwork(OnnxModelLoader onnxLoader, ILogger<OnnxNeuralNetwork> logger, string modelPath = "models/neural_ucb_model.onnx")
+    public OnnxNeuralNetwork(OnnxModelLoader onnxLoader, ILogger<OnnxNeuralNetwork> logger, TradingBot.Abstractions.RlRuntimeMode runtimeMode, string modelPath = "models/neural_ucb_model.onnx")
     {
         _onnxLoader = onnxLoader;
         _logger = logger;
+        _runtimeMode = runtimeMode;
         _modelPath = modelPath;
     }
 
@@ -593,6 +595,12 @@ public class OnnxNeuralNetwork : INeuralNetwork, IDisposable
 
     public async Task TrainAsync(decimal[][] features, decimal[] targets, CancellationToken ct = default)
     {
+        // Training is blocked in InferenceOnly mode for production safety
+        if (_runtimeMode == TradingBot.Abstractions.RlRuntimeMode.InferenceOnly)
+        {
+            return;
+        }
+
         ArgumentNullException.ThrowIfNull(features);
         ArgumentNullException.ThrowIfNull(targets);
         
@@ -700,7 +708,7 @@ public class OnnxNeuralNetwork : INeuralNetwork, IDisposable
     public INeuralNetwork Clone()
     {
         // For ONNX models, return a new instance with the same model path
-        return new OnnxNeuralNetwork(_onnxLoader, _logger, _modelPath);
+        return new OnnxNeuralNetwork(_onnxLoader, _logger, _runtimeMode, _modelPath);
     }
 
     private bool _disposed;

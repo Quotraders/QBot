@@ -1219,6 +1219,15 @@ Please check the configuration and ensure all required services are registered.
         // PRODUCTION CVaR-PPO INTEGRATION - REAL RL POSITION SIZING
         // ================================================================================
         
+        // Load RlRuntimeMode from environment for production safety
+        var rlRuntimeModeStr = Environment.GetEnvironmentVariable("RlRuntimeMode") ?? "InferenceOnly";
+        var rlMode = TradingBot.Abstractions.RlRuntimeMode.InferenceOnly; // Safe default
+        if (!Enum.TryParse<TradingBot.Abstractions.RlRuntimeMode>(rlRuntimeModeStr, ignoreCase: true, out rlMode))
+        {
+            Console.WriteLine($"⚠️ [RL-SAFETY] Invalid RlRuntimeMode '{rlRuntimeModeStr}', defaulting to InferenceOnly");
+            rlMode = TradingBot.Abstractions.RlRuntimeMode.InferenceOnly;
+        }
+        
         // Register CVaR-PPO configuration
         services.AddSingleton<TradingBot.RLAgent.CVaRPPOConfig>(provider =>
         {
@@ -1240,14 +1249,14 @@ Please check the configuration and ensure all required services are registered.
             };
         });
         
-        // Register CVaR-PPO directly for proper type injection
+        // Register CVaR-PPO directly for proper type injection with runtime mode
         services.AddSingleton<TradingBot.RLAgent.CVaRPPO>(provider =>
         {
             var logger = provider.GetRequiredService<ILogger<TradingBot.RLAgent.CVaRPPO>>();
             var config = provider.GetRequiredService<TradingBot.RLAgent.CVaRPPOConfig>();
             var modelPath = Path.Combine("models", "rl", "cvar_ppo_agent.onnx");
             
-            var cvarPPO = new TradingBot.RLAgent.CVaRPPO(logger, config, modelPath);
+            var cvarPPO = new TradingBot.RLAgent.CVaRPPO(logger, config, rlMode, modelPath);
             
             // Initialize the CVaR-PPO agent
             _ = Task.Run(() =>
@@ -1255,7 +1264,7 @@ Please check the configuration and ensure all required services are registered.
                 try
                 {
                     // CVaRPPO initializes automatically in constructor
-                    logger.LogInformation("🎯 [CVAR-PPO] Production RL agent initialized successfully");
+                    logger.LogInformation("🎯 [CVAR-PPO] Production RL agent initialized with RlRuntimeMode: {Mode}", rlMode);
                 }
                 catch (Exception ex)
                 {
@@ -1574,7 +1583,18 @@ Please check the configuration and ensure all required services are registered.
         services.AddHostedService<CloudModelIntegrationService>();
 
         // Hosted services (append-only) - Enhanced learning services
-        services.AddHostedService<EnhancedBacktestLearningService>();
+        // Conditional registration based on RlRuntimeMode - prevents training in production
+        if (rlMode == TradingBot.Abstractions.RlRuntimeMode.Train)
+        {
+            services.AddHostedService<EnhancedBacktestLearningService>();
+            
+            // Warn if training mode is enabled in production environment
+            var environment = hostContext.HostingEnvironment.EnvironmentName;
+            if (environment.Equals("Production", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("⚠️ [RL-SAFETY] WARNING: Training mode enabled in Production environment!");
+            }
+        }
 
     }
 

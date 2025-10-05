@@ -115,7 +115,14 @@ public static class AlgorithmFactory
         var cvarLogger = logger as ILogger<CVaRPPO> ?? 
             new NullLogger<CVaRPPO>();
         
-        var cvarPpo = new CVaRPPO(cvarLogger, ppoConfig);
+        // Default to InferenceOnly mode for safety unless environment specifies otherwise
+        var runtimeModeStr = Environment.GetEnvironmentVariable("RlRuntimeMode") ?? "InferenceOnly";
+        if (!Enum.TryParse<TradingBot.Abstractions.RlRuntimeMode>(runtimeModeStr, ignoreCase: true, out var runtimeMode))
+        {
+            runtimeMode = TradingBot.Abstractions.RlRuntimeMode.InferenceOnly;
+        }
+        
+        var cvarPpo = new CVaRPPO(cvarLogger, ppoConfig, runtimeMode);
         
         LogMessages.CVaRPPOAlgorithmCreated(logger, System.Text.Json.JsonSerializer.Serialize(ppoConfig));
         
