@@ -1389,6 +1389,101 @@ Please check the configuration and ensure all required services are registered.
             return new BotCore.Features.FeatureBuilder(spec, config, logger, s7Service);
         });
         
+        // ================================================================================
+        // S15_RL POLICY INTEGRATION - ONNX INFERENCE WITH VALIDATION
+        // ================================================================================
+        
+        // Register OnnxRlPolicy for S15_RL strategy with startup validation
+        services.AddSingleton<BotCore.Strategy.IRlPolicy>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<BotCore.Strategy.OnnxRlPolicy>>();
+            var featureSpec = provider.GetRequiredService<BotCore.Features.FeatureSpec>();
+            
+            // Paths for RL model and manifest
+            var rlModelPath = Path.Combine("artifacts", "current", "rl_policy.onnx");
+            var rlManifestPath = Path.Combine("artifacts", "current", "rl_manifest.json");
+            
+            // Validate model file exists
+            if (!File.Exists(rlModelPath))
+            {
+                logger.LogWarning("⚠️ [S15-RL] Model file not found at {Path}. S15_RL strategy will not generate candidates.", rlModelPath);
+                // Return null policy - S15_RL will gracefully handle missing policy
+                return null!;
+            }
+            
+            // Load and validate manifest
+            try
+            {
+                if (File.Exists(rlManifestPath))
+                {
+                    var manifestJson = File.ReadAllText(rlManifestPath);
+                    var manifest = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(manifestJson);
+                    
+                    if (manifest != null)
+                    {
+                        // Extract metrics
+                        var validationSharpe = manifest.ContainsKey("validation_metrics") &&
+                                             manifest["validation_metrics"].TryGetProperty("sharpe_ratio", out var sharpeElem)
+                            ? sharpeElem.GetDouble()
+                            : 0.0;
+                        
+                        var baselineSharpe = manifest.ContainsKey("baseline_sharpe")
+                            ? manifest["baseline_sharpe"].GetDouble()
+                            : 1.0;
+                        
+                        var featureCount = manifest.ContainsKey("feature_count")
+                            ? manifest["feature_count"].GetInt32()
+                            : 12;
+                        
+                        var version = manifest.ContainsKey("version")
+                            ? manifest["version"].GetString() ?? "unknown"
+                            : "unknown";
+                        
+                        // Validate feature count matches spec
+                        if (featureCount != featureSpec.Columns.Count)
+                        {
+                            logger.LogError("❌ [S15-RL] Feature count mismatch! Manifest: {ManifestCount}, Spec: {SpecCount}. S15_RL will not load.",
+                                featureCount, featureSpec.Columns.Count);
+                            return null!;
+                        }
+                        
+                        // Validate Sharpe ratio against baseline
+                        if (validationSharpe < baselineSharpe)
+                        {
+                            logger.LogError("❌ [S15-RL] Validation Sharpe {ValidationSharpe:F2} below baseline {BaselineSharpe:F2}. Model not loaded.",
+                                validationSharpe, baselineSharpe);
+                            return null!;
+                        }
+                        
+                        logger.LogInformation("✅ [S15-RL] Manifest validated: Version={Version}, ValidationSharpe={Sharpe:F2}, Features={Count}",
+                            version, validationSharpe, featureCount);
+                    }
+                }
+                else
+                {
+                    logger.LogWarning("⚠️ [S15-RL] Manifest file not found at {Path}. Loading model without validation.", rlManifestPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "❌ [S15-RL] Failed to load/validate manifest from {Path}", rlManifestPath);
+                return null!;
+            }
+            
+            // Load ONNX policy
+            try
+            {
+                var policy = new BotCore.Strategy.OnnxRlPolicy(rlModelPath, featureSpec);
+                logger.LogInformation("✅ [S15-RL] Policy loaded successfully from {Path}", rlModelPath);
+                return policy;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "❌ [S15-RL] Failed to load ONNX policy from {Path}", rlModelPath);
+                return null!;
+            }
+        });
+        
         services.AddSingleton<BotCore.ML.StrategyMlModelManager>(provider =>
         {
             var logger = provider.GetRequiredService<ILogger<BotCore.ML.StrategyMlModelManager>>();

@@ -46,6 +46,8 @@ namespace TopstepX.Bot.Core.Services
         private readonly UnifiedTradingBrain _unifiedTradingBrain;
         private readonly ITopstepXAdapterService _topstepXAdapter;
         private readonly TradingBot.Abstractions.IS7Service? _s7Service;
+        private readonly BotCore.Strategy.IRlPolicy? _rlPolicy;
+        private readonly BotCore.Features.FeatureBuilder? _featureBuilder;
         
         // Risk Management Services - Portfolio Correlation and Volatility Guards
         private readonly CorrelationAwareCapService _correlationCapService;
@@ -220,6 +222,19 @@ namespace TopstepX.Bot.Core.Services
             if (_s7Service == null)
             {
                 logger.LogWarning("[S7-INTEGRATION] IS7Service not available - S7 strategy gates will be disabled");
+            }
+            
+            // Get RL policy and feature builder for S15_RL strategy
+            _rlPolicy = serviceProvider.GetService<BotCore.Strategy.IRlPolicy>();
+            _featureBuilder = serviceProvider.GetService<BotCore.Features.FeatureBuilder>();
+            
+            if (_rlPolicy == null || _featureBuilder == null)
+            {
+                logger.LogWarning("[S15-RL] RL policy or feature builder not available - S15_RL strategy will be disabled");
+            }
+            else
+            {
+                logger.LogInformation("✅ [S15-RL] RL policy and feature builder loaded - S15_RL strategy enabled");
             }
             
             // Initialize Production Readiness Components - NEW
@@ -698,7 +713,8 @@ namespace TopstepX.Bot.Core.Services
                 var levels = new Levels();
 
                 // PHASE 4: Generate strategy candidates using AllStrategies with ML/RL enhancements and S7 gates
-                var candidates = AllStrategies.generate_candidates(symbol, env, levels, bars, _riskEngine, _s7Service);
+                var candidates = AllStrategies.generate_candidates_with_time_filter(
+                    symbol, env, levels, bars, _riskEngine, DateTime.UtcNow, _s7Service, _rlPolicy, _featureBuilder);
                 
                 // PHASE 5: ML/RL BRAIN ENHANCEMENT - Use UnifiedTradingBrain for intelligent decisions
                 var brainDecision = await _unifiedTradingBrain.MakeIntelligentDecisionAsync(
