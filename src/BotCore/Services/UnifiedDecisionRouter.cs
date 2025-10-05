@@ -118,11 +118,6 @@ public class UnifiedDecisionRouter
             _logger.LogWarning(ex, "Decision Fusion Coordinator service resolution failed, continuing without it");
             _decisionFusion = null;
         }
-        catch (ObjectDisposedException ex)
-        {
-            _logger.LogWarning(ex, "Service provider disposed during initialization, continuing without Decision Fusion");
-            _decisionFusion = null;
-        }
         
         // Initialize strategy configurations
         _strategyConfigs = InitializeStrategyConfigs();

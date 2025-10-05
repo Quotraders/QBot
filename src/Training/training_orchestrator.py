@@ -23,7 +23,7 @@ from session_grouper import ET
 load_dotenv()
 
 # Configuration
-STRATEGIES = ['S2']  # Start with S2, add S3, S6, S11 later
+STRATEGIES = ['S2', 'S3', 'S6', 'S11']  # All active strategies for unified system
 ARTIFACTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'artifacts')
 STAGE_DIR = os.path.join(ARTIFACTS_DIR, 'stage', 'parameters')
 CURRENT_DIR = os.path.join(ARTIFACTS_DIR, 'current', 'parameters')
@@ -292,28 +292,79 @@ def train_single_strategy(strategy: str, df: pd.DataFrame) -> bool:
     
     print(validation_result)
     
-    # If validation passed, save parameters
+    # If validation passed, run Gate 1 comprehensive validation
     if validation_result.passed:
-        print("\n✓ Validation PASSED - Saving optimized parameters")
+        print("\n✓ Basic validation PASSED - Running Gate 1 comprehensive validation...")
         
-        baseline_sharpe = validation_result.metrics.get('baseline_sharpe', 0.0)
-        save_optimized_parameters(
+        # Import Gate 1 validator
+        from parameter_optimization_validator import (
+            validate_optimized_parameters_gate,
+            create_parameter_manifest,
+            save_manifest
+        )
+        from fast_backtest_engine import backtest_s2, backtest_s3
+        
+        # Select appropriate backtest function
+        backtest_funcs = {
+            'S2': backtest_s2,
+            'S3': backtest_s3,
+            'S6': backtest_s2,  # Use S2 engine as fallback
+            'S11': backtest_s2  # Use S2 engine as fallback
+        }
+        backtest_func = backtest_funcs.get(strategy, backtest_s2)
+        
+        # Use last 20-60 days as holdout (out-of-sample validation)
+        holdout_days = min(60, int(len(df) * 0.2))
+        holdout_df = df.iloc[-holdout_days:]
+        
+        # Run Gate 1 validation
+        gate_passed, gate_metrics, gate_reason = validate_optimized_parameters_gate(
+            baseline_params,
+            optimized_params,
+            holdout_df,
             strategy,
-            session_results,
-            baseline_sharpe,
-            validation_result.metrics
+            backtest_func
         )
         
-        # Generate report
-        report = generate_performance_report(strategy, session_results, validation_result)
-        report_path = os.path.join(STAGE_DIR, f"{strategy}_optimization_report.md")
-        with open(report_path, 'w') as f:
-            f.write(report)
-        print(f"  Generated report: {report_path}")
-        
-        return True
+        if gate_passed:
+            print("\n✓ Gate 1 PASSED - Saving optimized parameters")
+            
+            baseline_sharpe = validation_result.metrics.get('baseline_sharpe', 0.0)
+            save_optimized_parameters(
+                strategy,
+                session_results,
+                baseline_sharpe,
+                validation_result.metrics
+            )
+            
+            # Create and save manifest
+            holdout_start = holdout_df.index[0] if hasattr(holdout_df, 'index') else df.iloc[-holdout_days]['timestamp']
+            holdout_end = holdout_df.index[-1] if hasattr(holdout_df, 'index') else df.iloc[-1]['timestamp']
+            
+            manifest = create_parameter_manifest(
+                strategy,
+                optimized_params,
+                gate_metrics,
+                (holdout_start, holdout_end)
+            )
+            
+            manifest_path = os.path.join(STAGE_DIR, f"{strategy}_parameters_manifest.json")
+            save_manifest(manifest, manifest_path)
+            
+            # Generate report
+            report = generate_performance_report(strategy, session_results, validation_result)
+            report_path = os.path.join(STAGE_DIR, f"{strategy}_optimization_report.md")
+            with open(report_path, 'w') as f:
+                f.write(report)
+            print(f"  Generated report: {report_path}")
+            
+            return True
+        else:
+            print(f"\n✗ Gate 1 FAILED - {gate_reason}")
+            print("  Parameters NOT saved - keeping current baseline")
+            return False
     else:
-        print("\n✗ Validation FAILED - Parameters NOT saved")
+        print("\n✗ Basic validation FAILED - Parameters NOT saved")
         return False
 
 

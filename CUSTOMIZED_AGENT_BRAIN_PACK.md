@@ -246,8 +246,8 @@ public static class AllStrategies
         ["S3"] = S3,   // Bollinger Compression/breakout setups
         ["S6"] = S6,   // Opening Drive - Critical window strategy
         ["S11"] = S11, // Afternoon Fade - Frequently used
-        ["S12"] = S12, // Occasionally used supplementary
-        ["S13"] = S13, // Occasionally used supplementary
+        // S7 acts as gate filter (not direct strategy)
+        // S15_RL in shadow-only mode for continuous learning
     };
     
     public static List<Signal> generate_candidates(

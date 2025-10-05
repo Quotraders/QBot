@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using BotCore.Features;
 using BotCore.Models;
@@ -9,8 +10,13 @@ namespace BotCore.Strategy;
 
 /// <summary>
 /// S15_RL Strategy - Reinforcement Learning based trading strategy.
+/// SHADOW-ONLY MODE: Records predictions and learns continuously without emitting live orders.
 /// Competes with S2/S3/S6/S11 strategies within the S7 gate regime.
 /// Uses ONNX model for action prediction based on 12 standardized features.
+/// 
+/// Configuration:
+/// - S15_TRADING_ENABLED=0 : Shadow mode (default) - records predictions, no live orders
+/// - S15_SHADOW_LEARNING_ENABLED=1 : Continuous learning from observations
 /// </summary>
 public static class S15_RlStrategy
 {
@@ -22,6 +28,13 @@ public static class S15_RlStrategy
     private const int DefaultQty = 1;                           // Default position size
     private const int MinimumBarsRequired = 20;                 // Minimum bars for feature computation
     private const decimal MinimumRiskRewardRatio = 1.0m;        // Minimum acceptable risk-reward ratio
+    
+    // Shadow-only mode flag (environment-driven)
+    private static bool IsTradingEnabled => 
+        Environment.GetEnvironmentVariable("S15_TRADING_ENABLED")?.Trim() == "1";
+    
+    private static bool IsShadowLearningEnabled => 
+        Environment.GetEnvironmentVariable("S15_SHADOW_LEARNING_ENABLED")?.Trim() == "1";
     
     /// <summary>
     /// Generate trading candidates using RL policy inference.
@@ -122,11 +135,29 @@ public static class S15_RlStrategy
         // Check confidence threshold
         if (confidence < DefaultConfidenceThreshold)
         {
-            // Confidence too low, no trade
+            // Confidence too low, no trade - but log for shadow learning
+            if (IsShadowLearningEnabled)
+            {
+                LogShadowPrediction(symbol, currentTime, action, confidence, currentPrice, "low_confidence");
+            }
             return candidates;
         }
 
-        // Generate candidate based on action
+        // Shadow learning: always record prediction regardless of trading mode
+        if (IsShadowLearningEnabled)
+        {
+            LogShadowPrediction(symbol, currentTime, action, confidence, currentPrice, "prediction");
+        }
+
+        // If trading is disabled (shadow-only mode), skip candidate emission but continue learning
+        if (!IsTradingEnabled)
+        {
+            // Log that we're in shadow mode and would have traded
+            Console.WriteLine($"[S15-RL-SHADOW] Would trade {symbol}: action={action}, confidence={confidence:F2}, price={currentPrice} (trading disabled)");
+            return candidates; // Return empty list - no live orders
+        }
+
+        // Generate candidate based on action (only if trading is enabled)
         if (action == 1) // Long
         {
             var entry = currentPrice;
@@ -194,5 +225,28 @@ public static class S15_RlStrategy
         // else action == 0 (flat/hold), return empty list
 
         return candidates;
+    }
+    
+    /// <summary>
+    /// Log shadow prediction for learning without executing trades.
+    /// Writes to shadow learning log for continuous model improvement.
+    /// </summary>
+    private static void LogShadowPrediction(string symbol, DateTime time, int action, decimal confidence, decimal price, string reason)
+    {
+        try
+        {
+            var logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs", "shadow_learning");
+            Directory.CreateDirectory(logDir);
+            
+            var logFile = Path.Combine(logDir, $"s15_shadow_{DateTime.UtcNow:yyyyMMdd}.log");
+            var logEntry = $"{time:yyyy-MM-dd HH:mm:ss},{symbol},{action},{confidence:F4},{price:F2},{reason}";
+            
+            File.AppendAllLines(logFile, new[] { logEntry });
+        }
+        catch (Exception ex)
+        {
+            // Silently fail - don't disrupt trading for logging issues
+            Console.WriteLine($"[S15-RL] Shadow logging failed: {ex.Message}");
+        }
     }
 }
