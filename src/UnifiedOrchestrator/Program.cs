@@ -1386,7 +1386,8 @@ Please check the configuration and ensure all required services are registered.
             var config = provider.GetRequiredService<BotCore.Features.FeatureComputationConfig>();
             var logger = provider.GetRequiredService<ILogger<BotCore.Features.FeatureBuilder>>();
             var s7Service = provider.GetService<TradingBot.Abstractions.IS7Service>();
-            return new BotCore.Features.FeatureBuilder(spec, config, logger, s7Service);
+            var marketTimeService = provider.GetService<BotCore.Services.MarketTimeService>();
+            return new BotCore.Features.FeatureBuilder(spec, config, logger, s7Service, marketTimeService);
         });
         
         // ================================================================================
