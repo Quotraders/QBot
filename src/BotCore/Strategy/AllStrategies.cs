@@ -107,10 +107,10 @@ namespace BotCore.Strategy
             var currentSession = BotCore.Config.EsNqTradingSchedule.GetCurrentSession(currentTimeSpan);
             var allowedStrategies = currentSession != null && currentSession.Strategies.TryGetValue(symbol, out var strategies)
                 ? strategies
-                : new[] { "S1", "S2", "S3", "S4", "S5", "S6", "S8", "S9", "S10", "S11", "S12", "S13", "S14" };
+                : new[] { "S2", "S3", "S6", "S11" };
 
             var strategyMethods = new List<(string, Func<string, Env, Levels, IList<Bar>, RiskEngine, List<Candidate>>)> {
-                ("S1", S1), ("S2", S2), ("S3", S3), ("S4", S4), ("S5", S5), ("S6", S6), ("S8", S8), ("S9", S9), ("S10", S10), ("S11", S11), ("S12", S12), ("S13", S13), ("S14", S14)
+                ("S2", S2), ("S3", S3), ("S6", S6), ("S11", S11)
             };
 
             foreach (var (id, method) in strategyMethods)
@@ -203,7 +203,7 @@ namespace BotCore.Strategy
 
         private static bool ShouldRunStrategyAtTime(string strategyId, int hour)
         {
-            // Time-based strategy performance thresholds
+            // Time-based strategy performance thresholds - only active strategies S2, S3, S6, S11
             var performanceThresholds = new Dictionary<string, Dictionary<int, double>>
             {
                 ["S2"] = new() { [0] = 0.85, [3] = 0.82, [12] = 0.88, [19] = 0.83, [23] = 0.87 },
@@ -239,19 +239,10 @@ namespace BotCore.Strategy
 
             var map = new Dictionary<string, Func<string, Env, Levels, IList<Bar>, RiskEngine, List<Candidate>>>(StringComparer.OrdinalIgnoreCase)
             {
-                ["S1"] = S1,
                 ["S2"] = S2,
                 ["S3"] = S3,
-                ["S4"] = S4,
-                ["S5"] = S5,
                 ["S6"] = S6,
-                ["S8"] = S8,
-                ["S9"] = S9,
-                ["S10"] = S10,
                 ["S11"] = S11,
-                ["S12"] = S12,
-                ["S13"] = S13,
-                ["S14"] = S14,
             };
 
             if (!def.Enabled) return [];
@@ -343,19 +334,10 @@ namespace BotCore.Strategy
             
             var map = new Dictionary<string, Func<string, Env, Levels, IList<Bar>, RiskEngine, List<Candidate>>>(StringComparer.OrdinalIgnoreCase)
             {
-                ["S1"] = S1,
                 ["S2"] = S2,
                 ["S3"] = S3,
-                ["S4"] = S4,
-                ["S5"] = S5,
                 ["S6"] = S6,
-                ["S8"] = S8,
-                ["S9"] = S9,
-                ["S10"] = S10,
                 ["S11"] = S11,
-                ["S12"] = S12,
-                ["S13"] = S13,
-                ["S14"] = S14,
             };
             var signals = new List<Signal>();
             foreach (var def in defs.Where(d => d.Enabled))
@@ -460,56 +442,26 @@ namespace BotCore.Strategy
         }
 
         // S1–S14 strategies
-        public static List<Candidate> S1(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
-        {
-            ArgumentNullException.ThrowIfNull(env);
-            
-            var lst = new List<Candidate>();
-            // Zero-warmup versions allow immediate use; need at least 2 bars for cross checks
-            const int fastLen = 9;
-            const int slowLen = 21;
-            const int atrLen = 14;
-            if (bars is null || bars.Count < 2) return lst;
+        // ========================================================================
+        // RETIRED STRATEGIES: S1, S4, S5, S8, S9, S10, S12, S13, S14
+        // Only S2, S3, S6, S11 remain active per production architecture
+        // ========================================================================
 
-            // Compute EMAs and ATR (no warmup seed)
-            var emaFast = EmaNoWarmup(bars, fastLen);
-            var emaSlow = EmaNoWarmup(bars, slowLen);
-            var atr = AtrNoWarmup(bars, atrLen);
-            int n = bars.Count - 1;
-            var last = bars[n].Close;
+        // S1 - RETIRED - Simple EMA crossover strategy
+        // S4 - RETIRED - Basic long setup
+        // S5 - RETIRED - Basic short setup
+        // S8 - RETIRED - Keltner channel strategy
+        // S9 - RETIRED - Basic short with ATR stops
+        // S10 - RETIRED - Basic long with large stops
+        // S12 - RETIRED - Extended ATR long
+        // S13 - RETIRED - Extended ATR short
+        // S14 - RETIRED - Very high quality long
 
-            bool bullCross = emaFast[n - 1] <= emaSlow[n - 1] && emaFast[n] > emaSlow[n];
-            bool bearCross = emaFast[n - 1] >= emaSlow[n - 1] && emaFast[n] < emaSlow[n];
-            bool fastUp = emaFast[n] > emaFast[n - 1];
-            bool fastDown = emaFast[n] < emaFast[n - 1];
-
-            // Simple RS gate proxy using env.volz if present (usable band: [0.5, 2.0))
-            var rsOk = !env.volz.HasValue || (Math.Abs(env.volz.Value) >= 0.5m && Math.Abs(env.volz.Value) < 2.0m);
-            // Basic ATR floor
-            var atrOk = atr > 0m;
-
-            if (rsOk && atrOk && bullCross && fastUp)
-            {
-                var stop = last - 1.5m * atr;
-                var t1 = last + 2.0m * atr;
-                if (t1 > last && stop < last)
-                {
-                    var e = new Env { Symbol = symbol, atr = atr, volz = env.volz };
-                    add_cand(lst, "S1", symbol, "BUY", last, stop, t1, e, risk, null, bars);
-                }
-            }
-            if (rsOk && atrOk && bearCross && fastDown)
-            {
-                var stop = last + 1.5m * atr;
-                var t1 = last - 2.0m * atr;
-                if (t1 < last && stop > last)
-                {
-                    var e = new Env { Symbol = symbol, atr = atr, volz = env.volz };
-                    add_cand(lst, "S1", symbol, "SELL", last, stop, t1, e, risk, null, bars);
-                }
-            }
-            return lst;
-        }
+        // ========================================================================
+        // ACTIVE STRATEGIES: S2, S3, S6, S11
+        // ========================================================================
+        
+        // S2 - VWAP Mean Reversion (Active - Full Implementation below)
 
         // --- helpers ---
         private static List<decimal> EmaNoWarmup(IList<Bar> bars, int len)
@@ -1005,37 +957,7 @@ namespace BotCore.Strategy
 
         // S3 internals moved to S3Strategy.cs
 
-        public static List<Candidate> S4(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
-        {
-            ArgumentNullException.ThrowIfNull(env);
-            ArgumentNullException.ThrowIfNull(bars);
-            
-            var lst = new List<Candidate>();
-            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > MinRiskRewardRatio)
-            {
-                var entry = bars[^1].Close;
-                var stop = entry - env.atr.Value * RsiMultiplier;
-                var t1 = entry + env.atr.Value * 3.0m;
-                add_cand(lst, "S4", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
-            }
-            return lst;
-        }
 
-        public static List<Candidate> S5(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
-        {
-            ArgumentNullException.ThrowIfNull(env);
-            ArgumentNullException.ThrowIfNull(bars);
-            
-            var lst = new List<Candidate>();
-            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > LowQualityThreshold)
-            {
-                var entry = bars[^1].Close;
-                var stop = entry + env.atr.Value * 1.5m;
-                var t1 = entry - env.atr.Value * 3.0m;
-                add_cand(lst, "S5", symbol, "SELL", entry, stop, t1, env, risk, null, bars);
-            }
-            return lst;
-        }
 
         public static List<Candidate> S6(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
         {
@@ -1084,55 +1006,7 @@ namespace BotCore.Strategy
         // S7 strategy logic handled by IS7Service via dependency injection at higher levels
         // S7 filtering applied through StrategyGates.PassesS7Gate() and feature bus integration
 
-        public static List<Candidate> S8(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
-        {
-            var lst = new List<Candidate>();
-            if (bars is null || bars.Count < MinimumBarCountForS3) return lst;
-            var (mid, up, dn) = Keltner(bars, RsiOverboughtLevel, RsiOverboughtLevel, RsiMultiplier);
-            var px = bars[^1].Close;
-            var ema20 = EmaNoWarmup(bars, 20);
-            bool midRising = ema20[^1] > ema20[^2];
-            if (midRising && px > mid)
-            {
-                var entry = px;
-                var stop = Math.Min(entry, dn);
-                var t1 = up;
-                add_cand(lst, "S8", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
-            }
-            return lst;
-        }
 
-        public static List<Candidate> S9(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
-        {
-            ArgumentNullException.ThrowIfNull(env);
-            ArgumentNullException.ThrowIfNull(bars);
-            
-            var lst = new List<Candidate>();
-            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > MinTargetRatioLong)
-            {
-                var entry = bars[^1].Close;
-                var stop = entry + env.atr.Value * 2.5m;
-                var t1 = entry - env.atr.Value * 5.0m;
-                add_cand(lst, "S9", symbol, "SELL", entry, stop, t1, env, risk, null, bars);
-            }
-            return lst;
-        }
-
-        public static List<Candidate> S10(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
-        {
-            ArgumentNullException.ThrowIfNull(env);
-            ArgumentNullException.ThrowIfNull(bars);
-            
-            var lst = new List<Candidate>();
-            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > MediumQualityThreshold)
-            {
-                var entry = bars[^1].Close;
-                var stop = entry - env.atr.Value * 3.0m;
-                var t1 = entry + env.atr.Value * 6.0m;
-                add_cand(lst, "S10", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
-            }
-            return lst;
-        }
 
         public static List<Candidate> S11(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
         {
@@ -1178,53 +1052,7 @@ namespace BotCore.Strategy
             return lst;
         }
 
-        public static List<Candidate> S12(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
-        {
-            ArgumentNullException.ThrowIfNull(env);
-            ArgumentNullException.ThrowIfNull(bars);
-            
-            var lst = new List<Candidate>();
-            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > HighQualityThreshold)
-            {
-                var entry = bars[^1].Close;
-                var stop = entry - env.atr.Value * 3.5m;
-                var t1 = entry + env.atr.Value * 7.0m;
-                add_cand(lst, "S12", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
-            }
-            return lst;
-        }
 
-        public static List<Candidate> S13(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
-        {
-            ArgumentNullException.ThrowIfNull(env);
-            ArgumentNullException.ThrowIfNull(bars);
-            
-            var lst = new List<Candidate>();
-            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > HighQualityThreshold)
-            {
-                var entry = bars[^1].Close;
-                var stop = entry + env.atr.Value * 3.5m;
-                var t1 = entry - env.atr.Value * 7.0m;
-                add_cand(lst, "S13", symbol, "SELL", entry, stop, t1, env, risk, null, bars);
-            }
-            return lst;
-        }
-
-        public static List<Candidate> S14(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
-        {
-            ArgumentNullException.ThrowIfNull(env);
-            ArgumentNullException.ThrowIfNull(bars);
-            
-            var lst = new List<Candidate>();
-            if (bars.Count > 0 && env.atr.HasValue && env.atr.Value > VeryHighQualityThreshold)
-            {
-                var entry = bars[^1].Close;
-                var stop = entry - env.atr.Value * 4.0m;
-                var t1 = entry + env.atr.Value * 8.0m;
-                add_cand(lst, "S14", symbol, "BUY", entry, stop, t1, env, risk, null, bars);
-            }
-            return lst;
-        }
 
         public static void add_cand(List<Candidate> lst, string sid, string symbol, string sideTxt,
                                  decimal entry, decimal stop, decimal t1, Env env, RiskEngine risk, string? tag = null, IList<Bar>? bars = null)

@@ -23,7 +23,7 @@ from session_grouper import ET
 load_dotenv()
 
 # Configuration
-STRATEGIES = ['S2']  # Start with S2, add S3, S6, S11 later
+STRATEGIES = ['S2', 'S3', 'S6', 'S11']  # All active strategies for unified system
 ARTIFACTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'artifacts')
 STAGE_DIR = os.path.join(ARTIFACTS_DIR, 'stage', 'parameters')
 CURRENT_DIR = os.path.join(ARTIFACTS_DIR, 'current', 'parameters')

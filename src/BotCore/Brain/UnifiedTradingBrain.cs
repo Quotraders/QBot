@@ -1163,16 +1163,14 @@ namespace BotCore.Brain
 
         private static Func<string, Env, Levels, IList<Bar>, RiskEngine, List<Candidate>> GetStrategyFunction(string strategy)
         {
-            // Map to your ACTUALLY USED strategy functions in AllStrategies.cs
+            // Map to ACTIVE strategy functions in AllStrategies.cs (only S2, S3, S6, S11)
             return strategy switch
             {
-                "S2" => AllStrategies.S2,   // Mean reversion (most used)
-                "S3" => AllStrategies.S3,   // Compression/breakout setups  
+                "S2" => AllStrategies.S2,   // VWAP Mean reversion (most used)
+                "S3" => AllStrategies.S3,   // Bollinger Squeeze/breakout setups  
                 "S6" => AllStrategies.S6,   // Opening Drive (critical window)
-                "S11" => AllStrategies.S11, // Frequently used
-                "S12" => AllStrategies.S12, // Occasionally used
-                "S13" => AllStrategies.S13, // Occasionally used
-                _ => AllStrategies.S2 // Default to your most reliable strategy
+                "S11" => AllStrategies.S11, // ADR/IB Exhaustion fade
+                _ => AllStrategies.S2 // Default to most reliable strategy
             };
         }
 
