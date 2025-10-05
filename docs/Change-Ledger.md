@@ -84,7 +84,73 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 76 violations eliminated across 9 files in 3 focused rounds
 
-### 🔧 Round 172 - Phase 2: Unused Private Fields Cleanup (Current Session)
+### 🔧 Round 173 - Phase 2: S109 Magic Numbers & CA1031 Exception Handling (Current Session)
+
+| Rule | Before | After | Files Affected | Fix Applied |
+|------|--------|-------|----------------|-------------|
+| S109 | 492 | 486 | OnnxRlPolicy.cs, FeatureComputationConfig.cs, S15_RlStrategy.cs | Extracted magic numbers to named constants |
+| CA1031 | 710 | 702 | OnnxRlPolicy.cs, S15_RlStrategy.cs | Replaced generic Exception catches with specific exception types |
+
+**Total Fixed: 14 analyzer violations (6 S109 + 8 CA1031)**
+
+**Rationale**: Applied systematic Priority 1 fixes per Analyzer-Fix-Guidebook. Magic numbers extracted to configuration-driven constants with clear intent. Generic exception handlers replaced with specific exception types (OnnxRuntimeException, InvalidOperationException, ArgumentException) to prevent accidentally swallowing critical exceptions while maintaining graceful degradation for ML inference failures.
+
+**Example Pattern Applied - S109 Magic Numbers**:
+```csharp
+// Before (S109 Violation)
+if (bars.Count < 20) return candidates;
+for (int i = 1; i < 3; i++)
+if (reward_amount / risk_amount < 1.0m)
+
+// After (Compliant)
+private const int MinimumBarsRequired = 20;
+private const int ActionSpaceSize = 3;
+private const decimal MinimumRiskRewardRatio = 1.0m;
+
+if (bars.Count < MinimumBarsRequired) return candidates;
+for (int i = 1; i < ActionSpaceSize; i++)
+if (reward_amount / risk_amount < MinimumRiskRewardRatio)
+```
+
+**Example Pattern Applied - CA1031 Specific Exception Handling**:
+```csharp
+// Before (CA1031 Violation)
+catch (Exception)
+{
+    // On any error, return flat/hold action (0)
+    return 0;
+}
+
+// After (Compliant)
+catch (OnnxRuntimeException)
+{
+    // ONNX inference error - return safe flat/hold action
+    return FlatHoldActionFallback;
+}
+catch (InvalidOperationException)
+{
+    // Invalid tensor operation - return safe flat/hold action
+    return FlatHoldActionFallback;
+}
+```
+
+**Files Modified**:
+1. **OnnxRlPolicy.cs**: 3 S109 violations + 2 CA1031 violations fixed
+   - Added constants: ActionSpaceSize (3), FlatHoldActionFallback (0), ZeroConfidenceFallback (0m)
+   - Specific exceptions: OnnxRuntimeException, InvalidOperationException
+   
+2. **FeatureComputationConfig.cs**: 2 S109 violations fixed
+   - Added constants: DefaultZScoreThresholdBullish (1.0m), DefaultZScoreThresholdBearish (-1.0m)
+   
+3. **S15_RlStrategy.cs**: 3 S109 violations + 6 CA1031 violations fixed
+   - Added constants: MinimumBarsRequired (20), MinimumRiskRewardRatio (1.0m)
+   - Specific exceptions: ArgumentException, InvalidOperationException for feature computation and policy inference
+
+**Build Verification**: ✅ 0 CS compiler errors, 14 analyzer violations eliminated (S109: 492→486, CA1031: 710→702)
+
+---
+
+### 🔧 Round 172 - Phase 2: Unused Private Fields Cleanup (Previous Session)
 
 | Rule | Before | After | Files Affected | Fix Applied |
 |------|--------|-------|----------------|-------------|

@@ -12,6 +12,11 @@ namespace BotCore.Strategy;
 /// </summary>
 public sealed class OnnxRlPolicy : IRlPolicy, IDisposable
 {
+    // RL policy constants
+    private const int ActionSpaceSize = 3;                  // Number of possible actions (Buy, Sell, Hold)
+    private const int FlatHoldActionFallback = 0;           // Fallback action when error occurs (Hold/Flat)
+    private const decimal ZeroConfidenceFallback = 0m;      // Fallback confidence on error
+    
     private readonly InferenceSession _session;
     private readonly FeatureSpec _featureSpec;
     private bool _disposed;
@@ -90,7 +95,7 @@ public sealed class OnnxRlPolicy : IRlPolicy, IDisposable
             // Find argmax
             var maxIdx = 0;
             var maxValue = logits[0];
-            for (int i = 1; i < 3; i++)
+            for (int i = 1; i < ActionSpaceSize; i++)
             {
                 if (logits[i] > maxValue)
                 {
@@ -106,12 +111,17 @@ public sealed class OnnxRlPolicy : IRlPolicy, IDisposable
             }
 
             // Fallback to flat if mapping not found
-            return 0;
+            return FlatHoldActionFallback;
         }
-        catch (Exception)
+        catch (OnnxRuntimeException)
         {
-            // On any error, return flat/hold action (0)
-            return 0;
+            // ONNX inference error - return safe flat/hold action
+            return FlatHoldActionFallback;
+        }
+        catch (InvalidOperationException)
+        {
+            // Invalid tensor operation - return safe flat/hold action
+            return FlatHoldActionFallback;
         }
     }
 
@@ -171,10 +181,15 @@ public sealed class OnnxRlPolicy : IRlPolicy, IDisposable
             var maxProb = probabilities.Max();
             return (decimal)maxProb;
         }
-        catch (Exception)
+        catch (OnnxRuntimeException)
         {
-            // On any error, return zero confidence
-            return 0m;
+            // ONNX inference error - return zero confidence
+            return ZeroConfidenceFallback;
+        }
+        catch (InvalidOperationException)
+        {
+            // Invalid tensor operation - return zero confidence
+            return ZeroConfidenceFallback;
         }
     }
 
