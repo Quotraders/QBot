@@ -88,10 +88,10 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 | Rule | Before | After | Files Affected | Fix Applied |
 |------|--------|-------|----------------|-------------|
-| S109 | 492 | 486 | OnnxRlPolicy.cs, FeatureComputationConfig.cs, S15_RlStrategy.cs | Extracted magic numbers to named constants |
-| CA1031 | 710 | 702 | OnnxRlPolicy.cs, S15_RlStrategy.cs | Replaced generic Exception catches with specific exception types |
+| S109 | 492 | 464 | OnnxRlPolicy.cs, FeatureComputationConfig.cs, S15_RlStrategy.cs, RedundantDataFeedManager.cs (TopstepXDataFeed, BackupDataFeed), AllStrategies.cs | Extracted magic numbers to named constants |
+| CA1031 | 710 | 700 | OnnxRlPolicy.cs, S15_RlStrategy.cs, AllStrategies.cs | Replaced generic Exception catches with specific exception types |
 
-**Total Fixed: 14 analyzer violations (6 S109 + 8 CA1031)**
+**Total Fixed: 38 analyzer violations (28 S109 + 10 CA1031)**
 
 **Rationale**: Applied systematic Priority 1 fixes per Analyzer-Fix-Guidebook. Magic numbers extracted to configuration-driven constants with clear intent. Generic exception handlers replaced with specific exception types (OnnxRuntimeException, InvalidOperationException, ArgumentException) to prevent accidentally swallowing critical exceptions while maintaining graceful degradation for ML inference failures.
 
@@ -146,7 +146,14 @@ catch (InvalidOperationException)
    - Added constants: MinimumBarsRequired (20), MinimumRiskRewardRatio (1.0m)
    - Specific exceptions: ArgumentException, InvalidOperationException for feature computation and policy inference
 
-**Build Verification**: ✅ 0 CS compiler errors, 14 analyzer violations eliminated (S109: 492→486, CA1031: 710→702)
+4. **RedundantDataFeedManager.cs**: 15 S109 violations fixed in TopstepXDataFeed and BackupDataFeed
+   - TopstepXDataFeed constants: ConnectionDelayMs (100), NetworkDelayMs (50)
+   - BackupDataFeed constants: SlowerConnectionDelayMs (200), SlowerResponseDelayMs (100), OrderBookDelayMs (100), BasePrice (4500.00m), PriceVariationRange (8.0), PriceVariationOffset (4.0), VolumeAmount (800), BidPrice (4499.50m), AskPrice (4500.50m)
+
+5. **AllStrategies.cs**: 2 CA1031 violations fixed
+   - Specific exceptions: ArgumentException, InvalidOperationException for S15_RL strategy integration
+
+**Build Verification**: ✅ 0 CS compiler errors, 38 analyzer violations eliminated (S109: 492→464, CA1031: 710→700)
 
 ---
 
