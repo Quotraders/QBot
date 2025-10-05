@@ -11,12 +11,13 @@
     {"name": "adr_pct", "index": 7, "fillValue": 0.5},
     {"name": "hour_frac", "index": 8, "fillValue": 0.5},
     {"name": "session_flag", "index": 9, "fillValue": 0},
-    {"name": "pos", "index": 10, "fillValue": 0},
-    {"name": "s7_regime", "index": 11, "fillValue": 0}
+    {"name": "session_type", "index": 10, "fillValue": 0},
+    {"name": "pos", "index": 11, "fillValue": 0},
+    {"name": "s7_regime", "index": 12, "fillValue": 0}
   ],
   "scaler": {
-    "mean": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    "std": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    "mean": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    "std": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
   },
   "inference": {
     "logitToAction": {

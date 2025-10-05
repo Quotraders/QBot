@@ -1,5 +1,6 @@
 using BotCore.Market;
 using BotCore.Config;
+using BotCore.Services;
 using TradingBot.Abstractions;
 using Microsoft.Extensions.Logging;
 
@@ -14,6 +15,7 @@ public class FeatureBuilder
 {
     private readonly FeatureSpec _spec;
     private readonly IS7Service? _s7Service;
+    private readonly MarketTimeService? _marketTimeService;
     private readonly FeatureComputationConfig _config;
     private readonly ILogger<FeatureBuilder> _logger;
 
@@ -21,7 +23,8 @@ public class FeatureBuilder
         FeatureSpec spec, 
         FeatureComputationConfig config,
         ILogger<FeatureBuilder> logger,
-        IS7Service? s7Service = null)
+        IS7Service? s7Service = null,
+        MarketTimeService? marketTimeService = null)
     {
         ArgumentNullException.ThrowIfNull(spec);
         ArgumentNullException.ThrowIfNull(config);
@@ -31,6 +34,7 @@ public class FeatureBuilder
         _config = config;
         _logger = logger;
         _s7Service = s7Service;
+        _marketTimeService = marketTimeService;
         
         // Validate configuration on construction
         _config.Validate();
@@ -46,7 +50,7 @@ public class FeatureBuilder
     /// <param name="currentTime">Current time for session detection</param>
     /// <param name="env">Optional environment data for ATR</param>
     /// <param name="levels">Optional order book levels for imbalance</param>
-    /// <returns>Standardized feature array of length 12</returns>
+    /// <returns>Standardized feature array of length 13</returns>
     public decimal[] BuildFeatures(
         string symbol,
         List<Bar> bars,
@@ -61,7 +65,7 @@ public class FeatureBuilder
         
         try
         {
-            // Compute raw features (12 features optimized for S2/S3/S6/S11)
+            // Compute raw features (13 features optimized for S2/S3/S6/S11 + session_type)
             features[0] = ComputeReturn1m(bars);
             features[1] = ComputeReturn5m(bars);
             features[2] = ComputeAtr14(bars, env);
@@ -72,8 +76,9 @@ public class FeatureBuilder
             features[7] = ComputeAdrPct(bars);
             features[8] = ComputeHourFraction(currentTime);
             features[9] = ComputeSessionFlag(currentTime);
-            features[10] = currentPos;
-            features[11] = ComputeS7Regime(symbol);
+            features[10] = ComputeSessionType(symbol, currentTime);
+            features[11] = currentPos;
+            features[12] = ComputeS7Regime(symbol);
             
             // Apply standardization: (x - mean) / std
             for (int i = 0; i < features.Length; i++)
@@ -464,17 +469,62 @@ public class FeatureBuilder
         }
     }
 
+    private decimal ComputeSessionType(string symbol, DateTime currentTime)
+    {
+        // Compute session type for parameter optimization: Overnight=0, RTH/Open=1, PostRTH=2
+        // This is different from session_flag which maps to 11 fine-grained trading sessions
+        
+        try
+        {
+            if (_marketTimeService == null)
+            {
+                // If no market time service available, fall back to simple time-of-day logic
+                var hour = currentTime.Hour;
+                // Rough approximation: 18:00-09:30 = Overnight(0), 09:30-16:00 = RTH(1), 16:00-18:00 = PostRTH(2)
+                if (hour >= 18 || hour < 9 || (hour == 9 && currentTime.Minute < 30))
+                    return 0; // Overnight
+                else if (hour >= 16)
+                    return 2; // PostRTH
+                else
+                    return 1; // RTH
+            }
+            
+            // Use MarketTimeService to get accurate session
+            var sessionTask = _marketTimeService.GetCurrentSessionAsync(symbol);
+            sessionTask.Wait(); // Synchronous wait for async method
+            var sessionName = sessionTask.Result;
+            
+            // Map MarketTimeService session names to categorical values
+            return sessionName switch
+            {
+                "Overnight" => 0,
+                "PreMarket" => 0,  // Treat pre-market as overnight
+                "Open" => 1,       // RTH open
+                "RTH" => 1,        // Regular trading hours
+                "PostMarket" => 2, // Post-market
+                "Closed" => 0,     // Treat closed as overnight
+                _ => _spec.Columns[10].FillValue
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[FEATURE-BUILDER] Failed to compute session type for symbol {Symbol}: {ExceptionType}. Using fill value.", 
+                symbol, ex.GetType().Name);
+            return _spec.Columns[10].FillValue;
+        }
+    }
+
     private decimal ComputeS7Regime(string symbol)
     {
         // Get S7 regime signal: -1 (bearish), 0 (neutral), 1 (bullish)
-        if (_s7Service == null) return _spec.Columns[11].FillValue;
+        if (_s7Service == null) return _spec.Columns[12].FillValue;
         
         try
         {
             if (!_s7Service.IsReady())
             {
                 _logger.LogDebug("[FEATURE-BUILDER] S7Service not ready for symbol {Symbol}. Using fill value.", symbol);
-                return _spec.Columns[11].FillValue;
+                return _spec.Columns[12].FillValue;
             }
             
             var featureTuple = _s7Service.GetFeatureTuple(symbol);
@@ -497,7 +547,7 @@ public class FeatureBuilder
         {
             _logger.LogWarning(ex, "[FEATURE-BUILDER] Failed to compute S7 regime for symbol {Symbol}: {ExceptionType}. Using fill value.", 
                 symbol, ex.GetType().Name);
-            return _spec.Columns[11].FillValue;
+            return _spec.Columns[12].FillValue;
         }
     }
 }
