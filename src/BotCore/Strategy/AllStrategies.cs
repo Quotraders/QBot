@@ -70,7 +70,16 @@ namespace BotCore.Strategy
             return generate_candidates_with_time_filter(symbol, env, levels, bars, risk, DateTime.UtcNow, s7Service);
         }
 
-        public static List<Candidate> generate_candidates_with_time_filter(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk, DateTime currentTime, TradingBot.Abstractions.IS7Service? s7Service = null)
+        public static List<Candidate> generate_candidates_with_time_filter(
+            string symbol, 
+            Env env, 
+            Levels levels, 
+            IList<Bar> bars, 
+            RiskEngine risk, 
+            DateTime currentTime, 
+            TradingBot.Abstractions.IS7Service? s7Service = null,
+            BotCore.Strategy.IRlPolicy? rlPolicy = null,
+            BotCore.Features.FeatureBuilder? featureBuilder = null)
         {
             ArgumentNullException.ThrowIfNull(env);
             
@@ -135,6 +144,55 @@ namespace BotCore.Strategy
                 if (!noAttemptCaps && hasCap && cap > 0 && candidates.Count > cap) candidates = [.. candidates.Take(cap)];
                 cands.AddRange(candidates);
             }
+            
+            // ================================================================================
+            // S15_RL STRATEGY INTEGRATION - ONNX-BASED RL POLICY
+            // ================================================================================
+            
+            // Add S15_RL candidates if policy and feature builder are available
+            if (rlPolicy != null && featureBuilder != null && allowedStrategies.Contains("S15_RL"))
+            {
+                // S15_RL is S7-gated like S2, S3, S6, S11
+                if (StrategyGates.PassesS7Gate(s7Service, "S15_RL"))
+                {
+                    try
+                    {
+                        // Determine current position (0 for now, would come from position tracking)
+                        var currentPos = 0;
+                        
+                        var s15Candidates = S15_RlStrategy.GenerateCandidates(
+                            symbol, env, levels, bars, risk, rlPolicy, featureBuilder, currentPos, currentTime);
+                        
+                        if (s15Candidates.Count > 0)
+                        {
+                            // Apply session-specific position sizing to S15_RL candidates
+                            if (currentSession != null && currentSession.PositionSizeMultiplier.TryGetValue(symbol, out var multiplier))
+                            {
+                                foreach (var candidate in s15Candidates)
+                                {
+                                    candidate.qty = candidate.qty * (decimal)multiplier;
+                                }
+                            }
+                            
+                            // Log S15_RL candidate generation with details
+                            foreach (var candidate in s15Candidates)
+                            {
+                                var action = candidate.side == Side.BUY ? "long" : "short";
+                                var sessionDesc = currentSession?.Description ?? "unknown";
+                                Console.WriteLine($"[S15-RL] Generated {action} candidate: Confidence={candidate.QScore:F2}, Entry={candidate.entry}, Session={sessionDesc}");
+                            }
+                            
+                            cands.AddRange(s15Candidates);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // S15_RL failure should not break other strategies
+                        Console.WriteLine($"⚠️ [S15-RL] Failed to generate candidates: {ex.Message}");
+                    }
+                }
+            }
+            
             return cands;
         }
 

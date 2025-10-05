@@ -249,11 +249,17 @@ namespace BotCore.Brain
             // Initialize Neural UCB for strategy selection using ONNX-based neural network
             var onnxLoader = new OnnxModelLoader(new Microsoft.Extensions.Logging.Abstractions.NullLogger<OnnxModelLoader>());
             var neuralNetworkLogger = new Microsoft.Extensions.Logging.Abstractions.NullLogger<OnnxNeuralNetwork>();
-            var neuralNetwork = new OnnxNeuralNetwork(onnxLoader, neuralNetworkLogger, "models/strategy_selection.onnx");
+            // Load runtime mode from environment for production safety
+            var runtimeModeStr = Environment.GetEnvironmentVariable("RlRuntimeMode") ?? "InferenceOnly";
+            if (!Enum.TryParse<TradingBot.Abstractions.RlRuntimeMode>(runtimeModeStr, ignoreCase: true, out var runtimeMode))
+            {
+                runtimeMode = TradingBot.Abstractions.RlRuntimeMode.InferenceOnly;
+            }
+            var neuralNetwork = new OnnxNeuralNetwork(onnxLoader, neuralNetworkLogger, runtimeMode, "models/strategy_selection.onnx");
             _strategySelector = new NeuralUcbBandit(neuralNetwork);
             
             // Initialize confidence network for model confidence prediction
-            _confidenceNetwork = new OnnxNeuralNetwork(onnxLoader, neuralNetworkLogger, "models/confidence_prediction.onnx");
+            _confidenceNetwork = new OnnxNeuralNetwork(onnxLoader, neuralNetworkLogger, runtimeMode, "models/confidence_prediction.onnx");
             
             _logger.LogInformation("🧠 [UNIFIED-BRAIN] Initialized with direct CVaR-PPO injection - Ready to make intelligent trading decisions");
         }

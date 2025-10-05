@@ -15,6 +15,7 @@ public class CVaRPPO : IDisposable
     private readonly ILogger<CVaRPPO> _logger;
     private readonly CVaRPPOConfig _config;
     private readonly string _modelBasePath;
+    private readonly TradingBot.Abstractions.RlRuntimeMode _runtimeMode;
     
     // Neural network components (simplified implementation)
     private PolicyNetwork _policyNetwork = null!;
@@ -53,10 +54,12 @@ public class CVaRPPO : IDisposable
     public CVaRPPO(
         ILogger<CVaRPPO> logger,
         CVaRPPOConfig config,
+        TradingBot.Abstractions.RlRuntimeMode runtimeMode,
         string modelBasePath = "models/cvar_ppo")
     {
         _logger = logger;
         _config = config;
+        _runtimeMode = runtimeMode;
         _modelBasePath = modelBasePath;
         
         Directory.CreateDirectory(_modelBasePath);
@@ -72,6 +75,19 @@ public class CVaRPPO : IDisposable
     /// </summary>
     public async Task<TrainingResult> TrainAsync(CancellationToken cancellationToken = default)
     {
+        // Training is blocked in InferenceOnly mode for production safety
+        if (_runtimeMode == TradingBot.Abstractions.RlRuntimeMode.InferenceOnly)
+        {
+            return new TrainingResult
+            {
+                Episode = _currentEpisode,
+                Success = false,
+                ErrorMessage = "Training blocked: RlRuntimeMode is InferenceOnly",
+                StartTime = DateTime.UtcNow,
+                EndTime = DateTime.UtcNow
+            };
+        }
+
         try
         {
             LogMessages.CVaRPPOTrainingStarted(_logger, _currentEpisode, _experienceBuffer.Count);

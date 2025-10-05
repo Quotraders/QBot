@@ -1219,6 +1219,15 @@ Please check the configuration and ensure all required services are registered.
         // PRODUCTION CVaR-PPO INTEGRATION - REAL RL POSITION SIZING
         // ================================================================================
         
+        // Load RlRuntimeMode from environment for production safety
+        var rlRuntimeModeStr = Environment.GetEnvironmentVariable("RlRuntimeMode") ?? "InferenceOnly";
+        var rlMode = TradingBot.Abstractions.RlRuntimeMode.InferenceOnly; // Safe default
+        if (!Enum.TryParse<TradingBot.Abstractions.RlRuntimeMode>(rlRuntimeModeStr, ignoreCase: true, out rlMode))
+        {
+            Console.WriteLine($"⚠️ [RL-SAFETY] Invalid RlRuntimeMode '{rlRuntimeModeStr}', defaulting to InferenceOnly");
+            rlMode = TradingBot.Abstractions.RlRuntimeMode.InferenceOnly;
+        }
+        
         // Register CVaR-PPO configuration
         services.AddSingleton<TradingBot.RLAgent.CVaRPPOConfig>(provider =>
         {
@@ -1240,14 +1249,14 @@ Please check the configuration and ensure all required services are registered.
             };
         });
         
-        // Register CVaR-PPO directly for proper type injection
+        // Register CVaR-PPO directly for proper type injection with runtime mode
         services.AddSingleton<TradingBot.RLAgent.CVaRPPO>(provider =>
         {
             var logger = provider.GetRequiredService<ILogger<TradingBot.RLAgent.CVaRPPO>>();
             var config = provider.GetRequiredService<TradingBot.RLAgent.CVaRPPOConfig>();
             var modelPath = Path.Combine("models", "rl", "cvar_ppo_agent.onnx");
             
-            var cvarPPO = new TradingBot.RLAgent.CVaRPPO(logger, config, modelPath);
+            var cvarPPO = new TradingBot.RLAgent.CVaRPPO(logger, config, rlMode, modelPath);
             
             // Initialize the CVaR-PPO agent
             _ = Task.Run(() =>
@@ -1255,7 +1264,7 @@ Please check the configuration and ensure all required services are registered.
                 try
                 {
                     // CVaRPPO initializes automatically in constructor
-                    logger.LogInformation("🎯 [CVAR-PPO] Production RL agent initialized successfully");
+                    logger.LogInformation("🎯 [CVAR-PPO] Production RL agent initialized with RlRuntimeMode: {Mode}", rlMode);
                 }
                 catch (Exception ex)
                 {
@@ -1290,6 +1299,190 @@ Please check the configuration and ensure all required services are registered.
             };
         });
         services.AddSingleton<TradingBot.RLAgent.FeatureEngineering>();
+        
+        // Register FeatureSpec and FeatureBuilder for standardized feature engineering
+        services.AddSingleton<BotCore.Features.FeatureSpec>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<BotCore.Features.FeatureBuilder>>();
+            var featureSpecPath = Path.Combine("artifacts", "current", "feature_spec.json");
+            
+            try
+            {
+                if (File.Exists(featureSpecPath))
+                {
+                    var spec = BotCore.Features.FeatureSpecLoader.Load(featureSpecPath);
+                    logger.LogInformation("✅ [FEATURE-SPEC] Loaded feature specification: {Version} with {ColumnCount} columns", 
+                        spec.Version, spec.Columns.Count);
+                    return spec;
+                }
+                else
+                {
+                    logger.LogWarning("⚠️ [FEATURE-SPEC] Feature spec file not found at {Path}, using default", featureSpecPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "⚠️ [FEATURE-SPEC] Failed to load feature spec from {Path}, using default", featureSpecPath);
+            }
+            
+            // Return default spec if loading fails (12 features for S2/S3/S6/S11 optimization)
+            return new BotCore.Features.FeatureSpec
+            {
+                Version = "features:v1",
+                Columns = new List<BotCore.Features.Column>
+                {
+                    new() { Name = "ret_1m", Index = 0, FillValue = 0 },
+                    new() { Name = "ret_5m", Index = 1, FillValue = 0 },
+                    new() { Name = "atr_14", Index = 2, FillValue = 0.5m },
+                    new() { Name = "rsi_14", Index = 3, FillValue = 50 },
+                    new() { Name = "vwap_dist", Index = 4, FillValue = 0 },
+                    new() { Name = "bb_width", Index = 5, FillValue = 0.01m },
+                    new() { Name = "ob_imbalance", Index = 6, FillValue = 1.0m },
+                    new() { Name = "adr_pct", Index = 7, FillValue = 0.5m },
+                    new() { Name = "hour_frac", Index = 8, FillValue = 0.5m },
+                    new() { Name = "session_flag", Index = 9, FillValue = 0 },
+                    new() { Name = "pos", Index = 10, FillValue = 0 },
+                    new() { Name = "s7_regime", Index = 11, FillValue = 0 }
+                },
+                Scaler = new BotCore.Features.Scaler
+                {
+                    Mean = new decimal[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+                    Std = new decimal[] { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }
+                },
+                Inference = new BotCore.Features.InferenceConfig
+                {
+                    LogitToAction = new Dictionary<int, int> { { 0, -1 }, { 1, 0 }, { 2, 1 } }
+                }
+            };
+        });
+        
+        // Register FeatureComputationConfig with bounds validation
+        services.AddSingleton<BotCore.Features.FeatureComputationConfig>(provider =>
+        {
+            var config = new BotCore.Features.FeatureComputationConfig
+            {
+                RsiPeriod = 14,
+                AtrPeriod = 14,
+                BollingerPeriod = 20,
+                VwapBars = 20,
+                AdrDays = 14,
+                MinutesPerDay = 390,
+                CurrentRangeBars = 20,
+                HoursPerDay = 24,
+                S7ZScoreThresholdBullish = 1.0m,
+                S7ZScoreThresholdBearish = -1.0m,
+                S7CoherenceThreshold = 0.6m
+            };
+            
+            // Validate configuration on startup
+            config.Validate();
+            
+            return config;
+        });
+        
+        services.AddSingleton<BotCore.Features.FeatureBuilder>(provider =>
+        {
+            var spec = provider.GetRequiredService<BotCore.Features.FeatureSpec>();
+            var config = provider.GetRequiredService<BotCore.Features.FeatureComputationConfig>();
+            var logger = provider.GetRequiredService<ILogger<BotCore.Features.FeatureBuilder>>();
+            var s7Service = provider.GetService<TradingBot.Abstractions.IS7Service>();
+            return new BotCore.Features.FeatureBuilder(spec, config, logger, s7Service);
+        });
+        
+        // ================================================================================
+        // S15_RL POLICY INTEGRATION - ONNX INFERENCE WITH VALIDATION
+        // ================================================================================
+        
+        // Register OnnxRlPolicy for S15_RL strategy with startup validation
+        services.AddSingleton<BotCore.Strategy.IRlPolicy>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<BotCore.Strategy.OnnxRlPolicy>>();
+            var featureSpec = provider.GetRequiredService<BotCore.Features.FeatureSpec>();
+            
+            // Paths for RL model and manifest
+            var rlModelPath = Path.Combine("artifacts", "current", "rl_policy.onnx");
+            var rlManifestPath = Path.Combine("artifacts", "current", "rl_manifest.json");
+            
+            // Validate model file exists
+            if (!File.Exists(rlModelPath))
+            {
+                logger.LogWarning("⚠️ [S15-RL] Model file not found at {Path}. S15_RL strategy will not generate candidates.", rlModelPath);
+                // Return null policy - S15_RL will gracefully handle missing policy
+                return null!;
+            }
+            
+            // Load and validate manifest
+            try
+            {
+                if (File.Exists(rlManifestPath))
+                {
+                    var manifestJson = File.ReadAllText(rlManifestPath);
+                    var manifest = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(manifestJson);
+                    
+                    if (manifest != null)
+                    {
+                        // Extract metrics
+                        var validationSharpe = manifest.ContainsKey("validation_metrics") &&
+                                             manifest["validation_metrics"].TryGetProperty("sharpe_ratio", out var sharpeElem)
+                            ? sharpeElem.GetDouble()
+                            : 0.0;
+                        
+                        var baselineSharpe = manifest.ContainsKey("baseline_sharpe")
+                            ? manifest["baseline_sharpe"].GetDouble()
+                            : 1.0;
+                        
+                        var featureCount = manifest.ContainsKey("feature_count")
+                            ? manifest["feature_count"].GetInt32()
+                            : 12;
+                        
+                        var version = manifest.ContainsKey("version")
+                            ? manifest["version"].GetString() ?? "unknown"
+                            : "unknown";
+                        
+                        // Validate feature count matches spec
+                        if (featureCount != featureSpec.Columns.Count)
+                        {
+                            logger.LogError("❌ [S15-RL] Feature count mismatch! Manifest: {ManifestCount}, Spec: {SpecCount}. S15_RL will not load.",
+                                featureCount, featureSpec.Columns.Count);
+                            return null!;
+                        }
+                        
+                        // Validate Sharpe ratio against baseline
+                        if (validationSharpe < baselineSharpe)
+                        {
+                            logger.LogError("❌ [S15-RL] Validation Sharpe {ValidationSharpe:F2} below baseline {BaselineSharpe:F2}. Model not loaded.",
+                                validationSharpe, baselineSharpe);
+                            return null!;
+                        }
+                        
+                        logger.LogInformation("✅ [S15-RL] Manifest validated: Version={Version}, ValidationSharpe={Sharpe:F2}, Features={Count}",
+                            version, validationSharpe, featureCount);
+                    }
+                }
+                else
+                {
+                    logger.LogWarning("⚠️ [S15-RL] Manifest file not found at {Path}. Loading model without validation.", rlManifestPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "❌ [S15-RL] Failed to load/validate manifest from {Path}", rlManifestPath);
+                return null!;
+            }
+            
+            // Load ONNX policy
+            try
+            {
+                var policy = new BotCore.Strategy.OnnxRlPolicy(rlModelPath, featureSpec);
+                logger.LogInformation("✅ [S15-RL] Policy loaded successfully from {Path}", rlModelPath);
+                return policy;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "❌ [S15-RL] Failed to load ONNX policy from {Path}", rlModelPath);
+                return null!;
+            }
+        });
         
         services.AddSingleton<BotCore.ML.StrategyMlModelManager>(provider =>
         {
@@ -1574,7 +1767,18 @@ Please check the configuration and ensure all required services are registered.
         services.AddHostedService<CloudModelIntegrationService>();
 
         // Hosted services (append-only) - Enhanced learning services
-        services.AddHostedService<EnhancedBacktestLearningService>();
+        // Conditional registration based on RlRuntimeMode - prevents training in production
+        if (rlMode == TradingBot.Abstractions.RlRuntimeMode.Train)
+        {
+            services.AddHostedService<EnhancedBacktestLearningService>();
+            
+            // Warn if training mode is enabled in production environment
+            var environment = hostContext.HostingEnvironment.EnvironmentName;
+            if (environment.Equals("Production", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("⚠️ [RL-SAFETY] WARNING: Training mode enabled in Production environment!");
+            }
+        }
 
     }
 

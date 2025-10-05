@@ -323,9 +323,16 @@ public class ModelEnsembleService
             {
                 // Load CVaR-PPO model
                 var config = new CVaRPPOConfig(); // Use default config
+                // Load runtime mode from environment for production safety
+                var runtimeModeStr = Environment.GetEnvironmentVariable("RlRuntimeMode") ?? "InferenceOnly";
+                if (!Enum.TryParse<TradingBot.Abstractions.RlRuntimeMode>(runtimeModeStr, ignoreCase: true, out var runtimeMode))
+                {
+                    runtimeMode = TradingBot.Abstractions.RlRuntimeMode.InferenceOnly;
+                }
                 var cvarAgent = new CVaRPPO(
                     Microsoft.Extensions.Logging.Abstractions.NullLogger<CVaRPPO>.Instance, 
-                    config, 
+                    config,
+                    runtimeMode,
                     modelPath);
                 // CVaRPPO initializes automatically in constructor
                 model = cvarAgent;
