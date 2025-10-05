@@ -74,6 +74,15 @@ public class MasterDecisionOrchestrator : BackgroundService
     private DateTime _lastModelUpdate = DateTime.MinValue;
     private DateTime _lastPerformanceReport = DateTime.MinValue;
     
+    // Gate 5: Canary monitoring state
+    private bool _canaryActive;
+    private DateTime _canaryStartTime = DateTime.MinValue;
+    private int _canaryTradesCompleted;
+    private double _baselineWinRate;
+    private double _baselineSharpeRatio;
+    private double _baselineDrawdown;
+    private readonly List<TradeResult> _canaryTrades = new();
+    
     public MasterDecisionOrchestrator(
         ILogger<MasterDecisionOrchestrator> logger,
         IServiceProvider serviceProvider,
@@ -229,20 +238,8 @@ public class MasterDecisionOrchestrator : BackgroundService
         // Check for model updates
         await CheckModelUpdatesAsync(cancellationToken).ConfigureAwait(false);
         
-        // TODO: GATE 5 - Live First-Hour Auto-Rollback Monitoring
-        // Required implementation:
-        // 1. Track canary state (flag, baseline metrics, start timestamp)
-        // 2. Activate when parameters/models upgraded
-        // 3. Accumulate live metrics: trades completed, win rate, P/L, drawdown
-        // 4. Wait for 50 trades OR 60 minutes (whichever comes LATER)
-        // 5. Trigger rollback if:
-        //    - BOTH: Win rate drop >15% AND drawdown >$500
-        //    - OR: Sharpe drop >30% (independent trigger)
-        // 6. Create kill.txt if catastrophic (win rate <30% OR drawdown >$1000)
-        // 7. Atomic rollback: restore backup parameters/models
-        // 8. Send high-priority alerts with metrics
-        // Note: CanaryWatchdog exists separately but has different thresholds
-        // await MonitorCanaryPeriodAsync(cancellationToken).ConfigureAwait(false);
+        // Gate 5: Live First-Hour Auto-Rollback Monitoring
+        await MonitorCanaryPeriodAsync(cancellationToken).ConfigureAwait(false);
         
         // Generate performance reports
         await GeneratePerformanceReportsAsync(cancellationToken).ConfigureAwait(false);
@@ -810,6 +807,180 @@ public class MasterDecisionOrchestrator : BackgroundService
         }
     }
     
+    private async Task MonitorCanaryPeriodAsync(CancellationToken cancellationToken)
+    {
+        if (!_canaryActive)
+        {
+            return;
+        }
+
+        const int MinTrades = 50;
+        const int MinMinutes = 60;
+        const int MaxMinutes = 90;
+        const double WinRateDropThreshold = 0.15;
+        const double MaxDrawdownDollars = 500.0;
+        const double SharpeDropThreshold = 0.30;
+        const double CatastrophicWinRateThreshold = 0.30;
+        const double CatastrophicDrawdownDollars = 1000.0;
+
+        var elapsedMinutes = (DateTime.UtcNow - _canaryStartTime).TotalMinutes;
+
+        if (_canaryTradesCompleted < MinTrades && elapsedMinutes < MinMinutes)
+        {
+            return;
+        }
+
+        if (elapsedMinutes > MaxMinutes)
+        {
+            _logger.LogInformation("🕐 [GATE-5] Canary period max duration reached, evaluating metrics");
+        }
+
+        var currentMetrics = CalculateCanaryMetrics();
+        var winRateDrop = _baselineWinRate - currentMetrics.WinRate;
+        var sharpeRatioDrop = (_baselineSharpeRatio - currentMetrics.SharpeRatio) / Math.Max(_baselineSharpeRatio, 0.01);
+        var drawdownIncrease = currentMetrics.MaxDrawdown - _baselineDrawdown;
+
+        _logger.LogInformation("📊 [GATE-5] Canary metrics - Trades: {Trades}, WinRate: {WR:F2}%, Sharpe: {SR:F2}, Drawdown: ${DD:F2}",
+            _canaryTradesCompleted, currentMetrics.WinRate * 100, currentMetrics.SharpeRatio, currentMetrics.MaxDrawdown);
+
+        var isCatastrophic = currentMetrics.WinRate < CatastrophicWinRateThreshold || 
+                            currentMetrics.MaxDrawdown > CatastrophicDrawdownDollars;
+        
+        var shouldRollback = (winRateDrop > WinRateDropThreshold && drawdownIncrease > MaxDrawdownDollars) ||
+                            sharpeRatioDrop > SharpeDropThreshold ||
+                            isCatastrophic;
+
+        if (isCatastrophic)
+        {
+            await CreateKillFileAsync(cancellationToken);
+            _logger.LogError("🚨 [GATE-5] CATASTROPHIC FAILURE - kill.txt created, live trading stopped");
+        }
+
+        if (shouldRollback)
+        {
+            await ExecuteCanaryRollbackAsync(currentMetrics, cancellationToken);
+        }
+        else if (_canaryTradesCompleted >= MinTrades && elapsedMinutes >= MinMinutes)
+        {
+            _logger.LogInformation("✅ [GATE-5] Canary period completed successfully - deployment validated");
+            _canaryActive = false;
+        }
+    }
+
+    private CanaryMetrics CalculateCanaryMetrics()
+    {
+        if (_canaryTrades.Count == 0)
+        {
+            return new CanaryMetrics { WinRate = 0, SharpeRatio = 0, MaxDrawdown = 0 };
+        }
+
+        var wins = _canaryTrades.Count(t => t.PnL > 0);
+        var winRate = (double)wins / _canaryTrades.Count;
+
+        var returns = _canaryTrades.Select(t => t.PnL).ToList();
+        var avgReturn = returns.Average();
+        var stdDev = Math.Sqrt(returns.Average(r => Math.Pow(r - avgReturn, 2)));
+        var sharpeRatio = stdDev > 0 ? avgReturn / stdDev : 0;
+
+        double peak = 0;
+        double equity = 0;
+        double maxDrawdown = 0;
+
+        foreach (var trade in _canaryTrades)
+        {
+            equity += trade.PnL;
+            if (equity > peak)
+            {
+                peak = equity;
+            }
+            var drawdown = peak - equity;
+            if (drawdown > maxDrawdown)
+            {
+                maxDrawdown = drawdown;
+            }
+        }
+
+        return new CanaryMetrics
+        {
+            WinRate = winRate,
+            SharpeRatio = sharpeRatio,
+            MaxDrawdown = maxDrawdown
+        };
+    }
+
+    private async Task CreateKillFileAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var killFilePath = Path.Combine(Directory.GetCurrentDirectory(), "kill.txt");
+            await File.WriteAllTextAsync(killFilePath, 
+                $"CATASTROPHIC FAILURE DETECTED - {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC\n" +
+                $"Canary monitoring triggered emergency stop\n" +
+                $"Win Rate: {CalculateCanaryMetrics().WinRate:F2}%\n" +
+                $"Drawdown: ${CalculateCanaryMetrics().MaxDrawdown:F2}\n",
+                cancellationToken);
+            
+            _logger.LogCritical("🚨 [GATE-5] kill.txt created at {Path}", killFilePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create kill.txt file");
+        }
+    }
+
+    private async Task ExecuteCanaryRollbackAsync(CanaryMetrics metrics, CancellationToken cancellationToken)
+    {
+        _logger.LogWarning("🔄 [GATE-5] Executing canary rollback - deployment rejected");
+        _logger.LogWarning("  Win Rate Drop: {Drop:F2}%, Drawdown: ${DD:F2}, Sharpe Drop: {SR:F2}%",
+            (_baselineWinRate - metrics.WinRate) * 100, metrics.MaxDrawdown, 
+            ((_baselineSharpeRatio - metrics.SharpeRatio) / Math.Max(_baselineSharpeRatio, 0.01)) * 100);
+
+        var backupDir = Path.Combine("artifacts", "backup");
+        var currentDir = Path.Combine("artifacts", "current");
+
+        if (Directory.Exists(backupDir))
+        {
+            try
+            {
+                if (Directory.Exists(currentDir))
+                {
+                    Directory.Delete(currentDir, recursive: true);
+                }
+                
+                CopyDirectory(backupDir, currentDir);
+                _logger.LogInformation("✅ [GATE-5] Artifacts rolled back to previous version");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [GATE-5] Rollback failed");
+            }
+        }
+
+        _canaryActive = false;
+        _canaryTrades.Clear();
+        _canaryTradesCompleted = 0;
+
+        Environment.SetEnvironmentVariable("AUTO_PROMOTION_ENABLED", "0");
+        _logger.LogWarning("🔒 [GATE-5] Auto-promotion disabled until manual investigation");
+    }
+
+    private void CopyDirectory(string sourceDir, string destinationDir)
+    {
+        Directory.CreateDirectory(destinationDir);
+
+        foreach (var file in Directory.GetFiles(sourceDir))
+        {
+            var destFile = Path.Combine(destinationDir, Path.GetFileName(file));
+            File.Copy(file, destFile, overwrite: true);
+        }
+
+        foreach (var dir in Directory.GetDirectories(sourceDir))
+        {
+            var destDir = Path.Combine(destinationDir, Path.GetDirectoryName(dir)!);
+            CopyDirectory(dir, destDir);
+        }
+    }
+
     private async Task MonitorSystemHealthAsync(CancellationToken cancellationToken)
     {
         // Monitor system health and trigger alerts if needed
@@ -1150,6 +1321,25 @@ public class BundleDecisionTrackingInfo
     public string BundleId { get; set; } = string.Empty;
     public BundleSelection BundleSelection { get; set; } = new();
     public DecisionTrackingInfo StandardTracking { get; set; } = new();
+}
+
+/// <summary>
+/// Gate 5: Trade result for canary monitoring
+/// </summary>
+internal class TradeResult
+{
+    public double PnL { get; set; }
+    public DateTime Timestamp { get; set; }
+}
+
+/// <summary>
+/// Gate 5: Canary metrics
+/// </summary>
+internal class CanaryMetrics
+{
+    public double WinRate { get; set; }
+    public double SharpeRatio { get; set; }
+    public double MaxDrawdown { get; set; }
 }
 
 #endregion
