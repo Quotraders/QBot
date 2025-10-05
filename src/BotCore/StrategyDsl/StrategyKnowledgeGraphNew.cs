@@ -411,13 +411,13 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
             return true; // No regime filter
 
         // Check if current regime matches any of the required regimes
-        return card.When.Regime.Exists(r => 
+        return card.When.Regime.Any(r => 
             string.Equals(r, regime.ToString(), StringComparison.OrdinalIgnoreCase));
     }
 
     private async Task<bool> EvaluateMicroConditionsAsync(DslStrategy card, string symbol, CancellationToken cancellationToken)
     {
-        var microConditions = card.When?.Micro ?? new List<string>();
+        var microConditions = card.When?.Micro ?? (IReadOnlyList<string>)new List<string>();
         if (!microConditions.Any())
             return true; // No micro conditions
 
@@ -429,7 +429,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
 
     private async Task<bool> EvaluateContraindicationsAsync(DslStrategy card, string symbol, CancellationToken cancellationToken)
     {
-        var contraindications = card.Contra ?? new List<string>();
+        var contraindications = card.Contra ?? (IReadOnlyList<string>)new List<string>();
         if (!contraindications.Any())
             return false; // No contraindications = not blocked
 
@@ -441,7 +441,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
 
     private async Task<List<string>> EvaluateConfluenceAsync(DslStrategy card, string symbol, CancellationToken cancellationToken)
     {
-        var confluenceConditions = card.Confluence ?? new List<string>();
+        var confluenceConditions = card.Confluence ?? (IReadOnlyList<string>)new List<string>();
         if (!confluenceConditions.Any())
             return new List<string>(); // No confluence conditions
 
@@ -540,7 +540,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
         var evidence = new List<BotCore.Strategy.StrategyEvidence>();
 
         // Add micro condition evidence
-        var microConditions = card.When?.Micro ?? new List<string>();
+        var microConditions = card.When?.Micro ?? (IReadOnlyList<string>)new List<string>();
         foreach (var condition in microConditions)
         {
             if (await EvaluateExpressionAsync(condition, symbol, cancellationToken).ConfigureAwait(false))

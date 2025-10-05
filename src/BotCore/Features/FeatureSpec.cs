@@ -24,10 +24,10 @@ public record Column
 public record Scaler
 {
     [JsonPropertyName("mean")]
-    public required decimal[] Mean { get; init; }
+    public required IReadOnlyList<decimal> Mean { get; init; }
     
     [JsonPropertyName("std")]
-    public required decimal[] Std { get; init; }
+    public required IReadOnlyList<decimal> Std { get; init; }
 }
 
 /// <summary>
@@ -48,7 +48,7 @@ public record FeatureSpec
     public required string Version { get; init; }
     
     [JsonPropertyName("columns")]
-    public required List<Column> Columns { get; init; }
+    public required IReadOnlyList<Column> Columns { get; init; }
     
     [JsonPropertyName("scaler")]
     public required Scaler Scaler { get; init; }
@@ -116,8 +116,8 @@ public static class FeatureSpecLoader
         if (spec.Columns == null || spec.Scaler == null || spec.Inference == null) return false;
         
         // Check that Mean length equals Std length equals Columns count
-        if (spec.Scaler.Mean.Length != spec.Scaler.Std.Length) return false;
-        if (spec.Scaler.Mean.Length != spec.Columns.Count) return false;
+        if (spec.Scaler.Mean.Count != spec.Scaler.Std.Count) return false;
+        if (spec.Scaler.Mean.Count != spec.Columns.Count) return false;
         
         // Validate that column indices are sequential and start at 0
         for (int i = 0; i < spec.Columns.Count; i++)

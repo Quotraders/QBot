@@ -14,11 +14,10 @@ namespace BotCore.Supervisor
         private readonly ConcurrentDictionary<string, object> _vals = new();
         private DateTimeOffset _lastBeat = DateTimeOffset.MinValue;
         private DateTimeOffset _lastEmit = DateTimeOffset.MinValue;
-        private string _lastJson = string.Empty;
         private string _lastSig = string.Empty;
 
         public long AccountId { get; set; }
-        public Dictionary<string, string> Contracts { get; set; } = [];
+        public IReadOnlyDictionary<string, string> Contracts { get; init; } = new Dictionary<string, string>();
 
         public void Set(string key, object value) => _vals[key] = value;
         public T? Get<T>(string key) => _vals.TryGetValue(key, out var v) ? (T?)v : default;
@@ -75,7 +74,6 @@ namespace BotCore.Supervisor
                 if (sig != _lastSig || (now - _lastEmit) >= TimeSpan.FromSeconds(60))
                 {
                     _lastSig = sig;
-                    _lastJson = json;
                     _lastEmit = now;
                     _log.LogInformation("BOT STATUS => {Json}", json);
                 }

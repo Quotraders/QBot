@@ -57,10 +57,10 @@ public class DslWhen
     public bool IsRequired { get; set; }
     
     // Knowledge graph compatibility properties
-    public List<string> Regime { get; set; } = new();
-    public List<string> Micro { get; set; } = new();
-    public List<string> MicroConditions { get; set; } = new();
-    public List<string> ContraIndications { get; set; } = new();
+    public IReadOnlyList<string> Regime { get; init; } = new List<string>();
+    public IReadOnlyList<string> Micro { get; init; } = new List<string>();
+    public IReadOnlyList<string> MicroConditions { get; init; } = new List<string>();
+    public IReadOnlyList<string> ContraIndications { get; init; } = new List<string>();
 }
 
 /// <summary>
@@ -70,8 +70,8 @@ public class DslPlaybook
 {
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public List<DslStrategy> Strategies { get; set; } = new();
-    public Dictionary<string, object> Settings { get; set; } = new();
+    public IReadOnlyList<DslStrategy> Strategies { get; init; } = new List<DslStrategy>();
+    public IReadOnlyDictionary<string, object> Settings { get; init; } = new Dictionary<string, object>();
 }
 
 /// <summary>
@@ -120,8 +120,8 @@ public class DslTakeProfit
     public double InitialTargetAtr { get; set; } = 2.0;
     public double ExtensionTargetAtr { get; set; } = 3.0;
     public double TrailAfterProfit { get; set; } = 0.5;
-    public List<double> ExtensionLevels { get; set; } = new();
-    public List<double> PartialExitLevels { get; set; } = new();
+    public IReadOnlyList<double> ExtensionLevels { get; init; } = new List<double>();
+    public IReadOnlyList<double> PartialExitLevels { get; init; } = new List<double>();
     public bool PartialExitAt50Pct { get; set; }
     public double MinimumRMultiple { get; set; } = 1.5;
     public string TargetZone { get; set; } = string.Empty;
@@ -135,8 +135,8 @@ public class DslTakeProfit
 public class DslConfidenceCalculation
 {
     public double BaseConfidence { get; set; } = 0.65;
-    public Dictionary<string, double> Boosters { get; set; } = new();
-    public Dictionary<string, double> Penalties { get; set; } = new();
+    public IReadOnlyDictionary<string, double> Boosters { get; init; } = new Dictionary<string, double>();
+    public IReadOnlyDictionary<string, double> Penalties { get; init; } = new Dictionary<string, double>();
 }
 
 /// <summary>
@@ -144,8 +144,8 @@ public class DslConfidenceCalculation
 /// </summary>
 public class DslDirectionLogic
 {
-    public List<string> LongConditions { get; set; } = new();
-    public List<string> ShortConditions { get; set; } = new();
+    public IReadOnlyList<string> LongConditions { get; init; } = new List<string>();
+    public IReadOnlyList<string> ShortConditions { get; init; } = new List<string>();
 }
 
 /// <summary>

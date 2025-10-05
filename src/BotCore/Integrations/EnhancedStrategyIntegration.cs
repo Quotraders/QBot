@@ -48,9 +48,21 @@ namespace BotCore.Integrations
 
                 return tradeId;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                logger.LogError(ex, "[EnhancedIntegration] Failed to collect signal data for {Strategy}",
+                logger.LogError(ex, "[EnhancedIntegration] Invalid operation while collecting signal data for {Strategy}",
+                    signal.Strategy);
+                return null;
+            }
+            catch (ArgumentException ex)
+            {
+                logger.LogError(ex, "[EnhancedIntegration] Invalid argument while collecting signal data for {Strategy}",
+                    signal.Strategy);
+                return null;
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
+            {
+                logger.LogError(ex, "[EnhancedIntegration] Unexpected error collecting signal data for {Strategy}",
                     signal.Strategy);
                 return null;
             }
@@ -91,9 +103,17 @@ namespace BotCore.Integrations
                 logger.LogDebug("[EnhancedIntegration] Recorded trade outcome for {TradeId}: {Result} (R={RMultiple:F2})",
                     tradeId, isWin ? "WIN" : "LOSS", outcomeData.ActualRMultiple);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                logger.LogError(ex, "[EnhancedIntegration] Failed to record trade outcome for {TradeId}", tradeId);
+                logger.LogError(ex, "[EnhancedIntegration] Invalid operation while recording trade outcome for {TradeId}", tradeId);
+            }
+            catch (ArgumentException ex)
+            {
+                logger.LogError(ex, "[EnhancedIntegration] Invalid argument while recording trade outcome for {TradeId}", tradeId);
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
+            {
+                logger.LogError(ex, "[EnhancedIntegration] Unexpected error recording trade outcome for {TradeId}", tradeId);
             }
         }
 
@@ -128,9 +148,19 @@ namespace BotCore.Integrations
 
                 return result;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                logger.LogError(ex, "[EnhancedIntegration] Failed to process signal with data collection");
+                logger.LogError(ex, "[EnhancedIntegration] Invalid operation while processing signal with data collection");
+                return result;
+            }
+            catch (ArgumentException ex)
+            {
+                logger.LogError(ex, "[EnhancedIntegration] Invalid argument while processing signal with data collection");
+                return result;
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
+            {
+                logger.LogError(ex, "[EnhancedIntegration] Unexpected error processing signal with data collection");
                 return result;
             }
         }

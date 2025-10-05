@@ -52,7 +52,6 @@ namespace BotCore.Execution
                     Symbol = intent.Symbol,
                     RecommendedOrderType = "LIMIT",
                     RecommendedPrice = CalculatePrice(intent, microstructure),
-                    Reasoning = new List<string>(),
                     Timestamp = DateTime.UtcNow
                 };
 
@@ -91,32 +90,32 @@ namespace BotCore.Execution
                     if (intent.UrgencyScore > _config.RiskOnUrgencyThreshold)
                     {
                         recommendation.RecommendedOrderType = "IOC";
-                        recommendation.Reasoning.Add($"S7 RiskOn state with urgency {intent.UrgencyScore:F2} > threshold {_config.RiskOnUrgencyThreshold:F2}");
+                        recommendation.AddReasoning($"S7 RiskOn state with urgency {intent.UrgencyScore:F2} > threshold {_config.RiskOnUrgencyThreshold:F2}");
                     }
                     else
                     {
                         recommendation.RecommendedOrderType = "LIMIT";
                         recommendation.RecommendedPrice = CalculateAggressivePrice(intent, microstructure);
-                        recommendation.Reasoning.Add("S7 RiskOn state with marketable limit");
+                        recommendation.AddReasoning("S7 RiskOn state with marketable limit");
                     }
                     break;
 
                 case "RISKOFF":
                     // RiskOff state favors conservative maker orders
                     recommendation.RecommendedOrderType = "POST_ONLY";
-                    recommendation.Reasoning.Add("S7 RiskOff state favors maker orders");
+                    recommendation.AddReasoning("S7 RiskOff state favors maker orders");
                     break;
 
                 case "TRANSITION":
                     // Transition state uses moderate aggression
                     recommendation.RecommendedOrderType = "LIMIT";
-                    recommendation.Reasoning.Add("S7 Transition state uses standard limit orders");
+                    recommendation.AddReasoning("S7 Transition state uses standard limit orders");
                     break;
 
                 default:
                     _logger.LogWarning("[S7-ORDER-SELECTOR] [AUDIT-VIOLATION] Unknown S7RiskState: {RiskState} for {Symbol}", 
                         intent.S7RiskState, intent.Symbol);
-                    recommendation.Reasoning.Add($"Unknown S7RiskState: {intent.S7RiskState}");
+                    recommendation.AddReasoning($"Unknown S7RiskState: {intent.S7RiskState}");
                     break;
             }
         }
@@ -129,7 +128,7 @@ namespace BotCore.Execution
                 if (recommendation.RecommendedOrderType != "IOC") // Don't override IOC from RiskOn
                 {
                     recommendation.RecommendedOrderType = "POST_ONLY";
-                    recommendation.Reasoning.Add("Inside zone bands with neutral role favors maker orders");
+                    recommendation.AddReasoning("Inside zone bands with neutral role favors maker orders");
                 }
             }
 
@@ -137,7 +136,7 @@ namespace BotCore.Execution
             if (microstructure.DistanceToZoneAtr.HasValue && (double)microstructure.DistanceToZoneAtr.Value < _config.ZoneProximityThresholdAtr)
             {
                 var distance = microstructure.DistanceToZoneAtr.Value;
-                recommendation.Reasoning.Add($"Near zone boundary (distance: {distance:F2} ATR)");
+                recommendation.AddReasoning($"Near zone boundary (distance: {distance:F2} ATR)");
             }
         }
 
@@ -148,7 +147,7 @@ namespace BotCore.Execution
                 // High breakout probability requires aggressive execution
                 recommendation.RecommendedOrderType = "IOC";
                 recommendation.RecommendedPrice = CalculateAggressivePrice(intent, microstructure);
-                recommendation.Reasoning.Add($"High breakout score {microstructure.ZoneBreakoutScore.Value:F3} > threshold {_config.BreakoutScoreThreshold:F3}");
+                recommendation.AddReasoning($"High breakout score {microstructure.ZoneBreakoutScore.Value:F3} > threshold {_config.BreakoutScoreThreshold:F3}");
             }
         }
 
@@ -158,7 +157,7 @@ namespace BotCore.Execution
             {
                 // Latency guard breach requires fastest execution
                 recommendation.RecommendedOrderType = "MARKET";
-                recommendation.Reasoning.Add("Latency guard breached - using market orders");
+                recommendation.AddReasoning("Latency guard breached - using market orders");
             }
         }
 
@@ -172,7 +171,7 @@ namespace BotCore.Execution
                     recommendation.RecommendedOrderType = "IOC";
                     recommendation.RecommendedPrice = CalculateAggressivePrice(intent, microstructure);
                 }
-                recommendation.Reasoning.Add($"Queue ETA {microstructure.EstimatedQueueEta.Value:F1}s > SLA {_config.MaxQueueEtaSeconds:F1}s");
+                recommendation.AddReasoning($"Queue ETA {microstructure.EstimatedQueueEta.Value:F1}s > SLA {_config.MaxQueueEtaSeconds:F1}s");
             }
         }
 
@@ -216,13 +215,20 @@ namespace BotCore.Execution
     /// </summary>
     public sealed class OrderTypeRecommendation
     {
+        private readonly List<string> _reasoning = new();
+        private readonly Dictionary<string, object> _metadata = new();
+
         public Guid RequestId { get; set; }
         public string Symbol { get; set; } = string.Empty;
         public string RecommendedOrderType { get; set; } = string.Empty;
         public decimal RecommendedPrice { get; set; }
-        public List<string> Reasoning { get; set; } = new();
+        public IReadOnlyList<string> Reasoning => _reasoning;
         public DateTime Timestamp { get; set; }
-        public Dictionary<string, object> Metadata { get; } = new();
+        public IReadOnlyDictionary<string, object> Metadata => _metadata;
+
+        // Allow controlled mutation of reasoning during construction
+        internal void AddReasoning(string reason) => _reasoning.Add(reason);
+        internal void AddMetadata(string key, object value) => _metadata[key] = value;
 
         public void ValidateRecommendation()
         {

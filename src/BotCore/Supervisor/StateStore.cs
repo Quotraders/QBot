@@ -13,9 +13,9 @@ namespace BotCore.Supervisor
 
         public sealed class Snapshot
         {
-            public Dictionary<string, DateTime>? RecentRoutes { get; set; }
-            public Dictionary<string, long>? LastBarUnix { get; set; }
-            public IReadOnlyList<string>? LastCids { get; set; }
+            public IReadOnlyDictionary<string, DateTime>? RecentRoutes { get; init; }
+            public IReadOnlyDictionary<string, long>? LastBarUnix { get; init; }
+            public IReadOnlyList<string>? LastCids { get; init; }
         }
 
         public Snapshot Load()
