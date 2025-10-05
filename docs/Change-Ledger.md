@@ -83,7 +83,82 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 76 violations eliminated across 9 files in 3 focused rounds
 
-### 🔧 Round 165 - Phase 2: S109 Magic Numbers - EnhancedTradingBrainIntegration.cs (Current Session)
+### 🔧 Round 166 - Phase 2: S109 Magic Numbers - AutonomousDecisionEngine.cs (Current Session)
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------| 
+| S109 | 454 | 338 | AutonomousDecisionEngine.cs | Named constants for strategy baselines, trade simulation, performance alerts, technical indicators |
+
+**Total Fixed: 116 S109 violations**
+
+**Example Patterns Applied**:
+```csharp
+// Before (S109) - Magic numbers in strategy baseline stats
+"S2" => new StrategyPerformanceData {
+    TotalPnL = 1250m,
+    TotalTrades = 45,
+    WinRate = 0.67m,
+    AverageWin = 85m,
+    AverageLoss = -42m,
+    MaxDrawdown = -180m
+}
+
+// Before (S109) - Magic numbers in trade simulation
+Symbol = random.NextDouble() > 0.3 ? "ES" : "NQ",
+Direction = random.NextDouble() > 0.5 ? "Buy" : "Sell",
+EntryPrice = 4500m + (decimal)(random.NextDouble() * 200 - 100),
+Confidence = 0.6m + (decimal)random.NextDouble() * 0.3m
+
+// After - Production-ready named constants
+private const decimal S2BaselineTotalPnL = 1250m;
+private const int S2BaselineTotalTrades = 45;
+private const decimal S2BaselineWinRate = 0.67m;
+private const decimal S2BaselineAverageWin = 85m;
+private const decimal S2BaselineAverageLoss = -42m;
+private const decimal S2BaselineMaxDrawdown = -180m;
+
+private const double ESSymbolProbability = 0.3;
+private const double BuyDirectionProbability = 0.5;
+private const decimal ESBasePriceForSimulation = 4500m;
+private const int ESPriceVariationRange = 200;
+private const int ESPriceVariationOffset = 100;
+private const decimal MinimumTradeConfidence = 0.6m;
+private const decimal MaximumConfidenceRange = 0.3m;
+
+"S2" => new StrategyPerformanceData {
+    TotalPnL = S2BaselineTotalPnL,
+    TotalTrades = S2BaselineTotalTrades,
+    WinRate = S2BaselineWinRate,
+    AverageWin = S2BaselineAverageWin,
+    AverageLoss = S2BaselineAverageLoss,
+    MaxDrawdown = S2BaselineMaxDrawdown
+}
+
+Symbol = random.NextDouble() > ESSymbolProbability ? "ES" : "NQ",
+Direction = random.NextDouble() > BuyDirectionProbability ? "Buy" : "Sell",
+EntryPrice = ESBasePriceForSimulation + (decimal)(random.NextDouble() * (double)ESPriceVariationRange - (double)ESPriceVariationOffset),
+Confidence = MinimumTradeConfidence + ((decimal)random.NextDouble() * MaximumConfidenceRange)
+```
+
+**Constants Added** (66 total):
+- Strategy S2 baseline stats (TotalPnL: 1250, Trades: 45, WinRate: 0.67, AvgWin: 85, AvgLoss: -42, MaxDrawdown: -180)
+- Strategy S3 baseline stats (TotalPnL: 1850, Trades: 32, WinRate: 0.71, AvgWin: 125, AvgLoss: -55, MaxDrawdown: -220, TimeOffset: 3hrs)
+- Strategy S6 baseline stats (TotalPnL: 2100, Trades: 28, WinRate: 0.75, AvgWin: 165, AvgLoss: -58, MaxDrawdown: -145, TimeOffset: 18hrs)
+- Strategy S11 baseline stats (TotalPnL: 1650, Trades: 38, WinRate: 0.68, AvgWin: 105, AvgLoss: -48, MaxDrawdown: -165, TimeOffset: 5hrs)
+- Default baseline stats (TotalPnL: 1000, Trades: 25, WinRate: 0.60, AvgWin: 80, AvgLoss: -50, MaxDrawdown: -200)
+- Trade simulation (ESSymbolProbability: 0.3, BuyDirectionProbability: 0.5, ESBasePrice: 4500, PriceVariationRange: 200, MaxPosSize: 4)
+- Trade confidence (MinimumTradeConfidence: 0.6, MaximumConfidenceRange: 0.3, WinningTradeMinRMultiple: 1.5, LosingTradeRMultiple: -1)
+- Performance alerts (LargeDailyLossThreshold: -500, LowWinRateThreshold: 0.3, ExcellentDailyProfitThreshold: 1000)
+- Technical indicators (NeutralRSIValue: 50, MaxRSIValue: 100, EMA12Period: 12, EMA26Period: 26, MinBarsForMACD: 26)
+- Account balance thresholds (DefaultBaselineBalance: 4500, MinBalanceForScaling: 500, AccountBalanceScalingFactor: 1000)
+
+**Type Safety Fixes**: Proper double/decimal conversions in trade simulation (double * decimal operations) and RSI calculations
+
+**Build Verification**: ✅ 0 CS errors, 338 S109 violations remaining (down from 454)
+
+---
+
+### 🔧 Round 165 - Phase 2: S109 Magic Numbers - EnhancedTradingBrainIntegration.cs (Previous)
 
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------| 
@@ -182,10 +257,10 @@ return Math.Sqrt(variance) * Math.Sqrt(AnnualizationFactor);
 **Phase 1**: ✅ COMPLETE - 0 CS compiler errors maintained throughout
 **Phase 2**: 🔄 IN PROGRESS - Systematic Priority 1 violation elimination for SonarCloud A rating
 
-**Cumulative Session Results (Rounds 159-165)**:
-- Total violations fixed: 404 across 12 files  
-- Starting violations: ~10,746 → Current violations: ~5,119
-- S109 specific: 844 → 454 (390 violations fixed, 46.2% reduction)
+**Cumulative Session Results (Rounds 159-166)**:
+- Total violations fixed: 520 across 13 files  
+- Starting violations: ~10,746 → Current violations: ~5,003
+- S109 specific: 844 → 338 (506 violations fixed, 60.0% reduction)
 - S2139 specific: 86 → 72 (14 violations fixed, 16.3% reduction)
 - Build status: ✅ Clean (0 CS errors)
 - All guardrails maintained: ✅ TreatWarningsAsErrors=true, zero suppressions
