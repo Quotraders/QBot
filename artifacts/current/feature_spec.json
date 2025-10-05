@@ -1,0 +1,26 @@
+{
+  "version": "features:v1",
+  "columns": [
+    {"name": "ret_1m", "index": 0, "fillValue": 0},
+    {"name": "ret_5m", "index": 1, "fillValue": 0},
+    {"name": "atr_14", "index": 2, "fillValue": 0.5},
+    {"name": "rsi_14", "index": 3, "fillValue": 50},
+    {"name": "vwap_dist", "index": 4, "fillValue": 0},
+    {"name": "bb_width", "index": 5, "fillValue": 0.01},
+    {"name": "ob_imbalance", "index": 6, "fillValue": 1.0},
+    {"name": "hour_frac", "index": 7, "fillValue": 0.5},
+    {"name": "pos", "index": 8, "fillValue": 0},
+    {"name": "session_flag", "index": 9, "fillValue": 0}
+  ],
+  "scaler": {
+    "mean": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    "std": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+  },
+  "inference": {
+    "logitToAction": {
+      "0": -1,
+      "1": 0,
+      "2": 1
+    }
+  }
+}
