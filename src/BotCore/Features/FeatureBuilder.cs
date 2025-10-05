@@ -285,45 +285,125 @@ public class FeatureBuilder
     {
         // Compute ADR percentage: (current range) / (average daily range over configured days)
         // This is used by S11 exhaustion strategy
-        if (bars.Count < _config.AdrDays + 1) return _spec.Columns[7].FillValue;
+        if (bars == null || bars.Count == 0)
+        {
+            _logger.LogWarning("[FEATURE-BUILDER] ComputeAdrPct: bars list is null or empty. Using fill value.");
+            return _spec.Columns[7].FillValue;
+        }
+        
+        // Validate config (fail fast to surface bad config)
+        if (_config.AdrDays < 1)
+        {
+            _logger.LogError("[FEATURE-BUILDER] ComputeAdrPct: Invalid config AdrDays={AdrDays}. Using fill value.", _config.AdrDays);
+            return _spec.Columns[7].FillValue;
+        }
+        
+        if (_config.CurrentRangeBars < 1)
+        {
+            _logger.LogError("[FEATURE-BUILDER] ComputeAdrPct: Invalid config CurrentRangeBars={CurrentRangeBars}. Using fill value.", _config.CurrentRangeBars);
+            return _spec.Columns[7].FillValue;
+        }
         
         try
         {
-            // Calculate current intraday range
-            var recentBars = bars.TakeLast(_config.CurrentRangeBars).ToList();
-            var currentHigh = recentBars.Max(b => b.High);
-            var currentLow = recentBars.Min(b => b.Low);
-            var currentRange = currentHigh - currentLow;
+            // Calculate current intraday range using indexed slicing (avoid TakeLast allocation)
+            var startIdx = Math.Max(0, bars.Count - _config.CurrentRangeBars);
+            decimal currentHigh = bars[startIdx].High;
+            decimal currentLow = bars[startIdx].Low;
             
-            // Calculate average daily range over configured period
-            // Approximate by taking max-min over rolling windows
+            for (int i = startIdx; i < bars.Count; i++)
+            {
+                if (bars[i].High > currentHigh) currentHigh = bars[i].High;
+                if (bars[i].Low < currentLow) currentLow = bars[i].Low;
+            }
+            
+            var currentRange = currentHigh - currentLow;
+            if (currentRange < 0)
+            {
+                _logger.LogWarning("[FEATURE-BUILDER] ComputeAdrPct: Current range is negative ({CurrentRange}). Using fill value.", currentRange);
+                return _spec.Columns[7].FillValue;
+            }
+            
+            // Group bars by trading date using bar timestamps (handles different bar resolutions)
+            // Use bar.Start for grouping to ensure consistent trading day boundaries
+            var barsByDate = new Dictionary<DateTime, List<Bar>>();
+            
+            foreach (var bar in bars)
+            {
+                // Use date only (ignores time) to group by trading day
+                var tradingDate = bar.Start.Date;
+                if (!barsByDate.ContainsKey(tradingDate))
+                {
+                    barsByDate[tradingDate] = new List<Bar>();
+                }
+                barsByDate[tradingDate].Add(bar);
+            }
+            
+            // Get the last N trading days
+            var sortedDates = barsByDate.Keys.OrderByDescending(d => d).Take(_config.AdrDays).ToList();
+            
+            if (sortedDates.Count == 0)
+            {
+                _logger.LogWarning("[FEATURE-BUILDER] ComputeAdrPct: No trading days found. Using fill value.");
+                return _spec.Columns[7].FillValue;
+            }
+            
+            // Calculate average daily range over the available trading days
             decimal totalRange = 0;
             int validDays = 0;
             
-            for (int i = Math.Max(0, bars.Count - _config.AdrDays * _config.MinutesPerDay); 
-                 i < bars.Count - _config.MinutesPerDay; 
-                 i += _config.MinutesPerDay)
+            foreach (var date in sortedDates)
             {
-                var dayBars = bars.Skip(i).Take(_config.MinutesPerDay).ToList();
+                var dayBars = barsByDate[date];
                 if (dayBars.Count > 0)
                 {
-                    var dayHigh = dayBars.Max(b => b.High);
-                    var dayLow = dayBars.Min(b => b.Low);
-                    totalRange += (dayHigh - dayLow);
-                    validDays++;
+                    decimal dayHigh = dayBars[0].High;
+                    decimal dayLow = dayBars[0].Low;
+                    
+                    foreach (var bar in dayBars)
+                    {
+                        if (bar.High > dayHigh) dayHigh = bar.High;
+                        if (bar.Low < dayLow) dayLow = bar.Low;
+                    }
+                    
+                    var dayRange = dayHigh - dayLow;
+                    if (dayRange >= 0) // Only count valid ranges
+                    {
+                        totalRange += dayRange;
+                        validDays++;
+                    }
                 }
             }
             
-            if (validDays == 0) return _spec.Columns[7].FillValue;
+            if (validDays == 0)
+            {
+                _logger.LogWarning("[FEATURE-BUILDER] ComputeAdrPct: No valid trading days found. Using fill value.");
+                return _spec.Columns[7].FillValue;
+            }
             
             var avgDailyRange = totalRange / validDays;
-            if (avgDailyRange == 0) return _spec.Columns[7].FillValue;
             
-            return currentRange / avgDailyRange;
+            // Guard against divide-by-zero
+            if (avgDailyRange <= 0)
+            {
+                _logger.LogWarning("[FEATURE-BUILDER] ComputeAdrPct: Average daily range is {AvgDailyRange}. Using fill value.", avgDailyRange);
+                return _spec.Columns[7].FillValue;
+            }
+            
+            var adrPct = currentRange / avgDailyRange;
+            
+            // Sanity check: ADR percentage should be reasonable (0 to 10x)
+            if (adrPct < 0 || adrPct > 10)
+            {
+                _logger.LogWarning("[FEATURE-BUILDER] ComputeAdrPct: ADR percentage {AdrPct} is out of reasonable range [0, 10]. Using fill value.", adrPct);
+                return _spec.Columns[7].FillValue;
+            }
+            
+            return adrPct;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "[FEATURE-BUILDER] Failed to compute ADR percentage: {ExceptionType}. Using fill value.", ex.GetType().Name);
+            _logger.LogError(ex, "[FEATURE-BUILDER] ComputeAdrPct: Unexpected exception {ExceptionType}. Using fill value.", ex.GetType().Name);
             return _spec.Columns[7].FillValue;
         }
     }
