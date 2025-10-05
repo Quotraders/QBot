@@ -18,7 +18,18 @@ namespace BotCore.Infra
                 var json = JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = false });
                 File.WriteAllText(path, json);
             }
-            catch { }
+            catch (IOException)
+            {
+                // Silently fail on IO errors (disk full, access issues)
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Silently fail on permission issues
+            }
+            catch (JsonException)
+            {
+                // Silently fail on serialization errors
+            }
         }
 
         public static T? Load<T>(string name)
@@ -30,7 +41,21 @@ namespace BotCore.Infra
                 var json = File.ReadAllText(path);
                 return JsonSerializer.Deserialize<T>(json);
             }
-            catch { return default; }
+            catch (IOException)
+            {
+                // Return default on IO errors (file not found, access issues)
+                return default;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Return default on permission issues
+                return default;
+            }
+            catch (JsonException)
+            {
+                // Return default on deserialization errors (corrupt file)
+                return default;
+            }
         }
     }
 }
