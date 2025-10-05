@@ -83,7 +83,66 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 76 violations eliminated across 9 files in 3 focused rounds
 
-### 🔧 Round 167 - Phase 2: S109 Magic Numbers Cleanup - AutonomousDecisionEngine.cs Final (Current Session)
+### 🔧 Round 168 - Phase 2: Collection Immutability & Unused Fields (Current Session)
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA2227/CA1002 | 26 | ~18 | DslContracts.cs, StateStore.cs, StatusService.cs, S7OrderTypeSelector.cs, FeatureSpec.cs, StrategyKnowledgeGraphNew.cs | DTO immutability pattern: List<T> → IReadOnlyList<T> with init setters; Domain backing field pattern for mutable models |
+| S1144 | 10 | 2 | NeuralUcbBandit.cs, StatusService.cs | Removed duplicate unused constant definitions and unused private fields |
+
+**Total Fixed: 16 violations across 8 files**
+
+**Example Patterns Applied**:
+```csharp
+// Before (CA2227/CA1002) - Mutable collection setters
+public class DslWhen {
+    public List<string> Regime { get; set; } = new();
+    public List<string> Micro { get; set; } = new();
+}
+
+// After (DTO Pattern) - Immutable collections with init
+public class DslWhen {
+    public IReadOnlyList<string> Regime { get; init; } = new List<string>();
+    public IReadOnlyList<string> Micro { get; init; } = new List<string>();
+}
+
+// Before (CA2227/CA1002) - Domain model needing mutation
+public sealed class OrderTypeRecommendation {
+    public List<string> Reasoning { get; set; } = new();
+}
+
+// After (Backing Field Pattern) - Controlled mutation
+public sealed class OrderTypeRecommendation {
+    private readonly List<string> _reasoning = new();
+    public IReadOnlyList<string> Reasoning => _reasoning;
+    internal void AddReasoning(string reason) => _reasoning.Add(reason);
+}
+
+// Before (S1144) - Duplicate unused constants
+public class NeuralUcbBandit {
+    private const decimal DefaultUncertaintyValue = 0.5m;  // UNUSED HERE
+    private const decimal MaxUncertaintyValue = 1.0m;      // UNUSED HERE
+}
+internal sealed class NeuralUcbArm {
+    private const decimal DefaultUncertaintyValue = 0.5m;  // USED HERE
+    private const decimal MaxUncertaintyValue = 1.0m;      // USED HERE
+}
+
+// After - Constants only where used
+public class NeuralUcbBandit {
+    // Removed unused duplicates
+}
+internal sealed class NeuralUcbArm {
+    private const decimal DefaultUncertaintyValue = 0.5m;
+    private const decimal MaxUncertaintyValue = 1.0m;
+}
+```
+
+**Build Verification**: ✅ 0 CS errors, 16 analyzer violations fixed
+
+---
+
+### 🔧 Round 167 - Phase 2: S109 Magic Numbers Cleanup - AutonomousDecisionEngine.cs Final (Previous Session)
 
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------| 
