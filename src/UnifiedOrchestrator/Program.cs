@@ -1300,6 +1300,61 @@ Please check the configuration and ensure all required services are registered.
         });
         services.AddSingleton<TradingBot.RLAgent.FeatureEngineering>();
         
+        // Register FeatureSpec and FeatureBuilder for standardized feature engineering
+        services.AddSingleton<BotCore.Features.FeatureSpec>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<BotCore.Features.FeatureBuilder>>();
+            var featureSpecPath = Path.Combine("artifacts", "current", "feature_spec.json");
+            
+            try
+            {
+                if (File.Exists(featureSpecPath))
+                {
+                    var spec = BotCore.Features.FeatureSpecLoader.Load(featureSpecPath);
+                    logger.LogInformation("✅ [FEATURE-SPEC] Loaded feature specification: {Version} with {ColumnCount} columns", 
+                        spec.Version, spec.Columns.Count);
+                    return spec;
+                }
+                else
+                {
+                    logger.LogWarning("⚠️ [FEATURE-SPEC] Feature spec file not found at {Path}, using default", featureSpecPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "⚠️ [FEATURE-SPEC] Failed to load feature spec from {Path}, using default", featureSpecPath);
+            }
+            
+            // Return default spec if loading fails
+            return new BotCore.Features.FeatureSpec
+            {
+                Version = "features:v1",
+                Columns = new List<BotCore.Features.Column>
+                {
+                    new() { Name = "ret_1m", Index = 0, FillValue = 0 },
+                    new() { Name = "ret_5m", Index = 1, FillValue = 0 },
+                    new() { Name = "atr_14", Index = 2, FillValue = 0.5m },
+                    new() { Name = "rsi_14", Index = 3, FillValue = 50 },
+                    new() { Name = "vwap_dist", Index = 4, FillValue = 0 },
+                    new() { Name = "bb_width", Index = 5, FillValue = 0.01m },
+                    new() { Name = "ob_imbalance", Index = 6, FillValue = 1.0m },
+                    new() { Name = "hour_frac", Index = 7, FillValue = 0.5m },
+                    new() { Name = "pos", Index = 8, FillValue = 0 },
+                    new() { Name = "session_flag", Index = 9, FillValue = 0 }
+                },
+                Scaler = new BotCore.Features.Scaler
+                {
+                    Mean = new decimal[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+                    Std = new decimal[] { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }
+                },
+                Inference = new BotCore.Features.InferenceConfig
+                {
+                    LogitToAction = new Dictionary<int, int> { { 0, -1 }, { 1, 0 }, { 2, 1 } }
+                }
+            };
+        });
+        services.AddSingleton<BotCore.Features.FeatureBuilder>();
+        
         services.AddSingleton<BotCore.ML.StrategyMlModelManager>(provider =>
         {
             var logger = provider.GetRequiredService<ILogger<BotCore.ML.StrategyMlModelManager>>();
