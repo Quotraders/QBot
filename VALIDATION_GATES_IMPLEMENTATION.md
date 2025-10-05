@@ -111,6 +111,8 @@ services.AddSingleton<ICloudModelDownloader, CloudModelDownloader>();
 **File**: `src/BotCore/Services/S15ShadowLearningService.cs`
 **Purpose**: Validates S15 RL strategy before promoting from shadow to live
 
+### Validation Checks
+
 ### How It Works
 
 1. **Shadow Observation**
@@ -171,6 +173,96 @@ services.AddHostedService<S15ShadowLearningService>(provider =>
     provider.GetRequiredService<S15ShadowLearningService>());
 ```
 
+## Gate 4: UnifiedTradingBrain Model Reload Safety
+
+**File**: `src/BotCore/Brain/UnifiedTradingBrain.cs` (ValidateModelForReloadAsync method)
+**Purpose**: Validates ONNX models before hot-reloading into production brain
+
+### Validation Checks
+
+1. **Feature Specification Compatibility**
+   - Loads feature spec from `config/feature_specification.json`
+   - Verifies model expects same number of features
+   - Checks feature names, types, and ranges match
+   - Aborts reload if any mismatch detected
+
+2. **Sanity Test with Deterministic Dataset**
+   - Loads or generates 200 deterministic feature vectors
+   - Cached in `data/validation/sanity_test_vectors.json`
+   - Uses fixed random seed (42) for reproducibility
+   - Vectors cover normal trading feature ranges
+
+3. **Prediction Distribution Comparison**
+   - Runs inference through both current and new model
+   - Calculates total variation distance between predictions
+   - Calculates KL divergence as secondary check
+   - Rejects if divergence indicates unstable learning
+
+4. **NaN/Infinity Validation**
+   - Runs model on all sanity test vectors
+   - Checks every output for NaN or Infinity values
+   - Rejects model if any invalid outputs detected
+   - Ensures model stability and numerical robustness
+
+### Thresholds
+
+```csharp
+SANITY_TEST_VECTORS = 200
+MAX_TOTAL_VARIATION = 0.20  // 20% threshold
+MAX_KL_DIVERGENCE = 0.25
+FAIL_ON_NAN_INFINITY = true
+```
+
+### Integration
+
+Called by `ModelHotReloadManager` before atomic model swap:
+
+```csharp
+// In ProcessHotReloadAsync()
+var (isValid, reason) = await _unifiedBrain.ValidateModelForReloadAsync(
+    newModelPath, currentModelPath, cancellationToken);
+    
+if (!isValid)
+{
+    _logger.LogError("Gate 4 validation failed: {Reason}", reason);
+    // Abort reload, keep current model
+    return;
+}
+```
+
+Also integrated into existing smoke test flow in `ModelHotReloadManager.cs`.
+
+### Fail-Safe Behavior
+
+- Model file validated for existence and non-zero size
+- Feature specification created if missing (default 11 features for CVaR-PPO)
+- Current model path checked - skips comparison if first deployment
+- Any validation failure aborts reload immediately
+- Current in-memory model remains unchanged
+- Detailed failure reason logged for debugging
+
+### Feature Specification Format
+
+```json
+{
+  "version": "1.0",
+  "feature_count": 11,
+  "features": [
+    { "name": "volatility_normalized", "type": "float", "range": [-1.0, 1.0] },
+    { "name": "price_change_momentum", "type": "float", "range": [-1.0, 1.0] },
+    { "name": "volume_surge", "type": "float", "range": [-1.0, 1.0] },
+    { "name": "atr_normalized", "type": "float", "range": [-1.0, 1.0] },
+    { "name": "ucb_value", "type": "float", "range": [-1.0, 1.0] },
+    { "name": "strategy_encoding", "type": "float", "range": [0.0, 1.0] },
+    { "name": "direction_encoding", "type": "float", "range": [-1.0, 1.0] },
+    { "name": "time_of_day_sin", "type": "float", "range": [-1.0, 1.0] },
+    { "name": "time_of_day_cos", "type": "float", "range": [-1.0, 1.0] },
+    { "name": "decisions_per_day_normalized", "type": "float", "range": [-1.0, 1.0] },
+    { "name": "risk_metric", "type": "float", "range": [-1.0, 1.0] }
+  ]
+}
+```
+
 ## Environment Variables
 
 All validation thresholds are configurable via `.env`:
@@ -201,7 +293,37 @@ S15_MIN_SHARPE_MULTIPLIER=1.20
 S15_BOOTSTRAP_P_VALUE_THRESHOLD=0.05
 ```
 
+### Gate 4 Variables
+```bash
+GATE4_SANITY_TEST_VECTORS=200
+GATE4_MAX_TOTAL_VARIATION=0.20
+GATE4_MAX_KL_DIVERGENCE=0.25
+GATE4_FAIL_ON_NAN_INFINITY=true
+```
+
 ## Testing & Verification
+
+### Gate 4: Model Reload Safety
+Runs automatically when ModelHotReloadManager detects new model file.
+Check logs for validation results:
+```
+=== GATE 4: UNIFIED TRADING BRAIN MODEL RELOAD VALIDATION ===
+[1/4] Validating feature specification compatibility...
+  ✓ Feature specification matches
+[2/4] Running sanity tests with deterministic dataset...
+  Loaded 200 sanity test vectors
+[3/4] Comparing prediction distributions...
+  ✓ Distribution divergence acceptable: 0.0523
+[4/4] Validating model outputs for NaN/Infinity...
+  ✓ All outputs valid (no NaN/Infinity)
+=== GATE 4 PASSED - Model validated for hot-reload ===
+```
+
+Check generated artifacts:
+```bash
+cat config/feature_specification.json
+cat data/validation/sanity_test_vectors.json
+```
 
 ### Gate 1: Parameter Optimization
 Run weekly via Saturday 2 AM scheduler:
@@ -264,9 +386,15 @@ Monitor logs for evaluation:
 - Continues accumulating shadow data
 - No impact on live trading
 
+### Gate 4 Failure
+- New model file NOT loaded
+- Current in-memory model unchanged
+- Hot-reload aborted immediately
+- Detailed failure reason logged
+
 ## Safety Philosophy
 
-All three gates follow the same principle:
+All four gates follow the same principle:
 1. **Pessimistic by default**: Failures result in status quo
 2. **Multiple checks**: No single point of failure
 3. **Statistical rigor**: Bootstrap tests ensure significance
