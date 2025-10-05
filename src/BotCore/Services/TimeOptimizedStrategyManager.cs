@@ -97,6 +97,111 @@ namespace BotCore.Services
         // Time-based optimization constants
         private const double NeutralRSIValue = 50.0;                // Neutral RSI value (midpoint)
         private const decimal NeutralRSIValueDecimal = 50.0m;       // Neutral RSI value as decimal
+        
+        // Volatility calculation constants
+        private const int MinimumBarsForVolatility = 20;            // Minimum bars needed for volatility calculation
+        private const double DefaultVolatilityFallback = 1.0;       // Default volatility when insufficient data
+        private const int AnnualizationFactor = 252;                // Trading days per year for volatility annualization
+        
+        // Trend calculation constants
+        private const int MinimumBarsForTrend = 10;                 // Minimum bars needed for trend calculation
+        private const double DefaultTrendFallback = 0.0;            // Default trend when insufficient data
+        
+        // Correlation constants
+        private const int MinimumDataPointsForCorrelation = 20;     // Minimum data points for correlation calculation
+        private const int CorrelationLookbackPeriod = 50;           // Lookback period for correlation analysis
+        private const double FallbackCorrelation = 0.85;            // ES/NQ historical baseline correlation
+        private const double HighCorrelationThreshold = 0.8;        // Threshold for high correlation
+        private const double MinimumCorrelation = 0.1;              // Minimum correlation bound
+        private const double MaximumCorrelation = 0.95;             // Maximum correlation bound
+        private const double ConservativeFallbackCorrelation = 0.82;// Conservative fallback correlation
+        private const double MinimumCorrelationBound = 0.7;         // Minimum correlation bound for adjustments
+        
+        // ML confidence constants
+        private const double NoMLConfidenceFallback = 0.5;          // ML confidence when using fallback
+        private const double DefaultConfidenceMultiplier = 1.0;     // Default confidence multiplier
+        private const decimal DefaultATRFallback = 1.0m;            // Default ATR when no bar data
+        
+        // RSI constants
+        private const int MaxRSIValue = 100;                        // Maximum RSI value
+        
+        // Volume profile constants
+        private const int MinimumBarsForVolumeProfile = 10;         // Minimum bars for volume profile
+        private const double DefaultAverageVolume = 100000;         // Default average volume
+        private const decimal DefaultHighVolumeLevel = 5500m;       // Default high volume price level
+        private const decimal DefaultLowVolumeLevel = 5480m;        // Default low volume price level
+        private const int VolumeProfileLookback = 20;               // Lookback period for volume profile
+        private const int PriceVolumeLookback = 50;                 // Lookback period for price-volume analysis
+        private const int PriceRoundingLevel = 0;                   // Price rounding to dollar levels
+        
+        // Market hours constants
+        private const int MarketCloseHour = 16;                     // Market close hour (4 PM CT)
+        private const int HoursInDay = 24;                          // Hours in a day for normalization
+        
+        // ATR calculation constants
+        private const int ATRPeriod = 14;                           // Standard ATR period
+        private const decimal DefaultATRNormalized = 0.01m;         // Default 1% normalized ATR
+        
+        // Market hours adjustment constants
+        private const double MarketHoursCorrelationBoost = 0.02;    // Correlation boost during market hours
+        private const double OffHoursCorrelationPenalty = -0.05;    // Correlation penalty during off hours
+        private const int MarketOpenHour = 9;                       // Market open hour (9 AM CT)
+        private const int MarketAfterHoursEnd = 16;                 // After hours end (4 PM CT)
+        
+        // Imbalance normalization constants
+        private const decimal MinimumImbalance = -1m;               // Minimum order book imbalance
+        private const decimal MaximumImbalance = 1m;                // Maximum order book imbalance
+        private const decimal ImbalanceNormalizationFactor = 2m;    // Factor for imbalance normalization
+        
+        // Time decay constants
+        private const double MinimumTimeDecay = 0.3;                // Minimum time decay factor
+        private const int TimeDecayHoursThreshold = 3;              // Hours threshold for time decay
+        
+        // Signal persistence constants
+        private const double MinimumSignalPersistence = 0.005;      // Minimum signal persistence threshold
+        private const double SignalDecayMinimum = 0.001;            // Minimum signal decay value
+        private const double SignalDecayModerate = 0.5;             // Moderate signal decay value
+        
+        // ML adjustment constants
+        private const double NoAdjustment = 1.0;                    // No adjustment multiplier
+        private const double MinimalAdjustment = 0.0;               // Minimal adjustment value
+        
+        // Bollinger Bands constants
+        private const int BollingerBandsPeriod = 20;                // Bollinger Bands period
+        private const decimal MiddleOfBands = 0.5m;                 // Middle position in Bollinger Bands
+        private const int BollingerStdDevMultiplier = 2;            // Standard deviation multiplier for Bollinger Bands
+        
+        // VWAP calculation constants
+        private const int VWAPLookbackPeriod = 50;                  // VWAP lookback period
+        private const int TypicalPriceDivisor = 3;                  // Divisor for typical price calculation (H+L+C)/3
+        
+        // Market stress constants
+        private const decimal MediumStressLevel = 0.5m;             // Medium stress level
+        private const int MinimumBarsForStressCalculation = 10;     // Minimum bars for stress calculation
+        private const int StressLookbackPeriod = 10;                // Lookback period for stress calculation
+        private const decimal StressNormalizationFactor = 2m;       // Normalization factor for volatility in stress
+        private const decimal StressCombinationFactor = 4m;         // Factor for combining stress indicators
+        private const int MinimumBarsForVolumeStress = 5;           // Minimum bars for volume stress
+        private const decimal DefaultVolumeStress = 0.3m;           // Default volume stress when insufficient data
+        private const decimal VolumeStressNormalizationFactor = 3.0m; // Volume stress normalization
+        private const int MinimumBarsForGapAnalysis = 2;            // Minimum bars for gap analysis
+        private const decimal GapStressThreshold = 0.005m;          // Threshold for significant gap
+        private const decimal DefaultTrendStress = 0.3m;            // Default trend stress
+        private const int MinimumBarsForTrendStress = 3;            // Minimum bars for trend stress
+        private const decimal TrendStressNormalizationFactor = 0.01m; // Trend stress normalization
+        
+        // Default feature values
+        private const decimal DefaultVolatilityFeature = 1.0m;      // Default volatility feature
+        private const decimal DefaultTrendFeature = 0.0m;           // Default trend feature
+        private const decimal DefaultMomentumFeature = 0.0m;        // Default momentum feature
+        private const decimal DefaultVolumeFeature = 1.0m;          // Default volume feature
+        private const decimal DefaultBidAskSpread = 0.001m;         // Default bid-ask spread
+        private const decimal DefaultImbalanceFeature = 0.0m;       // Default imbalance feature
+        private const decimal DefaultHourOfDayFeature = 0.5m;       // Default hour of day feature
+        private const decimal DefaultTimeToCloseFeature = 0.5m;     // Default time to close feature
+        private const decimal DefaultNormalizedPriceFeature = 1.0m; // Default normalized price feature
+        private const decimal DefaultBollingerPositionFeature = 0.5m; // Default Bollinger position feature
+        private const decimal DefaultMarketStressFeature = 0.5m;    // Default market stress feature
 
         public TimeOptimizedStrategyManager(ILogger<TimeOptimizedStrategyManager> logger, TradingBot.Abstractions.IS7Service? s7Service = null, OnnxModelLoader? onnxLoader = null)
         {
@@ -347,16 +452,16 @@ namespace BotCore.Services
                 Name = volatility > HighVolatilityThreshold ? "high_vol" : volatility < LowVolatilityThreshold ? "low_vol" : "mid_vol",
                 TrendStrength = Math.Abs(trend),
                 Volatility = volatility,
-                MLConfidence = 0.5 // No ML confidence in fallback
+                MLConfidence = NoMLConfidenceFallback // No ML confidence in fallback
             };
         }
 
         private double CalculateRecentVolatility(IReadOnlyList<Bar> bars)
         {
-            if (bars.Count < 20) return 1.0;
+            if (bars.Count < MinimumBarsForVolatility) return DefaultVolatilityFallback;
 
             var returns = new List<double>();
-            for (int i = 1; i < Math.Min(20, bars.Count); i++)
+            for (int i = 1; i < Math.Min(MinimumBarsForVolatility, bars.Count); i++)
             {
                 var ret = Math.Log((double)bars[i].Close / (double)bars[i - 1].Close);
                 returns.Add(ret);
@@ -364,14 +469,14 @@ namespace BotCore.Services
 
             var mean = returns.Average();
             var variance = returns.Select(r => Math.Pow(r - mean, 2)).Average();
-            return Math.Sqrt(variance) * Math.Sqrt(252); // Annualized volatility proxy
+            return Math.Sqrt(variance) * Math.Sqrt(AnnualizationFactor); // Annualized volatility proxy
         }
 
         private double CalculateTrend(IReadOnlyList<Bar> bars)
         {
-            if (bars.Count < 10) return 0.0;
+            if (bars.Count < MinimumBarsForTrend) return DefaultTrendFallback;
 
-            var recent = bars.TakeLast(10).ToList();
+            var recent = bars.TakeLast(MinimumBarsForTrend).ToList();
             var firstPrice = (double)recent.First().Close;
             var lastPrice = (double)recent.Last().Close;
 
@@ -409,7 +514,7 @@ namespace BotCore.Services
             // Create environment for strategy evaluation
             return new Env
             {
-                atr = bars.Count > 0 ? (decimal?)Math.Abs(bars.Last().High - bars.Last().Low) : 1.0m,
+                atr = bars.Count > 0 ? (decimal?)Math.Abs(bars.Last().High - bars.Last().Low) : DefaultATRFallback,
                 volz = (decimal?)CalculateRecentVolatility(bars)
             };
         }
@@ -452,42 +557,42 @@ namespace BotCore.Services
             try
             {
                 // Get recent price data for both ES and NQ
-                var esPrices = _esBars?.TakeLast(50)?.Select(b => (double)b.Close)?.ToArray();
-                var nqPrices = _nqBars?.TakeLast(50)?.Select(b => (double)b.Close)?.ToArray();
+                var esPrices = _esBars?.TakeLast(CorrelationLookbackPeriod)?.Select(b => (double)b.Close)?.ToArray();
+                var nqPrices = _nqBars?.TakeLast(CorrelationLookbackPeriod)?.Select(b => (double)b.Close)?.ToArray();
                 
                 // Calculate Pearson correlation if we have sufficient data
-                if (esPrices != null && nqPrices != null && esPrices.Length >= 20 && nqPrices.Length >= 20)
+                if (esPrices != null && nqPrices != null && esPrices.Length >= MinimumDataPointsForCorrelation && nqPrices.Length >= MinimumDataPointsForCorrelation)
                 {
                     var minLength = Math.Min(esPrices.Length, nqPrices.Length);
                     var esReturns = CalculateReturns(esPrices.TakeLast(minLength).ToArray());
                     var nqReturns = CalculateReturns(nqPrices.TakeLast(minLength).ToArray());
                     
-                    if (esReturns.Length >= 10 && nqReturns.Length >= 10)
+                    if (esReturns.Length >= MinimumBarsForTrend && nqReturns.Length >= MinimumBarsForTrend)
                     {
                         var correlation = CalculatePearsonCorrelation(esReturns, nqReturns);
                         _logger.LogDebug("Real Pearson correlation calculated: {Correlation:F3} from {DataPoints} returns", 
                             correlation, Math.Min(esReturns.Length, nqReturns.Length));
-                        return Math.Max(0.1, Math.Min(0.95, correlation));
+                        return Math.Max(MinimumCorrelation, Math.Min(MaximumCorrelation, correlation));
                     }
                 }
                 
                 // Fallback to sophisticated estimation if insufficient data
-                var baseCorrelation = 0.85; // ES/NQ historical baseline
+                var baseCorrelation = FallbackCorrelation; // ES/NQ historical baseline
                 var hourOfDay = DateTime.UtcNow.Hour;
                 var marketHoursAdjustment = hourOfDay switch
                 {
-                    >= 9 and <= 16 => 0.02,  // Higher correlation during market hours
-                    _ => -0.05                // Lower correlation during off hours
+                    >= MarketOpenHour and <= MarketAfterHoursEnd => MarketHoursCorrelationBoost,  // Higher correlation during market hours
+                    _ => OffHoursCorrelationPenalty                // Lower correlation during off hours
                 };
                 
-                var result = Math.Max(0.7, Math.Min(0.95, baseCorrelation + marketHoursAdjustment));
+                var result = Math.Max(MinimumCorrelationBound, Math.Min(MaximumCorrelation, baseCorrelation + marketHoursAdjustment));
                 _logger.LogDebug("Using fallback correlation: {Correlation:F3} (insufficient data for Pearson)", result);
                 return result;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error calculating correlation, using fallback");
-                return 0.82; // Safe conservative correlation
+                return ConservativeFallbackCorrelation; // Safe conservative correlation
             }
         }
         
@@ -515,7 +620,7 @@ namespace BotCore.Services
         private double CalculatePearsonCorrelation(double[] series1, double[] series2)
         {
             if (series1.Length != series2.Length || series1.Length == 0)
-                return 0.85; // Fallback
+                return FallbackCorrelation; // Fallback
                 
             var mean1 = series1.Average();
             var mean2 = series2.Average();
@@ -526,7 +631,7 @@ namespace BotCore.Services
                 series2.Sum(y => Math.Pow(y - mean2, 2))
             );
             
-            return denominator != 0 ? numerator / denominator : 0.85;
+            return denominator != 0 ? numerator / denominator : FallbackCorrelation;
         }
 
         private ES_NQ_Correlation CheckES_NQ_Correlation(string instrument)
@@ -537,13 +642,13 @@ namespace BotCore.Services
             var result = new ES_NQ_Correlation
             {
                 Value = correlation,
-                ConfidenceMultiplier = 1.0,
+                ConfidenceMultiplier = DefaultConfidenceMultiplier,
                 ShouldVeto = false,
                 Reason = ""
             };
 
             // Simple correlation check - prevent opposing trades when highly correlated
-            if (correlation > 0.8)
+            if (correlation > HighCorrelationThreshold)
             {
                 // In production, check actual opposite instrument position/trend
                 // For now, just log the correlation
@@ -599,33 +704,33 @@ namespace BotCore.Services
             var avgGain = gains.Average();
             var avgLoss = losses.Average();
 
-            if (avgLoss == 0) return 100; // All gains
+            if (avgLoss == 0) return MaxRSIValue; // All gains
             
             var rs = avgGain / avgLoss;
-            return 100 - (100 / (1 + rs));
+            return MaxRSIValue - (MaxRSIValue / (1 + rs));
         }
 
         private VolumeProfileData CalculateVolumeProfile(IReadOnlyList<Bar> bars)
         {
-            if (bars.Count < 10)
+            if (bars.Count < MinimumBarsForVolumeProfile)
             {
                 return new VolumeProfileData
                 {
-                    AverageVolume = 100000,
-                    VolumeRatio = 1.0,
-                    HighVolumeLevel = 5500m,
-                    LowVolumeLevel = 5480m
+                    AverageVolume = DefaultAverageVolume,
+                    VolumeRatio = DefaultConfidenceMultiplier,
+                    HighVolumeLevel = DefaultHighVolumeLevel,
+                    LowVolumeLevel = DefaultLowVolumeLevel
                 };
             }
 
-            var volumes = bars.TakeLast(20).Select(b => (double)b.Volume).ToList();
+            var volumes = bars.TakeLast(VolumeProfileLookback).Select(b => (double)b.Volume).ToList();
             var avgVolume = volumes.Average();
             var currentVolume = (double)bars.Last().Volume;
-            var volumeRatio = avgVolume > 0 ? currentVolume / avgVolume : 1.0;
+            var volumeRatio = avgVolume > 0 ? currentVolume / avgVolume : DefaultConfidenceMultiplier;
 
             // Find high and low volume price levels
-            var priceVolumePairs = bars.TakeLast(50)
-                .GroupBy(b => Math.Round(b.Close, 0)) // Group by dollar levels
+            var priceVolumePairs = bars.TakeLast(PriceVolumeLookback)
+                .GroupBy(b => Math.Round(b.Close, PriceRoundingLevel)) // Group by dollar levels
                 .Select(g => new { Price = g.Key, TotalVolume = g.Sum(x => x.Volume) })
                 .OrderByDescending(x => x.TotalVolume)
                 .ToList();
@@ -651,11 +756,11 @@ namespace BotCore.Services
             if (spread <= 0) return 0m;
             
             // Calculate imbalance based on where Close price sits in bid-ask spread
-            var midPoint = (data.Bid + data.Ask) / 2;
-            var pricePosition = data.Close - (double)midPoint;
+            var midPoint = (data.Bid + data.Ask) / (double)ImbalanceNormalizationFactor;
+            var pricePosition = data.Close - midPoint;
             
             // Normalize to -1 to +1 range
-            return Math.Max(-1m, Math.Min(1m, (decimal)pricePosition / ((decimal)spread / 2)));
+            return Math.Max(MinimumImbalance, Math.Min(MaximumImbalance, (decimal)pricePosition / ((decimal)spread / ImbalanceNormalizationFactor)));
         }
 
         private decimal CalculateTimeToClose()
@@ -664,23 +769,23 @@ namespace BotCore.Services
             var centralTime = TimeZoneInfo.ConvertTimeFromUtc(now, _centralTime);
             
             // Calculate hours until 4 PM CT market close
-            var marketClose = centralTime.Date.AddHours(16);
-            if (centralTime.Hour >= 16) // After market close, calculate to next day
+            var marketClose = centralTime.Date.AddHours(MarketCloseHour);
+            if (centralTime.Hour >= MarketCloseHour) // After market close, calculate to next day
             {
                 marketClose = marketClose.AddDays(1);
             }
             
             var timeToClose = marketClose - centralTime;
-            return (decimal)Math.Max(0, timeToClose.TotalHours / 24.0); // Normalized to 0-1
+            return (decimal)Math.Max(0, timeToClose.TotalHours / HoursInDay); // Normalized to 0-1
         }
 
         private decimal CalculateATRNormalized(IReadOnlyList<Bar> bars)
         {
-            if (bars.Count < 14) return 0.01m; // Default 1% ATR
+            if (bars.Count < ATRPeriod) return DefaultATRNormalized; // Default 1% ATR
 
             var trueRanges = new List<decimal>();
             
-            for (int i = 1; i < Math.Min(bars.Count, 14); i++)
+            for (int i = 1; i < Math.Min(bars.Count, ATRPeriod); i++)
             {
                 var high = bars[i].High;
                 var low = bars[i].Low;
@@ -696,25 +801,25 @@ namespace BotCore.Services
             var atr = trueRanges.Average();
             var currentPrice = bars.Last().Close;
             
-            return currentPrice > 0 ? atr / currentPrice : 0.01m; // Normalized ATR
+            return currentPrice > 0 ? atr / currentPrice : DefaultATRNormalized; // Normalized ATR
         }
 
         private decimal CalculateBollingerPosition(IReadOnlyList<Bar> bars)
         {
-            if (bars.Count < 20) return 0.5m; // Middle of bands
+            if (bars.Count < BollingerBandsPeriod) return MiddleOfBands; // Middle of bands
 
-            var period = Math.Min(20, bars.Count);
+            var period = Math.Min(BollingerBandsPeriod, bars.Count);
             var prices = bars.TakeLast(period).Select(b => b.Close).ToList();
             var sma = prices.Average();
             
-            var variance = prices.Select(p => (decimal)Math.Pow((double)(p - sma), 2)).Average();
+            var variance = prices.Select(p => (decimal)Math.Pow((double)(p - sma), BollingerStdDevMultiplier)).Average();
             var stdDev = (decimal)Math.Sqrt((double)variance);
             
-            var upperBand = sma + (2 * stdDev);
-            var lowerBand = sma - (2 * stdDev);
+            var upperBand = sma + (BollingerStdDevMultiplier * stdDev);
+            var lowerBand = sma - (BollingerStdDevMultiplier * stdDev);
             var currentPrice = bars.Last().Close;
             
-            if (upperBand == lowerBand) return 0.5m;
+            if (upperBand == lowerBand) return MiddleOfBands;
             
             // Return position within bands (0 = lower band, 1 = upper band)
             return Math.Max(0, Math.Min(1, (currentPrice - lowerBand) / (upperBand - lowerBand)));
@@ -724,7 +829,7 @@ namespace BotCore.Services
         {
             if (bars.Count == 0) return 0m;
 
-            var period = Math.Min(50, bars.Count);
+            var period = Math.Min(VWAPLookbackPeriod, bars.Count);
             var recentBars = bars.TakeLast(period).ToList();
             
             decimal totalVolume = 0;
@@ -732,7 +837,7 @@ namespace BotCore.Services
             
             foreach (var bar in recentBars)
             {
-                var typicalPrice = (bar.High + bar.Low + bar.Close) / 3;
+                var typicalPrice = (bar.High + bar.Low + bar.Close) / TypicalPriceDivisor;
                 volumeWeightedSum += typicalPrice * bar.Volume;
                 totalVolume += bar.Volume;
             }
@@ -742,9 +847,9 @@ namespace BotCore.Services
 
         private decimal CalculateMarketStress(IReadOnlyList<Bar> bars)
         {
-            if (bars.Count < 10) return 0.5m; // Medium stress
+            if (bars.Count < MinimumBarsForStressCalculation) return MediumStressLevel; // Medium stress
 
-            var recent = bars.TakeLast(10).ToList();
+            var recent = bars.TakeLast(StressLookbackPeriod).ToList();
             
             // Calculate multiple stress indicators
             var volatility = CalculateRecentVolatility(bars);
@@ -753,29 +858,29 @@ namespace BotCore.Services
             var trendStress = CalculateTrendStress(recent);
             
             // Combine stress factors (0 = low stress, 1 = high stress) - all decimal
-            var combinedStress = ((decimal)volatility / 2m + volumeStress + gapStress + trendStress) / 4m;
+            var combinedStress = ((decimal)volatility / StressNormalizationFactor + volumeStress + gapStress + trendStress) / StressCombinationFactor;
             
             return Math.Max(0, Math.Min(1, combinedStress));
         }
 
         private decimal CalculateVolumeStress(IReadOnlyList<Bar> recent)
         {
-            if (recent.Count < 5) return 0.3m;
+            if (recent.Count < MinimumBarsForVolumeStress) return DefaultVolumeStress;
             
             var avgVolume = recent.Take(recent.Count - 1).Average(b => b.Volume);
             var currentVolume = recent.Last().Volume;
             
-            if (avgVolume == 0) return 0.3m;
+            if (avgVolume == 0) return DefaultVolumeStress;
             
-            var volumeRatio = currentVolume / avgVolume;
+            var volumeRatio = (decimal)(currentVolume / avgVolume);
             
             // High volume = high stress
-            return Math.Max(0, Math.Min(1, (decimal)((volumeRatio - 1.0) / 3.0)));
+            return Math.Max(0, Math.Min(1, (volumeRatio - (decimal)DefaultConfidenceMultiplier) / VolumeStressNormalizationFactor));
         }
 
         private decimal CalculateGapStress(IReadOnlyList<Bar> recent)
         {
-            if (recent.Count < 2) return 0m;
+            if (recent.Count < MinimumBarsForGapAnalysis) return 0m;
             
             var gaps = new List<decimal>();
             
@@ -796,12 +901,12 @@ namespace BotCore.Services
             var avgGap = gaps.Average();
             
             // Gaps > 0.5% indicate stress
-            return Math.Max(0, Math.Min(1, avgGap / 0.005m));
+            return Math.Max(0, Math.Min(1, avgGap / GapStressThreshold));
         }
 
         private decimal CalculateTrendStress(IReadOnlyList<Bar> recent)
         {
-            if (recent.Count < 3) return 0.3m;
+            if (recent.Count < MinimumBarsForTrendStress) return DefaultTrendStress;
             
             var priceChanges = new List<decimal>();
             
@@ -817,12 +922,12 @@ namespace BotCore.Services
                 }
             }
             
-            if (!priceChanges.Any()) return 0.3m;
+            if (!priceChanges.Any()) return DefaultTrendStress;
             
             var avgChange = priceChanges.Average();
             
             // Rapid price changes indicate stress
-            return Math.Max(0, Math.Min(1, avgChange / 0.01m)); // 1% baseline
+            return Math.Max(0, Math.Min(1, avgChange / TrendStressNormalizationFactor)); // 1% baseline
         }
 
         private decimal[] CreateDefaultFeatures()
@@ -830,20 +935,20 @@ namespace BotCore.Services
             // Return default feature set when insufficient data
             return new decimal[]
             {
-                1.0m,   // volatility
-                0.0m,   // trend
-                0.0m,   // momentum
-                NeutralRSIValueDecimal,  // RSI
-                1.0m,   // volume
-                0.001m, // bid-ask spread
-                0.0m,   // imbalance
-                0.5m,   // hour of day
-                0.5m,   // time to close
-                1.0m,   // normalized price
-                0.01m,  // ATR
-                0.5m,   // Bollinger position
-                MinimumAccountBalance,  // VWAP
-                0.5m    // market stress
+                DefaultVolatilityFeature,   // volatility
+                DefaultTrendFeature,        // trend
+                DefaultMomentumFeature,     // momentum
+                NeutralRSIValueDecimal,     // RSI
+                DefaultVolumeFeature,       // volume
+                DefaultBidAskSpread,        // bid-ask spread
+                DefaultImbalanceFeature,    // imbalance
+                DefaultHourOfDayFeature,    // hour of day
+                DefaultTimeToCloseFeature,  // time to close
+                DefaultNormalizedPriceFeature, // normalized price
+                DefaultATRNormalized,       // ATR
+                DefaultBollingerPositionFeature, // Bollinger position
+                MinimumAccountBalance,      // VWAP
+                DefaultMarketStressFeature  // market stress
             };
         }
         
