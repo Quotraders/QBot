@@ -566,18 +566,18 @@ namespace BotCore.Brain
             // Calculate similarity in optimal conditions
             var conditionSimilarity = learningSpec.OptimalConditions
                 .Intersect(executedSpec.OptimalConditions)
-                .Count() / (float)Math.Max(learningSpec.OptimalConditions.Length, 1);
+                .Count() / (float)Math.Max(learningSpec.OptimalConditions.Count, 1);
             
             // Time window overlap
             var timeOverlap = learningSpec.TimeWindows
                 .Intersect(executedSpec.TimeWindows)
-                .Count() / (float)Math.Max(learningSpec.TimeWindows.Length, 1);
+                .Count() / (float)Math.Max(learningSpec.TimeWindows.Count, 1);
             
             // Market condition alignment
             var currentConditions = GetCurrentMarketConditions(context);
             var conditionAlignment = learningSpec.OptimalConditions
                 .Intersect(currentConditions)
-                .Count() / (float)Math.Max(learningSpec.OptimalConditions.Length, 1);
+                .Count() / (float)Math.Max(learningSpec.OptimalConditions.Count, 1);
             
             // Calculate cross-learning strength
             var learningStrength = (conditionSimilarity * 0.4f + timeOverlap * 0.3f + conditionAlignment * 0.3f);

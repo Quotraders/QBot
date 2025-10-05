@@ -6,9 +6,9 @@ namespace BotCore.Brain.Models
     public class StrategySpecialization
     {
         public string Name { get; set; } = string.Empty;
-        public string[] OptimalConditions { get; set; } = Array.Empty<string>();
+        public IReadOnlyList<string> OptimalConditions { get; init; } = Array.Empty<string>();
         public string LearningFocus { get; set; } = string.Empty;
-        public string[] TimeWindows { get; set; } = Array.Empty<string>();
+        public IReadOnlyList<string> TimeWindows { get; init; } = Array.Empty<string>();
     }
 
     /// <summary>
@@ -54,7 +54,7 @@ namespace BotCore.Brain.Models
         public decimal WinRate { get; set; }
         public decimal AveragePnL { get; set; }
         public TimeSpan AverageHoldTime { get; set; }
-        public string[] BestConditions { get; set; } = Array.Empty<string>();
+        public IReadOnlyList<string> BestConditions { get; init; } = Array.Empty<string>();
         public decimal RecentPerformanceTrend { get; set; }
     }
 
@@ -67,7 +67,7 @@ namespace BotCore.Brain.Models
         public string LearningIntensity { get; set; } = string.Empty; // INTENSIVE, LIGHT, BACKGROUND
         public int HistoricalLearningIntervalMinutes { get; set; }
         public bool LiveTradingActive { get; set; }
-        public string[] RecommendedStrategies { get; set; } = Array.Empty<string>();
+        public IReadOnlyList<string> RecommendedStrategies { get; init; } = Array.Empty<string>();
         public string Reasoning { get; set; } = string.Empty;
     }
 }
