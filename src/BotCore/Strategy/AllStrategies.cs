@@ -185,10 +185,15 @@ namespace BotCore.Strategy
                             cands.AddRange(s15Candidates);
                         }
                     }
-                    catch (Exception ex)
+                    catch (ArgumentException ex)
                     {
-                        // S15_RL failure should not break other strategies
-                        Console.WriteLine($"⚠️ [S15-RL] Failed to generate candidates: {ex.Message}");
+                        // Invalid arguments for S15_RL strategy
+                        Console.WriteLine($"⚠️ [S15-RL] Invalid arguments: {ex.Message}");
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        // S15_RL state error (e.g., ONNX model not loaded)
+                        Console.WriteLine($"⚠️ [S15-RL] Operation failed: {ex.Message}");
                     }
                 }
             }
@@ -995,8 +1000,8 @@ namespace BotCore.Strategy
         public static Func<string, int>? ExternalSpreadTicks { get; set; }
         public static Func<string, decimal>? ExternalTickSize { get; set; }
 
-        public static List<Candidate> S3(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk, BotCore.Services.MarketTimeService? marketTimeService = null)
-            => S3Strategy.S3(symbol, env, levels, bars, risk, marketTimeService);
+        public static List<Candidate> S3(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
+            => S3Strategy.S3(symbol, env, levels, bars, risk);
 
         // S3 internals moved to S3Strategy.cs
 

@@ -6,6 +6,9 @@ namespace BotCore.Features;
 /// </summary>
 public class FeatureComputationConfig
 {
+    // Default threshold constants
+    private const decimal DefaultZScoreThresholdBullish = 1.0m;
+    private const decimal DefaultZScoreThresholdBearish = -1.0m;
     /// <summary>
     /// Period for RSI calculation (default: 14)
     /// </summary>
@@ -49,12 +52,12 @@ public class FeatureComputationConfig
     /// <summary>
     /// ZScore threshold for bullish S7 regime (default: 1.0)
     /// </summary>
-    public decimal S7ZScoreThresholdBullish { get; init; } = 1.0m;
+    public decimal S7ZScoreThresholdBullish { get; init; } = DefaultZScoreThresholdBullish;
 
     /// <summary>
     /// ZScore threshold for bearish S7 regime (default: -1.0)
     /// </summary>
-    public decimal S7ZScoreThresholdBearish { get; init; } = -1.0m;
+    public decimal S7ZScoreThresholdBearish { get; init; } = DefaultZScoreThresholdBearish;
 
     /// <summary>
     /// Coherence threshold for S7 regime activation (default: 0.6)

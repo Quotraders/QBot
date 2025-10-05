@@ -127,9 +127,13 @@ public class RedundantDataFeedManager : IDisposable
                     _logger.LogInformation("[DataFeed] Primary data feed set to: {FeedName}", feed.FeedName);
                 }
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[DataFeed] Failed to connect to {FeedName}", feed.FeedName);
+                _logger.LogError(ex, "[DataFeed] Connection operation error for {FeedName}", feed.FeedName);
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogError(ex, "[DataFeed] Connection timeout for {FeedName}", feed.FeedName);
             }
         }
 
@@ -168,7 +172,12 @@ public class RedundantDataFeedManager : IDisposable
                     return data;
                 }
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
+            {
+                lastError = ex;
+                await HandleFeedFailureAsync(_primaryFeed, ex).ConfigureAwait(false);
+            }
+            catch (TimeoutException ex)
             {
                 lastError = ex;
                 await HandleFeedFailureAsync(_primaryFeed, ex).ConfigureAwait(false);
@@ -194,7 +203,12 @@ public class RedundantDataFeedManager : IDisposable
                         return data;
                     }
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
+                {
+                    lastError = ex;
+                    await HandleFeedFailureAsync(feed, ex).ConfigureAwait(false);
+                }
+                catch (TimeoutException ex)
                 {
                     lastError = ex;
                     await HandleFeedFailureAsync(feed, ex).ConfigureAwait(false);
@@ -250,9 +264,13 @@ public class RedundantDataFeedManager : IDisposable
                 OnConsolidatedData?.Invoke(this, data);
             }
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "[DataFeed] Error processing received data");
+            _logger.LogError(ex, "[DataFeed] Invalid data received");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "[DataFeed] Operation error processing received data");
         }
     }
 
@@ -725,6 +743,10 @@ public class RedundantDataFeedManager : IDisposable
 /// </summary>
 public class TopstepXDataFeed : IDataFeed
 {
+    // Primary feed simulation constants
+    private const int ConnectionDelayMs = 100;
+    private const int NetworkDelayMs = 50;
+    
     public string FeedName => "TopstepX";
     public int Priority { get; set; } = 1;
     
@@ -733,13 +755,13 @@ public class TopstepXDataFeed : IDataFeed
 
     public async Task<bool> ConnectAsync()
     {
-        await Task.Delay(100).ConfigureAwait(false); // Simulate connection
+        await Task.Delay(ConnectionDelayMs).ConfigureAwait(false); // Simulate connection
         return true;
     }
 
     public async Task<MarketData?> GetMarketDataAsync(string symbol)
     {
-        await Task.Delay(50).ConfigureAwait(false); // Simulate network delay
+        await Task.Delay(NetworkDelayMs).ConfigureAwait(false); // Simulate network delay
         
         return new MarketData
         {
@@ -775,6 +797,17 @@ public class TopstepXDataFeed : IDataFeed
 /// </summary>
 public class BackupDataFeed : IDataFeed
 {
+    // Backup feed simulation constants
+    private const int SlowerConnectionDelayMs = 200;
+    private const int SlowerResponseDelayMs = 100;
+    private const int OrderBookDelayMs = 100;
+    private const decimal BasePrice = 4500.00m;
+    private const double PriceVariationRange = 8.0;
+    private const double PriceVariationOffset = 4.0;
+    private const int VolumeAmount = 800;
+    private const decimal BidPrice = 4499.50m;
+    private const decimal AskPrice = 4500.50m;
+    
     public string FeedName => "Backup";
     public int Priority { get; set; } = 2;
     
@@ -783,21 +816,21 @@ public class BackupDataFeed : IDataFeed
 
     public async Task<bool> ConnectAsync()
     {
-        await Task.Delay(200).ConfigureAwait(false); // Simulate slower connection
+        await Task.Delay(SlowerConnectionDelayMs).ConfigureAwait(false); // Simulate slower connection
         return true;
     }
 
     public async Task<MarketData?> GetMarketDataAsync(string symbol)
     {
-        await Task.Delay(100).ConfigureAwait(false); // Simulate slower response
+        await Task.Delay(SlowerResponseDelayMs).ConfigureAwait(false); // Simulate slower response
         
         return new MarketData
         {
             Symbol = symbol,
-            Price = 4500.00m + (decimal)(Random.Shared.NextDouble() * 8 - 4),
-            Volume = 800,
-            Bid = 4499.50m,
-            Ask = 4500.50m,
+            Price = BasePrice + (decimal)(Random.Shared.NextDouble() * PriceVariationRange - PriceVariationOffset),
+            Volume = VolumeAmount,
+            Bid = BidPrice,
+            Ask = AskPrice,
             Timestamp = DateTime.UtcNow,
             Source = FeedName
         };
@@ -805,7 +838,7 @@ public class BackupDataFeed : IDataFeed
 
     public async Task<OrderBook?> GetOrderBookAsync(string symbol)
     {
-        await Task.Delay(100).ConfigureAwait(false);
+        await Task.Delay(OrderBookDelayMs).ConfigureAwait(false);
         return new OrderBook { Symbol = symbol, Timestamp = DateTime.UtcNow };
     }
 

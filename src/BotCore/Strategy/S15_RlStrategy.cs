@@ -20,6 +20,8 @@ public static class S15_RlStrategy
     private const decimal MinAtrForTrade = 0.25m;               // Minimum ATR required for trade
     private const decimal DefaultConfidenceThreshold = 0.6m;    // Minimum confidence for trade
     private const int DefaultQty = 1;                           // Default position size
+    private const int MinimumBarsRequired = 20;                 // Minimum bars for feature computation
+    private const decimal MinimumRiskRewardRatio = 1.0m;        // Minimum acceptable risk-reward ratio
     
     /// <summary>
     /// Generate trading candidates using RL policy inference.
@@ -56,7 +58,7 @@ public static class S15_RlStrategy
         var candidates = new List<Candidate>();
 
         // Require minimum bars for feature computation
-        if (bars.Count < 20)
+        if (bars.Count < MinimumBarsRequired)
         {
             return candidates;
         }
@@ -87,9 +89,14 @@ public static class S15_RlStrategy
             }
             features = featureBuilder.BuildFeatures(symbol, marketBars, currentPos, currentTime, env, levels);
         }
-        catch (Exception)
+        catch (ArgumentException)
         {
-            // Feature computation failed, return no candidates
+            // Invalid arguments for feature computation
+            return candidates;
+        }
+        catch (InvalidOperationException)
+        {
+            // Feature computation state error
             return candidates;
         }
 
@@ -101,9 +108,14 @@ public static class S15_RlStrategy
             action = policy.PredictAction(features);
             confidence = policy.GetConfidence(features);
         }
-        catch (Exception)
+        catch (ArgumentException)
         {
-            // Policy inference failed, return no candidates
+            // Invalid feature vector for policy inference
+            return candidates;
+        }
+        catch (InvalidOperationException)
+        {
+            // Policy inference state error
             return candidates;
         }
 

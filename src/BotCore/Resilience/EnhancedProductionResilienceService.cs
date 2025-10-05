@@ -21,7 +21,6 @@ public class EnhancedProductionResilienceService
 {
     private const int ExponentialBackoffBase = 2;
     private const int HttpTimeoutBufferMilliseconds = 5000;
-    private const int DefaultTimeoutSeconds = 30;
 
     private readonly ILogger<EnhancedProductionResilienceService> _logger;
     private readonly ResilienceConfiguration _config;

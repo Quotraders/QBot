@@ -153,18 +153,7 @@ namespace BotCore.Services
         private const decimal MaximumImbalance = 1m;                // Maximum order book imbalance
         private const decimal ImbalanceNormalizationFactor = 2m;    // Factor for imbalance normalization
         
-        // Time decay constants
-        private const double MinimumTimeDecay = 0.3;                // Minimum time decay factor
-        private const int TimeDecayHoursThreshold = 3;              // Hours threshold for time decay
-        
-        // Signal persistence constants
-        private const double MinimumSignalPersistence = 0.005;      // Minimum signal persistence threshold
-        private const double SignalDecayMinimum = 0.001;            // Minimum signal decay value
-        private const double SignalDecayModerate = 0.5;             // Moderate signal decay value
-        
-        // ML adjustment constants
-        private const double NoAdjustment = 1.0;                    // No adjustment multiplier
-        private const double MinimalAdjustment = 0.0;               // Minimal adjustment value
+        // Bollinger Bands constants (time decay, signal persistence, and ML adjustment constants removed - unused)
         
         // Bollinger Bands constants
         private const int BollingerBandsPeriod = 20;                // Bollinger Bands period

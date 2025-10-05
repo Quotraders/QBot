@@ -483,11 +483,9 @@ public interface INeuralNetwork
 /// </summary>
 public class OnnxNeuralNetwork : INeuralNetwork, IDisposable
 {
-    // Constants for complexity calculation and random number generation
+    // Constants for complexity calculation
     private const decimal MaxUncertaintyValue = 1.0m;
     private const decimal ComplexityNormalizationFactor = 10m;
-    private const int BitShiftForRandomSeed = 11;
-    private const int BitShiftForRandomScale = 53;
     
     private readonly OnnxModelLoader _onnxLoader;
     private readonly ILogger<OnnxNeuralNetwork> _logger;

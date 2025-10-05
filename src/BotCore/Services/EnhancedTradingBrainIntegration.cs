@@ -45,7 +45,6 @@ public class EnhancedTradingBrainIntegration
     
     // Confidence thresholds
     private const decimal VeryHighConfidenceThreshold = 0.8m;            // Very high confidence threshold
-    private const decimal HighConfidenceThreshold = 0.75m;               // High confidence threshold
     private const decimal ModerateConfidenceThreshold = 0.7m;            // Moderate confidence threshold
     private const decimal LowConfidenceThreshold = 0.6m;                 // Low confidence threshold
     private const decimal VeryLowConfidenceThreshold = 0.5m;             // Very low confidence threshold
@@ -77,25 +76,19 @@ public class EnhancedTradingBrainIntegration
     // Ensemble prediction settings
     private const int EnsemblePredictionWindowSeconds = 30;              // Time window for ensemble predictions (seconds)
     private const int MinimumFeaturesRequired = 5;                       // Minimum features required for prediction
-    private const int MaximumContextVectorSize = 100;                    // Maximum context vector size
     private const decimal DefaultPredictionConfidence = 0.0m;            // Default prediction confidence when unavailable
     
     // Timing and caching
     private const int PredictionCacheExpirationSeconds = 10;             // Prediction cache expiration (seconds)
-    private const int MinimumPredictionIntervalSeconds = 5;              // Minimum interval between predictions (seconds)
     private const int CloudSyncIntervalHours = 24;                       // Cloud sync interval (hours)
-    private const int ModelUpdateCheckIntervalMinutes = 30;              // Model update check interval (minutes)
     
     // Performance tracking
     private const int MinimumTradesForAccuracy = 20;                     // Minimum trades needed for accuracy calculation
-    private const int AccuracyHistoryWindowDays = 30;                    // Days of history for accuracy tracking
     private const decimal AccuracyTrackingThreshold = 0.15m;             // Threshold for tracking prediction accuracy
     
     // Data generation defaults (for sample data)
     private const int DefaultBarCount = 100;                             // Default number of bars for sample data
-    private const int DefaultMinutesPerBar = 5;                          // Default minutes per bar
     private const decimal DefaultBarOpen = 5000m;                        // Default bar open price
-    private const decimal DefaultBarHigh = 5010m;                        // Default bar high price
     private const decimal DefaultBarLow = 4990m;                         // Default bar low price
     private const decimal DefaultBarClose = 5005m;                       // Default bar close price
     private const int DefaultBarVolume = 1000;                           // Default bar volume
