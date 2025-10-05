@@ -83,7 +83,38 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - **Compliance**: Zero suppressions, TreatWarningsAsErrors=true maintained throughout
 - **Session Result**: 76 violations eliminated across 9 files in 3 focused rounds
 
-### 🔧 Round 168 - Phase 2: Collection Immutability & Unused Fields (Current Session)
+### 🔧 Round 169 - Phase 2: CA1819 Array Properties Elimination (Current Session)
+
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1819 | 20+ | 14 | StrategyModels.cs, FeatureSpec.cs, UnifiedTradingBrain.cs | Array properties replaced with IReadOnlyList<T>; downstream .Length → .Count |
+
+**Total Fixed: 6 CA1819 violations**
+
+**Example Pattern Applied**:
+```csharp
+// Before (CA1819) - Arrays as properties are mutable
+public class StrategySpecialization {
+    public string[] OptimalConditions { get; set; } = Array.Empty<string>();
+    public string[] TimeWindows { get; set; } = Array.Empty<string>();
+}
+
+// After - Immutable read-only collections
+public class StrategySpecialization {
+    public IReadOnlyList<string> OptimalConditions { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<string> TimeWindows { get; init; } = Array.Empty<string>();
+}
+
+// Downstream usage fix
+// Before: learningSpec.OptimalConditions.Length
+// After:  learningSpec.OptimalConditions.Count
+```
+
+**Build Verification**: ✅ 0 CS errors, 6 CA1819 violations fixed
+
+---
+
+### 🔧 Round 168 - Phase 2: Collection Immutability & Unused Fields (Previous Session)
 
 | Rule | Before | After | Files Affected | Pattern Applied |
 |------|--------|-------|----------------|-----------------|
