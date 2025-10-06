@@ -561,27 +561,72 @@ namespace BotCore.Strategy
                 var t = bars[i].Start;
                 if (t < startLocal) continue;
                 if (t >= endLocal) break;
-                if (!init) { hi = bars[i].High; lo = bars[i].Low; init = true; }
-                else { if (bars[i].High > hi) hi = bars[i].High; if (bars[i].Low < lo) lo = bars[i].Low; }
+                if (!init) 
+                { 
+                    hi = bars[i].High; 
+                    lo = bars[i].Low; 
+                    init = true; 
+                }
+                else 
+                { 
+                    if (bars[i].High > hi) 
+                    {
+                        hi = bars[i].High; 
+                    }
+                    if (bars[i].Low < lo) 
+                    {
+                        lo = bars[i].Low; 
+                    }
+                }
             }
             return init ? (hi, lo) : (0m, 0m);
         }
 
         private static int AboveVWAPCount(IList<Bar> b, decimal vwap, int look)
-        { int cnt = 0; for (int i = Math.Max(0, b.Count - look); i < b.Count; i++) if (b[i].Close > vwap) cnt++; return cnt; }
+        { 
+            int cnt = 0; 
+            for (int i = Math.Max(0, b.Count - look); i < b.Count; i++) 
+            {
+                if (b[i].Close > vwap) 
+                {
+                    cnt++; 
+                }
+            }
+            return cnt; 
+        }
         private static int BelowVWAPCount(IList<Bar> b, decimal vwap, int look)
-        { int cnt = 0; for (int i = Math.Max(0, b.Count - look); i < b.Count; i++) if (b[i].Close < vwap) cnt++; return cnt; }
+        { 
+            int cnt = 0; 
+            for (int i = Math.Max(0, b.Count - look); i < b.Count; i++) 
+            {
+                if (b[i].Close < vwap) 
+                {
+                    cnt++; 
+                }
+            }
+            return cnt; 
+        }
 
         private static bool BullConfirm(IList<Bar> b)
         {
-            if (b.Count < 3) return false; var a = b[^2]; var c = b[^1];
+            if (b.Count < 3) 
+            {
+                return false; 
+            }
+            var a = b[^2]; 
+            var c = b[^1];
             bool engulf = c.Close > a.Open && c.Open < a.Close && c.Close > c.Open;
             bool hammer = (c.Close >= c.Open) && (c.Open - c.Low) >= 0.5m * (c.High - c.Low) && (c.High - c.Close) <= 0.3m * (c.High - c.Low);
             return engulf || hammer;
         }
         private static bool BearConfirm(IList<Bar> b)
         {
-            if (b.Count < 3) return false; var a = b[^2]; var c = b[^1];
+            if (b.Count < 3) 
+            {
+                return false; 
+            }
+            var a = b[^2]; 
+            var c = b[^1];
             bool engulf = c.Close < a.Open && c.Open > a.Close && c.Close < c.Open;
             bool shoot = (c.Close <= c.Open) && (c.High - c.Open) >= 0.5m * (c.High - c.Low) && (c.Close - c.Low) <= 0.3m * (c.High - c.Low);
             return engulf || shoot;

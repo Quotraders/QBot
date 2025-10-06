@@ -415,8 +415,23 @@ namespace BotCore.Strategy
             {
                 if (b.Start >= startLocal && b.Start < endLocal)
                 {
-                    if (!seen) { hi = b.High; lo = b.Low; seen = true; }
-                    else { if (b.High > hi) hi = b.High; if (b.Low < lo) lo = b.Low; }
+                    if (!seen) 
+                    { 
+                        hi = b.High; 
+                        lo = b.Low; 
+                        seen = true; 
+                    }
+                    else 
+                    { 
+                        if (b.High > hi) 
+                        {
+                            hi = b.High; 
+                        }
+                        if (b.Low < lo) 
+                        {
+                            lo = b.Low; 
+                        }
+                    }
                 }
             }
             return seen ? (hi, lo) : (0m, 0m);
@@ -585,7 +600,18 @@ namespace BotCore.Strategy
             var wvar = num / vol; return (vwap, wvar, vol);
         }
         private static bool HoldsAroundVwap(IList<Bar> b, decimal vwap, bool above, int need)
-        { int ok = 0; for (int i = b.Count - need; i < b.Count; i++) { var c = b[i].Close; if (above ? c >= vwap : c <= vwap) ok++; } return ok >= need; }
+        { 
+            int ok = 0; 
+            for (int i = b.Count - need; i < b.Count; i++) 
+            { 
+                var c = b[i].Close; 
+                if (above ? c >= vwap : c <= vwap) 
+                {
+                    ok++; 
+                }
+            } 
+            return ok >= need; 
+        }
         private static decimal SwingLow(IList<Bar> b, int look) => Enumerable.Range(1, Math.Min(look, b.Count)).Select(i => b[^i].Low).Min();
         private static decimal SwingHigh(IList<Bar> b, int look) => Enumerable.Range(1, Math.Min(look, b.Count)).Select(i => b[^i].High).Max();
         private static bool BreakBarQualityOk(Bar c, decimal minClosePos, decimal maxOppWick, out decimal score)
@@ -599,8 +625,16 @@ namespace BotCore.Strategy
         }
         private static decimal ImpulseScore(IList<Bar> bars, int look)
         {
-            if (bars.Count < look) return 0m; decimal hi = decimal.MinValue, lo = decimal.MaxValue;
-            for (int i = bars.Count - look; i < bars.Count; i++) { hi = Math.Max(hi, bars[i].High); lo = Math.Min(lo, bars[i].Low); }
+            if (bars.Count < look) 
+            {
+                return 0m; 
+            }
+            decimal hi = decimal.MinValue, lo = decimal.MaxValue;
+            for (int i = bars.Count - look; i < bars.Count; i++) 
+            { 
+                hi = Math.Max(hi, bars[i].High); 
+                lo = Math.Min(lo, bars[i].Low); 
+            }
             return hi - lo;
         }
         private static bool DidThrowback(IList<Bar> bars, decimal level, bool longSide, int lookbackBars, decimal tol)

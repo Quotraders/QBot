@@ -8387,3 +8387,57 @@ ArgumentNullException.ThrowIfNull(serviceProvider);
 
 ---
 *Updated: Current Session - Phase 2 S4487 Batch 1 Complete*
+
+#### Round 24 - S2681 Missing Braces (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S2681 | 80 | 66 | S3Strategy.cs, AllStrategies.cs | Added braces to multi-statement conditionals and loops |
+
+**Example Pattern - Missing Braces in If-Else**:
+```csharp
+// Before (Violation - multiple statements without braces)
+if (!seen) { hi = b.High; lo = b.Low; seen = true; }
+else { if (b.High > hi) hi = b.High; if (b.Low < lo) lo = b.Low; }
+
+// After (Compliant - proper bracing)
+if (!seen) 
+{ 
+    hi = b.High; 
+    lo = b.Low; 
+    seen = true; 
+}
+else 
+{ 
+    if (b.High > hi) 
+    {
+        hi = b.High; 
+    }
+    if (b.Low < lo) 
+    {
+        lo = b.Low; 
+    }
+}
+```
+
+**Example Pattern - Missing Braces in Loops**:
+```csharp
+// Before (Violation - single-line loop body)
+for (int i = b.Count - need; i < b.Count; i++) { var c = b[i].Close; if (above ? c >= vwap : c <= vwap) ok++; }
+
+// After (Compliant - properly braced)
+for (int i = b.Count - need; i < b.Count; i++) 
+{ 
+    var c = b[i].Close; 
+    if (above ? c >= vwap : c <= vwap) 
+    {
+        ok++; 
+    }
+}
+```
+
+**Rationale**: S2681 violations indicate missing braces around multi-statement blocks in conditionals and loops. This can lead to logic errors when code is modified later, as additional statements may not execute as intended. Added braces to all multi-statement blocks for clarity and safety. All fixes maintain zero suppressions and operational guardrails.
+
+**Total Progress**: 58 violations fixed total (10,562 → 10,504)
+
+---
+*Updated: Current Session - Phase 2 S2681 Batch 1 Complete*
