@@ -720,7 +720,6 @@ public class AutonomousDecisionEngine : BackgroundService
             
             if (tradeResult.Success)
             {
-                _lastTradeTime = DateTime.UtcNow;
                 _logger.LogInformation("✅ [AUTONOMOUS-ENGINE] Trade executed successfully: {OrderId}", tradeResult.OrderId);
                 
                 // Record trade for learning

@@ -448,7 +448,15 @@ namespace TopstepX.S6
                 // ON range until 09:28
                 if (bar.TimeET.TimeOfDay < C.WindowStart)
                 {
-                    if (bar.High > ON_High) ON_High = bar.High; if (bar.Low < ON_Low) ON_Low = bar.Low; PremarketLast = bar.Close;
+                    if (bar.High > ON_High) 
+                    {
+                        ON_High = bar.High; 
+                    }
+                    if (bar.Low < ON_Low) 
+                    {
+                        ON_Low = bar.Low; 
+                    }
+                    PremarketLast = bar.Close;
                 }
 
                 // gap compute at 09:30 bar
@@ -475,36 +483,101 @@ namespace TopstepX.S6
                 // ADR recompute daily (cheap)
                 if (LastResetDay != bar.TimeET.Date)
                 {
-                    LastResetDay = bar.TimeET.Date; Adr = ComputeADR();
+                    LastResetDay = bar.TimeET.Date; 
+                    Adr = ComputeADR();
                 }
             }
 
-            private int RthMinuteIndex(DateTimeOffset et) { var start = et.Date + C.RTHOpen; if (et < start || et >= start.AddHours(RthSessionHours)) return -1; return (int)(et - start).TotalMinutes; }
+            private int RthMinuteIndex(DateTimeOffset et) 
+            { 
+                var start = et.Date + C.RTHOpen; 
+                if (et < start || et >= start.AddHours(RthSessionHours)) 
+                {
+                    return -1; 
+                }
+                return (int)(et - start).TotalMinutes; 
+            }
             private double ComputeRVOL(int minuteIdx, double vol)
             {
                 double baseVol = rvolBase.GetBaseline(minuteIdx);
-                if (baseVol <= 0) return 1.0; return vol / baseVol;
+                if (baseVol <= 0) 
+                {
+                    return 1.0; 
+                }
+                return vol / baseVol;
             }
             public double ComputeADR()
             {
-                if (DailyForAdr.Count == 0) return 0; double s=0; int n=0; foreach (var d in DailyForAdr){ s += (d.high - d.low); n++; if (n >= C.AdrLookbackDays) break; } return n>0 ? s/n : 0;
+                if (DailyForAdr.Count == 0) 
+                {
+                    return 0; 
+                }
+                double s=0; 
+                int n=0; 
+                foreach (var d in DailyForAdr)
+                { 
+                    s += (d.high - d.low); 
+                    n++; 
+                    if (n >= C.AdrLookbackDays) 
+                    {
+                        break; 
+                    }
+                } 
+                return n>0 ? s/n : 0;
             }
 
             public bool CrossedForBars(bool above, long level, int bars)
             {
-                if (Min1.Count < bars) return false; for (int i=1;i<=bars;i++){ var c = Min1.Last(i).Close; if (above && c <= level) return false; if (!above && c >= level) return false; } return true;
+                if (Min1.Count < bars) 
+                {
+                    return false; 
+                }
+                for (int i=1;i<=bars;i++)
+                { 
+                    var c = Min1.Last(i).Close; 
+                    if (above && c <= level) 
+                    {
+                        return false; 
+                    }
+                    if (!above && c >= level) 
+                    {
+                        return false; 
+                    }
+                } 
+                return true;
             }
 
             public int BarsSinceRTHOpen()
             {
-                DateTimeOffset openTs = LastBarTime.Date + C.RTHOpen; int cnt=0; for (int i=0;i<Min1.Count;i++){ var b = Min1.Last(i); if (b.TimeET < openTs) break; cnt++; } return cnt;
+                DateTimeOffset openTs = LastBarTime.Date + C.RTHOpen; 
+                int cnt=0; 
+                for (int i=0;i<Min1.Count;i++)
+                { 
+                    var b = Min1.Last(i); 
+                    if (b.TimeET < openTs) 
+                    {
+                        break; 
+                    }
+                    cnt++; 
+                } 
+                return cnt;
             }
 
             public bool TrendAgree1m5m(bool reversal)
             {
-                if (Min1.Count < 5) return false; double e8=ema8.Value, e21=ema21.Value; bool up5 = e8 > e21; bool up1 = Min1.Last(0).Close > Min1.Last(1).Close;
-                if (!reversal) return (up5 && up1) || (!up5 && !up1);
-                bool flat5 = Math.Abs(e8 - e21) <= (ATR * 0.05); return (flat5 || up5 != up1);
+                if (Min1.Count < 5) 
+                {
+                    return false; 
+                }
+                double e8=ema8.Value, e21=ema21.Value; 
+                bool up5 = e8 > e21; 
+                bool up1 = Min1.Last(0).Close > Min1.Last(1).Close;
+                if (!reversal) 
+                {
+                    return (up5 && up1) || (!up5 && !up1);
+                }
+                bool flat5 = Math.Abs(e8 - e21) <= (ATR * 0.05); 
+                return (flat5 || up5 != up1);
             }
 
             public bool FailedBreakout(bool failedAboveONH)

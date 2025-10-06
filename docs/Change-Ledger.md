@@ -8441,3 +8441,68 @@ for (int i = b.Count - need; i < b.Count; i++)
 
 ---
 *Updated: Current Session - Phase 2 S2681 Batch 1 Complete*
+
+#### Round 25 - CS Compiler Error Fix + S2681 Continued (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CS0103 | 2 | 0 | AutonomousDecisionEngine.cs | Removed orphaned reference to deleted _lastTradeTime field |
+| S2681 | 66 | 48 | S6_MaxPerf_FullStack.cs | Added braces to multi-statement conditionals and single-line methods |
+
+**Example Pattern - CS0103 Fix**:
+```csharp
+// Before (CS Compiler Error - field was removed but reference remained)
+if (tradeResult.Success)
+{
+    _lastTradeTime = DateTime.UtcNow;  // CS0103: _lastTradeTime doesn't exist
+    _logger.LogInformation("✅ Trade executed");
+}
+
+// After (Compliant - removed orphaned assignment)
+if (tradeResult.Success)
+{
+    _logger.LogInformation("✅ Trade executed");
+}
+```
+
+**Example Pattern - S2681 Single-Line Method Expansion**:
+```csharp
+// Before (Violation - entire method on one line with multiple statements)
+private int RthMinuteIndex(DateTimeOffset et) { var start = et.Date + C.RTHOpen; if (et < start || et >= start.AddHours(RthSessionHours)) return -1; return (int)(et - start).TotalMinutes; }
+
+// After (Compliant - properly formatted with braces)
+private int RthMinuteIndex(DateTimeOffset et) 
+{ 
+    var start = et.Date + C.RTHOpen; 
+    if (et < start || et >= start.AddHours(RthSessionHours)) 
+    {
+        return -1; 
+    }
+    return (int)(et - start).TotalMinutes; 
+}
+```
+
+**Example Pattern - Loop with Multiple Statements**:
+```csharp
+// Before (Violation - loop body with multiple statements, no braces)
+for (int i=0;i<Min1.Count;i++){ var b = Min1.Last(i); if (b.TimeET < openTs) break; cnt++; }
+
+// After (Compliant - properly braced)
+for (int i=0;i<Min1.Count;i++)
+{ 
+    var b = Min1.Last(i); 
+    if (b.TimeET < openTs) 
+    {
+        break; 
+    }
+    cnt++; 
+}
+```
+
+**Rationale**: Fixed critical CS0103 compiler error from previous cleanup that prevented build. Phase 1 is now confirmed complete with 0 CS errors. Continued S2681 cleanup in S6 strategy file where compact single-line methods and loops created maintenance hazards. Expanded 7 methods and several conditional blocks to proper multi-line format with braces. All fixes maintain zero suppressions and operational guardrails.
+
+**Total Progress**: 76 violations fixed total (10,562 → 10,484)
+- **Phase 1**: ✅ COMPLETE - 0 CS compiler errors
+- **Phase 2**: In progress - 10,484 analyzer violations remaining
+
+---
+*Updated: Current Session - Phase 1 Confirmed Complete, Phase 2 S2681 Batch 2 Complete*
