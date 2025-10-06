@@ -8598,3 +8598,54 @@ var b2 = Min1.Last(1);
 
 ---
 *Updated: Current Session - 100 Violations Fixed, All Guardrails Maintained*
+
+#### Round 28 - S2681 Missing Braces Batch 5 (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S2681 | 26 | 10 | S3Strategy.cs, AllStrategies.cs, S11_MaxPerf_FullStack.cs | Expanded single-line methods, added braces to loops and conditionals |
+
+**Example Pattern - Ring Buffer Methods (Duplicate in S11)**:
+```csharp
+// Before (Violation - compact single-line with multiple conditional statements)
+public ref readonly T Last(int back = 0)
+{
+    if (_count == 0) throw new InvalidOperationException("Ring empty");
+    int pos = (_idx - 1 - back); if (pos < 0) pos += _buf.Length; return ref _buf[pos];
+}
+
+// After (Compliant - properly formatted)
+public ref readonly T Last(int back = 0)
+{
+    if (_count == 0) 
+    {
+        throw new InvalidOperationException("Ring empty");
+    }
+    int pos = (_idx - 1 - back); 
+    if (pos < 0) 
+    {
+        pos += _buf.Length; 
+    }
+    return ref _buf[pos];
+}
+```
+
+**Example Pattern - Quantile Method**:
+```csharp
+// Before (Violation)
+if (a == null || a.Count == 0) return 0m; var t = a.OrderBy(x => x).ToList();
+
+// After (Compliant)
+if (a == null || a.Count == 0) 
+{
+    return 0m; 
+}
+var t = a.OrderBy(x => x).ToList();
+```
+
+**Rationale**: Continued S2681 cleanup approaching category completion. Fixed duplicate ring buffer methods in S11 (same pattern as S6), statistical helper functions (Quantile, FirstWeekdayOfMonth), and ADR calculation loops in AllStrategies. These are critical mathematical and data structure methods where clarity prevents subtle bugs. All fixes maintain zero suppressions and operational guardrails.
+
+**Session Total**: 116 violations fixed (10,562 → 10,446)
+- **S2681**: 70/80 complete (87.5%)
+
+---
+*Updated: Current Session - Phase 2 S2681 Batch 5 Complete*

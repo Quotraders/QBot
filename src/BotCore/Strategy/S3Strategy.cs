@@ -647,7 +647,11 @@ namespace BotCore.Strategy
         }
         private static decimal Quantile(List<decimal> a, decimal p)
         {
-            if (a == null || a.Count == 0) return 0m; var t = a.OrderBy(x => x).ToList();
+            if (a == null || a.Count == 0) 
+            {
+                return 0m; 
+            }
+            var t = a.OrderBy(x => x).ToList();
             p = Math.Clamp(p, 0m, 1m);
             var idx = (t.Count - 1) * (double)p;
             int lo = (int)Math.Floor(idx); int hi = (int)Math.Ceiling(idx);
@@ -738,7 +742,14 @@ namespace BotCore.Strategy
             return (today - center).TotalDays <= daysBefore && (center - today).TotalDays <= daysAfter;
         }
         private static int FirstWeekdayOfMonth(int y, int m, DayOfWeek dow)
-        { var d = new DateTime(y, m, 1); while (d.DayOfWeek != dow) d = d.AddDays(1); return d.Day; }
+        { 
+            var d = new DateTime(y, m, 1); 
+            while (d.DayOfWeek != dow) 
+            {
+                d = d.AddDays(1); 
+            }
+            return d.Day; 
+        }
         private static decimal AdaptedRankThreshold(DateTime local, decimal baseRank)
         {
             // Simple hourly adaptation: slightly tighter just after RTH open

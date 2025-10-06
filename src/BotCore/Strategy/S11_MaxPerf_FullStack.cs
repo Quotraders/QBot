@@ -127,8 +127,14 @@ namespace TopstepX.S11
         public long SpreadTicks => Ask1 - Bid1;
         public double Imbalance()
         {
-            long b = (long)BidSz1 + BidSz2 + BidSz3; long a = (long)AskSz1 + AskSz2 + AskSz3; long d = b + a;
-            if (d <= 0) return 0; return (double)(b - a) / d;
+            long b = (long)BidSz1 + BidSz2 + BidSz3; 
+            long a = (long)AskSz1 + AskSz2 + AskSz3; 
+            long d = b + a;
+            if (d <= 0) 
+            {
+                return 0; 
+            }
+            return (double)(b - a) / d;
         }
 
         public override bool Equals(object? obj)
@@ -168,16 +174,40 @@ namespace TopstepX.S11
         public void Add(in T x) { _buf[_idx] = x; _idx = (_idx + 1) % _buf.Length; if (_count < _buf.Length) _count++; }
         public ref readonly T Last(int back = 0)
         {
-            if (_count == 0) throw new InvalidOperationException("Ring empty");
-            int pos = (_idx - 1 - back); if (pos < 0) pos += _buf.Length; return ref _buf[pos];
+            if (_count == 0) 
+            {
+                throw new InvalidOperationException("Ring empty");
+            }
+            int pos = (_idx - 1 - back); 
+            if (pos < 0) 
+            {
+                pos += _buf.Length; 
+            }
+            return ref _buf[pos];
         }
         public void ForEachNewest(int n, Action<T> f) 
         { 
             ArgumentNullException.ThrowIfNull(f);
             
-            for (int i = Math.Max(0,_count - n); i < _count; i++) { int pos = ( (_idx - _count + i) % _buf.Length + _buf.Length ) % _buf.Length; f(_buf[pos]); } 
+            for (int i = Math.Max(0,_count - n); i < _count; i++) 
+            { 
+                int pos = ( (_idx - _count + i) % _buf.Length + _buf.Length ) % _buf.Length; 
+                f(_buf[pos]); 
+            } 
         }
-        public void CopyNewest(int n, Span<T> dst) { n = Math.Min(n, _count); for (int i = 0; i < n; i++){ int pos = (_idx - n + i); if (pos < 0) pos += _buf.Length; dst[i] = _buf[pos]; } }
+        public void CopyNewest(int n, Span<T> dst) 
+        { 
+            n = Math.Min(n, _count); 
+            for (int i = 0; i < n; i++)
+            { 
+                int pos = (_idx - n + i); 
+                if (pos < 0) 
+                {
+                    pos += _buf.Length; 
+                }
+                dst[i] = _buf[pos]; 
+            } 
+        }
     }
 
     // --- ROLLING INDICATORS ---
@@ -220,7 +250,19 @@ namespace TopstepX.S11
         private bool _seed; 
         public double Value { get; private set; } 
         public Ema(int n){ _k=EmaSmoothingFactorMultiplier/(n+1);} 
-        public double Update(double v){ if(!_seed){ Value=v; _seed=true; } else Value = v*_k + Value*(1-_k); return Value; } 
+        public double Update(double v)
+        { 
+            if(!_seed)
+            { 
+                Value=v; 
+                _seed=true; 
+            } 
+            else 
+            {
+                Value = v*_k + Value*(1-_k); 
+            }
+            return Value; 
+        } 
     }
 
     public sealed class Rsi

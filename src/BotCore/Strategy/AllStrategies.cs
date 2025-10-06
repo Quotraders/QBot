@@ -744,7 +744,17 @@ namespace BotCore.Strategy
                 while (dayStartIdx - 1 >= 0 && bars[dayStartIdx - 1].Start.Date == day) dayStartIdx--;
                 var dayEndIdx = i;
                 decimal hi = bars[dayStartIdx].High, lo = bars[dayStartIdx].Low;
-                for (int j = dayStartIdx; j <= dayEndIdx; j++) { if (bars[j].High > hi) hi = bars[j].High; if (bars[j].Low < lo) lo = bars[j].Low; }
+                for (int j = dayStartIdx; j <= dayEndIdx; j++) 
+                { 
+                    if (bars[j].High > hi) 
+                    {
+                        hi = bars[j].High; 
+                    }
+                    if (bars[j].Low < lo) 
+                    {
+                        lo = bars[j].Low; 
+                    }
+                }
                 sumAdr += Math.Max(0m, hi - lo);
                 daysCounted++;
                 i = dayStartIdx; // for-loop will i-- again
@@ -757,8 +767,23 @@ namespace BotCore.Strategy
             for (int i = 0; i < bars.Count; i++)
             {
                 if (bars[i].Start.Date != today) continue;
-                if (!todayInit) { todayHi = bars[i].High; todayLo = bars[i].Low; todayInit = true; }
-                else { if (bars[i].High > todayHi) todayHi = bars[i].High; if (bars[i].Low < todayLo) todayLo = bars[i].Low; }
+                if (!todayInit) 
+                { 
+                    todayHi = bars[i].High; 
+                    todayLo = bars[i].Low; 
+                    todayInit = true; 
+                }
+                else 
+                { 
+                    if (bars[i].High > todayHi) 
+                    {
+                        todayHi = bars[i].High; 
+                    }
+                    if (bars[i].Low < todayLo) 
+                    {
+                        todayLo = bars[i].Low; 
+                    }
+                }
             }
             var todayRange = todayInit ? (todayHi - todayLo) : 0m;
             if (adr > 0m)
