@@ -1779,17 +1779,33 @@ Please check the configuration and ensure all required services are registered.
         services.AddHostedService<CloudModelIntegrationService>();
 
         // Hosted services (append-only) - Enhanced learning services
-        // Conditional registration based on RlRuntimeMode - prevents training in production
-        if (rlMode == TradingBot.Abstractions.RlRuntimeMode.Train)
+        // Conditional registration based on ENABLE_HISTORICAL_LEARNING environment variable
+        // This allows historical learning to run independently of RlRuntimeMode
+        var enableHistoricalLearning = Environment.GetEnvironmentVariable("ENABLE_HISTORICAL_LEARNING");
+        var historicalLearningEnabled = enableHistoricalLearning == "1" || enableHistoricalLearning?.ToLowerInvariant() == "true";
+        
+        if (historicalLearningEnabled || rlMode == TradingBot.Abstractions.RlRuntimeMode.Train)
         {
             services.AddHostedService<EnhancedBacktestLearningService>();
             
+            if (historicalLearningEnabled)
+            {
+                Console.WriteLine("✅ [HISTORICAL-LEARNING] Historical backtest learning ENABLED");
+                Console.WriteLine("   📊 Market OPEN: Learning every 60 minutes (light mode)");
+                Console.WriteLine("   📈 Market CLOSED: Learning every 15 minutes (intensive mode)");
+            }
+            
             // Warn if training mode is enabled in production environment
             var environment = hostContext.HostingEnvironment.EnvironmentName;
-            if (environment.Equals("Production", StringComparison.OrdinalIgnoreCase))
+            if (environment.Equals("Production", StringComparison.OrdinalIgnoreCase) && rlMode == TradingBot.Abstractions.RlRuntimeMode.Train)
             {
-                Console.WriteLine("⚠️ [RL-SAFETY] WARNING: Training mode enabled in Production environment!");
+                Console.WriteLine("⚠️ [RL-SAFETY] WARNING: Full training mode enabled in Production environment!");
             }
+        }
+        else
+        {
+            Console.WriteLine("⚠️ [HISTORICAL-LEARNING] Historical backtest learning DISABLED");
+            Console.WriteLine("   💡 Set ENABLE_HISTORICAL_LEARNING=1 to enable continuous learning from historical data");
         }
         
         // ================================================================================
