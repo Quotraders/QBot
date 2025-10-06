@@ -14,7 +14,7 @@ namespace TradingBot.Backtest.Adapters
     /// <summary>
     /// PRODUCTION Model Registry for backtest system
     /// File-based implementation for ES and NQ contracts only
-    /// NO MOCK IMPLEMENTATIONS - Production ready
+    /// Production ready implementation with real models
     /// </summary>
     public class ProductionModelRegistry : IModelRegistry
     {

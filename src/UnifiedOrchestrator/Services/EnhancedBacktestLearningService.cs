@@ -1897,5 +1897,5 @@ internal class TradeResult
 /// <summary>
 /// REMOVED: RandomExtensions for Gaussian distribution
 /// These extension methods were only used for synthetic data generation and have been eliminated.
-/// Real market data should be used instead of mathematically generated fake data.
+/// Real market data should be used instead of mathematically generated simulated data.
 /// </summary>

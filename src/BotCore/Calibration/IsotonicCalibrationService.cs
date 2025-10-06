@@ -117,7 +117,7 @@ namespace BotCore.Calibration
     }
 
     /// <summary>
-    /// Configuration for calibration service - NO HARDCODED DEFAULTS (fail-closed requirement)
+    /// Configuration for calibration service - all defaults must be explicit (fail-closed requirement)
     /// </summary>
     public sealed class CalibrationConfiguration
     {

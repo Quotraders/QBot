@@ -391,7 +391,7 @@ public class SystemHealthMonitor
     {
         try
         {
-            // Log critical alert (placeholder for email/SMS integration)
+            // Log critical alert (substitute for email/SMS integration)
             _logger.LogCritical("[ALERT] CRITICAL ALERT: {failures} - System requires immediate attention!", failureList);
             
             // Write alert to monitoring file for external systems

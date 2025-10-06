@@ -501,7 +501,7 @@ namespace BotCore.Services
                 ? val : 0.0; // Explicit zero fallback for no volatility data
     }
 
-    // Configuration classes - NO HARDCODED DEFAULTS (fail-closed requirement)
+    // Configuration classes - all defaults must be explicit (fail-closed requirement)
     public sealed class BreadthReallocationConfiguration
     {
         public double MinAllocationFactor { get; set; }

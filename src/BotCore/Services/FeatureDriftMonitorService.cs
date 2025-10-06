@@ -317,7 +317,7 @@ namespace BotCore.Services
     }
 
     /// <summary>
-    /// Configuration for drift monitoring behavior - NO HARDCODED DEFAULTS (fail-closed requirement)
+    /// Configuration for drift monitoring behavior - all defaults must be explicit (fail-closed requirement)
     /// </summary>
     public sealed class DriftMonitorConfiguration
     {

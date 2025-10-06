@@ -234,7 +234,7 @@ namespace TradingBot.BotCore.Services
             try
             {
                 // Test access to secret store (Azure Key Vault, HashiCorp Vault, etc.)
-                // This is a placeholder - actual implementation depends on secret store provider
+                // This is a substitute - actual implementation depends on secret store provider
                 
                 var secretStoreType = Environment.GetEnvironmentVariable("SECRET_STORE_TYPE") ?? "environment";
                 

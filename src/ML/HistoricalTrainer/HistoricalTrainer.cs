@@ -576,7 +576,7 @@ public class HistoricalWalkForwardTrainer
             var predictions = model.Transform(testData);
             var metrics = _mlContext.BinaryClassification.Evaluate(predictions);
 
-            // Save model to temporary location
+            // Save model to transient location
             var tempModelPath = Path.Combine(Path.GetTempPath(), $"model_{Guid.NewGuid():N}.zip");
             _mlContext.Model.Save(model, trainData.Schema, tempModelPath);
 

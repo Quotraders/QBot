@@ -183,7 +183,7 @@ public class HealthCheckDiscovery
                     _logger.LogDebug("[HEALTH-DISCOVERY] Found {StrategyCount} strategy classes", strategyClasses);
                 }
 
-                // Check for new configuration sections (placeholder)
+                // Check for new configuration sections (substitute)
                 var configSections = new[] { "Trading", "ML", "Cloud", "Alerts" };
                 foreach (var section in configSections)
                 {

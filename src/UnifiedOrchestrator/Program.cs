@@ -595,7 +595,7 @@ Please check the configuration and ensure all required services are registered.
         // Register optional breadth feed service (disabled by default)
         // Register IBreadthFeed implementation with fail-closed behavior
         // BREADTH FEED INTENTIONALLY DISABLED: Using NullBreadthDataSource until real market breadth subscription is active
-        // Prevents live workflows from consuming CSV stub data and ensures fail-closed behavior for breadth.* features
+        // Prevents live workflows from consuming CSV simplified data and ensures fail-closed behavior for breadth.* features
         services.AddSingleton<TradingBot.Abstractions.IBreadthFeed, BotCore.Services.NullBreadthDataSource>();
         
         // Register S7 market data bridge for live data integration

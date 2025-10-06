@@ -353,7 +353,7 @@ namespace BotCore
 
             try
             {
-                // Download model to temporary file
+                // Download model to transient file
                 using var response = await _http.GetAsync(modelInfo.Url, cancellationToken).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 

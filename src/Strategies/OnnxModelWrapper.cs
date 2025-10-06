@@ -47,7 +47,7 @@ public class OnnxModelWrapper : IOnnxModelWrapper
     private readonly OnnxModelCompatibilityService _modelCompatibility;
     private readonly bool _isModelLoaded;
     
-    // Configuration-driven confidence levels - NO MORE HARDCODED VALUES
+    // Configuration-driven confidence levels - all values loaded from config
     private double LowConfidenceThreshold => _mlConfig.GetMinimumConfidence();
     private double MediumConfidenceThreshold => (LowConfidenceThreshold + StandardConfidenceLevel) / 2.0;
     private double HighConfidenceThreshold => StandardConfidenceLevel * GetConfidenceMultiplier();

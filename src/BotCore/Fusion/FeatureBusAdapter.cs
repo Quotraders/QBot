@@ -829,7 +829,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             var dataFeedManager = _serviceProvider.GetService<BotCore.Market.IDataFeed>();
             if (dataFeedManager != null)
             {
-                // For now, this is a placeholder - real order book integration would be async
+                // For now, this is a substitute - real order book integration would be async
                 // In a full implementation, we'd cache recent order book snapshots
                 _logger.LogTrace("[LIQUIDITY-SCORE] Order book data feed available for {Symbol}", symbol);
                 

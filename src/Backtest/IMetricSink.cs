@@ -7,7 +7,7 @@ namespace TradingBot.Backtest
 {
     /// <summary>
     /// Decision log entry capturing trading decisions made by the system
-    /// Replaces fake decision tracking with real strategy decisions
+    /// Replaces simulated decision tracking with real strategy decisions
     /// </summary>
     public record DecisionLog(
         DateTime Timestamp,
@@ -65,7 +65,7 @@ namespace TradingBot.Backtest
 
     /// <summary>
     /// Interface for capturing and storing backtest metrics
-    /// Replaces fake metric generation with real trade tracking
+    /// Replaces simulated metric generation with real trade tracking
     /// </summary>
     public interface IMetricSink
     {

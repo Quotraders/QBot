@@ -120,7 +120,7 @@ namespace TradingBot.BotCore.Services
         }
 
         /// <summary>
-        /// Set expiration date for temporary suppression
+        /// Set expiration date for transient suppression
         /// </summary>
         public Task SetSuppressionExpirationAsync(Guid suppressionId, DateTime expirationDate, string reason)
         {

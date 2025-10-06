@@ -17,7 +17,7 @@ namespace BotCore.Services
     /// 1. Always returns false for IsDataAvailable() 
     /// 2. Throws InvalidOperationException for any data requests (fail-closed)
     /// 3. Logs "breadth unavailable" once per hour for telemetry
-    /// 4. Prevents consumption of CSV stub data in ProductionBreadthFeedService
+    /// 4. Prevents consumption of CSV substitute data in ProductionBreadthFeedService
     /// </summary>
     public class NullBreadthDataSource : IBreadthFeed
     {

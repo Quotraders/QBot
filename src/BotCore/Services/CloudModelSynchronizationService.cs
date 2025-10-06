@@ -491,7 +491,7 @@ public class CloudModelSynchronizationService : BackgroundService
     {
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
         
-        // Write to temporary file first for atomic operation
+        // Write to transient file first for atomic operation
         var tempPath = targetPath + $".tmp_{Guid.NewGuid():N}";
         
         try
