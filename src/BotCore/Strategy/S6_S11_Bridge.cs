@@ -670,6 +670,21 @@ namespace BotCore.Strategy
             ArgumentNullException.ThrowIfNull(logger);
             ArgumentNullException.ThrowIfNull(serviceProvider);
             
+            // Gate-driven parameter loading: Load session-optimized parameters
+            // Falls back to S6RuntimeConfig if loading fails (maintains backward compatibility)
+            TradingBot.Abstractions.StrategyParameters.S6Parameters? sessionParams = null;
+            try
+            {
+                var sessionName = SessionHelper.GetSessionName(DateTime.UtcNow);
+                var baseParams = TradingBot.Abstractions.StrategyParameters.S6Parameters.LoadOptimal();
+                sessionParams = baseParams.LoadOptimalForSession(sessionName);
+            }
+            catch (Exception)
+            {
+                // Parameter loading failed, will use S6RuntimeConfig defaults
+                sessionParams = null;
+            }
+            
             if (_s6Strategy == null || _router == null)
             {
                 Initialize(risk, orderService, logger, serviceProvider);
@@ -694,14 +709,19 @@ namespace BotCore.Strategy
                 if (timeOfDay >= TimeSpan.Parse("09:28") && timeOfDay <= TimeSpan.Parse("10:00") && 
                     bars?.Count > 0 && currentPosition.qty == 0) // Only if no existing position
                 {
+                    // Use loaded parameters with fallback to RuntimeConfig
+                    var minAtr = S6RuntimeConfig.MinAtr;
+                    var stopAtrMult = sessionParams?.StopAtrMult ?? (double)S6RuntimeConfig.StopAtrMult;
+                    var targetAtrMult = S6RuntimeConfig.TargetAtrMult; // Use RuntimeConfig for now, can be extended later
+                    
                     var lastBar = bars.Last();
                     var entry = lastBar.Close;
                     var atr = env.atr ?? CalculateATR(bars);
                     
-                    if (atr > S6RuntimeConfig.MinAtr)
+                    if (atr > minAtr)
                     {
-                        var stop = entry - atr * (decimal)S6RuntimeConfig.StopAtrMult;
-                        var target = entry + atr * (decimal)S6RuntimeConfig.TargetAtrMult;
+                        var stop = entry - atr * (decimal)stopAtrMult;
+                        var target = entry + atr * (decimal)targetAtrMult;
                         
                         var candidate = new Candidate
                         {
@@ -750,6 +770,21 @@ namespace BotCore.Strategy
             ArgumentNullException.ThrowIfNull(logger);
             ArgumentNullException.ThrowIfNull(serviceProvider);
             
+            // Gate-driven parameter loading: Load session-optimized parameters
+            // Falls back to S11RuntimeConfig if loading fails (maintains backward compatibility)
+            TradingBot.Abstractions.StrategyParameters.S11Parameters? sessionParams = null;
+            try
+            {
+                var sessionName = SessionHelper.GetSessionName(DateTime.UtcNow);
+                var baseParams = TradingBot.Abstractions.StrategyParameters.S11Parameters.LoadOptimal();
+                sessionParams = baseParams.LoadOptimalForSession(sessionName);
+            }
+            catch (Exception)
+            {
+                // Parameter loading failed, will use S11RuntimeConfig defaults
+                sessionParams = null;
+            }
+            
             if (_s11Strategy == null || _router == null)
             {
                 Initialize(risk, orderService, logger, serviceProvider);
@@ -774,14 +809,19 @@ namespace BotCore.Strategy
                 if (timeOfDay >= TimeSpan.Parse("13:30") && timeOfDay <= TimeSpan.Parse("15:30") && 
                     bars?.Count > 0 && currentPosition.qty == 0) // Only if no existing position
                 {
+                    // Use loaded parameters with fallback to RuntimeConfig
+                    var minAtr = S11RuntimeConfig.MinAtr;
+                    var stopAtrMult = sessionParams?.StopAtrMult ?? (double)S11RuntimeConfig.StopAtrMult;
+                    var targetAtrMult = S11RuntimeConfig.TargetAtrMult; // Use RuntimeConfig for now, can be extended later
+                    
                     var lastBar = bars.Last();
                     var entry = lastBar.Close;
                     var atr = env.atr ?? CalculateATR(bars);
                     
-                    if (atr > S11RuntimeConfig.MinAtr)
+                    if (atr > minAtr)
                     {
-                        var stop = entry + atr * (decimal)S11RuntimeConfig.StopAtrMult;
-                        var target = entry - atr * (decimal)S11RuntimeConfig.TargetAtrMult;
+                        var stop = entry + atr * (decimal)stopAtrMult;
+                        var target = entry - atr * (decimal)targetAtrMult;
                         
                         var candidate = new Candidate
                         {

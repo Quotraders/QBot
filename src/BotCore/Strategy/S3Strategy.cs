@@ -120,13 +120,33 @@ namespace BotCore.Strategy
             }
             bars = barsEt;
 
+            // Gate-driven parameter loading: Load session-optimized parameters
+            // Falls back to S3RuntimeConfig if loading fails (maintains backward compatibility)
+            TradingBot.Abstractions.StrategyParameters.S3Parameters? sessionParams = null;
+            try
+            {
+                var sessionName = SessionHelper.GetSessionName(DateTime.UtcNow);
+                var baseParams = TradingBot.Abstractions.StrategyParameters.S3Parameters.LoadOptimal();
+                sessionParams = baseParams.LoadOptimalForSession(sessionName);
+            }
+            catch (Exception)
+            {
+                // Parameter loading failed, will use S3RuntimeConfig defaults
+                sessionParams = null;
+            }
+
             var cfg = S3RuntimeConfig.Instance;
             var last = bars[^1];
+
+            // Use loaded parameters with fallback to RuntimeConfig
+            var minVolume = sessionParams?.MinVolume ?? cfg.MinVolume;
+            var newsBlockBeforeMin = sessionParams?.NewsBlockBeforeMin ?? cfg.NewsBlockBeforeMin;
+            var newsBlockAfterMin = sessionParams?.NewsBlockAfterMin ?? cfg.NewsBlockAfterMin;
 
             // News block (bypass in backtest)
             if (!BtBypass("news"))
             {
-                if (InNewsWindow(last.Start, cfg.NewsOnMinutes, cfg.NewsBlockBeforeMin, cfg.NewsBlockAfterMin))
+                if (InNewsWindow(last.Start, cfg.NewsOnMinutes, newsBlockBeforeMin, newsBlockAfterMin))
                 {
                     Reject("news_window");
                     return lst;
@@ -134,7 +154,7 @@ namespace BotCore.Strategy
             }
 
             // Volume gate
-            if (last.Volume < cfg.MinVolume)
+            if (last.Volume < minVolume)
             {
                 Reject("min_volume");
                 return lst;
