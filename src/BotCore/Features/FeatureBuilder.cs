@@ -13,6 +13,58 @@ namespace BotCore.Features;
 /// </summary>
 public class FeatureBuilder
 {
+    // Feature array indices (13 features total)
+    private const int Return1mIndex = 0;
+    private const int Return5mIndex = 1;
+    private const int Atr14Index = 2;
+    private const int Rsi14Index = 3;
+    private const int VwapDistIndex = 4;
+    private const int BollingerWidthIndex = 5;
+    private const int OrderbookImbalanceIndex = 6;
+    private const int AdrPctIndex = 7;
+    private const int HourFractionIndex = 8;
+    private const int SessionFlagIndex = 9;
+    private const int SessionTypeIndex = 10;
+    private const int CurrentPosIndex = 11;
+    private const int S7RegimeIndex = 12;
+    
+    // RSI calculation constants
+    private const decimal RsiMaxValue = 100m;
+    
+    // Bollinger Bands constants
+    private const int BollingerStdDevMultiplier = 2;
+    private const int VwapTypicalPriceDivisor = 3;
+    
+    // Orderbook imbalance constants
+    private const decimal NeutralOrderbookImbalance = 1.0m;
+    
+    // ADR (Average Daily Range) constants
+    private const decimal MaxReasonableAdrRatio = 10m;
+    
+    // Session mapping constants (ES/NQ trading schedule: 11 sessions indexed 0-10)
+    private const int AsianSessionIndex = 0;
+    private const int EuropeanPreOpenIndex = 1;
+    private const int EuropeanOpenIndex = 2;
+    private const int LondonMorningIndex = 3;
+    private const int USPreMarketIndex = 4;
+    private const int OpeningDriveIndex = 5;
+    private const int MorningTrendIndex = 6;
+    private const int LunchChopIndex = 7;
+    private const int AfternoonTrendIndex = 8;
+    private const int PowerHourIndex = 9;
+    private const int MarketCloseIndex = 10;
+    
+    // Session type constants (coarse-grained: 3 types indexed 0-2)
+    private const int OvernightSessionType = 0;
+    private const int RthSessionType = 1;
+    private const int PostRthSessionType = 2;
+    
+    // Time-of-day thresholds for session type fallback logic
+    private const int OvernightEndHour = 9;
+    private const int OvernightEndMinute = 30;
+    private const int PostRthStartHour = 16;
+    private const int OvernightStartHour = 18;
+    
     private readonly FeatureSpec _spec;
     private readonly IS7Service? _s7Service;
     private readonly MarketTimeService? _marketTimeService;
@@ -66,19 +118,19 @@ public class FeatureBuilder
         try
         {
             // Compute raw features (13 features optimized for S2/S3/S6/S11 + session_type)
-            features[0] = ComputeReturn1m(bars);
-            features[1] = ComputeReturn5m(bars);
-            features[2] = ComputeAtr14(bars, env);
-            features[3] = ComputeRsi14(bars);
-            features[4] = ComputeVwapDist(bars);
-            features[5] = ComputeBollingerWidth(bars);
-            features[6] = ComputeOrderbookImbalance(levels);
-            features[7] = ComputeAdrPct(bars);
-            features[8] = ComputeHourFraction(currentTime);
-            features[9] = ComputeSessionFlag(currentTime);
-            features[10] = ComputeSessionType(symbol, currentTime);
-            features[11] = currentPos;
-            features[12] = ComputeS7Regime(symbol);
+            features[Return1mIndex] = ComputeReturn1m(bars);
+            features[Return5mIndex] = ComputeReturn5m(bars);
+            features[Atr14Index] = ComputeAtr14(bars, env);
+            features[Rsi14Index] = ComputeRsi14(bars);
+            features[VwapDistIndex] = ComputeVwapDist(bars);
+            features[BollingerWidthIndex] = ComputeBollingerWidth(bars);
+            features[OrderbookImbalanceIndex] = ComputeOrderbookImbalance(levels);
+            features[AdrPctIndex] = ComputeAdrPct(bars);
+            features[HourFractionIndex] = ComputeHourFraction(currentTime);
+            features[SessionFlagIndex] = ComputeSessionFlag(currentTime);
+            features[SessionTypeIndex] = ComputeSessionType(symbol, currentTime);
+            features[CurrentPosIndex] = currentPos;
+            features[S7RegimeIndex] = ComputeS7Regime(symbol);
             
             // Apply standardization: (x - mean) / std
             for (int i = 0; i < features.Length; i++)
@@ -148,7 +200,7 @@ public class FeatureBuilder
         }
         
         // Compute ATR manually if not available
-        if (bars.Count < _config.AtrPeriod + 1) return _spec.Columns[2].FillValue;
+        if (bars.Count < _config.AtrPeriod + 1) return _spec.Columns[Atr14Index].FillValue;
         
         decimal sum = 0;
         for (int i = bars.Count - _config.AtrPeriod; i < bars.Count; i++)
@@ -168,7 +220,7 @@ public class FeatureBuilder
 
     private decimal ComputeRsi14(List<Bar> bars)
     {
-        if (bars.Count < _config.RsiPeriod + 1) return _spec.Columns[3].FillValue;
+        if (bars.Count < _config.RsiPeriod + 1) return _spec.Columns[Rsi14Index].FillValue;
         
         decimal gainSum = 0;
         decimal lossSum = 0;
@@ -185,17 +237,17 @@ public class FeatureBuilder
         var avgGain = gainSum / _config.RsiPeriod;
         var avgLoss = lossSum / _config.RsiPeriod;
         
-        if (avgLoss == 0) return 100;
+        if (avgLoss == 0) return RsiMaxValue;
         
         var rs = avgGain / avgLoss;
-        var rsi = 100 - (100 / (1 + rs));
+        var rsi = RsiMaxValue - (RsiMaxValue / (1 + rs));
         
         return rsi;
     }
 
     private decimal ComputeVwapDist(List<Bar> bars)
     {
-        if (bars.Count < 1) return _spec.Columns[4].FillValue;
+        if (bars.Count < 1) return _spec.Columns[VwapDistIndex].FillValue;
         
         // Compute VWAP from available bars
         var barsToUse = Math.Min(_config.VwapBars, bars.Count);
@@ -204,25 +256,25 @@ public class FeatureBuilder
         
         for (int i = bars.Count - barsToUse; i < bars.Count; i++)
         {
-            var typicalPrice = (bars[i].High + bars[i].Low + bars[i].Close) / 3;
+            var typicalPrice = (bars[i].High + bars[i].Low + bars[i].Close) / VwapTypicalPriceDivisor;
             var volume = bars[i].Volume;
             volumePriceSum += typicalPrice * volume;
             volumeSum += volume;
         }
         
-        if (volumeSum == 0) return _spec.Columns[4].FillValue;
+        if (volumeSum == 0) return _spec.Columns[VwapDistIndex].FillValue;
         
         var vwap = volumePriceSum / volumeSum;
         var lastClose = bars[^1].Close;
         
-        if (vwap == 0) return _spec.Columns[4].FillValue;
+        if (vwap == 0) return _spec.Columns[VwapDistIndex].FillValue;
         
         return (lastClose - vwap) / vwap;
     }
 
     private decimal ComputeBollingerWidth(List<Bar> bars)
     {
-        if (bars.Count < _config.BollingerPeriod) return _spec.Columns[5].FillValue;
+        if (bars.Count < _config.BollingerPeriod) return _spec.Columns[BollingerWidthIndex].FillValue;
         
         // Compute Bollinger Bands
         decimal sum = 0;
@@ -241,17 +293,17 @@ public class FeatureBuilder
         }
         var stdDev = (decimal)Math.Sqrt((double)(varianceSum / _config.BollingerPeriod));
         
-        var upper = middle + (2 * stdDev);
-        var lower = middle - (2 * stdDev);
+        var upper = middle + (BollingerStdDevMultiplier * stdDev);
+        var lower = middle - (BollingerStdDevMultiplier * stdDev);
         
-        if (middle == 0) return _spec.Columns[5].FillValue;
+        if (middle == 0) return _spec.Columns[BollingerWidthIndex].FillValue;
         
         return (upper - lower) / middle;
     }
 
     private decimal ComputeOrderbookImbalance(object? levels)
     {
-        if (levels == null) return _spec.Columns[6].FillValue;
+        if (levels == null) return _spec.Columns[OrderbookImbalanceIndex].FillValue;
         
         // Try to extract bid/ask sizes from orderbook levels
         try
@@ -269,13 +321,13 @@ public class FeatureBuilder
                 if (bids == null || asks == null)
                 {
                     _logger.LogWarning("[FEATURE-BUILDER] Orderbook levels data structure unexpected. Using fill value.");
-                    return _spec.Columns[6].FillValue;
+                    return _spec.Columns[OrderbookImbalanceIndex].FillValue;
                 }
                 
                 // Calculate imbalance if both sides exist
                 // This would need proper implementation based on actual orderbook structure
-                // For now, return neutral (1.0) as orderbook processing requires full implementation
-                return 1.0m;
+                // For now, return neutral as orderbook processing requires full implementation
+                return NeutralOrderbookImbalance;
             }
         }
         catch (Exception ex)
@@ -283,7 +335,7 @@ public class FeatureBuilder
             _logger.LogWarning(ex, "[FEATURE-BUILDER] Failed to compute orderbook imbalance: {ExceptionType}. Using fill value.", ex.GetType().Name);
         }
         
-        return _spec.Columns[6].FillValue;
+        return _spec.Columns[OrderbookImbalanceIndex].FillValue;
     }
 
     private decimal ComputeAdrPct(List<Bar> bars)
@@ -293,20 +345,20 @@ public class FeatureBuilder
         if (bars == null || bars.Count == 0)
         {
             _logger.LogWarning("[FEATURE-BUILDER] ComputeAdrPct: bars list is null or empty. Using fill value.");
-            return _spec.Columns[7].FillValue;
+            return _spec.Columns[AdrPctIndex].FillValue;
         }
         
         // Validate config (fail fast to surface bad config)
         if (_config.AdrDays < 1)
         {
             _logger.LogError("[FEATURE-BUILDER] ComputeAdrPct: Invalid config AdrDays={AdrDays}. Using fill value.", _config.AdrDays);
-            return _spec.Columns[7].FillValue;
+            return _spec.Columns[AdrPctIndex].FillValue;
         }
         
         if (_config.CurrentRangeBars < 1)
         {
             _logger.LogError("[FEATURE-BUILDER] ComputeAdrPct: Invalid config CurrentRangeBars={CurrentRangeBars}. Using fill value.", _config.CurrentRangeBars);
-            return _spec.Columns[7].FillValue;
+            return _spec.Columns[AdrPctIndex].FillValue;
         }
         
         try
@@ -326,7 +378,7 @@ public class FeatureBuilder
             if (currentRange < 0)
             {
                 _logger.LogWarning("[FEATURE-BUILDER] ComputeAdrPct: Current range is negative ({CurrentRange}). Using fill value.", currentRange);
-                return _spec.Columns[7].FillValue;
+                return _spec.Columns[AdrPctIndex].FillValue;
             }
             
             // Group bars by trading date using bar timestamps (handles different bar resolutions)
@@ -350,7 +402,7 @@ public class FeatureBuilder
             if (sortedDates.Count == 0)
             {
                 _logger.LogWarning("[FEATURE-BUILDER] ComputeAdrPct: No trading days found. Using fill value.");
-                return _spec.Columns[7].FillValue;
+                return _spec.Columns[AdrPctIndex].FillValue;
             }
             
             // Calculate average daily range over the available trading days
@@ -383,7 +435,7 @@ public class FeatureBuilder
             if (validDays == 0)
             {
                 _logger.LogWarning("[FEATURE-BUILDER] ComputeAdrPct: No valid trading days found. Using fill value.");
-                return _spec.Columns[7].FillValue;
+                return _spec.Columns[AdrPctIndex].FillValue;
             }
             
             var avgDailyRange = totalRange / validDays;
@@ -392,16 +444,16 @@ public class FeatureBuilder
             if (avgDailyRange <= 0)
             {
                 _logger.LogWarning("[FEATURE-BUILDER] ComputeAdrPct: Average daily range is {AvgDailyRange}. Using fill value.", avgDailyRange);
-                return _spec.Columns[7].FillValue;
+                return _spec.Columns[AdrPctIndex].FillValue;
             }
             
             var adrPct = currentRange / avgDailyRange;
             
-            // Sanity check: ADR percentage should be reasonable (0 to 10x)
-            if (adrPct < 0 || adrPct > 10)
+            // Sanity check: ADR percentage should be reasonable (0 to MaxReasonableAdrRatio)
+            if (adrPct < 0 || adrPct > MaxReasonableAdrRatio)
             {
-                _logger.LogWarning("[FEATURE-BUILDER] ComputeAdrPct: ADR percentage {AdrPct} is out of reasonable range [0, 10]. Using fill value.", adrPct);
-                return _spec.Columns[7].FillValue;
+                _logger.LogWarning("[FEATURE-BUILDER] ComputeAdrPct: ADR percentage {AdrPct} is out of reasonable range [0, {MaxRatio}]. Using fill value.", adrPct, MaxReasonableAdrRatio);
+                return _spec.Columns[AdrPctIndex].FillValue;
             }
             
             return adrPct;
@@ -409,7 +461,7 @@ public class FeatureBuilder
         catch (Exception ex)
         {
             _logger.LogError(ex, "[FEATURE-BUILDER] ComputeAdrPct: Unexpected exception {ExceptionType}. Using fill value.", ex.GetType().Name);
-            return _spec.Columns[7].FillValue;
+            return _spec.Columns[AdrPctIndex].FillValue;
         }
     }
 
@@ -432,7 +484,7 @@ public class FeatureBuilder
             if (session == null)
             {
                 _logger.LogWarning("[FEATURE-BUILDER] No trading session found for time {Time}. Using fill value.", currentTime);
-                return _spec.Columns[9].FillValue;
+                return _spec.Columns[SessionFlagIndex].FillValue;
             }
             
             // Map session names to integers
@@ -448,24 +500,24 @@ public class FeatureBuilder
             
             return sessionName switch
             {
-                "AsianSession" => 0,
-                "EuropeanPreOpen" => 1,
-                "EuropeanOpen" => 2,
-                "LondonMorning" => 3,
-                "USPreMarket" => 4,
-                "OpeningDrive" => 5,
-                "MorningTrend" => 6,
-                "LunchChop" => 7,
-                "AfternoonTrend" => 8,
-                "PowerHour" => 9,
-                "MarketClose" => 10,
-                _ => _spec.Columns[9].FillValue
+                "AsianSession" => AsianSessionIndex,
+                "EuropeanPreOpen" => EuropeanPreOpenIndex,
+                "EuropeanOpen" => EuropeanOpenIndex,
+                "LondonMorning" => LondonMorningIndex,
+                "USPreMarket" => USPreMarketIndex,
+                "OpeningDrive" => OpeningDriveIndex,
+                "MorningTrend" => MorningTrendIndex,
+                "LunchChop" => LunchChopIndex,
+                "AfternoonTrend" => AfternoonTrendIndex,
+                "PowerHour" => PowerHourIndex,
+                "MarketClose" => MarketCloseIndex,
+                _ => _spec.Columns[SessionFlagIndex].FillValue
             };
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "[FEATURE-BUILDER] Failed to compute session flag: {ExceptionType}. Using fill value.", ex.GetType().Name);
-            return _spec.Columns[9].FillValue;
+            return _spec.Columns[SessionFlagIndex].FillValue;
         }
     }
 
@@ -480,13 +532,13 @@ public class FeatureBuilder
             {
                 // If no market time service available, fall back to simple time-of-day logic
                 var hour = currentTime.Hour;
-                // Rough approximation: 18:00-09:30 = Overnight(0), 09:30-16:00 = RTH(1), 16:00-18:00 = PostRTH(2)
-                if (hour >= 18 || hour < 9 || (hour == 9 && currentTime.Minute < 30))
-                    return 0; // Overnight
-                else if (hour >= 16)
-                    return 2; // PostRTH
+                // Rough approximation based on configured thresholds
+                if (hour >= OvernightStartHour || hour < OvernightEndHour || (hour == OvernightEndHour && currentTime.Minute < OvernightEndMinute))
+                    return OvernightSessionType;
+                else if (hour >= PostRthStartHour)
+                    return PostRthSessionType;
                 else
-                    return 1; // RTH
+                    return RthSessionType;
             }
             
             // Use MarketTimeService to get accurate session
@@ -497,34 +549,34 @@ public class FeatureBuilder
             // Map MarketTimeService session names to categorical values
             return sessionName switch
             {
-                "Overnight" => 0,
-                "PreMarket" => 0,  // Treat pre-market as overnight
-                "Open" => 1,       // RTH open
-                "RTH" => 1,        // Regular trading hours
-                "PostMarket" => 2, // Post-market
-                "Closed" => 0,     // Treat closed as overnight
-                _ => _spec.Columns[10].FillValue
+                "Overnight" => OvernightSessionType,
+                "PreMarket" => OvernightSessionType,  // Treat pre-market as overnight
+                "Open" => RthSessionType,       // RTH open
+                "RTH" => RthSessionType,        // Regular trading hours
+                "PostMarket" => PostRthSessionType, // Post-market
+                "Closed" => OvernightSessionType,     // Treat closed as overnight
+                _ => _spec.Columns[SessionTypeIndex].FillValue
             };
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "[FEATURE-BUILDER] Failed to compute session type for symbol {Symbol}: {ExceptionType}. Using fill value.", 
                 symbol, ex.GetType().Name);
-            return _spec.Columns[10].FillValue;
+            return _spec.Columns[SessionTypeIndex].FillValue;
         }
     }
 
     private decimal ComputeS7Regime(string symbol)
     {
         // Get S7 regime signal: -1 (bearish), 0 (neutral), 1 (bullish)
-        if (_s7Service == null) return _spec.Columns[12].FillValue;
+        if (_s7Service == null) return _spec.Columns[S7RegimeIndex].FillValue;
         
         try
         {
             if (!_s7Service.IsReady())
             {
                 _logger.LogDebug("[FEATURE-BUILDER] S7Service not ready for symbol {Symbol}. Using fill value.", symbol);
-                return _spec.Columns[12].FillValue;
+                return _spec.Columns[S7RegimeIndex].FillValue;
             }
             
             var featureTuple = _s7Service.GetFeatureTuple(symbol);
@@ -547,7 +599,7 @@ public class FeatureBuilder
         {
             _logger.LogWarning(ex, "[FEATURE-BUILDER] Failed to compute S7 regime for symbol {Symbol}: {ExceptionType}. Using fill value.", 
                 symbol, ex.GetType().Name);
-            return _spec.Columns[12].FillValue;
+            return _spec.Columns[S7RegimeIndex].FillValue;
         }
     }
 }
