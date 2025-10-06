@@ -656,39 +656,6 @@ namespace BotCore.Strategy
         }
 
         /// <summary>
-        /// Get current trading session name for parameter loading.
-        /// Maps time ranges to session names: Overnight, RTH, PostRTH
-        /// </summary>
-        private static string GetSessionName(DateTime utcNow)
-        {
-            try
-            {
-                var et = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
-                var etNow = TimeZoneInfo.ConvertTimeFromUtc(utcNow, et);
-                var timeOfDay = etNow.TimeOfDay;
-                
-                // 18:00 (6 PM) to 08:30 (8:30 AM) next day = Overnight
-                if (timeOfDay >= new TimeSpan(18, 0, 0) || timeOfDay < new TimeSpan(8, 30, 0))
-                    return "Overnight";
-                
-                // 09:30 to 16:00 = RTH (Regular Trading Hours)
-                if (timeOfDay >= new TimeSpan(9, 30, 0) && timeOfDay < new TimeSpan(16, 0, 0))
-                    return "RTH";
-                
-                // 16:00 to 18:00 = PostRTH
-                if (timeOfDay >= new TimeSpan(16, 0, 0) && timeOfDay < new TimeSpan(18, 0, 0))
-                    return "PostRTH";
-                
-                return "RTH"; // Default fallback
-            }
-            catch (Exception)
-            {
-                // Fallback to RTH if timezone conversion fails
-                return "RTH";
-            }
-        }
-
-        /// <summary>
         /// Get S6 strategy candidates using full production implementation
         /// </summary>
         public static List<Candidate> GetS6Candidates(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk, 
@@ -708,7 +675,7 @@ namespace BotCore.Strategy
             TradingBot.Abstractions.StrategyParameters.S6Parameters? sessionParams = null;
             try
             {
-                var sessionName = GetSessionName(DateTime.UtcNow);
+                var sessionName = SessionHelper.GetSessionName(DateTime.UtcNow);
                 var baseParams = TradingBot.Abstractions.StrategyParameters.S6Parameters.LoadOptimal();
                 sessionParams = baseParams.LoadOptimalForSession(sessionName);
             }
@@ -808,7 +775,7 @@ namespace BotCore.Strategy
             TradingBot.Abstractions.StrategyParameters.S11Parameters? sessionParams = null;
             try
             {
-                var sessionName = GetSessionName(DateTime.UtcNow);
+                var sessionName = SessionHelper.GetSessionName(DateTime.UtcNow);
                 var baseParams = TradingBot.Abstractions.StrategyParameters.S11Parameters.LoadOptimal();
                 sessionParams = baseParams.LoadOptimalForSession(sessionName);
             }
