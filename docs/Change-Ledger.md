@@ -13,7 +13,85 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ---
 
-### 🔧 Round 176 - Phase 2: S109 Magic Numbers - FeatureBuilder.cs & StrategyPerformanceAnalyzer.cs (Current Session)
+### 🔧 Round 177 - Phase 2: S109 Magic Numbers - StrategyPerformanceAnalyzer.cs Continued (Current Session)
+
+| Rule | Before | After | Files Affected | Fix Applied |
+|------|--------|-------|----------------|-------------|
+| S109 | 374 | 312 | StrategyPerformanceAnalyzer.cs | Extracted 62 magic numbers to named constants (17% reduction) |
+
+**Total Fixed: 62 analyzer violations (62 S109)**
+
+**Rationale**: Continued systematic Priority 1 fixes per Analyzer-Fix-Guidebook for remaining magic numbers in StrategyPerformanceAnalyzer.cs. All performance scoring, PnL normalization, and confidence calculation thresholds extracted to well-named constants.
+
+**Example Pattern Applied - Score Normalization**:
+```csharp
+// Before (S109 Violation)
+if (analysis.AllTrades.Count < 5) return 0.5m;
+var profitabilityScore = analysis.TotalPnL > 0 ? Math.Min(1m, analysis.TotalPnL / 1000m) : 0m;
+var profitFactorScore = Math.Min(1m, analysis.ProfitFactor / 2m);
+return (profitabilityScore * 0.3m) + (winRateScore * 0.3m) + (profitFactorScore * 0.2m) + (drawdownScore * 0.2m);
+
+// After (Compliant)
+private const int MinTradesForRecentAnalysis = 5;
+private const decimal ModerateThreshold = 0.5m;
+private const decimal ProfitabilityNormalizationFactor = 1000m;
+private const decimal ProfitFactorNormalizationDivisor = 2m;
+private const decimal ProfitabilityWeight = 0.3m;
+private const decimal WinRateWeight = 0.3m;
+private const decimal ProfitFactorWeight = 0.2m;
+private const decimal DrawdownWeight = 0.2m;
+
+if (analysis.AllTrades.Count < MinTradesForRecentAnalysis) return ModerateThreshold;
+var profitabilityScore = analysis.TotalPnL > 0 ? Math.Min(1m, analysis.TotalPnL / ProfitabilityNormalizationFactor) : 0m;
+var profitFactorScore = Math.Min(1m, analysis.ProfitFactor / ProfitFactorNormalizationDivisor);
+return (profitabilityScore * ProfitabilityWeight) + (winRateScore * WinRateWeight) + (profitFactorScore * ProfitFactorWeight) + (drawdownScore * DrawdownWeight);
+```
+
+**Example Pattern Applied - Performance Thresholds**:
+```csharp
+// Before (S109 Violation)
+if (recentPnL > 0 && recentWinRate > 0.6m) { /* strong performance */ }
+else if (recentPnL < -200 || recentWinRate < 0.3m) { /* weak performance */ }
+
+// After (Compliant)
+private const decimal HighThreshold = 0.6m;
+private const decimal LowThreshold = 0.3m;
+private const decimal SignificantRecentLoss = -200m;
+
+if (recentPnL > 0 && recentWinRate > HighThreshold) { /* strong performance */ }
+else if (recentPnL < SignificantRecentLoss || recentWinRate < LowThreshold) { /* weak performance */ }
+```
+
+**Example Pattern Applied - Volatility Adjustment**:
+```csharp
+// Before (S109 Violation)
+if (volatility < minVol * 0.5m || volatility > maxVol * 2m)
+    return baseScore * 0.8m;
+
+// After (Compliant)
+private const decimal LowVolatilityThresholdMultiplier = 0.5m;
+private const decimal HighVolatilityThresholdMultiplier = 2m;
+private const decimal PoorVolatilityPenaltyMultiplier = 0.8m;
+
+if (volatility < minVol * LowVolatilityThresholdMultiplier || volatility > maxVol * HighVolatilityThresholdMultiplier)
+    return baseScore * PoorVolatilityPenaltyMultiplier;
+```
+
+**Constants Added** (35 new constants):
+- **Sample requirements**: MinTradesForRecentAnalysis (5), MinTradesForConsistencyAnalysis (10), RecentTradesForScore (20)
+- **PnL normalization**: ProfitabilityNormalizationFactor (1000), RegimeScore Base/Range (500/1000), TimeScore Base/Range (200/400)
+- **Alert thresholds**: SignificantRecentLoss (-200)
+- **Score weights**: ProfitabilityWeight (0.3), WinRateWeight (0.3), ProfitFactorWeight (0.2), DrawdownWeight (0.2), PnLScoreWeight (0.6), WinRateScoreWeight (0.4)
+- **Performance tiers**: Already defined VeryLowThreshold through VeryHighThreshold, plus ModerateThreshold (0.5), HighThreshold (0.6)
+- **Volatility adjustments**: LowVolatilityThresholdMultiplier (0.5), HighVolatilityThresholdMultiplier (2), PoorVolatilityPenaltyMultiplier (0.8)
+- **Confidence**: BaseConfidence (0.5), ConfidenceGapMultiplier (2)
+- **Time tolerance**: PreferredTimeToleranceHours (1.0)
+
+**Build Verification**: ✅ 0 CS compiler errors, 62 S109 violations eliminated (374→312, 17% reduction in this round, 37% cumulative from 498)
+
+---
+
+### 🔧 Round 176 - Phase 2: S109 Magic Numbers - FeatureBuilder.cs & StrategyPerformanceAnalyzer.cs (Previous Session)
 
 | Rule | Before | After | Files Affected | Fix Applied |
 |------|--------|-------|----------------|-------------|
