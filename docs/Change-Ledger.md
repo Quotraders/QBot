@@ -7982,3 +7982,57 @@ private const double DefaultAIConfidenceThreshold = 0.70; // Digit after 7, rege
 
 ---
 *Updated: Current Session - Production Guardrail Hardening*
+
+#### Round 21 - CA1031 Generic Exception Handling Continued (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CA1031 | 696 | 626 | ExecutionAnalyzer.cs (14), EpochFreezeEnforcement.cs (16), ShadowModeManager.cs (16), PerformanceTracker.cs (24) | Replaced generic catch(Exception) with specific exception types based on operation context |
+
+**Total Progress**: 70 CA1031 violations fixed (10.1% of original 696)
+
+**Example Pattern - File I/O with Multiple Exception Types**:
+```csharp
+// Before (Violation)
+catch (Exception ex) {
+    _logger.LogError(ex, "Error logging trade");
+}
+
+// After (Compliant)
+catch (IOException ex) {
+    _logger.LogError(ex, "File system error logging trade");
+}
+catch (UnauthorizedAccessException ex) {
+    _logger.LogError(ex, "Access denied logging trade");
+}
+catch (JsonException ex) {
+    _logger.LogError(ex, "JSON serialization error logging trade");
+}
+```
+
+**Example Pattern - Statistical Calculations with DivideByZero**:
+```csharp
+// Before (Violation)
+catch (Exception ex) {
+    _logger.LogError(ex, "Error calculating win rate");
+    return DefaultWinRate;
+}
+
+// After (Compliant)
+catch (IOException ex) {
+    _logger.LogError(ex, "File system error calculating win rate");
+    return DefaultWinRate;
+}
+catch (JsonException ex) {
+    _logger.LogError(ex, "JSON error calculating win rate");
+    return DefaultWinRate;
+}
+catch (DivideByZeroException ex) {
+    _logger.LogError(ex, "Division by zero calculating win rate");
+    return DefaultWinRate;
+}
+```
+
+**Rationale**: Continued systematic Phase 2 analyzer violation elimination per Analyzer-Fix-Guidebook priority order. PerformanceTracker.cs involved trade logging, cloud upload operations, and statistical calculations (win rate, profit factor, Sharpe ratio). Each catch block now handles specific exception types appropriate to the operation: IOException/UnauthorizedAccessException for file operations, JsonException for serialization, DivideByZeroException for calculations, InvalidOperationException for LINQ operations on empty sequences. All fixes maintain zero suppressions and operational guardrails.
+
+---
+*Updated: Current Session - Phase 2 CA1031 Batch 4 Complete*
