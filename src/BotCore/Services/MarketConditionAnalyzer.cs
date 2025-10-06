@@ -46,6 +46,59 @@ public class MarketConditionAnalyzer
     private const int VolatilityPeriod = 20;
     private const int MaxDataPoints = 500;
     
+    // Trend strength thresholds (percentage of price movement)
+    private const decimal TrendingThreshold = 0.02m;           // 2% move indicates trending
+    private const decimal VolatileRangeThreshold = 0.015m;     // 1.5% range indicates volatile
+    private const decimal LowVolatilityRangeThreshold = 0.005m; // 0.5% range indicates low volatility
+    
+    // Trend strength scaling factor
+    private const decimal TrendStrengthScalingFactor = 10m;    // Scale trend strength to 0-1 range
+    
+    // Volume relative thresholds (vs average volume)
+    private const decimal VeryHighVolumeThreshold = 2.0m;      // 2x average = very high liquidity
+    private const decimal HighVolumeThreshold = 1.5m;          // 1.5x average = high liquidity
+    private const decimal LowVolumeThreshold = 0.5m;           // 0.5x average = low liquidity
+    private const decimal VeryLowVolumeThreshold = 0.3m;       // 0.3x average = very low liquidity
+    
+    // ES futures volatility thresholds (ATR in points)
+    private const decimal VeryLowVolatilityAtr = 10m;          // Very quiet market
+    private const decimal LowVolatilityAtr = 15m;              // Below normal volatility
+    private const decimal NormalVolatilityAtr = 25m;           // Normal market conditions
+    private const decimal HighVolatilityAtr = 35m;             // Elevated volatility
+    private const decimal VeryHighVolatilityAtr = 50m;         // Extreme volatility
+    
+    // Market regime scoring (0-1 scale for strategy selection)
+    private const decimal TrendingRegimeScore = 0.9m;          // Best for trend-following
+    private const decimal RangingRegimeScore = 0.7m;           // Good for mean reversion
+    private const decimal VolatileRegimeScore = 0.5m;          // Challenging conditions
+    private const decimal LowVolatilityRegimeScore = 0.6m;     // Limited opportunities
+    private const decimal UnknownRegimeScore = 0.3m;           // Avoid trading
+    private const decimal DefaultRegimeScore = 0.5m;           // Fallback score
+    
+    // Volatility level scoring (0-1 scale for position sizing)
+    private const decimal IdealVolatilityScore = 1.0m;         // Normal volatility is ideal
+    private const decimal LowVolatilityScore = 0.8m;           // Good but limited
+    private const decimal HighVolatilityScore = 0.7m;          // Good but higher risk
+    private const decimal VeryLowVolatilityScore = 0.5m;       // Limited opportunities
+    private const decimal VeryHighVolatilityScore = 0.4m;      // High risk
+    private const decimal DefaultVolatilityScore = 0.7m;       // Fallback score
+    
+    // Liquidity level scoring (0-1 scale for execution confidence)
+    private const decimal IdealLiquidityScore = 1.0m;          // High liquidity is ideal
+    private const decimal VeryHighLiquidityScore = 0.9m;       // Very good (may indicate news)
+    private const decimal NormalLiquidityScore = 0.8m;         // Good liquidity
+    private const decimal LowLiquidityScore = 0.4m;            // Limited liquidity
+    private const decimal VeryLowLiquidityScore = 0.2m;        // Poor liquidity
+    private const decimal DefaultLiquidityScore = 0.6m;        // Fallback score
+    
+    // Trend direction scoring
+    private const decimal SidewaysTrendScore = 0.5m;           // Neutral for sideways
+    private const decimal DirectionalTrendScore = 0.8m;        // Good for directional trends
+    private const decimal TrendScoreDivisor = 2m;              // Average direction and strength
+    
+    // Fallback timezone offset for Eastern Time
+    private const int EasternTimeOffsetHours = -5;             // EST offset from UTC
+    
     // Current market state
     private TradingMarketRegime _currentRegime = TradingMarketRegime.Unknown;
     private MarketVolatility _currentVolatility = MarketVolatility.Normal;
@@ -133,19 +186,19 @@ public class MarketConditionAnalyzer
             var rangePercent = priceRange / avgPrice;
             
             // Determine regime based on multiple factors
-            if (trendStrength > 0.02m && IsUptrend(shortMA, mediumMA, longMA))
+            if (trendStrength > TrendingThreshold && IsUptrend(shortMA, mediumMA, longMA))
             {
                 _currentRegime = TradingMarketRegime.Trending;
             }
-            else if (trendStrength > 0.02m && IsDowntrend(shortMA, mediumMA, longMA))
+            else if (trendStrength > TrendingThreshold && IsDowntrend(shortMA, mediumMA, longMA))
             {
                 _currentRegime = TradingMarketRegime.Trending;
             }
-            else if (rangePercent > 0.015m && _currentVolatilityValue > GetVolatilityThreshold(MarketVolatility.High))
+            else if (rangePercent > VolatileRangeThreshold && _currentVolatilityValue > GetVolatilityThreshold(MarketVolatility.High))
             {
                 _currentRegime = TradingMarketRegime.Volatile;
             }
-            else if (rangePercent < 0.005m && _currentVolatilityValue < GetVolatilityThreshold(MarketVolatility.Low))
+            else if (rangePercent < LowVolatilityRangeThreshold && _currentVolatilityValue < GetVolatilityThreshold(MarketVolatility.Low))
             {
                 _currentRegime = TradingMarketRegime.LowVolatility;
             }
@@ -245,7 +298,7 @@ public class MarketConditionAnalyzer
             return new TrendAnalysis
             {
                 Direction = direction,
-                Strength = Math.Min(1m, (decimal)trendStrength * 10m), // Scale to 0-1
+                Strength = Math.Min(1m, (decimal)trendStrength * TrendStrengthScalingFactor), // Scale to 0-1
                 ShortTermMA = shortMA,
                 MediumTermMA = mediumMA,
                 LongTermMA = longMA
@@ -274,19 +327,19 @@ public class MarketConditionAnalyzer
             
             // Determine liquidity level
             LiquidityLevel liquidityLevel;
-            if (relativeVolume > 2.0m)
+            if (relativeVolume > VeryHighVolumeThreshold)
             {
                 liquidityLevel = LiquidityLevel.VeryHigh;
             }
-            else if (relativeVolume > 1.5m)
+            else if (relativeVolume > HighVolumeThreshold)
             {
                 liquidityLevel = LiquidityLevel.High;
             }
-            else if (relativeVolume < 0.5m)
+            else if (relativeVolume < LowVolumeThreshold)
             {
                 liquidityLevel = LiquidityLevel.Low;
             }
-            else if (relativeVolume < 0.3m)
+            else if (relativeVolume < VeryLowVolumeThreshold)
             {
                 liquidityLevel = LiquidityLevel.VeryLow;
             }
@@ -421,12 +474,12 @@ public class MarketConditionAnalyzer
         // ES futures typical ATR values (in points)
         return level switch
         {
-            MarketVolatility.VeryLow => 10m,
-            MarketVolatility.Low => 15m,
-            MarketVolatility.Normal => 25m,
-            MarketVolatility.High => 35m,
-            MarketVolatility.VeryHigh => 50m,
-            _ => 25m
+            MarketVolatility.VeryLow => VeryLowVolatilityAtr,
+            MarketVolatility.Low => LowVolatilityAtr,
+            MarketVolatility.Normal => NormalVolatilityAtr,
+            MarketVolatility.High => HighVolatilityAtr,
+            MarketVolatility.VeryHigh => VeryHighVolatilityAtr,
+            _ => NormalVolatilityAtr
         };
     }
     
@@ -434,12 +487,12 @@ public class MarketConditionAnalyzer
     {
         return regime switch
         {
-            TradingMarketRegime.Trending => 0.9m,        // Best for trend-following strategies
-            TradingMarketRegime.Ranging => 0.7m,         // Good for mean reversion
-            TradingMarketRegime.Volatile => 0.5m,        // Challenging but tradeable
-            TradingMarketRegime.LowVolatility => 0.6m,   // Limited opportunities
-            TradingMarketRegime.Unknown => 0.3m,         // Avoid trading
-            _ => 0.5m
+            TradingMarketRegime.Trending => TrendingRegimeScore,        // Best for trend-following strategies
+            TradingMarketRegime.Ranging => RangingRegimeScore,         // Good for mean reversion
+            TradingMarketRegime.Volatile => VolatileRegimeScore,        // Challenging but tradeable
+            TradingMarketRegime.LowVolatility => LowVolatilityRegimeScore,   // Limited opportunities
+            TradingMarketRegime.Unknown => UnknownRegimeScore,         // Avoid trading
+            _ => DefaultRegimeScore
         };
     }
     
@@ -447,33 +500,33 @@ public class MarketConditionAnalyzer
     {
         return volatility switch
         {
-            MarketVolatility.Normal => 1.0m,      // Ideal volatility
-            MarketVolatility.Low => 0.8m,         // Good but limited moves
-            MarketVolatility.High => 0.7m,        // Good but higher risk
-            MarketVolatility.VeryLow => 0.5m,     // Limited opportunities
-            MarketVolatility.VeryHigh => 0.4m,    // High risk
-            _ => 0.7m
+            MarketVolatility.Normal => IdealVolatilityScore,      // Ideal volatility
+            MarketVolatility.Low => LowVolatilityScore,         // Good but limited moves
+            MarketVolatility.High => HighVolatilityScore,        // Good but higher risk
+            MarketVolatility.VeryLow => VeryLowVolatilityScore,     // Limited opportunities
+            MarketVolatility.VeryHigh => VeryHighVolatilityScore,    // High risk
+            _ => DefaultVolatilityScore
         };
     }
     
     private static decimal GetTrendScore(TrendAnalysis trend)
     {
-        var directionScore = trend.Direction == TrendDirection.Sideways ? 0.5m : 0.8m;
+        var directionScore = trend.Direction == TrendDirection.Sideways ? SidewaysTrendScore : DirectionalTrendScore;
         var strengthScore = trend.Strength;
         
-        return (directionScore + strengthScore) / 2m;
+        return (directionScore + strengthScore) / TrendScoreDivisor;
     }
     
     private static decimal GetVolumeScore(VolumeAnalysis volume)
     {
         return volume.LiquidityLevel switch
         {
-            LiquidityLevel.High => 1.0m,          // Ideal liquidity
-            LiquidityLevel.VeryHigh => 0.9m,      // Very good but may indicate news
-            LiquidityLevel.Normal => 0.8m,        // Good liquidity
-            LiquidityLevel.Low => 0.4m,           // Limited liquidity
-            LiquidityLevel.VeryLow => 0.2m,       // Poor liquidity
-            _ => 0.6m
+            LiquidityLevel.High => IdealLiquidityScore,          // Ideal liquidity
+            LiquidityLevel.VeryHigh => VeryHighLiquidityScore,      // Very good but may indicate news
+            LiquidityLevel.Normal => NormalLiquidityScore,        // Good liquidity
+            LiquidityLevel.Low => LowLiquidityScore,           // Limited liquidity
+            LiquidityLevel.VeryLow => VeryLowLiquidityScore,       // Poor liquidity
+            _ => DefaultLiquidityScore
         };
     }
     
@@ -486,7 +539,7 @@ public class MarketConditionAnalyzer
         }
         catch
         {
-            return DateTime.UtcNow.AddHours(-5); // Fallback to EST
+            return DateTime.UtcNow.AddHours(EasternTimeOffsetHours); // Fallback to EST
         }
     }
 }

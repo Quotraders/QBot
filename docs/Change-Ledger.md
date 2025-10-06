@@ -13,7 +13,103 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ---
 
-### 🔧 Round 177 - Phase 2: S109 Magic Numbers - StrategyPerformanceAnalyzer.cs Continued (Current Session)
+### 🔧 Round 178 - Phase 2: S109 Magic Numbers - MarketConditionAnalyzer.cs (Current Session)
+
+| Rule | Before | After | Files Affected | Fix Applied |
+|------|--------|-------|----------------|-------------|
+| S109 | 312 | 242 | MarketConditionAnalyzer.cs | Extracted 70 magic numbers to named constants (22% reduction) |
+
+**Total Fixed: 70 analyzer violations (70 S109)**
+
+**Rationale**: Continued systematic Priority 1 fixes per Analyzer-Fix-Guidebook for market condition analysis thresholds. All volatility ATR values, regime scoring, volume/liquidity thresholds, and trend detection parameters extracted to well-named constants with clear business intent.
+
+**Example Pattern Applied - Trend Detection Thresholds**:
+```csharp
+// Before (S109 Violation)
+if (trendStrength > 0.02m && IsUptrend(shortMA, mediumMA, longMA))
+    _currentRegime = TradingMarketRegime.Trending;
+else if (rangePercent > 0.015m && _currentVolatilityValue > threshold)
+    _currentRegime = TradingMarketRegime.Volatile;
+else if (rangePercent < 0.005m && _currentVolatilityValue < threshold)
+    _currentRegime = TradingMarketRegime.LowVolatility;
+
+// After (Compliant)
+private const decimal TrendingThreshold = 0.02m;           // 2% move indicates trending
+private const decimal VolatileRangeThreshold = 0.015m;     // 1.5% range indicates volatile
+private const decimal LowVolatilityRangeThreshold = 0.005m; // 0.5% range indicates low volatility
+
+if (trendStrength > TrendingThreshold && IsUptrend(shortMA, mediumMA, longMA))
+    _currentRegime = TradingMarketRegime.Trending;
+else if (rangePercent > VolatileRangeThreshold && _currentVolatilityValue > threshold)
+    _currentRegime = TradingMarketRegime.Volatile;
+else if (rangePercent < LowVolatilityRangeThreshold && _currentVolatilityValue < threshold)
+    _currentRegime = TradingMarketRegime.LowVolatility;
+```
+
+**Example Pattern Applied - ES Futures Volatility Thresholds**:
+```csharp
+// Before (S109 Violation)
+return level switch {
+    MarketVolatility.VeryLow => 10m,
+    MarketVolatility.Low => 15m,
+    MarketVolatility.Normal => 25m,
+    MarketVolatility.High => 35m,
+    MarketVolatility.VeryHigh => 50m,
+    _ => 25m
+};
+
+// After (Compliant)
+private const decimal VeryLowVolatilityAtr = 10m;    // Very quiet market
+private const decimal LowVolatilityAtr = 15m;        // Below normal volatility
+private const decimal NormalVolatilityAtr = 25m;     // Normal market conditions
+private const decimal HighVolatilityAtr = 35m;       // Elevated volatility
+private const decimal VeryHighVolatilityAtr = 50m;   // Extreme volatility
+
+return level switch {
+    MarketVolatility.VeryLow => VeryLowVolatilityAtr,
+    MarketVolatility.Low => LowVolatilityAtr,
+    MarketVolatility.Normal => NormalVolatilityAtr,
+    MarketVolatility.High => HighVolatilityAtr,
+    MarketVolatility.VeryHigh => VeryHighVolatilityAtr,
+    _ => NormalVolatilityAtr
+};
+```
+
+**Example Pattern Applied - Regime & Liquidity Scoring**:
+```csharp
+// Before (S109 Violation)
+TradingMarketRegime.Trending => 0.9m,
+TradingMarketRegime.Ranging => 0.7m,
+LiquidityLevel.High => 1.0m,
+LiquidityLevel.VeryHigh => 0.9m,
+
+// After (Compliant)
+private const decimal TrendingRegimeScore = 0.9m;    // Best for trend-following
+private const decimal RangingRegimeScore = 0.7m;     // Good for mean reversion
+private const decimal IdealLiquidityScore = 1.0m;    // High liquidity is ideal
+private const decimal VeryHighLiquidityScore = 0.9m; // Very good
+
+TradingMarketRegime.Trending => TrendingRegimeScore,
+TradingMarketRegime.Ranging => RangingRegimeScore,
+LiquidityLevel.High => IdealLiquidityScore,
+LiquidityLevel.VeryHigh => VeryHighLiquidityScore,
+```
+
+**Constants Added** (37 new constants):
+- **Trend detection**: TrendingThreshold (0.02), VolatileRangeThreshold (0.015), LowVolatilityRangeThreshold (0.005)
+- **Volume thresholds**: VeryHighVolumeThreshold (2.0), HighVolumeThreshold (1.5), LowVolumeThreshold (0.5), VeryLowVolumeThreshold (0.3)
+- **ES ATR values**: VeryLowVolatilityAtr (10) through VeryHighVolatilityAtr (50)
+- **Regime scoring**: TrendingRegimeScore (0.9), RangingRegimeScore (0.7), VolatileRegimeScore (0.5), etc.
+- **Volatility scoring**: IdealVolatilityScore (1.0), LowVolatilityScore (0.8), HighVolatilityScore (0.7), etc.
+- **Liquidity scoring**: IdealLiquidityScore (1.0), VeryHighLiquidityScore (0.9), NormalLiquidityScore (0.8), etc.
+- **Trend scoring**: SidewaysTrendScore (0.5), DirectionalTrendScore (0.8), TrendScoreDivisor (2)
+- **Other**: TrendStrengthScalingFactor (10), EasternTimeOffsetHours (-5)
+
+**Build Verification**: ✅ 0 CS compiler errors, 70 S109 violations eliminated (312→242, 22% reduction in this round, 51% cumulative from 498)
+
+---
+
+### 🔧 Round 177 - Phase 2: S109 Magic Numbers - StrategyPerformanceAnalyzer.cs Continued (Previous Session)
 
 | Rule | Before | After | Files Affected | Fix Applied |
 |------|--------|-------|----------------|-------------|
