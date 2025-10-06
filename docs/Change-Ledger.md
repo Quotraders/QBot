@@ -11,6 +11,275 @@
 ## Overview
 This ledger documents all fixes made during the analyzer compliance initiative including SonarQube Quality Gate failure remediation. Goal: Eliminate all critical CS compiler errors and SonarQube violations with zero suppressions and full production compliance targeting ≤ 3% duplication.
 
+---
+
+### 🔧 Round 178 - Phase 2: S109 Magic Numbers - MarketConditionAnalyzer.cs (Current Session)
+
+| Rule | Before | After | Files Affected | Fix Applied |
+|------|--------|-------|----------------|-------------|
+| S109 | 312 | 242 | MarketConditionAnalyzer.cs | Extracted 70 magic numbers to named constants (22% reduction) |
+
+**Total Fixed: 70 analyzer violations (70 S109)**
+
+**Rationale**: Continued systematic Priority 1 fixes per Analyzer-Fix-Guidebook for market condition analysis thresholds. All volatility ATR values, regime scoring, volume/liquidity thresholds, and trend detection parameters extracted to well-named constants with clear business intent.
+
+**Example Pattern Applied - Trend Detection Thresholds**:
+```csharp
+// Before (S109 Violation)
+if (trendStrength > 0.02m && IsUptrend(shortMA, mediumMA, longMA))
+    _currentRegime = TradingMarketRegime.Trending;
+else if (rangePercent > 0.015m && _currentVolatilityValue > threshold)
+    _currentRegime = TradingMarketRegime.Volatile;
+else if (rangePercent < 0.005m && _currentVolatilityValue < threshold)
+    _currentRegime = TradingMarketRegime.LowVolatility;
+
+// After (Compliant)
+private const decimal TrendingThreshold = 0.02m;           // 2% move indicates trending
+private const decimal VolatileRangeThreshold = 0.015m;     // 1.5% range indicates volatile
+private const decimal LowVolatilityRangeThreshold = 0.005m; // 0.5% range indicates low volatility
+
+if (trendStrength > TrendingThreshold && IsUptrend(shortMA, mediumMA, longMA))
+    _currentRegime = TradingMarketRegime.Trending;
+else if (rangePercent > VolatileRangeThreshold && _currentVolatilityValue > threshold)
+    _currentRegime = TradingMarketRegime.Volatile;
+else if (rangePercent < LowVolatilityRangeThreshold && _currentVolatilityValue < threshold)
+    _currentRegime = TradingMarketRegime.LowVolatility;
+```
+
+**Example Pattern Applied - ES Futures Volatility Thresholds**:
+```csharp
+// Before (S109 Violation)
+return level switch {
+    MarketVolatility.VeryLow => 10m,
+    MarketVolatility.Low => 15m,
+    MarketVolatility.Normal => 25m,
+    MarketVolatility.High => 35m,
+    MarketVolatility.VeryHigh => 50m,
+    _ => 25m
+};
+
+// After (Compliant)
+private const decimal VeryLowVolatilityAtr = 10m;    // Very quiet market
+private const decimal LowVolatilityAtr = 15m;        // Below normal volatility
+private const decimal NormalVolatilityAtr = 25m;     // Normal market conditions
+private const decimal HighVolatilityAtr = 35m;       // Elevated volatility
+private const decimal VeryHighVolatilityAtr = 50m;   // Extreme volatility
+
+return level switch {
+    MarketVolatility.VeryLow => VeryLowVolatilityAtr,
+    MarketVolatility.Low => LowVolatilityAtr,
+    MarketVolatility.Normal => NormalVolatilityAtr,
+    MarketVolatility.High => HighVolatilityAtr,
+    MarketVolatility.VeryHigh => VeryHighVolatilityAtr,
+    _ => NormalVolatilityAtr
+};
+```
+
+**Example Pattern Applied - Regime & Liquidity Scoring**:
+```csharp
+// Before (S109 Violation)
+TradingMarketRegime.Trending => 0.9m,
+TradingMarketRegime.Ranging => 0.7m,
+LiquidityLevel.High => 1.0m,
+LiquidityLevel.VeryHigh => 0.9m,
+
+// After (Compliant)
+private const decimal TrendingRegimeScore = 0.9m;    // Best for trend-following
+private const decimal RangingRegimeScore = 0.7m;     // Good for mean reversion
+private const decimal IdealLiquidityScore = 1.0m;    // High liquidity is ideal
+private const decimal VeryHighLiquidityScore = 0.9m; // Very good
+
+TradingMarketRegime.Trending => TrendingRegimeScore,
+TradingMarketRegime.Ranging => RangingRegimeScore,
+LiquidityLevel.High => IdealLiquidityScore,
+LiquidityLevel.VeryHigh => VeryHighLiquidityScore,
+```
+
+**Constants Added** (37 new constants):
+- **Trend detection**: TrendingThreshold (0.02), VolatileRangeThreshold (0.015), LowVolatilityRangeThreshold (0.005)
+- **Volume thresholds**: VeryHighVolumeThreshold (2.0), HighVolumeThreshold (1.5), LowVolumeThreshold (0.5), VeryLowVolumeThreshold (0.3)
+- **ES ATR values**: VeryLowVolatilityAtr (10) through VeryHighVolatilityAtr (50)
+- **Regime scoring**: TrendingRegimeScore (0.9), RangingRegimeScore (0.7), VolatileRegimeScore (0.5), etc.
+- **Volatility scoring**: IdealVolatilityScore (1.0), LowVolatilityScore (0.8), HighVolatilityScore (0.7), etc.
+- **Liquidity scoring**: IdealLiquidityScore (1.0), VeryHighLiquidityScore (0.9), NormalLiquidityScore (0.8), etc.
+- **Trend scoring**: SidewaysTrendScore (0.5), DirectionalTrendScore (0.8), TrendScoreDivisor (2)
+- **Other**: TrendStrengthScalingFactor (10), EasternTimeOffsetHours (-5)
+
+**Build Verification**: ✅ 0 CS compiler errors, 70 S109 violations eliminated (312→242, 22% reduction in this round, 51% cumulative from 498)
+
+---
+
+### 🔧 Round 177 - Phase 2: S109 Magic Numbers - StrategyPerformanceAnalyzer.cs Continued (Previous Session)
+
+| Rule | Before | After | Files Affected | Fix Applied |
+|------|--------|-------|----------------|-------------|
+| S109 | 374 | 312 | StrategyPerformanceAnalyzer.cs | Extracted 62 magic numbers to named constants (17% reduction) |
+
+**Total Fixed: 62 analyzer violations (62 S109)**
+
+**Rationale**: Continued systematic Priority 1 fixes per Analyzer-Fix-Guidebook for remaining magic numbers in StrategyPerformanceAnalyzer.cs. All performance scoring, PnL normalization, and confidence calculation thresholds extracted to well-named constants.
+
+**Example Pattern Applied - Score Normalization**:
+```csharp
+// Before (S109 Violation)
+if (analysis.AllTrades.Count < 5) return 0.5m;
+var profitabilityScore = analysis.TotalPnL > 0 ? Math.Min(1m, analysis.TotalPnL / 1000m) : 0m;
+var profitFactorScore = Math.Min(1m, analysis.ProfitFactor / 2m);
+return (profitabilityScore * 0.3m) + (winRateScore * 0.3m) + (profitFactorScore * 0.2m) + (drawdownScore * 0.2m);
+
+// After (Compliant)
+private const int MinTradesForRecentAnalysis = 5;
+private const decimal ModerateThreshold = 0.5m;
+private const decimal ProfitabilityNormalizationFactor = 1000m;
+private const decimal ProfitFactorNormalizationDivisor = 2m;
+private const decimal ProfitabilityWeight = 0.3m;
+private const decimal WinRateWeight = 0.3m;
+private const decimal ProfitFactorWeight = 0.2m;
+private const decimal DrawdownWeight = 0.2m;
+
+if (analysis.AllTrades.Count < MinTradesForRecentAnalysis) return ModerateThreshold;
+var profitabilityScore = analysis.TotalPnL > 0 ? Math.Min(1m, analysis.TotalPnL / ProfitabilityNormalizationFactor) : 0m;
+var profitFactorScore = Math.Min(1m, analysis.ProfitFactor / ProfitFactorNormalizationDivisor);
+return (profitabilityScore * ProfitabilityWeight) + (winRateScore * WinRateWeight) + (profitFactorScore * ProfitFactorWeight) + (drawdownScore * DrawdownWeight);
+```
+
+**Example Pattern Applied - Performance Thresholds**:
+```csharp
+// Before (S109 Violation)
+if (recentPnL > 0 && recentWinRate > 0.6m) { /* strong performance */ }
+else if (recentPnL < -200 || recentWinRate < 0.3m) { /* weak performance */ }
+
+// After (Compliant)
+private const decimal HighThreshold = 0.6m;
+private const decimal LowThreshold = 0.3m;
+private const decimal SignificantRecentLoss = -200m;
+
+if (recentPnL > 0 && recentWinRate > HighThreshold) { /* strong performance */ }
+else if (recentPnL < SignificantRecentLoss || recentWinRate < LowThreshold) { /* weak performance */ }
+```
+
+**Example Pattern Applied - Volatility Adjustment**:
+```csharp
+// Before (S109 Violation)
+if (volatility < minVol * 0.5m || volatility > maxVol * 2m)
+    return baseScore * 0.8m;
+
+// After (Compliant)
+private const decimal LowVolatilityThresholdMultiplier = 0.5m;
+private const decimal HighVolatilityThresholdMultiplier = 2m;
+private const decimal PoorVolatilityPenaltyMultiplier = 0.8m;
+
+if (volatility < minVol * LowVolatilityThresholdMultiplier || volatility > maxVol * HighVolatilityThresholdMultiplier)
+    return baseScore * PoorVolatilityPenaltyMultiplier;
+```
+
+**Constants Added** (35 new constants):
+- **Sample requirements**: MinTradesForRecentAnalysis (5), MinTradesForConsistencyAnalysis (10), RecentTradesForScore (20)
+- **PnL normalization**: ProfitabilityNormalizationFactor (1000), RegimeScore Base/Range (500/1000), TimeScore Base/Range (200/400)
+- **Alert thresholds**: SignificantRecentLoss (-200)
+- **Score weights**: ProfitabilityWeight (0.3), WinRateWeight (0.3), ProfitFactorWeight (0.2), DrawdownWeight (0.2), PnLScoreWeight (0.6), WinRateScoreWeight (0.4)
+- **Performance tiers**: Already defined VeryLowThreshold through VeryHighThreshold, plus ModerateThreshold (0.5), HighThreshold (0.6)
+- **Volatility adjustments**: LowVolatilityThresholdMultiplier (0.5), HighVolatilityThresholdMultiplier (2), PoorVolatilityPenaltyMultiplier (0.8)
+- **Confidence**: BaseConfidence (0.5), ConfidenceGapMultiplier (2)
+- **Time tolerance**: PreferredTimeToleranceHours (1.0)
+
+**Build Verification**: ✅ 0 CS compiler errors, 62 S109 violations eliminated (374→312, 17% reduction in this round, 37% cumulative from 498)
+
+---
+
+### 🔧 Round 176 - Phase 2: S109 Magic Numbers - FeatureBuilder.cs & StrategyPerformanceAnalyzer.cs (Previous Session)
+
+| Rule | Before | After | Files Affected | Fix Applied |
+|------|--------|-------|----------------|-------------|
+| S109 | 498 | 374 | FeatureBuilder.cs, StrategyPerformanceAnalyzer.cs | Extracted 124 magic numbers to named constants (25% reduction) |
+
+**Total Fixed: 124 analyzer violations (124 S109)**
+
+**Rationale**: Applied systematic Priority 1 fixes per Analyzer-Fix-Guidebook for magic numbers. All feature computation values, technical indicator periods, session mappings, and performance thresholds extracted to well-named constants with clear business intent.
+
+**Example Pattern Applied - Feature Array Indices**:
+```csharp
+// Before (S109 Violation)
+features[0] = ComputeReturn1m(bars);
+features[2] = ComputeAtr14(bars, env);
+features[7] = ComputeAdrPct(bars);
+if (bars.Count < _config.AtrPeriod + 1) return _spec.Columns[2].FillValue;
+
+// After (Compliant)
+private const int Return1mIndex = 0;
+private const int Atr14Index = 2;
+private const int AdrPctIndex = 7;
+
+features[Return1mIndex] = ComputeReturn1m(bars);
+features[Atr14Index] = ComputeAtr14(bars, env);
+features[AdrPctIndex] = ComputeAdrPct(bars);
+if (bars.Count < _config.AtrPeriod + 1) return _spec.Columns[Atr14Index].FillValue;
+```
+
+**Example Pattern Applied - Session Mappings**:
+```csharp
+// Before (S109 Violation)
+return sessionName switch {
+    "AsianSession" => 0,
+    "EuropeanPreOpen" => 1,
+    "OpeningDrive" => 5,
+    "PowerHour" => 9,
+    _ => _spec.Columns[9].FillValue
+};
+
+// After (Compliant)
+private const int AsianSessionIndex = 0;
+private const int EuropeanPreOpenIndex = 1;
+private const int OpeningDriveIndex = 5;
+private const int PowerHourIndex = 9;
+private const int SessionFlagIndex = 9;
+
+return sessionName switch {
+    "AsianSession" => AsianSessionIndex,
+    "EuropeanPreOpen" => EuropeanPreOpenIndex,
+    "OpeningDrive" => OpeningDriveIndex,
+    "PowerHour" => PowerHourIndex,
+    _ => _spec.Columns[SessionFlagIndex].FillValue
+};
+```
+
+**Example Pattern Applied - Performance Thresholds**:
+```csharp
+// Before (S109 Violation)
+OptimalVolatilityRange = new[] { 0.5m, 1.0m };
+analysis.ProfitFactor = totalLosses > 0 ? totalWins / totalLosses : totalWins > 0 ? 99m : 0m;
+
+// After (Compliant)
+private const decimal S6VolatilityRangeLow = 0.5m;
+private const decimal S6VolatilityRangeHigh = 1.0m;
+private const decimal MaxProfitFactorFallback = 99m;
+
+OptimalVolatilityRange = new[] { S6VolatilityRangeLow, S6VolatilityRangeHigh };
+analysis.ProfitFactor = totalLosses > 0 ? totalWins / totalLosses : totalWins > 0 ? MaxProfitFactorFallback : 0m;
+```
+
+**Files Modified**:
+1. **FeatureBuilder.cs**: 114 S109 violations fixed
+   - Feature array indices (0-12): Return1mIndex, Atr14Index, Rsi14Index, VwapDistIndex, etc.
+   - RSI constants: RsiMaxValue (100)
+   - Bollinger Bands: BollingerStdDevMultiplier (2), VwapTypicalPriceDivisor (3)
+   - Session mappings (11 sessions, 0-10): AsianSessionIndex through MarketCloseIndex
+   - Session types (3 types, 0-2): OvernightSessionType, RthSessionType, PostRthSessionType
+   - Time thresholds: OvernightEndHour (9), OvernightEndMinute (30), PostRthStartHour (16), etc.
+   - ADR validation: MaxReasonableAdrRatio (10)
+
+2. **StrategyPerformanceAnalyzer.cs**: 10 S109 violations fixed
+   - Strategy volatility ranges: S6VolatilityRangeLow (0.5), S6VolatilityRangeHigh (1.0)
+   - S11 volatility ranges: S11VolatilityRangeLow (0.4), S11VolatilityRangeHigh (0.9)
+   - Profit factor: MaxProfitFactorFallback (99)
+   - Time windows: MorningSessionStartHour (9), MarketCloseHour (16), etc.
+   - Performance thresholds: VeryLowThreshold (0.2) through VeryHighThreshold (0.8)
+   - PnL thresholds: SmallProfitThreshold (200), MediumProfitThreshold (500), LargeProfitThreshold (1000)
+
+**Build Verification**: ✅ 0 CS compiler errors, 124 S109 violations eliminated (498→374, 25% reduction)
+
+---
+
 ## 🔍 Comprehensive Audit (Current Session)
 **See [ASYNC_DECIMAL_AUDIT.md](ASYNC_DECIMAL_AUDIT.md) for detailed tracking**
 

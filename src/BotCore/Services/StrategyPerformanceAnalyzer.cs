@@ -58,6 +58,80 @@ public class StrategyPerformanceAnalyzer
     // Performance alert thresholds
     private const decimal LowPerformanceThreshold = 0.3m;     // Threshold for low recent performance
     private const decimal GoodPerformanceThreshold = 0.6m;    // Threshold for good overall performance
+    
+    // Strategy characteristics - volatility ranges
+    private const decimal S6VolatilityRangeLow = 0.5m;
+    private const decimal S6VolatilityRangeHigh = 1.0m;
+    private const decimal S11VolatilityRangeLow = 0.4m;
+    private const decimal S11VolatilityRangeHigh = 0.9m;
+    
+    // Profit factor constants
+    private const decimal MaxProfitFactorFallback = 99m;
+    
+    // Performance thresholds for scoring
+    private const decimal VeryLowThreshold = 0.2m;
+    private const decimal LowThreshold = 0.3m;
+    private const decimal ModerateThreshold = 0.5m;
+    private const decimal HighThreshold = 0.6m;
+    private const decimal VeryHighThreshold = 0.8m;
+    
+    // PnL thresholds for performance categorization
+    private const decimal SmallProfitThreshold = 200m;
+    private const decimal MediumProfitThreshold = 500m;
+    private const decimal LargeProfitThreshold = 1000m;
+    private const decimal SmallLossThreshold = 200m;
+    private const decimal MediumLossThreshold = 400m;
+    
+    // Sample size requirements
+    private const int MinSampleSizeForMediumConfidence = 10;
+    private const int MinTradesForRecentAnalysis = 5;
+    private const int MinTradesForConsistencyAnalysis = 10;
+    private const int RecentTradesForScore = 20;
+    
+    // PnL normalization factors for scoring
+    private const decimal ProfitabilityNormalizationFactor = 1000m;
+    private const decimal RegimeScoreNormalizationBase = 500m;
+    private const decimal RegimeScoreNormalizationRange = 1000m;
+    private const decimal TimeScoreNormalizationBase = 200m;
+    private const decimal TimeScoreNormalizationRange = 400m;
+    private const decimal RecentPnLNormalizationBase = 300m;
+    private const decimal RecentPnLNormalizationRange = 600m;
+    private const decimal ConsistencyNormalizationFactor = 100m;
+    
+    // Loss thresholds for alerts
+    private const decimal SignificantRecentLoss = -200m;
+    
+    // Score weights for composite scoring
+    private const decimal ProfitabilityWeight = 0.3m;
+    private const decimal WinRateWeight = 0.3m;
+    private const decimal ProfitFactorWeight = 0.2m;
+    private const decimal DrawdownWeight = 0.2m;
+    private const decimal PnLScoreWeight = 0.6m;
+    private const decimal WinRateScoreWeight = 0.4m;
+    
+    // Divisors for score normalization
+    private const decimal ProfitFactorNormalizationDivisor = 2m;
+    
+    // Volatility adjustment multipliers
+    private const decimal LowVolatilityThresholdMultiplier = 0.5m;
+    private const decimal HighVolatilityThresholdMultiplier = 2m;
+    private const decimal PoorVolatilityPenaltyMultiplier = 0.8m;
+    
+    // Confidence calculation factors
+    private const decimal BaseConfidence = 0.5m;
+    private const decimal ConfidenceGapMultiplier = 2m;
+    
+    // Time window tolerance for preferred times (in hours)
+    private const double PreferredTimeToleranceHours = 1.0;
+    
+    // Time window constants for strategy optimization (in hours)
+    private const int MorningSessionStartHour = 9;
+    private const int MorningSessionStartMinute = 30;
+    private const int AfternoonSessionStartHour = 12;
+    private const int AfternoonSessionEndHour = 15;
+    private const int AfternoonExtendedEndHour = 15;
+    private const int AfternoonExtendedEndMinute = 30;
+    private const int MarketCloseHour = 16;
     private const decimal LowWinRateThreshold = 0.35m;        // Threshold for low win rate alert
     private const decimal LowProfitFactorThreshold = 1.1m;    // Threshold for low profit factor alert
     private const decimal ExcessiveDrawdownRatio = 0.4m;      // Ratio for excessive drawdown alert
@@ -428,8 +502,8 @@ public class StrategyPerformanceAnalyzer
                 Name = "S6",
                 Type = StrategyType.Momentum,
                 BestMarketConditions = new[] { AnalyzerMarketRegime.Trending, AnalyzerMarketRegime.Volatile },
-                OptimalVolatilityRange = new[] { 0.5m, 1.0m },
-                PreferredTimeWindows = new[] { new TimeSpan(9, 30, 0), new TimeSpan(15, 30, 0) },
+                OptimalVolatilityRange = new[] { S6VolatilityRangeLow, S6VolatilityRangeHigh },
+                PreferredTimeWindows = new[] { new TimeSpan(MorningSessionStartHour, MorningSessionStartMinute, 0), new TimeSpan(AfternoonExtendedEndHour, AfternoonExtendedEndMinute, 0) },
                 Description = "Momentum strategy for trending and volatile markets"
             },
             ["S11"] = new StrategyCharacteristics
@@ -437,8 +511,8 @@ public class StrategyPerformanceAnalyzer
                 Name = "S11",
                 Type = StrategyType.TrendFollowing,
                 BestMarketConditions = new[] { AnalyzerMarketRegime.Trending },
-                OptimalVolatilityRange = new[] { 0.4m, 0.9m },
-                PreferredTimeWindows = new[] { new TimeSpan(9, 30, 0), new TimeSpan(16, 0, 0) },
+                OptimalVolatilityRange = new[] { S11VolatilityRangeLow, S11VolatilityRangeHigh },
+                PreferredTimeWindows = new[] { new TimeSpan(MorningSessionStartHour, MorningSessionStartMinute, 0), new TimeSpan(MarketCloseHour, 0, 0) },
                 Description = "Advanced trend following with multi-timeframe analysis"
             }
         };
@@ -463,7 +537,7 @@ public class StrategyPerformanceAnalyzer
         // Profit factor
         var totalWins = winningTrades.Sum(t => t.PnL);
         var totalLosses = Math.Abs(losingTrades.Sum(t => t.PnL));
-        analysis.ProfitFactor = totalLosses > 0 ? totalWins / totalLosses : totalWins > 0 ? 99m : 0m;
+        analysis.ProfitFactor = totalLosses > 0 ? totalWins / totalLosses : totalWins > 0 ? MaxProfitFactorFallback : 0m;
         
         // Max drawdown
         analysis.MaxDrawdown = CalculateMaxDrawdown(trades);
@@ -494,16 +568,16 @@ public class StrategyPerformanceAnalyzer
     
     private static decimal CalculateOverallScore(StrategyAnalysis analysis)
     {
-        if (analysis.AllTrades.Count < 5) return 0.5m;
+        if (analysis.AllTrades.Count < MinTradesForRecentAnalysis) return ModerateThreshold;
         
         // Multi-factor scoring
-        var profitabilityScore = analysis.TotalPnL > 0 ? Math.Min(1m, analysis.TotalPnL / 1000m) : 0m;
+        var profitabilityScore = analysis.TotalPnL > 0 ? Math.Min(1m, analysis.TotalPnL / ProfitabilityNormalizationFactor) : 0m;
         var winRateScore = analysis.WinRate;
-        var profitFactorScore = Math.Min(1m, analysis.ProfitFactor / 2m);
+        var profitFactorScore = Math.Min(1m, analysis.ProfitFactor / ProfitFactorNormalizationDivisor);
         var drawdownScore = analysis.TotalPnL > 0 ? Math.Max(0m, 1m - (analysis.MaxDrawdown / analysis.TotalPnL)) : 0m;
         
-        return (profitabilityScore * 0.3m) + (winRateScore * 0.3m) + 
-               (profitFactorScore * 0.2m) + (drawdownScore * 0.2m);
+        return (profitabilityScore * ProfitabilityWeight) + (winRateScore * WinRateWeight) + 
+               (profitFactorScore * ProfitFactorWeight) + (drawdownScore * DrawdownWeight);
     }
     
     private void RecordPerformanceSnapshot(string strategy, AnalyzerMarketRegime regime)
@@ -541,12 +615,12 @@ public class StrategyPerformanceAnalyzer
             var recentPnL = recentTrades.Sum(t => t.PnL);
             var recentWinRate = recentTrades.Count(t => t.PnL > 0) / (decimal)recentTrades.Length;
             
-            if (recentPnL > 0 && recentWinRate > 0.6m)
+            if (recentPnL > 0 && recentWinRate > HighThreshold)
             {
                 _logger.LogInformation("✨ [STRATEGY-ANALYZER] {Strategy} showing strong recent performance: ${PnL:F2}, WR: {WinRate:P1}",
                     strategy, recentPnL, recentWinRate);
             }
-            else if (recentPnL < -200 || recentWinRate < 0.3m)
+            else if (recentPnL < SignificantRecentLoss || recentWinRate < LowThreshold)
             {
                 _logger.LogWarning("⚠️ [STRATEGY-ANALYZER] {Strategy} showing weak recent performance: ${PnL:F2}, WR: {WinRate:P1}",
                     strategy, recentPnL, recentWinRate);
@@ -565,15 +639,15 @@ public class StrategyPerformanceAnalyzer
             var characteristics = _strategyCharacteristics.GetValueOrDefault(strategy);
             if (characteristics != null && characteristics.BestMarketConditions.Contains(regime))
             {
-                return 0.8m; // High score for theoretically good conditions
+                return VeryHighThreshold; // High score for theoretically good conditions
             }
-            return 0.5m; // Neutral score
+            return ModerateThreshold; // Neutral score
         }
         
         var regimePnL = _regimePerformance[regime][strategy];
         
         // Normalize score based on performance in this regime
-        return Math.Max(0m, Math.Min(1m, (regimePnL + 500m) / 1000m));
+        return Math.Max(0m, Math.Min(1m, (regimePnL + RegimeScoreNormalizationBase) / RegimeScoreNormalizationRange));
     }
     
     private decimal GetTimeSpecificScore(string strategy, TimeSpan currentTime)
@@ -588,42 +662,42 @@ public class StrategyPerformanceAnalyzer
             if (characteristics?.PreferredTimeWindows != null)
             {
                 var isPreferredTime = characteristics.PreferredTimeWindows.Any(window => 
-                    Math.Abs((window - currentTime).TotalHours) < 1);
-                return isPreferredTime ? 0.8m : 0.5m;
+                    Math.Abs((window - currentTime).TotalHours) < PreferredTimeToleranceHours);
+                return isPreferredTime ? VeryHighThreshold : ModerateThreshold;
             }
-            return 0.6m; // Slightly positive default
+            return HighThreshold; // Slightly positive default
         }
         
         var timePnL = _timeBasedPerformance[hour][strategy];
         
         // Normalize score based on performance at this time
-        return Math.Max(0m, Math.Min(1m, (timePnL + 200m) / 400m));
+        return Math.Max(0m, Math.Min(1m, (timePnL + TimeScoreNormalizationBase) / TimeScoreNormalizationRange));
     }
     
     private decimal GetRecentPerformanceScore(string strategy)
     {
         if (!_strategyAnalysis.TryGetValue(strategy, out var analysis))
-            return 0.5m;
-        if (analysis.AllTrades.Count < 10)
-            return 0.5m;
+            return ModerateThreshold;
+        if (analysis.AllTrades.Count < MinTradesForConsistencyAnalysis)
+            return ModerateThreshold;
         
-        var recentTrades = analysis.AllTrades.TakeLast(Math.Min(20, analysis.AllTrades.Count / 2)).ToArray();
+        var recentTrades = analysis.AllTrades.TakeLast(Math.Min(RecentTradesForScore, analysis.AllTrades.Count / 2)).ToArray();
         var recentPnL = recentTrades.Sum(t => t.PnL);
         var recentWinRate = recentTrades.Count(t => t.PnL > 0) / (decimal)recentTrades.Length;
         
         // Combine P&L and win rate for recent performance score
-        var pnlScore = Math.Max(0m, Math.Min(1m, (recentPnL + 300m) / 600m));
+        var pnlScore = Math.Max(0m, Math.Min(1m, (recentPnL + RecentPnLNormalizationBase) / RecentPnLNormalizationRange));
         var winRateScore = recentWinRate;
         
-        return (pnlScore * 0.6m) + (winRateScore * 0.4m);
+        return (pnlScore * PnLScoreWeight) + (winRateScore * WinRateScoreWeight);
     }
     
     private decimal GetConsistencyScore(string strategy)
     {
         if (!_strategyAnalysis.TryGetValue(strategy, out var analysis))
-            return 0.5m;
-        if (analysis.AllTrades.Count < 10)
-            return 0.5m;
+            return ModerateThreshold;
+        if (analysis.AllTrades.Count < MinTradesForConsistencyAnalysis)
+            return ModerateThreshold;
         
         var tradePnLs = analysis.AllTrades.Select(t => t.PnL).ToArray();
         var avgPnL = tradePnLs.Average();
@@ -631,7 +705,7 @@ public class StrategyPerformanceAnalyzer
         var stdDev = (decimal)Math.Sqrt(variance);
         
         // Lower standard deviation = higher consistency
-        var consistencyScore = Math.Max(0m, 1m - (stdDev / 100m)); // Normalize by $100
+        var consistencyScore = Math.Max(0m, 1m - (stdDev / ConsistencyNormalizationFactor));
         
         return Math.Max(0m, Math.Min(1m, consistencyScore));
     }
@@ -649,9 +723,9 @@ public class StrategyPerformanceAnalyzer
         {
             return baseScore * OptimalVolatilityBoostMultiplier; // Boost score for optimal volatility
         }
-        else if (volatility < minVol * 0.5m || volatility > maxVol * 2m)
+        else if (volatility < minVol * LowVolatilityThresholdMultiplier || volatility > maxVol * HighVolatilityThresholdMultiplier)
         {
-            return baseScore * 0.8m; // Reduce score for poor volatility fit
+            return baseScore * PoorVolatilityPenaltyMultiplier; // Reduce score for poor volatility fit
         }
         
         return baseScore;
@@ -660,14 +734,14 @@ public class StrategyPerformanceAnalyzer
     private static decimal CalculateRecommendationConfidence(Dictionary<string, decimal> strategyScores)
     {
         var scores = strategyScores.Values.OrderByDescending(s => s).ToArray();
-        if (scores.Length < 2) return 0.5m;
+        if (scores.Length < 2) return BaseConfidence;
         
         var topScore = scores[0];
         var secondScore = scores[1];
         
         // Higher confidence when there's a clear winner
         var gap = topScore - secondScore;
-        return Math.Min(1m, 0.5m + (gap * 2m));
+        return Math.Min(1m, BaseConfidence + (gap * ConfidenceGapMultiplier));
     }
     
     private string GenerateRecommendationReasoning(string strategy, AnalyzerMarketRegime regime, TimeSpan currentTime, decimal volatility)
