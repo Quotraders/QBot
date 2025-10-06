@@ -454,15 +454,38 @@ namespace TopstepX.S11
                 int mod15 = bar.TimeET.Minute % 15;
                 if (mod15 == S11Constants.FifteenMinuteModCheck && Min1.Count >= S11Constants.FifteenMinuteBars)
                 {
-                    long o15 = Min1.Last(14).Open; long h15 = long.MinValue; long l15 = long.MaxValue; long c15 = Min1.Last(0).Close; double v15 = 0;
-                    for (int i = 0; i < S11Constants.FifteenMinuteBars; i++) { var b = Min1.Last(i); if (b.High > h15) h15 = b.High; if (b.Low < l15) l15 = b.Low; v15 += b.Volume; }
+                    long o15 = Min1.Last(14).Open; 
+                    long h15 = long.MinValue; 
+                    long l15 = long.MaxValue; 
+                    long c15 = Min1.Last(0).Close; 
+                    double v15 = 0;
+                    for (int i = 0; i < S11Constants.FifteenMinuteBars; i++) 
+                    { 
+                        var b = Min1.Last(i); 
+                        if (b.High > h15) 
+                        {
+                            h15 = b.High; 
+                        }
+                        if (b.Low < l15) 
+                        {
+                            l15 = b.Low; 
+                        }
+                        v15 += b.Volume; 
+                    }
                     Min15.Add(new Bar1M(bar.TimeET, o15, h15, l15, c15, v15));
                 }
 
                 // IB tracking (09:30-10:30)
                 if (bar.TimeET.TimeOfDay >= C.IBStart && bar.TimeET.TimeOfDay <= C.IBEnd)
                 {
-                    if (bar.High > IB_High) IB_High = bar.High; if (bar.Low < IB_Low) IB_Low = bar.Low;
+                    if (bar.High > IB_High) 
+                    {
+                        IB_High = bar.High; 
+                    }
+                    if (bar.Low < IB_Low) 
+                    {
+                        IB_Low = bar.Low;
+                    }
                 }
 
                 // indicators
@@ -487,15 +510,42 @@ namespace TopstepX.S11
                 }
             }
 
-            private int RthMinuteIndex(DateTimeOffset et) { var start = et.Date + C.IBStart; if (et < start || et >= start.AddHours(S11Constants.AdrExhaustionThreshold)) return -1; return (int)(et - start).TotalMinutes; }
+            private int RthMinuteIndex(DateTimeOffset et) 
+            { 
+                var start = et.Date + C.IBStart; 
+                if (et < start || et >= start.AddHours(S11Constants.AdrExhaustionThreshold)) 
+                {
+                    return -1; 
+                }
+                return (int)(et - start).TotalMinutes; 
+            }
             private double ComputeRVOL(int minuteIdx, double vol)
             {
                 double baseVol = rvolBase.GetBaseline(minuteIdx);
-                if (baseVol <= 0) return 1.0; return vol / baseVol;
+                if (baseVol <= 0) 
+                {
+                    return 1.0; 
+                }
+                return vol / baseVol;
             }
             public double ComputeADR()
             {
-                if (DailyForAdr.Count == 0) return 0; double s=0; int n=0; foreach (var d in DailyForAdr){ s += (d.high - d.low); n++; if (n >= C.AdrLookbackDays) break; } return n>0 ? s/n : 0;
+                if (DailyForAdr.Count == 0) 
+                {
+                    return 0; 
+                }
+                double s=0; 
+                int n=0; 
+                foreach (var d in DailyForAdr)
+                { 
+                    s += (d.high - d.low); 
+                    n++; 
+                    if (n >= C.AdrLookbackDays) 
+                    {
+                        break; 
+                    }
+                } 
+                return n>0 ? s/n : 0;
             }
 
             public bool IsAdrExhausted(double threshold)

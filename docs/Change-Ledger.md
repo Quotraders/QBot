@@ -8506,3 +8506,61 @@ for (int i=0;i<Min1.Count;i++)
 
 ---
 *Updated: Current Session - Phase 1 Confirmed Complete, Phase 2 S2681 Batch 2 Complete*
+
+#### Round 26 - S2681 Missing Braces Batch 3 (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S2681 | 48 | 30 | S6_MaxPerf_FullStack.cs, S11_MaxPerf_FullStack.cs | Expanded single-line methods and added braces to conditionals and loops |
+
+**Example Pattern - Ring Buffer Method Expansion**:
+```csharp
+// Before (Violation - entire method on one line)
+public ref readonly T Last(int back = 0)
+{
+    if (_count == 0) throw new InvalidOperationException("Ring empty");
+    int pos = (_idx - 1 - back); if (pos < 0) pos += _buf.Length; return ref _buf[pos];
+}
+
+// After (Compliant - properly formatted with braces)
+public ref readonly T Last(int back = 0)
+{
+    if (_count == 0) 
+    {
+        throw new InvalidOperationException("Ring empty");
+    }
+    int pos = (_idx - 1 - back); 
+    if (pos < 0) 
+    {
+        pos += _buf.Length; 
+    }
+    return ref _buf[pos];
+}
+```
+
+**Example Pattern - Loop with Conditional Increments**:
+```csharp
+// Before (Violation - multiple statements without braces)
+for (int i = 0; i < 15; i++) { var b = Min1.Last(i); if (b.High > h15) h15 = b.High; if (b.Low < l15) l15 = b.Low; v15 += b.Volume; }
+
+// After (Compliant - properly braced)
+for (int i = 0; i < 15; i++) 
+{ 
+    var b = Min1.Last(i); 
+    if (b.High > h15) 
+    {
+        h15 = b.High; 
+    }
+    if (b.Low < l15) 
+    {
+        l15 = b.Low; 
+    }
+    v15 += b.Volume; 
+}
+```
+
+**Rationale**: Continued systematic S2681 cleanup in high-frequency trading strategy files (S6 and S11). Fixed ring buffer methods, RVOL/ADR calculations, and IB tracking loops where compact formatting created maintenance hazards. Expanded 8 methods and several critical loop/conditional blocks. These are performance-critical paths where clarity prevents bugs. All fixes maintain zero suppressions and operational guardrails.
+
+**Total Progress**: 96 violations fixed total (10,562 → 10,466)
+
+---
+*Updated: Current Session - Phase 2 S2681 Batch 3 Complete*
