@@ -136,7 +136,7 @@ public sealed class FeatureMapAuthority
         RegisterResolver("pullback.risk", new PullbackRiskResolver(_serviceProvider));
         RegisterResolver("volume.thrust", new VolumeMarketResolver(_serviceProvider, "thrust"));
         RegisterResolver("inside_bars", new InsideBarsResolver(_serviceProvider));
-        RegisterResolver("vwap.distance_atr", new VWAPDistanceResolver(_serviceProvider));
+        RegisterResolver("vwap.distance_atr", new VwapDistanceResolver(_serviceProvider));
         RegisterResolver("keltner.touch", new BandTouchResolver(_serviceProvider, "keltner"));
         RegisterResolver("bollinger.touch", new BandTouchResolver(_serviceProvider, "bollinger"));
         

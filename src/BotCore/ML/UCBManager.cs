@@ -13,17 +13,17 @@ namespace BotCore.ML
     /// UCB Manager for communicating with Python FastAPI UCB service
     /// Production-ready with proper timeouts and error handling
     /// </summary>
-    public class UCBManager : IDisposable
+    public class UcbManager : IDisposable
     {
         private readonly HttpClient _http;
-        private readonly ILogger<UCBManager> _logger;
+        private readonly ILogger<UcbManager> _logger;
         private static readonly JsonSerializerSettings JsonCfg = new()
         {
             ContractResolver = new DefaultContractResolver { NamingStrategy = new DefaultNamingStrategy() },
             MissingMemberHandling = MissingMemberHandling.Ignore
         };
 
-        public UCBManager(ILogger<UCBManager> logger)
+        public UcbManager(ILogger<UcbManager> logger)
         {
             _logger = logger;
             var ucbUrl = Environment.GetEnvironmentVariable("UCB_SERVICE_URL") ?? "http://localhost:8001";
@@ -35,7 +35,7 @@ namespace BotCore.ML
             _logger.LogInformation("🎯 UCB Manager initialized with service URL: {UcbUrl}", ucbUrl);
         }
 
-        public async Task<UCBRecommendation> GetRecommendationAsync(MarketData data, CancellationToken ct = default)
+        public async Task<UcbRecommendation> GetRecommendationAsync(MarketData data, CancellationToken ct = default)
         {
             ArgumentNullException.ThrowIfNull(data);
             
@@ -68,8 +68,8 @@ namespace BotCore.ML
                 resp.EnsureSuccessStatusCode();
                 var text = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
 
-                var rec = JsonConvert.DeserializeObject<UCBRecommendation>(text, JsonCfg);
-                if (rec == null) throw new InvalidOperationException("Null UCBRecommendation");
+                var rec = JsonConvert.DeserializeObject<UcbRecommendation>(text, JsonCfg);
+                if (rec == null) throw new InvalidOperationException("Null UcbRecommendation");
                 
                 _logger.LogInformation("🧠 [UCB] {Strategy} | Confidence: {Confidence:P1} | Size: {Size} | Risk: {Risk:C}", 
                     rec.Strategy ?? "NONE", rec.Confidence ?? 0, rec.PositionSize, rec.RiskAmount ?? 0);
@@ -167,7 +167,7 @@ namespace BotCore.ML
         }
     }
 
-    public sealed class UCBRecommendation
+    public sealed class UcbRecommendation
     {
         [JsonProperty("trade")] public bool Trade { get; set; }
         [JsonProperty("strategy")] public string? Strategy { get; set; }

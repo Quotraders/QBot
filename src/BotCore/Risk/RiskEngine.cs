@@ -110,7 +110,6 @@ namespace BotCore.Risk
         private readonly Timer _drawdownMonitor;
         private decimal _dailyStartBalance;
         private int _consecutiveLosses;
-        private decimal _peakBalance;
         private bool _tradingHalted;
         private decimal _positionSizeMultiplier = DefaultPositionSizeMultiplier;
 
@@ -234,7 +233,6 @@ namespace BotCore.Risk
         public Task InitializeDrawdownProtection(decimal startingBalance)
         {
             _dailyStartBalance = startingBalance;
-            _peakBalance = startingBalance;
             
             // Create main tracker
             _trackers["MAIN"] = new DrawdownTracker
@@ -261,7 +259,6 @@ namespace BotCore.Risk
             {
                 tracker.PeakValue = currentBalance;
                 tracker.PeakTime = DateTime.UtcNow;
-                _peakBalance = currentBalance;
                 _consecutiveLosses = 0; // Reset on new peak
                 _positionSizeMultiplier = DefaultPositionSizeMultiplier; // Reset position sizing
             }

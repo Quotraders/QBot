@@ -127,8 +127,14 @@ namespace TopstepX.S6
         public long SpreadTicks => Ask1 - Bid1;
         public double Imbalance()
         {
-            long b = (long)BidSz1 + BidSz2 + BidSz3; long a = (long)AskSz1 + AskSz2 + AskSz3; long d = b + a;
-            if (d <= 0) return 0; return (double)(b - a) / d;
+            long b = (long)BidSz1 + BidSz2 + BidSz3; 
+            long a = (long)AskSz1 + AskSz2 + AskSz3; 
+            long d = b + a;
+            if (d <= 0) 
+            {
+                return 0; 
+            }
+            return (double)(b - a) / d;
         }
 
         public override bool Equals(object? obj)
@@ -168,16 +174,40 @@ namespace TopstepX.S6
         public void Add(in T x) { _buf[_idx] = x; _idx = (_idx + 1) % _buf.Length; if (_count < _buf.Length) _count++; }
         public ref readonly T Last(int back = 0)
         {
-            if (_count == 0) throw new InvalidOperationException("Ring empty");
-            int pos = (_idx - 1 - back); if (pos < 0) pos += _buf.Length; return ref _buf[pos];
+            if (_count == 0) 
+            {
+                throw new InvalidOperationException("Ring empty");
+            }
+            int pos = (_idx - 1 - back); 
+            if (pos < 0) 
+            {
+                pos += _buf.Length; 
+            }
+            return ref _buf[pos];
         }
         public void ForEachNewest(int n, Action<T> f) 
         { 
             ArgumentNullException.ThrowIfNull(f);
             
-            for (int i = Math.Max(0,_count - n); i < _count; i++) { int pos = ( (_idx - _count + i) % _buf.Length + _buf.Length ) % _buf.Length; f(_buf[pos]); } 
+            for (int i = Math.Max(0,_count - n); i < _count; i++) 
+            { 
+                int pos = ( (_idx - _count + i) % _buf.Length + _buf.Length ) % _buf.Length; 
+                f(_buf[pos]); 
+            } 
         }
-        public void CopyNewest(int n, Span<T> dst) { n = Math.Min(n, _count); for (int i = 0; i < n; i++){ int pos = (_idx - n + i); if (pos < 0) pos += _buf.Length; dst[i] = _buf[pos]; } }
+        public void CopyNewest(int n, Span<T> dst) 
+        { 
+            n = Math.Min(n, _count); 
+            for (int i = 0; i < n; i++)
+            { 
+                int pos = (_idx - n + i); 
+                if (pos < 0) 
+                {
+                    pos += _buf.Length; 
+                }
+                dst[i] = _buf[pos]; 
+            } 
+        }
     }
 
     // --- ROLLING INDICATORS (O(1)) ---
@@ -211,7 +241,26 @@ namespace TopstepX.S6
             return Value;
         }
     }
-    public sealed class Ema { private readonly double _k; private bool _seed; public double Value { get; private set; } public Ema(int n){ _k=IndicatorConstants.EmaMultiplier/(n+1);} public double Update(double v){ if(!_seed){ Value=v; _seed=true; } else Value = v*_k + Value*(1-_k); return Value; } }
+    public sealed class Ema 
+    { 
+        private readonly double _k; 
+        private bool _seed; 
+        public double Value { get; private set; } 
+        public Ema(int n){ _k=IndicatorConstants.EmaMultiplier/(n+1);} 
+        public double Update(double v)
+        { 
+            if(!_seed)
+            { 
+                Value=v; 
+                _seed=true; 
+            } 
+            else 
+            {
+                Value = v*_k + Value*(1-_k); 
+            }
+            return Value; 
+        } 
+    }
 
     public sealed class RvolBaseline
     {
@@ -448,7 +497,15 @@ namespace TopstepX.S6
                 // ON range until 09:28
                 if (bar.TimeET.TimeOfDay < C.WindowStart)
                 {
-                    if (bar.High > ON_High) ON_High = bar.High; if (bar.Low < ON_Low) ON_Low = bar.Low; PremarketLast = bar.Close;
+                    if (bar.High > ON_High) 
+                    {
+                        ON_High = bar.High; 
+                    }
+                    if (bar.Low < ON_Low) 
+                    {
+                        ON_Low = bar.Low; 
+                    }
+                    PremarketLast = bar.Close;
                 }
 
                 // gap compute at 09:30 bar
@@ -475,42 +532,112 @@ namespace TopstepX.S6
                 // ADR recompute daily (cheap)
                 if (LastResetDay != bar.TimeET.Date)
                 {
-                    LastResetDay = bar.TimeET.Date; Adr = ComputeADR();
+                    LastResetDay = bar.TimeET.Date; 
+                    Adr = ComputeADR();
                 }
             }
 
-            private int RthMinuteIndex(DateTimeOffset et) { var start = et.Date + C.RTHOpen; if (et < start || et >= start.AddHours(RthSessionHours)) return -1; return (int)(et - start).TotalMinutes; }
+            private int RthMinuteIndex(DateTimeOffset et) 
+            { 
+                var start = et.Date + C.RTHOpen; 
+                if (et < start || et >= start.AddHours(RthSessionHours)) 
+                {
+                    return -1; 
+                }
+                return (int)(et - start).TotalMinutes; 
+            }
             private double ComputeRVOL(int minuteIdx, double vol)
             {
                 double baseVol = rvolBase.GetBaseline(minuteIdx);
-                if (baseVol <= 0) return 1.0; return vol / baseVol;
+                if (baseVol <= 0) 
+                {
+                    return 1.0; 
+                }
+                return vol / baseVol;
             }
             public double ComputeADR()
             {
-                if (DailyForAdr.Count == 0) return 0; double s=0; int n=0; foreach (var d in DailyForAdr){ s += (d.high - d.low); n++; if (n >= C.AdrLookbackDays) break; } return n>0 ? s/n : 0;
+                if (DailyForAdr.Count == 0) 
+                {
+                    return 0; 
+                }
+                double s=0; 
+                int n=0; 
+                foreach (var d in DailyForAdr)
+                { 
+                    s += (d.high - d.low); 
+                    n++; 
+                    if (n >= C.AdrLookbackDays) 
+                    {
+                        break; 
+                    }
+                } 
+                return n>0 ? s/n : 0;
             }
 
             public bool CrossedForBars(bool above, long level, int bars)
             {
-                if (Min1.Count < bars) return false; for (int i=1;i<=bars;i++){ var c = Min1.Last(i).Close; if (above && c <= level) return false; if (!above && c >= level) return false; } return true;
+                if (Min1.Count < bars) 
+                {
+                    return false; 
+                }
+                for (int i=1;i<=bars;i++)
+                { 
+                    var c = Min1.Last(i).Close; 
+                    if (above && c <= level) 
+                    {
+                        return false; 
+                    }
+                    if (!above && c >= level) 
+                    {
+                        return false; 
+                    }
+                } 
+                return true;
             }
 
             public int BarsSinceRTHOpen()
             {
-                DateTimeOffset openTs = LastBarTime.Date + C.RTHOpen; int cnt=0; for (int i=0;i<Min1.Count;i++){ var b = Min1.Last(i); if (b.TimeET < openTs) break; cnt++; } return cnt;
+                DateTimeOffset openTs = LastBarTime.Date + C.RTHOpen; 
+                int cnt=0; 
+                for (int i=0;i<Min1.Count;i++)
+                { 
+                    var b = Min1.Last(i); 
+                    if (b.TimeET < openTs) 
+                    {
+                        break; 
+                    }
+                    cnt++; 
+                } 
+                return cnt;
             }
 
             public bool TrendAgree1m5m(bool reversal)
             {
-                if (Min1.Count < 5) return false; double e8=ema8.Value, e21=ema21.Value; bool up5 = e8 > e21; bool up1 = Min1.Last(0).Close > Min1.Last(1).Close;
-                if (!reversal) return (up5 && up1) || (!up5 && !up1);
-                bool flat5 = Math.Abs(e8 - e21) <= (ATR * 0.05); return (flat5 || up5 != up1);
+                if (Min1.Count < 5) 
+                {
+                    return false; 
+                }
+                double e8=ema8.Value, e21=ema21.Value; 
+                bool up5 = e8 > e21; 
+                bool up1 = Min1.Last(0).Close > Min1.Last(1).Close;
+                if (!reversal) 
+                {
+                    return (up5 && up1) || (!up5 && !up1);
+                }
+                bool flat5 = Math.Abs(e8 - e21) <= (ATR * 0.05); 
+                return (flat5 || up5 != up1);
             }
 
             public bool FailedBreakout(bool failedAboveONH)
             {
                 int pen = Instr==Instrument.ES? C.FailBreakPenetrationTicks_ES : C.FailBreakPenetrationTicks_NQ;
-                if (Min1.Count < 3) return false; var b1 = Min1.Last(0); var b2 = Min1.Last(1);
+                if (Min1.Count < 3) 
+                {
+                    return false; 
+                }
+                var b1 = Min1.Last(0); 
+                var b2 = Min1.Last(1);
                 if (failedAboveONH)
                 {
                     bool pierced = b2.High >= ON_High && (b2.High - ON_High) <= pen;
@@ -527,7 +654,12 @@ namespace TopstepX.S6
 
             public bool VolumeExhaustion()
             {
-                if (Min1.Count < 5) return false; double v1=Min1.Last(0).Volume, v2=Min1.Last(1).Volume, v3=Min1.Last(2).Volume; return (v3 < v2 && v2 > v1 && RVOL >= C.MinRVOL);
+                if (Min1.Count < 5) 
+                {
+                    return false; 
+                }
+                double v1=Min1.Last(0).Volume, v2=Min1.Last(1).Volume, v3=Min1.Last(2).Volume; 
+                return (v3 < v2 && v2 > v1 && RVOL >= C.MinRVOL);
             }
 
             public bool RetestConfirmed(long level, bool longSide)
@@ -594,8 +726,29 @@ namespace TopstepX.S6
             }
             public double? RecentSwingPx(Side side)
             {
-                if (Min1.Count < IndicatorConstants.MinHistoryForSwingDetection) return null; long swing = side==Side.Buy ? long.MaxValue : long.MinValue; for (int i=0;i<IndicatorConstants.MinHistoryForSwingDetection;i++)
-                { var b = Min1.Last(i); if (side==Side.Buy) { if (b.Low < swing) swing = b.Low; } else { if (b.High > swing) swing = b.High; } }
+                if (Min1.Count < IndicatorConstants.MinHistoryForSwingDetection) 
+                {
+                    return null; 
+                }
+                long swing = side==Side.Buy ? long.MaxValue : long.MinValue; 
+                for (int i=0;i<IndicatorConstants.MinHistoryForSwingDetection;i++)
+                { 
+                    var b = Min1.Last(i); 
+                    if (side==Side.Buy) 
+                    { 
+                        if (b.Low < swing) 
+                        {
+                            swing = b.Low; 
+                        }
+                    } 
+                    else 
+                    { 
+                        if (b.High > swing) 
+                        {
+                            swing = b.High; 
+                        }
+                    } 
+                }
                 return ToPx(swing);
             }
         }

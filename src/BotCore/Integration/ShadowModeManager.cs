@@ -16,7 +16,6 @@ namespace BotCore.Integration;
 public sealed class ShadowModeManager
 {
     private readonly ILogger<ShadowModeManager> _logger;
-    private readonly IServiceProvider _serviceProvider;
     
     // Shadow strategy tracking
     private readonly Dictionary<string, ShadowStrategy> _shadowStrategies = new();
@@ -36,7 +35,7 @@ public sealed class ShadowModeManager
     public ShadowModeManager(ILogger<ShadowModeManager> logger, IServiceProvider serviceProvider, ShadowModeConfig? config = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        ArgumentNullException.ThrowIfNull(serviceProvider);
         _config = config ?? new ShadowModeConfig();
         
         _logger.LogInformation("Shadow mode manager initialized - Min trades: {MinTrades}, Win rate threshold: {WinRate:P2}, Auto-promotion: {AutoPromotion}",
@@ -693,8 +692,8 @@ public enum ShadowRouterAction
 /// </summary>
 public enum TradeDirection
 {
-    Long,
-    Short
+    Buy,
+    Sell
 }
 
 /// <summary>

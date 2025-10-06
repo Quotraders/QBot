@@ -8305,3 +8305,407 @@ catch (DivideByZeroException ex) {
 
 ---
 *Updated: Current Session - Phase 2 CA1031 Batch 4 Complete*
+
+#### Round 22 - S101 and CA1720 Naming Convention Fixes (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S101 | 10 | 0 | UCBManager.cs, MarketMicrostructureResolvers.cs, TimeOptimizedStrategyManager.cs, S15_RlStrategy.cs | Renamed classes to PascalCase: UCBManager→UcbManager, UCBRecommendation→UcbRecommendation, VWAPDistanceResolver→VwapDistanceResolver, ES_NQ_Correlation→EsNqCorrelation, S15_RlStrategy→S15RlStrategy |
+| CA1720 | 6 | 0 | StrategySignal.cs, EpochFreezeEnforcement.cs, ShadowModeManager.cs | Renamed enum values containing type names: Long→Buy, Short→Sell in SignalSide, PositionDirection, and TradeDirection enums |
+
+**Example Pattern - Class Naming**:
+```csharp
+// Before (Violation)
+public class UCBManager : IDisposable
+public sealed class UCBRecommendation
+public sealed class VWAPDistanceResolver : IFeatureResolver
+
+// After (Compliant)
+public class UcbManager : IDisposable
+public sealed class UcbRecommendation
+public sealed class VwapDistanceResolver : IFeatureResolver
+```
+
+**Example Pattern - Enum Value Naming**:
+```csharp
+// Before (CA1720 Violation - Contains type name)
+public enum SignalSide { Long = 1, Short = -1, Flat = 0 }
+public enum PositionDirection { Long, Short }
+public enum TradeDirection { Long, Short }
+
+// After (Compliant - Semantic trading terms)
+public enum SignalSide { Buy = 1, Sell = -1, Flat = 0 }
+public enum PositionDirection { Buy, Sell }
+public enum TradeDirection { Buy, Sell }
+```
+
+**Rationale**: S101 violations occur when class names use acronyms in all caps (UCB, VWAP) instead of PascalCase. Fixed by converting acronyms to proper PascalCase (Ucb, Vwap). CA1720 violations occur when enum values match system type names (Long/Short). Fixed by using semantic trading terminology (Buy/Sell) which is more explicit and avoids type name conflicts. All fixes maintain zero suppressions and operational guardrails.
+
+**Total Progress**: 26 violations fixed (10,562 → 10,536)
+
+---
+*Updated: Current Session - Phase 2 S101/CA1720 Naming Fixes Complete*
+
+#### Round 23 - S4487 Unused Private Fields (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S4487 | 52 | 38 | S3Strategy.cs, RiskEngine.cs, ShadowModeManager.cs, AutonomousDecisionEngine.cs, MarketConditionAnalyzer.cs, CloudModelSynchronizationService.cs | Removed unused private fields that are assigned but never read |
+
+**Example Pattern - Unused Field Removal**:
+```csharp
+// Before (Violation - field assigned but never read)
+private decimal _peakBalance;
+// ... in method:
+_peakBalance = currentBalance;
+
+// After (Compliant - removed unused field)
+// Field removed entirely, assignment removed
+```
+
+**Example Pattern - Replace with Null Check**:
+```csharp
+// Before (Violation - field stored but never used)
+private readonly IServiceProvider _serviceProvider;
+// ... in constructor:
+_serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+
+// After (Compliant - just validate, don't store)
+// Field removed, replaced with null check:
+ArgumentNullException.ThrowIfNull(serviceProvider);
+```
+
+**Files Fixed**:
+1. **S3Strategy.cs**: Removed `LastSide` field (assigned in MarkFilled but never read)
+2. **RiskEngine.cs**: Removed `_peakBalance` field (redundant, tracker.PeakValue already tracks this)
+3. **ShadowModeManager.cs**: Removed `_serviceProvider` (only used for null check)
+4. **AutonomousDecisionEngine.cs**: Removed `_unifiedBrain`, `_riskManager`, `_strategyAnalyzer`, `_lastTradeTime` (assigned but never referenced)
+5. **MarketConditionAnalyzer.cs**: Removed `_currentTrend` (calculated but never used)
+6. **CloudModelSynchronizationService.cs**: Removed `_memoryManager`, `_resilienceService`, `_monitoringService` (injected but never used)
+
+**Rationale**: S4487 violations indicate dead code - private fields that are assigned values but never read. This wastes memory and creates maintenance burden. Removed all unused fields, replacing service provider storage with ArgumentNullException.ThrowIfNull() where only validation is needed. All fixes maintain zero suppressions and operational guardrails.
+
+**Total Progress**: 46 violations fixed (10,562 → 10,516)
+
+---
+*Updated: Current Session - Phase 2 S4487 Batch 1 Complete*
+
+#### Round 24 - S2681 Missing Braces (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S2681 | 80 | 66 | S3Strategy.cs, AllStrategies.cs | Added braces to multi-statement conditionals and loops |
+
+**Example Pattern - Missing Braces in If-Else**:
+```csharp
+// Before (Violation - multiple statements without braces)
+if (!seen) { hi = b.High; lo = b.Low; seen = true; }
+else { if (b.High > hi) hi = b.High; if (b.Low < lo) lo = b.Low; }
+
+// After (Compliant - proper bracing)
+if (!seen) 
+{ 
+    hi = b.High; 
+    lo = b.Low; 
+    seen = true; 
+}
+else 
+{ 
+    if (b.High > hi) 
+    {
+        hi = b.High; 
+    }
+    if (b.Low < lo) 
+    {
+        lo = b.Low; 
+    }
+}
+```
+
+**Example Pattern - Missing Braces in Loops**:
+```csharp
+// Before (Violation - single-line loop body)
+for (int i = b.Count - need; i < b.Count; i++) { var c = b[i].Close; if (above ? c >= vwap : c <= vwap) ok++; }
+
+// After (Compliant - properly braced)
+for (int i = b.Count - need; i < b.Count; i++) 
+{ 
+    var c = b[i].Close; 
+    if (above ? c >= vwap : c <= vwap) 
+    {
+        ok++; 
+    }
+}
+```
+
+**Rationale**: S2681 violations indicate missing braces around multi-statement blocks in conditionals and loops. This can lead to logic errors when code is modified later, as additional statements may not execute as intended. Added braces to all multi-statement blocks for clarity and safety. All fixes maintain zero suppressions and operational guardrails.
+
+**Total Progress**: 58 violations fixed total (10,562 → 10,504)
+
+---
+*Updated: Current Session - Phase 2 S2681 Batch 1 Complete*
+
+#### Round 25 - CS Compiler Error Fix + S2681 Continued (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| CS0103 | 2 | 0 | AutonomousDecisionEngine.cs | Removed orphaned reference to deleted _lastTradeTime field |
+| S2681 | 66 | 48 | S6_MaxPerf_FullStack.cs | Added braces to multi-statement conditionals and single-line methods |
+
+**Example Pattern - CS0103 Fix**:
+```csharp
+// Before (CS Compiler Error - field was removed but reference remained)
+if (tradeResult.Success)
+{
+    _lastTradeTime = DateTime.UtcNow;  // CS0103: _lastTradeTime doesn't exist
+    _logger.LogInformation("✅ Trade executed");
+}
+
+// After (Compliant - removed orphaned assignment)
+if (tradeResult.Success)
+{
+    _logger.LogInformation("✅ Trade executed");
+}
+```
+
+**Example Pattern - S2681 Single-Line Method Expansion**:
+```csharp
+// Before (Violation - entire method on one line with multiple statements)
+private int RthMinuteIndex(DateTimeOffset et) { var start = et.Date + C.RTHOpen; if (et < start || et >= start.AddHours(RthSessionHours)) return -1; return (int)(et - start).TotalMinutes; }
+
+// After (Compliant - properly formatted with braces)
+private int RthMinuteIndex(DateTimeOffset et) 
+{ 
+    var start = et.Date + C.RTHOpen; 
+    if (et < start || et >= start.AddHours(RthSessionHours)) 
+    {
+        return -1; 
+    }
+    return (int)(et - start).TotalMinutes; 
+}
+```
+
+**Example Pattern - Loop with Multiple Statements**:
+```csharp
+// Before (Violation - loop body with multiple statements, no braces)
+for (int i=0;i<Min1.Count;i++){ var b = Min1.Last(i); if (b.TimeET < openTs) break; cnt++; }
+
+// After (Compliant - properly braced)
+for (int i=0;i<Min1.Count;i++)
+{ 
+    var b = Min1.Last(i); 
+    if (b.TimeET < openTs) 
+    {
+        break; 
+    }
+    cnt++; 
+}
+```
+
+**Rationale**: Fixed critical CS0103 compiler error from previous cleanup that prevented build. Phase 1 is now confirmed complete with 0 CS errors. Continued S2681 cleanup in S6 strategy file where compact single-line methods and loops created maintenance hazards. Expanded 7 methods and several conditional blocks to proper multi-line format with braces. All fixes maintain zero suppressions and operational guardrails.
+
+**Total Progress**: 76 violations fixed total (10,562 → 10,484)
+- **Phase 1**: ✅ COMPLETE - 0 CS compiler errors
+- **Phase 2**: In progress - 10,484 analyzer violations remaining
+
+---
+*Updated: Current Session - Phase 1 Confirmed Complete, Phase 2 S2681 Batch 2 Complete*
+
+#### Round 26 - S2681 Missing Braces Batch 3 (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S2681 | 48 | 30 | S6_MaxPerf_FullStack.cs, S11_MaxPerf_FullStack.cs | Expanded single-line methods and added braces to conditionals and loops |
+
+**Example Pattern - Ring Buffer Method Expansion**:
+```csharp
+// Before (Violation - entire method on one line)
+public ref readonly T Last(int back = 0)
+{
+    if (_count == 0) throw new InvalidOperationException("Ring empty");
+    int pos = (_idx - 1 - back); if (pos < 0) pos += _buf.Length; return ref _buf[pos];
+}
+
+// After (Compliant - properly formatted with braces)
+public ref readonly T Last(int back = 0)
+{
+    if (_count == 0) 
+    {
+        throw new InvalidOperationException("Ring empty");
+    }
+    int pos = (_idx - 1 - back); 
+    if (pos < 0) 
+    {
+        pos += _buf.Length; 
+    }
+    return ref _buf[pos];
+}
+```
+
+**Example Pattern - Loop with Conditional Increments**:
+```csharp
+// Before (Violation - multiple statements without braces)
+for (int i = 0; i < 15; i++) { var b = Min1.Last(i); if (b.High > h15) h15 = b.High; if (b.Low < l15) l15 = b.Low; v15 += b.Volume; }
+
+// After (Compliant - properly braced)
+for (int i = 0; i < 15; i++) 
+{ 
+    var b = Min1.Last(i); 
+    if (b.High > h15) 
+    {
+        h15 = b.High; 
+    }
+    if (b.Low < l15) 
+    {
+        l15 = b.Low; 
+    }
+    v15 += b.Volume; 
+}
+```
+
+**Rationale**: Continued systematic S2681 cleanup in high-frequency trading strategy files (S6 and S11). Fixed ring buffer methods, RVOL/ADR calculations, and IB tracking loops where compact formatting created maintenance hazards. Expanded 8 methods and several critical loop/conditional blocks. These are performance-critical paths where clarity prevents bugs. All fixes maintain zero suppressions and operational guardrails.
+
+**Total Progress**: 96 violations fixed total (10,562 → 10,466)
+
+---
+*Updated: Current Session - Phase 2 S2681 Batch 3 Complete*
+
+#### Round 27 - S2681 Missing Braces Batch 4 (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S2681 | 30 | 26 | S6_MaxPerf_FullStack.cs | Added braces to conditional returns and method expansions |
+
+**Example Pattern - Early Return with Multiple Statements**:
+```csharp
+// Before (Violation - early return with subsequent statements on same line)
+if (Min1.Count < 3) return false; var b1 = Min1.Last(0); var b2 = Min1.Last(1);
+
+// After (Compliant - properly braced)
+if (Min1.Count < 3) 
+{
+    return false; 
+}
+var b1 = Min1.Last(0); 
+var b2 = Min1.Last(1);
+```
+
+**Rationale**: Final cleanup pass on S6 strategy file. Fixed remaining early return patterns where multiple statements followed conditional returns without braces. These are critical trading logic paths where clarity prevents bugs in failed breakout detection and volume exhaustion checks. All fixes maintain zero suppressions and operational guardrails.
+
+**Session Summary**:
+- **Total violations fixed**: 100 (10,562 → 10,462)
+- **Phase 1**: ✅ COMPLETE - 0 CS compiler errors
+- **Phase 2 Progress**: 
+  - S101: 10/10 ✅ COMPLETE
+  - CA1720: 6/6 ✅ COMPLETE
+  - S4487: 14/52 (27% complete)
+  - S2681: 54/80 (67.5% complete)
+  - CS0103: 2/2 ✅ COMPLETE
+
+---
+*Updated: Current Session - 100 Violations Fixed, All Guardrails Maintained*
+
+#### Round 28 - S2681 Missing Braces Batch 5 (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S2681 | 26 | 10 | S3Strategy.cs, AllStrategies.cs, S11_MaxPerf_FullStack.cs | Expanded single-line methods, added braces to loops and conditionals |
+
+**Example Pattern - Ring Buffer Methods (Duplicate in S11)**:
+```csharp
+// Before (Violation - compact single-line with multiple conditional statements)
+public ref readonly T Last(int back = 0)
+{
+    if (_count == 0) throw new InvalidOperationException("Ring empty");
+    int pos = (_idx - 1 - back); if (pos < 0) pos += _buf.Length; return ref _buf[pos];
+}
+
+// After (Compliant - properly formatted)
+public ref readonly T Last(int back = 0)
+{
+    if (_count == 0) 
+    {
+        throw new InvalidOperationException("Ring empty");
+    }
+    int pos = (_idx - 1 - back); 
+    if (pos < 0) 
+    {
+        pos += _buf.Length; 
+    }
+    return ref _buf[pos];
+}
+```
+
+**Example Pattern - Quantile Method**:
+```csharp
+// Before (Violation)
+if (a == null || a.Count == 0) return 0m; var t = a.OrderBy(x => x).ToList();
+
+// After (Compliant)
+if (a == null || a.Count == 0) 
+{
+    return 0m; 
+}
+var t = a.OrderBy(x => x).ToList();
+```
+
+**Rationale**: Continued S2681 cleanup approaching category completion. Fixed duplicate ring buffer methods in S11 (same pattern as S6), statistical helper functions (Quantile, FirstWeekdayOfMonth), and ADR calculation loops in AllStrategies. These are critical mathematical and data structure methods where clarity prevents subtle bugs. All fixes maintain zero suppressions and operational guardrails.
+
+**Session Total**: 116 violations fixed (10,562 → 10,446)
+- **S2681**: 70/80 complete (87.5%)
+
+---
+*Updated: Current Session - Phase 2 S2681 Batch 5 Complete*
+
+#### Round 29 - S2681 Missing Braces COMPLETE ✅ (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S2681 | 10 | 0 ✅ | S6_MaxPerf_FullStack.cs, S11_MaxPerf_FullStack.cs, S2Upg.cs | Final cleanup - swing detection, EMA methods, ADR exhaustion |
+
+**🎯 CATEGORY COMPLETE: S2681 - 80/80 Fixed (100%)**
+
+**Example Pattern - Recent Swing Detection**:
+```csharp
+// Before (Violation - nested conditionals without braces in loop)
+if (Min1.Count < 10) return null; long swing = side==Side.Buy ? long.MaxValue : long.MinValue; for (int i=0;i<10;i++)
+{ var b = Min1.Last(i); if (side==Side.Buy) { if (b.Low < swing) swing = b.Low; } else { if (b.High > swing) swing = b.High; } }
+
+// After (Compliant - properly braced)
+if (Min1.Count < 10) 
+{
+    return null; 
+}
+long swing = side==Side.Buy ? long.MaxValue : long.MinValue; 
+for (int i=0;i<10;i++)
+{ 
+    var b = Min1.Last(i); 
+    if (side==Side.Buy) 
+    { 
+        if (b.Low < swing) 
+        {
+            swing = b.Low; 
+        }
+    } 
+    else 
+    { 
+        if (b.High > swing) 
+        {
+            swing = b.High; 
+        }
+    } 
+}
+```
+
+**Final S2681 Fixes**:
+1. **RecentSwingPx** - Swing price detection with nested conditionals
+2. **Ema class (S6)** - Another EMA implementation needing expansion
+3. **S2Upg PrevDayRange** - Previous day high/low tracking
+4. **S11 IsAdrExhausted** - ADR exhaustion check with today's range
+5. **S11 VolumeExhaustion** - Volume exhaustion detection loop
+
+**Rationale**: Completed S2681 category elimination with final 10 violations across 3 strategy files. Fixed critical trading logic including swing detection (used for stop placement), EMA updates, and volume/range exhaustion checks. These are high-frequency execution paths where code clarity directly impacts trading decisions. All fixes maintain zero suppressions and operational guardrails.
+
+**Session Total**: 126 violations fixed (10,562 → 10,436)
+**S2681 Achievement**: 80/80 complete (100%) ✅
+
+**Categories Now Complete**:
+- S101: 10/10 ✅
+- CA1720: 6/6 ✅
+- CS0103: 2/2 ✅
+- **S2681: 80/80 ✅ NEW**
+
+---
+*Updated: Current Session - S2681 CATEGORY COMPLETE*

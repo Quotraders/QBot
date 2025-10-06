@@ -623,12 +623,12 @@ namespace BotCore.Services
             return denominator != 0 ? numerator / denominator : FallbackCorrelation;
         }
 
-        private ES_NQ_Correlation CheckES_NQ_Correlation(string instrument)
+        private EsNqCorrelation CheckES_NQ_Correlation(string instrument)
         {
             // ES/NQ correlation analysis using advanced statistical methods
             var correlation = CalculateRealTimeCorrelation();
             
-            var result = new ES_NQ_Correlation
+            var result = new EsNqCorrelation
             {
                 Value = correlation,
                 ConfidenceMultiplier = DefaultConfidenceMultiplier,
@@ -1083,7 +1083,7 @@ namespace BotCore.Services
     /// <summary>
     /// ES/NQ correlation analysis result
     /// </summary>
-    public class ES_NQ_Correlation
+    public class EsNqCorrelation
     {
         public double Value { get; set; }
         public double ConfidenceMultiplier { get; set; } = 1.0;

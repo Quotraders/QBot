@@ -185,15 +185,15 @@ public sealed class InsideBarsResolver : IFeatureResolver
     }
 }
 
-public sealed class VWAPDistanceResolver : IFeatureResolver
+public sealed class VwapDistanceResolver : IFeatureResolver
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<VWAPDistanceResolver> _logger;
+    private readonly ILogger<VwapDistanceResolver> _logger;
     
-    public VWAPDistanceResolver(IServiceProvider serviceProvider)
+    public VwapDistanceResolver(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        _logger = serviceProvider.GetRequiredService<ILogger<VWAPDistanceResolver>>();
+        _logger = serviceProvider.GetRequiredService<ILogger<VwapDistanceResolver>>();
     }
     
     public Task<double?> ResolveAsync(string symbol, CancellationToken cancellationToken = default)

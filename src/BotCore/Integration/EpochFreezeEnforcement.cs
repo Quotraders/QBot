@@ -728,8 +728,8 @@ public enum ViolationSeverity
 /// </summary>
 public enum PositionDirection
 {
-    Long,
-    Short
+    Buy,
+    Sell
 }
 
 /// <summary>

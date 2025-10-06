@@ -127,8 +127,14 @@ namespace TopstepX.S11
         public long SpreadTicks => Ask1 - Bid1;
         public double Imbalance()
         {
-            long b = (long)BidSz1 + BidSz2 + BidSz3; long a = (long)AskSz1 + AskSz2 + AskSz3; long d = b + a;
-            if (d <= 0) return 0; return (double)(b - a) / d;
+            long b = (long)BidSz1 + BidSz2 + BidSz3; 
+            long a = (long)AskSz1 + AskSz2 + AskSz3; 
+            long d = b + a;
+            if (d <= 0) 
+            {
+                return 0; 
+            }
+            return (double)(b - a) / d;
         }
 
         public override bool Equals(object? obj)
@@ -168,16 +174,40 @@ namespace TopstepX.S11
         public void Add(in T x) { _buf[_idx] = x; _idx = (_idx + 1) % _buf.Length; if (_count < _buf.Length) _count++; }
         public ref readonly T Last(int back = 0)
         {
-            if (_count == 0) throw new InvalidOperationException("Ring empty");
-            int pos = (_idx - 1 - back); if (pos < 0) pos += _buf.Length; return ref _buf[pos];
+            if (_count == 0) 
+            {
+                throw new InvalidOperationException("Ring empty");
+            }
+            int pos = (_idx - 1 - back); 
+            if (pos < 0) 
+            {
+                pos += _buf.Length; 
+            }
+            return ref _buf[pos];
         }
         public void ForEachNewest(int n, Action<T> f) 
         { 
             ArgumentNullException.ThrowIfNull(f);
             
-            for (int i = Math.Max(0,_count - n); i < _count; i++) { int pos = ( (_idx - _count + i) % _buf.Length + _buf.Length ) % _buf.Length; f(_buf[pos]); } 
+            for (int i = Math.Max(0,_count - n); i < _count; i++) 
+            { 
+                int pos = ( (_idx - _count + i) % _buf.Length + _buf.Length ) % _buf.Length; 
+                f(_buf[pos]); 
+            } 
         }
-        public void CopyNewest(int n, Span<T> dst) { n = Math.Min(n, _count); for (int i = 0; i < n; i++){ int pos = (_idx - n + i); if (pos < 0) pos += _buf.Length; dst[i] = _buf[pos]; } }
+        public void CopyNewest(int n, Span<T> dst) 
+        { 
+            n = Math.Min(n, _count); 
+            for (int i = 0; i < n; i++)
+            { 
+                int pos = (_idx - n + i); 
+                if (pos < 0) 
+                {
+                    pos += _buf.Length; 
+                }
+                dst[i] = _buf[pos]; 
+            } 
+        }
     }
 
     // --- ROLLING INDICATORS ---
@@ -220,7 +250,19 @@ namespace TopstepX.S11
         private bool _seed; 
         public double Value { get; private set; } 
         public Ema(int n){ _k=EmaSmoothingFactorMultiplier/(n+1);} 
-        public double Update(double v){ if(!_seed){ Value=v; _seed=true; } else Value = v*_k + Value*(1-_k); return Value; } 
+        public double Update(double v)
+        { 
+            if(!_seed)
+            { 
+                Value=v; 
+                _seed=true; 
+            } 
+            else 
+            {
+                Value = v*_k + Value*(1-_k); 
+            }
+            return Value; 
+        } 
     }
 
     public sealed class Rsi
@@ -454,15 +496,38 @@ namespace TopstepX.S11
                 int mod15 = bar.TimeET.Minute % 15;
                 if (mod15 == S11Constants.FifteenMinuteModCheck && Min1.Count >= S11Constants.FifteenMinuteBars)
                 {
-                    long o15 = Min1.Last(14).Open; long h15 = long.MinValue; long l15 = long.MaxValue; long c15 = Min1.Last(0).Close; double v15 = 0;
-                    for (int i = 0; i < S11Constants.FifteenMinuteBars; i++) { var b = Min1.Last(i); if (b.High > h15) h15 = b.High; if (b.Low < l15) l15 = b.Low; v15 += b.Volume; }
+                    long o15 = Min1.Last(14).Open; 
+                    long h15 = long.MinValue; 
+                    long l15 = long.MaxValue; 
+                    long c15 = Min1.Last(0).Close; 
+                    double v15 = 0;
+                    for (int i = 0; i < S11Constants.FifteenMinuteBars; i++) 
+                    { 
+                        var b = Min1.Last(i); 
+                        if (b.High > h15) 
+                        {
+                            h15 = b.High; 
+                        }
+                        if (b.Low < l15) 
+                        {
+                            l15 = b.Low; 
+                        }
+                        v15 += b.Volume; 
+                    }
                     Min15.Add(new Bar1M(bar.TimeET, o15, h15, l15, c15, v15));
                 }
 
                 // IB tracking (09:30-10:30)
                 if (bar.TimeET.TimeOfDay >= C.IBStart && bar.TimeET.TimeOfDay <= C.IBEnd)
                 {
-                    if (bar.High > IB_High) IB_High = bar.High; if (bar.Low < IB_Low) IB_Low = bar.Low;
+                    if (bar.High > IB_High) 
+                    {
+                        IB_High = bar.High; 
+                    }
+                    if (bar.Low < IB_Low) 
+                    {
+                        IB_Low = bar.Low;
+                    }
                 }
 
                 // indicators
@@ -487,15 +552,42 @@ namespace TopstepX.S11
                 }
             }
 
-            private int RthMinuteIndex(DateTimeOffset et) { var start = et.Date + C.IBStart; if (et < start || et >= start.AddHours(S11Constants.AdrExhaustionThreshold)) return -1; return (int)(et - start).TotalMinutes; }
+            private int RthMinuteIndex(DateTimeOffset et) 
+            { 
+                var start = et.Date + C.IBStart; 
+                if (et < start || et >= start.AddHours(S11Constants.AdrExhaustionThreshold)) 
+                {
+                    return -1; 
+                }
+                return (int)(et - start).TotalMinutes; 
+            }
             private double ComputeRVOL(int minuteIdx, double vol)
             {
                 double baseVol = rvolBase.GetBaseline(minuteIdx);
-                if (baseVol <= 0) return 1.0; return vol / baseVol;
+                if (baseVol <= 0) 
+                {
+                    return 1.0; 
+                }
+                return vol / baseVol;
             }
             public double ComputeADR()
             {
-                if (DailyForAdr.Count == 0) return 0; double s=0; int n=0; foreach (var d in DailyForAdr){ s += (d.high - d.low); n++; if (n >= C.AdrLookbackDays) break; } return n>0 ? s/n : 0;
+                if (DailyForAdr.Count == 0) 
+                {
+                    return 0; 
+                }
+                double s=0; 
+                int n=0; 
+                foreach (var d in DailyForAdr)
+                { 
+                    s += (d.high - d.low); 
+                    n++; 
+                    if (n >= C.AdrLookbackDays) 
+                    {
+                        break; 
+                    }
+                } 
+                return n>0 ? s/n : 0;
             }
 
             public bool IsAdrExhausted(double threshold)
@@ -508,8 +600,23 @@ namespace TopstepX.S11
                 {
                     var b = Min1.Last(i);
                     if (b.TimeET.Date != today) continue;
-                    if (!found) { todayHi = ToPx(b.High); todayLo = ToPx(b.Low); found = true; }
-                    else { if (ToPx(b.High) > todayHi) todayHi = ToPx(b.High); if (ToPx(b.Low) < todayLo) todayLo = ToPx(b.Low); }
+                    if (!found) 
+                    { 
+                        todayHi = ToPx(b.High); 
+                        todayLo = ToPx(b.Low); 
+                        found = true; 
+                    }
+                    else 
+                    { 
+                        if (ToPx(b.High) > todayHi) 
+                        {
+                            todayHi = ToPx(b.High); 
+                        }
+                        if (ToPx(b.Low) < todayLo) 
+                        {
+                            todayLo = ToPx(b.Low); 
+                        }
+                    }
                 }
                 if (!found) return false;
                 double usedRange = todayHi - todayLo;
@@ -518,8 +625,16 @@ namespace TopstepX.S11
 
             public bool VolumeExhaustion()
             {
-                if (Min1.Count < C.ExhaustionBars) return false;
-                double avgVol = 0; for (int i = 1; i <= C.ExhaustionBars; i++) avgVol += Min1.Last(i).Volume; avgVol /= C.ExhaustionBars;
+                if (Min1.Count < C.ExhaustionBars) 
+                {
+                    return false;
+                }
+                double avgVol = 0; 
+                for (int i = 1; i <= C.ExhaustionBars; i++) 
+                {
+                    avgVol += Min1.Last(i).Volume; 
+                }
+                avgVol /= C.ExhaustionBars;
                 return Min1.Last(0).Volume >= (avgVol * C.ExhaustionVolMult);
             }
 
