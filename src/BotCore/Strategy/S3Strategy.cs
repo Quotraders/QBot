@@ -721,7 +721,6 @@ namespace BotCore.Strategy
             public DateTime LastFillLocal = DateTime.MinValue;
             public bool IsInvalid;
             public int LastBreakBarIndex = -1;
-            public Side LastSide = Side.BUY;
 
             public void UpdateIfNewSegment(int segId, DateTime nowLocal, decimal hi, decimal lo)
             {
@@ -733,7 +732,7 @@ namespace BotCore.Strategy
             }
             public void MarkFilled(int segId, Side side, DateTime nowLocal)
             {
-                if (segId == SegmentId) { FilledThisSegment = true; LastFillLocal = nowLocal; LastSide = side; }
+                if (segId == SegmentId) { FilledThisSegment = true; LastFillLocal = nowLocal; }
             }
             public bool OnCooldown(DateTime nowLocal, int minutes) => (nowLocal - LastFillLocal).TotalMinutes < minutes;
             public void TickInvalidate(IList<Bar> bars, decimal kcMid, decimal boxHigh, decimal boxLow, int earlyInvalidateBars)

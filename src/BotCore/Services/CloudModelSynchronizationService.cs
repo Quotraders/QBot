@@ -19,9 +19,6 @@ public class CloudModelSynchronizationService : BackgroundService
     
     private readonly ILogger<CloudModelSynchronizationService> _logger;
     private readonly HttpClient _httpClient;
-    private readonly IMLMemoryManager _memoryManager;
-    private readonly ProductionResilienceService? _resilienceService;
-    private readonly ProductionMonitoringService? _monitoringService;
     private readonly string _githubToken;
     private readonly string _repositoryOwner;
     private readonly string _repositoryName;
@@ -43,10 +40,8 @@ public class CloudModelSynchronizationService : BackgroundService
     {
         _logger = logger;
         _httpClient = httpClient;
-        _memoryManager = memoryManager;
+        ArgumentNullException.ThrowIfNull(memoryManager);
         ArgumentNullException.ThrowIfNull(configuration);
-        _resilienceService = resilienceService;
-        _monitoringService = monitoringService;
         
         // Configure GitHub API access with validation
         _githubToken = Environment.GetEnvironmentVariable("GITHUB_TOKEN") ?? 

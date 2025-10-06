@@ -67,18 +67,15 @@ public class AutonomousDecisionEngine : BackgroundService
     private readonly AutonomousConfig _config;
     
     // Core decision-making components
-    private readonly UnifiedTradingBrain _unifiedBrain;
     private readonly UnifiedDecisionRouter _decisionRouter;
     private readonly IMarketHours _marketHours;
     
     // Risk and compliance management
-    private readonly IRiskManager _riskManager;
     private readonly TopStepComplianceManager _complianceManager;
     
     // Performance tracking and learning
     private readonly AutonomousPerformanceTracker _performanceTracker;
     private readonly MarketConditionAnalyzer _marketAnalyzer;
-    private readonly StrategyPerformanceAnalyzer _strategyAnalyzer;
     
     // Autonomous state management
     private readonly Dictionary<string, AutonomousStrategyMetrics> _strategyMetrics = new();
@@ -92,7 +89,6 @@ public class AutonomousDecisionEngine : BackgroundService
     private int _consecutiveWins;
     private int _consecutiveLosses;
     private decimal _todayPnL;
-    private DateTime _lastTradeTime = DateTime.MinValue;
     private AutonomousMarketRegime _currentAutonomousMarketRegime = AutonomousMarketRegime.Unknown;
     
     // Autonomous configuration
@@ -256,13 +252,13 @@ public class AutonomousDecisionEngine : BackgroundService
         IOptions<AutonomousConfig> config)
     {
         ArgumentNullException.ThrowIfNull(config);
+        ArgumentNullException.ThrowIfNull(unifiedBrain);
+        ArgumentNullException.ThrowIfNull(riskManager);
         
         _logger = logger;
         _serviceProvider = serviceProvider;
-        _unifiedBrain = unifiedBrain;
         _decisionRouter = decisionRouter;
         _marketHours = marketHours;
-        _riskManager = riskManager;
         _config = config.Value;
         
         _complianceManager = new TopStepComplianceManager(logger, config);
@@ -270,8 +266,6 @@ public class AutonomousDecisionEngine : BackgroundService
             _serviceProvider.GetRequiredService<ILogger<AutonomousPerformanceTracker>>());
         _marketAnalyzer = new MarketConditionAnalyzer(
             _serviceProvider.GetRequiredService<ILogger<MarketConditionAnalyzer>>());
-        _strategyAnalyzer = new StrategyPerformanceAnalyzer(
-            _serviceProvider.GetRequiredService<ILogger<StrategyPerformanceAnalyzer>>());
         
         InitializeAutonomousStrategyMetrics();
         
