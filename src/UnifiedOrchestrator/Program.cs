@@ -814,6 +814,9 @@ Please check the configuration and ensure all required services are registered.
         // AI/ML TRADING BRAIN REGISTRATION - DUAL ML APPROACH WITH UCB
         // ================================================================================
         
+        // Register OllamaClient - AI conversation service for bot explanations (optional)
+        services.AddSingleton<BotCore.Services.OllamaClient>();
+        
         // Register UnifiedTradingBrain - The main AI brain (1,027+ lines)
         services.AddSingleton<BotCore.Brain.UnifiedTradingBrain>();
         
