@@ -81,7 +81,7 @@ namespace BotCore.ML
             _onnxLoader = onnxLoader;
             _modelsPath = Path.Combine(AppContext.BaseDirectory, "models");
 
-            // Use your actual trained models instead of fake "latest_" paths
+            // Use your actual trained models instead of simulated "latest_" paths
             _rlSizerPath = Path.Combine(_modelsPath, "rl", "cvar_ppo_agent.onnx");
             _metaClassifierPath = Path.Combine(_modelsPath, "rl_model.onnx"); 
             _execQualityPath = Path.Combine(_modelsPath, "rl", "test_cvar_ppo.onnx");

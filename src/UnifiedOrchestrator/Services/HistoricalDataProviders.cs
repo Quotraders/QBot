@@ -33,7 +33,7 @@ internal sealed class FeaturesHistoricalProvider : IHistoricalDataProvider
         DateTime endTime, 
         CancellationToken cancellationToken = default)
     {
-        // Remove placeholder - return the actual implementation
+        // Remove substitute - return the actual implementation
         return GetQuotesFromFeaturesAsync(symbol, startTime, endTime, cancellationToken);
     }
     

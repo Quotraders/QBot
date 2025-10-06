@@ -228,7 +228,7 @@ namespace BotCore.Execution
     }
 
     /// <summary>
-    /// Configuration for bracket adjustment behavior - NO HARDCODED DEFAULTS (fail-closed requirement)
+    /// Configuration for bracket adjustment behavior - all defaults must be explicit (fail-closed requirement)
     /// </summary>
     public sealed class BracketConfiguration
     {

@@ -89,9 +89,14 @@ public sealed class ShadowModeManager
             _logger.LogInformation("Shadow strategy registered: {StrategyName} - Auto-promotion: {AutoPromotion}, Min trades: {MinTrades}, Win rate threshold: {WinRate:P2}",
                 registration.StrategyName, shadowStrategy.AutoPromotionEnabled, shadowStrategy.MinTradesForPromotion, shadowStrategy.WinRateThreshold);
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "Error registering shadow strategy: {StrategyName}", registration.StrategyName);
+            _logger.LogError(ex, "Invalid argument registering shadow strategy: {StrategyName}", registration.StrategyName);
+            throw;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation registering shadow strategy: {StrategyName}", registration.StrategyName);
             throw;
         }
     }
@@ -161,10 +166,16 @@ public sealed class ShadowModeManager
                 
             return result;
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
             result.Error = ex.Message;
-            _logger.LogError(ex, "Error processing shadow pick for strategy: {StrategyName}", strategyName);
+            _logger.LogError(ex, "Invalid argument processing shadow pick for strategy: {StrategyName}", strategyName);
+            return result;
+        }
+        catch (InvalidOperationException ex)
+        {
+            result.Error = ex.Message;
+            _logger.LogError(ex, "Invalid operation processing shadow pick for strategy: {StrategyName}", strategyName);
             return result;
         }
     }
@@ -238,9 +249,17 @@ public sealed class ShadowModeManager
             _logger.LogDebug("Shadow trade recorded: {StrategyName} - {TradeId} {Direction} {Symbol} PnL: {PnL:C} ({ExitReason})",
                 strategyName, outcome.TradeId, outcome.Direction, outcome.Symbol, outcome.PnL, outcome.ExitReason);
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "Error recording shadow trade for strategy: {StrategyName}", strategyName);
+            _logger.LogError(ex, "Invalid argument recording shadow trade for strategy: {StrategyName}", strategyName);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation recording shadow trade for strategy: {StrategyName}", strategyName);
+        }
+        catch (DivideByZeroException ex)
+        {
+            _logger.LogError(ex, "Division by zero recording shadow trade for strategy: {StrategyName}", strategyName);
         }
     }
     
@@ -301,9 +320,17 @@ public sealed class ShadowModeManager
                     strategyName, winRate, shadowStrategy.WinRateThreshold, avgPnL, sharpeRatio);
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Error checking auto-promotion eligibility for strategy: {StrategyName}", strategyName);
+            _logger.LogError(ex, "Invalid operation checking auto-promotion eligibility for strategy: {StrategyName}", strategyName);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "Invalid argument checking auto-promotion eligibility for strategy: {StrategyName}", strategyName);
+        }
+        catch (DivideByZeroException ex)
+        {
+            _logger.LogError(ex, "Division by zero checking auto-promotion eligibility for strategy: {StrategyName}", strategyName);
         }
     }
     
@@ -342,9 +369,14 @@ public sealed class ShadowModeManager
             _logger.LogInformation("🎉 Shadow strategy PROMOTED to live trading: {StrategyName} - Win rate: {WinRate:P2}, Trades: {TotalTrades}, Total PnL: {TotalPnL:C}, Sharpe: {Sharpe:F2}",
                 strategyName, metrics.WinRate, metrics.TotalTrades, metrics.TotalPnL, metrics.SharpeRatio);
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "Error promoting shadow strategy: {StrategyName}", strategyName);
+            _logger.LogError(ex, "Invalid argument promoting shadow strategy: {StrategyName}", strategyName);
+            throw;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation promoting shadow strategy: {StrategyName}", strategyName);
             throw;
         }
     }
@@ -384,9 +416,14 @@ public sealed class ShadowModeManager
             
             _logger.LogWarning("Shadow strategy DEMOTED back to shadow mode: {StrategyName} - Reason: {Reason}", strategyName, reason);
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "Error demoting shadow strategy: {StrategyName}", strategyName);
+            _logger.LogError(ex, "Invalid argument demoting shadow strategy: {StrategyName}", strategyName);
+            throw;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation demoting shadow strategy: {StrategyName}", strategyName);
             throw;
         }
     }
@@ -485,15 +522,7 @@ public sealed class ShadowModeManager
     /// </summary>
     private async Task EmitShadowRegistrationTelemetryAsync(ShadowStrategy strategy, CancellationToken cancellationToken)
     {
-        try
-        {
-            // Telemetry emission removed - tags preparation no longer needed
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error emitting shadow registration telemetry");
-        }
-        
+        // Telemetry emission removed - tags preparation no longer needed
         await Task.CompletedTask.ConfigureAwait(false);
     }
     
@@ -502,15 +531,7 @@ public sealed class ShadowModeManager
     /// </summary>
     private async Task EmitShadowPickTelemetryAsync(ShadowPick pick, CancellationToken cancellationToken)
     {
-        try
-        {
-            // Telemetry emission removed - tags preparation no longer needed
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error emitting shadow pick telemetry");
-        }
-        
+        // Telemetry emission removed - tags preparation no longer needed
         await Task.CompletedTask.ConfigureAwait(false);
     }
     
@@ -519,15 +540,7 @@ public sealed class ShadowModeManager
     /// </summary>
     private async Task EmitShadowTradeTelemetryAsync(ShadowTrade trade, CancellationToken cancellationToken)
     {
-        try
-        {
-            // Telemetry emission removed - tags preparation no longer needed
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error emitting shadow trade telemetry");
-        }
-        
+        // Telemetry emission removed - tags preparation no longer needed
         await Task.CompletedTask.ConfigureAwait(false);
     }
     
@@ -536,15 +549,7 @@ public sealed class ShadowModeManager
     /// </summary>
     private async Task EmitShadowPromotionTelemetryAsync(ShadowStrategy strategy, PromotionMetrics metrics, CancellationToken cancellationToken)
     {
-        try
-        {
-            // Telemetry emission removed - tags preparation no longer needed
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error emitting shadow promotion telemetry");
-        }
-        
+        // Telemetry emission removed - tags preparation no longer needed
         await Task.CompletedTask.ConfigureAwait(false);
     }
     
@@ -553,15 +558,7 @@ public sealed class ShadowModeManager
     /// </summary>
     private async Task EmitShadowDemotionTelemetryAsync(ShadowStrategy strategy, string reason, CancellationToken cancellationToken)
     {
-        try
-        {
-            // Telemetry emission removed - tags preparation no longer needed
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error emitting shadow demotion telemetry");
-        }
-        
+        // Telemetry emission removed - tags preparation no longer needed
         await Task.CompletedTask.ConfigureAwait(false);
     }
     

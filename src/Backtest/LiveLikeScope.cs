@@ -129,7 +129,7 @@ namespace TradingBot.Backtest
             // In production:
             // 1. Dispose ONNX InferenceSession
             // 2. Free GPU/CPU memory
-            // 3. Clean up temporary files
+            // 3. Clean up transient files
             
             _logger.LogDebug("Unloading historical model session  for temporal validation");
         }

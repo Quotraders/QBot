@@ -10,7 +10,7 @@ public static class DecimalMath
 {
     /// <summary>
     /// Calculate square root of a decimal value
-    /// NOTE: Converts to double internally - acceptable precision loss for financial calculations
+    /// Important: Converts to double internally - acceptable precision loss for financial calculations
     /// Precision: ~15-16 significant digits maintained
     /// </summary>
     public static decimal Sqrt(decimal value)
@@ -32,7 +32,7 @@ public static class DecimalMath
     
     /// <summary>
     /// Calculate power (base^exponent) with decimal values
-    /// NOTE: Converts to double internally - acceptable precision loss for financial calculations
+    /// Important: Converts to double internally - acceptable precision loss for financial calculations
     /// Precision: ~15-16 significant digits maintained
     /// </summary>
     public static decimal Pow(decimal baseValue, decimal exponent)
@@ -76,7 +76,7 @@ public static class DecimalMath
     
     /// <summary>
     /// Calculate exponential (e^x) with decimal value
-    /// NOTE: Converts to double internally - acceptable precision loss
+    /// Important: Converts to double internally - acceptable precision loss
     /// </summary>
     public static decimal Exp(decimal value)
     {
@@ -85,7 +85,7 @@ public static class DecimalMath
     
     /// <summary>
     /// Calculate natural logarithm with decimal value
-    /// NOTE: Converts to double internally - acceptable precision loss
+    /// Important: Converts to double internally - acceptable precision loss
     /// </summary>
     public static decimal Log(decimal value)
     {

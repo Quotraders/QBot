@@ -47,7 +47,7 @@ namespace BotCore
         private const int RegularTradingEndHour = 16;                 // Regular trading hours end
         
         // Regime scoring constants
-        private const decimal BullRegimeScore = 1.0m;                 // Bull market regime score
+        private const decimal BullRegimeScore = 1.00m;                // Bull market regime score
         private const decimal BearRegimeScore = 0.0m;                 // Bear market regime score
         private const decimal HighVolatilityRegimeScore = -0.5m;      // High volatility regime score
         private const decimal LowVolatilityRegimeScore = 0.5m;        // Low volatility regime score

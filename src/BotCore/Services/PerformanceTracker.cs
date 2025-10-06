@@ -108,9 +108,17 @@ public class PerformanceTracker
             // Update personal metrics
             await UpdatePersonalMetricsAsync(trade, rMultiple).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error logging trade {TradeId}", trade.TradeId);
+            _logger.LogError(ex, "File system error logging trade {TradeId}", trade.TradeId);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "Access denied logging trade {TradeId}", trade.TradeId);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON serialization error logging trade {TradeId}", trade.TradeId);
         }
     }
 
@@ -168,9 +176,21 @@ public class PerformanceTracker
             _logger.LogInformation("[PERSONAL_METRICS] Total trades: {TotalTrades}, Win rate: {WinRate:P1}, Avg R: {AvgR:F2}",
                 metrics.TotalTrades, metrics.WinRate, metrics.AverageRMultiple);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error updating personal metrics");
+            _logger.LogError(ex, "File system error updating personal metrics");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "Access denied updating personal metrics");
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON error updating personal metrics");
+        }
+        catch (DivideByZeroException ex)
+        {
+            _logger.LogError(ex, "Division by zero updating personal metrics");
         }
     }
 
@@ -252,9 +272,24 @@ public class PerformanceTracker
                 await QueueForRetryAsync(trade).ConfigureAwait(false);
             }
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "[CLOUD_PUSH] Error pushing trade {TradeId} to cloud", trade.TradeId);
+            _logger.LogError(ex, "[CLOUD_PUSH] File system error pushing trade {TradeId} to cloud", trade.TradeId);
+            await QueueForRetryAsync(trade).ConfigureAwait(false);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "[CLOUD_PUSH] Access denied pushing trade {TradeId} to cloud", trade.TradeId);
+            await QueueForRetryAsync(trade).ConfigureAwait(false);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "[CLOUD_PUSH] JSON error pushing trade {TradeId} to cloud", trade.TradeId);
+            await QueueForRetryAsync(trade).ConfigureAwait(false);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "[CLOUD_PUSH] Invalid operation pushing trade {TradeId} to cloud", trade.TradeId);
             await QueueForRetryAsync(trade).ConfigureAwait(false);
         }
     }
@@ -266,9 +301,17 @@ public class PerformanceTracker
             var logJson = System.Text.Json.JsonSerializer.Serialize(logEntry) + Environment.NewLine;
             await File.AppendAllTextAsync(logFile, logJson).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "[CLOUD_LOG] Failed to append to cloud upload log");
+            _logger.LogError(ex, "[CLOUD_LOG] File system error appending to cloud upload log");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "[CLOUD_LOG] Access denied appending to cloud upload log");
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "[CLOUD_LOG] JSON error appending to cloud upload log");
         }
     }
     
@@ -290,9 +333,17 @@ public class PerformanceTracker
             
             _logger.LogInformation("[CLOUD_RETRY] Trade {TradeId} queued for retry upload", trade.TradeId);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "[CLOUD_RETRY] Failed to queue trade for retry");
+            _logger.LogError(ex, "[CLOUD_RETRY] File system error queueing trade for retry");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "[CLOUD_RETRY] Access denied queueing trade for retry");
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "[CLOUD_RETRY] JSON error queueing trade for retry");
         }
     }
     
@@ -355,10 +406,22 @@ public class PerformanceTracker
             var winningTrades = trades.Count(t => t.PnLDollar > 0);
             return (double)winningTrades / trades.Count;
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
             const double DefaultWinRate = 0.65;
-            _logger.LogError(ex, "Error calculating win rate for strategy {Strategy}", strategy);
+            _logger.LogError(ex, "File system error calculating win rate for strategy {Strategy}", strategy);
+            return DefaultWinRate;
+        }
+        catch (JsonException ex)
+        {
+            const double DefaultWinRate = 0.65;
+            _logger.LogError(ex, "JSON error calculating win rate for strategy {Strategy}", strategy);
+            return DefaultWinRate;
+        }
+        catch (DivideByZeroException ex)
+        {
+            const double DefaultWinRate = 0.65;
+            _logger.LogError(ex, "Division by zero calculating win rate for strategy {Strategy}", strategy);
             return DefaultWinRate;
         }
     }
@@ -374,10 +437,22 @@ public class PerformanceTracker
             
             return winningTrades.Average(t => t.PnLDollar);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
             const decimal DefaultAvgWinDollars = 150m;
-            _logger.LogError(ex, "Error calculating average win for strategy {Strategy}", strategy);
+            _logger.LogError(ex, "File system error calculating average win for strategy {Strategy}", strategy);
+            return DefaultAvgWinDollars;
+        }
+        catch (JsonException ex)
+        {
+            const decimal DefaultAvgWinDollars = 150m;
+            _logger.LogError(ex, "JSON error calculating average win for strategy {Strategy}", strategy);
+            return DefaultAvgWinDollars;
+        }
+        catch (InvalidOperationException ex)
+        {
+            const decimal DefaultAvgWinDollars = 150m;
+            _logger.LogError(ex, "No winning trades calculating average win for strategy {Strategy}", strategy);
             return DefaultAvgWinDollars;
         }
     }
@@ -393,10 +468,22 @@ public class PerformanceTracker
             
             return losingTrades.Average(t => t.PnLDollar);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
             const decimal DefaultAvgLossDollars = -75m;
-            _logger.LogError(ex, "Error calculating average loss for strategy {Strategy}", strategy);
+            _logger.LogError(ex, "File system error calculating average loss for strategy {Strategy}", strategy);
+            return DefaultAvgLossDollars;
+        }
+        catch (JsonException ex)
+        {
+            const decimal DefaultAvgLossDollars = -75m;
+            _logger.LogError(ex, "JSON error calculating average loss for strategy {Strategy}", strategy);
+            return DefaultAvgLossDollars;
+        }
+        catch (InvalidOperationException ex)
+        {
+            const decimal DefaultAvgLossDollars = -75m;
+            _logger.LogError(ex, "No losing trades calculating average loss for strategy {Strategy}", strategy);
             return DefaultAvgLossDollars;
         }
     }
@@ -413,9 +500,19 @@ public class PerformanceTracker
             
             return (double)(grossProfit / grossLoss);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error calculating profit factor for strategy {Strategy}", strategy);
+            _logger.LogError(ex, "File system error calculating profit factor for strategy {Strategy}", strategy);
+            return FallbackProfitFactor; // Fallback value
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON error calculating profit factor for strategy {Strategy}", strategy);
+            return FallbackProfitFactor; // Fallback value
+        }
+        catch (DivideByZeroException ex)
+        {
+            _logger.LogError(ex, "Division by zero calculating profit factor for strategy {Strategy}", strategy);
             return FallbackProfitFactor; // Fallback value
         }
     }
@@ -438,9 +535,24 @@ public class PerformanceTracker
             var riskFreeRate = 0.02; // 2% annual
             return (avgReturn - riskFreeRate) / stdDev;
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error calculating Sharpe ratio for strategy {Strategy}", strategy);
+            _logger.LogError(ex, "File system error calculating Sharpe ratio for strategy {Strategy}", strategy);
+            return FallbackSharpeRatio; // Fallback value
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON error calculating Sharpe ratio for strategy {Strategy}", strategy);
+            return FallbackSharpeRatio; // Fallback value
+        }
+        catch (DivideByZeroException ex)
+        {
+            _logger.LogError(ex, "Division by zero calculating Sharpe ratio for strategy {Strategy}", strategy);
+            return FallbackSharpeRatio; // Fallback value
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation calculating Sharpe ratio for strategy {Strategy}", strategy);
             return FallbackSharpeRatio; // Fallback value
         }
     }
@@ -481,17 +593,31 @@ public class PerformanceTracker
                         trades.AddRange(strategyTrades);
                     }
                 }
-                catch (Exception ex)
+                catch (IOException ex)
                 {
-                    _logger.LogWarning(ex, "Error loading trades from file {File}", file);
+                    _logger.LogWarning(ex, "File system error loading trades from file {File}", file);
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(ex, "JSON error loading trades from file {File}", file);
                 }
             }
             
             return trades;
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error loading trades for strategy {Strategy}", strategy);
+            _logger.LogError(ex, "File system error loading trades for strategy {Strategy}", strategy);
+            return new List<TradeRecord>();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "Access denied loading trades for strategy {Strategy}", strategy);
+            return new List<TradeRecord>();
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "Invalid argument loading trades for strategy {Strategy}", strategy);
             return new List<TradeRecord>();
         }
     }

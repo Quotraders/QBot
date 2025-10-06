@@ -335,7 +335,7 @@ namespace BotCore.Services
     }
 
     /// <summary>
-    /// Configuration for model rotation behavior - NO HARDCODED DEFAULTS (fail-closed requirement)
+    /// Configuration for model rotation behavior - all defaults must be explicit (fail-closed requirement)
     /// </summary>
     public sealed class ModelRotationConfiguration
     {

@@ -90,9 +90,14 @@ public sealed class EpochFreezeEnforcement
                 
             return snapshot;
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "Error capturing epoch snapshot for position {PositionId}", positionId);
+            _logger.LogError(ex, "Invalid argument capturing epoch snapshot for position {PositionId}", positionId);
+            throw;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation capturing epoch snapshot for position {PositionId}", positionId);
             throw;
         }
     }
@@ -179,16 +184,28 @@ public sealed class EpochFreezeEnforcement
             
             return validationResult;
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
             validationResult.Violations.Add(new FreezeViolation
             {
                 ViolationType = "ValidationError",
-                Description = $"Error during validation: {ex.Message}",
+                Description = $"Invalid argument during validation: {ex.Message}",
                 Severity = ViolationSeverity.Critical
             });
             
-            _logger.LogError(ex, "Error validating epoch freeze for position {PositionId}", positionId);
+            _logger.LogError(ex, "Invalid argument validating epoch freeze for position {PositionId}", positionId);
+            return validationResult;
+        }
+        catch (InvalidOperationException ex)
+        {
+            validationResult.Violations.Add(new FreezeViolation
+            {
+                ViolationType = "ValidationError",
+                Description = $"Invalid operation during validation: {ex.Message}",
+                Severity = ViolationSeverity.Critical
+            });
+            
+            _logger.LogError(ex, "Invalid operation validating epoch freeze for position {PositionId}", positionId);
             return validationResult;
         }
     }
@@ -226,9 +243,13 @@ public sealed class EpochFreezeEnforcement
                 _logger.LogWarning("Attempted to release epoch freeze for unknown position {PositionId}", positionId);
             }
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "Error releasing epoch freeze for position {PositionId}", positionId);
+            _logger.LogError(ex, "Invalid argument releasing epoch freeze for position {PositionId}", positionId);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation releasing epoch freeze for position {PositionId}", positionId);
         }
     }
     
@@ -276,9 +297,13 @@ public sealed class EpochFreezeEnforcement
             
             await Task.CompletedTask.ConfigureAwait(false); // Satisfy async signature
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Error capturing zone anchors for {Symbol}", snapshot.Symbol);
+            _logger.LogError(ex, "Invalid operation capturing zone anchors for {Symbol}", snapshot.Symbol);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "Invalid argument capturing zone anchors for {Symbol}", snapshot.Symbol);
         }
     }
     
@@ -362,12 +387,21 @@ public sealed class EpochFreezeEnforcement
             
             await Task.CompletedTask.ConfigureAwait(false); // Satisfy async signature
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             validationResult.Violations.Add(new FreezeViolation
             {
                 ViolationType = "ValidationError",
-                Description = $"Error validating zone anchors: {ex.Message}",
+                Description = $"Invalid operation validating zone anchors: {ex.Message}",
+                Severity = ViolationSeverity.Warning
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            validationResult.Violations.Add(new FreezeViolation
+            {
+                ViolationType = "ValidationError",
+                Description = $"Invalid argument validating zone anchors: {ex.Message}",
                 Severity = ViolationSeverity.Warning
             });
         }
@@ -419,9 +453,13 @@ public sealed class EpochFreezeEnforcement
             var featureBusAdapter = _serviceProvider.GetService<BotCore.Fusion.IFeatureBusWithProbe>();
             return featureBusAdapter?.Probe(symbol, "atr.14") ?? DefaultAtrValue; // Default ATR
         }
-        catch
+        catch (InvalidOperationException)
         {
-            return DefaultAtrValue; // Default ATR
+            return DefaultAtrValue; // Default ATR on service error
+        }
+        catch (ArgumentException)
+        {
+            return DefaultAtrValue; // Default ATR on invalid argument
         }
     }
     
@@ -469,9 +507,17 @@ public sealed class EpochFreezeEnforcement
                 await metricsService.RecordGaugeAsync("epoch_freeze.active_epochs", _activeEpochs.Count, tags, cancellationToken).ConfigureAwait(false);
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Error emitting epoch snapshot telemetry");
+            _logger.LogWarning(ex, "Invalid operation emitting epoch snapshot telemetry");
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument emitting epoch snapshot telemetry");
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Operation cancelled emitting epoch snapshot telemetry");
         }
     }
     
@@ -498,9 +544,17 @@ public sealed class EpochFreezeEnforcement
                 }
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Error emitting freeze violation telemetry");
+            _logger.LogWarning(ex, "Invalid operation emitting freeze violation telemetry");
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument emitting freeze violation telemetry");
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Operation cancelled emitting freeze violation telemetry");
         }
     }
     
@@ -525,9 +579,17 @@ public sealed class EpochFreezeEnforcement
                 await metricsService.RecordGaugeAsync("epoch_freeze.epoch_duration_minutes", duration.TotalMinutes, tags, cancellationToken).ConfigureAwait(false);
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Error emitting epoch release telemetry");
+            _logger.LogWarning(ex, "Invalid operation emitting epoch release telemetry");
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument emitting epoch release telemetry");
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.LogWarning(ex, "Operation cancelled emitting epoch release telemetry");
         }
     }
     

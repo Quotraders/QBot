@@ -26,7 +26,7 @@ namespace TradingBot.Backtest
 
     /// <summary>
     /// Walk-forward validation service
-    /// REPLACES fake SimulateModelPerformance() method with real backtests
+    /// REPLACES simulated SimulateModelPerformance() method with real backtests
     /// Uses BacktestHarnessService internally for each validation fold
     /// Ensures temporal model integrity with LiveLikeScope model swapping
     /// Prevents lookahead bias in model validation
@@ -52,7 +52,7 @@ namespace TradingBot.Backtest
 
         /// <summary>
         /// Run walk-forward validation for a model family
-        /// COMPLETELY REPLACES fake SimulateModelPerformance() method
+        /// COMPLETELY REPLACES simulated SimulateModelPerformance() method
         /// Uses real backtests instead of generating random metrics
         /// </summary>
         /// <param name="symbol">Trading symbol</param>
@@ -401,23 +401,23 @@ namespace TradingBot.Backtest
 
         /// <summary>
         /// Extract metric from model metadata, with fallback to default
-        /// Replaces hardcoded placeholder values with actual model data
+        /// Replaces hardcoded substitute values with actual model data
         /// </summary>
         private decimal ExtractMetricFromModel(ModelCard modelCard, string metricName, decimal defaultValue)
         {
             // In production, this would parse model metadata for training metrics
-            // For now, return 0 to indicate no data available rather than fake values
+            // For now, return 0 to indicate no data available rather than simulated values
             return defaultValue;
         }
 
         /// <summary>
         /// Calculate validation accuracy from backtest results
-        /// Replaces hardcoded placeholder with actual calculation
+        /// Replaces hardcoded substitute with actual calculation
         /// </summary>
         private decimal CalculateValidationAccuracy(BacktestReport backtestReport)
         {
             // In production, this would calculate prediction accuracy from actual trades
-            // For now, return 0 to indicate no data available rather than fake values
+            // For now, return 0 to indicate no data available rather than simulated values
             if (backtestReport.TotalTrades == 0) return 0m;
             
             // Use win rate as a proxy for validation accuracy

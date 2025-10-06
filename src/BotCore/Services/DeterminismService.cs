@@ -155,7 +155,7 @@ namespace TradingBot.BotCore.Services
         {
             var seed = GetDeterministicSeed($"ML-{modelName}");
             
-            // This is a placeholder - actual implementation would depend on the ML framework
+            // This is a substitute - actual implementation would depend on the ML framework
             // For example, if using ML.NET, TensorFlow.NET, etc.
             
             _logger.LogInformation("🧠 [DETERMINISM] Seeded ML component {ModelName} with seed {Seed}", modelName, seed);

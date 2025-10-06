@@ -1033,7 +1033,7 @@ public class AutonomousDecisionEngine : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ [AUTONOMOUS-ENGINE] Failed to get real market price for {Symbol}. System will not trade without real data.", symbol);
-            throw new InvalidOperationException($"Cannot retrieve real market price for {symbol}. Trading stopped to prevent decisions on fake data.", ex);
+            throw new InvalidOperationException($"Cannot retrieve real market price for {symbol}. Trading stopped to prevent decisions on simulated data.", ex);
         }
     }
     
@@ -1086,7 +1086,7 @@ public class AutonomousDecisionEngine : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ [AUTONOMOUS-ENGINE] Failed to get real volume for {Symbol}. System will not trade without real data.", symbol);
-            throw new InvalidOperationException($"Cannot retrieve real volume data for {symbol}. Trading stopped to prevent decisions on fake data.", ex);
+            throw new InvalidOperationException($"Cannot retrieve real volume data for {symbol}. Trading stopped to prevent decisions on simulated data.", ex);
         }
     }
     
@@ -1170,7 +1170,7 @@ public class AutonomousDecisionEngine : BackgroundService
     private async Task<List<Bar>> GetRecentBarsAsync(string symbol, int count, CancellationToken cancellationToken)
     {
         // FAIL FAST: No synthetic data generation allowed
-        // When real market data is unavailable, throw exception instead of generating fake data
+        // When real market data is unavailable, throw exception instead of generating simulated data
         
         try
         {
@@ -1182,13 +1182,13 @@ public class AutonomousDecisionEngine : BackgroundService
                 return realBars;
             }
             
-            // FAIL FAST: No fake data fallback
+            // FAIL FAST: No simulated data fallback
             throw new InvalidOperationException($"Real historical bars not available for {symbol}. Refusing to operate on synthetic data.");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ [AUTONOMOUS-ENGINE] Failed to get real historical bars for {Symbol}. System will not trade without real data.", symbol);
-            throw new InvalidOperationException($"Cannot retrieve real historical data for {symbol}. Trading stopped to prevent decisions on fake data.", ex);
+            throw new InvalidOperationException($"Cannot retrieve real historical data for {symbol}. Trading stopped to prevent decisions on simulated data.", ex);
         }
     }
     

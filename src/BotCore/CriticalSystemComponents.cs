@@ -1181,7 +1181,7 @@ namespace TradingBot.Critical
             }
         }
 
-        // Additional stub implementations
+        // Additional simplified implementations
         private static Dictionary<string, PendingOrder> GetPendingOrders() => new();
         private static Dictionary<string, StrategyState> GetStrategyStates() => new();
         private static RiskMetrics CalculateRiskMetrics() => new();

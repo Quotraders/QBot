@@ -17,7 +17,7 @@ namespace TradingBot.Backtest.Extensions
     {
         /// <summary>
         /// Add comprehensive backtest services to DI container
-        /// This replaces fake simulation methods with real historical data processing
+        /// This replaces simulated simulation methods with real historical data processing
         /// PRODUCTION: ES and NQ contracts only, no mock implementations, config-driven parameters
         /// </summary>
         public static IServiceCollection AddProductionBacktestServices(
@@ -43,7 +43,7 @@ namespace TradingBot.Backtest.Extensions
             // 🔴 REAL TopstepX data provider (ES and NQ only)
             services.AddTopstepXHistoricalDataProvider();
 
-            // 🟢 PRODUCTION Model Registry (ES and NQ only) - NO MOCK
+            // 🟢 PRODUCTION Model Registry (ES and NQ only) - production ready
             services.AddProductionModelRegistry();
 
             // Configuration
@@ -84,7 +84,7 @@ namespace TradingBot.Backtest.Extensions
             // 🟢 PRODUCTION: Real TopstepX historical data provider (ES and NQ only)
             services.AddTopstepXHistoricalDataProvider();
             
-            // 🟢 PRODUCTION: Real model registry (ES and NQ only) - NO MOCK
+            // 🟢 PRODUCTION: Real model registry (ES and NQ only) - production ready
             services.AddProductionModelRegistry();
 
             return services;

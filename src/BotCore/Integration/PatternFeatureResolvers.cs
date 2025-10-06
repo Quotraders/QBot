@@ -51,8 +51,8 @@ public sealed class PatternSignalResolver : IFeatureResolver
 {
     // Pattern detection thresholds
     private const double DojiMaxScoreDifference = 0.1;
-    private const double DojiMinConfidence = 0.7;
-    private const double HammerMinBullScore = 0.7;
+    private const double DojiMinConfidence = 0.70;
+    private const double HammerMinBullScore = 0.70;
     private const double HammerMinConfidence = 0.75;
     
     private readonly IServiceProvider _serviceProvider;

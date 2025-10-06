@@ -66,9 +66,21 @@ public class ExecutionAnalyzer
             // Save to execution quality log
             await SaveExecutionMetricsAsync(fillQuality).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error tracking fill quality for {Symbol}", symbol);
+            _logger.LogError(ex, "File system error tracking fill quality for {Symbol}", symbol);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "Access denied tracking fill quality for {Symbol}", symbol);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON serialization error tracking fill quality for {Symbol}", symbol);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "Invalid argument tracking fill quality for {Symbol}", symbol);
         }
     }
 
@@ -102,9 +114,21 @@ public class ExecutionAnalyzer
             // Update zone feedback data
             await UpdateZoneFeedbackAsync(symbol, zoneLevel, zoneType, successful).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error providing zone feedback for {Symbol}", symbol);
+            _logger.LogError(ex, "File system error providing zone feedback for {Symbol}", symbol);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "Access denied providing zone feedback for {Symbol}", symbol);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON serialization error providing zone feedback for {Symbol}", symbol);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "Invalid argument providing zone feedback for {Symbol}", symbol);
         }
     }
 
@@ -135,9 +159,21 @@ public class ExecutionAnalyzer
 
             await SavePatternOutcomeAsync(outcome).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error tracking pattern outcome for {Symbol}", symbol);
+            _logger.LogError(ex, "File system error tracking pattern outcome for {Symbol}", symbol);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "Access denied tracking pattern outcome for {Symbol}", symbol);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON serialization error tracking pattern outcome for {Symbol}", symbol);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "Invalid argument tracking pattern outcome for {Symbol}", symbol);
         }
     }
 
@@ -157,9 +193,19 @@ public class ExecutionAnalyzer
             var json = await File.ReadAllTextAsync(metricsFile).ConfigureAwait(false);
             return JsonSerializer.Deserialize<ExecutionMetrics>(json, _jsonOptions);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error getting daily execution metrics");
+            _logger.LogError(ex, "File system error getting daily execution metrics");
+            return null;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "Access denied getting daily execution metrics");
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON deserialization error getting daily execution metrics");
             return null;
         }
     }
@@ -185,9 +231,17 @@ public class ExecutionAnalyzer
             await File.WriteAllTextAsync(metricsFile,
                 JsonSerializer.Serialize(metrics, _jsonOptions)).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error saving execution metrics");
+            _logger.LogError(ex, "File system error saving execution metrics");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "Access denied saving execution metrics");
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON serialization error saving execution metrics");
         }
     }
 
@@ -235,9 +289,17 @@ public class ExecutionAnalyzer
             await File.WriteAllTextAsync(feedbackFile,
                 JsonSerializer.Serialize(feedback, _jsonOptions)).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error updating zone feedback");
+            _logger.LogError(ex, "File system error updating zone feedback");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "Access denied updating zone feedback");
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON serialization error updating zone feedback");
         }
     }
 
@@ -261,9 +323,17 @@ public class ExecutionAnalyzer
             await File.WriteAllTextAsync(outcomeFile,
                 JsonSerializer.Serialize(outcomes, _jsonOptions)).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _logger.LogError(ex, "Error saving pattern outcome");
+            _logger.LogError(ex, "File system error saving pattern outcome");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "Access denied saving pattern outcome");
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON serialization error saving pattern outcome");
         }
     }
 }

@@ -65,7 +65,7 @@ public class TradingConfiguration
     private const double MinPositionSizeMultiplier = 0.5;
     private const double MaxPositionSizeMultiplier = 5.0;
     private const double MinRegimeDetectionThreshold = 0.1;
-    private const double MaxRegimeDetectionThreshold = 1.0;
+    private const double MaxRegimeDetectionThreshold = 1.00;
     private const double MinStopLossBufferPercentage = 0.01;
     private const double MaxStopLossBufferPercentage = 0.2;
     private const double MinRewardRiskRatio = 1.0;

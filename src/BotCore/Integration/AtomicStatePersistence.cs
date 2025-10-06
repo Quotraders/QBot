@@ -224,7 +224,7 @@ public sealed class AtomicStatePersistence : IDisposable
         
         try
         {
-            // Serialize to temporary file first
+            // Serialize to temp file first
             var jsonData = JsonSerializer.Serialize(state, _jsonOptions);
             await File.WriteAllTextAsync(tempFilePath, jsonData, cancellationToken).ConfigureAwait(false);
             

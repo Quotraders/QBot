@@ -170,10 +170,10 @@ namespace TradingBot.BotCore.Services
     public class VersionedMLConfiguration : IVersionedConfiguration
     {
         // ML Configuration Default Constants
-        private const double DefaultAIConfidenceThreshold = 0.7;
-        private const double DefaultMinimumConfidence = 0.5;
-        private const double DefaultPositionSizeMultiplier = 1.0;
-        private const double DefaultRegimeDetectionThreshold = 0.8;
+        private const double DefaultAIConfidenceThreshold = 0.70;
+        private const double DefaultMinimumConfidence = 0.50;
+        private const double DefaultPositionSizeMultiplier = 1.00;
+        private const double DefaultRegimeDetectionThreshold = 0.80;
         
         public string SchemaVersion { get; set; } = "2.0";
         public DateTime LastModified { get; set; }

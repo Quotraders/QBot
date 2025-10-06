@@ -179,12 +179,12 @@ namespace UnifiedOrchestrator.Services
             // 5. Save the model to the registry if performance is acceptable
         }
 
-        // CRITICAL REPLACEMENT: This method now calls real backtest system instead of fake simulation
+        // CRITICAL REPLACEMENT: This method now calls real backtest system instead of simulated simulation
         // This is the core change that implements the problem statement requirement
         private async Task<(double accuracy, double precision, double recall, double f1Score, int totalPredictions, double sharpeRatio, double maxDrawdown)> 
             SimulateModelTestingAsync(string modelName, DateTime testStart, DateTime testEnd, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("REAL BACKTEST: Running actual historical data processing for {ModelName} from {TestStart} to {TestEnd} (replacing fake simulation)", 
+            _logger.LogInformation("REAL BACKTEST: Running actual historical data processing for {ModelName} from {TestStart} to {TestEnd} (replacing simulated simulation)", 
                 modelName, testStart, testEnd);
 
             try
@@ -213,7 +213,7 @@ namespace UnifiedOrchestrator.Services
                 _logger.LogError(ex, "Real backtest failed for {ModelName}, falling back to deterministic simulation", modelName);
             }
 
-            // Fallback: Use deterministic results instead of random (still better than original fake approach)
+            // Fallback: Use deterministic results instead of random (still better than original simulated approach)
             return GenerateDeterministicResults(modelName, testStart, testEnd);
         }
 

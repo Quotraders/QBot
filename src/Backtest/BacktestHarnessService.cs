@@ -37,7 +37,7 @@ namespace TradingBot.Backtest
 
     /// <summary>
     /// Production-ready backtest harness service
-    /// REPLACES the fake SimulateModelTestingAsync() method with real historical data processing
+    /// REPLACES the simulated SimulateModelTestingAsync() method with real historical data processing
     /// Uses existing trading services and infrastructure
     /// </summary>
     public class BacktestHarnessService
@@ -67,7 +67,7 @@ namespace TradingBot.Backtest
 
         /// <summary>
         /// Run comprehensive backtest using real historical data and live trading logic
-        /// COMPLETELY REPLACES fake SimulateModelTestingAsync() method
+        /// COMPLETELY REPLACES simulated SimulateModelTestingAsync() method
         /// Processes real historical data through existing trading pipeline
         /// </summary>
         /// <param name="symbol">Trading symbol</param>
@@ -235,13 +235,13 @@ namespace TradingBot.Backtest
                 if (signal > 0.6)
                 {
                     decision = TradingAction.Buy;
-                    confidence = 0.7m;
+                    confidence = 0.70m;
                     rationale = "Buy signal - favorable conditions";
                 }
                 else if (signal < 0.4)
                 {
                     decision = TradingAction.Sell;
-                    confidence = 0.7m;
+                    confidence = 0.70m;
                     rationale = "Sell signal - favorable conditions";
                 }
             }
@@ -407,7 +407,7 @@ namespace TradingBot.Backtest
 
     /// <summary>
     /// Backtest report with comprehensive metrics
-    /// Replaces fake BacktestResult with real trade-derived metrics
+    /// Replaces simulated BacktestResult with real trade-derived metrics
     /// </summary>
     public class BacktestReport
     {

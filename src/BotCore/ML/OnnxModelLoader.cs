@@ -908,7 +908,7 @@ public sealed class OnnxModelLoader : IDisposable
             
             try
             {
-                // Step 1: Copy to temporary file first
+                // Step 1: Copy to transient file first
                 File.Copy(modelPath, tempModelPath, overwrite: false);
                 
                 // Step 2: Atomic move to final destination

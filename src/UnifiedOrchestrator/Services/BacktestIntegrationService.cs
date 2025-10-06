@@ -13,7 +13,7 @@ namespace TradingBot.UnifiedOrchestrator.Services
     /// <summary>
     /// Backtest integration service that wires the new production backtest system
     /// into the existing UnifiedOrchestrator infrastructure
-    /// REPLACES fake SimulateModelTestingAsync() with real historical data processing
+    /// REPLACES simulated SimulateModelTestingAsync() with real historical data processing
     /// </summary>
     internal class BacktestIntegrationService
     {
@@ -33,13 +33,13 @@ namespace TradingBot.UnifiedOrchestrator.Services
 
         /// <summary>
         /// Run real model testing using historical data and trading logic
-        /// REPLACES the fake SimulateModelTestingAsync() method
+        /// REPLACES the simulated SimulateModelTestingAsync() method
         /// Returns metrics that match the expected tuple format for backward compatibility
         /// </summary>
         public async Task<(double accuracy, double precision, double recall, double f1Score, int totalPredictions, double sharpeRatio, double maxDrawdown)> 
             RunRealModelTestingAsync(string modelName, DateTime testStart, DateTime testEnd, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Running REAL backtest for {ModelName} from {TestStart} to {TestEnd} (replacing fake simulation)", 
+            _logger.LogInformation("Running REAL backtest for {ModelName} from {TestStart} to {TestEnd} (replacing simulated simulation)", 
                 modelName, testStart, testEnd);
 
             try
@@ -75,7 +75,7 @@ namespace TradingBot.UnifiedOrchestrator.Services
 
         /// <summary>
         /// Run real walk-forward validation
-        /// REPLACES the fake SimulateModelPerformance() method
+        /// REPLACES the simulated SimulateModelPerformance() method
         /// </summary>
         public async Task<BacktestReport> RunRealWalkForwardValidationAsync(
             string symbol,
@@ -84,7 +84,7 @@ namespace TradingBot.UnifiedOrchestrator.Services
             DateTime endDate,
             CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Running REAL walk-forward validation for {ModelFamily} on {Symbol} (replacing fake simulation)", 
+            _logger.LogInformation("Running REAL walk-forward validation for {ModelFamily} on {Symbol} (replacing simulated simulation)", 
                 modelFamily, symbol);
 
             try

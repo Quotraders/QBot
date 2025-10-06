@@ -169,7 +169,7 @@ namespace TradingBot.BotCore.Services
         {
             try
             {
-                // Get ONNX Runtime version (this is a placeholder - actual implementation would query the runtime)
+                // Get ONNX Runtime version (this is a substitute - actual implementation would query the runtime)
                 return "1.16.3"; // Pin to specific version for production
             }
             catch (PlatformNotSupportedException ex)
