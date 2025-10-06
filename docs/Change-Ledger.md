@@ -8649,3 +8649,63 @@ var t = a.OrderBy(x => x).ToList();
 
 ---
 *Updated: Current Session - Phase 2 S2681 Batch 5 Complete*
+
+#### Round 29 - S2681 Missing Braces COMPLETE ✅ (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S2681 | 10 | 0 ✅ | S6_MaxPerf_FullStack.cs, S11_MaxPerf_FullStack.cs, S2Upg.cs | Final cleanup - swing detection, EMA methods, ADR exhaustion |
+
+**🎯 CATEGORY COMPLETE: S2681 - 80/80 Fixed (100%)**
+
+**Example Pattern - Recent Swing Detection**:
+```csharp
+// Before (Violation - nested conditionals without braces in loop)
+if (Min1.Count < 10) return null; long swing = side==Side.Buy ? long.MaxValue : long.MinValue; for (int i=0;i<10;i++)
+{ var b = Min1.Last(i); if (side==Side.Buy) { if (b.Low < swing) swing = b.Low; } else { if (b.High > swing) swing = b.High; } }
+
+// After (Compliant - properly braced)
+if (Min1.Count < 10) 
+{
+    return null; 
+}
+long swing = side==Side.Buy ? long.MaxValue : long.MinValue; 
+for (int i=0;i<10;i++)
+{ 
+    var b = Min1.Last(i); 
+    if (side==Side.Buy) 
+    { 
+        if (b.Low < swing) 
+        {
+            swing = b.Low; 
+        }
+    } 
+    else 
+    { 
+        if (b.High > swing) 
+        {
+            swing = b.High; 
+        }
+    } 
+}
+```
+
+**Final S2681 Fixes**:
+1. **RecentSwingPx** - Swing price detection with nested conditionals
+2. **Ema class (S6)** - Another EMA implementation needing expansion
+3. **S2Upg PrevDayRange** - Previous day high/low tracking
+4. **S11 IsAdrExhausted** - ADR exhaustion check with today's range
+5. **S11 VolumeExhaustion** - Volume exhaustion detection loop
+
+**Rationale**: Completed S2681 category elimination with final 10 violations across 3 strategy files. Fixed critical trading logic including swing detection (used for stop placement), EMA updates, and volume/range exhaustion checks. These are high-frequency execution paths where code clarity directly impacts trading decisions. All fixes maintain zero suppressions and operational guardrails.
+
+**Session Total**: 126 violations fixed (10,562 → 10,436)
+**S2681 Achievement**: 80/80 complete (100%) ✅
+
+**Categories Now Complete**:
+- S101: 10/10 ✅
+- CA1720: 6/6 ✅
+- CS0103: 2/2 ✅
+- **S2681: 80/80 ✅ NEW**
+
+---
+*Updated: Current Session - S2681 CATEGORY COMPLETE*

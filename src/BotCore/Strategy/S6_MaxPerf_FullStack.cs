@@ -241,7 +241,26 @@ namespace TopstepX.S6
             return Value;
         }
     }
-    public sealed class Ema { private readonly double _k; private bool _seed; public double Value { get; private set; } public Ema(int n){ _k=IndicatorConstants.EmaMultiplier/(n+1);} public double Update(double v){ if(!_seed){ Value=v; _seed=true; } else Value = v*_k + Value*(1-_k); return Value; } }
+    public sealed class Ema 
+    { 
+        private readonly double _k; 
+        private bool _seed; 
+        public double Value { get; private set; } 
+        public Ema(int n){ _k=IndicatorConstants.EmaMultiplier/(n+1);} 
+        public double Update(double v)
+        { 
+            if(!_seed)
+            { 
+                Value=v; 
+                _seed=true; 
+            } 
+            else 
+            {
+                Value = v*_k + Value*(1-_k); 
+            }
+            return Value; 
+        } 
+    }
 
     public sealed class RvolBaseline
     {
@@ -707,8 +726,29 @@ namespace TopstepX.S6
             }
             public double? RecentSwingPx(Side side)
             {
-                if (Min1.Count < IndicatorConstants.MinHistoryForSwingDetection) return null; long swing = side==Side.Buy ? long.MaxValue : long.MinValue; for (int i=0;i<IndicatorConstants.MinHistoryForSwingDetection;i++)
-                { var b = Min1.Last(i); if (side==Side.Buy) { if (b.Low < swing) swing = b.Low; } else { if (b.High > swing) swing = b.High; } }
+                if (Min1.Count < IndicatorConstants.MinHistoryForSwingDetection) 
+                {
+                    return null; 
+                }
+                long swing = side==Side.Buy ? long.MaxValue : long.MinValue; 
+                for (int i=0;i<IndicatorConstants.MinHistoryForSwingDetection;i++)
+                { 
+                    var b = Min1.Last(i); 
+                    if (side==Side.Buy) 
+                    { 
+                        if (b.Low < swing) 
+                        {
+                            swing = b.Low; 
+                        }
+                    } 
+                    else 
+                    { 
+                        if (b.High > swing) 
+                        {
+                            swing = b.High; 
+                        }
+                    } 
+                }
                 return ToPx(swing);
             }
         }

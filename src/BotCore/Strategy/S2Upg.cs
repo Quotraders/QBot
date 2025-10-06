@@ -61,8 +61,23 @@ namespace BotCore.Strategy
             {
                 var d = bars[i].Start.Date;
                 if (d != prevDate) continue;
-                if (!found) { hi = bars[i].High; lo = bars[i].Low; found = true; }
-                else { if (bars[i].High > hi) hi = bars[i].High; if (bars[i].Low < lo) lo = bars[i].Low; }
+                if (!found) 
+                { 
+                    hi = bars[i].High; 
+                    lo = bars[i].Low; 
+                    found = true; 
+                }
+                else 
+                { 
+                    if (bars[i].High > hi) 
+                    {
+                        hi = bars[i].High; 
+                    }
+                    if (bars[i].Low < lo) 
+                    {
+                        lo = bars[i].Low; 
+                    }
+                }
             }
             return found ? (hi, lo) : (0m, 0m);
         }

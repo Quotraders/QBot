@@ -600,8 +600,23 @@ namespace TopstepX.S11
                 {
                     var b = Min1.Last(i);
                     if (b.TimeET.Date != today) continue;
-                    if (!found) { todayHi = ToPx(b.High); todayLo = ToPx(b.Low); found = true; }
-                    else { if (ToPx(b.High) > todayHi) todayHi = ToPx(b.High); if (ToPx(b.Low) < todayLo) todayLo = ToPx(b.Low); }
+                    if (!found) 
+                    { 
+                        todayHi = ToPx(b.High); 
+                        todayLo = ToPx(b.Low); 
+                        found = true; 
+                    }
+                    else 
+                    { 
+                        if (ToPx(b.High) > todayHi) 
+                        {
+                            todayHi = ToPx(b.High); 
+                        }
+                        if (ToPx(b.Low) < todayLo) 
+                        {
+                            todayLo = ToPx(b.Low); 
+                        }
+                    }
                 }
                 if (!found) return false;
                 double usedRange = todayHi - todayLo;
@@ -610,8 +625,16 @@ namespace TopstepX.S11
 
             public bool VolumeExhaustion()
             {
-                if (Min1.Count < C.ExhaustionBars) return false;
-                double avgVol = 0; for (int i = 1; i <= C.ExhaustionBars; i++) avgVol += Min1.Last(i).Volume; avgVol /= C.ExhaustionBars;
+                if (Min1.Count < C.ExhaustionBars) 
+                {
+                    return false;
+                }
+                double avgVol = 0; 
+                for (int i = 1; i <= C.ExhaustionBars; i++) 
+                {
+                    avgVol += Min1.Last(i).Volume; 
+                }
+                avgVol /= C.ExhaustionBars;
                 return Min1.Last(0).Volume >= (avgVol * C.ExhaustionVolMult);
             }
 
