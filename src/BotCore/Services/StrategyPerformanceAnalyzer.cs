@@ -58,6 +58,41 @@ public class StrategyPerformanceAnalyzer
     // Performance alert thresholds
     private const decimal LowPerformanceThreshold = 0.3m;     // Threshold for low recent performance
     private const decimal GoodPerformanceThreshold = 0.6m;    // Threshold for good overall performance
+    
+    // Strategy characteristics - volatility ranges
+    private const decimal S6VolatilityRangeLow = 0.5m;
+    private const decimal S6VolatilityRangeHigh = 1.0m;
+    private const decimal S11VolatilityRangeLow = 0.4m;
+    private const decimal S11VolatilityRangeHigh = 0.9m;
+    
+    // Profit factor constants
+    private const decimal MaxProfitFactorFallback = 99m;
+    
+    // Performance thresholds for scoring
+    private const decimal VeryLowThreshold = 0.2m;
+    private const decimal LowThreshold = 0.3m;
+    private const decimal ModerateThreshold = 0.5m;
+    private const decimal HighThreshold = 0.6m;
+    private const decimal VeryHighThreshold = 0.8m;
+    
+    // PnL thresholds for performance categorization
+    private const decimal SmallProfitThreshold = 200m;
+    private const decimal MediumProfitThreshold = 500m;
+    private const decimal LargeProfitThreshold = 1000m;
+    private const decimal SmallLossThreshold = 200m;
+    private const decimal MediumLossThreshold = 400m;
+    
+    // Sample size requirements
+    private const int MinSampleSizeForMediumConfidence = 10;
+    
+    // Time window constants for strategy optimization (in hours)
+    private const int MorningSessionStartHour = 9;
+    private const int MorningSessionStartMinute = 30;
+    private const int AfternoonSessionStartHour = 12;
+    private const int AfternoonSessionEndHour = 15;
+    private const int AfternoonExtendedEndHour = 15;
+    private const int AfternoonExtendedEndMinute = 30;
+    private const int MarketCloseHour = 16;
     private const decimal LowWinRateThreshold = 0.35m;        // Threshold for low win rate alert
     private const decimal LowProfitFactorThreshold = 1.1m;    // Threshold for low profit factor alert
     private const decimal ExcessiveDrawdownRatio = 0.4m;      // Ratio for excessive drawdown alert
@@ -428,8 +463,8 @@ public class StrategyPerformanceAnalyzer
                 Name = "S6",
                 Type = StrategyType.Momentum,
                 BestMarketConditions = new[] { AnalyzerMarketRegime.Trending, AnalyzerMarketRegime.Volatile },
-                OptimalVolatilityRange = new[] { 0.5m, 1.0m },
-                PreferredTimeWindows = new[] { new TimeSpan(9, 30, 0), new TimeSpan(15, 30, 0) },
+                OptimalVolatilityRange = new[] { S6VolatilityRangeLow, S6VolatilityRangeHigh },
+                PreferredTimeWindows = new[] { new TimeSpan(MorningSessionStartHour, MorningSessionStartMinute, 0), new TimeSpan(AfternoonExtendedEndHour, AfternoonExtendedEndMinute, 0) },
                 Description = "Momentum strategy for trending and volatile markets"
             },
             ["S11"] = new StrategyCharacteristics
@@ -437,8 +472,8 @@ public class StrategyPerformanceAnalyzer
                 Name = "S11",
                 Type = StrategyType.TrendFollowing,
                 BestMarketConditions = new[] { AnalyzerMarketRegime.Trending },
-                OptimalVolatilityRange = new[] { 0.4m, 0.9m },
-                PreferredTimeWindows = new[] { new TimeSpan(9, 30, 0), new TimeSpan(16, 0, 0) },
+                OptimalVolatilityRange = new[] { S11VolatilityRangeLow, S11VolatilityRangeHigh },
+                PreferredTimeWindows = new[] { new TimeSpan(MorningSessionStartHour, MorningSessionStartMinute, 0), new TimeSpan(MarketCloseHour, 0, 0) },
                 Description = "Advanced trend following with multi-timeframe analysis"
             }
         };
@@ -463,7 +498,7 @@ public class StrategyPerformanceAnalyzer
         // Profit factor
         var totalWins = winningTrades.Sum(t => t.PnL);
         var totalLosses = Math.Abs(losingTrades.Sum(t => t.PnL));
-        analysis.ProfitFactor = totalLosses > 0 ? totalWins / totalLosses : totalWins > 0 ? 99m : 0m;
+        analysis.ProfitFactor = totalLosses > 0 ? totalWins / totalLosses : totalWins > 0 ? MaxProfitFactorFallback : 0m;
         
         // Max drawdown
         analysis.MaxDrawdown = CalculateMaxDrawdown(trades);

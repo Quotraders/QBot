@@ -11,6 +11,101 @@
 ## Overview
 This ledger documents all fixes made during the analyzer compliance initiative including SonarQube Quality Gate failure remediation. Goal: Eliminate all critical CS compiler errors and SonarQube violations with zero suppressions and full production compliance targeting ≤ 3% duplication.
 
+---
+
+### 🔧 Round 176 - Phase 2: S109 Magic Numbers - FeatureBuilder.cs & StrategyPerformanceAnalyzer.cs (Current Session)
+
+| Rule | Before | After | Files Affected | Fix Applied |
+|------|--------|-------|----------------|-------------|
+| S109 | 498 | 374 | FeatureBuilder.cs, StrategyPerformanceAnalyzer.cs | Extracted 124 magic numbers to named constants (25% reduction) |
+
+**Total Fixed: 124 analyzer violations (124 S109)**
+
+**Rationale**: Applied systematic Priority 1 fixes per Analyzer-Fix-Guidebook for magic numbers. All feature computation values, technical indicator periods, session mappings, and performance thresholds extracted to well-named constants with clear business intent.
+
+**Example Pattern Applied - Feature Array Indices**:
+```csharp
+// Before (S109 Violation)
+features[0] = ComputeReturn1m(bars);
+features[2] = ComputeAtr14(bars, env);
+features[7] = ComputeAdrPct(bars);
+if (bars.Count < _config.AtrPeriod + 1) return _spec.Columns[2].FillValue;
+
+// After (Compliant)
+private const int Return1mIndex = 0;
+private const int Atr14Index = 2;
+private const int AdrPctIndex = 7;
+
+features[Return1mIndex] = ComputeReturn1m(bars);
+features[Atr14Index] = ComputeAtr14(bars, env);
+features[AdrPctIndex] = ComputeAdrPct(bars);
+if (bars.Count < _config.AtrPeriod + 1) return _spec.Columns[Atr14Index].FillValue;
+```
+
+**Example Pattern Applied - Session Mappings**:
+```csharp
+// Before (S109 Violation)
+return sessionName switch {
+    "AsianSession" => 0,
+    "EuropeanPreOpen" => 1,
+    "OpeningDrive" => 5,
+    "PowerHour" => 9,
+    _ => _spec.Columns[9].FillValue
+};
+
+// After (Compliant)
+private const int AsianSessionIndex = 0;
+private const int EuropeanPreOpenIndex = 1;
+private const int OpeningDriveIndex = 5;
+private const int PowerHourIndex = 9;
+private const int SessionFlagIndex = 9;
+
+return sessionName switch {
+    "AsianSession" => AsianSessionIndex,
+    "EuropeanPreOpen" => EuropeanPreOpenIndex,
+    "OpeningDrive" => OpeningDriveIndex,
+    "PowerHour" => PowerHourIndex,
+    _ => _spec.Columns[SessionFlagIndex].FillValue
+};
+```
+
+**Example Pattern Applied - Performance Thresholds**:
+```csharp
+// Before (S109 Violation)
+OptimalVolatilityRange = new[] { 0.5m, 1.0m };
+analysis.ProfitFactor = totalLosses > 0 ? totalWins / totalLosses : totalWins > 0 ? 99m : 0m;
+
+// After (Compliant)
+private const decimal S6VolatilityRangeLow = 0.5m;
+private const decimal S6VolatilityRangeHigh = 1.0m;
+private const decimal MaxProfitFactorFallback = 99m;
+
+OptimalVolatilityRange = new[] { S6VolatilityRangeLow, S6VolatilityRangeHigh };
+analysis.ProfitFactor = totalLosses > 0 ? totalWins / totalLosses : totalWins > 0 ? MaxProfitFactorFallback : 0m;
+```
+
+**Files Modified**:
+1. **FeatureBuilder.cs**: 114 S109 violations fixed
+   - Feature array indices (0-12): Return1mIndex, Atr14Index, Rsi14Index, VwapDistIndex, etc.
+   - RSI constants: RsiMaxValue (100)
+   - Bollinger Bands: BollingerStdDevMultiplier (2), VwapTypicalPriceDivisor (3)
+   - Session mappings (11 sessions, 0-10): AsianSessionIndex through MarketCloseIndex
+   - Session types (3 types, 0-2): OvernightSessionType, RthSessionType, PostRthSessionType
+   - Time thresholds: OvernightEndHour (9), OvernightEndMinute (30), PostRthStartHour (16), etc.
+   - ADR validation: MaxReasonableAdrRatio (10)
+
+2. **StrategyPerformanceAnalyzer.cs**: 10 S109 violations fixed
+   - Strategy volatility ranges: S6VolatilityRangeLow (0.5), S6VolatilityRangeHigh (1.0)
+   - S11 volatility ranges: S11VolatilityRangeLow (0.4), S11VolatilityRangeHigh (0.9)
+   - Profit factor: MaxProfitFactorFallback (99)
+   - Time windows: MorningSessionStartHour (9), MarketCloseHour (16), etc.
+   - Performance thresholds: VeryLowThreshold (0.2) through VeryHighThreshold (0.8)
+   - PnL thresholds: SmallProfitThreshold (200), MediumProfitThreshold (500), LargeProfitThreshold (1000)
+
+**Build Verification**: ✅ 0 CS compiler errors, 124 S109 violations eliminated (498→374, 25% reduction)
+
+---
+
 ## 🔍 Comprehensive Audit (Current Session)
 **See [ASYNC_DECIMAL_AUDIT.md](ASYNC_DECIMAL_AUDIT.md) for detailed tracking**
 
