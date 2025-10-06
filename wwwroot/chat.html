@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Talk to Trading Bot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        #chat {
+            height: 400px;
+            border: 1px solid #ccc;
+            background-color: white;
+            padding: 10px;
+            overflow-y: scroll;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .user {
+            color: #0066cc;
+            background-color: #e6f2ff;
+            text-align: right;
+        }
+        .bot {
+            color: #006600;
+            background-color: #e6ffe6;
+        }
+        .timestamp {
+            font-size: 0.8em;
+            color: #666;
+            margin-left: 10px;
+        }
+        #input {
+            width: 80%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        #send {
+            padding: 10px 20px;
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        #send:hover {
+            background-color: #0052a3;
+        }
+        #send:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .error {
+            color: #cc0000;
+            background-color: #ffe6e6;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>🤖 Talk to Your Trading Bot</h1>
+    <div id="chat"></div>
+    <div>
+        <input type="text" id="input" placeholder="Ask me anything about my trading..." />
+        <button id="send">Send</button>
+    </div>
+
+    <script>
+        const chatDiv = document.getElementById('chat');
+        const inputBox = document.getElementById('input');
+        const sendButton = document.getElementById('send');
+
+        function addMessage(text, className) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ' + className;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const timestampSpan = document.createElement('span');
+            timestampSpan.className = 'timestamp';
+            timestampSpan.textContent = timestamp;
+            
+            const textNode = document.createTextNode(text);
+            messageDiv.appendChild(textNode);
+            messageDiv.appendChild(timestampSpan);
+            
+            chatDiv.appendChild(messageDiv);
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const message = inputBox.value.trim();
+            if (!message) return;
+
+            // Add user message to chat
+            addMessage('You: ' + message, 'user');
+            inputBox.value = '';
+            
+            // Disable send button while processing
+            sendButton.disabled = true;
+            addMessage('Bot is thinking...', 'loading');
+
+            try {
+                // Send request to bot
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+
+                // Remove loading message
+                const loadingMsg = chatDiv.lastChild;
+                if (loadingMsg && loadingMsg.textContent.includes('thinking')) {
+                    chatDiv.removeChild(loadingMsg);
+                }
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const data = await response.json();
+                
+                // Add bot response to chat
+                if (data.response) {
+                    addMessage('Bot: ' + data.response, 'bot');
+                } else if (data.error) {
+                    addMessage('Error: ' + data.error, 'error');
+                }
+            } catch (error) {
+                // Remove loading message
+                const loadingMsg = chatDiv.lastChild;
+                if (loadingMsg && loadingMsg.textContent.includes('thinking')) {
+                    chatDiv.removeChild(loadingMsg);
+                }
+                addMessage('Error: Could not connect to bot. Make sure the bot is running.', 'error');
+                console.error('Error:', error);
+            } finally {
+                sendButton.disabled = false;
+                inputBox.focus();
+            }
+        }
+
+        // Handle send button click
+        sendButton.addEventListener('click', sendMessage);
+
+        // Handle Enter key press
+        inputBox.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Add welcome message
+        addMessage('Welcome! Ask me about my trading strategies, performance, or current market conditions.', 'bot');
+        
+        // Focus input box
+        inputBox.focus();
+    </script>
+</body>
+</html>
