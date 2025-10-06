@@ -767,7 +767,7 @@ namespace TradingBot.BotCore.Services
         /// <summary>
         /// History bars response model - used by System.Text.Json for deserialization
         /// </summary>
-        public sealed class HistoryBarsResponse
+        private sealed class HistoryBarsResponse
         {
             public List<BarData> Bars { get; init; } = new();
         }
@@ -775,7 +775,7 @@ namespace TradingBot.BotCore.Services
         /// <summary>
         /// Bar data model for backtesting - used by System.Text.Json for deserialization
         /// </summary>
-        public sealed class BarData
+        private sealed class BarData
         {
             public DateTime Timestamp { get; set; }
             public decimal Open { get; set; }

@@ -27,7 +27,6 @@ public static class S15_RlStrategy
     private const decimal DefaultConfidenceThreshold = 0.6m;    // Minimum confidence for trade
     private const int DefaultQty = 1;                           // Default position size
     private const int MinimumBarsRequired = 20;                 // Minimum bars for feature computation
-    private const decimal MinimumRiskRewardRatio = 1.0m;        // Minimum acceptable risk-reward ratio
     
     // Shadow-only mode flag (environment-driven)
     private static bool IsTradingEnabled => 

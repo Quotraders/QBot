@@ -22,7 +22,6 @@ public class S15ShadowLearningService : BackgroundService
     
     // Gate 3 validation thresholds
     private const int MIN_SHADOW_DECISIONS = 1000;
-    private const int MIN_SHADOW_DECISIONS_THIN_MARKET = 500;
     private const double MIN_SHARPE_RATIO = 2.0;
     private const double MIN_WIN_RATE = 0.50;  // 50%
     private const double MIN_SHARPE_MULTIPLIER = 1.20;  // 20% better than baseline

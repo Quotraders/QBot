@@ -40,17 +40,9 @@ namespace BotCore.Strategy
         private const decimal StopDistanceMultiplier = 0.25m;             // ATR multiplier for stop distance
         private const decimal MinTargetRatioLong = 0.8m;                  // Minimum target ratio for long trades
         private const decimal TargetAdjustmentRatio = 0.9m;               // Target adjustment ratio
-        private const decimal MinRiskRewardRatio = 0.6m;                  // Minimum risk-reward ratio
-        private const int RsiOverboughtLevel = 20;                        // RSI overbought level (inverted for short)
-        private const decimal RsiMultiplier = 1.5m;                       // RSI condition multiplier
         
         // Bar count and quality thresholds
         private const int MinimumBarCountForS2 = 60;                      // Minimum bars required for S2 strategy
-        private const int MinimumBarCountForS3 = 30;                      // Minimum bars required for S3 strategy
-        private const decimal HighQualityThreshold = 1.0m;                // High quality signal threshold
-        private const decimal VeryHighQualityThreshold = 1.1m;            // Very high quality signal threshold
-        private const decimal MediumQualityThreshold = 0.9m;              // Medium quality signal threshold
-        private const decimal LowQualityThreshold = 0.6m;                 // Low quality signal threshold
 
         // (attempt accounting moved to specific strategies as needed)
         static decimal rr_quality(decimal entry, decimal stop, decimal t1)
@@ -624,15 +616,6 @@ namespace BotCore.Strategy
             bool engulf = c.Close < a.Open && c.Open > a.Close && c.Close < c.Open;
             bool shoot = (c.Close <= c.Open) && (c.High - c.Open) >= 0.5m * (c.High - c.Low) && (c.Close - c.Low) <= 0.3m * (c.High - c.Low);
             return engulf || shoot;
-        }
-
-        // Keltner Channel helper: EMA mid and ATR band
-        private static (decimal mid, decimal up, decimal dn) Keltner(IList<Bar> bars, int emaLen = RsiOverboughtLevel, int atrLen = RsiOverboughtLevel, decimal mult = RsiMultiplier)
-        {
-            var e = EmaNoWarmup(bars, emaLen);
-            var a = AtrNoWarmup(bars, atrLen);
-            var mid = e[^1];
-            return (mid, mid + mult * a, mid - mult * a);
         }
 
         public static List<Candidate> S2(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)

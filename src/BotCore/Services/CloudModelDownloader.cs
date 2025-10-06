@@ -24,15 +24,6 @@ public class CloudModelDownloader : ICloudModelDownloader
 {
     private readonly ILogger<CloudModelDownloader> _logger;
     private readonly HttpClient _httpClient;
-    
-    // Gate 2 validation thresholds
-    private const int MIN_VALIDATION_SAMPLES = 500;
-    private const int MIN_SANITY_TEST_VECTORS = 200;
-    private const double MAX_KL_DIVERGENCE = 0.25;
-    private const double MIN_LOSS_IMPROVEMENT = 0.05;  // 5% reduction
-    private const double MIN_SHARPE_IMPROVEMENT = 0.03;  // 3% increase
-    private const double MAX_DRAWDOWN_RATIO = 2.0;  // 2x baseline
-    private const int SIMULATION_BARS = 5000;
 
     public CloudModelDownloader(ILogger<CloudModelDownloader> logger, IHttpClientFactory httpClientFactory)
     {

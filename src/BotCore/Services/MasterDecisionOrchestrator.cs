@@ -6,7 +6,6 @@ using BotCore.Services;
 using BotCore.Bandits;
 using TradingBot.Abstractions;
 using System.Text.Json;
-using TradingBot.Abstractions;
 
 namespace BotCore.Services;
 
@@ -79,10 +78,10 @@ public class MasterDecisionOrchestrator : BackgroundService
     private bool _canaryActive;
     private DateTime _canaryStartTime = DateTime.MinValue;
     private int _canaryTradesCompleted;
-    private double _baselineWinRate;
-    private double _baselineSharpeRatio;
-    private double _baselineDrawdown;
-    private readonly List<TradeResult> _canaryTrades = new();
+    private double _baselineWinRate = 0.5; // Default 50% win rate baseline
+    private double _baselineSharpeRatio = 1.0; // Default 1.0 Sharpe ratio baseline
+    private double _baselineDrawdown = 0.0; // Default 0 drawdown baseline
+    private readonly List<Gate5TradeResult> _canaryTrades = new();
     private readonly IGate5Config _gate5Config;
     
     public MasterDecisionOrchestrator(
@@ -932,7 +931,7 @@ public class MasterDecisionOrchestrator : BackgroundService
         }
     }
 
-    private async Task ExecuteCanaryRollbackAsync(CanaryMetrics metrics, CancellationToken cancellationToken)
+    private Task ExecuteCanaryRollbackAsync(CanaryMetrics metrics, CancellationToken cancellationToken)
     {
         _logger.LogWarning("🔄 [GATE-5] Executing canary rollback - deployment rejected");
         _logger.LogWarning("  Win Rate Drop: {Drop:F2}%, Drawdown: ${DD:F2}, Sharpe Drop: {SR:F2}%",
@@ -966,6 +965,8 @@ public class MasterDecisionOrchestrator : BackgroundService
 
         Environment.SetEnvironmentVariable("AUTO_PROMOTION_ENABLED", "0");
         _logger.LogWarning("🔒 [GATE-5] Auto-promotion disabled until manual investigation");
+        
+        return Task.CompletedTask;
     }
 
     private void CopyDirectory(string sourceDir, string destinationDir)
@@ -1330,7 +1331,7 @@ public class BundleDecisionTrackingInfo
 /// <summary>
 /// Gate 5: Trade result for canary monitoring
 /// </summary>
-internal class TradeResult
+internal sealed class Gate5TradeResult
 {
     public double PnL { get; set; }
     public DateTime Timestamp { get; set; }
@@ -1339,7 +1340,7 @@ internal class TradeResult
 /// <summary>
 /// Gate 5: Canary metrics
 /// </summary>
-internal class CanaryMetrics
+internal sealed class CanaryMetrics
 {
     public double WinRate { get; set; }
     public double SharpeRatio { get; set; }

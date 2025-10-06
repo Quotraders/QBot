@@ -21,29 +21,39 @@ public interface IGate5Config
 /// </summary>
 public class Gate5Config : IGate5Config
 {
-    public int MinTrades { get; init; } = 50;
-    public int MinMinutes { get; init; } = 60;
-    public int MaxMinutes { get; init; } = 90;
-    public double WinRateDropThreshold { get; init; } = 0.15;
-    public double MaxDrawdownDollars { get; init; } = 500.0;
-    public double SharpeDropThreshold { get; init; } = 0.30;
-    public double CatastrophicWinRateThreshold { get; init; } = 0.30;
-    public double CatastrophicDrawdownDollars { get; init; } = 1000.0;
-    public bool Enabled { get; init; } = true;
+    private const int DefaultMinTrades = 50;
+    private const int DefaultMinMinutes = 60;
+    private const int DefaultMaxMinutes = 90;
+    private const double DefaultWinRateDropThreshold = 0.15;
+    private const double DefaultMaxDrawdownDollars = 500.0;
+    private const double DefaultSharpeDropThreshold = 0.30;
+    private const double DefaultCatastrophicWinRateThreshold = 0.30;
+    private const double DefaultCatastrophicDrawdownDollars = 1000.0;
+    private const bool DefaultEnabled = true;
+
+    public int MinTrades { get; init; } = DefaultMinTrades;
+    public int MinMinutes { get; init; } = DefaultMinMinutes;
+    public int MaxMinutes { get; init; } = DefaultMaxMinutes;
+    public double WinRateDropThreshold { get; init; } = DefaultWinRateDropThreshold;
+    public double MaxDrawdownDollars { get; init; } = DefaultMaxDrawdownDollars;
+    public double SharpeDropThreshold { get; init; } = DefaultSharpeDropThreshold;
+    public double CatastrophicWinRateThreshold { get; init; } = DefaultCatastrophicWinRateThreshold;
+    public double CatastrophicDrawdownDollars { get; init; } = DefaultCatastrophicDrawdownDollars;
+    public bool Enabled { get; init; } = DefaultEnabled;
 
     public static Gate5Config LoadFromEnvironment()
     {
         return new Gate5Config
         {
-            MinTrades = int.TryParse(Environment.GetEnvironmentVariable("GATE5_MIN_TRADES"), out var mt) ? mt : 50,
-            MinMinutes = int.TryParse(Environment.GetEnvironmentVariable("GATE5_MIN_MINUTES"), out var mm) ? mm : 60,
-            MaxMinutes = int.TryParse(Environment.GetEnvironmentVariable("GATE5_MAX_MINUTES"), out var maxm) ? maxm : 90,
-            WinRateDropThreshold = double.TryParse(Environment.GetEnvironmentVariable("GATE5_WIN_RATE_DROP_THRESHOLD"), out var wrd) ? wrd : 0.15,
-            MaxDrawdownDollars = double.TryParse(Environment.GetEnvironmentVariable("GATE5_MAX_DRAWDOWN_DOLLARS"), out var mdd) ? mdd : 500.0,
-            SharpeDropThreshold = double.TryParse(Environment.GetEnvironmentVariable("GATE5_SHARPE_DROP_THRESHOLD"), out var sdt) ? sdt : 0.30,
-            CatastrophicWinRateThreshold = double.TryParse(Environment.GetEnvironmentVariable("GATE5_CATASTROPHIC_WIN_RATE"), out var cwr) ? cwr : 0.30,
-            CatastrophicDrawdownDollars = double.TryParse(Environment.GetEnvironmentVariable("GATE5_CATASTROPHIC_DRAWDOWN"), out var cdd) ? cdd : 1000.0,
-            Enabled = bool.TryParse(Environment.GetEnvironmentVariable("GATE5_ENABLED"), out var en) ? en : true
+            MinTrades = int.TryParse(Environment.GetEnvironmentVariable("GATE5_MIN_TRADES"), out var mt) ? mt : DefaultMinTrades,
+            MinMinutes = int.TryParse(Environment.GetEnvironmentVariable("GATE5_MIN_MINUTES"), out var mm) ? mm : DefaultMinMinutes,
+            MaxMinutes = int.TryParse(Environment.GetEnvironmentVariable("GATE5_MAX_MINUTES"), out var maxm) ? maxm : DefaultMaxMinutes,
+            WinRateDropThreshold = double.TryParse(Environment.GetEnvironmentVariable("GATE5_WIN_RATE_DROP_THRESHOLD"), out var wrd) ? wrd : DefaultWinRateDropThreshold,
+            MaxDrawdownDollars = double.TryParse(Environment.GetEnvironmentVariable("GATE5_MAX_DRAWDOWN_DOLLARS"), out var mdd) ? mdd : DefaultMaxDrawdownDollars,
+            SharpeDropThreshold = double.TryParse(Environment.GetEnvironmentVariable("GATE5_SHARPE_DROP_THRESHOLD"), out var sdt) ? sdt : DefaultSharpeDropThreshold,
+            CatastrophicWinRateThreshold = double.TryParse(Environment.GetEnvironmentVariable("GATE5_CATASTROPHIC_WIN_RATE"), out var cwr) ? cwr : DefaultCatastrophicWinRateThreshold,
+            CatastrophicDrawdownDollars = double.TryParse(Environment.GetEnvironmentVariable("GATE5_CATASTROPHIC_DRAWDOWN"), out var cdd) ? cdd : DefaultCatastrophicDrawdownDollars,
+            Enabled = bool.TryParse(Environment.GetEnvironmentVariable("GATE5_ENABLED"), out var en) ? en : DefaultEnabled
         };
     }
 }
