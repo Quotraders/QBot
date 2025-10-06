@@ -33,7 +33,13 @@ This ledger documents all fixes made during the analyzer compliance initiative i
     4. S0005 (336) - Unused code
     5. S1541 (228) - Cognitive complexity
     6. S1172 (214) - Unused method parameters
-  - **Current Session (Phase 2 Start)**: 2 CA1852 violations fixed (sealed classes)
+  - **Current Session (Phase 2 Batch 2)**: 9 S1144 violations fixed (unused code)
+    - Fixed S1144 (7 violations): Removed unused private constants in AllStrategies.cs
+      - MinRiskRewardRatio, MinimumBarCountForS3, HighQualityThreshold, VeryHighQualityThreshold
+      - MediumQualityThreshold, LowQualityThreshold, RsiOverboughtLevel, RsiMultiplier
+    - Fixed S1144 (1 violation): Removed unused Keltner helper method in AllStrategies.cs
+    - Fixed S1144 (1 violation): Removed unused MinimumRiskRewardRatio constant in S15_RlStrategy.cs
+  - **Current Session (Phase 2 Batch 1)**: 2 CA1852 violations fixed (sealed classes)
     - Fixed CA1852: Sealed Gate5TradeResult class in MasterDecisionOrchestrator.cs
     - Fixed CA1852: Sealed CanaryMetrics class in MasterDecisionOrchestrator.cs
     - Improved CA1812: Changed JSON DTO visibility (internal → private) in ApiClient.cs and TradingBotTuningRunner.cs

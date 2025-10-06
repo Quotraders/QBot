@@ -89,17 +89,11 @@ public class EnhancedTradingBrainIntegration
     // Data generation defaults (for sample data)
     private const int DefaultBarCount = 100;                             // Default number of bars for sample data
     private const decimal DefaultBarOpen = 5000m;                        // Default bar open price
-    private const decimal DefaultBarLow = 4990m;                         // Default bar low price
-    private const decimal DefaultBarClose = 5005m;                       // Default bar close price
     private const int DefaultBarVolume = 1000;                           // Default bar volume
     private const decimal DefaultAccountBalance = 100000m;               // Default account balance
-    private const decimal DefaultEquity = 100000m;                       // Default equity
-    private const decimal DefaultAvailableCapital = 100000m;             // Default available capital
     private const int DefaultMaxPositions = 10;                          // Default maximum positions
-    private const decimal DefaultRiskPerTrade = 0.01m;                   // Default risk per trade (1%)
     private const int DefaultPositionCount = 2;                          // Default number of positions
     private const decimal DefaultPriceLevel = 5.0m;                      // Default price level for sample data
-    private const int DefaultTimeframeMinutes = 5;                       // Default timeframe in minutes
     
     // Integration state
     private readonly Dictionary<string, DateTime> _lastPredictions = new();
