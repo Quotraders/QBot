@@ -33,6 +33,14 @@ This ledger documents all fixes made during the analyzer compliance initiative i
     4. S0005 (336) - Unused code
     5. S1541 (228) - Cognitive complexity
     6. S1172 (214) - Unused method parameters
+  - **Current Session (Phase 2 Batch 3)**: 11 S1144 violations fixed (unused code cleanup)
+    - Fixed S1144 (7 violations): Removed unused Gate 2 validation constants in CloudModelDownloader.cs
+      - MIN_VALIDATION_SAMPLES, MIN_SANITY_TEST_VECTORS, MAX_KL_DIVERGENCE, MIN_LOSS_IMPROVEMENT
+      - MIN_SHARPE_IMPROVEMENT, MAX_DRAWDOWN_RATIO, SIMULATION_BARS
+    - Fixed S1144 (1 violation): Removed MIN_SHADOW_DECISIONS_THIN_MARKET in S15ShadowLearningService.cs
+    - Fixed S1144 (4 violations): Removed unused default constants in EnhancedTradingBrainIntegration.cs
+      - DefaultBarLow, DefaultBarClose, DefaultEquity, DefaultAvailableCapital
+    - Fixed S1144 (2 violations): Removed DefaultRiskPerTrade, DefaultTimeframeMinutes
   - **Current Session (Phase 2 Batch 2)**: 9 S1144 violations fixed (unused code)
     - Fixed S1144 (7 violations): Removed unused private constants in AllStrategies.cs
       - MinRiskRewardRatio, MinimumBarCountForS3, HighQualityThreshold, VeryHighQualityThreshold
