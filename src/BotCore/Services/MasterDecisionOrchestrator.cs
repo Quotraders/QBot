@@ -1331,7 +1331,7 @@ public class BundleDecisionTrackingInfo
 /// <summary>
 /// Gate 5: Trade result for canary monitoring
 /// </summary>
-internal class Gate5TradeResult
+internal sealed class Gate5TradeResult
 {
     public double PnL { get; set; }
     public DateTime Timestamp { get; set; }
@@ -1340,7 +1340,7 @@ internal class Gate5TradeResult
 /// <summary>
 /// Gate 5: Canary metrics
 /// </summary>
-internal class CanaryMetrics
+internal sealed class CanaryMetrics
 {
     public double WinRate { get; set; }
     public double SharpeRatio { get; set; }
