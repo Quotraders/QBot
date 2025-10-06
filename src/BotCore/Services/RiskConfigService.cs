@@ -21,10 +21,10 @@ namespace TradingBot.BotCore.Services
         private const double DefaultCvarTargetRMultiple = 0.65;     // CVaR target R-multiple
         
         // Regime-specific multipliers
-        private const double DefaultBullRegimeMultiplier = 1.0;     // Bull market multiplier (normal risk)
+        private const double DefaultBullRegimeMultiplier = 1.00;    // Bull market multiplier (normal risk)
         private const double DefaultBearRegimeMultiplier = 0.8;     // Bear market multiplier (reduced risk)
         private const double DefaultSidewaysRegimeMultiplier = 0.9; // Sideways market multiplier
-        private const double DefaultVolatileRegimeMultiplier = 0.7; // Volatile market multiplier (lower risk)
+        private const double DefaultVolatileRegimeMultiplier = 0.70; // Volatile market multiplier (lower risk)
         private const double DefaultRegimeMultiplier = 0.85;        // Default regime multiplier
         
         // Additional risk parameters

@@ -235,13 +235,13 @@ namespace TradingBot.Backtest
                 if (signal > 0.6)
                 {
                     decision = TradingAction.Buy;
-                    confidence = 0.7m;
+                    confidence = 0.70m;
                     rationale = "Buy signal - favorable conditions";
                 }
                 else if (signal < 0.4)
                 {
                     decision = TradingAction.Sell;
-                    confidence = 0.7m;
+                    confidence = 0.70m;
                     rationale = "Sell signal - favorable conditions";
                 }
             }

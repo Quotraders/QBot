@@ -45,7 +45,7 @@ public class EnhancedTradingBrainIntegration
     
     // Confidence thresholds
     private const decimal VeryHighConfidenceThreshold = 0.8m;            // Very high confidence threshold
-    private const decimal ModerateConfidenceThreshold = 0.7m;            // Moderate confidence threshold
+    private const decimal ModerateConfidenceThreshold = 0.70m;           // Moderate confidence threshold
     private const decimal LowConfidenceThreshold = 0.6m;                 // Low confidence threshold
     private const decimal VeryLowConfidenceThreshold = 0.5m;             // Very low confidence threshold
     private const decimal MinimumConfidence = 0.1m;                      // Minimum confidence level

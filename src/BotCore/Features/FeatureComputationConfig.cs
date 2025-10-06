@@ -50,7 +50,7 @@ public class FeatureComputationConfig
     public int HoursPerDay { get; init; } = 24;
 
     /// <summary>
-    /// ZScore threshold for bullish S7 regime (default: 1.0)
+    /// ZScore threshold for bullish S7 regime (default: 1.00)
     /// </summary>
     public decimal S7ZScoreThresholdBullish { get; init; } = DefaultZScoreThresholdBullish;
 

@@ -17,7 +17,7 @@ namespace TradingBot.BotCore.Services
         private const double DefaultBullConfidenceUpper = 0.9;        // Bull regime confidence upper bound
         private const double DefaultBearConfidenceLower = 0.65;       // Bear regime confidence lower bound
         private const double DefaultBearConfidenceUpper = 0.85;       // Bear regime confidence upper bound
-        private const double DefaultSidewaysConfidenceLower = 0.7;    // Sideways regime confidence lower bound
+        private const double DefaultSidewaysConfidenceLower = 0.70;   // Sideways regime confidence lower bound
         private const double DefaultSidewaysConfidenceUpper = 0.8;    // Sideways regime confidence upper bound
         private const double DefaultConfidenceLower = 0.65;           // Default confidence lower bound
         private const double DefaultConfidenceUpper = 0.85;           // Default confidence upper bound

@@ -70,7 +70,7 @@ namespace TopstepX.Bot.Core.Services
         // Trading analysis constants
         private const int MinimumBarsRequired = 20; // Minimum bar data needed for technical analysis
         private const decimal MinimumSignalScore = 0.6m; // Minimum score for signal processing
-        private const decimal HighConfidenceSignalScore = 0.7m; // High confidence signal threshold
+        private const decimal HighConfidenceSignalScore = 0.70m; // High confidence signal threshold
         private const decimal VolatilityFilterThreshold = 0.3m; // Volatility-based signal filtering
         private const double MinimumHealthScore = 80.0; // Minimum adapter health score for trading
         private const double FeatureActivityThreshold = 0.5; // Feature vector activity threshold

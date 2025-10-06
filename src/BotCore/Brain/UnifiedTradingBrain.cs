@@ -39,7 +39,7 @@ namespace BotCore.Brain
         // Trading Brain confidence and probability constants
         public const decimal FallbackConfidence = 0.6m;             // Fallback strategy confidence
         public const decimal FallbackUcbValue = 0.5m;              // Fallback UCB value
-        public const decimal HighConfidenceProbability = 0.7m;      // High confidence prediction probability
+        public const decimal HighConfidenceProbability = 0.70m;     // High confidence prediction probability
         public const decimal NeutralProbability = 0.5m;             // Neutral/sideways prediction probability
         public const decimal DefaultAtrFallback = 25.0m;           // Default ATR for NQ when unavailable
         public const decimal EsDefaultAtrFallback = 10.0m;        // Default ATR for ES when unavailable
