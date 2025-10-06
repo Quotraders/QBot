@@ -1,7 +1,7 @@
 #nullable enable
 namespace BotCore
 {
-    public enum SignalSide { Long = 1, Short = -1, Flat = 0 }
+    public enum SignalSide { Buy = 1, Sell = -1, Flat = 0 }
 
     /// <summary>A normalized signal your orchestrator can route.</summary>
     public sealed class StrategySignal

@@ -8305,3 +8305,42 @@ catch (DivideByZeroException ex) {
 
 ---
 *Updated: Current Session - Phase 2 CA1031 Batch 4 Complete*
+
+#### Round 22 - S101 and CA1720 Naming Convention Fixes (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S101 | 10 | 0 | UCBManager.cs, MarketMicrostructureResolvers.cs, TimeOptimizedStrategyManager.cs, S15_RlStrategy.cs | Renamed classes to PascalCase: UCBManager→UcbManager, UCBRecommendation→UcbRecommendation, VWAPDistanceResolver→VwapDistanceResolver, ES_NQ_Correlation→EsNqCorrelation, S15_RlStrategy→S15RlStrategy |
+| CA1720 | 6 | 0 | StrategySignal.cs, EpochFreezeEnforcement.cs, ShadowModeManager.cs | Renamed enum values containing type names: Long→Buy, Short→Sell in SignalSide, PositionDirection, and TradeDirection enums |
+
+**Example Pattern - Class Naming**:
+```csharp
+// Before (Violation)
+public class UCBManager : IDisposable
+public sealed class UCBRecommendation
+public sealed class VWAPDistanceResolver : IFeatureResolver
+
+// After (Compliant)
+public class UcbManager : IDisposable
+public sealed class UcbRecommendation
+public sealed class VwapDistanceResolver : IFeatureResolver
+```
+
+**Example Pattern - Enum Value Naming**:
+```csharp
+// Before (CA1720 Violation - Contains type name)
+public enum SignalSide { Long = 1, Short = -1, Flat = 0 }
+public enum PositionDirection { Long, Short }
+public enum TradeDirection { Long, Short }
+
+// After (Compliant - Semantic trading terms)
+public enum SignalSide { Buy = 1, Sell = -1, Flat = 0 }
+public enum PositionDirection { Buy, Sell }
+public enum TradeDirection { Buy, Sell }
+```
+
+**Rationale**: S101 violations occur when class names use acronyms in all caps (UCB, VWAP) instead of PascalCase. Fixed by converting acronyms to proper PascalCase (Ucb, Vwap). CA1720 violations occur when enum values match system type names (Long/Short). Fixed by using semantic trading terminology (Buy/Sell) which is more explicit and avoids type name conflicts. All fixes maintain zero suppressions and operational guardrails.
+
+**Total Progress**: 26 violations fixed (10,562 → 10,536)
+
+---
+*Updated: Current Session - Phase 2 S101/CA1720 Naming Fixes Complete*

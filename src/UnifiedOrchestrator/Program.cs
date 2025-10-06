@@ -818,7 +818,7 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<BotCore.Brain.UnifiedTradingBrain>();
         
         // Register UCB Manager - C# client for Python UCB service (175 lines)
-        services.AddSingleton<BotCore.ML.UCBManager>();
+        services.AddSingleton<BotCore.ML.UcbManager>();
         
         // Register ML Memory Manager - Sophisticated ML model management (458 lines)
         services.AddSingleton<BotCore.ML.OnnxModelLoader>();
@@ -1684,7 +1684,7 @@ Please check the configuration and ensure all required services are registered.
         
         if (enableUcb)
         {
-            services.AddSingleton<BotCore.ML.UCBManager>();
+            services.AddSingleton<BotCore.ML.UcbManager>();
         }
 
         // Auto-detect paper trading mode

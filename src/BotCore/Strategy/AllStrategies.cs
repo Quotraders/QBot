@@ -154,7 +154,7 @@ namespace BotCore.Strategy
                         // Determine current position (0 for now, would come from position tracking)
                         var currentPos = 0;
                         
-                        var s15Candidates = S15_RlStrategy.GenerateCandidates(
+                        var s15Candidates = S15RlStrategy.GenerateCandidates(
                             symbol, env, levels, bars, risk, rlPolicy, featureBuilder, currentPos, currentTime);
                         
                         if (s15Candidates.Count > 0)

@@ -190,8 +190,8 @@ namespace BotCore.Integrations
 
         private static string DetermineDirection(StrategySignal signal)
         {
-            if (signal.Side == SignalSide.Long) return "BUY";
-            if (signal.Side == SignalSide.Short) return "SELL";
+            if (signal.Side == SignalSide.Buy) return "BUY";
+            if (signal.Side == SignalSide.Sell) return "SELL";
             return "HOLD";
         }
 

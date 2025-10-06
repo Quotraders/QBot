@@ -18,7 +18,7 @@ namespace BotCore.Strategy;
 /// - S15_TRADING_ENABLED=0 : Shadow mode (default) - records predictions, no live orders
 /// - S15_SHADOW_LEARNING_ENABLED=1 : Continuous learning from observations
 /// </summary>
-public static class S15_RlStrategy
+public static class S15RlStrategy
 {
     // Strategy configuration constants (config-driven)
     private const decimal DefaultAtrMultiplierStop = 2.0m;      // ATR multiplier for stop loss

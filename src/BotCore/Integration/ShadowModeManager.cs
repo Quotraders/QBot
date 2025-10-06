@@ -693,8 +693,8 @@ public enum ShadowRouterAction
 /// </summary>
 public enum TradeDirection
 {
-    Long,
-    Short
+    Buy,
+    Sell
 }
 
 /// <summary>
