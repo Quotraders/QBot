@@ -613,7 +613,12 @@ namespace TopstepX.S6
             public bool FailedBreakout(bool failedAboveONH)
             {
                 int pen = Instr==Instrument.ES? C.FailBreakPenetrationTicks_ES : C.FailBreakPenetrationTicks_NQ;
-                if (Min1.Count < 3) return false; var b1 = Min1.Last(0); var b2 = Min1.Last(1);
+                if (Min1.Count < 3) 
+                {
+                    return false; 
+                }
+                var b1 = Min1.Last(0); 
+                var b2 = Min1.Last(1);
                 if (failedAboveONH)
                 {
                     bool pierced = b2.High >= ON_High && (b2.High - ON_High) <= pen;
@@ -630,7 +635,12 @@ namespace TopstepX.S6
 
             public bool VolumeExhaustion()
             {
-                if (Min1.Count < 5) return false; double v1=Min1.Last(0).Volume, v2=Min1.Last(1).Volume, v3=Min1.Last(2).Volume; return (v3 < v2 && v2 > v1 && RVOL >= C.MinRVOL);
+                if (Min1.Count < 5) 
+                {
+                    return false; 
+                }
+                double v1=Min1.Last(0).Volume, v2=Min1.Last(1).Volume, v3=Min1.Last(2).Volume; 
+                return (v3 < v2 && v2 > v1 && RVOL >= C.MinRVOL);
             }
 
             public bool RetestConfirmed(long level, bool longSide)

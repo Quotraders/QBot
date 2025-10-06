@@ -8564,3 +8564,37 @@ for (int i = 0; i < 15; i++)
 
 ---
 *Updated: Current Session - Phase 2 S2681 Batch 3 Complete*
+
+#### Round 27 - S2681 Missing Braces Batch 4 (Current Session)
+| Rule | Before | After | Files Affected | Pattern Applied |
+|------|--------|-------|----------------|-----------------|
+| S2681 | 30 | 26 | S6_MaxPerf_FullStack.cs | Added braces to conditional returns and method expansions |
+
+**Example Pattern - Early Return with Multiple Statements**:
+```csharp
+// Before (Violation - early return with subsequent statements on same line)
+if (Min1.Count < 3) return false; var b1 = Min1.Last(0); var b2 = Min1.Last(1);
+
+// After (Compliant - properly braced)
+if (Min1.Count < 3) 
+{
+    return false; 
+}
+var b1 = Min1.Last(0); 
+var b2 = Min1.Last(1);
+```
+
+**Rationale**: Final cleanup pass on S6 strategy file. Fixed remaining early return patterns where multiple statements followed conditional returns without braces. These are critical trading logic paths where clarity prevents bugs in failed breakout detection and volume exhaustion checks. All fixes maintain zero suppressions and operational guardrails.
+
+**Session Summary**:
+- **Total violations fixed**: 100 (10,562 → 10,462)
+- **Phase 1**: ✅ COMPLETE - 0 CS compiler errors
+- **Phase 2 Progress**: 
+  - S101: 10/10 ✅ COMPLETE
+  - CA1720: 6/6 ✅ COMPLETE
+  - S4487: 14/52 (27% complete)
+  - S2681: 54/80 (67.5% complete)
+  - CS0103: 2/2 ✅ COMPLETE
+
+---
+*Updated: Current Session - 100 Violations Fixed, All Guardrails Maintained*
