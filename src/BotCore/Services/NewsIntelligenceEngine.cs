@@ -11,7 +11,7 @@ public interface INewsIntelligenceEngine
 {
     Task<NewsIntelligence?> GetLatestNewsIntelligenceAsync();
     Task<decimal> GetMarketSentimentAsync(string symbol);
-    bool IsNewsImpactful(string newsText);
+    Task<bool> IsNewsImpactfulAsync(string newsText);
 }
 
 public class NewsItem
@@ -45,6 +45,7 @@ public class NewsIntelligence
 public class NewsIntelligenceEngine : INewsIntelligenceEngine
 {
     private readonly ILogger<NewsIntelligenceEngine> _logger;
+    private readonly OllamaClient? _ollamaClient;
     
     // News intelligence thresholds
     private const decimal HighImpactThreshold = 0.7m;
@@ -78,9 +79,10 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
     private const decimal MinuteBasedSentimentMultiplier = 0.1m;
     private const decimal MillisecondBasedNoiseMultiplier = 0.01m;
 
-    public NewsIntelligenceEngine(ILogger<NewsIntelligenceEngine> logger)
+    public NewsIntelligenceEngine(ILogger<NewsIntelligenceEngine> logger, OllamaClient? ollamaClient = null)
     {
         _logger = logger;
+        _ollamaClient = ollamaClient;
     }
 
     public async Task<NewsIntelligence?> GetLatestNewsIntelligenceAsync()
@@ -285,14 +287,44 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
         }
     }
 
-    public bool IsNewsImpactful(string newsText)
+    public async Task<bool> IsNewsImpactfulAsync(string newsText)
     {
         try
         {
-            // Simple implementation - check for impactful keywords
-            var impactfulKeywords = new[] { "fed", "rate", "inflation", "gdp", "unemployment", "war", "crisis" };
-            return impactfulKeywords.Any(keyword => 
-                newsText.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+            // Fallback to keyword matching if AI not available
+            if (_ollamaClient == null)
+            {
+                var impactfulKeywords = new[] { "fed", "rate", "inflation", "gdp", "unemployment", "war", "crisis", "tariff", "trump" };
+                return impactfulKeywords.Any(keyword => 
+                    newsText.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+            }
+            
+            // AI-powered news understanding
+            var prompt = $@"I am a trading bot that trades ES and NQ futures. Does this news headline impact my trading?
+
+Headline: {newsText}
+
+Answer YES or NO and briefly explain why.";
+            
+            var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+            
+            if (string.IsNullOrEmpty(response))
+            {
+                // Fall back to keyword matching if AI fails
+                var impactfulKeywords = new[] { "fed", "rate", "inflation", "gdp", "unemployment", "war", "crisis", "tariff", "trump" };
+                return impactfulKeywords.Any(keyword => 
+                    newsText.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+            }
+            
+            // Check if response contains YES (case insensitive)
+            var isImpactful = response.Contains("YES", StringComparison.OrdinalIgnoreCase);
+            
+            if (isImpactful)
+            {
+                _logger.LogInformation("📰 [BOT-NEWS-ANALYSIS] {Analysis}", response);
+            }
+            
+            return isImpactful;
         }
         catch (Exception ex)
         {
