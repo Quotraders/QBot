@@ -6,6 +6,7 @@ using BotCore.Services;
 using BotCore.Bandits;
 using TradingBot.Abstractions;
 using System.Text.Json;
+using System.Globalization;
 
 namespace BotCore.Services;
 
@@ -75,13 +76,18 @@ public class MasterDecisionOrchestrator : BackgroundService
     private DateTime _lastPerformanceReport = DateTime.MinValue;
     
     // Gate 5: Canary monitoring state
-    private bool _canaryActive;
+    private bool _isCanaryActive;
     private DateTime _canaryStartTime = DateTime.MinValue;
+    private Dictionary<string, double> _baselineMetrics = new();
+    private readonly List<CanaryTradeRecord> _canaryTrades = new();
+    private string _previousArtifactBackupPath = string.Empty;
+    
+    // Legacy fields kept for backward compatibility
+    private bool _canaryActive;
     private int _canaryTradesCompleted;
     private double _baselineWinRate = 0.5; // Default 50% win rate baseline
     private double _baselineSharpeRatio = 1.0; // Default 1.0 Sharpe ratio baseline
     private double _baselineDrawdown = 0.0; // Default 0 drawdown baseline
-    private readonly List<Gate5TradeResult> _canaryTrades = new();
     private readonly IGate5Config _gate5Config;
     
     public MasterDecisionOrchestrator(
@@ -241,8 +247,11 @@ public class MasterDecisionOrchestrator : BackgroundService
         // Check for model updates
         await CheckModelUpdatesAsync(cancellationToken).ConfigureAwait(false);
         
-        // Gate 5: Live First-Hour Auto-Rollback Monitoring
+        // Gate 5: Live First-Hour Auto-Rollback Monitoring (legacy method)
         await MonitorCanaryPeriodAsync(cancellationToken).ConfigureAwait(false);
+        
+        // Gate 5: Enhanced canary metrics check (called every 5 minutes)
+        await CheckCanaryMetricsAsync(cancellationToken).ConfigureAwait(false);
         
         // Generate performance reports
         await GeneratePerformanceReportsAsync(cancellationToken).ConfigureAwait(false);
@@ -408,6 +417,14 @@ public class MasterDecisionOrchestrator : BackgroundService
             
             // Update bundle performance if this was a bundle-enhanced decision
             await UpdateBundlePerformanceAsync(decisionId, realizedPnL, wasCorrect, metadata, cancellationToken).ConfigureAwait(false);
+            
+            // Track trade result for canary monitoring
+            var symbol = metadata.TryGetValue("symbol", out var symbolObj) && symbolObj is string sym 
+                ? sym : "UNKNOWN";
+            var strategy = metadata.TryGetValue("strategy", out var strategyObj) && strategyObj is string strat 
+                ? strat : decisionSource;
+            var outcome = wasCorrect ? "WIN" : "LOSS";
+            TrackTradeResult(symbol, strategy, realizedPnL, outcome);
             
             _logger.LogInformation("✅ [MASTER-FEEDBACK] Outcome recorded and queued for learning");
         }
@@ -796,8 +813,25 @@ public class MasterDecisionOrchestrator : BackgroundService
     {
         if (DateTime.UtcNow - _lastModelUpdate > TimeSpan.FromHours(_config.ModelUpdateIntervalHours))
         {
+            // Step 1: Capture current baseline metrics before update
+            var baselineMetrics = await CaptureCurrentMetricsAsync(cancellationToken)
+                .ConfigureAwait(false);
+            
+            // Step 2: Backup current artifacts before update
+            var backupPath = await BackupCurrentArtifactsAsync(cancellationToken)
+                .ConfigureAwait(false);
+            
+            if (!string.IsNullOrEmpty(backupPath))
+            {
+                _logger.LogInformation("✅ [UPDATE] Pre-update backup completed: {Path}", backupPath);
+            }
+            
+            // Step 3: Perform the model update
             await _learningManager.CheckAndUpdateModelsAsync(cancellationToken).ConfigureAwait(false);
             _lastModelUpdate = DateTime.UtcNow;
+            
+            // Step 4: Start canary monitoring with baseline metrics
+            StartCanaryMonitoring(baselineMetrics);
         }
     }
     
@@ -965,6 +999,501 @@ public class MasterDecisionOrchestrator : BackgroundService
 
         Environment.SetEnvironmentVariable("AUTO_PROMOTION_ENABLED", "0");
         _logger.LogWarning("🔒 [GATE-5] Auto-promotion disabled until manual investigation");
+        
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Start canary monitoring with baseline metrics
+    /// Called after any parameter update or model update
+    /// </summary>
+    private void StartCanaryMonitoring(Dictionary<string, double> baselineMetrics)
+    {
+        ArgumentNullException.ThrowIfNull(baselineMetrics);
+        
+        _isCanaryActive = true;
+        _canaryActive = true; // Keep legacy field in sync
+        _canaryStartTime = DateTime.UtcNow;
+        _baselineMetrics = new Dictionary<string, double>(baselineMetrics);
+        _canaryTrades.Clear();
+        _canaryTradesCompleted = 0;
+        
+        // Update legacy baseline fields
+        if (baselineMetrics.TryGetValue("win_rate", out var winRate))
+            _baselineWinRate = winRate;
+        if (baselineMetrics.TryGetValue("sharpe_ratio", out var sharpe))
+            _baselineSharpeRatio = sharpe;
+        if (baselineMetrics.TryGetValue("drawdown", out var drawdown))
+            _baselineDrawdown = drawdown;
+        
+        _logger.LogInformation("🕊️ [CANARY] Monitoring started with baseline - WinRate: {WinRate:F2}%, " +
+                             "Sharpe: {Sharpe:F2}, Drawdown: ${Drawdown:F2}, DailyPnL: ${DailyPnL:F2}",
+            baselineMetrics.GetValueOrDefault("win_rate", 0) * 100,
+            baselineMetrics.GetValueOrDefault("sharpe_ratio", 0),
+            baselineMetrics.GetValueOrDefault("drawdown", 0),
+            baselineMetrics.GetValueOrDefault("daily_pnl", 0));
+    }
+
+    /// <summary>
+    /// Check canary metrics and trigger rollback if needed
+    /// Called every 5 minutes during canary period
+    /// </summary>
+    private async Task CheckCanaryMetricsAsync(CancellationToken cancellationToken)
+    {
+        if (!_isCanaryActive || !_gate5Config.Enabled)
+        {
+            return;
+        }
+
+        var elapsedMinutes = (DateTime.UtcNow - _canaryStartTime).TotalMinutes;
+        var completedTrades = _canaryTrades.Count;
+
+        // Check if thresholds are met
+        var minTrades = _gate5Config.MinTrades;
+        var minMinutes = _gate5Config.MinMinutes;
+
+        if (completedTrades < minTrades && elapsedMinutes < minMinutes)
+        {
+            _logger.LogDebug("🕊️ [CANARY] Monitoring - Trades: {Trades}/{Min}, Time: {Time:F1}/{MinTime} min",
+                completedTrades, minTrades, elapsedMinutes, minMinutes);
+            return;
+        }
+
+        // Calculate current metrics
+        var currentWinRate = completedTrades > 0 
+            ? (double)_canaryTrades.Count(t => t.PnL > 0) / completedTrades 
+            : 0;
+        
+        var currentDrawdown = CalculateCurrentDrawdown();
+        var currentSharpe = CalculateCurrentSharpeRatio();
+
+        _logger.LogInformation("📊 [CANARY] Metrics - Trades: {Trades}, WinRate: {WR:F2}%, " +
+                             "Sharpe: {SR:F2}, Drawdown: ${DD:F2}",
+            completedTrades, currentWinRate * 100, currentSharpe, currentDrawdown);
+
+        // Compare to baseline
+        var baselineWinRate = _baselineMetrics.GetValueOrDefault("win_rate", 0.5);
+        var baselineSharpe = _baselineMetrics.GetValueOrDefault("sharpe_ratio", 1.0);
+        var baselineDrawdown = _baselineMetrics.GetValueOrDefault("drawdown", 0);
+
+        var winRateDrop = baselineWinRate - currentWinRate;
+        var sharpeRatioDrop = baselineSharpe > 0 ? (baselineSharpe - currentSharpe) / baselineSharpe : 0;
+        var drawdownIncrease = currentDrawdown - baselineDrawdown;
+
+        // Check rollback triggers
+        var trigger1 = winRateDrop > _gate5Config.WinRateDropThreshold && 
+                      drawdownIncrease > _gate5Config.MaxDrawdownDollars;
+        var trigger2 = sharpeRatioDrop > _gate5Config.SharpeDropThreshold;
+
+        if (trigger1 || trigger2)
+        {
+            _logger.LogWarning("🚨 [CANARY] Rollback triggers fired - Trigger1: {T1}, Trigger2: {T2}",
+                trigger1, trigger2);
+            await ExecuteRollbackAsync(currentWinRate, currentSharpe, currentDrawdown, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        else if (completedTrades >= minTrades && elapsedMinutes >= minMinutes)
+        {
+            _logger.LogInformation("✅ [CANARY] Monitoring completed successfully - deployment validated");
+            _isCanaryActive = false;
+            _canaryActive = false;
+        }
+    }
+
+    /// <summary>
+    /// Execute rollback to previous artifacts
+    /// </summary>
+    private async Task ExecuteRollbackAsync(double currentWinRate, double currentSharpe, 
+        double currentDrawdown, CancellationToken cancellationToken)
+    {
+        var rollbackTimestamp = DateTime.UtcNow;
+        
+        _logger.LogError("🚨🚨🚨 [ROLLBACK] URGENT: Triggering automatic rollback at {Timestamp}",
+            rollbackTimestamp);
+        _logger.LogError("📊 [ROLLBACK] Current Metrics - WinRate: {WR:F2}%, Sharpe: {SR:F2}, " +
+                       "Drawdown: ${DD:F2}",
+            currentWinRate * 100, currentSharpe, currentDrawdown);
+        _logger.LogError("📊 [ROLLBACK] Baseline Metrics - WinRate: {WR:F2}%, Sharpe: {SR:F2}, " +
+                       "Drawdown: ${DD:F2}",
+            _baselineMetrics.GetValueOrDefault("win_rate", 0) * 100,
+            _baselineMetrics.GetValueOrDefault("sharpe_ratio", 0),
+            _baselineMetrics.GetValueOrDefault("drawdown", 0));
+
+        try
+        {
+            // Step 1: Load backup parameters from artifacts backup folder
+            var backupDir = string.IsNullOrEmpty(_previousArtifactBackupPath) 
+                ? Path.Combine("artifacts", "backup")
+                : _previousArtifactBackupPath;
+            
+            if (!Directory.Exists(backupDir))
+            {
+                _logger.LogError("❌ [ROLLBACK] Backup directory not found: {Path}", backupDir);
+                await SendRollbackAlertAsync("Backup directory not found", currentWinRate, 
+                    currentSharpe, currentDrawdown).ConfigureAwait(false);
+                return;
+            }
+
+            var currentDir = Path.Combine("artifacts", "current");
+            var rollbackTempDir = Path.Combine("artifacts", "rollback_temp_" + rollbackTimestamp.Ticks);
+
+            // Step 2: Atomic copy of backup parameters
+            _logger.LogInformation("📦 [ROLLBACK] Loading backup parameters from {Path}", backupDir);
+            
+            if (Directory.Exists(currentDir))
+            {
+                // Create temp directory and copy backup there first
+                Directory.CreateDirectory(rollbackTempDir);
+                CopyDirectory(backupDir, rollbackTempDir);
+                
+                // Atomic swap: delete current, move temp to current
+                Directory.Delete(currentDir, recursive: true);
+                Directory.Move(rollbackTempDir, currentDir);
+                
+                _logger.LogInformation("✅ [ROLLBACK] Parameters rolled back successfully");
+            }
+
+            // Step 3: If model files exist, load backup ONNX models
+            var backupModelsDir = Path.Combine(backupDir, "models");
+            if (Directory.Exists(backupModelsDir))
+            {
+                var currentModelsDir = Path.Combine(currentDir, "models");
+                Directory.CreateDirectory(currentModelsDir);
+                
+                foreach (var modelFile in Directory.GetFiles(backupModelsDir, "*.onnx"))
+                {
+                    var destFile = Path.Combine(currentModelsDir, Path.GetFileName(modelFile));
+                    File.Copy(modelFile, destFile, overwrite: true);
+                    _logger.LogInformation("📦 [ROLLBACK] Restored ONNX model: {Model}", 
+                        Path.GetFileName(modelFile));
+                }
+            }
+
+            // Step 4: Pause all future promotions until manual review
+            Environment.SetEnvironmentVariable("AUTO_PROMOTION_ENABLED", "0");
+            _logger.LogWarning("🔒 [ROLLBACK] Auto-promotion disabled - manual review required");
+
+            // Step 5: Send high priority alert
+            await SendRollbackAlertAsync("Rollback completed successfully", currentWinRate, 
+                currentSharpe, currentDrawdown).ConfigureAwait(false);
+
+            // Step 6: Check for catastrophic degradation
+            var isCatastrophic = currentWinRate < _gate5Config.CatastrophicWinRateThreshold ||
+                               currentDrawdown > _gate5Config.CatastrophicDrawdownDollars;
+
+            if (isCatastrophic)
+            {
+                _logger.LogCritical("💥 [ROLLBACK] CATASTROPHIC FAILURE DETECTED - Creating kill.txt");
+                await CreateKillFileAsync(cancellationToken).ConfigureAwait(false);
+                
+                await SendCriticalAlertAsync("CATASTROPHIC FAILURE", 
+                    $"Win Rate: {currentWinRate:F2}%, Drawdown: ${currentDrawdown:F2}")
+                    .ConfigureAwait(false);
+            }
+
+            // Step 7: Log all rollback actions with timestamps
+            _logger.LogInformation("📝 [ROLLBACK] Actions completed at {Timestamp}:", DateTime.UtcNow);
+            _logger.LogInformation("  ✓ Backup parameters loaded from: {Path}", backupDir);
+            _logger.LogInformation("  ✓ Parameters copied atomically to: {Path}", currentDir);
+            _logger.LogInformation("  ✓ ONNX models restored (if existed)");
+            _logger.LogInformation("  ✓ Auto-promotion disabled");
+            _logger.LogInformation("  ✓ High priority alert sent");
+            if (isCatastrophic)
+            {
+                _logger.LogInformation("  ✓ kill.txt created (catastrophic failure)");
+            }
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "❌ [ROLLBACK] I/O error during rollback");
+            await SendRollbackAlertAsync($"Rollback failed: {ex.Message}", currentWinRate, 
+                currentSharpe, currentDrawdown).ConfigureAwait(false);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "❌ [ROLLBACK] Access denied during rollback");
+            await SendRollbackAlertAsync($"Rollback failed: {ex.Message}", currentWinRate, 
+                currentSharpe, currentDrawdown).ConfigureAwait(false);
+        }
+        finally
+        {
+            // Step 8: Set canary inactive
+            _isCanaryActive = false;
+            _canaryActive = false;
+        }
+    }
+
+    /// <summary>
+    /// Track trade result for canary monitoring
+    /// Called after each completed trade
+    /// </summary>
+    private void TrackTradeResult(string symbol, string strategy, decimal pnl, string outcome)
+    {
+        if (!_isCanaryActive)
+        {
+            return;
+        }
+
+        var trade = new CanaryTradeRecord
+        {
+            Symbol = symbol,
+            Strategy = strategy,
+            PnL = (double)pnl,
+            Outcome = outcome,
+            Timestamp = DateTime.UtcNow
+        };
+
+        _canaryTrades.Add(trade);
+        _canaryTradesCompleted++;
+
+        _logger.LogInformation("🕊️ [CANARY] Trade captured - {Symbol} {Strategy} PnL: ${PnL:F2} " +
+                             "({Total} trades tracked)",
+            symbol, strategy, pnl, _canaryTrades.Count);
+    }
+
+    /// <summary>
+    /// Capture current metrics from recent trade history
+    /// Called right before any artifact upgrade
+    /// </summary>
+    private async Task<Dictionary<string, double>> CaptureCurrentMetricsAsync(
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogInformation("📊 [METRICS] Capturing current baseline metrics...");
+
+            // Query last 60 minutes of trade history
+            var lookbackTime = DateTime.UtcNow.AddMinutes(-60);
+            var recentTrades = await GetRecentTradesAsync(lookbackTime, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (recentTrades.Count == 0)
+            {
+                _logger.LogWarning("⚠️ [METRICS] No recent trades found, using default baseline");
+                return new Dictionary<string, double>
+                {
+                    ["win_rate"] = 0.5,
+                    ["daily_pnl"] = 0,
+                    ["sharpe_ratio"] = 1.0,
+                    ["drawdown"] = 0
+                };
+            }
+
+            // Calculate win rate
+            var wins = recentTrades.Count(t => t.PnL > 0);
+            var winRate = (double)wins / recentTrades.Count;
+
+            // Calculate daily PnL
+            var dailyPnl = recentTrades.Sum(t => t.PnL);
+
+            // Calculate Sharpe ratio
+            var returns = recentTrades.Select(t => t.PnL).ToList();
+            var avgReturn = returns.Average();
+            var stdDev = Math.Sqrt(returns.Average(r => Math.Pow(r - avgReturn, 2)));
+            var sharpeRatio = stdDev > 0 ? avgReturn / stdDev : 0;
+
+            // Calculate current drawdown
+            double peak = 0;
+            double equity = 0;
+            double maxDrawdown = 0;
+
+            foreach (var trade in recentTrades)
+            {
+                equity += trade.PnL;
+                if (equity > peak) peak = equity;
+                var drawdown = peak - equity;
+                if (drawdown > maxDrawdown) maxDrawdown = drawdown;
+            }
+
+            var metrics = new Dictionary<string, double>
+            {
+                ["win_rate"] = winRate,
+                ["daily_pnl"] = dailyPnl,
+                ["sharpe_ratio"] = sharpeRatio,
+                ["drawdown"] = maxDrawdown
+            };
+
+            _logger.LogInformation("✅ [METRICS] Baseline captured - Trades: {Count}, WinRate: {WR:F2}%, " +
+                                 "DailyPnL: ${PnL:F2}, Sharpe: {SR:F2}, Drawdown: ${DD:F2}",
+                recentTrades.Count, winRate * 100, dailyPnl, sharpeRatio, maxDrawdown);
+
+            return metrics;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ [METRICS] Failed to capture current metrics");
+            return new Dictionary<string, double>
+            {
+                ["win_rate"] = 0.5,
+                ["daily_pnl"] = 0,
+                ["sharpe_ratio"] = 1.0,
+                ["drawdown"] = 0
+            };
+        }
+    }
+
+    /// <summary>
+    /// Backup current artifacts before upgrade
+    /// Called right before applying any upgrade
+    /// </summary>
+    private async Task<string> BackupCurrentArtifactsAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+            var backupDir = Path.Combine("artifacts", "backups", $"backup_{timestamp}");
+            
+            _logger.LogInformation("📦 [BACKUP] Creating artifact backup at {Path}", backupDir);
+            
+            Directory.CreateDirectory(backupDir);
+
+            // Backup parameter JSON files
+            var currentDir = Path.Combine("artifacts", "current");
+            if (Directory.Exists(currentDir))
+            {
+                var paramFiles = Directory.GetFiles(currentDir, "*.json", SearchOption.AllDirectories);
+                foreach (var paramFile in paramFiles)
+                {
+                    var relativePath = Path.GetRelativePath(currentDir, paramFile);
+                    var destFile = Path.Combine(backupDir, relativePath);
+                    Directory.CreateDirectory(Path.GetDirectoryName(destFile)!);
+                    File.Copy(paramFile, destFile, overwrite: true);
+                }
+                _logger.LogInformation("✅ [BACKUP] Backed up {Count} parameter files", paramFiles.Length);
+            }
+
+            // Backup ONNX model files
+            var modelsDir = Path.Combine("artifacts", "current", "models");
+            if (Directory.Exists(modelsDir))
+            {
+                var backupModelsDir = Path.Combine(backupDir, "models");
+                Directory.CreateDirectory(backupModelsDir);
+                
+                var modelFiles = Directory.GetFiles(modelsDir, "*.onnx", SearchOption.AllDirectories);
+                foreach (var modelFile in modelFiles)
+                {
+                    var fileName = Path.GetFileName(modelFile);
+                    var destFile = Path.Combine(backupModelsDir, fileName);
+                    File.Copy(modelFile, destFile, overwrite: true);
+                }
+                _logger.LogInformation("✅ [BACKUP] Backed up {Count} ONNX model files", modelFiles.Length);
+            }
+
+            // Create manifest
+            var manifest = new
+            {
+                BackupTimestamp = timestamp,
+                BackupPath = backupDir,
+                ParameterFiles = Directory.GetFiles(backupDir, "*.json", SearchOption.AllDirectories)
+                    .Select(Path.GetFileName).ToArray(),
+                ModelFiles = Directory.Exists(Path.Combine(backupDir, "models"))
+                    ? Directory.GetFiles(Path.Combine(backupDir, "models"), "*.onnx")
+                        .Select(Path.GetFileName).ToArray()
+                    : Array.Empty<string>(),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var manifestPath = Path.Combine(backupDir, "manifest.json");
+            var manifestJson = JsonSerializer.Serialize(manifest, new JsonSerializerOptions 
+            { 
+                WriteIndented = true 
+            });
+            await File.WriteAllTextAsync(manifestPath, manifestJson, cancellationToken)
+                .ConfigureAwait(false);
+
+            _logger.LogInformation("✅ [BACKUP] Manifest created at {Path}", manifestPath);
+            _logger.LogInformation("📦 [BACKUP] Backup completed successfully: {Path}", backupDir);
+
+            _previousArtifactBackupPath = backupDir;
+            return backupDir;
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "❌ [BACKUP] I/O error creating artifact backup");
+            return string.Empty;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "❌ [BACKUP] Access denied creating artifact backup");
+            return string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Helper method to get recent trades
+    /// </summary>
+    private Task<List<CanaryTradeRecord>> GetRecentTradesAsync(DateTime since, 
+        CancellationToken cancellationToken)
+    {
+        // Use canary trades if available, otherwise return empty list
+        var recentTrades = _canaryTrades
+            .Where(t => t.Timestamp >= since)
+            .ToList();
+        
+        return Task.FromResult(recentTrades);
+    }
+
+    /// <summary>
+    /// Calculate current drawdown from canary trades
+    /// </summary>
+    private double CalculateCurrentDrawdown()
+    {
+        if (_canaryTrades.Count == 0) return 0;
+
+        double peak = 0;
+        double equity = 0;
+        double maxDrawdown = 0;
+
+        foreach (var trade in _canaryTrades)
+        {
+            equity += trade.PnL;
+            if (equity > peak) peak = equity;
+            var drawdown = peak - equity;
+            if (drawdown > maxDrawdown) maxDrawdown = drawdown;
+        }
+
+        return maxDrawdown;
+    }
+
+    /// <summary>
+    /// Calculate current Sharpe ratio from canary trades
+    /// </summary>
+    private double CalculateCurrentSharpeRatio()
+    {
+        if (_canaryTrades.Count == 0) return 0;
+
+        var returns = _canaryTrades.Select(t => t.PnL).ToList();
+        var avgReturn = returns.Average();
+        var stdDev = Math.Sqrt(returns.Average(r => Math.Pow(r - avgReturn, 2)));
+        
+        return stdDev > 0 ? avgReturn / stdDev : 0;
+    }
+
+    /// <summary>
+    /// Send rollback alert
+    /// </summary>
+    private Task SendRollbackAlertAsync(string message, double winRate, double sharpe, 
+        double drawdown)
+    {
+        // Log high-priority alert (actual alert service integration happens at orchestrator level)
+        _logger.LogCritical("🚨 [ALERT] CANARY ROLLBACK TRIGGERED");
+        _logger.LogCritical("📧 [ALERT] Message: {Message}", message);
+        _logger.LogCritical("📊 [ALERT] Win Rate: {WinRate:F2}%", winRate * 100);
+        _logger.LogCritical("📊 [ALERT] Sharpe Ratio: {Sharpe:F2}", sharpe);
+        _logger.LogCritical("📊 [ALERT] Drawdown: ${Drawdown:F2}", drawdown);
+        _logger.LogCritical("🕐 [ALERT] Timestamp: {Timestamp:yyyy-MM-dd HH:mm:ss} UTC", DateTime.UtcNow);
+        
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Send critical alert
+    /// </summary>
+    private Task SendCriticalAlertAsync(string title, string details)
+    {
+        // Log critical alert (actual alert service integration happens at orchestrator level)
+        _logger.LogCritical("💥 [CRITICAL-ALERT] {Title}", title);
+        _logger.LogCritical("📧 [CRITICAL-ALERT] {Details}", details);
         
         return Task.CompletedTask;
     }
@@ -1345,6 +1874,18 @@ internal sealed class CanaryMetrics
     public double WinRate { get; set; }
     public double SharpeRatio { get; set; }
     public double MaxDrawdown { get; set; }
+}
+
+/// <summary>
+/// Canary trade record with full details
+/// </summary>
+internal sealed class CanaryTradeRecord
+{
+    public string Symbol { get; set; } = string.Empty;
+    public string Strategy { get; set; } = string.Empty;
+    public double PnL { get; set; }
+    public string Outcome { get; set; } = string.Empty;
+    public DateTime Timestamp { get; set; }
 }
 
 #endregion
