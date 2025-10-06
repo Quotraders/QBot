@@ -72,6 +72,38 @@ namespace BotCore.Strategy
         public static void ResetDebugCounters() => _rejects.Clear();
         public static IReadOnlyDictionary<string, int> GetDebugCounters() => new Dictionary<string, int>(_rejects);
 
+        /// <summary>
+        /// Get current trading session name for parameter loading.
+        /// Maps time ranges to session names: Overnight, RTH, PostRTH
+        /// </summary>
+        private static string GetSessionName(DateTime utcNow)
+        {
+            try
+            {
+                var etNow = TimeZoneInfo.ConvertTimeFromUtc(utcNow, Et);
+                var timeOfDay = etNow.TimeOfDay;
+                
+                // 18:00 (6 PM) to 08:30 (8:30 AM) next day = Overnight
+                if (timeOfDay >= new TimeSpan(18, 0, 0) || timeOfDay < new TimeSpan(8, 30, 0))
+                    return "Overnight";
+                
+                // 09:30 to 16:00 = RTH (Regular Trading Hours)
+                if (timeOfDay >= new TimeSpan(9, 30, 0) && timeOfDay < new TimeSpan(16, 0, 0))
+                    return "RTH";
+                
+                // 16:00 to 18:00 = PostRTH
+                if (timeOfDay >= new TimeSpan(16, 0, 0) && timeOfDay < new TimeSpan(18, 0, 0))
+                    return "PostRTH";
+                
+                return "RTH"; // Default fallback
+            }
+            catch (Exception)
+            {
+                // Fallback to RTH if timezone conversion fails
+                return "RTH";
+            }
+        }
+
         public static List<Candidate> S3(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
         {
             ArgumentNullException.ThrowIfNull(symbol);
@@ -120,13 +152,33 @@ namespace BotCore.Strategy
             }
             bars = barsEt;
 
+            // Gate-driven parameter loading: Load session-optimized parameters
+            // Falls back to S3RuntimeConfig if loading fails (maintains backward compatibility)
+            TradingBot.Abstractions.StrategyParameters.S3Parameters? sessionParams = null;
+            try
+            {
+                var sessionName = GetSessionName(DateTime.UtcNow);
+                var baseParams = TradingBot.Abstractions.StrategyParameters.S3Parameters.LoadOptimal();
+                sessionParams = baseParams.LoadOptimalForSession(sessionName);
+            }
+            catch (Exception)
+            {
+                // Parameter loading failed, will use S3RuntimeConfig defaults
+                sessionParams = null;
+            }
+
             var cfg = S3RuntimeConfig.Instance;
             var last = bars[^1];
+
+            // Use loaded parameters with fallback to RuntimeConfig
+            var minVolume = sessionParams?.MinVolume ?? cfg.MinVolume;
+            var newsBlockBeforeMin = sessionParams?.NewsBlockBeforeMin ?? cfg.NewsBlockBeforeMin;
+            var newsBlockAfterMin = sessionParams?.NewsBlockAfterMin ?? cfg.NewsBlockAfterMin;
 
             // News block (bypass in backtest)
             if (!BtBypass("news"))
             {
-                if (InNewsWindow(last.Start, cfg.NewsOnMinutes, cfg.NewsBlockBeforeMin, cfg.NewsBlockAfterMin))
+                if (InNewsWindow(last.Start, cfg.NewsOnMinutes, newsBlockBeforeMin, newsBlockAfterMin))
                 {
                     Reject("news_window");
                     return lst;
@@ -134,7 +186,7 @@ namespace BotCore.Strategy
             }
 
             // Volume gate
-            if (last.Volume < cfg.MinVolume)
+            if (last.Volume < minVolume)
             {
                 Reject("min_volume");
                 return lst;
