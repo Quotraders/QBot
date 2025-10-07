@@ -831,6 +831,13 @@ Please check the configuration and ensure all required services are registered.
             Console.WriteLine("🔇 [OLLAMA] Bot voice disabled - will operate silently");
         }
         
+        // Register AI Commentary Services - Enhanced self-awareness features
+        services.AddSingleton<BotCore.Services.ParameterChangeTracker>();
+        services.AddSingleton<BotCore.Services.MarketSnapshotStore>();
+        services.AddSingleton<BotCore.Services.RiskAssessmentCommentary>();
+        services.AddSingleton<BotCore.Services.AdaptiveLearningCommentary>();
+        services.AddSingleton<BotCore.Services.HistoricalPatternRecognitionService>();
+        
         // Register BotAlertService - Proactive alerting system for bot self-awareness
         services.AddSingleton<BotCore.Services.BotAlertService>();
         
@@ -844,6 +851,11 @@ Please check the configuration and ensure all required services are registered.
             var gate4Config = provider.GetService<TradingBot.Abstractions.IGate4Config>();
             var ollamaClient = provider.GetService<BotCore.Services.OllamaClient>();
             var economicEventManager = provider.GetService<BotCore.Market.IEconomicEventManager>();
+            var riskCommentary = provider.GetService<BotCore.Services.RiskAssessmentCommentary>();
+            var learningCommentary = provider.GetService<BotCore.Services.AdaptiveLearningCommentary>();
+            var snapshotStore = provider.GetService<BotCore.Services.MarketSnapshotStore>();
+            var historicalPatterns = provider.GetService<BotCore.Services.HistoricalPatternRecognitionService>();
+            var parameterTracker = provider.GetService<BotCore.Services.ParameterChangeTracker>();
             
             return new BotCore.Brain.UnifiedTradingBrain(
                 logger,
@@ -852,7 +864,12 @@ Please check the configuration and ensure all required services are registered.
                 cvarPPO,
                 gate4Config,
                 ollamaClient,
-                economicEventManager);
+                economicEventManager,
+                riskCommentary,
+                learningCommentary,
+                snapshotStore,
+                historicalPatterns,
+                parameterTracker);
         });
         
         // Register BotPerformanceReporter - AI-generated performance summaries (Feature 3)
@@ -2190,6 +2207,115 @@ internal static class EnvironmentLoader
     }
 
     /// <summary>
+    /// Handle chat commands like /risk, /patterns, /zones, /status, /health
+    /// </summary>
+    private static async Task<string> HandleChatCommandAsync(string command, IServiceProvider services)
+    {
+        const decimal DefaultAtrForRiskAnalysis = 10m;
+        const int DefaultLookbackMinutes = 60;
+        
+        try
+        {
+            var parts = command.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0)
+            {
+                return "Unknown command. Available: /risk [symbol], /patterns [symbol], /zones [symbol], /status, /health";
+            }
+
+            var cmd = parts[0].ToLowerInvariant();
+            var symbol = parts.Length > 1 ? parts[1].ToUpperInvariant() : "NQ";
+
+            switch (cmd)
+            {
+                case "/risk":
+                    var riskCommentary = services.GetService<BotCore.Services.RiskAssessmentCommentary>();
+                    if (riskCommentary != null)
+                    {
+                        var zoneService = services.GetService<Zones.IZoneService>();
+                        if (zoneService != null)
+                        {
+                            var snapshot = zoneService.GetSnapshot(symbol);
+                            var currentPrice = snapshot.NearestDemand?.Mid ?? snapshot.NearestSupply?.Mid ?? 0m;
+                            var result = await riskCommentary.AnalyzeRiskAsync(symbol, currentPrice, DefaultAtrForRiskAnalysis);
+                            return string.IsNullOrEmpty(result) ? $"Risk analysis not available for {symbol}" : result;
+                        }
+                    }
+                    return "Risk assessment service not available";
+
+                case "/patterns":
+                    var patternEngine = services.GetService<BotCore.Patterns.PatternEngine>();
+                    if (patternEngine != null)
+                    {
+                        var scores = await patternEngine.GetCurrentScoresAsync(symbol);
+                        var patterns = string.Join(", ", scores.DetectedPatterns.Select(p => $"{p.Name} ({p.Confidence:P0})"));
+                        return $"**Patterns for {symbol}:**\n" +
+                               $"Bull Score: {scores.BullScore:F2}\n" +
+                               $"Bear Score: {scores.BearScore:F2}\n" +
+                               $"Confidence: {scores.OverallConfidence:P0}\n" +
+                               $"Detected: {(string.IsNullOrEmpty(patterns) ? "None" : patterns)}";
+                    }
+                    return "Pattern engine not available";
+
+                case "/zones":
+                    var zoneServiceZones = services.GetService<Zones.IZoneService>();
+                    if (zoneServiceZones != null)
+                    {
+                        var snapshot = zoneServiceZones.GetSnapshot(symbol);
+                        var demand = snapshot.NearestDemand != null 
+                            ? $"Demand: {snapshot.NearestDemand.Mid:F2} ({snapshot.DistToDemandAtr:F1} ATR, {snapshot.NearestDemand.TouchCount} touches)"
+                            : "Demand: None";
+                        var supply = snapshot.NearestSupply != null
+                            ? $"Supply: {snapshot.NearestSupply.Mid:F2} ({snapshot.DistToSupplyAtr:F1} ATR, {snapshot.NearestSupply.TouchCount} touches)"
+                            : "Supply: None";
+                        return $"**Zones for {symbol}:**\n{demand}\n{supply}\n" +
+                               $"Breakout Score: {snapshot.BreakoutScore:F2}\n" +
+                               $"Pressure: {snapshot.ZonePressure:F2}";
+                    }
+                    return "Zone service not available";
+
+                case "/status":
+                    var brain = services.GetService<BotCore.Brain.UnifiedTradingBrain>();
+                    if (brain != null)
+                    {
+                        var method = brain.GetType().GetMethod("GatherCurrentContext",
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        if (method != null)
+                        {
+                            var context = method.Invoke(brain, null) as string ?? "Context unavailable";
+                            return $"**Bot Status:**\n{context}";
+                        }
+                    }
+                    return "Status not available";
+
+                case "/health":
+                    var healthMonitor = services.GetService<BotCore.Services.ComponentHealthMonitoringService>();
+                    if (healthMonitor != null)
+                    {
+                        return "**Component Health:**\nHealth monitoring service available. Check logs for detailed status.";
+                    }
+                    return "Health monitoring not available";
+
+                case "/learning":
+                    var learningCommentary = services.GetService<BotCore.Services.AdaptiveLearningCommentary>();
+                    if (learningCommentary != null)
+                    {
+                        var summary = learningCommentary.GetLearningSummary(DefaultLookbackMinutes);
+                        return $"**Recent Learning:**\n{summary}";
+                    }
+                    return "Learning commentary not available";
+
+                default:
+                    return $"Unknown command: {cmd}\n" +
+                           "Available: /risk [symbol], /patterns [symbol], /zones [symbol], /status, /health, /learning";
+            }
+        }
+        catch (Exception ex)
+        {
+            return $"Error processing command: {ex.Message}";
+        }
+    }
+
+    /// <summary>
     /// Startup class for web server configuration
     /// </summary>
     internal class Startup
@@ -2240,6 +2366,14 @@ internal static class EnvironmentLoader
                         // Get services
                         var ollamaClient = context.RequestServices.GetService<BotCore.Services.OllamaClient>();
                         var brain = context.RequestServices.GetService<BotCore.Brain.UnifiedTradingBrain>();
+                        
+                        // Check for command syntax (starts with /)
+                        if (!string.IsNullOrEmpty(userMessage) && userMessage.StartsWith("/"))
+                        {
+                            var commandResponse = await HandleChatCommandAsync(userMessage, context.RequestServices);
+                            await context.Response.WriteAsJsonAsync(new { response = commandResponse });
+                            return;
+                        }
 
                         // Check if bot voice is enabled
                         if (ollamaClient == null)

@@ -153,6 +153,15 @@ namespace BotCore.Brain
         private readonly ConcurrentDictionary<string, TradingPerformance> _performance = new();
         private readonly CVaRPPO _cvarPPO; // Direct injection instead of loading from memory
         private readonly BotCore.Services.OllamaClient? _ollamaClient; // Optional AI conversation client
+        private readonly BotCore.Services.RiskAssessmentCommentary? _riskCommentary;
+        private readonly BotCore.Services.AdaptiveLearningCommentary? _learningCommentary;
+        private readonly BotCore.Services.MarketSnapshotStore? _snapshotStore;
+        private readonly BotCore.Services.HistoricalPatternRecognitionService? _historicalPatterns;
+        private readonly BotCore.Services.ParameterChangeTracker? _parameterTracker;
+        
+        // Latest market data for risk analysis (updated in MakeIntelligentDecisionAsync)
+        private Env? _latestEnv;
+        private IList<Bar>? _latestBars;
         
         // ML Models for different decision points
         private object? _lstmPricePredictor;
@@ -257,7 +266,12 @@ namespace BotCore.Brain
             CVaRPPO cvarPPO,
             IGate4Config? gate4Config = null,
             BotCore.Services.OllamaClient? ollamaClient = null,
-            BotCore.Market.IEconomicEventManager? economicEventManager = null)
+            BotCore.Market.IEconomicEventManager? economicEventManager = null,
+            BotCore.Services.RiskAssessmentCommentary? riskCommentary = null,
+            BotCore.Services.AdaptiveLearningCommentary? learningCommentary = null,
+            BotCore.Services.MarketSnapshotStore? snapshotStore = null,
+            BotCore.Services.HistoricalPatternRecognitionService? historicalPatterns = null,
+            BotCore.Services.ParameterChangeTracker? parameterTracker = null)
         {
             _logger = logger;
             _memoryManager = memoryManager;
@@ -266,6 +280,11 @@ namespace BotCore.Brain
             _gate4Config = gate4Config ?? Gate4Config.LoadFromEnvironment();
             _ollamaClient = ollamaClient; // Optional AI conversation client
             _economicEventManager = economicEventManager; // Optional economic calendar (Phase 2)
+            _riskCommentary = riskCommentary;
+            _learningCommentary = learningCommentary;
+            _snapshotStore = snapshotStore;
+            _historicalPatterns = historicalPatterns;
+            _parameterTracker = parameterTracker;
             
             // Initialize Neural UCB for strategy selection using ONNX-based neural network
             var onnxLoader = new OnnxModelLoader(new Microsoft.Extensions.Logging.Abstractions.NullLogger<OnnxModelLoader>());
@@ -364,6 +383,10 @@ namespace BotCore.Brain
             ArgumentNullException.ThrowIfNull(levels);
             ArgumentNullException.ThrowIfNull(bars);
             ArgumentNullException.ThrowIfNull(risk);
+            
+            // Store latest market data for use in risk analysis and commentary
+            _latestEnv = env;
+            _latestBars = bars;
             
             var startTime = DateTime.UtcNow;
             LastDecision = startTime;
@@ -485,6 +508,42 @@ namespace BotCore.Brain
                         {
                             _logger.LogInformation("💬 [BOT-COMMENTARY] {Commentary}", commentary);
                         }
+                    }
+                }
+
+                // Hook 1: Capture market snapshot (if enabled)
+                if (_snapshotStore != null && Environment.GetEnvironmentVariable("SNAPSHOT_ENABLED") == "true")
+                {
+                    try
+                    {
+                        // Use actual market data from available sources
+                        var vixValue = env.volz ?? 0m; // Use volatility z-score as proxy for VIX
+                        var currentPrice = bars.LastOrDefault()?.Close ?? 0m;
+                        
+                        // Determine session based on time of day
+                        var currentHour = DateTime.UtcNow.Hour;
+                        var sessionName = currentHour >= 13 && currentHour < 20 ? "RegularTrading" : 
+                                         currentHour >= 8 && currentHour < 13 ? "PreMarket" :
+                                         currentHour >= 20 && currentHour < 22 ? "AfterHours" : "Closed";
+                        
+                        var snapshot = BotCore.Services.MarketSnapshotStore.CreateSnapshot(
+                            symbol: decision.Symbol,
+                            vix: vixValue,
+                            trend: context.TrendStrength > 0.2 ? "Bullish" : context.TrendStrength < -0.2 ? "Bearish" : "Neutral",
+                            session: sessionName,
+                            currentPrice: currentPrice,
+                            strategy: decision.RecommendedStrategy,
+                            direction: decision.PriceDirection.ToString(),
+                            confidence: decision.StrategyConfidence,
+                            size: decision.PositionSize
+                        );
+                        _snapshotStore.StoreSnapshot(snapshot);
+                        _logger.LogTrace("📸 [SNAPSHOT] Captured market snapshot for {Symbol}: {Strategy} {Direction}", 
+                            symbol, decision.RecommendedStrategy, decision.PriceDirection);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [SNAPSHOT] Failed to capture market snapshot");
                     }
                 }
 
@@ -661,6 +720,32 @@ namespace BotCore.Brain
                     // Update strategy knowledge even if it wasn't executed
                     await _strategySelector.UpdateArmAsync(strategy, contextVector, crossLearningReward, cancellationToken).ConfigureAwait(false);
                     
+                    // Hook 4: Track parameter changes (if enabled)
+                    // Note: Parameter tracking happens after UpdateArmAsync to detect any changes made
+                    if (_parameterTracker != null && Environment.GetEnvironmentVariable("PARAMETER_TRACKING_ENABLED") == "true")
+                    {
+                        try
+                        {
+                            // Record the parameter update with outcome context
+                            var reason = wasCorrect ? "Successful trade outcome" : "Learning from unsuccessful trade";
+                            _parameterTracker.RecordChange(
+                                strategyName: strategy,
+                                parameterName: "StrategyWeight",
+                                oldValue: reward.ToString("F3"),
+                                newValue: crossLearningReward.ToString("F3"),
+                                reason: reason,
+                                outcomePnl: reward,
+                                wasCorrect: wasCorrect
+                            );
+                            _logger.LogTrace("📊 [PARAM-TRACKING] Tracked parameter update for {Strategy}: old={OldReward:F3}, new={NewReward:F3}", 
+                                strategy, reward, crossLearningReward);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "⚠️ [PARAM-TRACKING] Failed to track parameter change");
+                        }
+                    }
+                    
                     // Update strategy-specific learning patterns
                     UpdateStrategyOptimalConditions(strategy, context, crossLearningReward > BaseConfidenceThreshold);
                 }
@@ -685,8 +770,8 @@ namespace BotCore.Brain
         {
             try
             {
-                // Get VIX level (use a default if not available)
-                var vixLevel = 15.0m; // Default VIX, could be fetched from market data
+                // Get VIX level from latest context (use 0 if unavailable to avoid hiding missing data)
+                var vixLevel = _marketContexts.Values.LastOrDefault()?.Volatility ?? 0m;
                 
                 // Get today's P&L
                 var todayPnl = _dailyPnl;
@@ -740,6 +825,100 @@ namespace BotCore.Brain
             {
                 var currentContext = GatherCurrentContext();
                 
+                // Hook 2: Add risk assessment commentary (if enabled)
+                string riskContext = string.Empty;
+                if (_riskCommentary != null && Environment.GetEnvironmentVariable("RISK_COMMENTARY_ENABLED") == "true")
+                {
+                    try
+                    {
+                        // Use actual market data from latest decision
+                        var currentPrice = _latestBars?.LastOrDefault()?.Close ?? 0m;
+                        var atr = _latestEnv?.atr ?? 0m;
+                        
+                        // Check if async mode is enabled
+                        var asyncMode = Environment.GetEnvironmentVariable("RISK_COMMENTARY_ASYNC") == "true";
+                        
+                        // Only proceed if we have valid data
+                        if (currentPrice > 0m && atr > 0m)
+                        {
+                            if (asyncMode)
+                            {
+                                // Fire-and-forget: Start analysis in background, continue trading immediately
+                                _riskCommentary.AnalyzeRiskFireAndForget(decision.Symbol, currentPrice, atr);
+                                _logger.LogTrace("🚀 [RISK-COMMENTARY] Started background analysis (async mode)");
+                            }
+                            else
+                            {
+                                // Blocking mode: Wait for result (for debugging/testing only)
+                                riskContext = await _riskCommentary.AnalyzeRiskAsync(
+                                    decision.Symbol, currentPrice, atr).ConfigureAwait(false);
+                                    
+                                if (!string.IsNullOrEmpty(riskContext))
+                                {
+                                    _logger.LogInformation("🧠 [RISK-COMMENTARY] {Commentary}", riskContext);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogWarning("⚠️ [RISK-COMMENTARY] Skipping - missing price or ATR data");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary");
+                    }
+                }
+                
+                // Hook 6: Historical pattern recognition (if enabled)
+                string historicalContext = string.Empty;
+                if (_historicalPatterns != null && _snapshotStore != null && 
+                    Environment.GetEnvironmentVariable("PATTERN_RECOGNITION_ENABLED") == "true")
+                {
+                    try
+                    {
+                        // Use actual market data for similarity search
+                        var vixValue = _latestEnv?.volz ?? 0m;
+                        var currentPrice = _latestBars?.LastOrDefault()?.Close ?? 0m;
+                        var currentHour = DateTime.UtcNow.Hour;
+                        var sessionName = currentHour >= 13 && currentHour < 20 ? "RegularTrading" : 
+                                         currentHour >= 8 && currentHour < 13 ? "PreMarket" :
+                                         currentHour >= 20 && currentHour < 22 ? "AfterHours" : "Closed";
+                        
+                        // Get trend from latest context
+                        var latestContext = _marketContexts.Values.LastOrDefault();
+                        var trendName = latestContext != null && latestContext.TrendStrength > 0.2 ? "Bullish" : 
+                                       latestContext != null && latestContext.TrendStrength < -0.2 ? "Bearish" : "Neutral";
+                        
+                        // Create a temporary snapshot for similarity search
+                        var currentSnapshot = BotCore.Services.MarketSnapshotStore.CreateSnapshot(
+                            symbol: decision.Symbol,
+                            vix: vixValue,
+                            trend: trendName,
+                            session: sessionName,
+                            currentPrice: currentPrice,
+                            strategy: decision.RecommendedStrategy,
+                            direction: decision.PriceDirection.ToString(),
+                            confidence: decision.StrategyConfidence,
+                            size: decision.PositionSize
+                        );
+                        
+                        var analysis = _historicalPatterns.FindSimilarConditions(currentSnapshot);
+                        if (analysis.Matches.Count > 0)
+                        {
+                            historicalContext = await _historicalPatterns.ExplainSimilarConditionsAsync(analysis).ConfigureAwait(false);
+                            if (!string.IsNullOrEmpty(historicalContext))
+                            {
+                                _logger.LogInformation("🔍 [HISTORICAL-PATTERN] {Context}", historicalContext);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions");
+                    }
+                }
+                
                 var prompt = $@"I am a trading bot. I'm about to take this trade:
 Strategy: {decision.RecommendedStrategy}
 Direction: {decision.PriceDirection}
@@ -748,7 +927,7 @@ Market Regime: {decision.MarketRegime}
 
 Current context: {currentContext}
 
-Explain in 2-3 sentences why I'm taking this trade. Speak as ME (the bot), not as an observer.";
+{(!string.IsNullOrEmpty(riskContext) ? $"Risk Assessment: {riskContext}\n\n" : "")}{(!string.IsNullOrEmpty(historicalContext) ? $"Historical Context: {historicalContext}\n\n" : "")}Explain in 2-3 sentences why I'm taking this trade. Speak as ME (the bot), not as an observer.";
                 
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
@@ -779,6 +958,41 @@ Explain in 2-3 sentences why I'm taking this trade. Speak as ME (the bot), not a
                 var durationMinutes = (int)holdTime.TotalMinutes;
                 var reason = pnl > 0 ? "target hit" : pnl < 0 ? "stop hit" : "timeout";
                 
+                // Hook 3: Add learning commentary (if enabled)
+                string learningContext = string.Empty;
+                if (_learningCommentary != null && Environment.GetEnvironmentVariable("LEARNING_COMMENTARY_ENABLED") == "true")
+                {
+                    try
+                    {
+                        var lookbackMinutes = int.TryParse(Environment.GetEnvironmentVariable("LEARNING_LOOKBACK_MINUTES"), 
+                            out var mins) ? mins : 60;
+                        
+                        // Check if async mode is enabled
+                        var asyncMode = Environment.GetEnvironmentVariable("LEARNING_COMMENTARY_ASYNC") == "true";
+                        
+                        if (asyncMode)
+                        {
+                            // Fire-and-forget: Start explanation in background, continue immediately
+                            _learningCommentary.ExplainRecentAdaptationsFireAndForget(lookbackMinutes);
+                            _logger.LogTrace("🚀 [LEARNING-COMMENTARY] Started background explanation (async mode)");
+                        }
+                        else
+                        {
+                            // Blocking mode: Wait for result (for debugging/testing only)
+                            learningContext = await _learningCommentary.ExplainRecentAdaptationsAsync(lookbackMinutes).ConfigureAwait(false);
+                            
+                            if (!string.IsNullOrEmpty(learningContext))
+                            {
+                                _logger.LogInformation("📚 [LEARNING-COMMENTARY] {Commentary}", learningContext);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary");
+                    }
+                }
+                
                 var prompt = $@"I am a trading bot. I just closed a trade:
 Symbol: {symbol}
 Strategy: {strategy}
@@ -787,7 +1001,7 @@ Profit/Loss: ${pnl:F2}
 Duration: {durationMinutes} minutes
 Reason closed: {reason}
 
-Reflect on what happened in 1-2 sentences. Speak as ME (the bot).";
+{(!string.IsNullOrEmpty(learningContext) ? $"Recent Learning: {learningContext}\n\n" : "")}Reflect on what happened in 1-2 sentences. Speak as ME (the bot).";
                 
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
