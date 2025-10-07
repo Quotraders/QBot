@@ -2211,6 +2211,9 @@ internal static class EnvironmentLoader
     /// </summary>
     private static async Task<string> HandleChatCommandAsync(string command, IServiceProvider services)
     {
+        const decimal DefaultAtrForRiskAnalysis = 10m;
+        const int DefaultLookbackMinutes = 60;
+        
         try
         {
             var parts = command.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -2233,7 +2236,7 @@ internal static class EnvironmentLoader
                         {
                             var snapshot = zoneService.GetSnapshot(symbol);
                             var currentPrice = snapshot.NearestDemand?.Mid ?? snapshot.NearestSupply?.Mid ?? 0m;
-                            var result = await riskCommentary.AnalyzeRiskAsync(symbol, currentPrice, 10m);
+                            var result = await riskCommentary.AnalyzeRiskAsync(symbol, currentPrice, DefaultAtrForRiskAnalysis);
                             return string.IsNullOrEmpty(result) ? $"Risk analysis not available for {symbol}" : result;
                         }
                     }
@@ -2296,7 +2299,7 @@ internal static class EnvironmentLoader
                     var learningCommentary = services.GetService<BotCore.Services.AdaptiveLearningCommentary>();
                     if (learningCommentary != null)
                     {
-                        var summary = learningCommentary.GetLearningSummary(60);
+                        var summary = learningCommentary.GetLearningSummary(DefaultLookbackMinutes);
                         return $"**Recent Learning:**\n{summary}";
                     }
                     return "Learning commentary not available";

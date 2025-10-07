@@ -13,6 +13,10 @@ namespace BotCore.Services;
 /// </summary>
 public sealed class RiskAssessmentCommentary
 {
+    private const decimal NearbyZoneThresholdAtr = 2.0m;
+    private const decimal HighBreakoutScoreThreshold = 0.5m;
+    private const double MinimumPatternConfidence = 0.6;
+    
     private readonly ILogger<RiskAssessmentCommentary> _logger;
     private readonly IZoneService _zoneService;
     private readonly PatternEngine _patternEngine;
@@ -53,7 +57,7 @@ public sealed class RiskAssessmentCommentary
             var patternScores = await _patternEngine.GetCurrentScoresAsync(symbol, cancellationToken).ConfigureAwait(false);
             
             // Build risk context
-            var zoneContext = BuildZoneContext(zoneSnapshot, currentPrice, atr);
+            var zoneContext = BuildZoneContext(zoneSnapshot);
             var patternContext = BuildPatternContext(patternScores);
             
             // Create prompt for Ollama
@@ -76,7 +80,7 @@ Focus on actionable insights about support/resistance and pattern signals.";
         }
     }
 
-    private static string BuildZoneContext(ZoneSnapshot snapshot, decimal currentPrice, decimal atr)
+    private static string BuildZoneContext(ZoneSnapshot snapshot)
     {
         if (snapshot.NearestDemand == null && snapshot.NearestSupply == null)
         {
@@ -85,17 +89,17 @@ Focus on actionable insights about support/resistance and pattern signals.";
 
         var parts = new System.Collections.Generic.List<string>();
         
-        if (snapshot.NearestDemand != null && snapshot.DistToDemandAtr < 2.0m)
+        if (snapshot.NearestDemand != null && snapshot.DistToDemandAtr < NearbyZoneThresholdAtr)
         {
             parts.Add($"Demand zone {snapshot.DistToDemandAtr:F1} ATR away (pressure: {snapshot.ZonePressure:F2}, {snapshot.NearestDemand.TouchCount} touches)");
         }
         
-        if (snapshot.NearestSupply != null && snapshot.DistToSupplyAtr < 2.0m)
+        if (snapshot.NearestSupply != null && snapshot.DistToSupplyAtr < NearbyZoneThresholdAtr)
         {
             parts.Add($"Supply zone {snapshot.DistToSupplyAtr:F1} ATR away (pressure: {snapshot.ZonePressure:F2}, {snapshot.NearestSupply.TouchCount} touches)");
         }
         
-        if (snapshot.BreakoutScore > 0.5m)
+        if (snapshot.BreakoutScore > HighBreakoutScoreThreshold)
         {
             parts.Add($"Breakout score: {snapshot.BreakoutScore:F2}");
         }
@@ -116,7 +120,7 @@ Focus on actionable insights about support/resistance and pattern signals.";
         
         foreach (var pattern in patternScores.DetectedPatterns)
         {
-            if (pattern.Confidence > 0.6)
+            if (pattern.Confidence > MinimumPatternConfidence)
             {
                 parts.Add($"{pattern.Name} ({pattern.Confidence:P0} confidence)");
             }

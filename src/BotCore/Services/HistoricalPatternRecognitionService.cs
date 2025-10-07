@@ -33,6 +33,16 @@ public sealed class HistoricalPatternAnalysis
 /// </summary>
 public sealed class HistoricalPatternRecognitionService
 {
+    private const int MaxSnapshotsToSearch = 100;
+    private const double MaxVixForNormalization = 40.0;
+    private const double MaxDistanceAtrForNormalization = 3.0;
+    private const double MaxTouchesForNormalization = 10.0;
+    private const double BullishTrendValue = 1.0;
+    private const double BearishTrendValue = -1.0;
+    private const double NeutralTrendValue = 0.0;
+    private const double MinNormalizedValue = 0.0;
+    private const double MaxNormalizedValue = 1.0;
+    
     private readonly ILogger<HistoricalPatternRecognitionService> _logger;
     private readonly MarketSnapshotStore _snapshotStore;
     private readonly OllamaClient? _ollamaClient;
@@ -55,7 +65,7 @@ public sealed class HistoricalPatternRecognitionService
         int maxMatches = 5,
         double similarityThreshold = 0.85)
     {
-        var recentSnapshots = _snapshotStore.GetCompletedSnapshots(100);
+        var recentSnapshots = _snapshotStore.GetCompletedSnapshots(MaxSnapshotsToSearch);
         
         if (recentSnapshots.Count == 0)
         {
@@ -80,17 +90,20 @@ public sealed class HistoricalPatternRecognitionService
         }
 
         // Analyze outcomes
+        var matchesWithPnl = matches.Where(m => m.Snapshot.OutcomePnl.HasValue).ToList();
+        var matchesWithHoldTime = matches.Where(m => m.Snapshot.HoldTime.HasValue).ToList();
+        
         var analysis = new HistoricalPatternAnalysis
         {
             Matches = matches,
             WinCount = matches.Count(m => m.Snapshot.WasCorrect == true),
             LossCount = matches.Count(m => m.Snapshot.WasCorrect == false),
-            AveragePnl = matches
-                .Where(m => m.Snapshot.OutcomePnl.HasValue)
-                .Average(m => m.Snapshot.OutcomePnl!.Value),
-            AverageHoldTime = TimeSpan.FromMinutes(matches
-                .Where(m => m.Snapshot.HoldTime.HasValue)
-                .Average(m => m.Snapshot.HoldTime!.Value.TotalMinutes))
+            AveragePnl = matchesWithPnl.Count > 0 
+                ? matchesWithPnl.Average(m => m.Snapshot.OutcomePnl!.Value)
+                : 0m,
+            AverageHoldTime = matchesWithHoldTime.Count > 0
+                ? TimeSpan.FromMinutes(matchesWithHoldTime.Average(m => m.Snapshot.HoldTime!.Value.TotalMinutes))
+                : TimeSpan.Zero
         };
 
         // Find best performing strategy
@@ -206,29 +219,26 @@ Explain what I should learn from these past experiences in 2-3 sentences. Speak 
 
     private static double NormalizeVix(decimal vix)
     {
-        // VIX typically ranges from 10 to 40, normalize to 0-1
-        return Math.Clamp((double)vix / 40.0, 0.0, 1.0);
+        return Math.Clamp((double)vix / MaxVixForNormalization, MinNormalizedValue, MaxNormalizedValue);
     }
 
     private static double NormalizeTrend(string trend)
     {
         return trend.ToLowerInvariant() switch
         {
-            "bullish" => 1.0,
-            "bearish" => -1.0,
-            _ => 0.0
+            "bullish" => BullishTrendValue,
+            "bearish" => BearishTrendValue,
+            _ => NeutralTrendValue
         };
     }
 
     private static double NormalizeDistance(double distanceAtr)
     {
-        // Distances typically 0-3 ATR, normalize to 0-1
-        return Math.Clamp(distanceAtr / 3.0, 0.0, 1.0);
+        return Math.Clamp(distanceAtr / MaxDistanceAtrForNormalization, MinNormalizedValue, MaxNormalizedValue);
     }
 
     private static double NormalizeTouches(int touches)
     {
-        // Touches typically 0-10, normalize to 0-1
-        return Math.Clamp(touches / 10.0, 0.0, 1.0);
+        return Math.Clamp(touches / MaxTouchesForNormalization, MinNormalizedValue, MaxNormalizedValue);
     }
 }

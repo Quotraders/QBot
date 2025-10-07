@@ -10,6 +10,9 @@ namespace BotCore.Services;
 /// </summary>
 public sealed class AdaptiveLearningCommentary
 {
+    private const int MaxStrategiesToReport = 5;
+    private const int MaxChangesPerStrategy = 3;
+    
     private readonly ILogger<AdaptiveLearningCommentary> _logger;
     private readonly ParameterChangeTracker _changeTracker;
     private readonly OllamaClient? _ollamaClient;
@@ -47,12 +50,12 @@ public sealed class AdaptiveLearningCommentary
             // Group changes by strategy
             var changesByStrategy = recentChanges
                 .GroupBy(c => c.StrategyName)
-                .Take(5) // Limit to avoid overwhelming the prompt
+                .Take(MaxStrategiesToReport)
                 .ToList();
 
             var changesDescription = string.Join("\n", changesByStrategy.Select(group =>
             {
-                var strategyChanges = group.Take(3).Select(c =>
+                var strategyChanges = group.Take(MaxChangesPerStrategy).Select(c =>
                     $"  - {c.ParameterName}: {c.OldValue} → {c.NewValue} (reason: {c.Reason})"
                 );
                 return $"{group.Key}:\n{string.Join("\n", strategyChanges)}";
