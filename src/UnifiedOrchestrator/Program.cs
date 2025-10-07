@@ -834,8 +834,26 @@ Please check the configuration and ensure all required services are registered.
         // Register BotAlertService - Proactive alerting system for bot self-awareness
         services.AddSingleton<BotCore.Services.BotAlertService>();
         
-        // Register UnifiedTradingBrain - The main AI brain (1,027+ lines)
-        services.AddSingleton<BotCore.Brain.UnifiedTradingBrain>();
+        // Register UnifiedTradingBrain - The main AI brain with calendar integration (Phase 2)
+        services.AddSingleton<BotCore.Brain.UnifiedTradingBrain>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<BotCore.Brain.UnifiedTradingBrain>>();
+            var memoryManager = provider.GetRequiredService<BotCore.ML.IMLMemoryManager>();
+            var modelManager = provider.GetRequiredService<BotCore.ML.StrategyMlModelManager>();
+            var cvarPPO = provider.GetRequiredService<TradingBot.RLAgent.CVaRPPO>();
+            var gate4Config = provider.GetService<TradingBot.Abstractions.IGate4Config>();
+            var ollamaClient = provider.GetService<BotCore.Services.OllamaClient>();
+            var economicEventManager = provider.GetService<BotCore.Market.IEconomicEventManager>();
+            
+            return new BotCore.Brain.UnifiedTradingBrain(
+                logger,
+                memoryManager,
+                modelManager,
+                cvarPPO,
+                gate4Config,
+                ollamaClient,
+                economicEventManager);
+        });
         
         // Register UCB Manager - C# client for Python UCB service (175 lines)
         services.AddSingleton<BotCore.ML.UcbManager>();
@@ -953,8 +971,26 @@ Please check the configuration and ensure all required services are registered.
         // services.AddHostedService<BotCore.Services.UnifiedDataIntegrationService>(provider => 
         //     provider.GetRequiredService<BotCore.Services.UnifiedDataIntegrationService>());
         
-        // Register the MASTER DECISION ORCHESTRATOR - The ONE always-learning brain
-        services.AddSingleton<BotCore.Services.MasterDecisionOrchestrator>();
+        // Register the MASTER DECISION ORCHESTRATOR - The ONE always-learning brain with alert integration
+        services.AddSingleton<BotCore.Services.MasterDecisionOrchestrator>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<BotCore.Services.MasterDecisionOrchestrator>>();
+            var serviceProvider = provider.GetRequiredService<IServiceProvider>();
+            var unifiedRouter = provider.GetRequiredService<BotCore.Services.UnifiedDecisionRouter>();
+            var unifiedBrain = provider.GetRequiredService<BotCore.Brain.UnifiedTradingBrain>();
+            var gate5Config = provider.GetService<TradingBot.Abstractions.IGate5Config>();
+            var ollamaClient = provider.GetService<BotCore.Services.OllamaClient>();
+            var botAlertService = provider.GetService<BotCore.Services.BotAlertService>();
+            
+            return new BotCore.Services.MasterDecisionOrchestrator(
+                logger,
+                serviceProvider,
+                unifiedRouter,
+                unifiedBrain,
+                gate5Config,
+                ollamaClient,
+                botAlertService);
+        });
         services.AddHostedService<BotCore.Services.MasterDecisionOrchestrator>(provider => 
             provider.GetRequiredService<BotCore.Services.MasterDecisionOrchestrator>());
         
@@ -1059,8 +1095,14 @@ Please check the configuration and ensure all required services are registered.
         // Register WorkflowOrchestrationManager (466 lines)
         services.AddSingleton<WorkflowOrchestrationManager>();
         
-        // Register EconomicEventManager (452 lines)
-        services.AddSingleton<BotCore.Market.IEconomicEventManager, BotCore.Market.EconomicEventManager>();
+        // Register EconomicEventManager with BotAlertService integration (Phase 2 + Phase 3)
+        services.AddSingleton<BotCore.Market.IEconomicEventManager>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<BotCore.Market.EconomicEventManager>>();
+            var botAlertService = provider.GetService<BotCore.Services.BotAlertService>();
+            
+            return new BotCore.Market.EconomicEventManager(logger, botAlertService);
+        });
         
         // Register RedundantDataFeedManager (442 lines)
         services.AddSingleton<BotCore.Market.RedundantDataFeedManager>();
