@@ -79,6 +79,21 @@ namespace BotCore.Models
         public decimal EntryConfidence { get; set; }
         
         /// <summary>
+        /// FEATURE 5: Last time progressive tightening was applied
+        /// </summary>
+        public DateTime LastProgressiveTighteningCheck { get; set; }
+        
+        /// <summary>
+        /// FEATURE 5: Current progressive tightening tier (0 = no tightening yet)
+        /// </summary>
+        public int ProgressiveTighteningTier { get; set; }
+        
+        /// <summary>
+        /// FEATURE 5: Peak profit in ticks achieved (for progressive exit thresholds)
+        /// </summary>
+        public decimal PeakProfitTicks { get; set; }
+        
+        /// <summary>
         /// Position size (signed: + for long, - for short)
         /// </summary>
         public int Quantity { get; set; }

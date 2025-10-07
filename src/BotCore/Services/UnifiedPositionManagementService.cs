@@ -60,6 +60,10 @@ namespace BotCore.Services
         private readonly decimal _confidenceMediumThreshold;
         private readonly decimal _confidenceLowThreshold;
         
+        // FEATURE 5: Progressive time-decay stop tightening configuration
+        private readonly bool _progressiveTighteningEnabled;
+        private readonly int _progressiveTighteningCheckIntervalSeconds;
+        
         // Tick size for ES/MES (0.25) - used for breakeven calculations
         private const decimal EsTickSize = 0.25m;
         private const decimal NqTickSize = 0.25m;
@@ -166,6 +170,16 @@ namespace BotCore.Services
                 _logger.LogInformation("💯 [POSITION-MGMT] Confidence-based adjustment enabled: VeryHigh≥{VH}, High≥{H}, Medium≥{M}, Low≥{L}",
                     _confidenceVeryHighThreshold, _confidenceHighThreshold, _confidenceMediumThreshold, _confidenceLowThreshold);
             }
+            
+            // Load progressive tightening configuration (Feature 5)
+            _progressiveTighteningEnabled = Environment.GetEnvironmentVariable("BOT_PROGRESSIVE_TIGHTENING_ENABLED")?.ToLowerInvariant() == "true";
+            _progressiveTighteningCheckIntervalSeconds = int.TryParse(Environment.GetEnvironmentVariable("BOT_PROGRESSIVE_TIGHTENING_CHECK_INTERVAL_SECONDS"), out var ptInterval) ? ptInterval : 60;
+            
+            if (_progressiveTighteningEnabled)
+            {
+                _logger.LogInformation("⏱️ [POSITION-MGMT] Progressive time-decay tightening enabled: Check interval={Interval}s",
+                    _progressiveTighteningCheckIntervalSeconds);
+            }
         }
         
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -261,7 +275,10 @@ namespace BotCore.Services
                 LastRegimeCheck = DateTime.UtcNow,
                 EntryRegimeConfidence = entryRegimeConfidence,
                 CurrentRegimeConfidence = entryRegimeConfidence,
-                EntryConfidence = entryConfidence
+                EntryConfidence = entryConfidence,
+                LastProgressiveTighteningCheck = DateTime.UtcNow,
+                ProgressiveTighteningTier = 0,
+                PeakProfitTicks = 0
             };
             
             // Calculate dynamic target based on entry regime (Feature 1)
@@ -454,6 +471,9 @@ namespace BotCore.Services
                     
                     // FEATURE 2: Check for early exit based on learned MAE threshold
                     await CheckEarlyExitThresholdAsync(state, currentPrice, tickSize, cancellationToken).ConfigureAwait(false);
+                    
+                    // FEATURE 5: Check for progressive time-decay stop tightening
+                    await CheckProgressiveTighteningAsync(state, currentPrice, profitTicks, tickSize, cancellationToken).ConfigureAwait(false);
                     
                     // Update trailing stop if active
                     if (state.TrailingStopActive)
@@ -1705,6 +1725,185 @@ namespace BotCore.Services
         }
         
         // ========================================================================
+        // FEATURE 5: PROGRESSIVE TIME-DECAY STOP TIGHTENING METHODS
+        // ========================================================================
+        
+        /// <summary>
+        /// Check for progressive tightening based on time elapsed and profit performance
+        /// Gradually tightens stops and profit thresholds as trade ages without hitting targets
+        /// </summary>
+        private async Task CheckProgressiveTighteningAsync(
+            PositionManagementState state,
+            decimal currentPrice,
+            decimal profitTicks,
+            decimal tickSize,
+            CancellationToken cancellationToken)
+        {
+            if (!_progressiveTighteningEnabled)
+            {
+                return; // Feature disabled
+            }
+            
+            // Check if it's time to evaluate progressive tightening
+            var timeSinceLastCheck = DateTime.UtcNow - state.LastProgressiveTighteningCheck;
+            if (timeSinceLastCheck.TotalSeconds < _progressiveTighteningCheckIntervalSeconds)
+            {
+                return; // Not time yet
+            }
+            
+            state.LastProgressiveTighteningCheck = DateTime.UtcNow;
+            
+            // Track peak profit for progressive exit thresholds
+            if (profitTicks > state.PeakProfitTicks)
+            {
+                state.PeakProfitTicks = profitTicks;
+            }
+            
+            var isLong = state.Quantity > 0;
+            var holdDuration = DateTime.UtcNow - state.EntryTime;
+            var holdMinutes = (int)holdDuration.TotalMinutes;
+            
+            // Get strategy-specific tightening schedule
+            var tighteningSchedule = GetProgressiveTighteningSchedule(state.Strategy);
+            
+            // Determine current tier based on time elapsed
+            int newTier = 0;
+            foreach (var threshold in tighteningSchedule)
+            {
+                if (holdMinutes >= threshold.MinutesThreshold)
+                {
+                    newTier = threshold.Tier;
+                }
+            }
+            
+            // Only process if we've moved to a new tier
+            if (newTier <= state.ProgressiveTighteningTier)
+            {
+                return; // No tier change
+            }
+            
+            var previousTier = state.ProgressiveTighteningTier;
+            state.ProgressiveTighteningTier = newTier;
+            
+            // Get current tier requirements
+            var currentTierRequirements = tighteningSchedule.FirstOrDefault(t => t.Tier == newTier);
+            if (currentTierRequirements == null)
+            {
+                return;
+            }
+            
+            _logger.LogInformation("⏱️ [PROGRESSIVE-TIGHTENING] Position {PositionId} moved to tier {NewTier} after {Minutes}m: {Description}",
+                state.PositionId, newTier, holdMinutes, currentTierRequirements.Description);
+            
+            // Check if profit meets tier requirements
+            var riskTicks = Math.Abs(state.EntryPrice - state.CurrentStopPrice) / tickSize;
+            var currentRMultiple = riskTicks > 0 ? profitTicks / riskTicks : 0;
+            
+            // Apply tier-specific actions
+            bool shouldExit = false;
+            string exitReason = "";
+            
+            if (currentTierRequirements.Action == ProgressiveTighteningAction.MoveStopToBreakeven)
+            {
+                if (!state.BreakevenActivated && profitTicks < currentTierRequirements.MinProfitTicksRequired)
+                {
+                    // Not profitable enough - move to breakeven
+                    var breakevenStop = isLong ? state.EntryPrice + tickSize : state.EntryPrice - tickSize;
+                    await ModifyStopPriceAsync(state, breakevenStop, "Progressive-Breakeven", cancellationToken).ConfigureAwait(false);
+                    state.BreakevenActivated = true;
+                    
+                    _logger.LogInformation("⏱️ [PROGRESSIVE-TIGHTENING] Moved {PositionId} to breakeven (tier {Tier}, profit {Profit} ticks < required {Required})",
+                        state.PositionId, newTier, profitTicks, currentTierRequirements.MinProfitTicksRequired);
+                }
+            }
+            else if (currentTierRequirements.Action == ProgressiveTighteningAction.ExitIfBelowThreshold)
+            {
+                if (currentRMultiple < currentTierRequirements.MinRMultipleRequired)
+                {
+                    shouldExit = true;
+                    exitReason = $"Progressive exit: R={currentRMultiple:F2} < required {currentTierRequirements.MinRMultipleRequired:F2} at tier {newTier}";
+                }
+            }
+            else if (currentTierRequirements.Action == ProgressiveTighteningAction.ForceExit)
+            {
+                shouldExit = true;
+                exitReason = $"Progressive force exit: Max hold time reached (tier {newTier})";
+            }
+            
+            if (shouldExit)
+            {
+                _logger.LogWarning("⏱️ [PROGRESSIVE-TIGHTENING] Exiting {PositionId}: {Reason}",
+                    state.PositionId, exitReason);
+                await RequestPositionCloseAsync(state, ExitReason.TimeLimit, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        
+        /// <summary>
+        /// Get progressive tightening schedule for a strategy
+        /// </summary>
+        private List<ProgressiveTighteningThreshold> GetProgressiveTighteningSchedule(string strategy)
+        {
+            return strategy switch
+            {
+                "S2" => new List<ProgressiveTighteningThreshold>
+                {
+                    new() { Tier = 1, MinutesThreshold = 15, Action = ProgressiveTighteningAction.MoveStopToBreakeven, 
+                           MinProfitTicksRequired = 0, Description = "Move to breakeven if not profitable" },
+                    new() { Tier = 2, MinutesThreshold = 30, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = 1.0m, Description = "Exit if not at 1.0R" },
+                    new() { Tier = 3, MinutesThreshold = 45, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = 1.5m, Description = "Exit if not at 1.5R" },
+                    new() { Tier = 4, MinutesThreshold = 60, Action = ProgressiveTighteningAction.ForceExit, 
+                           Description = "Force exit at max hold time" }
+                },
+                
+                "S3" => new List<ProgressiveTighteningThreshold>
+                {
+                    new() { Tier = 1, MinutesThreshold = 20, Action = ProgressiveTighteningAction.MoveStopToBreakeven, 
+                           MinProfitTicksRequired = 0, Description = "Move to breakeven if not profitable" },
+                    new() { Tier = 2, MinutesThreshold = 40, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = 1.0m, Description = "Exit if not at 1.0R" },
+                    new() { Tier = 3, MinutesThreshold = 60, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = 2.0m, Description = "Exit if not at 2.0R" },
+                    new() { Tier = 4, MinutesThreshold = 90, Action = ProgressiveTighteningAction.ForceExit, 
+                           Description = "Force exit at max hold time" }
+                },
+                
+                "S6" => new List<ProgressiveTighteningThreshold>
+                {
+                    new() { Tier = 1, MinutesThreshold = 10, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinProfitTicksRequired = 6, Description = "Exit if not at +6 ticks (momentum should move fast)" },
+                    new() { Tier = 2, MinutesThreshold = 20, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = 1.0m, Description = "Exit if not at 1.0R" },
+                    new() { Tier = 3, MinutesThreshold = 30, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = 1.5m, Description = "Exit if not at 1.5R" },
+                    new() { Tier = 4, MinutesThreshold = 45, Action = ProgressiveTighteningAction.ForceExit, 
+                           Description = "Force exit at max hold time" }
+                },
+                
+                "S11" => new List<ProgressiveTighteningThreshold>
+                {
+                    new() { Tier = 1, MinutesThreshold = 20, Action = ProgressiveTighteningAction.MoveStopToBreakeven, 
+                           MinProfitTicksRequired = 0, Description = "Move to breakeven if not profitable" },
+                    new() { Tier = 2, MinutesThreshold = 40, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = 1.5m, Description = "Exit if not at 1.5R" },
+                    new() { Tier = 3, MinutesThreshold = 60, Action = ProgressiveTighteningAction.ForceExit, 
+                           Description = "Force exit at max hold time" }
+                },
+                
+                _ => new List<ProgressiveTighteningThreshold>
+                {
+                    new() { Tier = 1, MinutesThreshold = 30, Action = ProgressiveTighteningAction.MoveStopToBreakeven, 
+                           MinProfitTicksRequired = 0, Description = "Move to breakeven if not profitable" },
+                    new() { Tier = 2, MinutesThreshold = 60, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = 1.0m, Description = "Exit if not at 1.0R" },
+                    new() { Tier = 3, MinutesThreshold = 120, Action = ProgressiveTighteningAction.ForceExit, 
+                           Description = "Force exit at max hold time" }
+                }
+            };
+        }
+        
+        // ========================================================================
         // AI COMMENTARY METHODS (PHASE 5 - Ollama Integration)
         // ========================================================================
         
@@ -1982,5 +2181,28 @@ Explain in 2-3 sentences why this volatility-adaptive stop adjustment makes sens
                 }
             });
         }
+    }
+    
+    /// <summary>
+    /// Progressive tightening threshold configuration
+    /// </summary>
+    internal sealed class ProgressiveTighteningThreshold
+    {
+        public int Tier { get; set; }
+        public int MinutesThreshold { get; set; }
+        public ProgressiveTighteningAction Action { get; set; }
+        public decimal MinProfitTicksRequired { get; set; }
+        public decimal MinRMultipleRequired { get; set; }
+        public string Description { get; set; } = string.Empty;
+    }
+    
+    /// <summary>
+    /// Actions for progressive tightening
+    /// </summary>
+    internal enum ProgressiveTighteningAction
+    {
+        MoveStopToBreakeven,
+        ExitIfBelowThreshold,
+        ForceExit
     }
 }
