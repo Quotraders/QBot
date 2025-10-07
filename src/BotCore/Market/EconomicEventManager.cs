@@ -236,6 +236,18 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
 
         try
         {
+            // PHASE 2: Try loading from ForexFactory data first
+            var forexFactoryPath = Path.Combine(Directory.GetCurrentDirectory(), "datasets", "economic_calendar", "calendar.json");
+            if (File.Exists(forexFactoryPath))
+            {
+                events = await LoadFromForexFactoryAsync(forexFactoryPath).ConfigureAwait(false);
+                if (events.Count > 0)
+                {
+                    _logger.LogInformation("[EconomicEventManager] Loaded {Count} events from ForexFactory calendar", events.Count);
+                    return events;
+                }
+            }
+
             // Try to load from environment configuration first
             var economicDataSource = Environment.GetEnvironmentVariable("ECONOMIC_DATA_SOURCE");
             var economicApiKey = Environment.GetEnvironmentVariable("ECONOMIC_API_KEY");
@@ -306,6 +318,89 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
         catch (JsonException ex)
         {
             _logger.LogError(ex, "[EconomicEventManager] JSON parsing error loading from local file: {File}", filePath);
+            return new List<EconomicEvent>();
+        }
+    }
+
+    private async Task<List<EconomicEvent>> LoadFromForexFactoryAsync(string filePath)
+    {
+        try
+        {
+            var jsonContent = await File.ReadAllTextAsync(filePath).ConfigureAwait(false);
+            
+            // Parse ForexFactory JSON format
+            using var doc = JsonDocument.Parse(jsonContent);
+            var root = doc.RootElement;
+            
+            var events = new List<EconomicEvent>();
+            
+            foreach (var item in root.EnumerateArray())
+            {
+                try
+                {
+                    var dateStr = item.GetProperty("date").GetString();
+                    var timeStr = item.GetProperty("time").GetString();
+                    var currency = item.GetProperty("currency").GetString();
+                    var impactStr = item.GetProperty("impact").GetString();
+                    var eventName = item.GetProperty("event").GetString();
+                    
+                    if (string.IsNullOrEmpty(dateStr) || string.IsNullOrEmpty(eventName))
+                        continue;
+                    
+                    // Parse date and time
+                    if (!DateTime.TryParse($"{dateStr} {timeStr}", out var scheduledTime))
+                    {
+                        // Try just the date
+                        if (!DateTime.TryParse(dateStr, out scheduledTime))
+                            continue;
+                    }
+                    
+                    // Convert impact string to EventImpact enum
+                    var impact = impactStr?.ToLowerInvariant() switch
+                    {
+                        "high" => EventImpact.High,
+                        "medium" => EventImpact.Medium,
+                        "low" => EventImpact.Low,
+                        _ => EventImpact.Low
+                    };
+                    
+                    // Only include High and Medium impact events
+                    if (impact == EventImpact.Low)
+                        continue;
+                    
+                    // Determine affected symbols based on currency
+                    var affectedSymbols = GetAffectedSymbols(currency ?? "USD", impact);
+                    
+                    var economicEvent = new EconomicEvent
+                    {
+                        Name = eventName ?? "Unknown Event",
+                        ScheduledTime = scheduledTime.ToUniversalTime(),
+                        Impact = impact,
+                        Currency = currency ?? "USD",
+                        Category = "Economic Data",
+                        AffectedSymbols = affectedSymbols
+                    };
+                    
+                    events.Add(economicEvent);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[EconomicEventManager] Error parsing ForexFactory event");
+                    continue;
+                }
+            }
+            
+            _logger.LogInformation("[EconomicEventManager] Parsed {Count} events from ForexFactory: {File}", events.Count, filePath);
+            return events;
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "[EconomicEventManager] I/O error loading ForexFactory file: {File}", filePath);
+            return new List<EconomicEvent>();
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "[EconomicEventManager] JSON parsing error loading ForexFactory file: {File}", filePath);
             return new List<EconomicEvent>();
         }
     }
