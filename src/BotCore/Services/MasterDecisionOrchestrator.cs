@@ -64,6 +64,7 @@ public class MasterDecisionOrchestrator : BackgroundService
     private readonly MasterOrchestratorConfig _config;
     private readonly ContinuousLearningManager _learningManager;
     private readonly ContractRolloverManager _rolloverManager;
+    private readonly OllamaClient? _ollamaClient;
     
     // Operational state
     private readonly Dictionary<string, DecisionPerformance> _performanceTracking = new();
@@ -95,7 +96,8 @@ public class MasterDecisionOrchestrator : BackgroundService
         IServiceProvider serviceProvider,
         UnifiedDecisionRouter unifiedRouter,
         BotCore.Brain.UnifiedTradingBrain unifiedBrain,
-        IGate5Config? gate5Config = null)
+        IGate5Config? gate5Config = null,
+        OllamaClient? ollamaClient = null)
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
@@ -103,6 +105,7 @@ public class MasterDecisionOrchestrator : BackgroundService
         _serviceStatus = new TradingBot.Abstractions.DecisionServiceStatus();
         _unifiedBrain = unifiedBrain;
         _gate5Config = gate5Config ?? Gate5Config.LoadFromEnvironment();
+        _ollamaClient = ollamaClient;
         
         // Try to get optional enhanced services
         _enhancedBrain = serviceProvider.GetService<EnhancedTradingBrainIntegration>();
@@ -945,6 +948,38 @@ public class MasterDecisionOrchestrator : BackgroundService
         };
     }
 
+    /// <summary>
+    /// AI-powered analysis of performance issues when rollback is triggered
+    /// </summary>
+    private async Task<string> AnalyzeMyPerformanceIssueAsync(string reason)
+    {
+        if (_ollamaClient == null)
+            return string.Empty;
+
+        try
+        {
+            var metrics = CalculateCanaryMetrics();
+            var recentTradesCount = _canaryTrades.Count;
+
+            var prompt = $@"I am a trading bot and I'm performing badly:
+
+Reason for rollback: {reason}
+My current win rate: {metrics.WinRate:P1}
+My current drawdown: ${metrics.MaxDrawdown:F2}
+My recent trades: {recentTradesCount}
+
+Analyze what I'm doing wrong and what I should do differently. Speak as ME (the bot).";
+
+            var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ [SELF-ANALYSIS] Error during performance analysis");
+            return string.Empty;
+        }
+    }
+
     private async Task CreateKillFileAsync(CancellationToken cancellationToken)
     {
         try
@@ -1118,6 +1153,17 @@ public class MasterDecisionOrchestrator : BackgroundService
             _baselineMetrics.GetValueOrDefault("win_rate", 0) * 100,
             _baselineMetrics.GetValueOrDefault("sharpe_ratio", 0),
             _baselineMetrics.GetValueOrDefault("drawdown", 0));
+
+        // AI-powered self-analysis of performance issues
+        if (_ollamaClient != null)
+        {
+            var reason = $"Win rate dropped to {currentWinRate:P1}, Sharpe ratio: {currentSharpe:F2}, Drawdown: ${currentDrawdown:F2}";
+            var analysis = await AnalyzeMyPerformanceIssueAsync(reason).ConfigureAwait(false);
+            if (!string.IsNullOrEmpty(analysis))
+            {
+                _logger.LogError("🔍 [BOT-SELF-ANALYSIS] {Analysis}", analysis);
+            }
+        }
 
         try
         {

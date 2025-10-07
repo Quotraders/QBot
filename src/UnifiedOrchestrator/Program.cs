@@ -410,6 +410,11 @@ Please check the configuration and ensure all required services are registered.
 
     private static IHostBuilder CreateHostBuilder(string[] args) =>
         Host.CreateDefaultBuilder(args)
+            .ConfigureWebHostDefaults(webBuilder =>
+            {
+                webBuilder.UseUrls("http://localhost:5000");
+                webBuilder.UseStartup<Startup>();
+            })
             .ConfigureLogging(logging =>
             {
                 logging.ClearProviders();
@@ -813,6 +818,18 @@ Please check the configuration and ensure all required services are registered.
         // ================================================================================
         // AI/ML TRADING BRAIN REGISTRATION - DUAL ML APPROACH WITH UCB
         // ================================================================================
+        
+        // Register OllamaClient - AI conversation service for bot explanations (optional)
+        var ollamaEnabled = configuration["OLLAMA_ENABLED"]?.Equals("true", StringComparison.OrdinalIgnoreCase) ?? true;
+        if (ollamaEnabled)
+        {
+            services.AddSingleton<BotCore.Services.OllamaClient>();
+            Console.WriteLine("🗣️ [OLLAMA] Bot voice enabled - conversational AI features active");
+        }
+        else
+        {
+            Console.WriteLine("🔇 [OLLAMA] Bot voice disabled - will operate silently");
+        }
         
         // Register UnifiedTradingBrain - The main AI brain (1,027+ lines)
         services.AddSingleton<BotCore.Brain.UnifiedTradingBrain>();
@@ -1982,6 +1999,105 @@ internal static class EnvironmentLoader
             {
                 Console.WriteLine("No TopstepX credentials found - will attempt to use JWT token if available");
             }
+        }
+    }
+
+    /// <summary>
+    /// Startup class for web server configuration
+    /// </summary>
+    internal class Startup
+    {
+        public Startup(IConfiguration configuration)
+        {
+            Configuration = configuration;
+        }
+
+        public IConfiguration Configuration { get; }
+
+        public void ConfigureServices(IServiceCollection services)
+        {
+            // Web services already configured in CreateHostBuilder
+        }
+
+        public void Configure(Microsoft.AspNetCore.Builder.IApplicationBuilder app, Microsoft.AspNetCore.Hosting.IWebHostEnvironment env)
+        {
+            // Enable static files from wwwroot
+            app.UseStaticFiles();
+
+            // Enable routing
+            app.UseRouting();
+
+            // Configure endpoints
+            app.UseEndpoints(endpoints =>
+            {
+                // Chat endpoint - talk to the trading bot
+                endpoints.MapPost("/api/chat", async context =>
+                {
+                    try
+                    {
+                        // Read request body
+                        using var reader = new System.IO.StreamReader(context.Request.Body);
+                        var body = await reader.ReadToEndAsync();
+                        
+                        // Parse JSON request
+                        var requestData = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, System.Text.Json.JsonElement>>(body);
+                        if (requestData == null || !requestData.ContainsKey("message"))
+                        {
+                            context.Response.StatusCode = 400;
+                            await context.Response.WriteAsJsonAsync(new { error = "Missing 'message' field" });
+                            return;
+                        }
+
+                        var userMessage = requestData["message"].GetString();
+                        
+                        // Get services
+                        var ollamaClient = context.RequestServices.GetService<BotCore.Services.OllamaClient>();
+                        var brain = context.RequestServices.GetService<BotCore.Brain.UnifiedTradingBrain>();
+
+                        // Check if bot voice is enabled
+                        if (ollamaClient == null)
+                        {
+                            await context.Response.WriteAsJsonAsync(new { response = "My voice is disabled. Enable Ollama to chat with me." });
+                            return;
+                        }
+
+                        // Gather bot's current context
+                        string botContext = "Context unavailable";
+                        if (brain != null)
+                        {
+                            // Use reflection to call private GatherCurrentContext method
+                            var method = brain.GetType().GetMethod("GatherCurrentContext", 
+                                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                            if (method != null)
+                            {
+                                botContext = method.Invoke(brain, null) as string ?? "Context unavailable";
+                            }
+                        }
+
+                        // Create AI prompt
+                        var prompt = $@"I am an ES/NQ futures trading bot. A trader asked me: {userMessage}
+
+My current state: {botContext}
+
+Respond conversationally AS ME (the bot). Be helpful and explain my thinking.";
+
+                        // Get AI response
+                        var aiResponse = await ollamaClient.AskAsync(prompt);
+                        
+                        if (string.IsNullOrEmpty(aiResponse))
+                        {
+                            aiResponse = "I'm having trouble thinking right now. Please try again.";
+                        }
+
+                        await context.Response.WriteAsJsonAsync(new { response = aiResponse });
+                    }
+                    catch (Exception ex)
+                    {
+                        context.Response.StatusCode = 500;
+                        await context.Response.WriteAsJsonAsync(new { error = $"Error: {ex.Message}" });
+                    }
+                });
+            });
         }
     }
 }
