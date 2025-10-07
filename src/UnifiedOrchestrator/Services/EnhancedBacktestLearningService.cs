@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -39,6 +40,10 @@ internal class EnhancedBacktestLearningService : BackgroundService
     // CRITICAL: Direct injection of UnifiedTradingBrain for identical intelligence
     private readonly BotCore.Brain.UnifiedTradingBrain _unifiedBrain;
     
+    // AI-powered self-improvement capability
+    private readonly BotCore.Services.OllamaClient? _ollamaClient;
+    private readonly IConfiguration _configuration;
+    
     // Historical replay state
     private readonly ConcurrentDictionary<string, UnifiedHistoricalReplayContext> _replayContexts = new();
     private readonly List<BacktestResult> _recentBacktests = new();
@@ -49,7 +54,9 @@ internal class EnhancedBacktestLearningService : BackgroundService
         IMarketHoursService marketHours,
         HttpClient httpClient,
         BotCore.Brain.UnifiedTradingBrain unifiedBrain,
-        ITopstepAuth authService)
+        ITopstepAuth authService,
+        IConfiguration configuration,
+        BotCore.Services.OllamaClient? ollamaClient = null)
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
@@ -57,6 +64,8 @@ internal class EnhancedBacktestLearningService : BackgroundService
         _httpClient = httpClient;
         _unifiedBrain = unifiedBrain;
         _authService = authService; // Same brain as live trading
+        _configuration = configuration;
+        _ollamaClient = ollamaClient;
         
         // Configure HttpClient for TopstepX API calls
         if (_httpClient.BaseAddress == null)
@@ -1509,9 +1518,60 @@ internal class EnhancedBacktestLearningService : BackgroundService
     }
 
     /// <summary>
+    /// Generate AI-powered self-improvement suggestions based on backtest results
+    /// </summary>
+    private async Task<string> GenerateSelfImprovementSuggestionsAsync(UnifiedBacktestResult[] results, CancellationToken cancellationToken)
+    {
+        if (_ollamaClient == null || !results.Any())
+            return string.Empty;
+
+        try
+        {
+            // Aggregate results for analysis
+            var totalTrades = results.Sum(r => r.TotalTrades);
+            var avgWinRate = results.Any(r => r.TotalTrades > 0) 
+                ? results.Where(r => r.TotalTrades > 0).Average(r => r.WinRate) 
+                : 0;
+            var totalPnL = results.Sum(r => r.NetPnL);
+            var bestResult = results.OrderByDescending(r => r.SharpeRatio).FirstOrDefault();
+            var worstResult = results.OrderBy(r => r.SharpeRatio).FirstOrDefault();
+            var avgSharpe = results.Any() ? results.Average(r => r.SharpeRatio) : 0;
+
+            // Identify problem patterns
+            var losingPatterns = string.Join(", ", results
+                .Where(r => r.NetPnL < 0)
+                .Select(r => $"{r.Strategy} on {r.Symbol} (Sharpe: {r.SharpeRatio:F2})"));
+            
+            if (string.IsNullOrEmpty(losingPatterns))
+                losingPatterns = "None - all strategies profitable";
+
+            // Build self-analysis prompt
+            var prompt = $@"I am a trading bot. I just analyzed my historical performance:
+
+Total trades: {totalTrades}
+Win rate: {avgWinRate:P1}
+Total P&L: ${totalPnL:F2}
+Average Sharpe Ratio: {avgSharpe:F2}
+Best performing strategy: {bestResult?.Strategy ?? "N/A"} on {bestResult?.Symbol ?? "N/A"} (Sharpe: {bestResult?.SharpeRatio ?? 0:F2})
+Worst performing strategy: {worstResult?.Strategy ?? "N/A"} on {worstResult?.Symbol ?? "N/A"} (Sharpe: {worstResult?.SharpeRatio ?? 0:F2})
+Problem patterns: {losingPatterns}
+
+Based on this, what should I change about my own code or parameters to improve? Be specific - suggest exact parameter values or code logic changes. Speak as ME (the bot) analyzing myself.";
+
+            var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ [BOT-SELF-IMPROVEMENT] Error generating self-improvement suggestions");
+            return string.Empty;
+        }
+    }
+
+    /// <summary>
     /// Feed backtest results to UnifiedTradingBrain for continuous learning
     /// </summary>
-    private async Task FeedResultsToUnifiedBrainAsync(UnifiedBacktestResult[] results)
+    private async Task FeedResultsToUnifiedBrainAsync(UnifiedBacktestResult[] results, CancellationToken cancellationToken)
     {
         await Task.Yield().ConfigureAwait(false); // Ensure async behavior
         
@@ -1524,6 +1584,37 @@ internal class EnhancedBacktestLearningService : BackgroundService
             _logger.LogDebug("[UNIFIED-BACKTEST] Result {BacktestId}: Sharpe={Sharpe:F2}, Trades={Trades}, WinRate={WinRate:P1}", 
                 result.BacktestId, result.SharpeRatio, result.TotalTrades, 
                 result.TotalTrades > 0 ? (decimal)result.WinningTrades / result.TotalTrades : 0);
+        }
+        
+        // Generate self-improvement suggestions if enabled and AI is available
+        if (_ollamaClient != null && results.Any())
+        {
+            var selfImprovementEnabled = _configuration.GetValue<bool>("SELF_IMPROVEMENT_ENABLED", false);
+            if (selfImprovementEnabled)
+            {
+                try
+                {
+                    var suggestions = await GenerateSelfImprovementSuggestionsAsync(results, cancellationToken).ConfigureAwait(false);
+                    if (!string.IsNullOrEmpty(suggestions))
+                    {
+                        _logger.LogInformation("🧠 [BOT-SELF-IMPROVEMENT] {Suggestions}", suggestions);
+                        
+                        // Save suggestions to artifacts file
+                        var artifactsDir = Path.Combine(Directory.GetCurrentDirectory(), "artifacts");
+                        Directory.CreateDirectory(artifactsDir);
+                        var suggestionsPath = Path.Combine(artifactsDir, "bot_suggestions.txt");
+                        await File.WriteAllTextAsync(suggestionsPath, 
+                            $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] {suggestions}\n\n", 
+                            cancellationToken).ConfigureAwait(false);
+                        
+                        _logger.LogInformation("💾 [BOT-SELF-IMPROVEMENT] Suggestions saved to {Path}", suggestionsPath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ [BOT-SELF-IMPROVEMENT] Failed to generate self-improvement suggestions");
+                }
+            }
         }
     }
 
