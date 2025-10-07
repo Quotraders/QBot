@@ -6,8 +6,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using BotCore.Models;
 using BotCore.Bandits;
+using TradingBot.Abstractions;
+using TopstepX.Bot.Core.Services;
 
 namespace BotCore.Services
 {
@@ -22,6 +25,8 @@ namespace BotCore.Services
     /// 
     /// Runs every 5 seconds to monitor and update all open positions.
     /// Works with ParameterBundle for strategy-specific settings.
+    /// Integrates with PositionTracker for real-time market prices.
+    /// Integrates with IOrderService for stop modifications and position closes.
     /// </summary>
     public sealed class UnifiedPositionManagementService : BackgroundService
     {
@@ -318,50 +323,143 @@ namespace BotCore.Services
         }
         
         /// <summary>
-        /// Get current market price - stub for now, would integrate with market data service
+        /// Get current market price from PositionTrackingSystem
         /// </summary>
         private Task<decimal> GetCurrentMarketPriceAsync(string symbol, CancellationToken cancellationToken)
         {
-            // TODO: Integrate with actual market data service
-            // For now, return 0 to skip position management (positions will be managed by strategy-specific logic)
-            return Task.FromResult(0m);
+            try
+            {
+                // Try to get PositionTrackingSystem from service provider
+                var positionTracker = _serviceProvider.GetService<PositionTrackingSystem>();
+                if (positionTracker != null)
+                {
+                    var positions = positionTracker.GetAllPositions();
+                    if (positions.TryGetValue(symbol, out var position))
+                    {
+                        // Calculate current price from unrealized P&L if available
+                        // UnrealizedPnL = (marketPrice - avgPrice) * netQuantity
+                        // So marketPrice = (unrealizedPnL / netQuantity) + avgPrice
+                        if (position.NetQuantity != 0 && position.AveragePrice > 0)
+                        {
+                            var estimatedPrice = (position.UnrealizedPnL / position.NetQuantity) + position.AveragePrice;
+                            if (estimatedPrice > 0)
+                            {
+                                return Task.FromResult(estimatedPrice);
+                            }
+                        }
+                        
+                        // Fallback to average price if no unrealized P&L
+                        if (position.AveragePrice > 0)
+                        {
+                            return Task.FromResult(position.AveragePrice);
+                        }
+                    }
+                }
+                
+                // If no price available from tracker, return 0 to skip this cycle
+                return Task.FromResult(0m);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[POSITION-MGMT] Error getting market price for {Symbol}", symbol);
+                return Task.FromResult(0m);
+            }
         }
         
         /// <summary>
-        /// Modify stop price - stub for now, would integrate with order management service
+        /// Modify stop price using IOrderService
         /// </summary>
-        private Task ModifyStopPriceAsync(
+        private async Task ModifyStopPriceAsync(
             PositionManagementState state,
             decimal newStopPrice,
             string reason,
             CancellationToken cancellationToken)
         {
-            // TODO: Integrate with actual order management service to modify stop
-            state.CurrentStopPrice = newStopPrice;
-            state.StopModificationCount++;
-            
-            _logger.LogInformation("🔧 [POSITION-MGMT] Stop modified for {PositionId}: {Reason}, New stop: {Stop}",
-                state.PositionId, reason, newStopPrice);
-            
-            return Task.CompletedTask;
+            try
+            {
+                // Get order service from DI container
+                var orderService = _serviceProvider.GetService<IOrderService>();
+                if (orderService != null)
+                {
+                    // Call the actual order service to modify stop loss
+                    var success = await orderService.ModifyStopLossAsync(state.PositionId, newStopPrice).ConfigureAwait(false);
+                    
+                    if (success)
+                    {
+                        state.CurrentStopPrice = newStopPrice;
+                        state.StopModificationCount++;
+                        
+                        _logger.LogInformation("🔧 [POSITION-MGMT] Stop modified for {PositionId}: {Reason}, New stop: {Stop}",
+                            state.PositionId, reason, newStopPrice);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("⚠️ [POSITION-MGMT] Failed to modify stop for {PositionId}: {Reason}",
+                            state.PositionId, reason);
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ [POSITION-MGMT] OrderService not available, cannot modify stop for {PositionId}",
+                        state.PositionId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [POSITION-MGMT] Error modifying stop for {PositionId}", state.PositionId);
+            }
         }
         
         /// <summary>
-        /// Request position close - stub for now, would integrate with order management service
+        /// Request position close using IOrderService
         /// </summary>
-        private Task RequestPositionCloseAsync(
+        private async Task RequestPositionCloseAsync(
             PositionManagementState state,
             ExitReason reason,
             CancellationToken cancellationToken)
         {
-            _logger.LogWarning("⏰ [POSITION-MGMT] Time limit exceeded for {PositionId}: {Symbol}, {Duration}m elapsed (max {Max}m)",
-                state.PositionId, state.Symbol, (DateTime.UtcNow - state.EntryTime).TotalMinutes, state.MaxHoldMinutes);
-            
-            // TODO: Integrate with actual order management service to close position
-            // For now, just log and unregister
-            UnregisterPosition(state.PositionId, reason);
-            
-            return Task.CompletedTask;
+            try
+            {
+                _logger.LogWarning("⏰ [POSITION-MGMT] {Reason} triggered for {PositionId}: {Symbol}, {Duration}m elapsed",
+                    reason, state.PositionId, state.Symbol, (DateTime.UtcNow - state.EntryTime).TotalMinutes);
+                
+                // Get order service from DI container
+                var orderService = _serviceProvider.GetService<IOrderService>();
+                if (orderService != null)
+                {
+                    // Call the actual order service to close position
+                    var success = await orderService.ClosePositionAsync(state.PositionId).ConfigureAwait(false);
+                    
+                    if (success)
+                    {
+                        _logger.LogInformation("✅ [POSITION-MGMT] Position closed successfully: {PositionId}, Reason: {Reason}",
+                            state.PositionId, reason);
+                        
+                        // Unregister after successful close
+                        UnregisterPosition(state.PositionId, reason);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("⚠️ [POSITION-MGMT] Failed to close position {PositionId}, will retry next cycle",
+                            state.PositionId);
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ [POSITION-MGMT] OrderService not available, cannot close position {PositionId}",
+                        state.PositionId);
+                    
+                    // Still unregister to prevent infinite retries
+                    UnregisterPosition(state.PositionId, reason);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [POSITION-MGMT] Error closing position {PositionId}", state.PositionId);
+                
+                // Unregister to prevent infinite retries
+                UnregisterPosition(state.PositionId, reason);
+            }
         }
         
         /// <summary>
