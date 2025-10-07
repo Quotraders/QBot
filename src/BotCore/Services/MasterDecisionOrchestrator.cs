@@ -65,6 +65,7 @@ public class MasterDecisionOrchestrator : BackgroundService
     private readonly ContinuousLearningManager _learningManager;
     private readonly ContractRolloverManager _rolloverManager;
     private readonly OllamaClient? _ollamaClient;
+    private readonly BotAlertService? _botAlertService;
     
     // Operational state
     private readonly Dictionary<string, DecisionPerformance> _performanceTracking = new();
@@ -97,7 +98,8 @@ public class MasterDecisionOrchestrator : BackgroundService
         UnifiedDecisionRouter unifiedRouter,
         BotCore.Brain.UnifiedTradingBrain unifiedBrain,
         IGate5Config? gate5Config = null,
-        OllamaClient? ollamaClient = null)
+        OllamaClient? ollamaClient = null,
+        BotAlertService? botAlertService = null)
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
@@ -106,6 +108,7 @@ public class MasterDecisionOrchestrator : BackgroundService
         _unifiedBrain = unifiedBrain;
         _gate5Config = gate5Config ?? Gate5Config.LoadFromEnvironment();
         _ollamaClient = ollamaClient;
+        _botAlertService = botAlertService;
         
         // Try to get optional enhanced services
         _enhancedBrain = serviceProvider.GetService<EnhancedTradingBrainIntegration>();
@@ -1518,7 +1521,7 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
     /// <summary>
     /// Send rollback alert
     /// </summary>
-    private Task SendRollbackAlertAsync(string message, double winRate, double sharpe, 
+    private async Task SendRollbackAlertAsync(string message, double winRate, double sharpe, 
         double drawdown)
     {
         // Log high-priority alert (actual alert service integration happens at orchestrator level)
@@ -1529,7 +1532,15 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
         _logger.LogCritical("📊 [ALERT] Drawdown: ${Drawdown:F2}", drawdown);
         _logger.LogCritical("🕐 [ALERT] Timestamp: {Timestamp:yyyy-MM-dd HH:mm:ss} UTC", DateTime.UtcNow);
         
-        return Task.CompletedTask;
+        // Send alert via BotAlertService if available
+        if (_botAlertService != null)
+        {
+            await _botAlertService.AlertRollbackAsync(
+                message,
+                (decimal)(winRate * 100),
+                (decimal)drawdown
+            ).ConfigureAwait(false);
+        }
     }
 
     /// <summary>

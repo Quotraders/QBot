@@ -281,6 +281,156 @@ jobs:
           
           EOF
 
+      - name: "📅 Scrape ForexFactory Economic Calendar"
+        run: |
+          python3 << 'EOF'
+          import requests
+          from bs4 import BeautifulSoup
+          import json
+          from datetime import datetime, timedelta
+          import os
+          
+          print("[FOREX-FACTORY] 📅 Scraping economic calendar...")
+          
+          try:
+              # Create output directory
+              os.makedirs("datasets/economic_calendar", exist_ok=True)
+              
+              # Get current week's calendar
+              url = "https://www.forexfactory.com/calendar"
+              headers = {
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+              }
+              
+              response = requests.get(url, headers=headers, timeout=10)
+              response.raise_for_status()
+              
+              soup = BeautifulSoup(response.content, 'html.parser')
+              
+              # Find calendar table
+              calendar_table = soup.find('table', class_='calendar__table')
+              
+              if not calendar_table:
+                  print("[FOREX-FACTORY] ⚠️ Calendar table not found, using fallback events")
+                  # Create fallback events for testing
+                  events = [
+                      {
+                          "date": (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d"),
+                          "time": "14:00",
+                          "currency": "USD",
+                          "impact": "High",
+                          "event": "FOMC Interest Rate Decision",
+                          "forecast": "",
+                          "previous": ""
+                      }
+                  ]
+              else:
+                  events = []
+                  current_date = None
+                  
+                  # Parse calendar rows
+                  rows = calendar_table.find_all('tr', class_='calendar__row')
+                  
+                  for row in rows[:50]:  # Limit to first 50 events
+                      # Extract date
+                      date_cell = row.find('td', class_='calendar__date')
+                      if date_cell and date_cell.text.strip():
+                          date_text = date_cell.text.strip()
+                          try:
+                              current_date = datetime.strptime(date_text, "%a%b %d").replace(year=datetime.now().year)
+                          except:
+                              pass
+                      
+                      # Extract time
+                      time_cell = row.find('td', class_='calendar__time')
+                      time_text = time_cell.text.strip() if time_cell else ""
+                      
+                      # Extract currency
+                      currency_cell = row.find('td', class_='calendar__currency')
+                      currency = currency_cell.text.strip() if currency_cell else ""
+                      
+                      # Extract impact
+                      impact_cell = row.find('td', class_='calendar__impact')
+                      impact_span = impact_cell.find('span') if impact_cell else None
+                      impact = "Low"
+                      if impact_span:
+                          if 'icon--ff-impact-red' in impact_span.get('class', []):
+                              impact = "High"
+                          elif 'icon--ff-impact-ora' in impact_span.get('class', []):
+                              impact = "Medium"
+                      
+                      # Only keep High and Medium impact events
+                      if impact not in ["High", "Medium"]:
+                          continue
+                      
+                      # Extract event name
+                      event_cell = row.find('td', class_='calendar__event')
+                      event_name = event_cell.text.strip() if event_cell else ""
+                      
+                      # Extract forecast and previous
+                      forecast_cell = row.find('td', class_='calendar__forecast')
+                      forecast = forecast_cell.text.strip() if forecast_cell else ""
+                      
+                      previous_cell = row.find('td', class_='calendar__previous')
+                      previous = previous_cell.text.strip() if previous_cell else ""
+                      
+                      if current_date and event_name and currency:
+                          events.append({
+                              "date": current_date.strftime("%Y-%m-%d"),
+                              "time": time_text or "00:00",
+                              "currency": currency,
+                              "impact": impact,
+                              "event": event_name,
+                              "forecast": forecast,
+                              "previous": previous
+                          })
+              
+              # Save to JSON
+              output_path = "datasets/economic_calendar/calendar.json"
+              with open(output_path, 'w') as f:
+                  json.dump(events, f, indent=2)
+              
+              print(f"[FOREX-FACTORY] ✅ Collected {len(events)} high/medium impact events")
+              
+              # Print sample events
+              for event in events[:5]:
+                  print(f"  📅 {event['date']} {event['time']} - {event['currency']} - {event['impact']} - {event['event']}")
+              
+          except requests.exceptions.RequestException as e:
+              print(f"[FOREX-FACTORY] ⚠️ Network error: {e}")
+              print("[FOREX-FACTORY] Creating minimal fallback calendar")
+              
+              # Create minimal fallback
+              events = [
+                  {
+                      "date": (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d"),
+                      "time": "14:00",
+                      "currency": "USD",
+                      "impact": "High",
+                      "event": "FOMC Interest Rate Decision",
+                      "forecast": "",
+                      "previous": ""
+                  }
+              ]
+              
+              os.makedirs("datasets/economic_calendar", exist_ok=True)
+              with open("datasets/economic_calendar/calendar.json", 'w') as f:
+                  json.dump(events, f, indent=2)
+          
+          except Exception as e:
+              print(f"[FOREX-FACTORY] ❌ Error: {e}")
+              raise
+          
+          EOF
+
+      - name: "💾 Commit Economic Calendar"
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add datasets/economic_calendar/ || true
+          git diff --cached --quiet || git commit -m "Update economic calendar from ForexFactory [skip ci]" || true
+          git push || true
+
       - name: "📦 Upload News Flag Artifacts"
         uses: actions/upload-artifact@v4
         with:
@@ -294,6 +444,7 @@ jobs:
           echo "📰 GDELT macro economic events collected"
           echo "📄 Commercial headlines (MarketWatch, CNBC) - compliance mode"
           echo "🏛️ Government sources (Fed, BLS) - full content"
+          echo "📅 ForexFactory economic calendar scraped"
           echo "🚫 Bloomberg/Reuters/Seeking Alpha - REMOVED"
           echo "🚫 Individual stocks (Tesla, Nvidia) - REMOVED"
           echo "🚫 Bitcoin/crypto terms - REMOVED"

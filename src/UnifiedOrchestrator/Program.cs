@@ -831,8 +831,29 @@ Please check the configuration and ensure all required services are registered.
             Console.WriteLine("🔇 [OLLAMA] Bot voice disabled - will operate silently");
         }
         
-        // Register UnifiedTradingBrain - The main AI brain (1,027+ lines)
-        services.AddSingleton<BotCore.Brain.UnifiedTradingBrain>();
+        // Register BotAlertService - Proactive alerting system for bot self-awareness
+        services.AddSingleton<BotCore.Services.BotAlertService>();
+        
+        // Register UnifiedTradingBrain - The main AI brain with calendar integration (Phase 2)
+        services.AddSingleton<BotCore.Brain.UnifiedTradingBrain>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<BotCore.Brain.UnifiedTradingBrain>>();
+            var memoryManager = provider.GetRequiredService<BotCore.ML.IMLMemoryManager>();
+            var modelManager = provider.GetRequiredService<BotCore.ML.StrategyMlModelManager>();
+            var cvarPPO = provider.GetRequiredService<TradingBot.RLAgent.CVaRPPO>();
+            var gate4Config = provider.GetService<TradingBot.Abstractions.IGate4Config>();
+            var ollamaClient = provider.GetService<BotCore.Services.OllamaClient>();
+            var economicEventManager = provider.GetService<BotCore.Market.IEconomicEventManager>();
+            
+            return new BotCore.Brain.UnifiedTradingBrain(
+                logger,
+                memoryManager,
+                modelManager,
+                cvarPPO,
+                gate4Config,
+                ollamaClient,
+                economicEventManager);
+        });
         
         // Register UCB Manager - C# client for Python UCB service (175 lines)
         services.AddSingleton<BotCore.ML.UcbManager>();
@@ -950,8 +971,26 @@ Please check the configuration and ensure all required services are registered.
         // services.AddHostedService<BotCore.Services.UnifiedDataIntegrationService>(provider => 
         //     provider.GetRequiredService<BotCore.Services.UnifiedDataIntegrationService>());
         
-        // Register the MASTER DECISION ORCHESTRATOR - The ONE always-learning brain
-        services.AddSingleton<BotCore.Services.MasterDecisionOrchestrator>();
+        // Register the MASTER DECISION ORCHESTRATOR - The ONE always-learning brain with alert integration
+        services.AddSingleton<BotCore.Services.MasterDecisionOrchestrator>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<BotCore.Services.MasterDecisionOrchestrator>>();
+            var serviceProvider = provider.GetRequiredService<IServiceProvider>();
+            var unifiedRouter = provider.GetRequiredService<BotCore.Services.UnifiedDecisionRouter>();
+            var unifiedBrain = provider.GetRequiredService<BotCore.Brain.UnifiedTradingBrain>();
+            var gate5Config = provider.GetService<TradingBot.Abstractions.IGate5Config>();
+            var ollamaClient = provider.GetService<BotCore.Services.OllamaClient>();
+            var botAlertService = provider.GetService<BotCore.Services.BotAlertService>();
+            
+            return new BotCore.Services.MasterDecisionOrchestrator(
+                logger,
+                serviceProvider,
+                unifiedRouter,
+                unifiedBrain,
+                gate5Config,
+                ollamaClient,
+                botAlertService);
+        });
         services.AddHostedService<BotCore.Services.MasterDecisionOrchestrator>(provider => 
             provider.GetRequiredService<BotCore.Services.MasterDecisionOrchestrator>());
         
@@ -1056,8 +1095,14 @@ Please check the configuration and ensure all required services are registered.
         // Register WorkflowOrchestrationManager (466 lines)
         services.AddSingleton<WorkflowOrchestrationManager>();
         
-        // Register EconomicEventManager (452 lines)
-        services.AddSingleton<BotCore.Market.IEconomicEventManager, BotCore.Market.EconomicEventManager>();
+        // Register EconomicEventManager with BotAlertService integration (Phase 2 + Phase 3)
+        services.AddSingleton<BotCore.Market.IEconomicEventManager>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<BotCore.Market.EconomicEventManager>>();
+            var botAlertService = provider.GetService<BotCore.Services.BotAlertService>();
+            
+            return new BotCore.Market.EconomicEventManager(logger, botAlertService);
+        });
         
         // Register RedundantDataFeedManager (442 lines)
         services.AddSingleton<BotCore.Market.RedundantDataFeedManager>();
@@ -1926,6 +1971,9 @@ internal class AdvancedSystemInitializationService : IHostedService
                 // Intelligence orchestrator initialization handled internally
             }
 
+            // Run startup health check for bot alert system
+            await RunStartupHealthCheckAsync().ConfigureAwait(false);
+
             _logger.LogInformation("✅ Advanced System Initialization completed successfully");
         }
         catch (Exception ex)
@@ -1939,6 +1987,110 @@ internal class AdvancedSystemInitializationService : IHostedService
     {
         _logger.LogInformation("🛑 Advanced System Initialization Service stopping");
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Run startup health check to verify all systems are ready
+    /// </summary>
+    private async Task RunStartupHealthCheckAsync()
+    {
+        try
+        {
+            var botAlerts = _serviceProvider.GetService<BotCore.Services.BotAlertService>();
+            if (botAlerts == null)
+            {
+                _logger.LogWarning("⚠️ BotAlertService not available - skipping startup health check");
+                return;
+            }
+
+            _logger.LogInformation("🔍 Running startup health check...");
+
+            // Check Ollama connectivity
+            var ollamaClient = _serviceProvider.GetService<BotCore.Services.OllamaClient>();
+            var ollamaConnected = false;
+            if (ollamaClient != null)
+            {
+                ollamaConnected = await ollamaClient.IsConnectedAsync().ConfigureAwait(false);
+            }
+
+            // Check if economic calendar is loaded
+            var economicEventManager = _serviceProvider.GetService<BotCore.Market.IEconomicEventManager>();
+            var calendarLoaded = economicEventManager != null;
+            if (economicEventManager != null)
+            {
+                try
+                {
+                    var upcomingEvents = await economicEventManager.GetUpcomingEventsAsync(TimeSpan.FromDays(7)).ConfigureAwait(false);
+                    calendarLoaded = upcomingEvents.Any();
+                }
+                catch
+                {
+                    calendarLoaded = false;
+                }
+            }
+
+            // Check Python UCB service
+            var ucbManager = _serviceProvider.GetService<BotCore.ML.UcbManager>();
+            var pythonUcbRunning = ucbManager != null;
+
+            // Check cloud models downloaded
+            var cloudDownloader = _serviceProvider.GetService<BotCore.Services.CloudModelDownloader>();
+            var cloudModelsDownloaded = cloudDownloader != null;
+
+            // Report startup health
+            await botAlerts.CheckStartupHealthAsync(
+                ollamaConnected,
+                calendarLoaded,
+                pythonUcbRunning,
+                cloudModelsDownloaded
+            ).ConfigureAwait(false);
+
+            // Check for disabled critical features
+            var configuration = _serviceProvider.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
+            
+            var dryRun = configuration["ENABLE_DRY_RUN"]?.ToLowerInvariant() == "true" || 
+                        configuration["ENABLE_DRY_RUN"] == "1" ||
+                        configuration["TRADING_MODE"]?.ToUpperInvariant() == "DRY_RUN";
+            if (dryRun)
+            {
+                await botAlerts.AlertFeatureDisabledAsync(
+                    "DRY_RUN Mode",
+                    "Running in simulation mode, no real money at risk"
+                ).ConfigureAwait(false);
+            }
+
+            var historicalLearning = configuration["ENABLE_HISTORICAL_LEARNING"];
+            if (historicalLearning == "0" || historicalLearning?.ToLowerInvariant() == "false")
+            {
+                await botAlerts.AlertFeatureDisabledAsync(
+                    "Historical Learning",
+                    "Not learning from past data - using current models only"
+                ).ConfigureAwait(false);
+            }
+
+            var calendarCheck = configuration["BOT_CALENDAR_CHECK_ENABLED"];
+            if (calendarCheck == "0" || calendarCheck?.ToLowerInvariant() == "false")
+            {
+                await botAlerts.AlertFeatureDisabledAsync(
+                    "Calendar Check",
+                    "Won't block trades during high-impact economic events"
+                ).ConfigureAwait(false);
+            }
+
+            if (!ollamaConnected)
+            {
+                await botAlerts.AlertFeatureDisabledAsync(
+                    "Bot Voice (Ollama)",
+                    "My voice is disabled, I'll be silent"
+                ).ConfigureAwait(false);
+            }
+
+            _logger.LogInformation("✅ Startup health check completed");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Startup health check failed");
+        }
     }
 }
 

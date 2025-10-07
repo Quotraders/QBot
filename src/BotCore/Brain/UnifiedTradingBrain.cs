@@ -206,6 +206,9 @@ namespace BotCore.Brain
         // Gate 4 configuration
         private readonly IGate4Config _gate4Config;
         
+        // Economic calendar for event-based trading restrictions (Phase 2)
+        private readonly BotCore.Market.IEconomicEventManager? _economicEventManager;
+        
         // Primary strategies for focused learning
         private readonly string[] PrimaryStrategies = { "S2", "S3", "S6", "S11" };
         
@@ -253,7 +256,8 @@ namespace BotCore.Brain
             StrategyMlModelManager modelManager,
             CVaRPPO cvarPPO,
             IGate4Config? gate4Config = null,
-            BotCore.Services.OllamaClient? ollamaClient = null)
+            BotCore.Services.OllamaClient? ollamaClient = null,
+            BotCore.Market.IEconomicEventManager? economicEventManager = null)
         {
             _logger = logger;
             _memoryManager = memoryManager;
@@ -261,6 +265,7 @@ namespace BotCore.Brain
             _cvarPPO = cvarPPO; // Direct injection
             _gate4Config = gate4Config ?? Gate4Config.LoadFromEnvironment();
             _ollamaClient = ollamaClient; // Optional AI conversation client
+            _economicEventManager = economicEventManager; // Optional economic calendar (Phase 2)
             
             // Initialize Neural UCB for strategy selection using ONNX-based neural network
             var onnxLoader = new OnnxModelLoader(new Microsoft.Extensions.Logging.Abstractions.NullLogger<OnnxModelLoader>());
@@ -365,6 +370,38 @@ namespace BotCore.Brain
             
             try
             {
+                // PHASE 2: Check economic calendar before trading
+                var calendarCheckEnabled = Environment.GetEnvironmentVariable("BOT_CALENDAR_CHECK_ENABLED")?.ToLowerInvariant() == "true";
+                if (calendarCheckEnabled && _economicEventManager != null)
+                {
+                    // Check if symbol trading should be restricted
+                    var blockMinutes = int.Parse(Environment.GetEnvironmentVariable("BOT_CALENDAR_BLOCK_MINUTES") ?? "10", System.Globalization.CultureInfo.InvariantCulture);
+                    var isRestricted = await _economicEventManager.ShouldRestrictTradingAsync(symbol, TimeSpan.FromMinutes(blockMinutes)).ConfigureAwait(false);
+                    
+                    if (isRestricted)
+                    {
+                        _logger.LogWarning("📅 [CALENDAR-BLOCK] Cannot trade {Symbol} - event restriction active", symbol);
+                        return CreateNoTradeDecision(symbol, "Economic event restriction", startTime);
+                    }
+                    
+                    // Check for upcoming high-impact events
+                    var upcomingEvents = await _economicEventManager.GetUpcomingEventsAsync(
+                        TimeSpan.FromMinutes(blockMinutes)).ConfigureAwait(false);
+                    
+                    var highImpactEvents = upcomingEvents.Where(e => 
+                        e.Impact >= BotCore.Market.EventImpact.High && 
+                        e.AffectedSymbols.Contains(symbol)).ToList();
+                    
+                    if (highImpactEvents.Any())
+                    {
+                        var nextEvent = highImpactEvents.First();
+                        var minutesUntil = (nextEvent.ScheduledTime - DateTime.UtcNow).TotalMinutes;
+                        _logger.LogWarning("📅 [CALENDAR-BLOCK] High-impact event '{Event}' in {Minutes:F0} minutes - blocking trades", 
+                            nextEvent.Name, minutesUntil);
+                        return CreateNoTradeDecision(symbol, $"{nextEvent.Name} approaching", startTime);
+                    }
+                }
+                
                 // 1. CREATE MARKET CONTEXT from current data
                 var context = CreateMarketContext(symbol, env, bars);
                 _marketContexts[symbol] = context;
@@ -1240,6 +1277,28 @@ Reflect on what happened in 1-2 sentences. Speak as ME (the bot).";
         #endregion
 
         #region Helper Methods
+
+        /// <summary>
+        /// Create a no-trade decision when trading is blocked (Phase 2: Calendar)
+        /// </summary>
+        private static BrainDecision CreateNoTradeDecision(string symbol, string reason, DateTime startTime)
+        {
+            return new BrainDecision
+            {
+                Symbol = symbol,
+                RecommendedStrategy = "HOLD",
+                StrategyConfidence = 0m,
+                PriceDirection = BotCore.Brain.Models.PriceDirection.Sideways,
+                PriceProbability = 0.5m,
+                OptimalPositionMultiplier = 0m,
+                MarketRegime = BotCore.Brain.Models.MarketRegime.Normal,
+                EnhancedCandidates = new List<Candidate>(),
+                DecisionTime = startTime,
+                ProcessingTimeMs = (DateTime.UtcNow - startTime).TotalMilliseconds,
+                ModelConfidence = 0m,
+                RiskAssessment = $"BLOCKED: {reason}"
+            };
+        }
 
         private static MarketContext CreateMarketContext(string symbol, Env env, IList<Bar> bars)
         {
