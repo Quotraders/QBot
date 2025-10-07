@@ -94,5 +94,34 @@ namespace BotCore.Models
         /// Number of times stop has been modified
         /// </summary>
         public int StopModificationCount { get; set; }
+        
+        /// <summary>
+        /// PHASE 4: Dynamic properties for tracking partial exits and other state
+        /// </summary>
+        private readonly System.Collections.Generic.Dictionary<string, object> _dynamicProperties = new();
+        
+        /// <summary>
+        /// Check if a dynamic property exists
+        /// </summary>
+        public bool HasProperty(string key)
+        {
+            return _dynamicProperties.ContainsKey(key);
+        }
+        
+        /// <summary>
+        /// Get a dynamic property value
+        /// </summary>
+        public object GetProperty(string key)
+        {
+            return _dynamicProperties.TryGetValue(key, out var value) ? value : null;
+        }
+        
+        /// <summary>
+        /// Set a dynamic property value
+        /// </summary>
+        public void SetProperty(string key, object value)
+        {
+            _dynamicProperties[key] = value;
+        }
     }
 }
