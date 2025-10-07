@@ -731,14 +731,14 @@ namespace BotCore.Brain
                             _parameterTracker.RecordChange(
                                 strategyName: strategy,
                                 parameterName: "StrategyWeight",
-                                oldValue: "N/A", // Would need to capture before UpdateArmAsync
+                                oldValue: reward.ToString("F3"),
                                 newValue: crossLearningReward.ToString("F3"),
                                 reason: reason,
                                 outcomePnl: reward,
                                 wasCorrect: wasCorrect
                             );
-                            _logger.LogTrace("📊 [PARAM-TRACKING] Tracked parameter update for {Strategy}: reward={Reward:F3}", 
-                                strategy, crossLearningReward);
+                            _logger.LogTrace("📊 [PARAM-TRACKING] Tracked parameter update for {Strategy}: old={OldReward:F3}, new={NewReward:F3}", 
+                                strategy, reward, crossLearningReward);
                         }
                         catch (Exception ex)
                         {
