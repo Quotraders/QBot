@@ -34,9 +34,64 @@ namespace BotCore.Models
         public decimal CurrentStopPrice { get; set; }
         
         /// <summary>
-        /// Target profit price
+        /// Target profit price (original/static target)
         /// </summary>
         public decimal TargetPrice { get; set; }
+        
+        /// <summary>
+        /// Dynamic target price (adjusted based on regime changes)
+        /// </summary>
+        public decimal DynamicTargetPrice { get; set; }
+        
+        /// <summary>
+        /// Market regime at entry time (Trend, Range, Transition)
+        /// </summary>
+        public string EntryRegime { get; set; } = "UNKNOWN";
+        
+        /// <summary>
+        /// Current market regime (updated periodically)
+        /// </summary>
+        public string CurrentRegime { get; set; } = "UNKNOWN";
+        
+        /// <summary>
+        /// Last time regime was checked
+        /// </summary>
+        public DateTime LastRegimeCheck { get; set; }
+        
+        /// <summary>
+        /// FEATURE 3: Entry regime confidence (0.0-1.0)
+        /// </summary>
+        public decimal EntryRegimeConfidence { get; set; }
+        
+        /// <summary>
+        /// FEATURE 3: Current regime confidence (0.0-1.0, updated periodically)
+        /// </summary>
+        public decimal CurrentRegimeConfidence { get; set; }
+        
+        /// <summary>
+        /// FEATURE 3: List of regime changes during trade lifetime
+        /// </summary>
+        public System.Collections.Generic.List<RegimeChangeRecord> RegimeChanges { get; set; } = new();
+        
+        /// <summary>
+        /// FEATURE 4: Entry confidence from AutonomousDecisionEngine (0.0-1.0)
+        /// </summary>
+        public decimal EntryConfidence { get; set; }
+        
+        /// <summary>
+        /// FEATURE 5: Last time progressive tightening was applied
+        /// </summary>
+        public DateTime LastProgressiveTighteningCheck { get; set; }
+        
+        /// <summary>
+        /// FEATURE 5: Current progressive tightening tier (0 = no tightening yet)
+        /// </summary>
+        public int ProgressiveTighteningTier { get; set; }
+        
+        /// <summary>
+        /// FEATURE 5: Peak profit in ticks achieved (for progressive exit thresholds)
+        /// </summary>
+        public decimal PeakProfitTicks { get; set; }
         
         /// <summary>
         /// Position size (signed: + for long, - for short)
@@ -123,5 +178,18 @@ namespace BotCore.Models
         {
             _dynamicProperties[key] = value;
         }
+    }
+    
+    /// <summary>
+    /// FEATURE 3: Records a regime change event during position lifetime
+    /// </summary>
+    public sealed class RegimeChangeRecord
+    {
+        public DateTime Timestamp { get; set; }
+        public string FromRegime { get; set; } = string.Empty;
+        public string ToRegime { get; set; } = string.Empty;
+        public decimal FromConfidence { get; set; }
+        public decimal ToConfidence { get; set; }
+        public decimal PnLAtChange { get; set; }
     }
 }

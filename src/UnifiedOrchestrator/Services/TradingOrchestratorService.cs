@@ -838,7 +838,7 @@ internal class TradingOrchestratorService : BackgroundService, ITradingOrchestra
                         ? decision.Price + (bracketMode.TargetTicks * tickSize)
                         : decision.Price - (bracketMode.TargetTicks * tickSize);
                     
-                    // Register position for automatic management
+                    // Register position for automatic management (FEATURE 4: Pass confidence)
                     _positionManagement.RegisterPosition(
                         positionId: orderId,
                         symbol: decision.Symbol,
@@ -847,7 +847,8 @@ internal class TradingOrchestratorService : BackgroundService, ITradingOrchestra
                         stopPrice: stopPrice,
                         targetPrice: targetPrice,
                         quantity: (int)decision.Quantity,
-                        bracketMode: bracketMode
+                        bracketMode: bracketMode,
+                        entryConfidence: decision.Confidence
                     );
                     
                     // Track decision ID to position ID mapping for later unregistration

@@ -39,6 +39,31 @@ namespace BotCore.Services
         // Monitoring interval
         private const int MonitoringIntervalSeconds = 5;
         
+        // Dynamic targeting configuration (Feature 1)
+        private readonly bool _dynamicTargetsEnabled;
+        private readonly int _regimeCheckIntervalSeconds;
+        private readonly decimal _targetAdjustmentThreshold;
+        
+        // MAE/MFE learning configuration (Feature 2)
+        private readonly bool _maeLearningEnabled;
+        private readonly bool _mfeLearningEnabled;
+        
+        // FEATURE 3: Regime monitoring configuration
+        private readonly bool _regimeMonitoringEnabled;
+        private readonly bool _regimeFlipExitEnabled;
+        private readonly decimal _regimeConfidenceDropThreshold;
+        
+        // FEATURE 4: Confidence-based adjustment configuration
+        private readonly bool _confidenceAdjustmentEnabled;
+        private readonly decimal _confidenceVeryHighThreshold;
+        private readonly decimal _confidenceHighThreshold;
+        private readonly decimal _confidenceMediumThreshold;
+        private readonly decimal _confidenceLowThreshold;
+        
+        // FEATURE 5: Progressive time-decay stop tightening configuration
+        private readonly bool _progressiveTighteningEnabled;
+        private readonly int _progressiveTighteningCheckIntervalSeconds;
+        
         // Tick size for ES/MES (0.25) - used for breakeven calculations
         private const decimal EsTickSize = 0.25m;
         private const decimal NqTickSize = 0.25m;
@@ -100,6 +125,61 @@ namespace BotCore.Services
             {
                 _logger.LogInformation("🤖 [POSITION-MGMT] AI commentary enabled for position management actions");
             }
+            
+            // Load dynamic targeting configuration (Feature 1)
+            _dynamicTargetsEnabled = Environment.GetEnvironmentVariable("BOT_DYNAMIC_TARGETS_ENABLED")?.ToLowerInvariant() == "true";
+            _regimeCheckIntervalSeconds = int.TryParse(Environment.GetEnvironmentVariable("BOT_REGIME_CHECK_INTERVAL_SECONDS"), out var regimeInterval) ? regimeInterval : 60;
+            _targetAdjustmentThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("BOT_TARGET_ADJUSTMENT_THRESHOLD"), out var threshold) ? threshold : 0.3m;
+            
+            if (_dynamicTargetsEnabled)
+            {
+                _logger.LogInformation("📊 [POSITION-MGMT] Dynamic R-Multiple Targeting enabled: regime check every {Interval}s, adjustment threshold {Threshold}",
+                    _regimeCheckIntervalSeconds, _targetAdjustmentThreshold);
+            }
+            
+            // Load MAE/MFE learning configuration (Feature 2)
+            _maeLearningEnabled = Environment.GetEnvironmentVariable("BOT_MAE_LEARNING_ENABLED")?.ToLowerInvariant() == "true";
+            _mfeLearningEnabled = Environment.GetEnvironmentVariable("BOT_MFE_LEARNING_ENABLED")?.ToLowerInvariant() == "true";
+            
+            if (_maeLearningEnabled || _mfeLearningEnabled)
+            {
+                _logger.LogInformation("🧠 [POSITION-MGMT] MAE/MFE Learning enabled: MAE={MAE}, MFE={MFE}",
+                    _maeLearningEnabled, _mfeLearningEnabled);
+            }
+            
+            // Load regime monitoring configuration (Feature 3)
+            _regimeMonitoringEnabled = Environment.GetEnvironmentVariable("BOT_REGIME_MONITORING_ENABLED")?.ToLowerInvariant() == "true";
+            _regimeFlipExitEnabled = Environment.GetEnvironmentVariable("BOT_REGIME_FLIP_EXIT_ENABLED")?.ToLowerInvariant() == "true";
+            _regimeConfidenceDropThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("BOT_REGIME_CONFIDENCE_DROP_THRESHOLD"), out var dropThreshold) ? dropThreshold : 0.30m;
+            
+            if (_regimeMonitoringEnabled)
+            {
+                _logger.LogInformation("🔄 [POSITION-MGMT] Regime monitoring enabled: Exit on flip={FlipExit}, Confidence drop threshold={Threshold}",
+                    _regimeFlipExitEnabled, _regimeConfidenceDropThreshold);
+            }
+            
+            // Load confidence-based adjustment configuration (Feature 4)
+            _confidenceAdjustmentEnabled = Environment.GetEnvironmentVariable("BOT_CONFIDENCE_ADJUSTMENT_ENABLED")?.ToLowerInvariant() == "true";
+            _confidenceVeryHighThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_VERY_HIGH_THRESHOLD"), out var vhThreshold) ? vhThreshold : 0.85m;
+            _confidenceHighThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_HIGH_THRESHOLD"), out var hThreshold) ? hThreshold : 0.75m;
+            _confidenceMediumThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_MEDIUM_THRESHOLD"), out var mThreshold) ? mThreshold : 0.70m;
+            _confidenceLowThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_LOW_THRESHOLD"), out var lThreshold) ? lThreshold : 0.65m;
+            
+            if (_confidenceAdjustmentEnabled)
+            {
+                _logger.LogInformation("💯 [POSITION-MGMT] Confidence-based adjustment enabled: VeryHigh≥{VH}, High≥{H}, Medium≥{M}, Low≥{L}",
+                    _confidenceVeryHighThreshold, _confidenceHighThreshold, _confidenceMediumThreshold, _confidenceLowThreshold);
+            }
+            
+            // Load progressive tightening configuration (Feature 5)
+            _progressiveTighteningEnabled = Environment.GetEnvironmentVariable("BOT_PROGRESSIVE_TIGHTENING_ENABLED")?.ToLowerInvariant() == "true";
+            _progressiveTighteningCheckIntervalSeconds = int.TryParse(Environment.GetEnvironmentVariable("BOT_PROGRESSIVE_TIGHTENING_CHECK_INTERVAL_SECONDS"), out var ptInterval) ? ptInterval : 60;
+            
+            if (_progressiveTighteningEnabled)
+            {
+                _logger.LogInformation("⏱️ [POSITION-MGMT] Progressive time-decay tightening enabled: Check interval={Interval}s",
+                    _progressiveTighteningCheckIntervalSeconds);
+            }
         }
         
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -135,8 +215,42 @@ namespace BotCore.Services
             decimal stopPrice,
             decimal targetPrice,
             int quantity,
-            BracketMode bracketMode)
+            BracketMode bracketMode,
+            decimal entryConfidence = 0.75m)
         {
+            // FEATURE 4: Apply confidence-based adjustments to stop and target
+            if (_confidenceAdjustmentEnabled)
+            {
+                var adjustedValues = ApplyConfidenceAdjustments(entryPrice, stopPrice, targetPrice, quantity, entryConfidence, symbol);
+                stopPrice = adjustedValues.adjustedStop;
+                targetPrice = adjustedValues.adjustedTarget;
+                quantity = adjustedValues.adjustedQuantity;
+                
+                _logger.LogInformation("💯 [POSITION-MGMT] Confidence-based adjustment: Confidence={Conf:F2}, Stop adjusted to {Stop:F2}, Target to {Target:F2}, Qty to {Qty}",
+                    entryConfidence, stopPrice, targetPrice, quantity);
+            }
+            
+            // Capture entry regime (Feature 1 & 3)
+            var entryRegime = "UNKNOWN";
+            var entryRegimeConfidence = 0.5m;
+            try
+            {
+                if (_dynamicTargetsEnabled || _regimeMonitoringEnabled)
+                {
+                    var regimeService = _serviceProvider.GetService<RegimeDetectionService>();
+                    if (regimeService != null)
+                    {
+                        entryRegime = regimeService.GetCurrentRegimeAsync(symbol).GetAwaiter().GetResult();
+                        // Note: RegimeDetectionService doesn't provide confidence yet, using default
+                        entryRegimeConfidence = 0.75m; // Default confidence
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ [POSITION-MGMT] Could not detect entry regime for {Symbol}", symbol);
+            }
+            
             var state = new PositionManagementState
             {
                 PositionId = positionId,
@@ -155,13 +269,33 @@ namespace BotCore.Services
                 TrailTicks = bracketMode.TrailTicks,
                 MaxHoldMinutes = GetMaxHoldMinutes(strategy),
                 LastCheckTime = DateTime.UtcNow,
-                StopModificationCount = 0
+                StopModificationCount = 0,
+                EntryRegime = entryRegime,
+                CurrentRegime = entryRegime,
+                LastRegimeCheck = DateTime.UtcNow,
+                EntryRegimeConfidence = entryRegimeConfidence,
+                CurrentRegimeConfidence = entryRegimeConfidence,
+                EntryConfidence = entryConfidence,
+                LastProgressiveTighteningCheck = DateTime.UtcNow,
+                ProgressiveTighteningTier = 0,
+                PeakProfitTicks = 0
             };
             
-            _activePositions[positionId] = state;
+            // Calculate dynamic target based on entry regime (Feature 1)
+            if (_dynamicTargetsEnabled)
+            {
+                state.DynamicTargetPrice = CalculateDynamicTarget(state, entryPrice, stopPrice, entryRegime);
+                _logger.LogInformation("📝 [POSITION-MGMT] Registered position {PositionId}: {Strategy} {Symbol} {Qty}@{Entry}, Regime: {Regime}, Static target: {Static}, Dynamic target: {Dynamic}",
+                    positionId, strategy, symbol, quantity, entryPrice, entryRegime, targetPrice, state.DynamicTargetPrice);
+            }
+            else
+            {
+                state.DynamicTargetPrice = targetPrice;
+                _logger.LogInformation("📝 [POSITION-MGMT] Registered position {PositionId}: {Strategy} {Symbol} {Qty}@{Entry}, BE after {BETicks} ticks, Trail {TrailTicks} ticks, Max hold {MaxHold}m",
+                    positionId, strategy, symbol, quantity, entryPrice, bracketMode.BreakevenAfterTicks, bracketMode.TrailTicks, state.MaxHoldMinutes);
+            }
             
-            _logger.LogInformation("📝 [POSITION-MGMT] Registered position {PositionId}: {Strategy} {Symbol} {Qty}@{Entry}, BE after {BETicks} ticks, Trail {TrailTicks} ticks, Max hold {MaxHold}m",
-                positionId, strategy, symbol, quantity, entryPrice, bracketMode.BreakevenAfterTicks, bracketMode.TrailTicks, state.MaxHoldMinutes);
+            _activePositions[positionId] = state;
         }
         
         /// <summary>
@@ -219,7 +353,11 @@ namespace BotCore.Services
                 // Trail multiplier calculation (estimate from trail ticks)
                 var trailMultiplier = state.TrailTicks * tickSize / 1.0m; // Simplified estimate
                 
-                // Record outcome
+                // Record outcome (with regime information for Feature 1 & 2)
+                var marketRegime = state.HasProperty("EntryRegime") 
+                    ? (state.GetProperty("EntryRegime")?.ToString() ?? "UNKNOWN")
+                    : state.EntryRegime;
+                
                 optimizer.RecordOutcome(
                     strategy: state.Strategy,
                     symbol: state.Symbol,
@@ -233,7 +371,7 @@ namespace BotCore.Services
                     finalPnL: pnlTicks,
                     maxFavorableExcursion: maxFavTicks,
                     maxAdverseExcursion: maxAdvTicks,
-                    marketRegime: "UNKNOWN" // Could be enhanced with regime detection
+                    marketRegime: marketRegime
                 );
                 
                 _logger.LogDebug("📊 [POSITION-MGMT] Reported outcome to optimizer: {Strategy} {Symbol}, BE={BE}, StoppedOut={SO}, TargetHit={TH}, TimedOut={TO}, PnL={PnL} ticks",
@@ -299,18 +437,24 @@ namespace BotCore.Services
                         continue;
                     }
                     
+                    // FEATURE 4: Apply confidence-based breakeven threshold
+                    var breakevenThreshold = GetConfidenceBasedBreakevenTicks(state.EntryConfidence, state.BreakevenAfterTicks);
+                    
                     // Apply breakeven protection if profit threshold reached
-                    if (!state.BreakevenActivated && profitTicks >= state.BreakevenAfterTicks)
+                    if (!state.BreakevenActivated && profitTicks >= breakevenThreshold)
                     {
                         await ActivateBreakevenProtectionAsync(state, tickSize, cancellationToken).ConfigureAwait(false);
                     }
                     
+                    // FEATURE 4: Apply confidence-based trailing activation threshold
+                    var trailingActivationThreshold = breakevenThreshold + state.TrailTicks;
+                    
                     // Activate and update trailing stop if profit threshold reached
-                    if (state.BreakevenActivated && !state.TrailingStopActive && profitTicks >= state.BreakevenAfterTicks + state.TrailTicks)
+                    if (state.BreakevenActivated && !state.TrailingStopActive && profitTicks >= trailingActivationThreshold)
                     {
                         state.TrailingStopActive = true;
-                        _logger.LogInformation("🔄 [POSITION-MGMT] Trailing stop activated for {PositionId}: {Symbol} at +{Ticks} ticks profit",
-                            state.PositionId, state.Symbol, profitTicks);
+                        _logger.LogInformation("🔄 [POSITION-MGMT] Trailing stop activated for {PositionId}: {Symbol} at +{Ticks} ticks profit (confidence-adjusted threshold: {Threshold})",
+                            state.PositionId, state.Symbol, profitTicks, trailingActivationThreshold);
                     }
                     
                     // PHASE 4: Check for multi-level partial exits
@@ -318,6 +462,18 @@ namespace BotCore.Services
                     
                     // PHASE 4: Apply volatility-adaptive stop adjustment
                     await ApplyVolatilityAdaptiveStopAsync(state, tickSize, cancellationToken).ConfigureAwait(false);
+                    
+                    // FEATURE 1: Check for regime changes and adjust targets dynamically
+                    await CheckRegimeChangeAsync(state, cancellationToken).ConfigureAwait(false);
+                    
+                    // FEATURE 3: Check for regime flip and exit if needed
+                    await CheckRegimeFlipExitAsync(state, currentPrice, tickSize, cancellationToken).ConfigureAwait(false);
+                    
+                    // FEATURE 2: Check for early exit based on learned MAE threshold
+                    await CheckEarlyExitThresholdAsync(state, currentPrice, tickSize, cancellationToken).ConfigureAwait(false);
+                    
+                    // FEATURE 5: Check for progressive time-decay stop tightening
+                    await CheckProgressiveTighteningAsync(state, currentPrice, profitTicks, tickSize, cancellationToken).ConfigureAwait(false);
                     
                     // Update trailing stop if active
                     if (state.TrailingStopActive)
@@ -377,7 +533,16 @@ namespace BotCore.Services
             CancellationToken cancellationToken)
         {
             var isLong = state.Quantity > 0;
-            var trailDistance = state.TrailTicks * tickSize;
+            
+            // FEATURE 2: Use MFE-optimized trailing distance if available
+            var optimizedTrailTicks = GetOptimizedTrailingDistance(state, tickSize);
+            
+            // FEATURE 4: Apply confidence-based trailing distance
+            var confidenceBasedTicks = GetConfidenceBasedTrailTicks(state.EntryConfidence, state.TrailTicks);
+            
+            // Use the tighter of optimized or confidence-based (or default if neither available)
+            var trailTicks = optimizedTrailTicks ?? confidenceBasedTicks;
+            var trailDistance = trailTicks * tickSize;
             
             var newStopPrice = isLong
                 ? currentPrice - trailDistance
@@ -394,7 +559,7 @@ namespace BotCore.Services
                 await ModifyStopPriceAsync(state, newStopPrice, "Trailing", cancellationToken).ConfigureAwait(false);
                 
                 _logger.LogInformation("📈 [POSITION-MGMT] Trailing stop updated for {PositionId}: {Symbol}, Stop: {Old} → {New} (trail {Ticks} ticks)",
-                    state.PositionId, state.Symbol, oldStopPrice, newStopPrice, state.TrailTicks);
+                    state.PositionId, state.Symbol, oldStopPrice, newStopPrice, trailTicks);
                 
                 // AI Commentary: Explain trailing stop activation (non-blocking)
                 try
@@ -1082,6 +1247,663 @@ namespace BotCore.Services
         }
         
         // ========================================================================
+        // FEATURE 4: CONFIDENCE-BASED STOP/TARGET ADJUSTMENT METHODS
+        // ========================================================================
+        
+        /// <summary>
+        /// Apply confidence-based adjustments to stop, target, and quantity
+        /// </summary>
+        private (decimal adjustedStop, decimal adjustedTarget, int adjustedQuantity) ApplyConfidenceAdjustments(
+            decimal entryPrice, 
+            decimal stopPrice, 
+            decimal targetPrice, 
+            int quantity, 
+            decimal confidence,
+            string symbol)
+        {
+            var isLong = quantity > 0;
+            var risk = Math.Abs(entryPrice - stopPrice);
+            var reward = Math.Abs(targetPrice - entryPrice);
+            
+            // Get confidence-based multipliers from environment or use defaults
+            decimal stopMultiplier, targetMultiplier;
+            int adjustedQuantity = quantity;
+            
+            if (confidence >= _confidenceVeryHighThreshold) // Very High: 0.85-1.0
+            {
+                stopMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_STOP_MULTIPLIER_VERY_HIGH"), out var sm) ? sm : 1.5m;
+                targetMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_TARGET_MULTIPLIER_VERY_HIGH"), out var tm) ? tm : 2.0m;
+            }
+            else if (confidence >= _confidenceHighThreshold) // High: 0.75-0.85
+            {
+                stopMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_STOP_MULTIPLIER_HIGH"), out var sm) ? sm : 1.3m;
+                targetMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_TARGET_MULTIPLIER_HIGH"), out var tm) ? tm : 1.0m;
+            }
+            else if (confidence >= _confidenceMediumThreshold) // Medium: 0.70-0.75
+            {
+                stopMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_STOP_MULTIPLIER_MEDIUM"), out var sm) ? sm : 1.1m;
+                targetMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_TARGET_MULTIPLIER_MEDIUM"), out var tm) ? tm : 0.8m;
+            }
+            else if (confidence >= _confidenceLowThreshold) // Low: 0.65-0.70
+            {
+                stopMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_STOP_MULTIPLIER_LOW"), out var sm) ? sm : 1.0m;
+                targetMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_TARGET_MULTIPLIER_LOW"), out var tm) ? tm : 0.6m;
+                adjustedQuantity = Math.Max(1, quantity / 2); // Reduce position size by 50%
+            }
+            else // Very Low: < 0.65 (should not happen, but handle it)
+            {
+                stopMultiplier = 0.8m;
+                targetMultiplier = 0.5m;
+                adjustedQuantity = Math.Max(1, quantity / 4); // Reduce to 25%
+            }
+            
+            // Apply multipliers to risk and reward
+            var adjustedRisk = risk * stopMultiplier;
+            var adjustedReward = reward * targetMultiplier;
+            
+            // Calculate new stop and target prices
+            var adjustedStop = isLong ? entryPrice - adjustedRisk : entryPrice + adjustedRisk;
+            var adjustedTarget = isLong ? entryPrice + adjustedReward : entryPrice - adjustedReward;
+            
+            // Round to tick size
+            var tickSize = GetTickSize(symbol);
+            adjustedStop = ProductionPriceService.RoundToTick(adjustedStop, tickSize);
+            adjustedTarget = ProductionPriceService.RoundToTick(adjustedTarget, tickSize);
+            
+            return (adjustedStop, adjustedTarget, adjustedQuantity);
+        }
+        
+        /// <summary>
+        /// Get confidence-based breakeven threshold in ticks
+        /// </summary>
+        private int GetConfidenceBasedBreakevenTicks(decimal confidence, int defaultTicks)
+        {
+            if (!_confidenceAdjustmentEnabled)
+                return defaultTicks;
+            
+            if (confidence >= _confidenceVeryHighThreshold)
+                return (int)(defaultTicks * 1.5m); // 12 ticks if default is 8
+            else if (confidence >= _confidenceHighThreshold)
+                return defaultTicks; // Standard
+            else if (confidence >= _confidenceMediumThreshold)
+                return (int)(defaultTicks * 0.75m); // 6 ticks if default is 8
+            else
+                return (int)(defaultTicks * 0.5m); // 4 ticks if default is 8
+        }
+        
+        /// <summary>
+        /// Get confidence-based trailing distance in ticks
+        /// </summary>
+        private int GetConfidenceBasedTrailTicks(decimal confidence, int defaultTicks)
+        {
+            if (!_confidenceAdjustmentEnabled)
+                return defaultTicks;
+            
+            if (confidence >= _confidenceVeryHighThreshold)
+                return (int)(defaultTicks * 1.25m); // Loose trail, let profit run
+            else if (confidence >= _confidenceHighThreshold)
+                return defaultTicks; // Standard
+            else if (confidence >= _confidenceMediumThreshold)
+                return (int)(defaultTicks * 0.75m); // Tighter trail
+            else
+                return (int)(defaultTicks * 0.5m); // Very tight trail
+        }
+        
+        // ========================================================================
+        // FEATURE 1: DYNAMIC R-MULTIPLE TARGETING METHODS
+        // ========================================================================
+        
+        /// <summary>
+        /// Calculate dynamic target price based on market regime and strategy
+        /// </summary>
+        private decimal CalculateDynamicTarget(PositionManagementState state, decimal entryPrice, decimal stopPrice, string? useRegime = null)
+        {
+            var isLong = state.Quantity > 0;
+            var risk = Math.Abs(entryPrice - stopPrice);
+            
+            if (risk <= 0)
+            {
+                return state.TargetPrice; // Fallback to static target
+            }
+            
+            // Use specified regime or fall back to current regime (for recalculations) or entry regime (for initial calculation)
+            var regimeToUse = useRegime ?? state.CurrentRegime;
+            
+            // Get regime-specific R-multiple for this strategy
+            var rMultiple = GetRegimeBasedRMultiple(state.Strategy, regimeToUse);
+            
+            // Calculate dynamic target based on R-multiple
+            var reward = risk * rMultiple;
+            var dynamicTarget = isLong ? entryPrice + reward : entryPrice - reward;
+            
+            _logger.LogDebug("🎯 [POSITION-MGMT] Dynamic target calculation: {Strategy} in {Regime} regime, Risk={Risk:F2}, R={R}x, Target={Target:F2}",
+                state.Strategy, regimeToUse, risk, rMultiple, dynamicTarget);
+            
+            return dynamicTarget;
+        }
+        
+        /// <summary>
+        /// Get regime-based R-multiple for a strategy
+        /// </summary>
+        private decimal GetRegimeBasedRMultiple(string strategy, string regime)
+        {
+            var regimeKey = regime.ToUpperInvariant();
+            var isTrending = regimeKey.Contains("TREND");
+            var isRanging = regimeKey.Contains("RANGE");
+            
+            // Get environment variable for this strategy and regime
+            var envVarName = isTrending 
+                ? $"{strategy}_TARGET_TRENDING" 
+                : isRanging 
+                    ? $"{strategy}_TARGET_RANGING" 
+                    : $"{strategy}_TARGET_TRENDING"; // Default to trending if unknown
+            
+            var envValue = Environment.GetEnvironmentVariable(envVarName);
+            if (decimal.TryParse(envValue, out var rMultiple))
+            {
+                return rMultiple;
+            }
+            
+            // Fallback defaults if environment variable not set
+            return strategy switch
+            {
+                "S2" => isTrending ? 2.5m : isRanging ? 1.0m : 1.5m,
+                "S3" => isTrending ? 3.0m : isRanging ? 1.2m : 1.8m,
+                "S6" => isTrending ? 2.0m : isRanging ? 1.0m : 1.2m,
+                "S11" => isTrending ? 2.5m : isRanging ? 1.5m : 1.8m,
+                _ => 1.5m // Default R-multiple
+            };
+        }
+        
+        /// <summary>
+        /// Check for regime changes and adjust target if needed (Feature 1)
+        /// Called every 60 seconds (configurable) during monitoring loop
+        /// </summary>
+        private async Task CheckRegimeChangeAsync(PositionManagementState state, CancellationToken cancellationToken)
+        {
+            if (!_dynamicTargetsEnabled)
+            {
+                return; // Feature disabled
+            }
+            
+            // Check if it's time to update regime
+            var timeSinceLastCheck = DateTime.UtcNow - state.LastRegimeCheck;
+            if (timeSinceLastCheck.TotalSeconds < _regimeCheckIntervalSeconds)
+            {
+                return; // Not time yet
+            }
+            
+            try
+            {
+                var regimeService = _serviceProvider.GetService<RegimeDetectionService>();
+                if (regimeService == null)
+                {
+                    return; // Service not available
+                }
+                
+                // Get current regime
+                var newRegime = await regimeService.GetCurrentRegimeAsync(state.Symbol, cancellationToken).ConfigureAwait(false);
+                state.LastRegimeCheck = DateTime.UtcNow;
+                
+                // Check if regime changed significantly
+                if (newRegime != state.CurrentRegime)
+                {
+                    var oldRegime = state.CurrentRegime;
+                    state.CurrentRegime = newRegime;
+                    
+                    _logger.LogInformation("📊 [POSITION-MGMT] Regime change detected for {PositionId}: {Old} → {New}",
+                        state.PositionId, oldRegime, newRegime);
+                    
+                    // Recalculate dynamic target using the NEW regime
+                    var newDynamicTarget = CalculateDynamicTarget(state, state.EntryPrice, state.CurrentStopPrice, newRegime);
+                    var oldTarget = state.DynamicTargetPrice;
+                    
+                    // Only adjust if change is significant (threshold check)
+                    var targetChange = Math.Abs(newDynamicTarget - oldTarget);
+                    var changePercent = targetChange / Math.Abs(state.EntryPrice - state.CurrentStopPrice);
+                    
+                    if (changePercent >= _targetAdjustmentThreshold)
+                    {
+                        state.DynamicTargetPrice = newDynamicTarget;
+                        
+                        _logger.LogInformation("🎯 [POSITION-MGMT] Target adjusted for {PositionId} due to regime change: {OldTarget:F2} → {NewTarget:F2} ({Regime})",
+                            state.PositionId, oldTarget, newDynamicTarget, newRegime);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("🎯 [POSITION-MGMT] Regime change for {PositionId} but target adjustment below threshold ({Pct:P1})",
+                            state.PositionId, changePercent);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ [POSITION-MGMT] Error checking regime change for {PositionId}", state.PositionId);
+            }
+        }
+        
+        // ========================================================================
+        // FEATURE 3: REAL-TIME REGIME CHANGE EXIT DETECTION METHODS
+        // ========================================================================
+        
+        /// <summary>
+        /// Check for regime flip and exit if conditions warrant (Feature 3)
+        /// Called every 30 seconds (via regime check interval) during monitoring loop
+        /// </summary>
+        private async Task CheckRegimeFlipExitAsync(
+            PositionManagementState state, 
+            decimal currentPrice,
+            decimal tickSize,
+            CancellationToken cancellationToken)
+        {
+            if (!_regimeMonitoringEnabled || !_regimeFlipExitEnabled)
+            {
+                return; // Feature disabled
+            }
+            
+            // Check if regime has changed
+            if (state.CurrentRegime == state.EntryRegime)
+            {
+                return; // No regime flip
+            }
+            
+            try
+            {
+                // Calculate current P&L
+                var isLong = state.Quantity > 0;
+                var profitTicks = CalculateProfitTicks(state.EntryPrice, currentPrice, tickSize, isLong);
+                var pnl = profitTicks * tickSize * Math.Abs(state.Quantity);
+                
+                // Record regime change
+                var regimeChange = new RegimeChangeRecord
+                {
+                    Timestamp = DateTime.UtcNow,
+                    FromRegime = state.EntryRegime,
+                    ToRegime = state.CurrentRegime,
+                    FromConfidence = state.EntryRegimeConfidence,
+                    ToConfidence = state.CurrentRegimeConfidence,
+                    PnLAtChange = pnl
+                };
+                state.RegimeChanges.Add(regimeChange);
+                
+                // Check if we should exit based on regime flip
+                var shouldExit = ShouldExitOnRegimeFlip(state, pnl);
+                
+                if (shouldExit)
+                {
+                    _logger.LogWarning("🔄 [REGIME-FLIP] Exiting {PositionId} due to regime flip: {From} → {To}, PnL: ${PnL:F2}, Strategy: {Strategy}",
+                        state.PositionId, state.EntryRegime, state.CurrentRegime, pnl, state.Strategy);
+                    
+                    await RequestPositionCloseAsync(state, ExitReason.RegimeChange, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    _logger.LogInformation("🔄 [REGIME-FLIP] Regime changed for {PositionId}: {From} → {To}, PnL: ${PnL:F2}, holding position",
+                        state.PositionId, state.EntryRegime, state.CurrentRegime, pnl);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ [REGIME-FLIP] Error checking regime flip exit for {PositionId}", state.PositionId);
+            }
+        }
+        
+        /// <summary>
+        /// Determine if position should exit based on regime flip (Feature 3)
+        /// </summary>
+        private bool ShouldExitOnRegimeFlip(PositionManagementState state, decimal currentPnL)
+        {
+            // Get strategy-specific sensitivity threshold
+            var sensitivityThreshold = GetRegimeFlipSensitivity(state.Strategy);
+            
+            // Major flip detection: regime type changed
+            var entryRegimeType = state.EntryRegime.ToUpperInvariant();
+            var currentRegimeType = state.CurrentRegime.ToUpperInvariant();
+            var isTrendingToRanging = entryRegimeType.Contains("TREND") && currentRegimeType.Contains("RANGE");
+            var isRangingToVolatile = entryRegimeType.Contains("RANGE") && currentRegimeType.Contains("TRANSITION");
+            
+            // Confidence drop detection
+            var confidenceDrop = state.EntryRegimeConfidence - state.CurrentRegimeConfidence;
+            var isMajorConfidenceDrop = confidenceDrop >= _regimeConfidenceDropThreshold;
+            
+            // Strategy-specific exit logic
+            switch (state.Strategy)
+            {
+                case "S6": // Momentum strategy - EXTREMELY sensitive
+                    // Exit immediately on trending → ranging flip
+                    if (isTrendingToRanging)
+                        return true;
+                    // Exit if trending confidence drops below threshold
+                    if (entryRegimeType.Contains("TREND") && state.CurrentRegimeConfidence < sensitivityThreshold)
+                        return true;
+                    break;
+                    
+                case "S2": // Supply/Demand - Highly sensitive
+                    // Exit on major flip if we have profit
+                    if (isTrendingToRanging && currentPnL > 0)
+                        return true;
+                    // Exit on major confidence drop
+                    if (isMajorConfidenceDrop && state.EntryConfidence < 0.75m)
+                        return true;
+                    break;
+                    
+                case "S3": // Multi-timeframe - Moderately sensitive
+                    // Exit only on confidence collapse (> 0.30 drop)
+                    if (confidenceDrop > 0.30m)
+                        return true;
+                    break;
+                    
+                case "S11": // Pattern-based - Less sensitive
+                    // Exit only on severe confidence collapse (> 0.40 drop)
+                    if (confidenceDrop > 0.40m)
+                        return true;
+                    break;
+            }
+            
+            // General rule: Exit if positive PnL and major unfavorable flip
+            if (currentPnL > 0 && (isTrendingToRanging || isRangingToVolatile) && state.EntryConfidence < 0.75m)
+            {
+                return true;
+            }
+            
+            return false;
+        }
+        
+        /// <summary>
+        /// Get strategy-specific regime flip sensitivity threshold
+        /// </summary>
+        private decimal GetRegimeFlipSensitivity(string strategy)
+        {
+            var envVarName = $"{strategy}_REGIME_FLIP_SENSITIVITY";
+            var envValue = Environment.GetEnvironmentVariable(envVarName);
+            if (decimal.TryParse(envValue, out var sensitivity))
+            {
+                return sensitivity;
+            }
+            
+            // Fallback defaults
+            return strategy switch
+            {
+                "S6" => 0.60m, // Most sensitive
+                "S2" => 0.50m,
+                "S3" => 0.55m,
+                "S11" => 0.55m,
+                _ => 0.50m
+            };
+        }
+        
+        // ========================================================================
+        // FEATURE 2: MAE/MFE OPTIMAL STOP PLACEMENT LEARNING METHODS
+        // ========================================================================
+        
+        /// <summary>
+        /// Check if position should exit early based on learned MAE threshold
+        /// SAFETY: Only exits early if MAE exceeds learned threshold (never loosens stops)
+        /// </summary>
+        private async Task CheckEarlyExitThresholdAsync(
+            PositionManagementState state,
+            decimal currentPrice,
+            decimal tickSize,
+            CancellationToken cancellationToken)
+        {
+            if (!_maeLearningEnabled)
+            {
+                return; // Feature disabled
+            }
+            
+            try
+            {
+                var optimizer = _serviceProvider.GetService<PositionManagementOptimizer>();
+                if (optimizer == null)
+                {
+                    return; // Optimizer not available
+                }
+                
+                // Get optimal early exit threshold for this strategy and regime
+                var optimalThreshold = optimizer.GetOptimalEarlyExitThreshold(state.Strategy, state.CurrentRegime);
+                if (!optimalThreshold.HasValue)
+                {
+                    return; // Not enough data yet
+                }
+                
+                // Calculate current adverse excursion
+                var isLong = state.Quantity > 0;
+                var currentAdverseExcursion = isLong
+                    ? Math.Abs((state.MaxAdversePrice - state.EntryPrice) / tickSize)
+                    : Math.Abs((state.EntryPrice - state.MaxAdversePrice) / tickSize);
+                
+                // Check if we've exceeded the learned threshold
+                if (currentAdverseExcursion > optimalThreshold.Value)
+                {
+                    _logger.LogWarning("🚨 [MAE-LEARNING] Early exit triggered for {PositionId}: MAE {Current:F1} ticks exceeds learned threshold {Threshold:F1} ticks",
+                        state.PositionId, currentAdverseExcursion, optimalThreshold.Value);
+                    
+                    // Exit position early (this is likely a loser)
+                    await RequestPositionCloseAsync(state, ExitReason.StopLoss, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    // Log progress for monitoring (only if getting close to threshold)
+                    if (currentAdverseExcursion > optimalThreshold.Value * 0.8m)
+                    {
+                        _logger.LogDebug("⚠️ [MAE-LEARNING] Position {PositionId} approaching MAE threshold: {Current:F1} / {Threshold:F1} ticks",
+                            state.PositionId, currentAdverseExcursion, optimalThreshold.Value);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ [MAE-LEARNING] Error checking early exit threshold for {PositionId}", state.PositionId);
+            }
+        }
+        
+        /// <summary>
+        /// Get MFE-optimized trailing distance for this strategy and regime
+        /// </summary>
+        private decimal? GetOptimizedTrailingDistance(PositionManagementState state, decimal tickSize)
+        {
+            if (!_mfeLearningEnabled)
+            {
+                return null; // Feature disabled
+            }
+            
+            try
+            {
+                var optimizer = _serviceProvider.GetService<PositionManagementOptimizer>();
+                if (optimizer == null)
+                {
+                    return null;
+                }
+                
+                return optimizer.GetOptimalTrailingDistance(state.Strategy, state.CurrentRegime);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ [MFE-LEARNING] Error getting optimized trailing distance for {PositionId}", state.PositionId);
+                return null;
+            }
+        }
+        
+        // ========================================================================
+        // FEATURE 5: PROGRESSIVE TIME-DECAY STOP TIGHTENING METHODS
+        // ========================================================================
+        
+        /// <summary>
+        /// Check for progressive tightening based on time elapsed and profit performance
+        /// Gradually tightens stops and profit thresholds as trade ages without hitting targets
+        /// </summary>
+        private async Task CheckProgressiveTighteningAsync(
+            PositionManagementState state,
+            decimal currentPrice,
+            decimal profitTicks,
+            decimal tickSize,
+            CancellationToken cancellationToken)
+        {
+            if (!_progressiveTighteningEnabled)
+            {
+                return; // Feature disabled
+            }
+            
+            // Check if it's time to evaluate progressive tightening
+            var timeSinceLastCheck = DateTime.UtcNow - state.LastProgressiveTighteningCheck;
+            if (timeSinceLastCheck.TotalSeconds < _progressiveTighteningCheckIntervalSeconds)
+            {
+                return; // Not time yet
+            }
+            
+            state.LastProgressiveTighteningCheck = DateTime.UtcNow;
+            
+            // Track peak profit for progressive exit thresholds
+            if (profitTicks > state.PeakProfitTicks)
+            {
+                state.PeakProfitTicks = profitTicks;
+            }
+            
+            var isLong = state.Quantity > 0;
+            var holdDuration = DateTime.UtcNow - state.EntryTime;
+            var holdMinutes = (int)holdDuration.TotalMinutes;
+            
+            // Get strategy-specific tightening schedule
+            var tighteningSchedule = GetProgressiveTighteningSchedule(state.Strategy);
+            
+            // Determine current tier based on time elapsed
+            int newTier = 0;
+            foreach (var threshold in tighteningSchedule)
+            {
+                if (holdMinutes >= threshold.MinutesThreshold)
+                {
+                    newTier = threshold.Tier;
+                }
+            }
+            
+            // Only process if we've moved to a new tier
+            if (newTier <= state.ProgressiveTighteningTier)
+            {
+                return; // No tier change
+            }
+            
+            var previousTier = state.ProgressiveTighteningTier;
+            state.ProgressiveTighteningTier = newTier;
+            
+            // Get current tier requirements
+            var currentTierRequirements = tighteningSchedule.FirstOrDefault(t => t.Tier == newTier);
+            if (currentTierRequirements == null)
+            {
+                return;
+            }
+            
+            _logger.LogInformation("⏱️ [PROGRESSIVE-TIGHTENING] Position {PositionId} moved to tier {NewTier} after {Minutes}m: {Description}",
+                state.PositionId, newTier, holdMinutes, currentTierRequirements.Description);
+            
+            // Check if profit meets tier requirements
+            var riskTicks = Math.Abs(state.EntryPrice - state.CurrentStopPrice) / tickSize;
+            var currentRMultiple = riskTicks > 0 ? profitTicks / riskTicks : 0;
+            
+            // Apply tier-specific actions
+            bool shouldExit = false;
+            string exitReason = "";
+            
+            if (currentTierRequirements.Action == ProgressiveTighteningAction.MoveStopToBreakeven)
+            {
+                if (!state.BreakevenActivated && profitTicks < currentTierRequirements.MinProfitTicksRequired)
+                {
+                    // Not profitable enough - move to breakeven
+                    var breakevenStop = isLong ? state.EntryPrice + tickSize : state.EntryPrice - tickSize;
+                    await ModifyStopPriceAsync(state, breakevenStop, "Progressive-Breakeven", cancellationToken).ConfigureAwait(false);
+                    state.BreakevenActivated = true;
+                    
+                    _logger.LogInformation("⏱️ [PROGRESSIVE-TIGHTENING] Moved {PositionId} to breakeven (tier {Tier}, profit {Profit} ticks < required {Required})",
+                        state.PositionId, newTier, profitTicks, currentTierRequirements.MinProfitTicksRequired);
+                }
+            }
+            else if (currentTierRequirements.Action == ProgressiveTighteningAction.ExitIfBelowThreshold)
+            {
+                if (currentRMultiple < currentTierRequirements.MinRMultipleRequired)
+                {
+                    shouldExit = true;
+                    exitReason = $"Progressive exit: R={currentRMultiple:F2} < required {currentTierRequirements.MinRMultipleRequired:F2} at tier {newTier}";
+                }
+            }
+            else if (currentTierRequirements.Action == ProgressiveTighteningAction.ForceExit)
+            {
+                shouldExit = true;
+                exitReason = $"Progressive force exit: Max hold time reached (tier {newTier})";
+            }
+            
+            if (shouldExit)
+            {
+                _logger.LogWarning("⏱️ [PROGRESSIVE-TIGHTENING] Exiting {PositionId}: {Reason}",
+                    state.PositionId, exitReason);
+                await RequestPositionCloseAsync(state, ExitReason.TimeLimit, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        
+        /// <summary>
+        /// Get progressive tightening schedule for a strategy
+        /// </summary>
+        private List<ProgressiveTighteningThreshold> GetProgressiveTighteningSchedule(string strategy)
+        {
+            return strategy switch
+            {
+                "S2" => new List<ProgressiveTighteningThreshold>
+                {
+                    new() { Tier = 1, MinutesThreshold = 15, Action = ProgressiveTighteningAction.MoveStopToBreakeven, 
+                           MinProfitTicksRequired = 0, Description = "Move to breakeven if not profitable" },
+                    new() { Tier = 2, MinutesThreshold = 30, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = 1.0m, Description = "Exit if not at 1.0R" },
+                    new() { Tier = 3, MinutesThreshold = 45, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = 1.5m, Description = "Exit if not at 1.5R" },
+                    new() { Tier = 4, MinutesThreshold = 60, Action = ProgressiveTighteningAction.ForceExit, 
+                           Description = "Force exit at max hold time" }
+                },
+                
+                "S3" => new List<ProgressiveTighteningThreshold>
+                {
+                    new() { Tier = 1, MinutesThreshold = 20, Action = ProgressiveTighteningAction.MoveStopToBreakeven, 
+                           MinProfitTicksRequired = 0, Description = "Move to breakeven if not profitable" },
+                    new() { Tier = 2, MinutesThreshold = 40, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = 1.0m, Description = "Exit if not at 1.0R" },
+                    new() { Tier = 3, MinutesThreshold = 60, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = 2.0m, Description = "Exit if not at 2.0R" },
+                    new() { Tier = 4, MinutesThreshold = 90, Action = ProgressiveTighteningAction.ForceExit, 
+                           Description = "Force exit at max hold time" }
+                },
+                
+                "S6" => new List<ProgressiveTighteningThreshold>
+                {
+                    new() { Tier = 1, MinutesThreshold = 10, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinProfitTicksRequired = 6, Description = "Exit if not at +6 ticks (momentum should move fast)" },
+                    new() { Tier = 2, MinutesThreshold = 20, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = 1.0m, Description = "Exit if not at 1.0R" },
+                    new() { Tier = 3, MinutesThreshold = 30, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = 1.5m, Description = "Exit if not at 1.5R" },
+                    new() { Tier = 4, MinutesThreshold = 45, Action = ProgressiveTighteningAction.ForceExit, 
+                           Description = "Force exit at max hold time" }
+                },
+                
+                "S11" => new List<ProgressiveTighteningThreshold>
+                {
+                    new() { Tier = 1, MinutesThreshold = 20, Action = ProgressiveTighteningAction.MoveStopToBreakeven, 
+                           MinProfitTicksRequired = 0, Description = "Move to breakeven if not profitable" },
+                    new() { Tier = 2, MinutesThreshold = 40, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = 1.5m, Description = "Exit if not at 1.5R" },
+                    new() { Tier = 3, MinutesThreshold = 60, Action = ProgressiveTighteningAction.ForceExit, 
+                           Description = "Force exit at max hold time" }
+                },
+                
+                _ => new List<ProgressiveTighteningThreshold>
+                {
+                    new() { Tier = 1, MinutesThreshold = 30, Action = ProgressiveTighteningAction.MoveStopToBreakeven, 
+                           MinProfitTicksRequired = 0, Description = "Move to breakeven if not profitable" },
+                    new() { Tier = 2, MinutesThreshold = 60, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = 1.0m, Description = "Exit if not at 1.0R" },
+                    new() { Tier = 3, MinutesThreshold = 120, Action = ProgressiveTighteningAction.ForceExit, 
+                           Description = "Force exit at max hold time" }
+                }
+            };
+        }
+        
+        // ========================================================================
         // AI COMMENTARY METHODS (PHASE 5 - Ollama Integration)
         // ========================================================================
         
@@ -1359,5 +2181,28 @@ Explain in 2-3 sentences why this volatility-adaptive stop adjustment makes sens
                 }
             });
         }
+    }
+    
+    /// <summary>
+    /// Progressive tightening threshold configuration
+    /// </summary>
+    internal sealed class ProgressiveTighteningThreshold
+    {
+        public int Tier { get; set; }
+        public int MinutesThreshold { get; set; }
+        public ProgressiveTighteningAction Action { get; set; }
+        public decimal MinProfitTicksRequired { get; set; }
+        public decimal MinRMultipleRequired { get; set; }
+        public string Description { get; set; } = string.Empty;
+    }
+    
+    /// <summary>
+    /// Actions for progressive tightening
+    /// </summary>
+    internal enum ProgressiveTighteningAction
+    {
+        MoveStopToBreakeven,
+        ExitIfBelowThreshold,
+        ForceExit
     }
 }
