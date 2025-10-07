@@ -527,7 +527,13 @@ internal class TradingOrchestratorService : BackgroundService, ITradingOrchestra
                 ["execution_message"] = executionResult.ExecutionMessage,
                 ["executed_quantity"] = executionResult.ExecutedQuantity,
                 ["original_confidence"] = decision.Confidence,
-                ["original_strategy"] = decision.Strategy
+                ["original_strategy"] = decision.Strategy,
+                ["exit_reason"] = executionResult.ExitReason.ToString(),
+                ["entry_price"] = executionResult.EntryPrice,
+                ["exit_price"] = executionResult.ExitPrice,
+                ["max_favorable_excursion"] = executionResult.MaxFavorableExcursion,
+                ["max_adverse_excursion"] = executionResult.MaxAdverseExcursion,
+                ["trade_duration_minutes"] = executionResult.TradeDuration.TotalMinutes
             };
             
             // Submit to master orchestrator for learning
@@ -552,6 +558,23 @@ internal class TradingOrchestratorService : BackgroundService, ITradingOrchestra
                     executionResult.Success,
                     holdTime,
                     cancellationToken).ConfigureAwait(false);
+            }
+            
+            // Enhanced exit logging with comprehensive metrics
+            if (executionResult.EntryTime.HasValue && executionResult.ExitTime.HasValue)
+            {
+                _logger.LogInformation("📊 [TRADE-EXIT] {Strategy} {Symbol} {Action} CLOSED | " +
+                    "Entry: {EntryPrice:F2}@{EntryTime:HH:mm:ss} | Exit: {ExitPrice:F2}@{ExitTime:HH:mm:ss} | " +
+                    "Reason: {ExitReason} | MaxFav: {MaxFav:+#;-#;0} | MaxAdv: {MaxAdv:+#;-#;0} | " +
+                    "Duration: {Duration} | PnL: {PnL:C2} | Success: {Success}",
+                    decision.Strategy, decision.Symbol, decision.Action,
+                    executionResult.EntryPrice, executionResult.EntryTime.Value,
+                    executionResult.ExitPrice, executionResult.ExitTime.Value,
+                    executionResult.ExitReason,
+                    executionResult.MaxFavorableExcursion,
+                    executionResult.MaxAdverseExcursion,
+                    $"{executionResult.TradeDuration.TotalMinutes:F1}m",
+                    executionResult.PnL, executionResult.Success);
             }
             
             _logger.LogInformation("📚 [LEARNING-FEEDBACK] Outcome submitted for learning: {DecisionId} " +
@@ -1561,6 +1584,16 @@ internal class TradeExecutionResult
     public decimal PnL { get; set; }
     public decimal ExecutedQuantity { get; set; }
     public string ExecutionMessage { get; set; } = string.Empty;
+    
+    // Enhanced exit tracking
+    public BotCore.Models.ExitReason ExitReason { get; set; } = BotCore.Models.ExitReason.Unknown;
+    public DateTime? EntryTime { get; set; }
+    public DateTime? ExitTime { get; set; }
+    public decimal EntryPrice { get; set; }
+    public decimal ExitPrice { get; set; }
+    public decimal MaxFavorableExcursion { get; set; }
+    public decimal MaxAdverseExcursion { get; set; }
+    public TimeSpan TradeDuration => ExitTime.HasValue && EntryTime.HasValue ? ExitTime.Value - EntryTime.Value : TimeSpan.Zero;
 
     /// <summary>
     /// Validate trade before execution - guard against forced trades when upstream brains disagree
