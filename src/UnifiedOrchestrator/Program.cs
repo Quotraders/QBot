@@ -600,6 +600,23 @@ Please check the configuration and ensure all required services are registered.
         Console.WriteLine("   ✅ Outcome tracking - 'BE at 8 ticks → stopped out, would have hit target'");
         
         // ================================================================================
+        // SESSION-END POSITION FLATTENER - PHASE 2 IMPLEMENTATION
+        // ================================================================================
+        
+        // Register Session-End Position Flattener for automatic position closes before market close
+        services.AddSingleton<BotCore.Services.SessionEndPositionFlattener>();
+        services.AddHostedService<BotCore.Services.SessionEndPositionFlattener>(provider => 
+            provider.GetRequiredService<BotCore.Services.SessionEndPositionFlattener>());
+        
+        Console.WriteLine("✅ [STARTUP] SessionEndPositionFlattener registered");
+        Console.WriteLine("🔄 [SESSION-FLATTEN] Automatic position flatten before market close (PHASE 2)");
+        Console.WriteLine("   ✅ Daily position flatten - Closes all positions at 4:55 PM ET (configurable)");
+        Console.WriteLine("   ✅ Monday-Thursday - Always flatten (daily maintenance)");
+        Console.WriteLine("   ✅ Friday - Configurable (BOT_SESSION_FLATTEN_FRIDAY_ENABLED)");
+        Console.WriteLine("   ✅ Weekend safety - Prevents overnight position holds");
+        Console.WriteLine("   ✅ ML/RL integration - SessionEnd exits feed into optimizer for learning");
+        
+        // ================================================================================
         // ZONE AWARENESS SERVICES - PRODUCTION-READY SUPPLY/DEMAND INTEGRATION
         // ================================================================================
         
