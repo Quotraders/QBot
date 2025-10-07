@@ -1,0 +1,135 @@
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+
+namespace BotCore.Services;
+
+/// <summary>
+/// Provides natural language commentary on adaptive learning and parameter changes
+/// </summary>
+public sealed class AdaptiveLearningCommentary
+{
+    private readonly ILogger<AdaptiveLearningCommentary> _logger;
+    private readonly ParameterChangeTracker _changeTracker;
+    private readonly OllamaClient? _ollamaClient;
+
+    public AdaptiveLearningCommentary(
+        ILogger<AdaptiveLearningCommentary> logger,
+        ParameterChangeTracker changeTracker,
+        OllamaClient? ollamaClient = null)
+    {
+        _logger = logger;
+        _changeTracker = changeTracker;
+        _ollamaClient = ollamaClient;
+    }
+
+    /// <summary>
+    /// Generate commentary on recent adaptations
+    /// </summary>
+    public async Task<string> ExplainRecentAdaptationsAsync(int lookbackMinutes = 60)
+    {
+        if (_ollamaClient == null)
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            var window = TimeSpan.FromMinutes(lookbackMinutes);
+            var recentChanges = _changeTracker.GetChangesInWindow(window);
+
+            if (recentChanges.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            // Group changes by strategy
+            var changesByStrategy = recentChanges
+                .GroupBy(c => c.StrategyName)
+                .Take(5) // Limit to avoid overwhelming the prompt
+                .ToList();
+
+            var changesDescription = string.Join("\n", changesByStrategy.Select(group =>
+            {
+                var strategyChanges = group.Take(3).Select(c =>
+                    $"  - {c.ParameterName}: {c.OldValue} → {c.NewValue} (reason: {c.Reason})"
+                );
+                return $"{group.Key}:\n{string.Join("\n", strategyChanges)}";
+            }));
+
+            var prompt = $@"I am a trading bot. I recently adapted my parameters:
+
+{changesDescription}
+
+Explain these adaptations in 2-3 sentences. What am I learning? Speak as ME (the bot).";
+
+            var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ [LEARNING-COMMENTARY] Error explaining adaptations");
+            return string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Generate commentary on a specific parameter change
+    /// </summary>
+    public async Task<string> ExplainParameterChangeAsync(
+        string strategyName,
+        string parameterName,
+        string oldValue,
+        string newValue,
+        string reason)
+    {
+        if (_ollamaClient == null)
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            var prompt = $@"I am a trading bot. I just changed a parameter:
+
+Strategy: {strategyName}
+Parameter: {parameterName}
+Old value: {oldValue}
+New value: {newValue}
+Reason: {reason}
+
+Explain this change in 1-2 sentences. Why did I make this adjustment? Speak as ME (the bot).";
+
+            var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ [LEARNING-COMMENTARY] Error explaining parameter change for {Strategy}.{Parameter}", 
+                strategyName, parameterName);
+            return string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Generate learning summary for alerting significant changes
+    /// </summary>
+    public string GetLearningSummary(int lookbackMinutes = 60)
+    {
+        var window = TimeSpan.FromMinutes(lookbackMinutes);
+        var recentChanges = _changeTracker.GetChangesInWindow(window);
+
+        if (recentChanges.Count == 0)
+        {
+            return "No recent parameter changes";
+        }
+
+        var changesByStrategy = recentChanges
+            .GroupBy(c => c.StrategyName)
+            .Select(g => $"{g.Key}: {g.Count()} changes")
+            .ToList();
+
+        return $"Recent adaptations: {string.Join(", ", changesByStrategy)}";
+    }
+}

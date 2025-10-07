@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using BotCore.Models;
 using BotCore.Services;
+using BotCore.Health;
 using Microsoft.Extensions.Logging;
 using Zones;
 
@@ -14,12 +15,14 @@ namespace BotCore.Patterns;
 /// <summary>
 /// Pattern detection engine that manages all pattern detectors and aggregates their results
 /// </summary>
-public class PatternEngine
+public class PatternEngine : IComponentHealth
 {
     private readonly ILogger<PatternEngine> _logger;
     private readonly IFeatureBus _featureBus;
     private readonly List<IPatternDetector> _detectors;
     private readonly IServiceProvider _serviceProvider;
+    
+    public string ComponentName => "PatternEngine";
     
     // Pattern analysis constants
     private const double MIN_PATTERN_SCORE_THRESHOLD = 0.1;
@@ -292,6 +295,39 @@ public class PatternEngine
         }
         
         return details;
+    }
+
+    public Task<HealthCheckResult> CheckHealthAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var detectorCount = _detectors.Count;
+            var detectorTypes = _detectors.Select(d => d.GetType().Name).ToList();
+            
+            if (detectorCount == 0)
+            {
+                return Task.FromResult(HealthCheckResult.Degraded(
+                    "No pattern detectors registered",
+                    new Dictionary<string, object>
+                    {
+                        ["DetectorCount"] = 0
+                    }));
+            }
+            
+            return Task.FromResult(HealthCheckResult.Healthy(
+                "Pattern engine operating normally",
+                new Dictionary<string, object>
+                {
+                    ["DetectorCount"] = detectorCount,
+                    ["Detectors"] = string.Join(", ", detectorTypes)
+                }));
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(HealthCheckResult.Unhealthy(
+                $"Error checking health: {ex.Message}",
+                new Dictionary<string, object> { ["Exception"] = ex.GetType().Name }));
+        }
     }
 }
 
