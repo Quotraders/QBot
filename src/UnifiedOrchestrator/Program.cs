@@ -2232,7 +2232,7 @@ internal static class EnvironmentLoader
                         if (zoneService != null)
                         {
                             var snapshot = zoneService.GetSnapshot(symbol);
-                            var currentPrice = snapshot.DemandZone?.PriceMid ?? snapshot.SupplyZone?.PriceMid ?? 0m;
+                            var currentPrice = snapshot.NearestDemand?.Mid ?? snapshot.NearestSupply?.Mid ?? 0m;
                             var result = await riskCommentary.AnalyzeRiskAsync(symbol, currentPrice, 10m);
                             return string.IsNullOrEmpty(result) ? $"Risk analysis not available for {symbol}" : result;
                         }
