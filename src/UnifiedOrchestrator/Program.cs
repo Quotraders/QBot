@@ -555,6 +555,21 @@ Please check the configuration and ensure all required services are registered.
         Console.WriteLine("💰 [AUTONOMOUS-ENGINE] Features: Auto strategy switching, dynamic position sizing, TopStep compliance, continuous learning");
         
         // ================================================================================
+        // UNIFIED POSITION MANAGEMENT SERVICE - BREAKEVEN, TRAILING, TIME EXITS
+        // ================================================================================
+        
+        // Register Unified Position Management Service for all strategies
+        services.AddSingleton<BotCore.Services.UnifiedPositionManagementService>();
+        services.AddHostedService<BotCore.Services.UnifiedPositionManagementService>(provider => 
+            provider.GetRequiredService<BotCore.Services.UnifiedPositionManagementService>());
+        
+        Console.WriteLine("🎯 [POSITION-MGMT] Registered unified position management service");
+        Console.WriteLine("   ✅ Breakeven protection - Moves stop to entry + 1 tick when profitable");
+        Console.WriteLine("   ✅ Trailing stops - Locks in profits as price moves favorably");
+        Console.WriteLine("   ✅ Time-based exits - Closes stale positions (S2=60m, S3=90m, S6=45m, S11=60m)");
+        Console.WriteLine("   ✅ Max excursion tracking - Captures data for ML/RL optimization");
+        
+        // ================================================================================
         // ZONE AWARENESS SERVICES - PRODUCTION-READY SUPPLY/DEMAND INTEGRATION
         // ================================================================================
         

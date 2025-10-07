@@ -48,6 +48,12 @@ internal class TradingOrchestratorService : BackgroundService, ITradingOrchestra
     // NEW: Unified data integration for historical + live data
     private readonly UnifiedDataIntegrationService? _dataIntegration;
     
+    // NEW: Unified Position Management Service for breakeven, trailing, time exits
+    private readonly BotCore.Services.UnifiedPositionManagementService? _positionManagement;
+    
+    // Track decision ID to position ID mapping for position unregistration
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _decisionToPositionMap = new();
+    
     // Performance tracking
     private int _decisionsToday;
     private int _successfulTrades;
@@ -76,6 +82,9 @@ internal class TradingOrchestratorService : BackgroundService, ITradingOrchestra
         
         // Get enhanced brain integration (optional)
         _enhancedBrain = serviceProvider.GetService<BotCore.Services.EnhancedTradingBrainIntegration>();
+        
+        // Get unified position management service
+        _positionManagement = serviceProvider.GetService<BotCore.Services.UnifiedPositionManagementService>();
         
         // Get unified data integration service
         _dataIntegration = serviceProvider.GetService<UnifiedDataIntegrationService>();
@@ -560,6 +569,37 @@ internal class TradingOrchestratorService : BackgroundService, ITradingOrchestra
                     cancellationToken).ConfigureAwait(false);
             }
             
+            // Unregister position from UnifiedPositionManagementService
+            if (_positionManagement != null && _decisionToPositionMap.TryRemove(decision.DecisionId, out var positionId))
+            {
+                try
+                {
+                    // Get excursion metrics before unregistering
+                    var (maxFav, maxAdv) = _positionManagement.GetExcursionMetrics(positionId);
+                    
+                    // Update execution result with tracked excursions if not already set
+                    if (executionResult.MaxFavorableExcursion == 0 && maxFav != 0)
+                    {
+                        executionResult.MaxFavorableExcursion = maxFav;
+                    }
+                    if (executionResult.MaxAdverseExcursion == 0 && maxAdv != 0)
+                    {
+                        executionResult.MaxAdverseExcursion = maxAdv;
+                    }
+                    
+                    // Unregister position
+                    _positionManagement.UnregisterPosition(positionId, executionResult.ExitReason);
+                    
+                    _logger.LogInformation("📝 [POSITION-MGMT] Unregistered position {PositionId} - Reason: {ExitReason}, MaxFav: {MaxFav}, MaxAdv: {MaxAdv}",
+                        positionId, executionResult.ExitReason, maxFav, maxAdv);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ [POSITION-MGMT] Failed to unregister position {PositionId}", positionId);
+                    // Don't fail outcome submission if unregistration fails
+                }
+            }
+            
             // Enhanced exit logging with comprehensive metrics
             if (executionResult.EntryTime.HasValue && executionResult.ExitTime.HasValue)
             {
@@ -775,6 +815,54 @@ internal class TradingOrchestratorService : BackgroundService, ITradingOrchestra
             // Legacy implementation for backwards compatibility
             await Task.Delay(100, cancellationToken).ConfigureAwait(false);
             
+            // Register position with UnifiedPositionManagementService for automatic management
+            if (_positionManagement != null && (decision.Action == TradingAction.Buy || decision.Action == TradingAction.Sell))
+            {
+                try
+                {
+                    // Generate unique order ID for position tracking
+                    var orderId = $"{decision.Symbol}_{decision.DecisionId}_{DateTime.UtcNow:yyyyMMddHHmmssfff}";
+                    
+                    // Get bracket configuration from decision or use default
+                    var bracketMode = GetBracketModeForStrategy(decision.Strategy);
+                    
+                    // Calculate stop and target prices based on decision
+                    var tickSize = decision.Symbol.StartsWith("ES") ? 0.25m : 0.25m; // ES/NQ tick size
+                    var isLong = decision.Action == TradingAction.Buy;
+                    
+                    var stopPrice = isLong 
+                        ? decision.Price - (bracketMode.StopTicks * tickSize)
+                        : decision.Price + (bracketMode.StopTicks * tickSize);
+                        
+                    var targetPrice = isLong
+                        ? decision.Price + (bracketMode.TargetTicks * tickSize)
+                        : decision.Price - (bracketMode.TargetTicks * tickSize);
+                    
+                    // Register position for automatic management
+                    _positionManagement.RegisterPosition(
+                        positionId: orderId,
+                        symbol: decision.Symbol,
+                        strategy: decision.Strategy,
+                        entryPrice: decision.Price,
+                        stopPrice: stopPrice,
+                        targetPrice: targetPrice,
+                        quantity: (int)decision.Quantity,
+                        bracketMode: bracketMode
+                    );
+                    
+                    // Track decision ID to position ID mapping for later unregistration
+                    _decisionToPositionMap[decision.DecisionId] = orderId;
+                    
+                    _logger.LogInformation("📝 [POSITION-MGMT] Registered position {OrderId} for {Symbol} {Strategy} - Entry: {Entry}, Stop: {Stop}, Target: {Target}",
+                        orderId, decision.Symbol, decision.Strategy, decision.Price, stopPrice, targetPrice);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ [POSITION-MGMT] Failed to register position for {Symbol}", decision.Symbol);
+                    // Don't fail trade execution if position registration fails
+                }
+            }
+            
             // After trade execution, push telemetry to cloud
             await PushTradeTelemetryAsync(decision, success: true, cancellationToken).ConfigureAwait(false);
             
@@ -791,6 +879,58 @@ internal class TradingOrchestratorService : BackgroundService, ITradingOrchestra
         }
     }
 
+    /// <summary>
+    /// Get bracket mode configuration for a given strategy
+    /// Returns default Conservative bracket if strategy not recognized
+    /// </summary>
+    private BotCore.Bandits.BracketMode GetBracketModeForStrategy(string strategy)
+    {
+        // Strategy-specific bracket configurations
+        return strategy.ToUpperInvariant() switch
+        {
+            "S2" => new BotCore.Bandits.BracketMode 
+            { 
+                StopTicks = 12, 
+                TargetTicks = 18, 
+                BreakevenAfterTicks = 6, 
+                TrailTicks = 4, 
+                ModeType = "Conservative" 
+            },
+            "S3" => new BotCore.Bandits.BracketMode 
+            { 
+                StopTicks = 12, 
+                TargetTicks = 20, 
+                BreakevenAfterTicks = 8, 
+                TrailTicks = 5, 
+                ModeType = "Moderate" 
+            },
+            "S6" => new BotCore.Bandits.BracketMode 
+            { 
+                StopTicks = 10, 
+                TargetTicks = 18, 
+                BreakevenAfterTicks = 6, 
+                TrailTicks = 4, 
+                ModeType = "Aggressive" 
+            },
+            "S11" => new BotCore.Bandits.BracketMode 
+            { 
+                StopTicks = 14, 
+                TargetTicks = 22, 
+                BreakevenAfterTicks = 8, 
+                TrailTicks = 5, 
+                ModeType = "Moderate" 
+            },
+            _ => new BotCore.Bandits.BracketMode 
+            { 
+                StopTicks = 12, 
+                TargetTicks = 18, 
+                BreakevenAfterTicks = 6, 
+                TrailTicks = 4, 
+                ModeType = "Conservative" 
+            } // Default Conservative
+        };
+    }
+    
     private async Task PushTradeTelemetryAsync(TradingBot.Abstractions.TradingDecision decision, bool success, 
         CancellationToken cancellationToken, string? blockReason = null)
     {
