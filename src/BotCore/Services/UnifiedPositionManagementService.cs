@@ -55,6 +55,33 @@ namespace BotCore.Services
         private const decimal VolatilityStopWidening = 0.20m;    // Widen stops by 20% in high vol
         private const decimal VolatilityStopTightening = 0.20m;  // Tighten stops by 20% in low vol
         
+        // Strategy-specific max hold times (in minutes)
+        private const int S2_MAX_HOLD_MINUTES = 60;
+        private const int S3_MAX_HOLD_MINUTES = 90;
+        private const int S6_MAX_HOLD_MINUTES = 45;
+        private const int S11_MAX_HOLD_MINUTES = 60;
+        private const int DEFAULT_MAX_HOLD_MINUTES = 120;
+        
+        // Partial exit percentages
+        private const decimal FIRST_PARTIAL_EXIT_PERCENTAGE = 0.50m;   // 50%
+        private const decimal SECOND_PARTIAL_EXIT_PERCENTAGE = 0.30m;  // 30%
+        private const decimal FINAL_PARTIAL_EXIT_PERCENTAGE = 0.20m;   // 20%
+        
+        // AI Commentary display percentages (for logging)
+        private const decimal FIRST_PARTIAL_DISPLAY_PERCENT = 50m;
+        private const decimal SECOND_PARTIAL_DISPLAY_PERCENT = 30m;
+        private const decimal FINAL_PARTIAL_DISPLAY_PERCENT = 20m;
+        
+        // Volatility adjustment timing
+        private const int VOLATILITY_ADJUSTMENT_MIN_INTERVAL_MINUTES = 5;
+        
+        // ATR calculation and averaging
+        private const decimal ATR_MULTIPLIER_UNIT = 1.0m;
+        private const int ATR_LOOKBACK_BARS = 10;
+        
+        // Stop distance minimum (in R-multiples)
+        private const decimal MIN_STOP_DISTANCE_R = 2m;
+        
         public UnifiedPositionManagementService(
             ILogger<UnifiedPositionManagementService> logger,
             IServiceProvider serviceProvider,
@@ -457,11 +484,11 @@ namespace BotCore.Services
         {
             return strategy switch
             {
-                "S2" => 60,   // S2: 60 minutes max
-                "S3" => 90,   // S3: 90 minutes max
-                "S6" => 45,   // S6: 45 minutes max (from existing code)
-                "S11" => 60,  // S11: 60 minutes max (from existing code)
-                _ => 120      // Default: 2 hours
+                "S2" => S2_MAX_HOLD_MINUTES,
+                "S3" => S3_MAX_HOLD_MINUTES,
+                "S6" => S6_MAX_HOLD_MINUTES,
+                "S11" => S11_MAX_HOLD_MINUTES,
+                _ => DEFAULT_MAX_HOLD_MINUTES
             };
         }
         
@@ -669,9 +696,9 @@ namespace BotCore.Services
                 state.SetProperty("FinalPartialExecuted", false);
             }
             
-            var firstPartialDone = (bool)state.GetProperty("FirstPartialExecuted");
-            var secondPartialDone = (bool)state.GetProperty("SecondPartialExecuted");
-            var finalPartialDone = (bool)state.GetProperty("FinalPartialExecuted");
+            var firstPartialDone = (bool)(state.GetProperty("FirstPartialExecuted") ?? false);
+            var secondPartialDone = (bool)(state.GetProperty("SecondPartialExecuted") ?? false);
+            var finalPartialDone = (bool)(state.GetProperty("FinalPartialExecuted") ?? false);
             
             // Check first partial exit at 1.5R (close 50%)
             if (!firstPartialDone && rMultiple >= FirstPartialExitThreshold)
@@ -682,15 +709,15 @@ namespace BotCore.Services
                 // AI Commentary: Explain first partial exit (non-blocking)
                 try
                 {
-                    var partialQuantity = Math.Floor(state.Quantity * 0.50m);
-                    ExplainPartialExitFireAndForget(state, rMultiple, 50m, partialQuantity, "First Target (1.5R)");
+                    var partialQuantity = Math.Floor(state.Quantity * FIRST_PARTIAL_EXIT_PERCENTAGE);
+                    ExplainPartialExitFireAndForget(state, rMultiple, FIRST_PARTIAL_DISPLAY_PERCENT, partialQuantity, "First Target (1.5R)");
                 }
                 catch
                 {
                     // Silently ignore AI errors
                 }
                 
-                await RequestPartialCloseAsync(state, 0.50m, ExitReason.Partial, cancellationToken).ConfigureAwait(false);
+                await RequestPartialCloseAsync(state, FIRST_PARTIAL_EXIT_PERCENTAGE, ExitReason.Partial, cancellationToken).ConfigureAwait(false);
                 state.SetProperty("FirstPartialExecuted", true);
             }
             // Check second partial exit at 2.5R (close 30% of remaining = 30% of original)
@@ -702,15 +729,15 @@ namespace BotCore.Services
                 // AI Commentary: Explain second partial exit (non-blocking)
                 try
                 {
-                    var partialQuantity = Math.Floor(state.Quantity * 0.30m);
-                    ExplainPartialExitFireAndForget(state, rMultiple, 30m, partialQuantity, "Second Target (2.5R)");
+                    var partialQuantity = Math.Floor(state.Quantity * SECOND_PARTIAL_EXIT_PERCENTAGE);
+                    ExplainPartialExitFireAndForget(state, rMultiple, SECOND_PARTIAL_DISPLAY_PERCENT, partialQuantity, "Second Target (2.5R)");
                 }
                 catch
                 {
                     // Silently ignore AI errors
                 }
                 
-                await RequestPartialCloseAsync(state, 0.30m, ExitReason.Partial, cancellationToken).ConfigureAwait(false);
+                await RequestPartialCloseAsync(state, SECOND_PARTIAL_EXIT_PERCENTAGE, ExitReason.Partial, cancellationToken).ConfigureAwait(false);
                 state.SetProperty("SecondPartialExecuted", true);
             }
             // Check final partial exit at 4.0R (close remaining 20% = runner position)
@@ -722,15 +749,15 @@ namespace BotCore.Services
                 // AI Commentary: Explain final partial exit (non-blocking)
                 try
                 {
-                    var partialQuantity = Math.Floor(state.Quantity * 0.20m);
-                    ExplainPartialExitFireAndForget(state, rMultiple, 20m, partialQuantity, "Runner Position (4.0R)");
+                    var partialQuantity = Math.Floor(state.Quantity * FINAL_PARTIAL_EXIT_PERCENTAGE);
+                    ExplainPartialExitFireAndForget(state, rMultiple, FINAL_PARTIAL_DISPLAY_PERCENT, partialQuantity, "Runner Position (4.0R)");
                 }
                 catch
                 {
                     // Silently ignore AI errors
                 }
                 
-                await RequestPartialCloseAsync(state, 0.20m, ExitReason.Target, cancellationToken).ConfigureAwait(false);
+                await RequestPartialCloseAsync(state, FINAL_PARTIAL_EXIT_PERCENTAGE, ExitReason.Target, cancellationToken).ConfigureAwait(false);
                 state.SetProperty("FinalPartialExecuted", true);
             }
             
@@ -752,10 +779,10 @@ namespace BotCore.Services
             // Check if volatility adjustment already applied this cycle
             if (state.HasProperty("VolatilityAdjustedThisCycle"))
             {
-                var lastAdjusted = (DateTime)state.GetProperty("VolatilityAdjustedThisCycle");
-                if ((DateTime.UtcNow - lastAdjusted).TotalMinutes < 5)
+                var lastAdjustedObj = state.GetProperty("VolatilityAdjustedThisCycle");
+                if (lastAdjustedObj is DateTime lastAdjusted && (DateTime.UtcNow - lastAdjusted).TotalMinutes < VOLATILITY_ADJUSTMENT_MIN_INTERVAL_MINUTES)
                 {
-                    return; // Don't adjust more than once per 5 minutes
+                    return; // Don't adjust more than once per interval
                 }
             }
             
@@ -772,25 +799,25 @@ namespace BotCore.Services
                 }
                 
                 var volatilityRatio = currentVolatility / avgVolatility;
-                decimal stopAdjustmentFactor = 1.0m;
+                decimal stopAdjustmentFactor = ATR_MULTIPLIER_UNIT;
                 string adjustmentReason = "";
                 
                 // Determine adjustment based on volatility
                 if (volatilityRatio > HighVolatilityThreshold)
                 {
                     // High volatility - widen stops
-                    stopAdjustmentFactor = 1.0m + VolatilityStopWidening;
+                    stopAdjustmentFactor = ATR_MULTIPLIER_UNIT + VolatilityStopWidening;
                     adjustmentReason = $"High volatility ({volatilityRatio:F2}x avg)";
                 }
                 else if (volatilityRatio < LowVolatilityThreshold)
                 {
                     // Low volatility - tighten stops
-                    stopAdjustmentFactor = 1.0m - VolatilityStopTightening;
+                    stopAdjustmentFactor = ATR_MULTIPLIER_UNIT - VolatilityStopTightening;
                     adjustmentReason = $"Low volatility ({volatilityRatio:F2}x avg)";
                 }
                 
                 // Apply adjustment if needed
-                if (stopAdjustmentFactor != 1.0m)
+                if (stopAdjustmentFactor != ATR_MULTIPLIER_UNIT)
                 {
                     var isLong = state.Quantity > 0;
                     var stopDistance = Math.Abs(state.CurrentStopPrice - state.EntryPrice);
@@ -810,7 +837,7 @@ namespace BotCore.Services
                         await ModifyStopPriceAsync(state, newStopPrice, $"VolAdaptive-{adjustmentReason}", cancellationToken).ConfigureAwait(false);
                         
                         _logger.LogInformation("📊 [POSITION-MGMT] PHASE 4 - Volatility-adaptive stop for {PositionId}: {Symbol}, {Reason}, Stop: {Old} → {New} ({Factor:P0} adjustment)",
-                            state.PositionId, state.Symbol, adjustmentReason, state.CurrentStopPrice, newStopPrice, stopAdjustmentFactor - 1.0m);
+                            state.PositionId, state.Symbol, adjustmentReason, state.CurrentStopPrice, newStopPrice, stopAdjustmentFactor - ATR_MULTIPLIER_UNIT);
                         
                         state.SetProperty("VolatilityAdjustedThisCycle", DateTime.UtcNow);
                     }
@@ -832,7 +859,7 @@ namespace BotCore.Services
         {
             // Simplified: use max excursion range as volatility proxy
             var range = Math.Abs(state.MaxFavorablePrice - state.MaxAdversePrice);
-            return range > 0 ? range : 1.0m;
+            return range > 0 ? range : ATR_MULTIPLIER_UNIT;
         }
         
         /// <summary>
@@ -843,7 +870,7 @@ namespace BotCore.Services
         {
             // Simplified: use entry-based range estimation
             var tickSize = GetTickSize(state.Symbol);
-            return tickSize * 10; // Assume avg volatility is ~10 ticks
+            return tickSize * ATR_LOOKBACK_BARS; // Assume avg volatility is ~10 ticks
         }
         
         /// <summary>
@@ -1026,7 +1053,7 @@ namespace BotCore.Services
             if (isLong && (breakEvent.BreakType == ZoneBreakType.StrongSupplyBreakBullish))
             {
                 // Place stop below the broken zone (now support)
-                newStopPrice = breakEvent.ZoneLow - (2 * tickSize); // 2 ticks below zone
+                newStopPrice = breakEvent.ZoneLow - (MIN_STOP_DISTANCE_R * tickSize);
                 
                 // Only update if new stop is better than current
                 if (newStopPrice > state.CurrentStopPrice)
@@ -1041,7 +1068,7 @@ namespace BotCore.Services
             else if (!isLong && (breakEvent.BreakType == ZoneBreakType.StrongDemandBreakBearish))
             {
                 // Place stop above the broken zone (now resistance)
-                newStopPrice = breakEvent.ZoneHigh + (2 * tickSize); // 2 ticks above zone
+                newStopPrice = breakEvent.ZoneHigh + (MIN_STOP_DISTANCE_R * tickSize);
                 
                 // Only update if new stop is better than current
                 if (newStopPrice < state.CurrentStopPrice)
@@ -1127,7 +1154,7 @@ Explain in 2-3 sentences why this trailing stop activation is smart and protects
                     var isLong = state.Quantity > 0;
                     var direction = isLong ? "LONG" : "SHORT";
                     var breakevenThreshold = state.BreakevenAfterTicks;
-                    var oldStop = state.InitialStopPrice;
+                    var oldStop = state.GetProperty("InitialStopPrice") as decimal? ?? state.CurrentStopPrice;
                     var profitAmount = unrealizedPnL;
                     
                     var prompt = $@"I am a trading bot. I just activated breakeven protection:
@@ -1173,7 +1200,8 @@ Explain in 2-3 sentences why moving my stop to breakeven is smart risk managemen
                     var isLong = state.Quantity > 0;
                     var direction = isLong ? "LONG" : "SHORT";
                     var remainingQuantity = state.Quantity - (int)partialQuantity;
-                    var profitPerContract = rMultiple * Math.Abs(state.InitialStopPrice - state.EntryPrice);
+                    var initialStop = state.GetProperty("InitialStopPrice") as decimal? ?? state.CurrentStopPrice;
+                    var profitPerContract = rMultiple * Math.Abs(initialStop - state.EntryPrice);
                     
                     var prompt = $@"I am a trading bot. I just took a partial profit:
 

@@ -269,7 +269,7 @@ namespace BotCore.Services
                     oldValue: current.TrailMultiplier.ToString("F1"),
                     newValue: best.TrailMultiplier.ToString("F1"),
                     reason: $"ML/RL learning: Better PnL ({best.AvgPnL:F2} vs {current.AvgPnL:F2}), Lower opportunity cost",
-                    outcomePnL: (decimal)best.AvgPnL,
+                    outcomePnl: (decimal)best.AvgPnL,
                     wasCorrect: true
                 );
             }
@@ -331,7 +331,7 @@ namespace BotCore.Services
                             oldValue: avgTimedOutDuration.ToString("F0"),
                             newValue: recommendedTimeout.ToString(),
                             reason: $"ML/RL learning: Timed out trades had {avgTimedOutOpCost:F1} ticks opportunity cost",
-                            outcomePnL: null,
+                            outcomePnl: null,
                             wasCorrect: null,
                             marketSnapshotId: regimeName
                         );
