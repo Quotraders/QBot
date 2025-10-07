@@ -1603,7 +1603,7 @@ Based on this, what should I change about my own code or parameters to improve? 
                         var artifactsDir = Path.Combine(Directory.GetCurrentDirectory(), "artifacts");
                         Directory.CreateDirectory(artifactsDir);
                         var suggestionsPath = Path.Combine(artifactsDir, "bot_suggestions.txt");
-                        await File.WriteAllTextAsync(suggestionsPath, 
+                        await File.AppendAllTextAsync(suggestionsPath, 
                             $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] {suggestions}\n\n", 
                             cancellationToken).ConfigureAwait(false);
                         
