@@ -212,7 +212,7 @@ namespace BotCore.Services
             // Calculate dynamic target based on entry regime (Feature 1)
             if (_dynamicTargetsEnabled)
             {
-                state.DynamicTargetPrice = CalculateDynamicTarget(state, entryPrice, stopPrice);
+                state.DynamicTargetPrice = CalculateDynamicTarget(state, entryPrice, stopPrice, entryRegime);
                 _logger.LogInformation("📝 [POSITION-MGMT] Registered position {PositionId}: {Strategy} {Symbol} {Qty}@{Entry}, Regime: {Regime}, Static target: {Static}, Dynamic target: {Dynamic}",
                     positionId, strategy, symbol, quantity, entryPrice, entryRegime, targetPrice, state.DynamicTargetPrice);
             }
@@ -470,7 +470,7 @@ namespace BotCore.Services
                 await ModifyStopPriceAsync(state, newStopPrice, "Trailing", cancellationToken).ConfigureAwait(false);
                 
                 _logger.LogInformation("📈 [POSITION-MGMT] Trailing stop updated for {PositionId}: {Symbol}, Stop: {Old} → {New} (trail {Ticks} ticks)",
-                    state.PositionId, state.Symbol, oldStopPrice, newStopPrice, state.TrailTicks);
+                    state.PositionId, state.Symbol, oldStopPrice, newStopPrice, trailTicks);
                 
                 // AI Commentary: Explain trailing stop activation (non-blocking)
                 try
@@ -1164,7 +1164,7 @@ namespace BotCore.Services
         /// <summary>
         /// Calculate dynamic target price based on market regime and strategy
         /// </summary>
-        private decimal CalculateDynamicTarget(PositionManagementState state, decimal entryPrice, decimal stopPrice)
+        private decimal CalculateDynamicTarget(PositionManagementState state, decimal entryPrice, decimal stopPrice, string? useRegime = null)
         {
             var isLong = state.Quantity > 0;
             var risk = Math.Abs(entryPrice - stopPrice);
@@ -1174,15 +1174,18 @@ namespace BotCore.Services
                 return state.TargetPrice; // Fallback to static target
             }
             
+            // Use specified regime or fall back to current regime (for recalculations) or entry regime (for initial calculation)
+            var regimeToUse = useRegime ?? state.CurrentRegime;
+            
             // Get regime-specific R-multiple for this strategy
-            var rMultiple = GetRegimeBasedRMultiple(state.Strategy, state.EntryRegime);
+            var rMultiple = GetRegimeBasedRMultiple(state.Strategy, regimeToUse);
             
             // Calculate dynamic target based on R-multiple
             var reward = risk * rMultiple;
             var dynamicTarget = isLong ? entryPrice + reward : entryPrice - reward;
             
             _logger.LogDebug("🎯 [POSITION-MGMT] Dynamic target calculation: {Strategy} in {Regime} regime, Risk={Risk:F2}, R={R}x, Target={Target:F2}",
-                state.Strategy, state.EntryRegime, risk, rMultiple, dynamicTarget);
+                state.Strategy, regimeToUse, risk, rMultiple, dynamicTarget);
             
             return dynamicTarget;
         }
@@ -1259,8 +1262,8 @@ namespace BotCore.Services
                     _logger.LogInformation("📊 [POSITION-MGMT] Regime change detected for {PositionId}: {Old} → {New}",
                         state.PositionId, oldRegime, newRegime);
                     
-                    // Recalculate dynamic target
-                    var newDynamicTarget = CalculateDynamicTarget(state, state.EntryPrice, state.CurrentStopPrice);
+                    // Recalculate dynamic target using the NEW regime
+                    var newDynamicTarget = CalculateDynamicTarget(state, state.EntryPrice, state.CurrentStopPrice, newRegime);
                     var oldTarget = state.DynamicTargetPrice;
                     
                     // Only adjust if change is significant (threshold check)
