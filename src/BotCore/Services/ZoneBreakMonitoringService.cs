@@ -38,6 +38,12 @@ namespace BotCore.Services
         private const decimal StrongBreakStrengthThreshold = 0.75m; // Strong zone must have strength > 0.75
         private const decimal WeakBreakStrengthThreshold = 0.30m;   // Weak zone has strength < 0.30
         private const decimal BreakConfirmationTicks = 2; // Price must be X ticks beyond zone
+        private const decimal EsTickSize = 0.25m; // ES/MES tick size for price precision
+        
+        // Break severity thresholds
+        private const decimal MediumStrengthThreshold = 0.5m; // Medium severity threshold
+        private const int MinTouchesForCritical = 3; // Minimum touches for critical severity
+        private const int MinTouchesForHigh = 2; // Minimum touches for high severity
         
         public ZoneBreakMonitoringService(
             ILogger<ZoneBreakMonitoringService> logger,
@@ -170,7 +176,7 @@ namespace BotCore.Services
             if (isLong && isSupplyZone)
             {
                 // Check if price broke below this demand/support zone
-                if (currentPrice < zone.PriceLow - (BreakConfirmationTicks * 0.25m))
+                if (currentPrice < zone.PriceLow - (BreakConfirmationTicks * EsTickSize))
                 {
                     // Demand zone broken!
                     var breakEvent = new ZoneBreakEvent
@@ -199,7 +205,7 @@ namespace BotCore.Services
             else if (!isLong && isDemandZone)
             {
                 // Check if price broke above this supply/resistance zone
-                if (currentPrice > zone.PriceHigh + (BreakConfirmationTicks * 0.25m))
+                if (currentPrice > zone.PriceHigh + (BreakConfirmationTicks * EsTickSize))
                 {
                     // Supply zone broken!
                     var breakEvent = new ZoneBreakEvent
@@ -228,7 +234,7 @@ namespace BotCore.Services
             if (isLong && isDemandZone && zone.Pressure > StrongBreakStrengthThreshold)
             {
                 // Strong supply zone breaking upward = bullish signal
-                if (currentPrice > zone.PriceHigh + (BreakConfirmationTicks * 0.25m))
+                if (currentPrice > zone.PriceHigh + (BreakConfirmationTicks * EsTickSize))
                 {
                     var breakEvent = new ZoneBreakEvent
                     {
@@ -254,7 +260,7 @@ namespace BotCore.Services
             else if (!isLong && isSupplyZone && zone.Pressure > StrongBreakStrengthThreshold)
             {
                 // Strong demand zone breaking downward = bearish signal
-                if (currentPrice < zone.PriceLow - (BreakConfirmationTicks * 0.25m))
+                if (currentPrice < zone.PriceLow - (BreakConfirmationTicks * EsTickSize))
                 {
                     var breakEvent = new ZoneBreakEvent
                     {
@@ -282,11 +288,11 @@ namespace BotCore.Services
         private string CalculateBreakSeverity(decimal pressure, int touchCount)
         {
             // Higher pressure + more touches = more severe break
-            if (pressure > StrongBreakStrengthThreshold && touchCount >= 3)
+            if (pressure > StrongBreakStrengthThreshold && touchCount >= MinTouchesForCritical)
             {
                 return "CRITICAL";
             }
-            else if (pressure > 0.5m && touchCount >= 2)
+            else if (pressure > MediumStrengthThreshold && touchCount >= MinTouchesForHigh)
             {
                 return "HIGH";
             }
