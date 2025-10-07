@@ -64,8 +64,10 @@ namespace BotCore.Services
             _serviceProvider = serviceProvider;
             _ollamaClient = ollamaClient;
             
-            // Check if position management commentary is enabled (default: false to avoid spam)
-            _commentaryEnabled = Environment.GetEnvironmentVariable("BOT_POSITION_COMMENTARY_ENABLED")?.ToLowerInvariant() == "true";
+            // Check if position management commentary is enabled (default: true for transparency)
+            // Set BOT_POSITION_COMMENTARY_ENABLED=false to disable if too verbose
+            var commentarySetting = Environment.GetEnvironmentVariable("BOT_POSITION_COMMENTARY_ENABLED")?.ToLowerInvariant();
+            _commentaryEnabled = commentarySetting != "false"; // Enabled by default, must explicitly disable
             
             if (_commentaryEnabled && _ollamaClient != null)
             {
