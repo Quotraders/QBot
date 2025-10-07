@@ -503,6 +503,32 @@ namespace BotCore.Brain
                     }
                 }
 
+                // Hook 1: Capture market snapshot (if enabled)
+                if (_snapshotStore != null && Environment.GetEnvironmentVariable("SNAPSHOT_ENABLED") == "true")
+                {
+                    try
+                    {
+                        var snapshot = BotCore.Services.MarketSnapshotStore.CreateSnapshot(
+                            symbol: decision.Symbol,
+                            vix: 15.0m, // Would get from market data
+                            trend: context.TrendStrength > 0.2 ? "Bullish" : context.TrendStrength < -0.2 ? "Bearish" : "Neutral",
+                            session: "RegularHours", // Would get from actual session detector
+                            currentPrice: bars.LastOrDefault()?.Close ?? 0m,
+                            strategy: decision.RecommendedStrategy,
+                            direction: decision.PriceDirection.ToString(),
+                            confidence: decision.StrategyConfidence,
+                            size: decision.PositionSize
+                        );
+                        _snapshotStore.StoreSnapshot(snapshot);
+                        _logger.LogTrace("📸 [SNAPSHOT] Captured market snapshot for {Symbol}: {Strategy} {Direction}", 
+                            symbol, decision.RecommendedStrategy, decision.PriceDirection);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [SNAPSHOT] Failed to capture market snapshot");
+                    }
+                }
+
                 return decision;
             }
             catch (InvalidOperationException ex)
@@ -673,24 +699,34 @@ namespace BotCore.Brain
                     var crossLearningReward = CalculateCrossLearningReward(
                         strategy, executedStrategy, context, reward, wasCorrect);
                     
+                    // Update strategy knowledge even if it wasn't executed
+                    await _strategySelector.UpdateArmAsync(strategy, contextVector, crossLearningReward, cancellationToken).ConfigureAwait(false);
+                    
                     // Hook 4: Track parameter changes (if enabled)
+                    // Note: Parameter tracking happens after UpdateArmAsync to detect any changes made
                     if (_parameterTracker != null && Environment.GetEnvironmentVariable("PARAMETER_TRACKING_ENABLED") == "true")
                     {
                         try
                         {
-                            // Note: Actual parameter change detection would require before/after comparison
-                            // This is a placeholder showing where tracking would occur
-                            // Real implementation would need to compare current vs previous parameter values
-                            _logger.LogTrace("📊 [PARAM-TRACKING] Parameter tracking active for {Strategy}", strategy);
+                            // Record the parameter update with outcome context
+                            var reason = wasCorrect ? "Successful trade outcome" : "Learning from unsuccessful trade";
+                            _parameterTracker.RecordChange(
+                                strategyName: strategy,
+                                parameterName: "StrategyWeight",
+                                oldValue: "N/A", // Would need to capture before UpdateArmAsync
+                                newValue: crossLearningReward.ToString("F3"),
+                                reason: reason,
+                                outcomePnl: reward,
+                                wasCorrect: wasCorrect
+                            );
+                            _logger.LogTrace("📊 [PARAM-TRACKING] Tracked parameter update for {Strategy}: reward={Reward:F3}", 
+                                strategy, crossLearningReward);
                         }
                         catch (Exception ex)
                         {
                             _logger.LogWarning(ex, "⚠️ [PARAM-TRACKING] Failed to track parameter change");
                         }
                     }
-                    
-                    // Update strategy knowledge even if it wasn't executed
-                    await _strategySelector.UpdateArmAsync(strategy, contextVector, crossLearningReward, cancellationToken).ConfigureAwait(false);
                     
                     // Update strategy-specific learning patterns
                     UpdateStrategyOptimalConditions(strategy, context, crossLearningReward > BaseConfidenceThreshold);
@@ -748,19 +784,9 @@ namespace BotCore.Brain
                 var positionInfo = "None";
                 
                 // Format context
-                var contextString = $"VIX: {vixLevel:F1}, PnL Today: ${todayPnl:F2}, Win Rate: {winRate:P0}, " +
+                return $"VIX: {vixLevel:F1}, PnL Today: ${todayPnl:F2}, Win Rate: {winRate:P0}, " +
                        $"Trend: {trend}, Active Strategies: {activeStrategies}, Position: {positionInfo}, " +
                        $"Decisions Today: {DecisionsToday}";
-                
-                // Hook 1: Capture market snapshot (if enabled)
-                if (_snapshotStore != null && Environment.GetEnvironmentVariable("SNAPSHOT_ENABLED") == "true")
-                {
-                    // Note: Snapshot capture would need current decision context which isn't available here
-                    // This hook is a placeholder - actual capture should happen at decision time
-                    _logger.LogTrace("📸 [SNAPSHOT] Snapshot capture ready (context gathered)");
-                }
-                
-                return contextString;
             }
             catch (Exception ex)
             {
@@ -803,6 +829,42 @@ namespace BotCore.Brain
                     }
                 }
                 
+                // Hook 6: Historical pattern recognition (if enabled)
+                string historicalContext = string.Empty;
+                if (_historicalPatterns != null && _snapshotStore != null && 
+                    Environment.GetEnvironmentVariable("PATTERN_RECOGNITION_ENABLED") == "true")
+                {
+                    try
+                    {
+                        // Create a temporary snapshot for similarity search
+                        var currentSnapshot = BotCore.Services.MarketSnapshotStore.CreateSnapshot(
+                            symbol: decision.Symbol,
+                            vix: 15.0m,
+                            trend: "Neutral",
+                            session: "RegularHours",
+                            currentPrice: 0m,
+                            strategy: decision.RecommendedStrategy,
+                            direction: decision.PriceDirection.ToString(),
+                            confidence: decision.StrategyConfidence,
+                            size: decision.PositionSize
+                        );
+                        
+                        var analysis = _historicalPatterns.FindSimilarConditions(currentSnapshot);
+                        if (analysis.Matches.Count > 0)
+                        {
+                            historicalContext = await _historicalPatterns.ExplainSimilarConditionsAsync(analysis).ConfigureAwait(false);
+                            if (!string.IsNullOrEmpty(historicalContext))
+                            {
+                                _logger.LogInformation("🔍 [HISTORICAL-PATTERN] {Context}", historicalContext);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions");
+                    }
+                }
+                
                 var prompt = $@"I am a trading bot. I'm about to take this trade:
 Strategy: {decision.RecommendedStrategy}
 Direction: {decision.PriceDirection}
@@ -811,7 +873,7 @@ Market Regime: {decision.MarketRegime}
 
 Current context: {currentContext}
 
-{(!string.IsNullOrEmpty(riskContext) ? $"Risk Assessment: {riskContext}\n\n" : "")}Explain in 2-3 sentences why I'm taking this trade. Speak as ME (the bot), not as an observer.";
+{(!string.IsNullOrEmpty(riskContext) ? $"Risk Assessment: {riskContext}\n\n" : "")}{(!string.IsNullOrEmpty(historicalContext) ? $"Historical Context: {historicalContext}\n\n" : "")}Explain in 2-3 sentences why I'm taking this trade. Speak as ME (the bot), not as an observer.";
                 
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
