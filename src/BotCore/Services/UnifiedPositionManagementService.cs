@@ -32,6 +32,8 @@ namespace BotCore.Services
     {
         private readonly ILogger<UnifiedPositionManagementService> _logger;
         private readonly IServiceProvider _serviceProvider;
+        private readonly OllamaClient? _ollamaClient;
+        private readonly bool _commentaryEnabled;
         private readonly ConcurrentDictionary<string, PositionManagementState> _activePositions = new();
         
         // Monitoring interval
@@ -55,10 +57,20 @@ namespace BotCore.Services
         
         public UnifiedPositionManagementService(
             ILogger<UnifiedPositionManagementService> logger,
-            IServiceProvider serviceProvider)
+            IServiceProvider serviceProvider,
+            OllamaClient? ollamaClient = null)
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
+            _ollamaClient = ollamaClient;
+            
+            // Check if position management commentary is enabled (default: false to avoid spam)
+            _commentaryEnabled = Environment.GetEnvironmentVariable("BOT_POSITION_COMMENTARY_ENABLED")?.ToLowerInvariant() == "true";
+            
+            if (_commentaryEnabled && _ollamaClient != null)
+            {
+                _logger.LogInformation("🤖 [POSITION-MGMT] AI commentary enabled for position management actions");
+            }
         }
         
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -240,6 +252,20 @@ namespace BotCore.Services
                     // Check time-based exit first
                     if (ShouldExitOnTime(state))
                     {
+                        // AI Commentary: Explain time-based exit (non-blocking)
+                        try
+                        {
+                            var holdDuration = DateTime.UtcNow - state.EntryTime;
+                            var currentPnL = profitTicks * tickSize * state.Quantity * (isLong ? 50m : -50m);
+                            var marketRegime = "UNKNOWN";
+                            
+                            ExplainTimeBasedExitFireAndForget(state, holdDuration, currentPnL, marketRegime);
+                        }
+                        catch
+                        {
+                            // Silently ignore AI errors
+                        }
+                        
                         await RequestPositionCloseAsync(state, ExitReason.TimeLimit, cancellationToken).ConfigureAwait(false);
                         continue;
                     }
@@ -295,6 +321,21 @@ namespace BotCore.Services
             
             _logger.LogInformation("🛡️ [POSITION-MGMT] Breakeven activated for {PositionId}: {Symbol}, Stop moved to {Stop} (entry +{Tick})",
                 state.PositionId, state.Symbol, breakevenStop, tickSize);
+            
+            // AI Commentary: Explain breakeven activation (non-blocking)
+            try
+            {
+                var currentPrice = await GetCurrentMarketPriceAsync(state.Symbol, cancellationToken).ConfigureAwait(false);
+                var profitTicks = CalculateProfitTicks(state.EntryPrice, currentPrice, tickSize, isLong);
+                var unrealizedPnL = profitTicks * tickSize * state.Quantity * (isLong ? 50m : -50m); // $50 per tick for ES
+                var marketRegime = "UNKNOWN"; // Could be enhanced with regime detection
+                
+                ExplainBreakevenProtectionFireAndForget(state, unrealizedPnL, profitTicks, breakevenStop, marketRegime);
+            }
+            catch
+            {
+                // Silently ignore AI errors - don't disrupt position management
+            }
         }
         
         /// <summary>
@@ -320,10 +361,25 @@ namespace BotCore.Services
             
             if (shouldUpdate)
             {
+                var oldStopPrice = state.CurrentStopPrice;
                 await ModifyStopPriceAsync(state, newStopPrice, "Trailing", cancellationToken).ConfigureAwait(false);
                 
                 _logger.LogInformation("📈 [POSITION-MGMT] Trailing stop updated for {PositionId}: {Symbol}, Stop: {Old} → {New} (trail {Ticks} ticks)",
-                    state.PositionId, state.Symbol, state.CurrentStopPrice, newStopPrice, state.TrailTicks);
+                    state.PositionId, state.Symbol, oldStopPrice, newStopPrice, state.TrailTicks);
+                
+                // AI Commentary: Explain trailing stop activation (non-blocking)
+                try
+                {
+                    var profitTicks = CalculateProfitTicks(state.EntryPrice, currentPrice, tickSize, isLong);
+                    var unrealizedPnL = profitTicks * tickSize * state.Quantity * (isLong ? 50m : -50m); // $50 per tick for ES
+                    var marketRegime = "UNKNOWN"; // Could be enhanced with regime detection
+                    
+                    ExplainTrailingStopActivationFireAndForget(state, unrealizedPnL, profitTicks, newStopPrice, marketRegime);
+                }
+                catch
+                {
+                    // Silently ignore AI errors - don't disrupt position management
+                }
             }
         }
         
@@ -621,6 +677,17 @@ namespace BotCore.Services
                 _logger.LogInformation("🎯 [POSITION-MGMT] PHASE 4 - First partial exit triggered for {PositionId}: {Symbol} at {R}R, closing 50%",
                     state.PositionId, state.Symbol, rMultiple);
                 
+                // AI Commentary: Explain first partial exit (non-blocking)
+                try
+                {
+                    var partialQuantity = Math.Floor(state.Quantity * 0.50m);
+                    ExplainPartialExitFireAndForget(state, rMultiple, 50m, partialQuantity, "First Target (1.5R)");
+                }
+                catch
+                {
+                    // Silently ignore AI errors
+                }
+                
                 await RequestPartialCloseAsync(state, 0.50m, ExitReason.Partial, cancellationToken).ConfigureAwait(false);
                 state.SetProperty("FirstPartialExecuted", true);
             }
@@ -630,6 +697,17 @@ namespace BotCore.Services
                 _logger.LogInformation("🎯 [POSITION-MGMT] PHASE 4 - Second partial exit triggered for {PositionId}: {Symbol} at {R}R, closing 30%",
                     state.PositionId, state.Symbol, rMultiple);
                 
+                // AI Commentary: Explain second partial exit (non-blocking)
+                try
+                {
+                    var partialQuantity = Math.Floor(state.Quantity * 0.30m);
+                    ExplainPartialExitFireAndForget(state, rMultiple, 30m, partialQuantity, "Second Target (2.5R)");
+                }
+                catch
+                {
+                    // Silently ignore AI errors
+                }
+                
                 await RequestPartialCloseAsync(state, 0.30m, ExitReason.Partial, cancellationToken).ConfigureAwait(false);
                 state.SetProperty("SecondPartialExecuted", true);
             }
@@ -638,6 +716,17 @@ namespace BotCore.Services
             {
                 _logger.LogInformation("🎯 [POSITION-MGMT] PHASE 4 - Final partial exit (runner) triggered for {PositionId}: {Symbol} at {R}R, closing final 20%",
                     state.PositionId, state.Symbol, rMultiple);
+                
+                // AI Commentary: Explain final partial exit (non-blocking)
+                try
+                {
+                    var partialQuantity = Math.Floor(state.Quantity * 0.20m);
+                    ExplainPartialExitFireAndForget(state, rMultiple, 20m, partialQuantity, "Runner Position (4.0R)");
+                }
+                catch
+                {
+                    // Silently ignore AI errors
+                }
                 
                 await RequestPartialCloseAsync(state, 0.20m, ExitReason.Target, cancellationToken).ConfigureAwait(false);
                 state.SetProperty("FinalPartialExecuted", true);
@@ -839,6 +928,21 @@ namespace BotCore.Services
                                 // For critical breaks, close position immediately
                                 if (breakEvent.Severity == "CRITICAL")
                                 {
+                                    // AI Commentary: Explain zone break forced exit (non-blocking)
+                                    try
+                                    {
+                                        var currentPrice = await GetCurrentMarketPriceAsync(state.Symbol, CancellationToken.None).ConfigureAwait(false);
+                                        var tickSize = GetTickSize(state.Symbol);
+                                        var profitTicks = CalculateProfitTicks(state.EntryPrice, currentPrice, tickSize, isLong);
+                                        var currentPnL = profitTicks * tickSize * state.Quantity * (isLong ? 50m : -50m);
+                                        
+                                        ExplainZoneBreakExitFireAndForget(state, breakEvent, currentPnL);
+                                    }
+                                    catch
+                                    {
+                                        // Silently ignore AI errors
+                                    }
+                                    
                                     await RequestPositionCloseAsync(state, ExitReason.ZoneBreak, CancellationToken.None).ConfigureAwait(false);
                                 }
                             }
@@ -855,6 +959,21 @@ namespace BotCore.Services
                                 // For critical breaks, close position immediately
                                 if (breakEvent.Severity == "CRITICAL")
                                 {
+                                    // AI Commentary: Explain zone break forced exit (non-blocking)
+                                    try
+                                    {
+                                        var currentPrice = await GetCurrentMarketPriceAsync(state.Symbol, CancellationToken.None).ConfigureAwait(false);
+                                        var tickSize = GetTickSize(state.Symbol);
+                                        var profitTicks = CalculateProfitTicks(state.EntryPrice, currentPrice, tickSize, isLong);
+                                        var currentPnL = profitTicks * tickSize * state.Quantity * (isLong ? 50m : -50m);
+                                        
+                                        ExplainZoneBreakExitFireAndForget(state, breakEvent, currentPnL);
+                                    }
+                                    catch
+                                    {
+                                        // Silently ignore AI errors
+                                    }
+                                    
                                     await RequestPositionCloseAsync(state, ExitReason.ZoneBreak, CancellationToken.None).ConfigureAwait(false);
                                 }
                             }
@@ -931,6 +1050,284 @@ namespace BotCore.Services
                         state.PositionId, state.CurrentStopPrice, newStopPrice);
                 }
             }
+        }
+        
+        // ========================================================================
+        // AI COMMENTARY METHODS (PHASE 5 - Ollama Integration)
+        // ========================================================================
+        
+        /// <summary>
+        /// Fire-and-forget: Explain trailing stop activation in background
+        /// AI explains why trailing stop was activated without blocking trade execution
+        /// </summary>
+        private void ExplainTrailingStopActivationFireAndForget(
+            PositionManagementState state,
+            decimal unrealizedPnL,
+            decimal profitTicks,
+            decimal newStopPrice,
+            string marketRegime)
+        {
+            if (!_commentaryEnabled || _ollamaClient == null)
+                return;
+            
+            // Start background task but don't wait for it - trading continues immediately
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var isLong = state.Quantity > 0;
+                    var direction = isLong ? "LONG" : "SHORT";
+                    var trailDistance = state.TrailTicks;
+                    var oldStop = state.CurrentStopPrice;
+                    var profitAmount = unrealizedPnL;
+                    
+                    var prompt = $@"I am a trading bot. I just activated a trailing stop:
+
+Position: {direction} {state.Symbol} at {state.EntryPrice:F2}
+Current Price: {(isLong ? state.EntryPrice + (profitTicks * GetTickSize(state.Symbol)) : state.EntryPrice - (profitTicks * GetTickSize(state.Symbol))):F2}
+Profit: {profitTicks:F1} ticks (${profitAmount:F2})
+Trail Distance: {trailDistance} ticks behind peak
+Old Stop: {oldStop:F2} → New Stop: {newStopPrice:F2}
+Market Regime: {marketRegime}
+
+Explain in 2-3 sentences why this trailing stop activation is smart and protects my profits. Speak as ME (the bot).";
+
+                    var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+                    if (!string.IsNullOrEmpty(response))
+                    {
+                        _logger.LogInformation("🤖💭 [POSITION-AI] Trailing Stop: {Commentary}", response);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ [POSITION-AI] Error generating trailing stop commentary");
+                }
+            });
+        }
+        
+        /// <summary>
+        /// Fire-and-forget: Explain breakeven protection activation in background
+        /// </summary>
+        private void ExplainBreakevenProtectionFireAndForget(
+            PositionManagementState state,
+            decimal unrealizedPnL,
+            decimal profitTicks,
+            decimal newStopPrice,
+            string marketRegime)
+        {
+            if (!_commentaryEnabled || _ollamaClient == null)
+                return;
+            
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var isLong = state.Quantity > 0;
+                    var direction = isLong ? "LONG" : "SHORT";
+                    var breakevenThreshold = state.BreakevenAfterTicks;
+                    var oldStop = state.InitialStopPrice;
+                    var profitAmount = unrealizedPnL;
+                    
+                    var prompt = $@"I am a trading bot. I just activated breakeven protection:
+
+Position: {direction} {state.Symbol} at {state.EntryPrice:F2}
+Profit Reached: {profitTicks:F1} ticks (${profitAmount:F2})
+Breakeven Threshold: {breakevenThreshold} ticks
+Old Stop: {oldStop:F2} (initial risk) → New Stop: {newStopPrice:F2} (breakeven + 1 tick)
+Market Regime: {marketRegime}
+
+Explain in 2-3 sentences why moving my stop to breakeven is smart risk management now that I'm profitable. Speak as ME (the bot).";
+
+                    var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+                    if (!string.IsNullOrEmpty(response))
+                    {
+                        _logger.LogInformation("🤖💭 [POSITION-AI] Breakeven: {Commentary}", response);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ [POSITION-AI] Error generating breakeven commentary");
+                }
+            });
+        }
+        
+        /// <summary>
+        /// Fire-and-forget: Explain partial exit execution in background
+        /// </summary>
+        private void ExplainPartialExitFireAndForget(
+            PositionManagementState state,
+            decimal rMultiple,
+            decimal partialPercent,
+            decimal partialQuantity,
+            string targetLevel)
+        {
+            if (!_commentaryEnabled || _ollamaClient == null)
+                return;
+            
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var isLong = state.Quantity > 0;
+                    var direction = isLong ? "LONG" : "SHORT";
+                    var remainingQuantity = state.Quantity - (int)partialQuantity;
+                    var profitPerContract = rMultiple * Math.Abs(state.InitialStopPrice - state.EntryPrice);
+                    
+                    var prompt = $@"I am a trading bot. I just took a partial profit:
+
+Position: {direction} {state.Symbol} at {state.EntryPrice:F2}
+Risk-Multiple: {rMultiple:F1}R (profit is {rMultiple:F1}x my initial risk)
+Partial Exit: Closed {partialPercent:F0}% ({partialQuantity:F0} contracts) at {targetLevel}
+Remaining: {remainingQuantity} contracts still running
+Profit on this partial: ${profitPerContract * partialQuantity:F2}
+
+Explain in 2-3 sentences why taking this partial profit is smart while letting the rest run. Speak as ME (the bot).";
+
+                    var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+                    if (!string.IsNullOrEmpty(response))
+                    {
+                        _logger.LogInformation("🤖💭 [POSITION-AI] Partial Exit: {Commentary}", response);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ [POSITION-AI] Error generating partial exit commentary");
+                }
+            });
+        }
+        
+        /// <summary>
+        /// Fire-and-forget: Explain zone break forced exit in background
+        /// </summary>
+        private void ExplainZoneBreakExitFireAndForget(
+            PositionManagementState state,
+            ZoneBreakEvent breakEvent,
+            decimal currentPnL)
+        {
+            if (!_commentaryEnabled || _ollamaClient == null)
+                return;
+            
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var isLong = state.Quantity > 0;
+                    var direction = isLong ? "LONG" : "SHORT";
+                    var zoneType = breakEvent.BreakType.ToString();
+                    var severity = breakEvent.Severity;
+                    var zoneStrength = breakEvent.ZoneStrength;
+                    
+                    var prompt = $@"I am a trading bot. I just EMERGENCY EXITED a position due to a zone break:
+
+Position: {direction} {state.Symbol} at {state.EntryPrice:F2}
+Zone Break: {zoneType}
+Severity: {severity}
+Zone Strength: {zoneStrength:F2}
+Zone Range: {breakEvent.ZoneLow:F2} - {breakEvent.ZoneHigh:F2}
+P&L at Exit: ${currentPnL:F2}
+
+Explain in 2-3 sentences why this critical structural break forced me to exit immediately, even if I took a loss. Speak as ME (the bot).";
+
+                    var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+                    if (!string.IsNullOrEmpty(response))
+                    {
+                        _logger.LogInformation("🤖💭 [POSITION-AI] Zone Break Exit: {Commentary}", response);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ [POSITION-AI] Error generating zone break commentary");
+                }
+            });
+        }
+        
+        /// <summary>
+        /// Fire-and-forget: Explain time-based exit in background
+        /// </summary>
+        private void ExplainTimeBasedExitFireAndForget(
+            PositionManagementState state,
+            TimeSpan holdDuration,
+            decimal currentPnL,
+            string marketRegime)
+        {
+            if (!_commentaryEnabled || _ollamaClient == null)
+                return;
+            
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var isLong = state.Quantity > 0;
+                    var direction = isLong ? "LONG" : "SHORT";
+                    var maxHoldMinutes = state.MaxHoldMinutes;
+                    var actualMinutes = holdDuration.TotalMinutes;
+                    
+                    var prompt = $@"I am a trading bot. I just closed a position due to time limit:
+
+Position: {direction} {state.Symbol} at {state.EntryPrice:F2}
+Hold Duration: {actualMinutes:F1} minutes
+Max Hold Time: {maxHoldMinutes} minutes
+Market Regime: {marketRegime}
+P&L at Exit: ${currentPnL:F2}
+
+Explain in 2-3 sentences why I closed this stale position that wasn't moving anywhere. Speak as ME (the bot).";
+
+                    var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+                    if (!string.IsNullOrEmpty(response))
+                    {
+                        _logger.LogInformation("🤖💭 [POSITION-AI] Time Exit: {Commentary}", response);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ [POSITION-AI] Error generating time exit commentary");
+                }
+            });
+        }
+        
+        /// <summary>
+        /// Fire-and-forget: Explain volatility-based stop adjustment in background
+        /// </summary>
+        private void ExplainVolatilityAdjustmentFireAndForget(
+            PositionManagementState state,
+            decimal volRatio,
+            decimal oldStopDistance,
+            decimal newStopDistance,
+            string adjustmentReason)
+        {
+            if (!_commentaryEnabled || _ollamaClient == null)
+                return;
+            
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var isLong = state.Quantity > 0;
+                    var direction = isLong ? "LONG" : "SHORT";
+                    var adjustmentType = volRatio > 1.5m ? "widened" : "tightened";
+                    var adjustmentPct = Math.Abs((newStopDistance - oldStopDistance) / oldStopDistance) * 100;
+                    
+                    var prompt = $@"I am a trading bot. I just adjusted my stop based on volatility:
+
+Position: {direction} {state.Symbol} at {state.EntryPrice:F2}
+Volatility Ratio: {volRatio:F2}x (current ATR vs average)
+Stop Distance: {adjustmentType} by {adjustmentPct:F0}%
+Old Distance: {oldStopDistance:F2} → New Distance: {newStopDistance:F2}
+Reason: {adjustmentReason}
+
+Explain in 2-3 sentences why this volatility-adaptive stop adjustment makes sense in current market conditions. Speak as ME (the bot).";
+
+                    var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+                    if (!string.IsNullOrEmpty(response))
+                    {
+                        _logger.LogInformation("🤖💭 [POSITION-AI] Volatility Adjustment: {Commentary}", response);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ [POSITION-AI] Error generating volatility commentary");
+                }
+            });
         }
     }
 }
