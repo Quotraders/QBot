@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -132,7 +133,7 @@ namespace BotCore.Services
             
             // Calculate target flatten time (default 4:55 PM = 5:00 PM - 5 minutes)
             var minutesBefore = _configuration.GetValue<int>("BOT_SESSION_FLATTEN_MINUTES_BEFORE", DefaultFlattenMinutesBefore);
-            var targetTime = new DateTime(currentEt.Year, currentEt.Month, currentEt.Day, MarketCloseHour, MarketCloseMinute, 0)
+            var targetTime = new DateTime(currentEt.Year, currentEt.Month, currentEt.Day, MarketCloseHour, MarketCloseMinute, 0, DateTimeKind.Unspecified)
                 .AddMinutes(-minutesBefore);
             
             // Check if current time is within 1 minute window of target time
@@ -150,9 +151,9 @@ namespace BotCore.Services
             
             // In flatten window and not yet flattened - execute flatten
             _logger.LogWarning("⏰ [SESSION-FLATTEN] Flatten window triggered at {Time} ET (target: {Target})",
-                currentEt.ToString("HH:mm:ss"), targetTime.ToString("HH:mm:ss"));
+                currentEt.ToString("HH:mm:ss", CultureInfo.InvariantCulture), targetTime.ToString("HH:mm:ss", CultureInfo.InvariantCulture));
             
-            await FlattenAllPositionsAsync(currentEt, cancellationToken).ConfigureAwait(false);
+            await FlattenAllPositionsAsync(currentEt).ConfigureAwait(false);
             
             // Set flag to prevent duplicate runs today
             _alreadyFlattenedToday = true;
@@ -161,9 +162,9 @@ namespace BotCore.Services
         /// <summary>
         /// Flatten all open positions before market close
         /// </summary>
-        private async Task FlattenAllPositionsAsync(DateTime currentEt, CancellationToken cancellationToken)
+        private async Task FlattenAllPositionsAsync(DateTime currentEt)
         {
-            _logger.LogWarning("🚨 [SESSION-FLATTEN] Session-end flatten triggered at {Time} ET", currentEt.ToString("HH:mm:ss"));
+            _logger.LogWarning("🚨 [SESSION-FLATTEN] Session-end flatten triggered at {Time} ET", currentEt.ToString("HH:mm:ss", CultureInfo.InvariantCulture));
             
             // Get all currently open positions from PositionTrackingSystem
             var positions = _positionTracker.GetAllPositions();
