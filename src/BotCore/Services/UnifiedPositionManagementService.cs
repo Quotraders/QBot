@@ -48,6 +48,18 @@ namespace BotCore.Services
         private readonly bool _maeLearningEnabled;
         private readonly bool _mfeLearningEnabled;
         
+        // FEATURE 3: Regime monitoring configuration
+        private readonly bool _regimeMonitoringEnabled;
+        private readonly bool _regimeFlipExitEnabled;
+        private readonly decimal _regimeConfidenceDropThreshold;
+        
+        // FEATURE 4: Confidence-based adjustment configuration
+        private readonly bool _confidenceAdjustmentEnabled;
+        private readonly decimal _confidenceVeryHighThreshold;
+        private readonly decimal _confidenceHighThreshold;
+        private readonly decimal _confidenceMediumThreshold;
+        private readonly decimal _confidenceLowThreshold;
+        
         // Tick size for ES/MES (0.25) - used for breakeven calculations
         private const decimal EsTickSize = 0.25m;
         private const decimal NqTickSize = 0.25m;
@@ -130,6 +142,30 @@ namespace BotCore.Services
                 _logger.LogInformation("🧠 [POSITION-MGMT] MAE/MFE Learning enabled: MAE={MAE}, MFE={MFE}",
                     _maeLearningEnabled, _mfeLearningEnabled);
             }
+            
+            // Load regime monitoring configuration (Feature 3)
+            _regimeMonitoringEnabled = Environment.GetEnvironmentVariable("BOT_REGIME_MONITORING_ENABLED")?.ToLowerInvariant() == "true";
+            _regimeFlipExitEnabled = Environment.GetEnvironmentVariable("BOT_REGIME_FLIP_EXIT_ENABLED")?.ToLowerInvariant() == "true";
+            _regimeConfidenceDropThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("BOT_REGIME_CONFIDENCE_DROP_THRESHOLD"), out var dropThreshold) ? dropThreshold : 0.30m;
+            
+            if (_regimeMonitoringEnabled)
+            {
+                _logger.LogInformation("🔄 [POSITION-MGMT] Regime monitoring enabled: Exit on flip={FlipExit}, Confidence drop threshold={Threshold}",
+                    _regimeFlipExitEnabled, _regimeConfidenceDropThreshold);
+            }
+            
+            // Load confidence-based adjustment configuration (Feature 4)
+            _confidenceAdjustmentEnabled = Environment.GetEnvironmentVariable("BOT_CONFIDENCE_ADJUSTMENT_ENABLED")?.ToLowerInvariant() == "true";
+            _confidenceVeryHighThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_VERY_HIGH_THRESHOLD"), out var vhThreshold) ? vhThreshold : 0.85m;
+            _confidenceHighThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_HIGH_THRESHOLD"), out var hThreshold) ? hThreshold : 0.75m;
+            _confidenceMediumThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_MEDIUM_THRESHOLD"), out var mThreshold) ? mThreshold : 0.70m;
+            _confidenceLowThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_LOW_THRESHOLD"), out var lThreshold) ? lThreshold : 0.65m;
+            
+            if (_confidenceAdjustmentEnabled)
+            {
+                _logger.LogInformation("💯 [POSITION-MGMT] Confidence-based adjustment enabled: VeryHigh≥{VH}, High≥{H}, Medium≥{M}, Low≥{L}",
+                    _confidenceVeryHighThreshold, _confidenceHighThreshold, _confidenceMediumThreshold, _confidenceLowThreshold);
+            }
         }
         
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -165,18 +201,34 @@ namespace BotCore.Services
             decimal stopPrice,
             decimal targetPrice,
             int quantity,
-            BracketMode bracketMode)
+            BracketMode bracketMode,
+            decimal entryConfidence = 0.75m)
         {
-            // Capture entry regime (Feature 1)
+            // FEATURE 4: Apply confidence-based adjustments to stop and target
+            if (_confidenceAdjustmentEnabled)
+            {
+                var adjustedValues = ApplyConfidenceAdjustments(entryPrice, stopPrice, targetPrice, quantity, entryConfidence, symbol);
+                stopPrice = adjustedValues.adjustedStop;
+                targetPrice = adjustedValues.adjustedTarget;
+                quantity = adjustedValues.adjustedQuantity;
+                
+                _logger.LogInformation("💯 [POSITION-MGMT] Confidence-based adjustment: Confidence={Conf:F2}, Stop adjusted to {Stop:F2}, Target to {Target:F2}, Qty to {Qty}",
+                    entryConfidence, stopPrice, targetPrice, quantity);
+            }
+            
+            // Capture entry regime (Feature 1 & 3)
             var entryRegime = "UNKNOWN";
+            var entryRegimeConfidence = 0.5m;
             try
             {
-                if (_dynamicTargetsEnabled)
+                if (_dynamicTargetsEnabled || _regimeMonitoringEnabled)
                 {
                     var regimeService = _serviceProvider.GetService<RegimeDetectionService>();
                     if (regimeService != null)
                     {
                         entryRegime = regimeService.GetCurrentRegimeAsync(symbol).GetAwaiter().GetResult();
+                        // Note: RegimeDetectionService doesn't provide confidence yet, using default
+                        entryRegimeConfidence = 0.75m; // Default confidence
                     }
                 }
             }
@@ -206,7 +258,10 @@ namespace BotCore.Services
                 StopModificationCount = 0,
                 EntryRegime = entryRegime,
                 CurrentRegime = entryRegime,
-                LastRegimeCheck = DateTime.UtcNow
+                LastRegimeCheck = DateTime.UtcNow,
+                EntryRegimeConfidence = entryRegimeConfidence,
+                CurrentRegimeConfidence = entryRegimeConfidence,
+                EntryConfidence = entryConfidence
             };
             
             // Calculate dynamic target based on entry regime (Feature 1)
@@ -365,18 +420,24 @@ namespace BotCore.Services
                         continue;
                     }
                     
+                    // FEATURE 4: Apply confidence-based breakeven threshold
+                    var breakevenThreshold = GetConfidenceBasedBreakevenTicks(state.EntryConfidence, state.BreakevenAfterTicks);
+                    
                     // Apply breakeven protection if profit threshold reached
-                    if (!state.BreakevenActivated && profitTicks >= state.BreakevenAfterTicks)
+                    if (!state.BreakevenActivated && profitTicks >= breakevenThreshold)
                     {
                         await ActivateBreakevenProtectionAsync(state, tickSize, cancellationToken).ConfigureAwait(false);
                     }
                     
+                    // FEATURE 4: Apply confidence-based trailing activation threshold
+                    var trailingActivationThreshold = breakevenThreshold + state.TrailTicks;
+                    
                     // Activate and update trailing stop if profit threshold reached
-                    if (state.BreakevenActivated && !state.TrailingStopActive && profitTicks >= state.BreakevenAfterTicks + state.TrailTicks)
+                    if (state.BreakevenActivated && !state.TrailingStopActive && profitTicks >= trailingActivationThreshold)
                     {
                         state.TrailingStopActive = true;
-                        _logger.LogInformation("🔄 [POSITION-MGMT] Trailing stop activated for {PositionId}: {Symbol} at +{Ticks} ticks profit",
-                            state.PositionId, state.Symbol, profitTicks);
+                        _logger.LogInformation("🔄 [POSITION-MGMT] Trailing stop activated for {PositionId}: {Symbol} at +{Ticks} ticks profit (confidence-adjusted threshold: {Threshold})",
+                            state.PositionId, state.Symbol, profitTicks, trailingActivationThreshold);
                     }
                     
                     // PHASE 4: Check for multi-level partial exits
@@ -387,6 +448,9 @@ namespace BotCore.Services
                     
                     // FEATURE 1: Check for regime changes and adjust targets dynamically
                     await CheckRegimeChangeAsync(state, cancellationToken).ConfigureAwait(false);
+                    
+                    // FEATURE 3: Check for regime flip and exit if needed
+                    await CheckRegimeFlipExitAsync(state, currentPrice, tickSize, cancellationToken).ConfigureAwait(false);
                     
                     // FEATURE 2: Check for early exit based on learned MAE threshold
                     await CheckEarlyExitThresholdAsync(state, currentPrice, tickSize, cancellationToken).ConfigureAwait(false);
@@ -452,7 +516,12 @@ namespace BotCore.Services
             
             // FEATURE 2: Use MFE-optimized trailing distance if available
             var optimizedTrailTicks = GetOptimizedTrailingDistance(state, tickSize);
-            var trailTicks = optimizedTrailTicks ?? state.TrailTicks;
+            
+            // FEATURE 4: Apply confidence-based trailing distance
+            var confidenceBasedTicks = GetConfidenceBasedTrailTicks(state.EntryConfidence, state.TrailTicks);
+            
+            // Use the tighter of optimized or confidence-based (or default if neither available)
+            var trailTicks = optimizedTrailTicks ?? confidenceBasedTicks;
             var trailDistance = trailTicks * tickSize;
             
             var newStopPrice = isLong
@@ -1158,6 +1227,109 @@ namespace BotCore.Services
         }
         
         // ========================================================================
+        // FEATURE 4: CONFIDENCE-BASED STOP/TARGET ADJUSTMENT METHODS
+        // ========================================================================
+        
+        /// <summary>
+        /// Apply confidence-based adjustments to stop, target, and quantity
+        /// </summary>
+        private (decimal adjustedStop, decimal adjustedTarget, int adjustedQuantity) ApplyConfidenceAdjustments(
+            decimal entryPrice, 
+            decimal stopPrice, 
+            decimal targetPrice, 
+            int quantity, 
+            decimal confidence,
+            string symbol)
+        {
+            var isLong = quantity > 0;
+            var risk = Math.Abs(entryPrice - stopPrice);
+            var reward = Math.Abs(targetPrice - entryPrice);
+            
+            // Get confidence-based multipliers from environment or use defaults
+            decimal stopMultiplier, targetMultiplier;
+            int adjustedQuantity = quantity;
+            
+            if (confidence >= _confidenceVeryHighThreshold) // Very High: 0.85-1.0
+            {
+                stopMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_STOP_MULTIPLIER_VERY_HIGH"), out var sm) ? sm : 1.5m;
+                targetMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_TARGET_MULTIPLIER_VERY_HIGH"), out var tm) ? tm : 2.0m;
+            }
+            else if (confidence >= _confidenceHighThreshold) // High: 0.75-0.85
+            {
+                stopMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_STOP_MULTIPLIER_HIGH"), out var sm) ? sm : 1.3m;
+                targetMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_TARGET_MULTIPLIER_HIGH"), out var tm) ? tm : 1.0m;
+            }
+            else if (confidence >= _confidenceMediumThreshold) // Medium: 0.70-0.75
+            {
+                stopMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_STOP_MULTIPLIER_MEDIUM"), out var sm) ? sm : 1.1m;
+                targetMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_TARGET_MULTIPLIER_MEDIUM"), out var tm) ? tm : 0.8m;
+            }
+            else if (confidence >= _confidenceLowThreshold) // Low: 0.65-0.70
+            {
+                stopMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_STOP_MULTIPLIER_LOW"), out var sm) ? sm : 1.0m;
+                targetMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_TARGET_MULTIPLIER_LOW"), out var tm) ? tm : 0.6m;
+                adjustedQuantity = Math.Max(1, quantity / 2); // Reduce position size by 50%
+            }
+            else // Very Low: < 0.65 (should not happen, but handle it)
+            {
+                stopMultiplier = 0.8m;
+                targetMultiplier = 0.5m;
+                adjustedQuantity = Math.Max(1, quantity / 4); // Reduce to 25%
+            }
+            
+            // Apply multipliers to risk and reward
+            var adjustedRisk = risk * stopMultiplier;
+            var adjustedReward = reward * targetMultiplier;
+            
+            // Calculate new stop and target prices
+            var adjustedStop = isLong ? entryPrice - adjustedRisk : entryPrice + adjustedRisk;
+            var adjustedTarget = isLong ? entryPrice + adjustedReward : entryPrice - adjustedReward;
+            
+            // Round to tick size
+            var tickSize = GetTickSize(symbol);
+            adjustedStop = ProductionPriceService.RoundToTick(adjustedStop, tickSize);
+            adjustedTarget = ProductionPriceService.RoundToTick(adjustedTarget, tickSize);
+            
+            return (adjustedStop, adjustedTarget, adjustedQuantity);
+        }
+        
+        /// <summary>
+        /// Get confidence-based breakeven threshold in ticks
+        /// </summary>
+        private int GetConfidenceBasedBreakevenTicks(decimal confidence, int defaultTicks)
+        {
+            if (!_confidenceAdjustmentEnabled)
+                return defaultTicks;
+            
+            if (confidence >= _confidenceVeryHighThreshold)
+                return (int)(defaultTicks * 1.5m); // 12 ticks if default is 8
+            else if (confidence >= _confidenceHighThreshold)
+                return defaultTicks; // Standard
+            else if (confidence >= _confidenceMediumThreshold)
+                return (int)(defaultTicks * 0.75m); // 6 ticks if default is 8
+            else
+                return (int)(defaultTicks * 0.5m); // 4 ticks if default is 8
+        }
+        
+        /// <summary>
+        /// Get confidence-based trailing distance in ticks
+        /// </summary>
+        private int GetConfidenceBasedTrailTicks(decimal confidence, int defaultTicks)
+        {
+            if (!_confidenceAdjustmentEnabled)
+                return defaultTicks;
+            
+            if (confidence >= _confidenceVeryHighThreshold)
+                return (int)(defaultTicks * 1.25m); // Loose trail, let profit run
+            else if (confidence >= _confidenceHighThreshold)
+                return defaultTicks; // Standard
+            else if (confidence >= _confidenceMediumThreshold)
+                return (int)(defaultTicks * 0.75m); // Tighter trail
+            else
+                return (int)(defaultTicks * 0.5m); // Very tight trail
+        }
+        
+        // ========================================================================
         // FEATURE 1: DYNAMIC R-MULTIPLE TARGETING METHODS
         // ========================================================================
         
@@ -1288,6 +1460,156 @@ namespace BotCore.Services
             {
                 _logger.LogWarning(ex, "⚠️ [POSITION-MGMT] Error checking regime change for {PositionId}", state.PositionId);
             }
+        }
+        
+        // ========================================================================
+        // FEATURE 3: REAL-TIME REGIME CHANGE EXIT DETECTION METHODS
+        // ========================================================================
+        
+        /// <summary>
+        /// Check for regime flip and exit if conditions warrant (Feature 3)
+        /// Called every 30 seconds (via regime check interval) during monitoring loop
+        /// </summary>
+        private async Task CheckRegimeFlipExitAsync(
+            PositionManagementState state, 
+            decimal currentPrice,
+            decimal tickSize,
+            CancellationToken cancellationToken)
+        {
+            if (!_regimeMonitoringEnabled || !_regimeFlipExitEnabled)
+            {
+                return; // Feature disabled
+            }
+            
+            // Check if regime has changed
+            if (state.CurrentRegime == state.EntryRegime)
+            {
+                return; // No regime flip
+            }
+            
+            try
+            {
+                // Calculate current P&L
+                var isLong = state.Quantity > 0;
+                var profitTicks = CalculateProfitTicks(state.EntryPrice, currentPrice, tickSize, isLong);
+                var pnl = profitTicks * tickSize * Math.Abs(state.Quantity);
+                
+                // Record regime change
+                var regimeChange = new RegimeChangeRecord
+                {
+                    Timestamp = DateTime.UtcNow,
+                    FromRegime = state.EntryRegime,
+                    ToRegime = state.CurrentRegime,
+                    FromConfidence = state.EntryRegimeConfidence,
+                    ToConfidence = state.CurrentRegimeConfidence,
+                    PnLAtChange = pnl
+                };
+                state.RegimeChanges.Add(regimeChange);
+                
+                // Check if we should exit based on regime flip
+                var shouldExit = ShouldExitOnRegimeFlip(state, pnl);
+                
+                if (shouldExit)
+                {
+                    _logger.LogWarning("🔄 [REGIME-FLIP] Exiting {PositionId} due to regime flip: {From} → {To}, PnL: ${PnL:F2}, Strategy: {Strategy}",
+                        state.PositionId, state.EntryRegime, state.CurrentRegime, pnl, state.Strategy);
+                    
+                    await RequestPositionCloseAsync(state, ExitReason.RegimeChange, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    _logger.LogInformation("🔄 [REGIME-FLIP] Regime changed for {PositionId}: {From} → {To}, PnL: ${PnL:F2}, holding position",
+                        state.PositionId, state.EntryRegime, state.CurrentRegime, pnl);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ [REGIME-FLIP] Error checking regime flip exit for {PositionId}", state.PositionId);
+            }
+        }
+        
+        /// <summary>
+        /// Determine if position should exit based on regime flip (Feature 3)
+        /// </summary>
+        private bool ShouldExitOnRegimeFlip(PositionManagementState state, decimal currentPnL)
+        {
+            // Get strategy-specific sensitivity threshold
+            var sensitivityThreshold = GetRegimeFlipSensitivity(state.Strategy);
+            
+            // Major flip detection: regime type changed
+            var entryRegimeType = state.EntryRegime.ToUpperInvariant();
+            var currentRegimeType = state.CurrentRegime.ToUpperInvariant();
+            var isTrendingToRanging = entryRegimeType.Contains("TREND") && currentRegimeType.Contains("RANGE");
+            var isRangingToVolatile = entryRegimeType.Contains("RANGE") && currentRegimeType.Contains("TRANSITION");
+            
+            // Confidence drop detection
+            var confidenceDrop = state.EntryRegimeConfidence - state.CurrentRegimeConfidence;
+            var isMajorConfidenceDrop = confidenceDrop >= _regimeConfidenceDropThreshold;
+            
+            // Strategy-specific exit logic
+            switch (state.Strategy)
+            {
+                case "S6": // Momentum strategy - EXTREMELY sensitive
+                    // Exit immediately on trending → ranging flip
+                    if (isTrendingToRanging)
+                        return true;
+                    // Exit if trending confidence drops below threshold
+                    if (entryRegimeType.Contains("TREND") && state.CurrentRegimeConfidence < sensitivityThreshold)
+                        return true;
+                    break;
+                    
+                case "S2": // Supply/Demand - Highly sensitive
+                    // Exit on major flip if we have profit
+                    if (isTrendingToRanging && currentPnL > 0)
+                        return true;
+                    // Exit on major confidence drop
+                    if (isMajorConfidenceDrop && state.EntryConfidence < 0.75m)
+                        return true;
+                    break;
+                    
+                case "S3": // Multi-timeframe - Moderately sensitive
+                    // Exit only on confidence collapse (> 0.30 drop)
+                    if (confidenceDrop > 0.30m)
+                        return true;
+                    break;
+                    
+                case "S11": // Pattern-based - Less sensitive
+                    // Exit only on severe confidence collapse (> 0.40 drop)
+                    if (confidenceDrop > 0.40m)
+                        return true;
+                    break;
+            }
+            
+            // General rule: Exit if positive PnL and major unfavorable flip
+            if (currentPnL > 0 && (isTrendingToRanging || isRangingToVolatile) && state.EntryConfidence < 0.75m)
+            {
+                return true;
+            }
+            
+            return false;
+        }
+        
+        /// <summary>
+        /// Get strategy-specific regime flip sensitivity threshold
+        /// </summary>
+        private decimal GetRegimeFlipSensitivity(string strategy)
+        {
+            var envVarName = $"{strategy}_REGIME_FLIP_SENSITIVITY";
+            var envValue = Environment.GetEnvironmentVariable(envVarName);
+            if (decimal.TryParse(envValue, out var sensitivity))
+            {
+                return sensitivity;
+            }
+            
+            // Fallback defaults
+            return strategy switch
+            {
+                "S6" => 0.60m, // Most sensitive
+                "S2" => 0.50m,
+                "S3" => 0.55m,
+                "S11" => 0.55m,
+                _ => 0.50m
+            };
         }
         
         // ========================================================================

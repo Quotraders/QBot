@@ -42,6 +42,11 @@ namespace BotCore.Models
         ZoneBreak = 6,
         
         /// <summary>
+        /// FEATURE 3: Regime change - market conditions changed unfavorably
+        /// </summary>
+        RegimeChange = 11,
+        
+        /// <summary>
         /// Emergency exit - risk violation or system issue
         /// </summary>
         Emergency = 7,

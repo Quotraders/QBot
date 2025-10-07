@@ -59,6 +59,26 @@ namespace BotCore.Models
         public DateTime LastRegimeCheck { get; set; }
         
         /// <summary>
+        /// FEATURE 3: Entry regime confidence (0.0-1.0)
+        /// </summary>
+        public decimal EntryRegimeConfidence { get; set; }
+        
+        /// <summary>
+        /// FEATURE 3: Current regime confidence (0.0-1.0, updated periodically)
+        /// </summary>
+        public decimal CurrentRegimeConfidence { get; set; }
+        
+        /// <summary>
+        /// FEATURE 3: List of regime changes during trade lifetime
+        /// </summary>
+        public System.Collections.Generic.List<RegimeChangeRecord> RegimeChanges { get; set; } = new();
+        
+        /// <summary>
+        /// FEATURE 4: Entry confidence from AutonomousDecisionEngine (0.0-1.0)
+        /// </summary>
+        public decimal EntryConfidence { get; set; }
+        
+        /// <summary>
         /// Position size (signed: + for long, - for short)
         /// </summary>
         public int Quantity { get; set; }
@@ -143,5 +163,18 @@ namespace BotCore.Models
         {
             _dynamicProperties[key] = value;
         }
+    }
+    
+    /// <summary>
+    /// FEATURE 3: Records a regime change event during position lifetime
+    /// </summary>
+    public sealed class RegimeChangeRecord
+    {
+        public DateTime Timestamp { get; set; }
+        public string FromRegime { get; set; } = string.Empty;
+        public string ToRegime { get; set; } = string.Empty;
+        public decimal FromConfidence { get; set; }
+        public decimal ToConfidence { get; set; }
+        public decimal PnLAtChange { get; set; }
     }
 }
