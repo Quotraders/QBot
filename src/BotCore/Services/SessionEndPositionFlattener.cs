@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using TradingBot.Abstractions;
 using TopstepX.Bot.Core.Services;
 using BotCore.Models;
@@ -34,7 +35,7 @@ namespace BotCore.Services
         private readonly IConfiguration _configuration;
         private readonly SessionAwareRuntimeGates _sessionGates;
         private readonly PositionTrackingSystem _positionTracker;
-        private readonly IOrderService _orderService;
+        private readonly IServiceProvider _serviceProvider;
         private readonly UnifiedPositionManagementService _positionManagement;
         
         // Monitoring interval - check every 30 seconds
@@ -54,14 +55,14 @@ namespace BotCore.Services
             IConfiguration configuration,
             SessionAwareRuntimeGates sessionGates,
             PositionTrackingSystem positionTracker,
-            IOrderService orderService,
+            IServiceProvider serviceProvider,
             UnifiedPositionManagementService positionManagement)
         {
             _logger = logger;
             _configuration = configuration;
             _sessionGates = sessionGates;
             _positionTracker = positionTracker;
-            _orderService = orderService;
+            _serviceProvider = serviceProvider;
             _positionManagement = positionManagement;
             
             _logger.LogInformation("🔄 [SESSION-FLATTEN] Session-End Position Flattener initialized");
@@ -182,6 +183,14 @@ namespace BotCore.Services
             var successCount = 0;
             var failCount = 0;
             
+            // Get IOrderService from service provider (may be null)
+            var orderService = _serviceProvider.GetService<IOrderService>();
+            if (orderService == null)
+            {
+                _logger.LogWarning("⚠️ [SESSION-FLATTEN] IOrderService not available, cannot flatten positions");
+                return;
+            }
+            
             // Loop through each position and close it
             foreach (var position in openPositions)
             {
@@ -194,7 +203,7 @@ namespace BotCore.Services
                         position.Symbol, position.NetQuantity);
                     
                     // Call IOrderService to close the position
-                    var success = await _orderService.ClosePositionAsync(positionId).ConfigureAwait(false);
+                    var success = await orderService.ClosePositionAsync(positionId).ConfigureAwait(false);
                     
                     if (success)
                     {
