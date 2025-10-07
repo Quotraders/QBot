@@ -60,7 +60,7 @@ public class BotPerformanceReporter
     }
 
     /// <summary>
-    /// Generate daily performance summary at market close (4:30 PM ET)
+    /// Generate daily performance summary at futures market close (5:00 PM EST)
     /// </summary>
     public async Task<string> GenerateDailySummaryAsync(CancellationToken cancellationToken = default)
     {
@@ -141,7 +141,7 @@ Market Close Analysis: What did I do well today? What should I improve tomorrow?
     }
 
     /// <summary>
-    /// Generate weekly performance summary on Friday at market close (4:30 PM ET)
+    /// Generate weekly performance summary on Friday at end of futures week (6:00 PM EST)
     /// </summary>
     public async Task<string> GenerateWeeklySummaryAsync(CancellationToken cancellationToken = default)
     {
@@ -243,7 +243,7 @@ Week-End Analysis: What patterns emerged this week? Which strategies excelled an
     }
 
     /// <summary>
-    /// Check if it's time to generate daily summary (4:30 PM ET)
+    /// Check if it's time to generate daily summary (5:00 PM EST - futures market close)
     /// </summary>
     public bool ShouldGenerateDailySummary()
     {
@@ -256,28 +256,39 @@ Week-End Analysis: What patterns emerged this week? Which strategies excelled an
     }
 
     /// <summary>
-    /// Check if it's time to generate weekly summary (Friday 4:30 PM ET)
+    /// Check if it's time to generate weekly summary (Friday 6:00 PM EST - end of futures week)
     /// </summary>
     public bool ShouldGenerateWeeklySummary()
     {
         var now = DateTime.Now;
-        var summaryTime = GetDailySummaryTime();
+        var weeklySummaryTime = GetWeeklySummaryTime();
         
-        // Check if it's Friday, past summary time, and we haven't generated one this week
+        // Check if it's Friday, past weekly summary time, and we haven't generated one this week
         return now.DayOfWeek == DayOfWeek.Friday 
-            && now.TimeOfDay >= summaryTime.TimeOfDay 
+            && now.TimeOfDay >= weeklySummaryTime.TimeOfDay 
             && (now - _lastWeeklySummary).TotalDays >= 7;
     }
 
     private static DateTime GetDailySummaryTime()
     {
-        // Default to 4:30 PM ET (16:30)
-        var timeStr = Environment.GetEnvironmentVariable("DAILY_SUMMARY_TIME") ?? "16:30";
-        if (TimeSpan.TryParse(timeStr, out var time))
+        // Default to 5:00 PM EST (17:00) - futures market close
+        var timeStr = Environment.GetEnvironmentVariable("DAILY_SUMMARY_TIME") ?? "17:00";
+        if (TimeSpan.TryParse(timeStr, CultureInfo.InvariantCulture, out var time))
         {
             return DateTime.Today.Add(time);
         }
-        return DateTime.Today.AddHours(16.5); // 4:30 PM
+        return DateTime.Today.AddHours(17.0); // 5:00 PM EST
+    }
+
+    private static DateTime GetWeeklySummaryTime()
+    {
+        // Default to 6:00 PM EST (18:00) - end of futures week on Friday
+        var timeStr = Environment.GetEnvironmentVariable("WEEKLY_SUMMARY_TIME") ?? "18:00";
+        if (TimeSpan.TryParse(timeStr, CultureInfo.InvariantCulture, out var time))
+        {
+            return DateTime.Today.Add(time);
+        }
+        return DateTime.Today.AddHours(18.0); // 6:00 PM EST
     }
 
     private sealed class TradeRecord
