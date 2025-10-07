@@ -39,6 +39,15 @@ namespace BotCore.Services
         // Monitoring interval
         private const int MonitoringIntervalSeconds = 5;
         
+        // Dynamic targeting configuration (Feature 1)
+        private readonly bool _dynamicTargetsEnabled;
+        private readonly int _regimeCheckIntervalSeconds;
+        private readonly decimal _targetAdjustmentThreshold;
+        
+        // MAE/MFE learning configuration (Feature 2)
+        private readonly bool _maeLearningEnabled;
+        private readonly bool _mfeLearningEnabled;
+        
         // Tick size for ES/MES (0.25) - used for breakeven calculations
         private const decimal EsTickSize = 0.25m;
         private const decimal NqTickSize = 0.25m;
@@ -100,6 +109,27 @@ namespace BotCore.Services
             {
                 _logger.LogInformation("🤖 [POSITION-MGMT] AI commentary enabled for position management actions");
             }
+            
+            // Load dynamic targeting configuration (Feature 1)
+            _dynamicTargetsEnabled = Environment.GetEnvironmentVariable("BOT_DYNAMIC_TARGETS_ENABLED")?.ToLowerInvariant() == "true";
+            _regimeCheckIntervalSeconds = int.TryParse(Environment.GetEnvironmentVariable("BOT_REGIME_CHECK_INTERVAL_SECONDS"), out var regimeInterval) ? regimeInterval : 60;
+            _targetAdjustmentThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("BOT_TARGET_ADJUSTMENT_THRESHOLD"), out var threshold) ? threshold : 0.3m;
+            
+            if (_dynamicTargetsEnabled)
+            {
+                _logger.LogInformation("📊 [POSITION-MGMT] Dynamic R-Multiple Targeting enabled: regime check every {Interval}s, adjustment threshold {Threshold}",
+                    _regimeCheckIntervalSeconds, _targetAdjustmentThreshold);
+            }
+            
+            // Load MAE/MFE learning configuration (Feature 2)
+            _maeLearningEnabled = Environment.GetEnvironmentVariable("BOT_MAE_LEARNING_ENABLED")?.ToLowerInvariant() == "true";
+            _mfeLearningEnabled = Environment.GetEnvironmentVariable("BOT_MFE_LEARNING_ENABLED")?.ToLowerInvariant() == "true";
+            
+            if (_maeLearningEnabled || _mfeLearningEnabled)
+            {
+                _logger.LogInformation("🧠 [POSITION-MGMT] MAE/MFE Learning enabled: MAE={MAE}, MFE={MFE}",
+                    _maeLearningEnabled, _mfeLearningEnabled);
+            }
         }
         
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -137,6 +167,24 @@ namespace BotCore.Services
             int quantity,
             BracketMode bracketMode)
         {
+            // Capture entry regime (Feature 1)
+            var entryRegime = "UNKNOWN";
+            try
+            {
+                if (_dynamicTargetsEnabled)
+                {
+                    var regimeService = _serviceProvider.GetService<RegimeDetectionService>();
+                    if (regimeService != null)
+                    {
+                        entryRegime = regimeService.GetCurrentRegimeAsync(symbol).GetAwaiter().GetResult();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ [POSITION-MGMT] Could not detect entry regime for {Symbol}", symbol);
+            }
+            
             var state = new PositionManagementState
             {
                 PositionId = positionId,
@@ -155,13 +203,27 @@ namespace BotCore.Services
                 TrailTicks = bracketMode.TrailTicks,
                 MaxHoldMinutes = GetMaxHoldMinutes(strategy),
                 LastCheckTime = DateTime.UtcNow,
-                StopModificationCount = 0
+                StopModificationCount = 0,
+                EntryRegime = entryRegime,
+                CurrentRegime = entryRegime,
+                LastRegimeCheck = DateTime.UtcNow
             };
             
-            _activePositions[positionId] = state;
+            // Calculate dynamic target based on entry regime (Feature 1)
+            if (_dynamicTargetsEnabled)
+            {
+                state.DynamicTargetPrice = CalculateDynamicTarget(state, entryPrice, stopPrice);
+                _logger.LogInformation("📝 [POSITION-MGMT] Registered position {PositionId}: {Strategy} {Symbol} {Qty}@{Entry}, Regime: {Regime}, Static target: {Static}, Dynamic target: {Dynamic}",
+                    positionId, strategy, symbol, quantity, entryPrice, entryRegime, targetPrice, state.DynamicTargetPrice);
+            }
+            else
+            {
+                state.DynamicTargetPrice = targetPrice;
+                _logger.LogInformation("📝 [POSITION-MGMT] Registered position {PositionId}: {Strategy} {Symbol} {Qty}@{Entry}, BE after {BETicks} ticks, Trail {TrailTicks} ticks, Max hold {MaxHold}m",
+                    positionId, strategy, symbol, quantity, entryPrice, bracketMode.BreakevenAfterTicks, bracketMode.TrailTicks, state.MaxHoldMinutes);
+            }
             
-            _logger.LogInformation("📝 [POSITION-MGMT] Registered position {PositionId}: {Strategy} {Symbol} {Qty}@{Entry}, BE after {BETicks} ticks, Trail {TrailTicks} ticks, Max hold {MaxHold}m",
-                positionId, strategy, symbol, quantity, entryPrice, bracketMode.BreakevenAfterTicks, bracketMode.TrailTicks, state.MaxHoldMinutes);
+            _activePositions[positionId] = state;
         }
         
         /// <summary>
@@ -219,7 +281,11 @@ namespace BotCore.Services
                 // Trail multiplier calculation (estimate from trail ticks)
                 var trailMultiplier = state.TrailTicks * tickSize / 1.0m; // Simplified estimate
                 
-                // Record outcome
+                // Record outcome (with regime information for Feature 1 & 2)
+                var marketRegime = state.HasProperty("EntryRegime") 
+                    ? (state.GetProperty("EntryRegime")?.ToString() ?? "UNKNOWN")
+                    : state.EntryRegime;
+                
                 optimizer.RecordOutcome(
                     strategy: state.Strategy,
                     symbol: state.Symbol,
@@ -233,7 +299,7 @@ namespace BotCore.Services
                     finalPnL: pnlTicks,
                     maxFavorableExcursion: maxFavTicks,
                     maxAdverseExcursion: maxAdvTicks,
-                    marketRegime: "UNKNOWN" // Could be enhanced with regime detection
+                    marketRegime: marketRegime
                 );
                 
                 _logger.LogDebug("📊 [POSITION-MGMT] Reported outcome to optimizer: {Strategy} {Symbol}, BE={BE}, StoppedOut={SO}, TargetHit={TH}, TimedOut={TO}, PnL={PnL} ticks",
@@ -319,6 +385,12 @@ namespace BotCore.Services
                     // PHASE 4: Apply volatility-adaptive stop adjustment
                     await ApplyVolatilityAdaptiveStopAsync(state, tickSize, cancellationToken).ConfigureAwait(false);
                     
+                    // FEATURE 1: Check for regime changes and adjust targets dynamically
+                    await CheckRegimeChangeAsync(state, cancellationToken).ConfigureAwait(false);
+                    
+                    // FEATURE 2: Check for early exit based on learned MAE threshold
+                    await CheckEarlyExitThresholdAsync(state, currentPrice, tickSize, cancellationToken).ConfigureAwait(false);
+                    
                     // Update trailing stop if active
                     if (state.TrailingStopActive)
                     {
@@ -377,7 +449,11 @@ namespace BotCore.Services
             CancellationToken cancellationToken)
         {
             var isLong = state.Quantity > 0;
-            var trailDistance = state.TrailTicks * tickSize;
+            
+            // FEATURE 2: Use MFE-optimized trailing distance if available
+            var optimizedTrailTicks = GetOptimizedTrailingDistance(state, tickSize);
+            var trailTicks = optimizedTrailTicks ?? state.TrailTicks;
+            var trailDistance = trailTicks * tickSize;
             
             var newStopPrice = isLong
                 ? currentPrice - trailDistance
@@ -1078,6 +1154,228 @@ namespace BotCore.Services
                     _logger.LogInformation("🎯 [POSITION-MGMT] Stop adjusted behind broken demand (now resistance) for SHORT {PositionId}: {Old} → {New}",
                         state.PositionId, state.CurrentStopPrice, newStopPrice);
                 }
+            }
+        }
+        
+        // ========================================================================
+        // FEATURE 1: DYNAMIC R-MULTIPLE TARGETING METHODS
+        // ========================================================================
+        
+        /// <summary>
+        /// Calculate dynamic target price based on market regime and strategy
+        /// </summary>
+        private decimal CalculateDynamicTarget(PositionManagementState state, decimal entryPrice, decimal stopPrice)
+        {
+            var isLong = state.Quantity > 0;
+            var risk = Math.Abs(entryPrice - stopPrice);
+            
+            if (risk <= 0)
+            {
+                return state.TargetPrice; // Fallback to static target
+            }
+            
+            // Get regime-specific R-multiple for this strategy
+            var rMultiple = GetRegimeBasedRMultiple(state.Strategy, state.EntryRegime);
+            
+            // Calculate dynamic target based on R-multiple
+            var reward = risk * rMultiple;
+            var dynamicTarget = isLong ? entryPrice + reward : entryPrice - reward;
+            
+            _logger.LogDebug("🎯 [POSITION-MGMT] Dynamic target calculation: {Strategy} in {Regime} regime, Risk={Risk:F2}, R={R}x, Target={Target:F2}",
+                state.Strategy, state.EntryRegime, risk, rMultiple, dynamicTarget);
+            
+            return dynamicTarget;
+        }
+        
+        /// <summary>
+        /// Get regime-based R-multiple for a strategy
+        /// </summary>
+        private decimal GetRegimeBasedRMultiple(string strategy, string regime)
+        {
+            var regimeKey = regime.ToUpperInvariant();
+            var isTrending = regimeKey.Contains("TREND");
+            var isRanging = regimeKey.Contains("RANGE");
+            
+            // Get environment variable for this strategy and regime
+            var envVarName = isTrending 
+                ? $"{strategy}_TARGET_TRENDING" 
+                : isRanging 
+                    ? $"{strategy}_TARGET_RANGING" 
+                    : $"{strategy}_TARGET_TRENDING"; // Default to trending if unknown
+            
+            var envValue = Environment.GetEnvironmentVariable(envVarName);
+            if (decimal.TryParse(envValue, out var rMultiple))
+            {
+                return rMultiple;
+            }
+            
+            // Fallback defaults if environment variable not set
+            return strategy switch
+            {
+                "S2" => isTrending ? 2.5m : isRanging ? 1.0m : 1.5m,
+                "S3" => isTrending ? 3.0m : isRanging ? 1.2m : 1.8m,
+                "S6" => isTrending ? 2.0m : isRanging ? 1.0m : 1.2m,
+                "S11" => isTrending ? 2.5m : isRanging ? 1.5m : 1.8m,
+                _ => 1.5m // Default R-multiple
+            };
+        }
+        
+        /// <summary>
+        /// Check for regime changes and adjust target if needed (Feature 1)
+        /// Called every 60 seconds (configurable) during monitoring loop
+        /// </summary>
+        private async Task CheckRegimeChangeAsync(PositionManagementState state, CancellationToken cancellationToken)
+        {
+            if (!_dynamicTargetsEnabled)
+            {
+                return; // Feature disabled
+            }
+            
+            // Check if it's time to update regime
+            var timeSinceLastCheck = DateTime.UtcNow - state.LastRegimeCheck;
+            if (timeSinceLastCheck.TotalSeconds < _regimeCheckIntervalSeconds)
+            {
+                return; // Not time yet
+            }
+            
+            try
+            {
+                var regimeService = _serviceProvider.GetService<RegimeDetectionService>();
+                if (regimeService == null)
+                {
+                    return; // Service not available
+                }
+                
+                // Get current regime
+                var newRegime = await regimeService.GetCurrentRegimeAsync(state.Symbol, cancellationToken).ConfigureAwait(false);
+                state.LastRegimeCheck = DateTime.UtcNow;
+                
+                // Check if regime changed significantly
+                if (newRegime != state.CurrentRegime)
+                {
+                    var oldRegime = state.CurrentRegime;
+                    state.CurrentRegime = newRegime;
+                    
+                    _logger.LogInformation("📊 [POSITION-MGMT] Regime change detected for {PositionId}: {Old} → {New}",
+                        state.PositionId, oldRegime, newRegime);
+                    
+                    // Recalculate dynamic target
+                    var newDynamicTarget = CalculateDynamicTarget(state, state.EntryPrice, state.CurrentStopPrice);
+                    var oldTarget = state.DynamicTargetPrice;
+                    
+                    // Only adjust if change is significant (threshold check)
+                    var targetChange = Math.Abs(newDynamicTarget - oldTarget);
+                    var changePercent = targetChange / Math.Abs(state.EntryPrice - state.CurrentStopPrice);
+                    
+                    if (changePercent >= _targetAdjustmentThreshold)
+                    {
+                        state.DynamicTargetPrice = newDynamicTarget;
+                        
+                        _logger.LogInformation("🎯 [POSITION-MGMT] Target adjusted for {PositionId} due to regime change: {OldTarget:F2} → {NewTarget:F2} ({Regime})",
+                            state.PositionId, oldTarget, newDynamicTarget, newRegime);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("🎯 [POSITION-MGMT] Regime change for {PositionId} but target adjustment below threshold ({Pct:P1})",
+                            state.PositionId, changePercent);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ [POSITION-MGMT] Error checking regime change for {PositionId}", state.PositionId);
+            }
+        }
+        
+        // ========================================================================
+        // FEATURE 2: MAE/MFE OPTIMAL STOP PLACEMENT LEARNING METHODS
+        // ========================================================================
+        
+        /// <summary>
+        /// Check if position should exit early based on learned MAE threshold
+        /// SAFETY: Only exits early if MAE exceeds learned threshold (never loosens stops)
+        /// </summary>
+        private async Task CheckEarlyExitThresholdAsync(
+            PositionManagementState state,
+            decimal currentPrice,
+            decimal tickSize,
+            CancellationToken cancellationToken)
+        {
+            if (!_maeLearningEnabled)
+            {
+                return; // Feature disabled
+            }
+            
+            try
+            {
+                var optimizer = _serviceProvider.GetService<PositionManagementOptimizer>();
+                if (optimizer == null)
+                {
+                    return; // Optimizer not available
+                }
+                
+                // Get optimal early exit threshold for this strategy and regime
+                var optimalThreshold = optimizer.GetOptimalEarlyExitThreshold(state.Strategy, state.CurrentRegime);
+                if (!optimalThreshold.HasValue)
+                {
+                    return; // Not enough data yet
+                }
+                
+                // Calculate current adverse excursion
+                var isLong = state.Quantity > 0;
+                var currentAdverseExcursion = isLong
+                    ? Math.Abs((state.MaxAdversePrice - state.EntryPrice) / tickSize)
+                    : Math.Abs((state.EntryPrice - state.MaxAdversePrice) / tickSize);
+                
+                // Check if we've exceeded the learned threshold
+                if (currentAdverseExcursion > optimalThreshold.Value)
+                {
+                    _logger.LogWarning("🚨 [MAE-LEARNING] Early exit triggered for {PositionId}: MAE {Current:F1} ticks exceeds learned threshold {Threshold:F1} ticks",
+                        state.PositionId, currentAdverseExcursion, optimalThreshold.Value);
+                    
+                    // Exit position early (this is likely a loser)
+                    await RequestPositionCloseAsync(state, ExitReason.StopLoss, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    // Log progress for monitoring (only if getting close to threshold)
+                    if (currentAdverseExcursion > optimalThreshold.Value * 0.8m)
+                    {
+                        _logger.LogDebug("⚠️ [MAE-LEARNING] Position {PositionId} approaching MAE threshold: {Current:F1} / {Threshold:F1} ticks",
+                            state.PositionId, currentAdverseExcursion, optimalThreshold.Value);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ [MAE-LEARNING] Error checking early exit threshold for {PositionId}", state.PositionId);
+            }
+        }
+        
+        /// <summary>
+        /// Get MFE-optimized trailing distance for this strategy and regime
+        /// </summary>
+        private decimal? GetOptimizedTrailingDistance(PositionManagementState state, decimal tickSize)
+        {
+            if (!_mfeLearningEnabled)
+            {
+                return null; // Feature disabled
+            }
+            
+            try
+            {
+                var optimizer = _serviceProvider.GetService<PositionManagementOptimizer>();
+                if (optimizer == null)
+                {
+                    return null;
+                }
+                
+                return optimizer.GetOptimalTrailingDistance(state.Strategy, state.CurrentRegime);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ [MFE-LEARNING] Error getting optimized trailing distance for {PositionId}", state.PositionId);
+                return null;
             }
         }
         

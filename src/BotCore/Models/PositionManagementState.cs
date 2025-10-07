@@ -34,9 +34,29 @@ namespace BotCore.Models
         public decimal CurrentStopPrice { get; set; }
         
         /// <summary>
-        /// Target profit price
+        /// Target profit price (original/static target)
         /// </summary>
         public decimal TargetPrice { get; set; }
+        
+        /// <summary>
+        /// Dynamic target price (adjusted based on regime changes)
+        /// </summary>
+        public decimal DynamicTargetPrice { get; set; }
+        
+        /// <summary>
+        /// Market regime at entry time (Trend, Range, Transition)
+        /// </summary>
+        public string EntryRegime { get; set; } = "UNKNOWN";
+        
+        /// <summary>
+        /// Current market regime (updated periodically)
+        /// </summary>
+        public string CurrentRegime { get; set; } = "UNKNOWN";
+        
+        /// <summary>
+        /// Last time regime was checked
+        /// </summary>
+        public DateTime LastRegimeCheck { get; set; }
         
         /// <summary>
         /// Position size (signed: + for long, - for short)

@@ -358,6 +358,161 @@ namespace BotCore.Services
             return _changeTracker.GetChangesForStrategy(strategy, count);
         }
         
+        // ========================================================================
+        // FEATURE 2: MAE/MFE OPTIMAL STOP PLACEMENT LEARNING
+        // ========================================================================
+        
+        /// <summary>
+        /// Analyze MAE (Max Adverse Excursion) distribution to find optimal early exit threshold
+        /// Returns the 95th percentile MAE for winning trades + safety buffer
+        /// Safety: Never recommend looser stops, only tighter
+        /// </summary>
+        public decimal? GetOptimalEarlyExitThreshold(string strategy, string regime = "ALL")
+        {
+            var maeEnabled = Environment.GetEnvironmentVariable("BOT_MAE_LEARNING_ENABLED")?.ToLowerInvariant() == "true";
+            if (!maeEnabled)
+            {
+                return null; // Feature disabled
+            }
+            
+            var minSamples = int.TryParse(Environment.GetEnvironmentVariable("BOT_MAE_MINIMUM_SAMPLES"), out var min) ? min : 50;
+            var safetyBuffer = decimal.TryParse(Environment.GetEnvironmentVariable("BOT_MAE_SAFETY_BUFFER_TICKS"), out var buffer) ? buffer : 2m;
+            
+            // Get winning trades (those that hit target)
+            var winningTrades = _outcomes.Values
+                .Where(o => o.Strategy == strategy && o.TargetHit)
+                .Where(o => regime == "ALL" || o.MarketRegime == regime)
+                .OrderByDescending(o => o.Timestamp)
+                .Take(100)
+                .ToList();
+            
+            if (winningTrades.Count < minSamples)
+            {
+                return null; // Not enough data
+            }
+            
+            // Calculate MAE distribution (adverse excursion is typically negative)
+            var maeValues = winningTrades
+                .Select(o => Math.Abs(o.MaxAdverseExcursion)) // Use absolute value
+                .OrderBy(mae => mae)
+                .ToList();
+            
+            // Get 95th percentile (only 5% of winning trades go further against us)
+            var percentile95Index = (int)(maeValues.Count * 0.95);
+            var mae95th = maeValues[Math.Min(percentile95Index, maeValues.Count - 1)];
+            
+            // Add safety buffer
+            var optimalThreshold = mae95th + safetyBuffer;
+            
+            _logger.LogInformation("📊 [MAE-LEARNING] Optimal early exit for {Strategy} in {Regime}: {Threshold:F1} ticks (95th percentile: {P95:F1}, buffer: {Buffer:F1}, samples: {Samples})",
+                strategy, regime, optimalThreshold, mae95th, safetyBuffer, winningTrades.Count);
+            
+            return optimalThreshold;
+        }
+        
+        /// <summary>
+        /// Analyze MFE (Max Favorable Excursion) to optimize trailing stop distance
+        /// Finds the optimal distance by comparing MFE peak to final exit profit
+        /// </summary>
+        public decimal? GetOptimalTrailingDistance(string strategy, string regime = "ALL")
+        {
+            var mfeEnabled = Environment.GetEnvironmentVariable("BOT_MFE_LEARNING_ENABLED")?.ToLowerInvariant() == "true";
+            if (!mfeEnabled)
+            {
+                return null; // Feature disabled
+            }
+            
+            var minSamples = int.TryParse(Environment.GetEnvironmentVariable("BOT_MAE_MINIMUM_SAMPLES"), out var min) ? min : 50;
+            
+            // Get winning trades that reached favorable excursion
+            var profitableTrades = _outcomes.Values
+                .Where(o => o.Strategy == strategy && o.MaxFavorableExcursion > 0)
+                .Where(o => regime == "ALL" || o.MarketRegime == regime)
+                .OrderByDescending(o => o.Timestamp)
+                .Take(100)
+                .ToList();
+            
+            if (profitableTrades.Count < minSamples)
+            {
+                return null; // Not enough data
+            }
+            
+            // Calculate average "profit giveback" (MFE - final P&L)
+            var givebacks = profitableTrades
+                .Select(o => o.MaxFavorableExcursion - Math.Abs(o.FinalPnL))
+                .Where(giveback => giveback > 0) // Only where we gave back profit
+                .ToList();
+            
+            if (!givebacks.Any())
+            {
+                return null; // No giveback patterns
+            }
+            
+            var avgGiveback = givebacks.Average();
+            var medianGiveback = givebacks.OrderBy(g => g).ElementAt(givebacks.Count / 2);
+            
+            // Optimal trail distance: half the median giveback (aggressive but not too tight)
+            var optimalDistance = medianGiveback * 0.5m;
+            
+            _logger.LogInformation("📊 [MFE-LEARNING] Optimal trailing distance for {Strategy} in {Regime}: {Distance:F1} ticks (median giveback: {Median:F1}, avg: {Avg:F1}, samples: {Samples})",
+                strategy, regime, optimalDistance, medianGiveback, avgGiveback, profitableTrades.Count);
+            
+            return optimalDistance;
+        }
+        
+        /// <summary>
+        /// Analyze MAE distribution for statistics (for logging/monitoring)
+        /// </summary>
+        public (decimal p50, decimal p90, decimal p95, int samples)? AnalyzeMaeDistribution(string strategy, string regime = "ALL")
+        {
+            var winningTrades = _outcomes.Values
+                .Where(o => o.Strategy == strategy && o.TargetHit)
+                .Where(o => regime == "ALL" || o.MarketRegime == regime)
+                .OrderByDescending(o => o.Timestamp)
+                .Take(100)
+                .ToList();
+            
+            if (winningTrades.Count < 10)
+            {
+                return null;
+            }
+            
+            var maeValues = winningTrades
+                .Select(o => Math.Abs(o.MaxAdverseExcursion))
+                .OrderBy(mae => mae)
+                .ToList();
+            
+            var p50 = maeValues[maeValues.Count / 2];
+            var p90 = maeValues[(int)(maeValues.Count * 0.90)];
+            var p95 = maeValues[(int)(maeValues.Count * 0.95)];
+            
+            return (p50, p90, p95, winningTrades.Count);
+        }
+        
+        /// <summary>
+        /// Analyze MFE distribution for statistics (for logging/monitoring)
+        /// </summary>
+        public (decimal avgMfe, decimal avgFinalPnL, decimal avgGiveback, int samples)? AnalyzeMfeDistribution(string strategy, string regime = "ALL")
+        {
+            var profitableTrades = _outcomes.Values
+                .Where(o => o.Strategy == strategy && o.MaxFavorableExcursion > 0)
+                .Where(o => regime == "ALL" || o.MarketRegime == regime)
+                .OrderByDescending(o => o.Timestamp)
+                .Take(100)
+                .ToList();
+            
+            if (profitableTrades.Count < 10)
+            {
+                return null;
+            }
+            
+            var avgMfe = profitableTrades.Average(o => o.MaxFavorableExcursion);
+            var avgFinalPnL = profitableTrades.Average(o => Math.Abs(o.FinalPnL));
+            var avgGiveback = avgMfe - avgFinalPnL;
+            
+            return (avgMfe, avgFinalPnL, avgGiveback, profitableTrades.Count);
+        }
+        
         /// <summary>
         /// Get performance summary for debugging
         /// </summary>
