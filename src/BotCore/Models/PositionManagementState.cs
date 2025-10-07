@@ -111,7 +111,7 @@ namespace BotCore.Models
         /// <summary>
         /// Get a dynamic property value
         /// </summary>
-        public object GetProperty(string key)
+        public object? GetProperty(string key)
         {
             return _dynamicProperties.TryGetValue(key, out var value) ? value : null;
         }

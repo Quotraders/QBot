@@ -526,16 +526,38 @@ namespace BotCore.Brain
                                          currentHour >= 8 && currentHour < 13 ? "PreMarket" :
                                          currentHour >= 20 && currentHour < 22 ? "AfterHours" : "Closed";
                         
+                        // Create default zone snapshot (no zone service in brain yet)
+                        var emptyZoneSnapshot = new Zones.ZoneSnapshot(
+                            NearestDemand: null,
+                            NearestSupply: null,
+                            DistToDemandAtr: 0m,
+                            DistToSupplyAtr: 0m,
+                            BreakoutScore: 0m,
+                            ZonePressure: 0m,
+                            Utc: DateTime.UtcNow
+                        );
+                        
+                        // Create default pattern scores
+                        var emptyPatternScores = new BotCore.Patterns.PatternScoresWithDetails
+                        {
+                            BullScore = 0.0,
+                            BearScore = 0.0,
+                            OverallConfidence = 0.0,
+                            DetectedPatterns = new List<BotCore.Patterns.PatternDetail>()
+                        };
+                        
                         var snapshot = BotCore.Services.MarketSnapshotStore.CreateSnapshot(
                             symbol: decision.Symbol,
-                            vix: vixValue,
-                            trend: context.TrendStrength > 0.2 ? "Bullish" : context.TrendStrength < -0.2 ? "Bearish" : "Neutral",
-                            session: sessionName,
                             currentPrice: currentPrice,
+                            vix: vixValue,
+                            trend: context.TrendStrength > 0.2m ? "Bullish" : context.TrendStrength < -0.2m ? "Bearish" : "Neutral",
+                            session: sessionName,
+                            zoneSnapshot: emptyZoneSnapshot,
+                            patternScores: emptyPatternScores,
                             strategy: decision.RecommendedStrategy,
                             direction: decision.PriceDirection.ToString(),
                             confidence: decision.StrategyConfidence,
-                            size: decision.PositionSize
+                            size: (int)decision.OptimalPositionMultiplier
                         );
                         _snapshotStore.StoreSnapshot(snapshot);
                         _logger.LogTrace("📸 [SNAPSHOT] Captured market snapshot for {Symbol}: {Strategy} {Direction}", 
@@ -887,20 +909,41 @@ namespace BotCore.Brain
                         
                         // Get trend from latest context
                         var latestContext = _marketContexts.Values.LastOrDefault();
-                        var trendName = latestContext != null && latestContext.TrendStrength > 0.2 ? "Bullish" : 
-                                       latestContext != null && latestContext.TrendStrength < -0.2 ? "Bearish" : "Neutral";
+                        var trendName = latestContext != null && latestContext.TrendStrength > 0.2m ? "Bullish" : 
+                                       latestContext != null && latestContext.TrendStrength < -0.2m ? "Bearish" : "Neutral";
+                        
+                        // Create default zone snapshot and pattern scores for similarity search
+                        var emptyZoneSnapshot = new Zones.ZoneSnapshot(
+                            NearestDemand: null,
+                            NearestSupply: null,
+                            DistToDemandAtr: 0m,
+                            DistToSupplyAtr: 0m,
+                            BreakoutScore: 0m,
+                            ZonePressure: 0m,
+                            Utc: DateTime.UtcNow
+                        );
+                        
+                        var emptyPatternScores = new BotCore.Patterns.PatternScoresWithDetails
+                        {
+                            BullScore = 0.0,
+                            BearScore = 0.0,
+                            OverallConfidence = 0.0,
+                            DetectedPatterns = new List<BotCore.Patterns.PatternDetail>()
+                        };
                         
                         // Create a temporary snapshot for similarity search
                         var currentSnapshot = BotCore.Services.MarketSnapshotStore.CreateSnapshot(
                             symbol: decision.Symbol,
+                            currentPrice: currentPrice,
                             vix: vixValue,
                             trend: trendName,
                             session: sessionName,
-                            currentPrice: currentPrice,
+                            zoneSnapshot: emptyZoneSnapshot,
+                            patternScores: emptyPatternScores,
                             strategy: decision.RecommendedStrategy,
                             direction: decision.PriceDirection.ToString(),
                             confidence: decision.StrategyConfidence,
-                            size: decision.PositionSize
+                            size: (int)decision.OptimalPositionMultiplier
                         );
                         
                         var analysis = _historicalPatterns.FindSimilarConditions(currentSnapshot);

@@ -669,9 +669,9 @@ namespace BotCore.Services
                 state.SetProperty("FinalPartialExecuted", false);
             }
             
-            var firstPartialDone = (bool)state.GetProperty("FirstPartialExecuted");
-            var secondPartialDone = (bool)state.GetProperty("SecondPartialExecuted");
-            var finalPartialDone = (bool)state.GetProperty("FinalPartialExecuted");
+            var firstPartialDone = (bool)(state.GetProperty("FirstPartialExecuted") ?? false);
+            var secondPartialDone = (bool)(state.GetProperty("SecondPartialExecuted") ?? false);
+            var finalPartialDone = (bool)(state.GetProperty("FinalPartialExecuted") ?? false);
             
             // Check first partial exit at 1.5R (close 50%)
             if (!firstPartialDone && rMultiple >= FirstPartialExitThreshold)
@@ -752,8 +752,8 @@ namespace BotCore.Services
             // Check if volatility adjustment already applied this cycle
             if (state.HasProperty("VolatilityAdjustedThisCycle"))
             {
-                var lastAdjusted = (DateTime)state.GetProperty("VolatilityAdjustedThisCycle");
-                if ((DateTime.UtcNow - lastAdjusted).TotalMinutes < 5)
+                var lastAdjustedObj = state.GetProperty("VolatilityAdjustedThisCycle");
+                if (lastAdjustedObj is DateTime lastAdjusted && (DateTime.UtcNow - lastAdjusted).TotalMinutes < 5)
                 {
                     return; // Don't adjust more than once per 5 minutes
                 }
@@ -1127,7 +1127,7 @@ Explain in 2-3 sentences why this trailing stop activation is smart and protects
                     var isLong = state.Quantity > 0;
                     var direction = isLong ? "LONG" : "SHORT";
                     var breakevenThreshold = state.BreakevenAfterTicks;
-                    var oldStop = state.InitialStopPrice;
+                    var oldStop = state.GetProperty("InitialStopPrice") as decimal? ?? state.CurrentStopPrice;
                     var profitAmount = unrealizedPnL;
                     
                     var prompt = $@"I am a trading bot. I just activated breakeven protection:
@@ -1173,7 +1173,8 @@ Explain in 2-3 sentences why moving my stop to breakeven is smart risk managemen
                     var isLong = state.Quantity > 0;
                     var direction = isLong ? "LONG" : "SHORT";
                     var remainingQuantity = state.Quantity - (int)partialQuantity;
-                    var profitPerContract = rMultiple * Math.Abs(state.InitialStopPrice - state.EntryPrice);
+                    var initialStop = state.GetProperty("InitialStopPrice") as decimal? ?? state.CurrentStopPrice;
+                    var profitPerContract = rMultiple * Math.Abs(initialStop - state.EntryPrice);
                     
                     var prompt = $@"I am a trading bot. I just took a partial profit:
 
