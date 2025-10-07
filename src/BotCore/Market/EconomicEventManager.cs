@@ -377,9 +377,14 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
                         ScheduledTime = scheduledTime.ToUniversalTime(),
                         Impact = impact,
                         Currency = currency ?? "USD",
-                        Category = "Economic Data",
-                        AffectedSymbols = affectedSymbols
+                        Category = "Economic Data"
                     };
+                    
+                    // Add affected symbols
+                    foreach (var symbol in affectedSymbols)
+                    {
+                        economicEvent.AddAffectedSymbol(symbol);
+                    }
                     
                     events.Add(economicEvent);
                 }

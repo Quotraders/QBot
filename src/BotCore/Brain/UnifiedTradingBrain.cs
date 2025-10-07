@@ -374,8 +374,10 @@ namespace BotCore.Brain
                 var calendarCheckEnabled = Environment.GetEnvironmentVariable("BOT_CALENDAR_CHECK_ENABLED")?.ToLowerInvariant() == "true";
                 if (calendarCheckEnabled && _economicEventManager != null)
                 {
-                    // Check if symbol is restricted due to economic event
-                    var isRestricted = await _economicEventManager.IsSymbolRestrictedAsync(symbol).ConfigureAwait(false);
+                    // Check if symbol trading should be restricted
+                    var blockMinutes = int.Parse(Environment.GetEnvironmentVariable("BOT_CALENDAR_BLOCK_MINUTES") ?? "10", System.Globalization.CultureInfo.InvariantCulture);
+                    var isRestricted = await _economicEventManager.ShouldRestrictTradingAsync(symbol, TimeSpan.FromMinutes(blockMinutes)).ConfigureAwait(false);
+                    
                     if (isRestricted)
                     {
                         _logger.LogWarning("📅 [CALENDAR-BLOCK] Cannot trade {Symbol} - event restriction active", symbol);
@@ -383,7 +385,6 @@ namespace BotCore.Brain
                     }
                     
                     // Check for upcoming high-impact events
-                    var blockMinutes = int.Parse(Environment.GetEnvironmentVariable("BOT_CALENDAR_BLOCK_MINUTES") ?? "10");
                     var upcomingEvents = await _economicEventManager.GetUpcomingEventsAsync(
                         TimeSpan.FromMinutes(blockMinutes)).ConfigureAwait(false);
                     
@@ -1287,21 +1288,15 @@ Reflect on what happened in 1-2 sentences. Speak as ME (the bot).";
                 Symbol = symbol,
                 RecommendedStrategy = "HOLD",
                 StrategyConfidence = 0m,
-                PriceDirection = "Neutral",
+                PriceDirection = BotCore.Brain.Models.PriceDirection.Sideways,
                 PriceProbability = 0.5m,
                 OptimalPositionMultiplier = 0m,
-                MarketRegime = MarketRegime.Unknown,
-                EnhancedCandidates = new List<BrainDecision.EnhancedCandidate>(),
+                MarketRegime = BotCore.Brain.Models.MarketRegime.Normal,
+                EnhancedCandidates = new List<Candidate>(),
                 DecisionTime = startTime,
                 ProcessingTimeMs = (DateTime.UtcNow - startTime).TotalMilliseconds,
                 ModelConfidence = 0m,
-                RiskAssessment = new BrainDecision.RiskMetrics
-                {
-                    RiskLevel = "BLOCKED",
-                    Reason = reason,
-                    MaxDrawdownRisk = 0m,
-                    ConfidenceAdjustedRisk = 0m
-                }
+                RiskAssessment = $"BLOCKED: {reason}"
             };
         }
 

@@ -1,4 +1,6 @@
 using System;
+using System.Globalization;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -23,20 +25,28 @@ public class BotAlertService
         OllamaClient ollamaClient,
         IConfiguration configuration)
     {
+        ArgumentNullException.ThrowIfNull(configuration);
+        
         _logger = logger;
         _ollamaClient = ollamaClient;
         _configuration = configuration;
 
-        _alertsEnabled = configuration["BOT_ALERTS_ENABLED"]?.ToLowerInvariant() == "true" || 
+        _alertsEnabled = configuration["BOT_ALERTS_ENABLED"]?.ToUpperInvariant() == "TRUE" || 
                         configuration["BOT_ALERTS_ENABLED"] == "1";
-        _ollamaEnabled = configuration["OLLAMA_ENABLED"]?.ToLowerInvariant() == "true" || 
+        _ollamaEnabled = configuration["OLLAMA_ENABLED"]?.ToUpperInvariant() == "TRUE" || 
                         configuration["OLLAMA_ENABLED"] == "1";
 
         if (_alertsEnabled)
         {
-            _logger.LogInformation("🔔 [BOT-ALERT] Bot alert system enabled");
+            LogAlertSystemEnabled(_logger, null);
         }
     }
+    
+    private static readonly Action<ILogger, Exception?> LogAlertSystemEnabled =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(1, nameof(LogAlertSystemEnabled)),
+            "🔔 [BOT-ALERT] Bot alert system enabled");
 
     /// <summary>
     /// Check startup health and report status of all systems
@@ -133,7 +143,7 @@ public class BotAlertService
     {
         if (!_alertsEnabled) return;
 
-        var threshold = decimal.Parse(_configuration["BOT_ALERT_WIN_RATE_THRESHOLD"] ?? "60");
+        var threshold = decimal.Parse(_configuration["BOT_ALERT_WIN_RATE_THRESHOLD"] ?? "60", CultureInfo.InvariantCulture);
 
         await GenerateAlertAsync(
             "Low Win Rate Warning",
@@ -184,6 +194,19 @@ public class BotAlertService
         ).ConfigureAwait(false);
     }
 
+    // LoggerMessage delegates for performance (CA1848)
+    private static readonly Action<ILogger, string, string, Exception?> LogAlertWarning =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Warning,
+            new EventId(2, nameof(LogAlertWarning)),
+            "{Emoji} [BOT-ALERT] {Message}");
+    
+    private static readonly Action<ILogger, Exception?> LogAiAlertFallback =
+        LoggerMessage.Define(
+            LogLevel.Debug,
+            new EventId(3, nameof(LogAiAlertFallback)),
+            "Failed to generate AI alert, falling back to plain text");
+
     /// <summary>
     /// Generate alert message using Ollama AI or fallback to plain text
     /// </summary>
@@ -206,19 +229,27 @@ public class BotAlertService
                     if (!string.IsNullOrEmpty(aiResponse))
                     {
                         message = aiResponse.Trim();
-                        _logger.LogWarning("{Emoji} [BOT-ALERT] {Message}", emoji, message);
+                        LogAlertWarning(_logger, emoji, message, null);
                         return;
                     }
                 }
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
             {
-                _logger.LogDebug(ex, "Failed to generate AI alert, falling back to plain text");
+                LogAiAlertFallback(_logger, ex);
+            }
+            catch (TaskCanceledException ex)
+            {
+                LogAiAlertFallback(_logger, ex);
+            }
+            catch (InvalidOperationException ex)
+            {
+                LogAiAlertFallback(_logger, ex);
             }
         }
 
         // Fallback to plain text
         message = $"{title}: {details}";
-        _logger.LogWarning("{Emoji} [BOT-ALERT] {Message}", emoji, message);
+        LogAlertWarning(_logger, emoji, message, null);
     }
 }
