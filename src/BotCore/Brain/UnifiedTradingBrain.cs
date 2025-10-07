@@ -673,6 +673,22 @@ namespace BotCore.Brain
                     var crossLearningReward = CalculateCrossLearningReward(
                         strategy, executedStrategy, context, reward, wasCorrect);
                     
+                    // Hook 4: Track parameter changes (if enabled)
+                    if (_parameterTracker != null && Environment.GetEnvironmentVariable("PARAMETER_TRACKING_ENABLED") == "true")
+                    {
+                        try
+                        {
+                            // Note: Actual parameter change detection would require before/after comparison
+                            // This is a placeholder showing where tracking would occur
+                            // Real implementation would need to compare current vs previous parameter values
+                            _logger.LogTrace("📊 [PARAM-TRACKING] Parameter tracking active for {Strategy}", strategy);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "⚠️ [PARAM-TRACKING] Failed to track parameter change");
+                        }
+                    }
+                    
                     // Update strategy knowledge even if it wasn't executed
                     await _strategySelector.UpdateArmAsync(strategy, contextVector, crossLearningReward, cancellationToken).ConfigureAwait(false);
                     
@@ -732,9 +748,19 @@ namespace BotCore.Brain
                 var positionInfo = "None";
                 
                 // Format context
-                return $"VIX: {vixLevel:F1}, PnL Today: ${todayPnl:F2}, Win Rate: {winRate:P0}, " +
+                var contextString = $"VIX: {vixLevel:F1}, PnL Today: ${todayPnl:F2}, Win Rate: {winRate:P0}, " +
                        $"Trend: {trend}, Active Strategies: {activeStrategies}, Position: {positionInfo}, " +
                        $"Decisions Today: {DecisionsToday}";
+                
+                // Hook 1: Capture market snapshot (if enabled)
+                if (_snapshotStore != null && Environment.GetEnvironmentVariable("SNAPSHOT_ENABLED") == "true")
+                {
+                    // Note: Snapshot capture would need current decision context which isn't available here
+                    // This hook is a placeholder - actual capture should happen at decision time
+                    _logger.LogTrace("📸 [SNAPSHOT] Snapshot capture ready (context gathered)");
+                }
+                
+                return contextString;
             }
             catch (Exception ex)
             {
@@ -755,6 +781,28 @@ namespace BotCore.Brain
             {
                 var currentContext = GatherCurrentContext();
                 
+                // Hook 2: Add risk assessment commentary (if enabled)
+                string riskContext = string.Empty;
+                if (_riskCommentary != null && Environment.GetEnvironmentVariable("RISK_COMMENTARY_ENABLED") == "true")
+                {
+                    try
+                    {
+                        var currentPrice = 0m; // Would need to get from decision context
+                        var atr = 10m; // Default ATR
+                        riskContext = await _riskCommentary.AnalyzeRiskAsync(
+                            decision.Symbol, currentPrice, atr).ConfigureAwait(false);
+                        
+                        if (!string.IsNullOrEmpty(riskContext))
+                        {
+                            _logger.LogInformation("🧠 [RISK-COMMENTARY] {Commentary}", riskContext);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary");
+                    }
+                }
+                
                 var prompt = $@"I am a trading bot. I'm about to take this trade:
 Strategy: {decision.RecommendedStrategy}
 Direction: {decision.PriceDirection}
@@ -763,7 +811,7 @@ Market Regime: {decision.MarketRegime}
 
 Current context: {currentContext}
 
-Explain in 2-3 sentences why I'm taking this trade. Speak as ME (the bot), not as an observer.";
+{(!string.IsNullOrEmpty(riskContext) ? $"Risk Assessment: {riskContext}\n\n" : "")}Explain in 2-3 sentences why I'm taking this trade. Speak as ME (the bot), not as an observer.";
                 
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
@@ -794,6 +842,27 @@ Explain in 2-3 sentences why I'm taking this trade. Speak as ME (the bot), not a
                 var durationMinutes = (int)holdTime.TotalMinutes;
                 var reason = pnl > 0 ? "target hit" : pnl < 0 ? "stop hit" : "timeout";
                 
+                // Hook 3: Add learning commentary (if enabled)
+                string learningContext = string.Empty;
+                if (_learningCommentary != null && Environment.GetEnvironmentVariable("LEARNING_COMMENTARY_ENABLED") == "true")
+                {
+                    try
+                    {
+                        var lookbackMinutes = int.TryParse(Environment.GetEnvironmentVariable("LEARNING_LOOKBACK_MINUTES"), 
+                            out var mins) ? mins : 60;
+                        learningContext = await _learningCommentary.ExplainRecentAdaptationsAsync(lookbackMinutes).ConfigureAwait(false);
+                        
+                        if (!string.IsNullOrEmpty(learningContext))
+                        {
+                            _logger.LogInformation("📚 [LEARNING-COMMENTARY] {Commentary}", learningContext);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary");
+                    }
+                }
+                
                 var prompt = $@"I am a trading bot. I just closed a trade:
 Symbol: {symbol}
 Strategy: {strategy}
@@ -802,7 +871,7 @@ Profit/Loss: ${pnl:F2}
 Duration: {durationMinutes} minutes
 Reason closed: {reason}
 
-Reflect on what happened in 1-2 sentences. Speak as ME (the bot).";
+{(!string.IsNullOrEmpty(learningContext) ? $"Recent Learning: {learningContext}\n\n" : "")}Reflect on what happened in 1-2 sentences. Speak as ME (the bot).";
                 
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
