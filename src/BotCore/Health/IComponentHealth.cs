@@ -42,7 +42,7 @@ public sealed class HealthCheckResult
     /// <summary>
     /// Optional metrics like memory usage, file age, error count, etc.
     /// </summary>
-    public Dictionary<string, object> Metrics { get; set; } = new();
+    public Dictionary<string, object> Metrics { get; init; } = new();
 
     /// <summary>
     /// Optional description explaining the issue

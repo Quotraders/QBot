@@ -32,12 +32,12 @@ public sealed class DiscoveredComponent
     /// <summary>
     /// Optional metadata about the component
     /// </summary>
-    public Dictionary<string, object> Metadata { get; set; } = new();
+    public Dictionary<string, object> Metadata { get; init; } = new();
 
     /// <summary>
     /// Dependencies this component relies on
     /// </summary>
-    public List<string> Dependencies { get; set; } = new();
+    public IReadOnlyList<string> Dependencies { get; init; } = new List<string>();
 
     /// <summary>
     /// Expected refresh interval for file dependencies (in hours)
@@ -47,7 +47,7 @@ public sealed class DiscoveredComponent
     /// <summary>
     /// Thresholds for performance metrics
     /// </summary>
-    public Dictionary<string, double> Thresholds { get; set; } = new();
+    public Dictionary<string, double> Thresholds { get; init; } = new();
 
     /// <summary>
     /// When this component was discovered

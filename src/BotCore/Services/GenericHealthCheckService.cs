@@ -18,6 +18,10 @@ namespace BotCore.Services;
 /// </summary>
 public sealed class GenericHealthCheckService
 {
+    // Constants for magic number avoidance (S109)
+    private const double BytesToMegabytes = 1024.0 * 1024.0;
+    private const int DecimalPlacesForMetrics = 2;
+    
     private readonly ILogger<GenericHealthCheckService> _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly IConfiguration _configuration;
@@ -39,21 +43,32 @@ public sealed class GenericHealthCheckService
         DiscoveredComponent component,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(component);
+
         try
         {
             return component.Type switch
             {
-                ComponentType.BackgroundService => await CheckBackgroundServiceHealthAsync(component, cancellationToken).ConfigureAwait(false),
-                ComponentType.SingletonService => await CheckSingletonServiceHealthAsync(component, cancellationToken).ConfigureAwait(false),
+                ComponentType.BackgroundService => await CheckBackgroundServiceHealthAsync(component).ConfigureAwait(false),
+                ComponentType.SingletonService => await CheckSingletonServiceHealthAsync(component).ConfigureAwait(false),
                 ComponentType.FileDependency => CheckFileDependencyHealth(component),
                 ComponentType.APIConnection => await CheckAPIConnectionHealthAsync(component, cancellationToken).ConfigureAwait(false),
                 ComponentType.PerformanceMetric => CheckPerformanceMetricHealth(component),
                 _ => HealthCheckResult.Unhealthy($"Unknown component type: {component.Type}")
             };
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "❌ [HEALTH-CHECK] Error checking health of {Component}", component.Name);
+            LogHealthCheckError(_logger, component.Name, ex);
+            return HealthCheckResult.Unhealthy($"Health check failed: {ex.Message}", new Dictionary<string, object>
+            {
+                ["Component"] = component.Name,
+                ["Error"] = ex.Message
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            LogHealthCheckError(_logger, component.Name, ex);
             return HealthCheckResult.Unhealthy($"Health check failed: {ex.Message}", new Dictionary<string, object>
             {
                 ["Component"] = component.Name,
@@ -62,9 +77,12 @@ public sealed class GenericHealthCheckService
         }
     }
 
-    private Task<HealthCheckResult> CheckBackgroundServiceHealthAsync(
-        DiscoveredComponent component,
-        CancellationToken cancellationToken)
+    private static readonly Action<ILogger, string, Exception?> LogHealthCheckError =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(1, nameof(LogHealthCheckError)), 
+            "❌ [HEALTH-CHECK] Error checking health of {Component}");
+
+    private static Task<HealthCheckResult> CheckBackgroundServiceHealthAsync(
+        DiscoveredComponent component)
     {
         try
         {
@@ -102,7 +120,7 @@ public sealed class GenericHealthCheckService
                     ["ServiceType"] = component.ServiceInstance.GetType().Name
                 }));
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             return Task.FromResult(HealthCheckResult.Unhealthy(
                 $"Background service check failed: {ex.Message}",
@@ -114,9 +132,8 @@ public sealed class GenericHealthCheckService
         }
     }
 
-    private Task<HealthCheckResult> CheckSingletonServiceHealthAsync(
-        DiscoveredComponent component,
-        CancellationToken cancellationToken)
+    private static Task<HealthCheckResult> CheckSingletonServiceHealthAsync(
+        DiscoveredComponent component)
     {
         try
         {
@@ -134,7 +151,7 @@ public sealed class GenericHealthCheckService
             // If the service implements IComponentHealth, use it
             if (component.ServiceInstance is IComponentHealth healthCheckable)
             {
-                return healthCheckable.CheckHealthAsync(cancellationToken);
+                return healthCheckable.CheckHealthAsync(CancellationToken.None);
             }
 
             // Otherwise, just check that the instance exists
@@ -146,7 +163,7 @@ public sealed class GenericHealthCheckService
                     ["ServiceType"] = component.ServiceInstance.GetType().Name
                 }));
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             return Task.FromResult(HealthCheckResult.Unhealthy(
                 $"Singleton service check failed: {ex.Message}",
@@ -196,9 +213,9 @@ public sealed class GenericHealthCheckService
             var metrics = new Dictionary<string, object>
             {
                 ["FilePath"] = component.FilePath,
-                ["FileAgeHours"] = Math.Round(fileAgeHours, 2),
-                ["FileSizeMB"] = Math.Round(fileSizeMB, 2),
-                ["LastModified"] = fileInfo.LastWriteTimeUtc.ToString("yyyy-MM-dd HH:mm:ss UTC")
+                ["FileAgeHours"] = Math.Round(fileAgeHours, DecimalPlacesForMetrics),
+                ["FileSizeMB"] = Math.Round(fileSizeMB, DecimalPlacesForMetrics),
+                ["LastModified"] = fileInfo.LastWriteTimeUtc.ToString("yyyy-MM-dd HH:mm:ss UTC", System.Globalization.CultureInfo.InvariantCulture)
             };
 
             // If refresh interval is 0, we only check existence (like kill.txt)
@@ -221,7 +238,7 @@ public sealed class GenericHealthCheckService
                 "File is fresh",
                 metrics);
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
             return HealthCheckResult.Unhealthy(
                 $"File check failed: {ex.Message}",
@@ -252,7 +269,7 @@ public sealed class GenericHealthCheckService
 
             if (component.Name.Contains("Python", StringComparison.OrdinalIgnoreCase))
             {
-                return await CheckPythonServiceConnectionAsync(component, cancellationToken).ConfigureAwait(false);
+                return await CheckPythonServiceConnectionAsync(component).ConfigureAwait(false);
             }
 
             // Generic API check
@@ -263,7 +280,7 @@ public sealed class GenericHealthCheckService
                     ["APIName"] = component.Name
                 });
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             return HealthCheckResult.Unhealthy(
                 $"API connection check failed: {ex.Message}",
@@ -314,7 +331,7 @@ public sealed class GenericHealthCheckService
                     ["IsConnected"] = false
                 });
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
             return HealthCheckResult.Unhealthy(
                 $"Ollama connection check failed: {ex.Message}",
@@ -325,7 +342,7 @@ public sealed class GenericHealthCheckService
         }
     }
 
-    private HealthCheckResult CheckTopstepXConnection(DiscoveredComponent component)
+    private static HealthCheckResult CheckTopstepXConnection(DiscoveredComponent component)
     {
         // TopstepX connection check would require accessing the actual service
         // For now, return a basic check
@@ -338,9 +355,8 @@ public sealed class GenericHealthCheckService
             });
     }
 
-    private Task<HealthCheckResult> CheckPythonServiceConnectionAsync(
-        DiscoveredComponent component,
-        CancellationToken cancellationToken)
+    private static Task<HealthCheckResult> CheckPythonServiceConnectionAsync(
+        DiscoveredComponent component)
     {
         // Python service health check would require HTTP ping
         // For now, return a basic check
@@ -390,7 +406,7 @@ public sealed class GenericHealthCheckService
                         metrics);
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             return HealthCheckResult.Unhealthy(
                 $"Performance metric check failed: {ex.Message}",
@@ -420,13 +436,13 @@ public sealed class GenericHealthCheckService
 
             return HealthCheckResult.Healthy("Win rate metric available", metrics);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             return HealthCheckResult.Unhealthy($"Win rate check failed: {ex.Message}", metrics);
         }
     }
 
-    private HealthCheckResult CheckPnLMetric(DiscoveredComponent component, Dictionary<string, object> metrics)
+    private static HealthCheckResult CheckPnLMetric(DiscoveredComponent component, Dictionary<string, object> metrics)
     {
         try
         {
@@ -436,20 +452,20 @@ public sealed class GenericHealthCheckService
 
             return HealthCheckResult.Healthy("P&L metric available", metrics);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             return HealthCheckResult.Unhealthy($"P&L check failed: {ex.Message}", metrics);
         }
     }
 
-    private HealthCheckResult CheckMemoryMetric(DiscoveredComponent component, Dictionary<string, object> metrics)
+    private static HealthCheckResult CheckMemoryMetric(DiscoveredComponent component, Dictionary<string, object> metrics)
     {
         try
         {
-            var memoryUsageMB = GC.GetTotalMemory(false) / (1024.0 * 1024.0);
+            var memoryUsageMB = GC.GetTotalMemory(false) / BytesToMegabytes;
             var threshold = component.Thresholds.GetValueOrDefault("AlertThreshold", 2048.0);
 
-            metrics["CurrentMemoryMB"] = Math.Round(memoryUsageMB, 2);
+            metrics["CurrentMemoryMB"] = Math.Round(memoryUsageMB, DecimalPlacesForMetrics);
             metrics["ThresholdMB"] = threshold;
 
             if (memoryUsageMB > threshold)
@@ -461,13 +477,13 @@ public sealed class GenericHealthCheckService
 
             return HealthCheckResult.Healthy("Memory usage within limits", metrics);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             return HealthCheckResult.Unhealthy($"Memory check failed: {ex.Message}", metrics);
         }
     }
 
-    private HealthCheckResult CheckLatencyMetric(DiscoveredComponent component, Dictionary<string, object> metrics)
+    private static HealthCheckResult CheckLatencyMetric(DiscoveredComponent component, Dictionary<string, object> metrics)
     {
         try
         {
@@ -477,13 +493,13 @@ public sealed class GenericHealthCheckService
 
             return HealthCheckResult.Healthy("Latency metric available", metrics);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             return HealthCheckResult.Unhealthy($"Latency check failed: {ex.Message}", metrics);
         }
     }
 
-    private HealthCheckResult CheckThreadPoolMetric(DiscoveredComponent component, Dictionary<string, object> metrics)
+    private static HealthCheckResult CheckThreadPoolMetric(DiscoveredComponent component, Dictionary<string, object> metrics)
     {
         try
         {
@@ -493,7 +509,7 @@ public sealed class GenericHealthCheckService
             var usage = 1.0 - ((double)workerThreads / maxWorkerThreads);
             var threshold = component.Thresholds.GetValueOrDefault("AlertThreshold", 0.9);
 
-            metrics["ThreadPoolUsage"] = Math.Round(usage, 2);
+            metrics["ThreadPoolUsage"] = Math.Round(usage, DecimalPlacesForMetrics);
             metrics["AvailableWorkerThreads"] = workerThreads;
             metrics["MaxWorkerThreads"] = maxWorkerThreads;
             metrics["Threshold"] = threshold;
@@ -507,13 +523,13 @@ public sealed class GenericHealthCheckService
 
             return HealthCheckResult.Healthy("Thread pool usage within limits", metrics);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             return HealthCheckResult.Unhealthy($"Thread pool check failed: {ex.Message}", metrics);
         }
     }
 
-    private HealthCheckResult CheckDecisionFrequencyMetric(DiscoveredComponent component, Dictionary<string, object> metrics)
+    private static HealthCheckResult CheckDecisionFrequencyMetric(DiscoveredComponent component, Dictionary<string, object> metrics)
     {
         try
         {
@@ -523,7 +539,7 @@ public sealed class GenericHealthCheckService
 
             return HealthCheckResult.Healthy("Decision frequency metric available", metrics);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             return HealthCheckResult.Unhealthy($"Decision frequency check failed: {ex.Message}", metrics);
         }

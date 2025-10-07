@@ -19,7 +19,6 @@ public class BotHealthReporter
 {
     private readonly ILogger<BotHealthReporter> _logger;
     private readonly OllamaClient? _ollamaClient;
-    private readonly IConfiguration _configuration;
 
     public BotHealthReporter(
         ILogger<BotHealthReporter> logger,
@@ -27,7 +26,7 @@ public class BotHealthReporter
         OllamaClient? ollamaClient = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        ArgumentNullException.ThrowIfNull(configuration);
         _ollamaClient = ollamaClient;
     }
 

@@ -29,11 +29,9 @@ namespace BotCore.Services;
 public sealed class BotSelfAwarenessService : BackgroundService
 {
     private readonly ILogger<BotSelfAwarenessService> _logger;
-    private readonly IServiceProvider _serviceProvider;
     private readonly ComponentDiscoveryService _discoveryService;
     private readonly GenericHealthCheckService _healthCheckService;
     private readonly BotAlertService? _alertService;
-    private readonly IConfiguration _configuration;
     
     private List<DiscoveredComponent> _discoveredComponents = new();
     private readonly Dictionary<string, HealthCheckResult> _healthHistory = new();
@@ -47,17 +45,14 @@ public sealed class BotSelfAwarenessService : BackgroundService
     
     public BotSelfAwarenessService(
         ILogger<BotSelfAwarenessService> logger,
-        IServiceProvider serviceProvider,
         ComponentDiscoveryService discoveryService,
         GenericHealthCheckService healthCheckService,
         IConfiguration configuration,
         BotAlertService? alertService = null)
     {
         _logger = logger;
-        _serviceProvider = serviceProvider;
         _discoveryService = discoveryService;
         _healthCheckService = healthCheckService;
-        _configuration = configuration;
         _alertService = alertService;
         
         // Read configuration
