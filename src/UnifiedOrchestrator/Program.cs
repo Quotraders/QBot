@@ -585,6 +585,21 @@ Please check the configuration and ensure all required services are registered.
         Console.WriteLine("   ✅ Aggressive entry signals - Boosts confidence on strong zone breaks");
         
         // ================================================================================
+        // POSITION MANAGEMENT OPTIMIZER - PHASE 3 ML/RL LEARNING
+        // ================================================================================
+        
+        // Register Position Management Optimizer for ML/RL parameter learning
+        services.AddSingleton<BotCore.Services.PositionManagementOptimizer>();
+        services.AddHostedService<BotCore.Services.PositionManagementOptimizer>(provider => 
+            provider.GetRequiredService<BotCore.Services.PositionManagementOptimizer>());
+        
+        Console.WriteLine("🧠 [PM-OPTIMIZER] Registered position management optimizer (PHASE 3)");
+        Console.WriteLine("   ✅ Breakeven timing optimization - Learn optimal BE trigger (6 vs 8 vs 10 ticks)");
+        Console.WriteLine("   ✅ Trailing stop optimization - Learn optimal trail distance (1.0x vs 1.5x ATR)");
+        Console.WriteLine("   ✅ Time exit optimization - Learn optimal timeout per strategy + regime");
+        Console.WriteLine("   ✅ Outcome tracking - 'BE at 8 ticks → stopped out, would have hit target'");
+        
+        // ================================================================================
         // ZONE AWARENESS SERVICES - PRODUCTION-READY SUPPLY/DEMAND INTEGRATION
         // ================================================================================
         

@@ -122,6 +122,74 @@ namespace BotCore.Services
                 var duration = DateTime.UtcNow - state.EntryTime;
                 _logger.LogInformation("✅ [POSITION-MGMT] Unregistered position {PositionId}: {Strategy} {Symbol}, Duration: {Duration}m, Exit: {Reason}, Stop mods: {Mods}",
                     positionId, state.Strategy, state.Symbol, duration.TotalMinutes, exitReason, state.StopModificationCount);
+                
+                // PHASE 3: Report outcome to Position Management Optimizer for ML/RL learning
+                ReportOutcomeToOptimizer(state, exitReason, duration);
+            }
+        }
+        
+        /// <summary>
+        /// PHASE 3: Report position management outcome for ML/RL learning
+        /// </summary>
+        private void ReportOutcomeToOptimizer(PositionManagementState state, ExitReason exitReason, TimeSpan duration)
+        {
+            try
+            {
+                var optimizer = _serviceProvider.GetService<PositionManagementOptimizer>();
+                if (optimizer == null)
+                {
+                    return; // Optimizer not registered (optional dependency)
+                }
+                
+                var isLong = state.Quantity > 0;
+                var tickSize = GetTickSize(state.Symbol);
+                
+                // Calculate final P&L in ticks
+                var pnlTicks = isLong
+                    ? (state.MaxFavorablePrice - state.EntryPrice) / tickSize
+                    : (state.EntryPrice - state.MaxFavorablePrice) / tickSize;
+                
+                // Calculate max excursions in ticks
+                var maxFavTicks = isLong
+                    ? (state.MaxFavorablePrice - state.EntryPrice) / tickSize
+                    : (state.EntryPrice - state.MaxFavorablePrice) / tickSize;
+                
+                var maxAdvTicks = isLong
+                    ? (state.MaxAdversePrice - state.EntryPrice) / tickSize
+                    : (state.EntryPrice - state.MaxAdversePrice) / tickSize;
+                
+                // Determine what happened
+                var breakevenTriggered = state.BreakevenActivated;
+                var stoppedOut = exitReason == ExitReason.StopLoss || exitReason == ExitReason.Breakeven || exitReason == ExitReason.TrailingStop;
+                var targetHit = exitReason == ExitReason.Target;
+                var timedOut = exitReason == ExitReason.TimeLimit;
+                
+                // Trail multiplier calculation (estimate from trail ticks)
+                var trailMultiplier = state.TrailTicks * tickSize / 1.0m; // Simplified estimate
+                
+                // Record outcome
+                optimizer.RecordOutcome(
+                    strategy: state.Strategy,
+                    symbol: state.Symbol,
+                    breakevenAfterTicks: state.BreakevenAfterTicks,
+                    trailMultiplier: trailMultiplier,
+                    maxHoldMinutes: state.MaxHoldMinutes,
+                    breakevenTriggered: breakevenTriggered,
+                    stoppedOut: stoppedOut,
+                    targetHit: targetHit,
+                    timedOut: timedOut,
+                    finalPnL: pnlTicks,
+                    maxFavorableExcursion: maxFavTicks,
+                    maxAdverseExcursion: maxAdvTicks,
+                    marketRegime: "UNKNOWN" // Could be enhanced with regime detection
+                );
+                
+                _logger.LogDebug("📊 [POSITION-MGMT] Reported outcome to optimizer: {Strategy} {Symbol}, BE={BE}, StoppedOut={SO}, TargetHit={TH}, TimedOut={TO}, PnL={PnL} ticks",
+                    state.Strategy, state.Symbol, breakevenTriggered, stoppedOut, targetHit, timedOut, pnlTicks);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ [POSITION-MGMT] Error reporting outcome to optimizer for {PositionId}", state.PositionId);
             }
         }
         
