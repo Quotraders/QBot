@@ -159,6 +159,10 @@ namespace BotCore.Brain
         private readonly BotCore.Services.HistoricalPatternRecognitionService? _historicalPatterns;
         private readonly BotCore.Services.ParameterChangeTracker? _parameterTracker;
         
+        // Latest market data for risk analysis (updated in MakeIntelligentDecisionAsync)
+        private Env? _latestEnv;
+        private IList<Bar>? _latestBars;
+        
         // ML Models for different decision points
         private object? _lstmPricePredictor;
         private object? _metaClassifier;
@@ -380,6 +384,10 @@ namespace BotCore.Brain
             ArgumentNullException.ThrowIfNull(bars);
             ArgumentNullException.ThrowIfNull(risk);
             
+            // Store latest market data for use in risk analysis and commentary
+            _latestEnv = env;
+            _latestBars = bars;
+            
             var startTime = DateTime.UtcNow;
             LastDecision = startTime;
             
@@ -508,12 +516,22 @@ namespace BotCore.Brain
                 {
                     try
                     {
+                        // Use actual market data from available sources
+                        var vixValue = env.volz ?? 0m; // Use volatility z-score as proxy for VIX
+                        var currentPrice = bars.LastOrDefault()?.Close ?? 0m;
+                        
+                        // Determine session based on time of day
+                        var currentHour = DateTime.UtcNow.Hour;
+                        var sessionName = currentHour >= 13 && currentHour < 20 ? "RegularTrading" : 
+                                         currentHour >= 8 && currentHour < 13 ? "PreMarket" :
+                                         currentHour >= 20 && currentHour < 22 ? "AfterHours" : "Closed";
+                        
                         var snapshot = BotCore.Services.MarketSnapshotStore.CreateSnapshot(
                             symbol: decision.Symbol,
-                            vix: 15.0m, // Would get from market data
+                            vix: vixValue,
                             trend: context.TrendStrength > 0.2 ? "Bullish" : context.TrendStrength < -0.2 ? "Bearish" : "Neutral",
-                            session: "RegularHours", // Would get from actual session detector
-                            currentPrice: bars.LastOrDefault()?.Close ?? 0m,
+                            session: sessionName,
+                            currentPrice: currentPrice,
                             strategy: decision.RecommendedStrategy,
                             direction: decision.PriceDirection.ToString(),
                             confidence: decision.StrategyConfidence,
@@ -752,8 +770,8 @@ namespace BotCore.Brain
         {
             try
             {
-                // Get VIX level (use a default if not available)
-                var vixLevel = 15.0m; // Default VIX, could be fetched from market data
+                // Get VIX level from latest context (use 0 if unavailable to avoid hiding missing data)
+                var vixLevel = _marketContexts.Values.LastOrDefault()?.Volatility ?? 0m;
                 
                 // Get today's P&L
                 var todayPnl = _dailyPnl;
@@ -813,10 +831,20 @@ namespace BotCore.Brain
                 {
                     try
                     {
-                        var currentPrice = 0m; // Would need to get from decision context
-                        var atr = 10m; // Default ATR
-                        riskContext = await _riskCommentary.AnalyzeRiskAsync(
-                            decision.Symbol, currentPrice, atr).ConfigureAwait(false);
+                        // Use actual market data from latest decision
+                        var currentPrice = _latestBars?.LastOrDefault()?.Close ?? 0m;
+                        var atr = _latestEnv?.atr ?? 0m;
+                        
+                        // Only proceed if we have valid data
+                        if (currentPrice > 0m && atr > 0m)
+                        {
+                            riskContext = await _riskCommentary.AnalyzeRiskAsync(
+                                decision.Symbol, currentPrice, atr).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("⚠️ [RISK-COMMENTARY] Skipping - missing price or ATR data");
+                        }
                         
                         if (!string.IsNullOrEmpty(riskContext))
                         {
@@ -836,13 +864,26 @@ namespace BotCore.Brain
                 {
                     try
                     {
+                        // Use actual market data for similarity search
+                        var vixValue = _latestEnv?.volz ?? 0m;
+                        var currentPrice = _latestBars?.LastOrDefault()?.Close ?? 0m;
+                        var currentHour = DateTime.UtcNow.Hour;
+                        var sessionName = currentHour >= 13 && currentHour < 20 ? "RegularTrading" : 
+                                         currentHour >= 8 && currentHour < 13 ? "PreMarket" :
+                                         currentHour >= 20 && currentHour < 22 ? "AfterHours" : "Closed";
+                        
+                        // Get trend from latest context
+                        var latestContext = _marketContexts.Values.LastOrDefault();
+                        var trendName = latestContext != null && latestContext.TrendStrength > 0.2 ? "Bullish" : 
+                                       latestContext != null && latestContext.TrendStrength < -0.2 ? "Bearish" : "Neutral";
+                        
                         // Create a temporary snapshot for similarity search
                         var currentSnapshot = BotCore.Services.MarketSnapshotStore.CreateSnapshot(
                             symbol: decision.Symbol,
-                            vix: 15.0m,
-                            trend: "Neutral",
-                            session: "RegularHours",
-                            currentPrice: 0m,
+                            vix: vixValue,
+                            trend: trendName,
+                            session: sessionName,
+                            currentPrice: currentPrice,
                             strategy: decision.RecommendedStrategy,
                             direction: decision.PriceDirection.ToString(),
                             confidence: decision.StrategyConfidence,
