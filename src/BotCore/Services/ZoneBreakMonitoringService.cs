@@ -1,0 +1,399 @@
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
+using BotCore.Models;
+using TopstepX.Bot.Core.Services;
+using Zones;
+
+namespace BotCore.Services
+{
+    /// <summary>
+    /// Zone Break Monitoring Service - PHASE 2 Implementation
+    /// 
+    /// Monitors real-time price updates to detect when supply/demand zones are broken.
+    /// Publishes zone break events that trigger position management actions:
+    /// - Long position + demand zone break → Early exit warning
+    /// - Short position + supply zone break → Early exit warning
+    /// - Strong zone break → Aggressive entry signal boost
+    /// 
+    /// Integrates with UnifiedPositionManagementService for zone-aware stop placement.
+    /// </summary>
+    public sealed class ZoneBreakMonitoringService : BackgroundService
+    {
+        private readonly ILogger<ZoneBreakMonitoringService> _logger;
+        private readonly IServiceProvider _serviceProvider;
+        private readonly ConcurrentDictionary<string, ZoneBreakState> _zoneStates = new();
+        private readonly ConcurrentQueue<ZoneBreakEvent> _breakEvents = new();
+        
+        // Monitoring interval - check for zone breaks every 2 seconds
+        private const int MonitoringIntervalSeconds = 2;
+        
+        // Zone break thresholds
+        private const decimal StrongBreakStrengthThreshold = 0.75m; // Strong zone must have strength > 0.75
+        private const decimal WeakBreakStrengthThreshold = 0.30m;   // Weak zone has strength < 0.30
+        private const decimal BreakConfirmationTicks = 2; // Price must be X ticks beyond zone
+        
+        public ZoneBreakMonitoringService(
+            ILogger<ZoneBreakMonitoringService> logger,
+            IServiceProvider serviceProvider)
+        {
+            _logger = logger;
+            _serviceProvider = serviceProvider;
+        }
+        
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            _logger.LogInformation("🔍 [ZONE-BREAK] Zone Break Monitoring Service starting...");
+            
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                try
+                {
+                    await MonitorZoneBreaksAsync(stoppingToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ [ZONE-BREAK] Error in zone break monitoring loop");
+                }
+                
+                await Task.Delay(TimeSpan.FromSeconds(MonitoringIntervalSeconds), stoppingToken).ConfigureAwait(false);
+            }
+            
+            _logger.LogInformation("🛑 [ZONE-BREAK] Zone Break Monitoring Service stopping");
+        }
+        
+        private async Task MonitorZoneBreaksAsync(CancellationToken cancellationToken)
+        {
+            var zoneService = _serviceProvider.GetService<IZoneService>();
+            var positionTracker = _serviceProvider.GetService<PositionTrackingSystem>();
+            
+            if (zoneService == null || positionTracker == null)
+            {
+                // Services not available - skip this cycle
+                return;
+            }
+            
+            // Get all open positions to monitor
+            var positions = positionTracker.GetAllPositions();
+            if (positions == null || positions.Count == 0)
+            {
+                // No positions to monitor
+                return;
+            }
+            
+            foreach (var position in positions)
+            {
+                try
+                {
+                    await CheckPositionForZoneBreaksAsync(position, zoneService, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "⚠️ [ZONE-BREAK] Error checking zone breaks for position {Symbol}", position.Symbol);
+                }
+            }
+            
+            // Process any queued zone break events
+            await ProcessZoneBreakEventsAsync(cancellationToken).ConfigureAwait(false);
+        }
+        
+        private async Task CheckPositionForZoneBreaksAsync(
+            Position position,
+            IZoneService zoneService,
+            CancellationToken cancellationToken)
+        {
+            var snapshot = zoneService.GetSnapshot(position.Symbol);
+            if (snapshot == null || snapshot.Zones == null || snapshot.Zones.Count == 0)
+            {
+                return;
+            }
+            
+            var currentPrice = CalculateCurrentPrice(position);
+            if (currentPrice <= 0)
+            {
+                return;
+            }
+            
+            var stateKey = $"{position.Symbol}_{(position.NetQuantity > 0 ? "LONG" : "SHORT")}";
+            var state = _zoneStates.GetOrAdd(stateKey, _ => new ZoneBreakState
+            {
+                Symbol = position.Symbol,
+                IsLong = position.NetQuantity > 0,
+                LastCheckedPrice = currentPrice,
+                LastCheckedTime = DateTime.UtcNow
+            });
+            
+            // Check for zone breaks
+            foreach (var zone in snapshot.Zones)
+            {
+                CheckZoneForBreak(zone, currentPrice, position, state);
+            }
+            
+            // Update state
+            state.LastCheckedPrice = currentPrice;
+            state.LastCheckedTime = DateTime.UtcNow;
+            
+            await Task.CompletedTask;
+        }
+        
+        private void CheckZoneForBreak(
+            Zone zone,
+            decimal currentPrice,
+            Position position,
+            ZoneBreakState state)
+        {
+            var isLong = position.NetQuantity > 0;
+            var zoneKey = $"{position.Symbol}_{zone.Lo}_{zone.Hi}";
+            
+            // Check if this zone was already marked as broken
+            if (state.BrokenZones.Contains(zoneKey))
+            {
+                return;
+            }
+            
+            // Determine if zone is supply or demand based on position
+            bool isSupplyZone = zone.Hi < position.AveragePrice; // Zone below entry = support/demand
+            bool isDemandZone = zone.Lo > position.AveragePrice; // Zone above entry = resistance/supply
+            
+            // For long positions, monitor demand zones breaking (support breaking = bad)
+            if (isLong && isSupplyZone)
+            {
+                // Check if price broke below this demand/support zone
+                if (currentPrice < zone.Lo - (BreakConfirmationTicks * 0.25m))
+                {
+                    // Demand zone broken!
+                    var breakEvent = new ZoneBreakEvent
+                    {
+                        Symbol = position.Symbol,
+                        ZoneKey = zoneKey,
+                        ZoneLow = zone.Lo,
+                        ZoneHigh = zone.Hi,
+                        ZoneStrength = zone.Strength,
+                        BreakPrice = currentPrice,
+                        BreakTime = DateTime.UtcNow,
+                        BreakType = zone.Strength > StrongBreakStrengthThreshold ? ZoneBreakType.StrongDemandBreak : ZoneBreakType.WeakDemandBreak,
+                        PositionType = "LONG",
+                        Severity = CalculateBreakSeverity(zone.Strength, zone.Touches)
+                    };
+                    
+                    _breakEvents.Enqueue(breakEvent);
+                    state.BrokenZones.Add(zoneKey);
+                    
+                    _logger.LogWarning("⚠️ [ZONE-BREAK] {Type} for LONG {Symbol} - Zone [{Lo}-{Hi}] Strength={Strength:F2} - Price broke to {Price}",
+                        breakEvent.BreakType, position.Symbol, zone.Lo, zone.Hi, zone.Strength, currentPrice);
+                }
+            }
+            
+            // For short positions, monitor supply zones breaking (resistance breaking = bad)
+            else if (!isLong && isDemandZone)
+            {
+                // Check if price broke above this supply/resistance zone
+                if (currentPrice > zone.Hi + (BreakConfirmationTicks * 0.25m))
+                {
+                    // Supply zone broken!
+                    var breakEvent = new ZoneBreakEvent
+                    {
+                        Symbol = position.Symbol,
+                        ZoneKey = zoneKey,
+                        ZoneLow = zone.Lo,
+                        ZoneHigh = zone.Hi,
+                        ZoneStrength = zone.Strength,
+                        BreakPrice = currentPrice,
+                        BreakTime = DateTime.UtcNow,
+                        BreakType = zone.Strength > StrongBreakStrengthThreshold ? ZoneBreakType.StrongSupplyBreak : ZoneBreakType.WeakSupplyBreak,
+                        PositionType = "SHORT",
+                        Severity = CalculateBreakSeverity(zone.Strength, zone.Touches)
+                    };
+                    
+                    _breakEvents.Enqueue(breakEvent);
+                    state.BrokenZones.Add(zoneKey);
+                    
+                    _logger.LogWarning("⚠️ [ZONE-BREAK] {Type} for SHORT {Symbol} - Zone [{Lo}-{Hi}] Strength={Strength:F2} - Price broke to {Price}",
+                        breakEvent.BreakType, position.Symbol, zone.Lo, zone.Hi, zone.Strength, currentPrice);
+                }
+            }
+            
+            // Also check for strong zone breaks in the favorable direction (entry signals)
+            if (isLong && isDemandZone && zone.Strength > StrongBreakStrengthThreshold)
+            {
+                // Strong supply zone breaking upward = bullish signal
+                if (currentPrice > zone.Hi + (BreakConfirmationTicks * 0.25m))
+                {
+                    var breakEvent = new ZoneBreakEvent
+                    {
+                        Symbol = position.Symbol,
+                        ZoneKey = zoneKey,
+                        ZoneLow = zone.Lo,
+                        ZoneHigh = zone.Hi,
+                        ZoneStrength = zone.Strength,
+                        BreakPrice = currentPrice,
+                        BreakTime = DateTime.UtcNow,
+                        BreakType = ZoneBreakType.StrongSupplyBreakBullish,
+                        PositionType = "LONG",
+                        Severity = "POSITIVE"
+                    };
+                    
+                    _breakEvents.Enqueue(breakEvent);
+                    state.BrokenZones.Add(zoneKey);
+                    
+                    _logger.LogInformation("✅ [ZONE-BREAK] Bullish breakout for LONG {Symbol} - Strong supply broken at {Price}", 
+                        position.Symbol, currentPrice);
+                }
+            }
+            else if (!isLong && isSupplyZone && zone.Strength > StrongBreakStrengthThreshold)
+            {
+                // Strong demand zone breaking downward = bearish signal
+                if (currentPrice < zone.Lo - (BreakConfirmationTicks * 0.25m))
+                {
+                    var breakEvent = new ZoneBreakEvent
+                    {
+                        Symbol = position.Symbol,
+                        ZoneKey = zoneKey,
+                        ZoneLow = zone.Lo,
+                        ZoneHigh = zone.Hi,
+                        ZoneStrength = zone.Strength,
+                        BreakPrice = currentPrice,
+                        BreakTime = DateTime.UtcNow,
+                        BreakType = ZoneBreakType.StrongDemandBreakBearish,
+                        PositionType = "SHORT",
+                        Severity = "POSITIVE"
+                    };
+                    
+                    _breakEvents.Enqueue(breakEvent);
+                    state.BrokenZones.Add(zoneKey);
+                    
+                    _logger.LogInformation("✅ [ZONE-BREAK] Bearish breakout for SHORT {Symbol} - Strong demand broken at {Price}",
+                        position.Symbol, currentPrice);
+                }
+            }
+        }
+        
+        private string CalculateBreakSeverity(decimal strength, int touches)
+        {
+            // Higher strength + more touches = more severe break
+            if (strength > StrongBreakStrengthThreshold && touches >= 3)
+            {
+                return "CRITICAL";
+            }
+            else if (strength > 0.5m && touches >= 2)
+            {
+                return "HIGH";
+            }
+            else if (strength > WeakBreakStrengthThreshold)
+            {
+                return "MEDIUM";
+            }
+            else
+            {
+                return "LOW";
+            }
+        }
+        
+        private async Task ProcessZoneBreakEventsAsync(CancellationToken cancellationToken)
+        {
+            var positionMgmt = _serviceProvider.GetService<UnifiedPositionManagementService>();
+            if (positionMgmt == null)
+            {
+                return;
+            }
+            
+            while (_breakEvents.TryDequeue(out var breakEvent))
+            {
+                try
+                {
+                    // Notify position management service of zone break
+                    positionMgmt.OnZoneBreak(breakEvent);
+                    
+                    _logger.LogInformation("📢 [ZONE-BREAK] Notified position management of {Type} event for {Symbol}",
+                        breakEvent.BreakType, breakEvent.Symbol);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ [ZONE-BREAK] Error processing zone break event for {Symbol}", breakEvent.Symbol);
+                }
+            }
+            
+            await Task.CompletedTask;
+        }
+        
+        private decimal CalculateCurrentPrice(Position position)
+        {
+            // Calculate current market price from unrealized P&L
+            // Formula: currentPrice = (unrealizedPnL / netQuantity) + avgPrice
+            if (position.NetQuantity == 0)
+            {
+                return 0;
+            }
+            
+            var estimatedPrice = (position.UnrealizedPnL / position.NetQuantity) + position.AveragePrice;
+            return estimatedPrice;
+        }
+        
+        /// <summary>
+        /// Get all zone break events for a symbol (for testing/monitoring)
+        /// </summary>
+        public List<ZoneBreakEvent> GetRecentBreaks(string symbol, TimeSpan lookback)
+        {
+            var cutoff = DateTime.UtcNow - lookback;
+            var events = new List<ZoneBreakEvent>();
+            
+            foreach (var breakEvent in _breakEvents)
+            {
+                if (breakEvent.Symbol == symbol && breakEvent.BreakTime >= cutoff)
+                {
+                    events.Add(breakEvent);
+                }
+            }
+            
+            return events;
+        }
+    }
+    
+    /// <summary>
+    /// Zone break state for tracking which zones have been broken
+    /// </summary>
+    internal sealed class ZoneBreakState
+    {
+        public string Symbol { get; set; } = string.Empty;
+        public bool IsLong { get; set; }
+        public decimal LastCheckedPrice { get; set; }
+        public DateTime LastCheckedTime { get; set; }
+        public HashSet<string> BrokenZones { get; set; } = new();
+    }
+    
+    /// <summary>
+    /// Zone break event - published when a zone is broken
+    /// </summary>
+    public sealed class ZoneBreakEvent
+    {
+        public string Symbol { get; set; } = string.Empty;
+        public string ZoneKey { get; set; } = string.Empty;
+        public decimal ZoneLow { get; set; }
+        public decimal ZoneHigh { get; set; }
+        public decimal ZoneStrength { get; set; }
+        public decimal BreakPrice { get; set; }
+        public DateTime BreakTime { get; set; }
+        public ZoneBreakType BreakType { get; set; }
+        public string PositionType { get; set; } = string.Empty;
+        public string Severity { get; set; } = string.Empty;
+    }
+    
+    /// <summary>
+    /// Types of zone breaks
+    /// </summary>
+    public enum ZoneBreakType
+    {
+        StrongDemandBreak,         // Strong support broken (bearish for longs)
+        WeakDemandBreak,           // Weak support broken (mildly bearish for longs)
+        StrongSupplyBreak,         // Strong resistance broken (bearish for shorts)
+        WeakSupplyBreak,           // Weak resistance broken (mildly bearish for shorts)
+        StrongSupplyBreakBullish,  // Strong resistance broken upward (bullish)
+        StrongDemandBreakBearish   // Strong support broken downward (bearish)
+    }
+}

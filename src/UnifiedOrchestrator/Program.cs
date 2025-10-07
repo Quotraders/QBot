@@ -555,6 +555,51 @@ Please check the configuration and ensure all required services are registered.
         Console.WriteLine("💰 [AUTONOMOUS-ENGINE] Features: Auto strategy switching, dynamic position sizing, TopStep compliance, continuous learning");
         
         // ================================================================================
+        // UNIFIED POSITION MANAGEMENT SERVICE - BREAKEVEN, TRAILING, TIME EXITS
+        // ================================================================================
+        
+        // Register Unified Position Management Service for all strategies
+        services.AddSingleton<BotCore.Services.UnifiedPositionManagementService>();
+        services.AddHostedService<BotCore.Services.UnifiedPositionManagementService>(provider => 
+            provider.GetRequiredService<BotCore.Services.UnifiedPositionManagementService>());
+        
+        Console.WriteLine("🎯 [POSITION-MGMT] Registered unified position management service");
+        Console.WriteLine("   ✅ Breakeven protection - Moves stop to entry + 1 tick when profitable");
+        Console.WriteLine("   ✅ Trailing stops - Locks in profits as price moves favorably");
+        Console.WriteLine("   ✅ Time-based exits - Closes stale positions (S2=60m, S3=90m, S6=45m, S11=60m)");
+        Console.WriteLine("   ✅ Max excursion tracking - Captures data for ML/RL optimization");
+        
+        // ================================================================================
+        // ZONE BREAK MONITORING SERVICE - PHASE 2 IMPLEMENTATION
+        // ================================================================================
+        
+        // Register Zone Break Monitoring Service for supply/demand zone break detection
+        services.AddSingleton<BotCore.Services.ZoneBreakMonitoringService>();
+        services.AddHostedService<BotCore.Services.ZoneBreakMonitoringService>(provider => 
+            provider.GetRequiredService<BotCore.Services.ZoneBreakMonitoringService>());
+        
+        Console.WriteLine("🔍 [ZONE-BREAK] Registered zone break monitoring service (PHASE 2)");
+        Console.WriteLine("   ✅ Real-time zone break detection - Monitors supply/demand zone violations");
+        Console.WriteLine("   ✅ Position exit warnings - Alert on critical support/resistance breaks");
+        Console.WriteLine("   ✅ Zone-based stop placement - Moves stops behind broken zones");
+        Console.WriteLine("   ✅ Aggressive entry signals - Boosts confidence on strong zone breaks");
+        
+        // ================================================================================
+        // POSITION MANAGEMENT OPTIMIZER - PHASE 3 ML/RL LEARNING
+        // ================================================================================
+        
+        // Register Position Management Optimizer for ML/RL parameter learning
+        services.AddSingleton<BotCore.Services.PositionManagementOptimizer>();
+        services.AddHostedService<BotCore.Services.PositionManagementOptimizer>(provider => 
+            provider.GetRequiredService<BotCore.Services.PositionManagementOptimizer>());
+        
+        Console.WriteLine("🧠 [PM-OPTIMIZER] Registered position management optimizer (PHASE 3)");
+        Console.WriteLine("   ✅ Breakeven timing optimization - Learn optimal BE trigger (6 vs 8 vs 10 ticks)");
+        Console.WriteLine("   ✅ Trailing stop optimization - Learn optimal trail distance (1.0x vs 1.5x ATR)");
+        Console.WriteLine("   ✅ Time exit optimization - Learn optimal timeout per strategy + regime");
+        Console.WriteLine("   ✅ Outcome tracking - 'BE at 8 ticks → stopped out, would have hit target'");
+        
+        // ================================================================================
         // ZONE AWARENESS SERVICES - PRODUCTION-READY SUPPLY/DEMAND INTEGRATION
         // ================================================================================
         
