@@ -952,10 +952,24 @@ Reflect on what happened in 1-2 sentences. Speak as ME (the bot).";
                         allScores[strategy] = strategy == selection.SelectedArm ? selection.Confidence : selection.Confidence * 0.7m;
                     }
                     
-                    var explanation = await ExplainStrategySelectionAsync(selection.SelectedArm, allScores, context).ConfigureAwait(false);
-                    if (!string.IsNullOrEmpty(explanation))
+                    // Check for strategy conflicts (multiple strategies with similar scores)
+                    var topScores = allScores.OrderByDescending(kvp => kvp.Value).Take(2).ToList();
+                    if (topScores.Count > 1 && Math.Abs(topScores[0].Value - topScores[1].Value) < 0.15m)
                     {
-                        _logger.LogInformation("🧠 [STRATEGY-SELECTION] {Explanation}", explanation);
+                        // Strategies are conflicting - close scores
+                        var conflictExplanation = await ExplainConflictAsync(allScores, context).ConfigureAwait(false);
+                        if (!string.IsNullOrEmpty(conflictExplanation))
+                        {
+                            _logger.LogInformation("💬 [BOT-COMMENTARY] {Conflict}", conflictExplanation);
+                        }
+                    }
+                    else
+                    {
+                        var explanation = await ExplainStrategySelectionAsync(selection.SelectedArm, allScores, context).ConfigureAwait(false);
+                        if (!string.IsNullOrEmpty(explanation))
+                        {
+                            _logger.LogInformation("🧠 [STRATEGY-SELECTION] {Explanation}", explanation);
+                        }
                     }
                 }
                 

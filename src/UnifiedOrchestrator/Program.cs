@@ -859,10 +859,9 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<BotCore.Services.BotPerformanceReporter>(provider =>
         {
             var logger = provider.GetRequiredService<ILogger<BotCore.Services.BotPerformanceReporter>>();
-            var brain = provider.GetRequiredService<BotCore.Brain.UnifiedTradingBrain>();
             var ollamaClient = provider.GetService<BotCore.Services.OllamaClient>();
             
-            return new BotCore.Services.BotPerformanceReporter(logger, brain, ollamaClient);
+            return new BotCore.Services.BotPerformanceReporter(logger, ollamaClient);
         });
         
         // Register UCB Manager - C# client for Python UCB service (175 lines)

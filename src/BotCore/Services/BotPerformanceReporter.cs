@@ -14,7 +14,6 @@ namespace BotCore.Services;
 public class BotPerformanceReporter
 {
     private readonly ILogger<BotPerformanceReporter> _logger;
-    private readonly UnifiedTradingBrain _brain;
     private readonly OllamaClient? _ollamaClient;
 
     // Track summary history
@@ -27,11 +26,9 @@ public class BotPerformanceReporter
     
     public BotPerformanceReporter(
         ILogger<BotPerformanceReporter> logger,
-        UnifiedTradingBrain brain,
         OllamaClient? ollamaClient = null)
     {
         _logger = logger;
-        _brain = brain;
         _ollamaClient = ollamaClient;
     }
 
