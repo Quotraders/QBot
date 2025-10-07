@@ -334,7 +334,8 @@ public sealed class BotSelfAwarenessService : BackgroundService
         if (_lastStatusReport == DateTime.MinValue)
         {
             // Generate first report after one interval
-            return DateTime.UtcNow - _discoveredComponents.FirstOrDefault()?.DiscoveredAt ?? DateTime.UtcNow > _statusReportInterval;
+            var firstComponentTime = _discoveredComponents.FirstOrDefault()?.DiscoveredAt ?? DateTime.UtcNow;
+            return (DateTime.UtcNow - firstComponentTime) > _statusReportInterval;
         }
         
         return DateTime.UtcNow - _lastStatusReport >= _statusReportInterval;
