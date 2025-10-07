@@ -68,6 +68,7 @@ public sealed class ComponentDiscoveryService
 
     private Task DiscoverBackgroundServicesAsync(List<DiscoveredComponent> components, CancellationToken cancellationToken)
     {
+        _ = cancellationToken; // S1172: Parameter not used but required for async pattern
         _logger.LogInformation("🔍 [COMPONENT-DISCOVERY] Discovering background services...");
 
         try
@@ -95,7 +96,7 @@ public sealed class ComponentDiscoveryService
 
             _logger.LogInformation("✅ [COMPONENT-DISCOVERY] Found {Count} background services", hostedServices.Count);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             _logger.LogError(ex, "❌ [COMPONENT-DISCOVERY] Error discovering background services");
         }
@@ -105,6 +106,7 @@ public sealed class ComponentDiscoveryService
 
     private Task DiscoverSingletonServicesAsync(List<DiscoveredComponent> components, CancellationToken cancellationToken)
     {
+        _ = cancellationToken; // S1172: Parameter not used but required for async pattern
         _logger.LogInformation("🔍 [COMPONENT-DISCOVERY] Discovering singleton services...");
 
         try
@@ -144,7 +146,7 @@ public sealed class ComponentDiscoveryService
                         _logger.LogDebug("  ✓ Found singleton service: {ServiceName}", serviceType.Name);
                     }
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
                     _logger.LogDebug("  ⚠️ Could not get service {ServiceType}: {Error}", serviceType.Name, ex.Message);
                 }
@@ -152,7 +154,7 @@ public sealed class ComponentDiscoveryService
 
             _logger.LogInformation("✅ [COMPONENT-DISCOVERY] Discovered singleton services");
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             _logger.LogError(ex, "❌ [COMPONENT-DISCOVERY] Error discovering singleton services");
         }
@@ -162,24 +164,36 @@ public sealed class ComponentDiscoveryService
 
     private Task DiscoverFileDependenciesAsync(List<DiscoveredComponent> components, CancellationToken cancellationToken)
     {
+        _ = cancellationToken; // S1172: Parameter not used but required for async pattern
         _logger.LogInformation("🔍 [COMPONENT-DISCOVERY] Discovering file dependencies...");
+
+        const double NoRefreshRequired = 0.0; // S109: Named constant for magic number
+        const double HourlyRefresh = 1.0;
+        const double FourHourRefresh = 4.0;
+        const double DailyRefresh = 24.0;
+        const double WeeklyRefresh = 168.0;
 
         try
         {
             // Critical file paths the bot depends on
             var fileDependencies = new[]
             {
-                new { Path = "artifacts/current/parameters/bundle.json", Name = "Parameter Bundle", RefreshHours = 4.0 },
-                new { Path = "datasets/economic_calendar/calendar.json", Name = "Economic Calendar", RefreshHours = 24.0 },
-                new { Path = "models/champion/rl_model.onnx", Name = "Champion RL Model", RefreshHours = 168.0 },
-                new { Path = "models/champion/strategy_selection.onnx", Name = "Strategy Selection Model", RefreshHours = 168.0 },
-                new { Path = "kill.txt", Name = "Emergency Stop File", RefreshHours = 0.0 }, // Check existence only
-                new { Path = ".env", Name = "Environment Configuration", RefreshHours = 0.0 },
-                new { Path = "state/runtime-overrides.json", Name = "Runtime Overrides", RefreshHours = 1.0 }
+                new { Path = "artifacts/current/parameters/bundle.json", Name = "Parameter Bundle", RefreshHours = FourHourRefresh },
+                new { Path = "datasets/economic_calendar/calendar.json", Name = "Economic Calendar", RefreshHours = DailyRefresh },
+                new { Path = "models/champion/rl_model.onnx", Name = "Champion RL Model", RefreshHours = WeeklyRefresh },
+                new { Path = "models/champion/strategy_selection.onnx", Name = "Strategy Selection Model", RefreshHours = WeeklyRefresh },
+                new { Path = "kill.txt", Name = "Emergency Stop File", RefreshHours = NoRefreshRequired }, // Check existence only
+                new { Path = ".env", Name = "Environment Configuration", RefreshHours = NoRefreshRequired },
+                new { Path = "state/runtime-overrides.json", Name = "Runtime Overrides", RefreshHours = HourlyRefresh }
             };
 
             foreach (var file in fileDependencies)
             {
+                const double epsilon = 0.0001; // S1244: Tolerance for floating point comparison
+                var isCritical = Math.Abs(file.RefreshHours - NoRefreshRequired) < epsilon || 
+                                 file.Name.Contains("Model", StringComparison.OrdinalIgnoreCase) || 
+                                 file.Name.Contains("Parameter", StringComparison.OrdinalIgnoreCase);
+                
                 components.Add(new DiscoveredComponent
                 {
                     Name = file.Name,
@@ -189,7 +203,7 @@ public sealed class ComponentDiscoveryService
                     Metadata = new Dictionary<string, object>
                     {
                         ["ExpectedPath"] = file.Path,
-                        ["IsCritical"] = file.RefreshHours == 0.0 || file.Name.Contains("Model") || file.Name.Contains("Parameter")
+                        ["IsCritical"] = isCritical
                     }
                 });
                 
@@ -198,7 +212,7 @@ public sealed class ComponentDiscoveryService
 
             _logger.LogInformation("✅ [COMPONENT-DISCOVERY] Found {Count} file dependencies", fileDependencies.Length);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             _logger.LogError(ex, "❌ [COMPONENT-DISCOVERY] Error discovering file dependencies");
         }
@@ -208,6 +222,7 @@ public sealed class ComponentDiscoveryService
 
     private Task DiscoverAPIConnectionsAsync(List<DiscoveredComponent> components, CancellationToken cancellationToken)
     {
+        _ = cancellationToken; // S1172: Parameter not used but required for async pattern
         _logger.LogInformation("🔍 [COMPONENT-DISCOVERY] Discovering API connections...");
 
         try
@@ -238,7 +253,11 @@ public sealed class ComponentDiscoveryService
             });
 
             // Ollama AI Service
-            var ollamaEnabled = Environment.GetEnvironmentVariable("OLLAMA_ENABLED")?.ToLowerInvariant() == "true";
+            var ollamaEnabled = string.Equals(
+                Environment.GetEnvironmentVariable("OLLAMA_ENABLED"), 
+                "true", 
+                StringComparison.OrdinalIgnoreCase); // S1449: Use culture-aware string comparison
+            
             if (ollamaEnabled)
             {
                 components.Add(new DiscoveredComponent
@@ -268,7 +287,7 @@ public sealed class ComponentDiscoveryService
 
             _logger.LogInformation("✅ [COMPONENT-DISCOVERY] Found API connections");
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             _logger.LogError(ex, "❌ [COMPONENT-DISCOVERY] Error discovering API connections");
         }
@@ -278,22 +297,33 @@ public sealed class ComponentDiscoveryService
 
     private Task DiscoverPerformanceMetricsAsync(List<DiscoveredComponent> components, CancellationToken cancellationToken)
     {
+        _ = cancellationToken; // S1172: Parameter not used but required for async pattern
         _logger.LogInformation("🔍 [COMPONENT-DISCOVERY] Discovering performance metrics...");
+
+        const double WinRateThreshold = 0.35; // S109: Named constants for magic numbers
+        const double DailyPnLThreshold = -500.0;
+        const double DecisionLatencyThreshold = 5000.0;
+        const double MemoryUsageThreshold = 2048.0;
+        const double ThreadPoolUsageThreshold = 0.9;
+        const double DecisionFrequencyThreshold = 30.0;
 
         try
         {
             var metrics = new[]
             {
-                new { Name = "Win Rate", Threshold = 0.35, Unit = "percentage" },
-                new { Name = "Daily P&L", Threshold = -500.0, Unit = "dollars" },
-                new { Name = "Decision Latency", Threshold = 5000.0, Unit = "milliseconds" },
-                new { Name = "Memory Usage", Threshold = 2048.0, Unit = "megabytes" },
-                new { Name = "Thread Pool Usage", Threshold = 0.9, Unit = "percentage" },
-                new { Name = "Decision Frequency", Threshold = 30.0, Unit = "minutes" }
+                new { Name = "Win Rate", Threshold = WinRateThreshold, Unit = "percentage" },
+                new { Name = "Daily P&L", Threshold = DailyPnLThreshold, Unit = "dollars" },
+                new { Name = "Decision Latency", Threshold = DecisionLatencyThreshold, Unit = "milliseconds" },
+                new { Name = "Memory Usage", Threshold = MemoryUsageThreshold, Unit = "megabytes" },
+                new { Name = "Thread Pool Usage", Threshold = ThreadPoolUsageThreshold, Unit = "percentage" },
+                new { Name = "Decision Frequency", Threshold = DecisionFrequencyThreshold, Unit = "minutes" }
             };
 
             foreach (var metric in metrics)
             {
+                var isCritical = metric.Name.Contains("P&L", StringComparison.OrdinalIgnoreCase) || 
+                                 metric.Name.Contains("Win Rate", StringComparison.OrdinalIgnoreCase);
+                
                 components.Add(new DiscoveredComponent
                 {
                     Name = metric.Name,
@@ -305,7 +335,7 @@ public sealed class ComponentDiscoveryService
                     Metadata = new Dictionary<string, object>
                     {
                         ["Unit"] = metric.Unit,
-                        ["IsCritical"] = metric.Name.Contains("P&L") || metric.Name.Contains("Win Rate")
+                        ["IsCritical"] = isCritical
                     }
                 });
                 
@@ -314,7 +344,7 @@ public sealed class ComponentDiscoveryService
 
             _logger.LogInformation("✅ [COMPONENT-DISCOVERY] Found {Count} performance metrics", metrics.Length);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             _logger.LogError(ex, "❌ [COMPONENT-DISCOVERY] Error discovering performance metrics");
         }

@@ -71,7 +71,7 @@ public sealed class ComponentHealthMonitoringService : BackgroundService
                 {
                     break;
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
                     _logger.LogError(ex, "❌ [HEALTH-MONITOR] Error in health check cycle");
                     await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken).ConfigureAwait(false);
@@ -84,7 +84,7 @@ public sealed class ComponentHealthMonitoringService : BackgroundService
         {
             _logger.LogInformation("🏥 [HEALTH-MONITOR] Monitoring cancelled during startup");
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             _logger.LogCritical(ex, "💥 [HEALTH-MONITOR] Critical error in health monitoring service");
         }
