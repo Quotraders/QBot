@@ -855,6 +855,41 @@ Please check the configuration and ensure all required services are registered.
                 economicEventManager);
         });
         
+        // Register BotPerformanceReporter - AI-generated performance summaries (Feature 3)
+        services.AddSingleton<BotCore.Services.BotPerformanceReporter>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<BotCore.Services.BotPerformanceReporter>>();
+            var ollamaClient = provider.GetService<BotCore.Services.OllamaClient>();
+            
+            return new BotCore.Services.BotPerformanceReporter(logger, ollamaClient);
+        });
+        
+        // ================================================================================
+        // Bot Self-Awareness System (Phase 4)
+        // ================================================================================
+        
+        // Register Component Discovery Service - Automatically discovers all bot components
+        services.AddSingleton<BotCore.Services.ComponentDiscoveryService>();
+        
+        // Register Generic Health Check Service - Checks health of any component type
+        services.AddSingleton<BotCore.Services.GenericHealthCheckService>();
+        
+        // Register Bot Health Reporter - Converts health data to natural language using AI
+        services.AddSingleton<BotCore.Services.BotHealthReporter>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<BotCore.Services.BotHealthReporter>>();
+            var configuration = provider.GetRequiredService<IConfiguration>();
+            var ollamaClient = provider.GetService<BotCore.Services.OllamaClient>();
+            
+            return new BotCore.Services.BotHealthReporter(logger, configuration, ollamaClient);
+        });
+        
+        // Register Component Health Monitoring Service - Basic continuous health monitoring with AI explanations
+        services.AddHostedService<BotCore.Services.ComponentHealthMonitoringService>();
+        
+        // Register Bot Self-Awareness Service - Advanced orchestration with change detection and alerting
+        services.AddHostedService<BotCore.Services.BotSelfAwarenessService>();
+        
         // Register UCB Manager - C# client for Python UCB service (175 lines)
         services.AddSingleton<BotCore.ML.UcbManager>();
         

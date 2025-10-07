@@ -66,6 +66,7 @@ public class MasterDecisionOrchestrator : BackgroundService
     private readonly ContractRolloverManager _rolloverManager;
     private readonly OllamaClient? _ollamaClient;
     private readonly BotAlertService? _botAlertService;
+    private readonly BotPerformanceReporter? _performanceReporter;
     
     // Operational state
     private readonly Dictionary<string, DecisionPerformance> _performanceTracking = new();
@@ -99,7 +100,8 @@ public class MasterDecisionOrchestrator : BackgroundService
         BotCore.Brain.UnifiedTradingBrain unifiedBrain,
         IGate5Config? gate5Config = null,
         OllamaClient? ollamaClient = null,
-        BotAlertService? botAlertService = null)
+        BotAlertService? botAlertService = null,
+        BotPerformanceReporter? performanceReporter = null)
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
@@ -109,6 +111,7 @@ public class MasterDecisionOrchestrator : BackgroundService
         _gate5Config = gate5Config ?? Gate5Config.LoadFromEnvironment();
         _ollamaClient = ollamaClient;
         _botAlertService = botAlertService;
+        _performanceReporter = performanceReporter;
         
         // Try to get optional enhanced services
         _enhancedBrain = serviceProvider.GetService<EnhancedTradingBrainIntegration>();
@@ -149,6 +152,9 @@ public class MasterDecisionOrchestrator : BackgroundService
                 {
                     // Execute main orchestration cycle
                     await ExecuteOrchestrationCycleAsync(stoppingToken).ConfigureAwait(false);
+                    
+                    // Feature 3: Check for performance summaries
+                    await CheckPerformanceSummariesAsync(stoppingToken).ConfigureAwait(false);
                     
                     // Wait before next cycle
                     await Task.Delay(TimeSpan.FromSeconds(_config.OrchestrationCycleIntervalSeconds), stoppingToken).ConfigureAwait(false);
@@ -1740,6 +1746,38 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
     private static string GenerateDecisionId()
     {
         return $"MD{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}_{Random.Shared.Next(DecisionIdRandomMin, DecisionIdRandomMax)}";
+    }
+    
+    /// <summary>
+    /// Feature 3: Check if it's time to generate performance summaries
+    /// </summary>
+    private async Task CheckPerformanceSummariesAsync(CancellationToken cancellationToken)
+    {
+        if (_performanceReporter == null)
+            return;
+
+        try
+        {
+            // Check if enabled in configuration
+            var dailyEnabled = Environment.GetEnvironmentVariable("BOT_DAILY_SUMMARY_ENABLED")?.ToLowerInvariant() == "true";
+            var weeklyEnabled = Environment.GetEnvironmentVariable("BOT_WEEKLY_SUMMARY_ENABLED")?.ToLowerInvariant() == "true";
+
+            // Generate daily summary if needed
+            if (dailyEnabled && _performanceReporter.ShouldGenerateDailySummary())
+            {
+                await _performanceReporter.GenerateDailySummaryAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            // Generate weekly summary if needed
+            if (weeklyEnabled && _performanceReporter.ShouldGenerateWeeklySummary())
+            {
+                await _performanceReporter.GenerateWeeklySummaryAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ [PERFORMANCE-SUMMARIES] Error checking for performance summaries");
+        }
     }
     
     /// <summary>

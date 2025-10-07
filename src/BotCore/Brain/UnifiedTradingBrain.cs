@@ -465,6 +465,29 @@ namespace BotCore.Brain
                     }
                 }
 
+                // Feature 1: Real-Time Commentary
+                if (_ollamaClient != null && (Environment.GetEnvironmentVariable("BOT_COMMENTARY_ENABLED") == "true"))
+                {
+                    // Check for low confidence (waiting)
+                    if (optimalStrategy.Confidence < 0.4m)
+                    {
+                        var commentary = await ExplainWhyWaitingAsync(context, optimalStrategy, priceDirection).ConfigureAwait(false);
+                        if (!string.IsNullOrEmpty(commentary))
+                        {
+                            _logger.LogInformation("💬 [BOT-COMMENTARY] {Commentary}", commentary);
+                        }
+                    }
+                    // Check for high confidence
+                    else if (optimalStrategy.Confidence > 0.7m)
+                    {
+                        var commentary = await ExplainConfidenceAsync(decision, context).ConfigureAwait(false);
+                        if (!string.IsNullOrEmpty(commentary))
+                        {
+                            _logger.LogInformation("💬 [BOT-COMMENTARY] {Commentary}", commentary);
+                        }
+                    }
+                }
+
                 return decision;
             }
             catch (InvalidOperationException ex)
@@ -561,6 +584,43 @@ namespace BotCore.Brain
                     if (!string.IsNullOrEmpty(reflection))
                     {
                         _logger.LogInformation("🔮 [BOT-REFLECTION] {Reflection}", reflection);
+                    }
+                }
+
+                // Feature 2: Trade Failure Analysis (only for losses)
+                if (!wasCorrect && pnl < 0 && _ollamaClient != null && (Environment.GetEnvironmentVariable("BOT_FAILURE_ANALYSIS_ENABLED") == "true"))
+                {
+                    // Get entry and exit context if available
+                    var entryContext = context ?? _marketContexts.GetValueOrDefault(symbol);
+                    if (entryContext != null)
+                    {
+                        // Use placeholder values for prices (would need to be tracked in actual implementation)
+                        var failureAnalysis = await AnalyzeTradeFailureAsync(
+                            symbol, strategy, pnl,
+                            0, 0, 0, 0, // Entry/stop/target/exit prices would be tracked separately
+                            "Stop hit", entryContext, null).ConfigureAwait(false);
+                        
+                        if (!string.IsNullOrEmpty(failureAnalysis))
+                        {
+                            _logger.LogInformation("❌ [BOT-FAILURE-ANALYSIS] {Analysis}", failureAnalysis);
+                        }
+                    }
+                }
+
+                // Feature 6: Learning Progress Reports
+                if (_ollamaClient != null && (Environment.GetEnvironmentVariable("BOT_LEARNING_REPORTS_ENABLED") == "true"))
+                {
+                    // Report after model updates
+                    if (DateTime.UtcNow - _lastUnifiedLearningUpdate < TimeSpan.FromMinutes(1))
+                    {
+                        var learningReport = await ExplainWhatILearnedAsync(
+                            "Unified Learning Update",
+                            $"Updated all strategies from {strategy} trade outcome. Win rate: {WinRateToday:P0}").ConfigureAwait(false);
+                        
+                        if (!string.IsNullOrEmpty(learningReport))
+                        {
+                            _logger.LogInformation("📚 [BOT-LEARNING] {Report}", learningReport);
+                        }
                     }
                 }
             }
@@ -818,14 +878,30 @@ Reflect on what happened in 1-2 sentences. Speak as ME (the bot).";
             {
                 // Analyze market regime using technical indicators and volatility
                 // ONNX model integration planned for future enhancement
+                MarketRegime detectedRegime;
                 if (context.VolumeRatio > HighVolumeRatioThreshold && context.Volatility > TrendingVolatilityThreshold)
-                    return Task.FromResult(MarketRegime.Trending);
-                if (context.Volatility < LowVolatilityThreshold && Math.Abs(context.PriceChange) < RangingPriceChangeThreshold)
-                    return Task.FromResult(MarketRegime.Ranging);
-                if (context.Volatility > HighVolatilityThreshold)
-                    return Task.FromResult(MarketRegime.HighVolatility);
+                    detectedRegime = MarketRegime.Trending;
+                else if (context.Volatility < LowVolatilityThreshold && Math.Abs(context.PriceChange) < RangingPriceChangeThreshold)
+                    detectedRegime = MarketRegime.Ranging;
+                else if (context.Volatility > HighVolatilityThreshold)
+                    detectedRegime = MarketRegime.HighVolatility;
+                else
+                    detectedRegime = MarketRegime.Normal;
+
+                // Feature 5: Market Regime Explanations
+                if (_ollamaClient != null && (Environment.GetEnvironmentVariable("BOT_REGIME_EXPLANATION_ENABLED") == "true"))
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        var explanation = await ExplainMarketRegimeAsync(detectedRegime, context).ConfigureAwait(false);
+                        if (!string.IsNullOrEmpty(explanation))
+                        {
+                            _logger.LogInformation("📈 [MARKET-REGIME] {Explanation}", explanation);
+                        }
+                    });
+                }
                 
-                return Task.FromResult(MarketRegime.Normal);
+                return Task.FromResult(detectedRegime);
             }
             catch (InvalidOperationException ex)
             {
@@ -857,13 +933,47 @@ Reflect on what happened in 1-2 sentences. Speak as ME (the bot).";
                 
                 var selection = await _strategySelector.SelectArmAsync(availableStrategies, contextVector, cancellationToken).ConfigureAwait(false);
                 
-                return new StrategySelection
+                var result = new StrategySelection
                 {
                     SelectedStrategy = selection.SelectedArm,
                     Confidence = selection.Confidence,
                     UcbValue = selection.UcbValue,
                     Reasoning = selection.SelectionReason ?? "Neural UCB selection"
                 };
+
+                // Feature 4: Strategy Confidence Explanations
+                if (_ollamaClient != null && (Environment.GetEnvironmentVariable("BOT_STRATEGY_EXPLANATION_ENABLED") == "true"))
+                {
+                    // Get all strategy scores for explanation
+                    var allScores = new Dictionary<string, decimal>();
+                    foreach (var strategy in availableStrategies)
+                    {
+                        // Use confidence as a proxy for score (actual UCB scores would be tracked separately)
+                        allScores[strategy] = strategy == selection.SelectedArm ? selection.Confidence : selection.Confidence * 0.7m;
+                    }
+                    
+                    // Check for strategy conflicts (multiple strategies with similar scores)
+                    var topScores = allScores.OrderByDescending(kvp => kvp.Value).Take(2).ToList();
+                    if (topScores.Count > 1 && Math.Abs(topScores[0].Value - topScores[1].Value) < 0.15m)
+                    {
+                        // Strategies are conflicting - close scores
+                        var conflictExplanation = await ExplainConflictAsync(allScores, context).ConfigureAwait(false);
+                        if (!string.IsNullOrEmpty(conflictExplanation))
+                        {
+                            _logger.LogInformation("💬 [BOT-COMMENTARY] {Conflict}", conflictExplanation);
+                        }
+                    }
+                    else
+                    {
+                        var explanation = await ExplainStrategySelectionAsync(selection.SelectedArm, allScores, context).ConfigureAwait(false);
+                        if (!string.IsNullOrEmpty(explanation))
+                        {
+                            _logger.LogInformation("🧠 [STRATEGY-SELECTION] {Explanation}", explanation);
+                        }
+                    }
+                }
+                
+                return result;
             }
             catch (InvalidOperationException ex)
             {
@@ -2508,6 +2618,268 @@ Reflect on what happened in 1-2 sentences. Speak as ME (the bot).";
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ [UNIFIED-RETRAIN] Unified model retraining failed");
+            }
+        }
+
+        #endregion
+
+        #region Real-Time AI Commentary Features
+
+        /// <summary>
+        /// Feature 1: Explain why bot is waiting (low confidence or no clear signal)
+        /// </summary>
+        private async Task<string> ExplainWhyWaitingAsync(
+            MarketContext context,
+            StrategySelection optimalStrategy,
+            PricePrediction priceDirection)
+        {
+            if (_ollamaClient == null)
+                return string.Empty;
+
+            try
+            {
+                var currentContext = GatherCurrentContext();
+                
+                var prompt = $@"I am a trading bot. I'm NOT taking a trade right now because:
+Strategy Confidence: {optimalStrategy.Confidence:P1}
+Price Direction: {priceDirection.Direction}
+Price Probability: {priceDirection.Probability:P1}
+Market Regime: {context.TrendStrength}
+
+Current context: {currentContext}
+
+Explain in 1-2 sentences why I'm waiting and what I'm looking for. Speak as ME (the bot).";
+
+                var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining why waiting");
+                return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Feature 1: Explain high confidence trade decision
+        /// </summary>
+        private async Task<string> ExplainConfidenceAsync(
+            BrainDecision decision,
+            MarketContext context)
+        {
+            if (_ollamaClient == null)
+                return string.Empty;
+
+            try
+            {
+                var currentContext = GatherCurrentContext();
+                
+                var prompt = $@"I am a trading bot. I'm VERY confident about this trade:
+Strategy: {decision.RecommendedStrategy}
+Direction: {decision.PriceDirection}
+Confidence: {decision.StrategyConfidence:P1}
+Price Probability: {decision.PriceProbability:P1}
+Market Regime: {decision.MarketRegime}
+
+Current context: {currentContext}
+
+Explain in 1-2 sentences why I'm so confident. Speak as ME (the bot).";
+
+                var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining high confidence");
+                return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Feature 1: Explain conflicting strategy signals
+        /// </summary>
+        private async Task<string> ExplainConflictAsync(
+            Dictionary<string, decimal> strategyConfidences,
+            MarketContext context)
+        {
+            if (_ollamaClient == null)
+                return string.Empty;
+
+            try
+            {
+                var currentContext = GatherCurrentContext();
+                var strategyList = string.Join(", ", strategyConfidences.Select(kvp => $"{kvp.Key}: {kvp.Value:P0}"));
+                
+                var prompt = $@"I am a trading bot. My strategies are giving CONFLICTING signals:
+{strategyList}
+
+Market Regime: {context.TrendStrength}
+Current context: {currentContext}
+
+Explain in 1-2 sentences why strategies disagree and what this means. Speak as ME (the bot).";
+
+                var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining strategy conflict");
+                return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Feature 2: Deep analysis of why a trade failed
+        /// </summary>
+        private async Task<string> AnalyzeTradeFailureAsync(
+            string symbol,
+            string strategy,
+            decimal pnl,
+            decimal entryPrice,
+            decimal stopPrice,
+            decimal targetPrice,
+            decimal exitPrice,
+            string exitReason,
+            MarketContext entryContext,
+            MarketContext? exitContext)
+        {
+            if (_ollamaClient == null)
+                return string.Empty;
+
+            try
+            {
+                var marketShift = exitContext != null 
+                    ? $"Trend changed from {entryContext.TrendStrength:F2} to {exitContext.TrendStrength:F2}, Volatility from {entryContext.Volatility:F2} to {exitContext.Volatility:F2}"
+                    : "Exit context unavailable";
+
+                var prompt = $@"I am a trading bot. I need to analyze why this trade FAILED:
+Symbol: {symbol}
+Strategy: {strategy}
+Entry Price: {entryPrice:F2}
+Stop Price: {stopPrice:F2}
+Target Price: {targetPrice:F2}
+Exit Price: {exitPrice:F2}
+Exit Reason: {exitReason}
+Loss: ${pnl:F2}
+
+Entry Market Conditions: Trend {entryContext.TrendStrength:F2}, Volatility {entryContext.Volatility:F2}
+What Changed: {marketShift}
+
+Analyze in 2-3 sentences: What went wrong? Was it my entry timing, stop placement, strategy choice, or market conditions? What should I learn? Speak as ME (the bot).";
+
+                var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-FAILURE-ANALYSIS] Error analyzing trade failure");
+                return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Feature 4: Explain why Neural UCB chose specific strategy
+        /// </summary>
+        private async Task<string> ExplainStrategySelectionAsync(
+            string selectedStrategy,
+            Dictionary<string, decimal> allStrategyScores,
+            MarketContext context)
+        {
+            if (_ollamaClient == null)
+                return string.Empty;
+
+            try
+            {
+                var currentContext = GatherCurrentContext();
+                var scoreList = string.Join(", ", allStrategyScores.Select(kvp => $"{kvp.Key}: {kvp.Value:P0}"));
+                
+                // Get recent performance for selected strategy
+                var strategyPerf = _strategyPerformance.GetValueOrDefault(selectedStrategy);
+                var winRate = strategyPerf?.WinRate ?? 0;
+                
+                var prompt = $@"I am a trading bot. My Neural UCB chose strategy {selectedStrategy}:
+
+All Strategy Scores: {scoreList}
+Selected: {selectedStrategy} (Recent Win Rate: {winRate:P0})
+
+Market Conditions: Trend {context.TrendStrength:F2}, Volatility {context.Volatility:F2}
+Current context: {currentContext}
+
+Explain in 1-2 sentences why Neural UCB selected this strategy over others. Speak as ME (the bot).";
+
+                var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [STRATEGY-SELECTION] Error explaining strategy selection");
+                return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Feature 5: Explain detected market regime
+        /// </summary>
+        private async Task<string> ExplainMarketRegimeAsync(
+            MarketRegime regime,
+            MarketContext context)
+        {
+            if (_ollamaClient == null)
+                return string.Empty;
+
+            try
+            {
+                var currentContext = GatherCurrentContext();
+                
+                var prompt = $@"I am a trading bot. I detected this market regime:
+Regime: {regime}
+Trend Strength: {context.TrendStrength:F2}
+Volatility: {context.Volatility:F2}
+Volume Ratio: {context.VolumeRatio:F2}
+
+Current context: {currentContext}
+
+Explain in 1-2 sentences what this regime means and how it affects my trading. Speak as ME (the bot).";
+
+                var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [MARKET-REGIME] Error explaining market regime");
+                return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Feature 6: Explain what bot learned from recent trades
+        /// </summary>
+        private async Task<string> ExplainWhatILearnedAsync(
+            string learningType,
+            string details)
+        {
+            if (_ollamaClient == null)
+                return string.Empty;
+
+            try
+            {
+                var currentContext = GatherCurrentContext();
+                
+                var prompt = $@"I am a trading bot. I just updated my learning:
+Learning Type: {learningType}
+Details: {details}
+
+Current context: {currentContext}
+
+Explain in 1-2 sentences what I learned and how it will improve my future trading. Speak as ME (the bot).";
+
+                var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-LEARNING] Error explaining learning update");
+                return string.Empty;
             }
         }
 
