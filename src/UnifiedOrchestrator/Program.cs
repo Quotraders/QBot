@@ -555,6 +555,19 @@ Please check the configuration and ensure all required services are registered.
         Console.WriteLine("💰 [AUTONOMOUS-ENGINE] Features: Auto strategy switching, dynamic position sizing, TopStep compliance, continuous learning");
         
         // ================================================================================
+        // REGIME DETECTION SERVICE - MARKET CONDITION ANALYSIS
+        // ================================================================================
+        
+        // Register Regime Detection Service for market regime classification (required by UnifiedPositionManagementService)
+        services.AddSingleton<BotCore.Services.RegimeDetectionService>();
+        
+        Console.WriteLine("📊 [REGIME-DETECTION] Registered regime detection service");
+        Console.WriteLine("   ✅ Market regime classification - Detects Trending, Ranging, and Transition regimes");
+        Console.WriteLine("   ✅ Dynamic R-multiple targeting - Adjusts profit targets based on market conditions (Feature 1)");
+        Console.WriteLine("   ✅ Regime change exit detection - Exits positions when regime shifts unfavorably (Feature 3)");
+        Console.WriteLine("   ✅ Adaptive position management - Enables regime-aware trading decisions");
+        
+        // ================================================================================
         // UNIFIED POSITION MANAGEMENT SERVICE - BREAKEVEN, TRAILING, TIME EXITS
         // ================================================================================
         
