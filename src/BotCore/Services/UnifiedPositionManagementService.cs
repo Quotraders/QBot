@@ -485,5 +485,141 @@ namespace BotCore.Services
             
             return (0m, 0m);
         }
+        
+        /// <summary>
+        /// PHASE 2: Handle zone break events from ZoneBreakMonitoringService
+        /// Adjusts stops based on broken zones - broken supply becomes support, broken demand becomes resistance
+        /// </summary>
+        public async void OnZoneBreak(ZoneBreakEvent breakEvent)
+        {
+            try
+            {
+                // Find positions for this symbol
+                var relevantPositions = _activePositions.Values
+                    .Where(p => p.Symbol == breakEvent.Symbol)
+                    .ToList();
+                
+                if (relevantPositions.Count == 0)
+                {
+                    return;
+                }
+                
+                foreach (var state in relevantPositions)
+                {
+                    var isLong = state.Quantity > 0;
+                    var posType = isLong ? "LONG" : "SHORT";
+                    
+                    // Only process if break type matches position type
+                    if (breakEvent.PositionType != posType)
+                    {
+                        continue;
+                    }
+                    
+                    switch (breakEvent.BreakType)
+                    {
+                        case ZoneBreakType.StrongDemandBreak:
+                        case ZoneBreakType.WeakDemandBreak:
+                            // Long position, demand zone broken = bad, consider early exit or tighten stop
+                            if (breakEvent.Severity == "CRITICAL" || breakEvent.Severity == "HIGH")
+                            {
+                                _logger.LogWarning("⚠️ [POSITION-MGMT] CRITICAL demand break for LONG {PositionId} - Consider early exit",
+                                    state.PositionId);
+                                
+                                // For critical breaks, close position immediately
+                                if (breakEvent.Severity == "CRITICAL")
+                                {
+                                    await RequestPositionCloseAsync(state, ExitReason.ZoneBreak, CancellationToken.None).ConfigureAwait(false);
+                                }
+                            }
+                            break;
+                            
+                        case ZoneBreakType.StrongSupplyBreak:
+                        case ZoneBreakType.WeakSupplyBreak:
+                            // Short position, supply zone broken = bad, consider early exit or tighten stop
+                            if (breakEvent.Severity == "CRITICAL" || breakEvent.Severity == "HIGH")
+                            {
+                                _logger.LogWarning("⚠️ [POSITION-MGMT] CRITICAL supply break for SHORT {PositionId} - Consider early exit",
+                                    state.PositionId);
+                                
+                                // For critical breaks, close position immediately
+                                if (breakEvent.Severity == "CRITICAL")
+                                {
+                                    await RequestPositionCloseAsync(state, ExitReason.ZoneBreak, CancellationToken.None).ConfigureAwait(false);
+                                }
+                            }
+                            break;
+                            
+                        case ZoneBreakType.StrongSupplyBreakBullish:
+                            // Long position, strong resistance broken upward = good, maybe widen target
+                            _logger.LogInformation("✅ [POSITION-MGMT] Bullish breakout confirmed for LONG {PositionId} - Strong momentum",
+                                state.PositionId);
+                            // Could optionally widen target here
+                            break;
+                            
+                        case ZoneBreakType.StrongDemandBreakBearish:
+                            // Short position, strong support broken downward = good, maybe widen target
+                            _logger.LogInformation("✅ [POSITION-MGMT] Bearish breakout confirmed for SHORT {PositionId} - Strong momentum",
+                                state.PositionId);
+                            // Could optionally widen target here
+                            break;
+                    }
+                    
+                    // PHASE 2 Feature: Move stop to just behind broken zone
+                    // Broken supply becomes new support (for longs)
+                    // Broken demand becomes new resistance (for shorts)
+                    await AdjustStopBehindBrokenZoneAsync(state, breakEvent, CancellationToken.None).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [POSITION-MGMT] Error handling zone break for {Symbol}", breakEvent.Symbol);
+            }
+        }
+        
+        /// <summary>
+        /// PHASE 2: Adjust stop to just behind broken zone
+        /// Broken supply becomes support (for longs) - place stop below it
+        /// Broken demand becomes resistance (for shorts) - place stop above it
+        /// </summary>
+        private async Task AdjustStopBehindBrokenZoneAsync(
+            PositionManagementState state,
+            ZoneBreakEvent breakEvent,
+            CancellationToken cancellationToken)
+        {
+            var isLong = state.Quantity > 0;
+            var tickSize = GetTickSize(state.Symbol);
+            decimal newStopPrice;
+            
+            // For long positions with broken supply zones (now support)
+            if (isLong && (breakEvent.BreakType == ZoneBreakType.StrongSupplyBreakBullish))
+            {
+                // Place stop below the broken zone (now support)
+                newStopPrice = breakEvent.ZoneLow - (2 * tickSize); // 2 ticks below zone
+                
+                // Only update if new stop is better than current
+                if (newStopPrice > state.CurrentStopPrice)
+                {
+                    await ModifyStopPriceAsync(state, newStopPrice, "ZoneBehind", cancellationToken).ConfigureAwait(false);
+                    
+                    _logger.LogInformation("🎯 [POSITION-MGMT] Stop adjusted behind broken supply (now support) for LONG {PositionId}: {Old} → {New}",
+                        state.PositionId, state.CurrentStopPrice, newStopPrice);
+                }
+            }
+            // For short positions with broken demand zones (now resistance)
+            else if (!isLong && (breakEvent.BreakType == ZoneBreakType.StrongDemandBreakBearish))
+            {
+                // Place stop above the broken zone (now resistance)
+                newStopPrice = breakEvent.ZoneHigh + (2 * tickSize); // 2 ticks above zone
+                
+                // Only update if new stop is better than current
+                if (newStopPrice < state.CurrentStopPrice)
+                {
+                    await ModifyStopPriceAsync(state, newStopPrice, "ZoneBehind", cancellationToken).ConfigureAwait(false);
+                    
+                    _logger.LogInformation("🎯 [POSITION-MGMT] Stop adjusted behind broken demand (now resistance) for SHORT {PositionId}: {Old} → {New}",
+                        state.PositionId, state.CurrentStopPrice, newStopPrice);
+                }
+            }
+        }
     }
 }

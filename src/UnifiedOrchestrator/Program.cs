@@ -570,6 +570,21 @@ Please check the configuration and ensure all required services are registered.
         Console.WriteLine("   ✅ Max excursion tracking - Captures data for ML/RL optimization");
         
         // ================================================================================
+        // ZONE BREAK MONITORING SERVICE - PHASE 2 IMPLEMENTATION
+        // ================================================================================
+        
+        // Register Zone Break Monitoring Service for supply/demand zone break detection
+        services.AddSingleton<BotCore.Services.ZoneBreakMonitoringService>();
+        services.AddHostedService<BotCore.Services.ZoneBreakMonitoringService>(provider => 
+            provider.GetRequiredService<BotCore.Services.ZoneBreakMonitoringService>());
+        
+        Console.WriteLine("🔍 [ZONE-BREAK] Registered zone break monitoring service (PHASE 2)");
+        Console.WriteLine("   ✅ Real-time zone break detection - Monitors supply/demand zone violations");
+        Console.WriteLine("   ✅ Position exit warnings - Alert on critical support/resistance breaks");
+        Console.WriteLine("   ✅ Zone-based stop placement - Moves stops behind broken zones");
+        Console.WriteLine("   ✅ Aggressive entry signals - Boosts confidence on strong zone breaks");
+        
+        // ================================================================================
         // ZONE AWARENESS SERVICES - PRODUCTION-READY SUPPLY/DEMAND INTEGRATION
         // ================================================================================
         
