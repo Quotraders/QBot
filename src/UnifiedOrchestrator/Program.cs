@@ -870,8 +870,11 @@ Please check the configuration and ensure all required services are registered.
         // Register Generic Health Check Service - Component health monitoring
         services.AddSingleton<BotCore.Services.GenericHealthCheckService>();
         
-        // Register Component Health Monitoring Service - Continuous health monitoring
+        // Register Component Health Monitoring Service - Basic continuous health monitoring
         services.AddHostedService<BotCore.Services.ComponentHealthMonitoringService>();
+        
+        // Register Bot Self-Awareness Service - Advanced self-awareness with change detection and reporting
+        services.AddHostedService<BotCore.Services.BotSelfAwarenessService>();
         
         // Register UCB Manager - C# client for Python UCB service (175 lines)
         services.AddSingleton<BotCore.ML.UcbManager>();
