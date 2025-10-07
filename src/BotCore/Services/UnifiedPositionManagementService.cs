@@ -358,6 +358,9 @@ namespace BotCore.Services
                     ? (state.GetProperty("EntryRegime")?.ToString() ?? "UNKNOWN")
                     : state.EntryRegime;
                 
+                // VOLATILITY SCALING: Calculate current ATR for regime-aware learning
+                var currentAtr = EstimateCurrentVolatility(state);
+                
                 optimizer.RecordOutcome(
                     strategy: state.Strategy,
                     symbol: state.Symbol,
@@ -371,7 +374,8 @@ namespace BotCore.Services
                     finalPnL: pnlTicks,
                     maxFavorableExcursion: maxFavTicks,
                     maxAdverseExcursion: maxAdvTicks,
-                    marketRegime: marketRegime
+                    marketRegime: marketRegime,
+                    currentAtr: currentAtr  // VOLATILITY SCALING: Pass ATR for regime detection
                 );
                 
                 _logger.LogDebug("📊 [POSITION-MGMT] Reported outcome to optimizer: {Strategy} {Symbol}, BE={BE}, StoppedOut={SO}, TargetHit={TH}, TimedOut={TO}, PnL={PnL} ticks",
