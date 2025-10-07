@@ -864,6 +864,15 @@ Please check the configuration and ensure all required services are registered.
             return new BotCore.Services.BotPerformanceReporter(logger, ollamaClient);
         });
         
+        // Register Component Discovery Service - Bot self-awareness system
+        services.AddSingleton<BotCore.Services.ComponentDiscoveryService>();
+        
+        // Register Generic Health Check Service - Component health monitoring
+        services.AddSingleton<BotCore.Services.GenericHealthCheckService>();
+        
+        // Register Component Health Monitoring Service - Continuous health monitoring
+        services.AddHostedService<BotCore.Services.ComponentHealthMonitoringService>();
+        
         // Register UCB Manager - C# client for Python UCB service (175 lines)
         services.AddSingleton<BotCore.ML.UcbManager>();
         
