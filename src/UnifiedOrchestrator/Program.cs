@@ -831,6 +831,13 @@ Please check the configuration and ensure all required services are registered.
             Console.WriteLine("🔇 [OLLAMA] Bot voice disabled - will operate silently");
         }
         
+        // Register AI Commentary Services - Enhanced self-awareness features
+        services.AddSingleton<BotCore.Services.ParameterChangeTracker>();
+        services.AddSingleton<BotCore.Services.MarketSnapshotStore>();
+        services.AddSingleton<BotCore.Services.RiskAssessmentCommentary>();
+        services.AddSingleton<BotCore.Services.AdaptiveLearningCommentary>();
+        services.AddSingleton<BotCore.Services.HistoricalPatternRecognitionService>();
+        
         // Register BotAlertService - Proactive alerting system for bot self-awareness
         services.AddSingleton<BotCore.Services.BotAlertService>();
         
@@ -844,6 +851,11 @@ Please check the configuration and ensure all required services are registered.
             var gate4Config = provider.GetService<TradingBot.Abstractions.IGate4Config>();
             var ollamaClient = provider.GetService<BotCore.Services.OllamaClient>();
             var economicEventManager = provider.GetService<BotCore.Market.IEconomicEventManager>();
+            var riskCommentary = provider.GetService<BotCore.Services.RiskAssessmentCommentary>();
+            var learningCommentary = provider.GetService<BotCore.Services.AdaptiveLearningCommentary>();
+            var snapshotStore = provider.GetService<BotCore.Services.MarketSnapshotStore>();
+            var historicalPatterns = provider.GetService<BotCore.Services.HistoricalPatternRecognitionService>();
+            var parameterTracker = provider.GetService<BotCore.Services.ParameterChangeTracker>();
             
             return new BotCore.Brain.UnifiedTradingBrain(
                 logger,
@@ -852,7 +864,12 @@ Please check the configuration and ensure all required services are registered.
                 cvarPPO,
                 gate4Config,
                 ollamaClient,
-                economicEventManager);
+                economicEventManager,
+                riskCommentary,
+                learningCommentary,
+                snapshotStore,
+                historicalPatterns,
+                parameterTracker);
         });
         
         // Register BotPerformanceReporter - AI-generated performance summaries (Feature 3)

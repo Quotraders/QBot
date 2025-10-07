@@ -153,6 +153,11 @@ namespace BotCore.Brain
         private readonly ConcurrentDictionary<string, TradingPerformance> _performance = new();
         private readonly CVaRPPO _cvarPPO; // Direct injection instead of loading from memory
         private readonly BotCore.Services.OllamaClient? _ollamaClient; // Optional AI conversation client
+        private readonly BotCore.Services.RiskAssessmentCommentary? _riskCommentary;
+        private readonly BotCore.Services.AdaptiveLearningCommentary? _learningCommentary;
+        private readonly BotCore.Services.MarketSnapshotStore? _snapshotStore;
+        private readonly BotCore.Services.HistoricalPatternRecognitionService? _historicalPatterns;
+        private readonly BotCore.Services.ParameterChangeTracker? _parameterTracker;
         
         // ML Models for different decision points
         private object? _lstmPricePredictor;
@@ -257,7 +262,12 @@ namespace BotCore.Brain
             CVaRPPO cvarPPO,
             IGate4Config? gate4Config = null,
             BotCore.Services.OllamaClient? ollamaClient = null,
-            BotCore.Market.IEconomicEventManager? economicEventManager = null)
+            BotCore.Market.IEconomicEventManager? economicEventManager = null,
+            BotCore.Services.RiskAssessmentCommentary? riskCommentary = null,
+            BotCore.Services.AdaptiveLearningCommentary? learningCommentary = null,
+            BotCore.Services.MarketSnapshotStore? snapshotStore = null,
+            BotCore.Services.HistoricalPatternRecognitionService? historicalPatterns = null,
+            BotCore.Services.ParameterChangeTracker? parameterTracker = null)
         {
             _logger = logger;
             _memoryManager = memoryManager;
@@ -266,6 +276,11 @@ namespace BotCore.Brain
             _gate4Config = gate4Config ?? Gate4Config.LoadFromEnvironment();
             _ollamaClient = ollamaClient; // Optional AI conversation client
             _economicEventManager = economicEventManager; // Optional economic calendar (Phase 2)
+            _riskCommentary = riskCommentary;
+            _learningCommentary = learningCommentary;
+            _snapshotStore = snapshotStore;
+            _historicalPatterns = historicalPatterns;
+            _parameterTracker = parameterTracker;
             
             // Initialize Neural UCB for strategy selection using ONNX-based neural network
             var onnxLoader = new OnnxModelLoader(new Microsoft.Extensions.Logging.Abstractions.NullLogger<OnnxModelLoader>());
