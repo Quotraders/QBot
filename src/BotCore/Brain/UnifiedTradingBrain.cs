@@ -835,20 +835,33 @@ namespace BotCore.Brain
                         var currentPrice = _latestBars?.LastOrDefault()?.Close ?? 0m;
                         var atr = _latestEnv?.atr ?? 0m;
                         
+                        // Check if async mode is enabled
+                        var asyncMode = Environment.GetEnvironmentVariable("RISK_COMMENTARY_ASYNC") == "true";
+                        
                         // Only proceed if we have valid data
                         if (currentPrice > 0m && atr > 0m)
                         {
-                            riskContext = await _riskCommentary.AnalyzeRiskAsync(
-                                decision.Symbol, currentPrice, atr).ConfigureAwait(false);
+                            if (asyncMode)
+                            {
+                                // Fire-and-forget: Start analysis in background, continue trading immediately
+                                _riskCommentary.AnalyzeRiskFireAndForget(decision.Symbol, currentPrice, atr);
+                                _logger.LogTrace("🚀 [RISK-COMMENTARY] Started background analysis (async mode)");
+                            }
+                            else
+                            {
+                                // Blocking mode: Wait for result (for debugging/testing only)
+                                riskContext = await _riskCommentary.AnalyzeRiskAsync(
+                                    decision.Symbol, currentPrice, atr).ConfigureAwait(false);
+                                    
+                                if (!string.IsNullOrEmpty(riskContext))
+                                {
+                                    _logger.LogInformation("🧠 [RISK-COMMENTARY] {Commentary}", riskContext);
+                                }
+                            }
                         }
                         else
                         {
                             _logger.LogWarning("⚠️ [RISK-COMMENTARY] Skipping - missing price or ATR data");
-                        }
-                        
-                        if (!string.IsNullOrEmpty(riskContext))
-                        {
-                            _logger.LogInformation("🧠 [RISK-COMMENTARY] {Commentary}", riskContext);
                         }
                     }
                     catch (Exception ex)
@@ -953,11 +966,25 @@ Current context: {currentContext}
                     {
                         var lookbackMinutes = int.TryParse(Environment.GetEnvironmentVariable("LEARNING_LOOKBACK_MINUTES"), 
                             out var mins) ? mins : 60;
-                        learningContext = await _learningCommentary.ExplainRecentAdaptationsAsync(lookbackMinutes).ConfigureAwait(false);
                         
-                        if (!string.IsNullOrEmpty(learningContext))
+                        // Check if async mode is enabled
+                        var asyncMode = Environment.GetEnvironmentVariable("LEARNING_COMMENTARY_ASYNC") == "true";
+                        
+                        if (asyncMode)
                         {
-                            _logger.LogInformation("📚 [LEARNING-COMMENTARY] {Commentary}", learningContext);
+                            // Fire-and-forget: Start explanation in background, continue immediately
+                            _learningCommentary.ExplainRecentAdaptationsFireAndForget(lookbackMinutes);
+                            _logger.LogTrace("🚀 [LEARNING-COMMENTARY] Started background explanation (async mode)");
+                        }
+                        else
+                        {
+                            // Blocking mode: Wait for result (for debugging/testing only)
+                            learningContext = await _learningCommentary.ExplainRecentAdaptationsAsync(lookbackMinutes).ConfigureAwait(false);
+                            
+                            if (!string.IsNullOrEmpty(learningContext))
+                            {
+                                _logger.LogInformation("📚 [LEARNING-COMMENTARY] {Commentary}", learningContext);
+                            }
                         }
                     }
                     catch (Exception ex)

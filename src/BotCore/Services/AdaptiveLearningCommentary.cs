@@ -78,6 +78,35 @@ Explain these adaptations in 2-3 sentences. What am I learning? Speak as ME (the
     }
 
     /// <summary>
+    /// Fire-and-forget: Start learning explanation in background without waiting for result
+    /// Trading continues immediately while Ollama processes in background
+    /// </summary>
+    public void ExplainRecentAdaptationsFireAndForget(int lookbackMinutes = 60)
+    {
+        if (_ollamaClient == null)
+        {
+            return;
+        }
+
+        // Start background task but don't wait for it
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var result = await ExplainRecentAdaptationsAsync(lookbackMinutes).ConfigureAwait(false);
+                if (!string.IsNullOrEmpty(result))
+                {
+                    _logger.LogInformation("📚 [LEARNING-COMMENTARY] {Commentary}", result);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [LEARNING-COMMENTARY] Background explanation failed");
+            }
+        });
+    }
+
+    /// <summary>
     /// Generate commentary on a specific parameter change
     /// </summary>
     public async Task<string> ExplainParameterChangeAsync(

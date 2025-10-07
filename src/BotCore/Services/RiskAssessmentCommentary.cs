@@ -80,6 +80,38 @@ Focus on actionable insights about support/resistance and pattern signals.";
         }
     }
 
+    /// <summary>
+    /// Fire-and-forget: Start risk analysis in background without waiting for result
+    /// Trading continues immediately while Ollama processes in background
+    /// </summary>
+    public void AnalyzeRiskFireAndForget(
+        string symbol, 
+        decimal currentPrice, 
+        decimal atr)
+    {
+        if (_ollamaClient == null)
+        {
+            return;
+        }
+
+        // Start background task but don't wait for it
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var result = await AnalyzeRiskAsync(symbol, currentPrice, atr, CancellationToken.None).ConfigureAwait(false);
+                if (!string.IsNullOrEmpty(result))
+                {
+                    _logger.LogInformation("🧠 [RISK-COMMENTARY] {Symbol}: {Commentary}", symbol, result);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [RISK-COMMENTARY] Background analysis failed for {Symbol}", symbol);
+            }
+        });
+    }
+
     private static string BuildZoneContext(ZoneSnapshot snapshot)
     {
         if (snapshot.NearestDemand == null && snapshot.NearestSupply == null)
