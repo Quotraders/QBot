@@ -16,6 +16,7 @@ namespace BotCore.Market;
 public class EconomicEventManager : IEconomicEventManager, IDisposable
 {
     private readonly ILogger<EconomicEventManager> _logger;
+    private readonly BotCore.Services.BotAlertService? _botAlertService;
     private readonly List<EconomicEvent> _events = new();
     private readonly ConcurrentDictionary<string, TradingRestriction> _tradingRestrictions = new();
     private readonly Timer _eventMonitor;
@@ -34,9 +35,12 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
     public event EventHandler<EconomicEventAlert>? OnHighImpactEventApproaching;
     public event EventHandler<TradingRestriction>? OnTradingRestrictionChanged;
 
-    public EconomicEventManager(ILogger<EconomicEventManager> logger)
+    public EconomicEventManager(
+        ILogger<EconomicEventManager> logger,
+        BotCore.Services.BotAlertService? botAlertService = null)
     {
         _logger = logger;
+        _botAlertService = botAlertService;
         
         // Initialize monitoring timers
         _eventMonitor = new Timer(CheckUpcomingEvents, null, Timeout.Infinite, Timeout.Infinite);
@@ -420,6 +424,13 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
 
                     _logger.LogWarning("[EconomicEventManager] High-impact event approaching: {Name} in {TimeUntil}", 
                         economicEvent.Name, timeUntilEvent);
+
+                    // Send alert via BotAlertService if available
+                    if (_botAlertService != null)
+                    {
+                        var minutesUntil = (int)timeUntilEvent.TotalMinutes;
+                        _ = _botAlertService.AlertUpcomingEventAsync(economicEvent.Name, minutesUntil);
+                    }
 
                     OnHighImpactEventApproaching?.Invoke(this, alert);
                 }
