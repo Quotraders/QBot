@@ -13,6 +13,16 @@ using BotCore.Bandits;
 namespace BotCore.Services
 {
     /// <summary>
+    /// Volatility regime classification for parameter scaling
+    /// </summary>
+    public enum VolatilityRegime
+    {
+        Low,      // ATR < 3 ticks (market sleeping)
+        Normal,   // ATR 3-6 ticks (typical conditions)
+        High      // ATR > 6 ticks (market moving aggressively)
+    }
+
+    /// <summary>
     /// Position Management Optimizer - PHASE 3 Implementation
     /// 
     /// Learns optimal position management parameters using ML/RL:
@@ -20,6 +30,9 @@ namespace BotCore.Services
     /// - Optimal trailing stop distance (1.0x vs 1.5x vs 2.0x ATR)
     /// - Optimal time exit thresholds per strategy and market regime
     /// - Tracks outcomes: "BE at 8 ticks → stopped out, would have hit target"
+    /// 
+    /// VOLATILITY SCALING: Scales thresholds based on current ATR
+    /// SESSION-SPECIFIC LEARNING: Learns separate parameters per trading session
     /// 
     /// Integrates with ParameterChangeTracker for learning feedback.
     /// </summary>
@@ -39,6 +52,22 @@ namespace BotCore.Services
         private static readonly int[] BreakevenTickOptions = { 4, 6, 8, 10, 12, 16 };
         private static readonly decimal[] TrailMultiplierOptions = { 0.8m, 1.0m, 1.2m, 1.5m, 1.8m, 2.0m };
         private static readonly int[] TimeExitMinutesOptions = { 15, 30, 45, 60, 90, 120 };
+        
+        // VOLATILITY SCALING: ATR thresholds for regime detection (in ticks)
+        private const decimal LowVolatilityThreshold = 3m;   // ATR < 3 ticks
+        private const decimal HighVolatilityThreshold = 6m;  // ATR > 6 ticks
+        
+        // VOLATILITY SCALING: Parameter scaling factors per regime
+        private static readonly Dictionary<VolatilityRegime, decimal> VolatilityScalingFactors = new()
+        {
+            { VolatilityRegime.Low, 0.75m },      // Tighten by 25% in low volatility
+            { VolatilityRegime.Normal, 1.0m },    // Standard parameters
+            { VolatilityRegime.High, 1.25m }      // Widen by 25% in high volatility
+        };
+        
+        // SESSION-SPECIFIC LEARNING: Rolling window of ATR values per symbol (for volatility regime detection)
+        private readonly ConcurrentDictionary<string, System.Collections.Generic.Queue<decimal>> _atrHistory = new();
+        private const int AtrHistorySize = 20; // Keep last 20 periods
         
         public PositionManagementOptimizer(
             ILogger<PositionManagementOptimizer> logger,
@@ -72,6 +101,8 @@ namespace BotCore.Services
         
         /// <summary>
         /// Record position management outcome for learning
+        /// VOLATILITY SCALING: Now accepts currentAtr for regime-aware learning
+        /// SESSION-SPECIFIC LEARNING: Automatically detects trading session
         /// </summary>
         public void RecordOutcome(
             string strategy,
@@ -86,9 +117,19 @@ namespace BotCore.Services
             decimal finalPnL,
             decimal maxFavorableExcursion,
             decimal maxAdverseExcursion,
-            string marketRegime = "UNKNOWN")
+            string marketRegime = "UNKNOWN",
+            decimal currentAtr = 0m)
         {
             var outcomeKey = $"{strategy}_{symbol}_{DateTime.UtcNow.Ticks}";
+            
+            // VOLATILITY SCALING: Determine volatility regime based on ATR
+            var volatilityRegime = DetermineVolatilityRegime(currentAtr);
+            
+            // SESSION-SPECIFIC LEARNING: Detect current trading session
+            var tradingSession = BotCore.Strategy.SessionHelper.GetSessionName(DateTime.UtcNow);
+            
+            // VOLATILITY SCALING: Update ATR history for rolling analysis
+            UpdateAtrHistory(symbol, currentAtr);
             
             var outcome = new PositionManagementOutcome
             {
@@ -105,7 +146,10 @@ namespace BotCore.Services
                 FinalPnL = finalPnL,
                 MaxFavorableExcursion = maxFavorableExcursion,
                 MaxAdverseExcursion = maxAdverseExcursion,
-                MarketRegime = marketRegime
+                MarketRegime = marketRegime,
+                CurrentAtr = currentAtr,
+                VolatilityRegime = volatilityRegime.ToString(),
+                TradingSession = tradingSession
             };
             
             _outcomes[outcomeKey] = outcome;
@@ -160,59 +204,72 @@ namespace BotCore.Services
         
         /// <summary>
         /// PHASE 3: Learn optimal breakeven trigger timing
+        /// VOLATILITY SCALING + SESSION-SPECIFIC: Analyzes per volatility regime and trading session
         /// Analyzes: "Triggered BE at 8 ticks → stopped out, would have hit target"
         /// </summary>
         private async Task OptimizeBreakevenParameterAsync(string strategy, CancellationToken cancellationToken)
         {
-            var outcomes = _outcomes.Values
+            // Group by volatility regime and session for regime-specific learning
+            var regimeSessions = _outcomes.Values
                 .Where(o => o.Strategy == strategy && o.BreakevenTriggered)
-                .OrderByDescending(o => o.Timestamp)
-                .Take(100)
+                .GroupBy(o => new { o.VolatilityRegime, o.TradingSession })
+                .Where(g => g.Count() >= MinSamplesForLearning)
                 .ToList();
             
-            if (outcomes.Count < MinSamplesForLearning)
+            foreach (var regimeSessionGroup in regimeSessions)
             {
-                return; // Not enough data yet
-            }
-            
-            // Analyze outcomes by breakeven timing
-            var analysis = outcomes
-                .GroupBy(o => o.BreakevenAfterTicks)
-                .Select(g => new
-                {
-                    BreakevenTicks = g.Key,
-                    Count = g.Count(),
-                    AvgPnL = g.Average(o => (double)o.FinalPnL),
-                    WinRate = g.Count(o => o.FinalPnL > 0) / (double)g.Count(),
-                    AvgMaxFav = g.Average(o => (double)o.MaxFavorableExcursion),
-                    StoppedOutRate = g.Count(o => o.StoppedOut) / (double)g.Count()
-                })
-                .OrderByDescending(a => a.AvgPnL)
-                .ToList();
-            
-            if (analysis.Count < 2)
-            {
-                return; // Need multiple breakeven values to compare
-            }
-            
-            var best = analysis.First();
-            var current = analysis.FirstOrDefault(a => a.Count >= MinSamplesForLearning);
-            
-            if (current != null && best.BreakevenTicks != current.BreakevenTicks && best.AvgPnL > current.AvgPnL * 1.1)
-            {
-                _logger.LogInformation("💡 [PM-OPTIMIZER] Breakeven optimization for {Strategy}: Current={Current} ticks (PnL={CurrentPnL:F2}), Optimal={Optimal} ticks (PnL={OptimalPnL:F2})",
-                    strategy, current.BreakevenTicks, current.AvgPnL, best.BreakevenTicks, best.AvgPnL);
+                var regime = regimeSessionGroup.Key.VolatilityRegime;
+                var session = regimeSessionGroup.Key.TradingSession;
+                var outcomes = regimeSessionGroup
+                    .OrderByDescending(o => o.Timestamp)
+                    .Take(100)
+                    .ToList();
                 
-                // Record parameter change recommendation
-                _changeTracker.RecordChange(
-                    strategyName: strategy,
-                    parameterName: "BreakevenAfterTicks",
-                    oldValue: current.BreakevenTicks.ToString(),
-                    newValue: best.BreakevenTicks.ToString(),
-                    reason: $"ML/RL learning: Better PnL ({best.AvgPnL:F2} vs {current.AvgPnL:F2}), Win rate {best.WinRate:P0}",
-                    outcomePnl: (decimal)best.AvgPnL,
-                    wasCorrect: true
-                );
+                if (outcomes.Count < MinSamplesForLearning)
+                {
+                    continue;
+                }
+                
+                // Analyze outcomes by breakeven timing
+                var analysis = outcomes
+                    .GroupBy(o => o.BreakevenAfterTicks)
+                    .Select(g => new
+                    {
+                        BreakevenTicks = g.Key,
+                        Count = g.Count(),
+                        AvgPnL = g.Average(o => (double)o.FinalPnL),
+                        WinRate = g.Count(o => o.FinalPnL > 0) / (double)g.Count(),
+                        AvgMaxFav = g.Average(o => (double)o.MaxFavorableExcursion),
+                        StoppedOutRate = g.Count(o => o.StoppedOut) / (double)g.Count()
+                    })
+                    .OrderByDescending(a => a.AvgPnL)
+                    .ToList();
+                
+                if (analysis.Count < 2)
+                {
+                    continue;
+                }
+                
+                var best = analysis.First();
+                var current = analysis.FirstOrDefault(a => a.Count >= MinSamplesForLearning / 2);
+                
+                if (current != null && best.BreakevenTicks != current.BreakevenTicks && best.AvgPnL > current.AvgPnL * 1.1)
+                {
+                    _logger.LogInformation("💡 [PM-OPTIMIZER] Breakeven optimization for {Strategy} in {Regime}/{Session}: Current={Current} ticks (PnL={CurrentPnL:F2}), Optimal={Optimal} ticks (PnL={OptimalPnL:F2})",
+                        strategy, regime, session, current.BreakevenTicks, current.AvgPnL, best.BreakevenTicks, best.AvgPnL);
+                    
+                    // Record regime/session-specific parameter change recommendation
+                    _changeTracker.RecordChange(
+                        strategyName: strategy,
+                        parameterName: $"BreakevenAfterTicks_{regime}_{session}",
+                        oldValue: current.BreakevenTicks.ToString(),
+                        newValue: best.BreakevenTicks.ToString(),
+                        reason: $"ML/RL learning ({regime}/{session}): Better PnL ({best.AvgPnL:F2} vs {current.AvgPnL:F2}), Win rate {best.WinRate:P0}",
+                        outcomePnl: (decimal)best.AvgPnL,
+                        wasCorrect: true,
+                        marketSnapshotId: $"{regime}_{session}"
+                    );
+                }
             }
             
             await Task.CompletedTask;
@@ -220,58 +277,71 @@ namespace BotCore.Services
         
         /// <summary>
         /// PHASE 3: Learn optimal trailing stop distance
+        /// VOLATILITY SCALING + SESSION-SPECIFIC: Analyzes per volatility regime and trading session
         /// Analyzes: "Trailing at 1.0x ATR → stopped out early, left $200 on table"
         /// </summary>
         private async Task OptimizeTrailingParameterAsync(string strategy, CancellationToken cancellationToken)
         {
-            var outcomes = _outcomes.Values
+            // Group by volatility regime and session for regime-specific learning
+            var regimeSessions = _outcomes.Values
                 .Where(o => o.Strategy == strategy)
-                .OrderByDescending(o => o.Timestamp)
-                .Take(100)
+                .GroupBy(o => new { o.VolatilityRegime, o.TradingSession })
+                .Where(g => g.Count() >= MinSamplesForLearning)
                 .ToList();
             
-            if (outcomes.Count < MinSamplesForLearning)
+            foreach (var regimeSessionGroup in regimeSessions)
             {
-                return;
-            }
-            
-            // Analyze outcomes by trailing multiplier
-            var analysis = outcomes
-                .GroupBy(o => o.TrailMultiplier)
-                .Select(g => new
-                {
-                    TrailMultiplier = g.Key,
-                    Count = g.Count(),
-                    AvgPnL = g.Average(o => (double)o.FinalPnL),
-                    WinRate = g.Count(o => o.FinalPnL > 0) / (double)g.Count(),
-                    AvgMaxFav = g.Average(o => (double)o.MaxFavorableExcursion),
-                    OpportunityCost = g.Average(o => Math.Max(0, (double)(o.MaxFavorableExcursion - Math.Abs(o.FinalPnL))))
-                })
-                .OrderByDescending(a => a.AvgPnL)
-                .ToList();
-            
-            if (analysis.Count < 2)
-            {
-                return;
-            }
-            
-            var best = analysis.First();
-            var current = analysis.FirstOrDefault(a => a.Count >= MinSamplesForLearning);
-            
-            if (current != null && Math.Abs(best.TrailMultiplier - current.TrailMultiplier) > 0.2m && best.AvgPnL > current.AvgPnL * 1.1)
-            {
-                _logger.LogInformation("💡 [PM-OPTIMIZER] Trailing stop optimization for {Strategy}: Current={Current:F1}x ATR (PnL={CurrentPnL:F2}, OpCost={CurrentOC:F2}), Optimal={Optimal:F1}x ATR (PnL={OptimalPnL:F2}, OpCost={OptimalOC:F2})",
-                    strategy, current.TrailMultiplier, current.AvgPnL, current.OpportunityCost, best.TrailMultiplier, best.AvgPnL, best.OpportunityCost);
+                var regime = regimeSessionGroup.Key.VolatilityRegime;
+                var session = regimeSessionGroup.Key.TradingSession;
+                var outcomes = regimeSessionGroup
+                    .OrderByDescending(o => o.Timestamp)
+                    .Take(100)
+                    .ToList();
                 
-                _changeTracker.RecordChange(
-                    strategyName: strategy,
-                    parameterName: "TrailMultiplier",
-                    oldValue: current.TrailMultiplier.ToString("F1"),
-                    newValue: best.TrailMultiplier.ToString("F1"),
-                    reason: $"ML/RL learning: Better PnL ({best.AvgPnL:F2} vs {current.AvgPnL:F2}), Lower opportunity cost",
-                    outcomePnl: (decimal)best.AvgPnL,
-                    wasCorrect: true
-                );
+                if (outcomes.Count < MinSamplesForLearning)
+                {
+                    continue;
+                }
+                
+                // Analyze outcomes by trailing multiplier
+                var analysis = outcomes
+                    .GroupBy(o => o.TrailMultiplier)
+                    .Select(g => new
+                    {
+                        TrailMultiplier = g.Key,
+                        Count = g.Count(),
+                        AvgPnL = g.Average(o => (double)o.FinalPnL),
+                        WinRate = g.Count(o => o.FinalPnL > 0) / (double)g.Count(),
+                        AvgMaxFav = g.Average(o => (double)o.MaxFavorableExcursion),
+                        OpportunityCost = g.Average(o => Math.Max(0, (double)(o.MaxFavorableExcursion - Math.Abs(o.FinalPnL))))
+                    })
+                    .OrderByDescending(a => a.AvgPnL)
+                    .ToList();
+                
+                if (analysis.Count < 2)
+                {
+                    continue;
+                }
+                
+                var best = analysis.First();
+                var current = analysis.FirstOrDefault(a => a.Count >= MinSamplesForLearning / 2);
+                
+                if (current != null && Math.Abs(best.TrailMultiplier - current.TrailMultiplier) > 0.2m && best.AvgPnL > current.AvgPnL * 1.1)
+                {
+                    _logger.LogInformation("💡 [PM-OPTIMIZER] Trailing stop optimization for {Strategy} in {Regime}/{Session}: Current={Current:F1}x ATR (PnL={CurrentPnL:F2}, OpCost={CurrentOC:F2}), Optimal={Optimal:F1}x ATR (PnL={OptimalPnL:F2}, OpCost={OptimalOC:F2})",
+                        strategy, regime, session, current.TrailMultiplier, current.AvgPnL, current.OpportunityCost, best.TrailMultiplier, best.AvgPnL, best.OpportunityCost);
+                    
+                    _changeTracker.RecordChange(
+                        strategyName: strategy,
+                        parameterName: $"TrailMultiplier_{regime}_{session}",
+                        oldValue: current.TrailMultiplier.ToString("F1"),
+                        newValue: best.TrailMultiplier.ToString("F1"),
+                        reason: $"ML/RL learning ({regime}/{session}): Better PnL ({best.AvgPnL:F2} vs {current.AvgPnL:F2}), Lower opportunity cost",
+                        outcomePnl: (decimal)best.AvgPnL,
+                        wasCorrect: true,
+                        marketSnapshotId: $"{regime}_{session}"
+                    );
+                }
             }
             
             await Task.CompletedTask;
@@ -514,6 +584,133 @@ namespace BotCore.Services
         }
         
         /// <summary>
+        /// VOLATILITY SCALING: Determine volatility regime based on ATR
+        /// </summary>
+        private VolatilityRegime DetermineVolatilityRegime(decimal atr)
+        {
+            if (atr <= 0)
+            {
+                return VolatilityRegime.Normal; // Default if ATR not available
+            }
+            
+            if (atr < LowVolatilityThreshold)
+            {
+                return VolatilityRegime.Low;
+            }
+            else if (atr > HighVolatilityThreshold)
+            {
+                return VolatilityRegime.High;
+            }
+            else
+            {
+                return VolatilityRegime.Normal;
+            }
+        }
+        
+        /// <summary>
+        /// VOLATILITY SCALING: Update rolling ATR history for a symbol
+        /// </summary>
+        private void UpdateAtrHistory(string symbol, decimal atr)
+        {
+            if (atr <= 0)
+            {
+                return; // Don't track invalid ATR values
+            }
+            
+            var history = _atrHistory.GetOrAdd(symbol, _ => new System.Collections.Generic.Queue<decimal>());
+            
+            lock (history)
+            {
+                history.Enqueue(atr);
+                
+                // Keep only last N values
+                while (history.Count > AtrHistorySize)
+                {
+                    history.Dequeue();
+                }
+            }
+        }
+        
+        /// <summary>
+        /// VOLATILITY SCALING: Get average ATR for a symbol from recent history
+        /// </summary>
+        private decimal GetAverageAtr(string symbol)
+        {
+            if (!_atrHistory.TryGetValue(symbol, out var history))
+            {
+                return 0m;
+            }
+            
+            lock (history)
+            {
+                if (history.Count == 0)
+                {
+                    return 0m;
+                }
+                
+                return history.Average();
+            }
+        }
+        
+        /// <summary>
+        /// VOLATILITY SCALING: Scale a parameter value based on volatility regime
+        /// </summary>
+        private decimal ScaleParameterByVolatility(decimal baseValue, VolatilityRegime regime)
+        {
+            var scaleFactor = VolatilityScalingFactors[regime];
+            return baseValue * scaleFactor;
+        }
+        
+        /// <summary>
+        /// VOLATILITY SCALING: Get optimal parameters for given strategy, symbol, and current market conditions
+        /// </summary>
+        public (int breakevenTicks, decimal trailMultiplier, int maxHoldMinutes)? GetOptimalParameters(
+            string strategy,
+            string symbol,
+            decimal currentAtr)
+        {
+            var volatilityRegime = DetermineVolatilityRegime(currentAtr);
+            var tradingSession = BotCore.Strategy.SessionHelper.GetSessionName(DateTime.UtcNow);
+            
+            // Filter outcomes by strategy, volatility regime, and session
+            var relevantOutcomes = _outcomes.Values
+                .Where(o => o.Strategy == strategy && 
+                           o.Symbol == symbol &&
+                           o.VolatilityRegime == volatilityRegime.ToString() &&
+                           o.TradingSession == tradingSession)
+                .OrderByDescending(o => o.Timestamp)
+                .Take(50)
+                .ToList();
+            
+            if (relevantOutcomes.Count < MinSamplesForLearning)
+            {
+                // Not enough regime/session-specific data, return null
+                return null;
+            }
+            
+            // Find best performing parameters in this regime/session
+            var bestBreakeven = relevantOutcomes
+                .GroupBy(o => o.BreakevenAfterTicks)
+                .Select(g => new { Ticks = g.Key, AvgPnL = g.Average(o => (double)o.FinalPnL) })
+                .OrderByDescending(x => x.AvgPnL)
+                .FirstOrDefault()?.Ticks ?? 8;
+            
+            var bestTrail = relevantOutcomes
+                .GroupBy(o => o.TrailMultiplier)
+                .Select(g => new { Multiplier = g.Key, AvgPnL = g.Average(o => (double)o.FinalPnL) })
+                .OrderByDescending(x => x.AvgPnL)
+                .FirstOrDefault()?.Multiplier ?? 1.5m;
+            
+            var bestMaxHold = relevantOutcomes
+                .GroupBy(o => o.MaxHoldMinutes)
+                .Select(g => new { Minutes = g.Key, AvgPnL = g.Average(o => (double)o.FinalPnL) })
+                .OrderByDescending(x => x.AvgPnL)
+                .FirstOrDefault()?.Minutes ?? 60;
+            
+            return (bestBreakeven, bestTrail, bestMaxHold);
+        }
+        
+        /// <summary>
         /// Get performance summary for debugging
         /// </summary>
         public PositionManagementPerformanceSummary GetPerformanceSummary(string strategy)
@@ -568,6 +765,13 @@ namespace BotCore.Services
         public decimal MaxFavorableExcursion { get; set; }
         public decimal MaxAdverseExcursion { get; set; }
         public string MarketRegime { get; set; } = "UNKNOWN";
+        
+        // VOLATILITY SCALING: Track ATR and volatility regime
+        public decimal CurrentAtr { get; set; }
+        public string VolatilityRegime { get; set; } = "NORMAL";
+        
+        // SESSION-SPECIFIC LEARNING: Track trading session
+        public string TradingSession { get; set; } = "RTH";
     }
     
     /// <summary>
