@@ -94,7 +94,7 @@ namespace BotCore.Services
         // ========================================================================
         
         /// <summary>
-        /// Close entire position
+        /// Close entire position via TopstepX API
         /// </summary>
         public async Task<bool> ClosePositionAsync(string positionId)
         {
@@ -109,21 +109,20 @@ namespace BotCore.Services
                 _logger.LogInformation("📉 [ORDER-EXEC] Closing full position {PositionId}: {Symbol} {Quantity} contracts",
                     positionId, position.Symbol, position.Quantity);
                 
-                // Execute market order to close position (opposite side)
-                var closeSide = position.Side == "LONG" ? "SELL" : "BUY";
-                var orderId = await PlaceMarketOrderAsync(position.Symbol, closeSide, position.Quantity, $"CLOSE-{positionId}").ConfigureAwait(false);
+                // Call TopstepX API to close position
+                var success = await _topstepAdapter.ClosePositionAsync(position.Symbol, position.Quantity, CancellationToken.None).ConfigureAwait(false);
                 
-                if (!string.IsNullOrEmpty(orderId))
+                if (success)
                 {
                     // Remove from tracking
                     _positions.TryRemove(positionId, out _);
                     _symbolToPositionId.TryRemove(position.Symbol, out _);
                     
-                    _logger.LogInformation("✅ [ORDER-EXEC] Position {PositionId} closed successfully", positionId);
+                    _logger.LogInformation("✅ [ORDER-EXEC] Position {PositionId} closed successfully via TopstepX API", positionId);
                     return true;
                 }
                 
-                _logger.LogError("❌ [ORDER-EXEC] Failed to close position {PositionId}", positionId);
+                _logger.LogError("❌ [ORDER-EXEC] Failed to close position {PositionId} via TopstepX API", positionId);
                 return false;
             }
             catch (Exception ex)
@@ -134,7 +133,7 @@ namespace BotCore.Services
         }
         
         /// <summary>
-        /// Close partial position (for scaling out)
+        /// Close partial position (for scaling out) via TopstepX API
         /// </summary>
         public async Task<bool> ClosePositionAsync(string positionId, int quantity, CancellationToken cancellationToken = default)
         {
@@ -156,11 +155,10 @@ namespace BotCore.Services
                 _logger.LogInformation("📉 [ORDER-EXEC] Partial close position {PositionId}: {Symbol} closing {Qty} of {Total} contracts",
                     positionId, position.Symbol, quantity, position.Quantity);
                 
-                // Execute market order to close partial position (opposite side)
-                var closeSide = position.Side == "LONG" ? "SELL" : "BUY";
-                var orderId = await PlaceMarketOrderAsync(position.Symbol, closeSide, quantity, $"PARTIAL-CLOSE-{positionId}").ConfigureAwait(false);
+                // Call TopstepX API to close partial position
+                var success = await _topstepAdapter.ClosePositionAsync(position.Symbol, quantity, cancellationToken).ConfigureAwait(false);
                 
-                if (!string.IsNullOrEmpty(orderId))
+                if (success)
                 {
                     // Update position quantity
                     var remainingQuantity = position.Quantity - quantity;
@@ -168,7 +166,7 @@ namespace BotCore.Services
                     if (remainingQuantity > 0)
                     {
                         position.Quantity = remainingQuantity;
-                        _logger.LogInformation("✅ [ORDER-EXEC] Partial close successful for {PositionId}: {Qty} contracts closed, {Remaining} remaining",
+                        _logger.LogInformation("✅ [ORDER-EXEC] Partial close successful for {PositionId} via TopstepX API: {Qty} contracts closed, {Remaining} remaining",
                             positionId, quantity, remainingQuantity);
                     }
                     else
@@ -176,13 +174,13 @@ namespace BotCore.Services
                         // Position fully closed
                         _positions.TryRemove(positionId, out _);
                         _symbolToPositionId.TryRemove(position.Symbol, out _);
-                        _logger.LogInformation("✅ [ORDER-EXEC] Position {PositionId} fully closed via partial close", positionId);
+                        _logger.LogInformation("✅ [ORDER-EXEC] Position {PositionId} fully closed via partial close (TopstepX API)", positionId);
                     }
                     
                     return true;
                 }
                 
-                _logger.LogError("❌ [ORDER-EXEC] Failed to execute partial close for position {PositionId}", positionId);
+                _logger.LogError("❌ [ORDER-EXEC] Failed to execute partial close for position {PositionId} via TopstepX API", positionId);
                 return false;
             }
             catch (Exception ex)
@@ -193,7 +191,7 @@ namespace BotCore.Services
         }
         
         /// <summary>
-        /// Modify stop loss for a position
+        /// Modify stop loss for a position via TopstepX API
         /// </summary>
         public async Task<bool> ModifyStopLossAsync(string positionId, decimal stopPrice)
         {
@@ -208,15 +206,20 @@ namespace BotCore.Services
                 _logger.LogInformation("🛡️ [ORDER-EXEC] Modifying stop loss for {PositionId}: {Symbol} from {Old} to {New}",
                     positionId, position.Symbol, position.StopLoss, stopPrice);
                 
-                // Update stop loss in position tracking
-                position.StopLoss = stopPrice;
+                // Call TopstepX API to modify stop loss
+                var success = await _topstepAdapter.ModifyStopLossAsync(position.Symbol, stopPrice, CancellationToken.None).ConfigureAwait(false);
                 
-                // Note: TopstepX SDK handles bracket orders automatically
-                // The stop loss modification is tracked here for position management
-                // Real execution happens through TopstepX SDK's bracket management
+                if (success)
+                {
+                    // Update stop loss in position tracking
+                    position.StopLoss = stopPrice;
+                    
+                    _logger.LogInformation("✅ [ORDER-EXEC] Stop loss updated for {PositionId} via TopstepX API", positionId);
+                    return true;
+                }
                 
-                _logger.LogInformation("✅ [ORDER-EXEC] Stop loss updated for {PositionId}", positionId);
-                return true;
+                _logger.LogError("❌ [ORDER-EXEC] Failed to modify stop loss for {PositionId} via TopstepX API", positionId);
+                return false;
             }
             catch (Exception ex)
             {
@@ -226,7 +229,7 @@ namespace BotCore.Services
         }
         
         /// <summary>
-        /// Modify take profit for a position
+        /// Modify take profit for a position via TopstepX API
         /// </summary>
         public async Task<bool> ModifyTakeProfitAsync(string positionId, decimal takeProfitPrice)
         {
@@ -241,15 +244,20 @@ namespace BotCore.Services
                 _logger.LogInformation("🎯 [ORDER-EXEC] Modifying take profit for {PositionId}: {Symbol} from {Old} to {New}",
                     positionId, position.Symbol, position.TakeProfit, takeProfitPrice);
                 
-                // Update take profit in position tracking
-                position.TakeProfit = takeProfitPrice;
+                // Call TopstepX API to modify take profit
+                var success = await _topstepAdapter.ModifyTakeProfitAsync(position.Symbol, takeProfitPrice, CancellationToken.None).ConfigureAwait(false);
                 
-                // Note: TopstepX SDK handles bracket orders automatically
-                // The take profit modification is tracked here for position management
-                // Real execution happens through TopstepX SDK's bracket management
+                if (success)
+                {
+                    // Update take profit in position tracking
+                    position.TakeProfit = takeProfitPrice;
+                    
+                    _logger.LogInformation("✅ [ORDER-EXEC] Take profit updated for {PositionId} via TopstepX API", positionId);
+                    return true;
+                }
                 
-                _logger.LogInformation("✅ [ORDER-EXEC] Take profit updated for {PositionId}", positionId);
-                return true;
+                _logger.LogError("❌ [ORDER-EXEC] Failed to modify take profit for {PositionId} via TopstepX API", positionId);
+                return false;
             }
             catch (Exception ex)
             {
@@ -391,34 +399,43 @@ namespace BotCore.Services
         // ORDER MANAGEMENT METHODS
         // ========================================================================
         
-        public Task<bool> CancelOrderAsync(string orderId)
+        public async Task<bool> CancelOrderAsync(string orderId)
         {
             try
             {
                 if (!_orders.TryGetValue(orderId, out var order))
                 {
                     _logger.LogWarning("Order {OrderId} not found for cancellation", orderId);
-                    return Task.FromResult(false);
+                    return false;
                 }
                 
                 if (order.Status == TradingBot.Abstractions.OrderStatus.Filled || order.Status == TradingBot.Abstractions.OrderStatus.Cancelled)
                 {
                     _logger.LogWarning("Cannot cancel order {OrderId} with status {Status}", orderId, order.Status);
-                    return Task.FromResult(false);
+                    return false;
                 }
                 
                 _logger.LogInformation("❌ [ORDER-EXEC] Cancelling order {OrderId}", orderId);
                 
-                order.Status = TradingBot.Abstractions.OrderStatus.Cancelled;
-                order.UpdatedAt = DateTimeOffset.UtcNow;
+                // Call TopstepX API to cancel order
+                var success = await _topstepAdapter.CancelOrderAsync(orderId, CancellationToken.None).ConfigureAwait(false);
                 
-                _logger.LogInformation("✅ [ORDER-EXEC] Order {OrderId} cancelled", orderId);
-                return Task.FromResult(true);
+                if (success)
+                {
+                    order.Status = TradingBot.Abstractions.OrderStatus.Cancelled;
+                    order.UpdatedAt = DateTimeOffset.UtcNow;
+                    
+                    _logger.LogInformation("✅ [ORDER-EXEC] Order {OrderId} cancelled via TopstepX API", orderId);
+                    return true;
+                }
+                
+                _logger.LogError("❌ [ORDER-EXEC] Failed to cancel order {OrderId} via TopstepX API", orderId);
+                return false;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error cancelling order {OrderId}", orderId);
-                return Task.FromResult(false);
+                return false;
             }
         }
         

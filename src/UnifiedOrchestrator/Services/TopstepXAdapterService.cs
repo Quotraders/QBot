@@ -360,6 +360,211 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
         }
     }
 
+    /// <summary>
+    /// Close a position (full or partial) via TopstepX API
+    /// </summary>
+    public async Task<bool> ClosePositionAsync(string symbol, int quantity, CancellationToken cancellationToken = default)
+    {
+        if (!_isInitialized)
+        {
+            throw new InvalidOperationException("Adapter not initialized. Call InitializeAsync first.");
+        }
+
+        try
+        {
+            _logger.LogInformation("[CLOSE] Closing position: {Symbol} quantity={Qty}", symbol, quantity);
+
+            var command = new
+            {
+                action = "close_position",
+                symbol,
+                quantity
+            };
+
+            var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
+            
+            if (result.Success && result.Data != null)
+            {
+                var success = result.Data.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
+                
+                if (success)
+                {
+                    _logger.LogInformation("✅ Position closed successfully: {Symbol} {Qty} contracts", symbol, quantity);
+                }
+                else
+                {
+                    var error = result.Data.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : "Unknown error";
+                    _logger.LogError("❌ Position close failed: {Error}", error);
+                }
+                
+                return success;
+            }
+            
+            _logger.LogError("❌ Invalid response from Python adapter for close position");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error closing position {Symbol}", symbol);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Modify stop loss for a position via TopstepX API
+    /// </summary>
+    public async Task<bool> ModifyStopLossAsync(string symbol, decimal stopPrice, CancellationToken cancellationToken = default)
+    {
+        if (!_isInitialized)
+        {
+            throw new InvalidOperationException("Adapter not initialized. Call InitializeAsync first.");
+        }
+
+        try
+        {
+            // Round to valid tick increment
+            stopPrice = PriceHelper.RoundToTick(stopPrice, symbol);
+            
+            _logger.LogInformation("[MODIFY-STOP] Modifying stop loss: {Symbol} stop=${StopPrice:F2}", symbol, stopPrice);
+
+            var command = new
+            {
+                action = "modify_stop_loss",
+                symbol,
+                stop_price = stopPrice
+            };
+
+            var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
+            
+            if (result.Success && result.Data != null)
+            {
+                var success = result.Data.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
+                
+                if (success)
+                {
+                    _logger.LogInformation("✅ Stop loss modified successfully: {Symbol} stop=${StopPrice:F2}", symbol, stopPrice);
+                }
+                else
+                {
+                    var error = result.Data.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : "Unknown error";
+                    _logger.LogError("❌ Stop loss modification failed: {Error}", error);
+                }
+                
+                return success;
+            }
+            
+            _logger.LogError("❌ Invalid response from Python adapter for modify stop loss");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error modifying stop loss for {Symbol}", symbol);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Modify take profit for a position via TopstepX API
+    /// </summary>
+    public async Task<bool> ModifyTakeProfitAsync(string symbol, decimal takeProfitPrice, CancellationToken cancellationToken = default)
+    {
+        if (!_isInitialized)
+        {
+            throw new InvalidOperationException("Adapter not initialized. Call InitializeAsync first.");
+        }
+
+        try
+        {
+            // Round to valid tick increment
+            takeProfitPrice = PriceHelper.RoundToTick(takeProfitPrice, symbol);
+            
+            _logger.LogInformation("[MODIFY-TARGET] Modifying take profit: {Symbol} target=${TargetPrice:F2}", symbol, takeProfitPrice);
+
+            var command = new
+            {
+                action = "modify_take_profit",
+                symbol,
+                take_profit_price = takeProfitPrice
+            };
+
+            var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
+            
+            if (result.Success && result.Data != null)
+            {
+                var success = result.Data.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
+                
+                if (success)
+                {
+                    _logger.LogInformation("✅ Take profit modified successfully: {Symbol} target=${TargetPrice:F2}", symbol, takeProfitPrice);
+                }
+                else
+                {
+                    var error = result.Data.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : "Unknown error";
+                    _logger.LogError("❌ Take profit modification failed: {Error}", error);
+                }
+                
+                return success;
+            }
+            
+            _logger.LogError("❌ Invalid response from Python adapter for modify take profit");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error modifying take profit for {Symbol}", symbol);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Cancel an order via TopstepX API
+    /// </summary>
+    public async Task<bool> CancelOrderAsync(string orderId, CancellationToken cancellationToken = default)
+    {
+        if (!_isInitialized)
+        {
+            throw new InvalidOperationException("Adapter not initialized. Call InitializeAsync first.");
+        }
+
+        try
+        {
+            _logger.LogInformation("[CANCEL] Cancelling order: {OrderId}", orderId);
+
+            var command = new
+            {
+                action = "cancel_order",
+                order_id = orderId
+            };
+
+            var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
+            
+            if (result.Success && result.Data != null)
+            {
+                var success = result.Data.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
+                
+                if (success)
+                {
+                    _logger.LogInformation("✅ Order cancelled successfully: {OrderId}", orderId);
+                }
+                else
+                {
+                    var error = result.Data.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : "Unknown error";
+                    _logger.LogError("❌ Order cancellation failed: {Error}", error);
+                }
+                
+                return success;
+            }
+            
+            _logger.LogError("❌ Invalid response from Python adapter for cancel order");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cancelling order {OrderId}", orderId);
+            return false;
+        }
+    }
+
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
         if (!_isInitialized)
