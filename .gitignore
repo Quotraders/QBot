@@ -82,3 +82,4 @@ trading.db*
 # Build output files
 build_output.txt
 build_full.txt
+.env.backup
