@@ -810,6 +810,9 @@ Please check the configuration and ensure all required services are registered.
         // PHASE 2: Wiring Service - Connects fill events from TopstepXAdapter to OrderExecutionService
         services.AddHostedService<OrderExecutionWiringService>();
         
+        // PHASE 4: Execution Metrics Reporting - Hourly quality reports and alerts
+        services.AddHostedService<ExecutionMetricsReportingService>();
+        
         // TopstepX Integration Test Service for validation
         services.AddHostedService<TopstepXIntegrationTestService>();
 

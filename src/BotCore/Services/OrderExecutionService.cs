@@ -14,7 +14,7 @@ namespace BotCore.Services
     /// Integrates with TopstepX adapter for broker communication
     /// Manages order lifecycle and position tracking
     /// </summary>
-    public sealed class OrderExecutionService : TradingBot.Abstractions.IOrderService
+    public sealed class OrderExecutionService : TradingBot.Abstractions.IOrderService, IDisposable
     {
         private readonly ILogger<OrderExecutionService> _logger;
         private readonly ITopstepXAdapterService _topstepAdapter;
@@ -37,6 +37,10 @@ namespace BotCore.Services
         public event EventHandler<OrderPlacedEventArgs>? OrderPlaced;
         public event EventHandler<OrderRejectedEventArgs>? OrderRejected;
         
+        // PHASE 3: Position reconciliation infrastructure
+        private readonly Timer? _reconciliationTimer;
+        private const int ReconciliationIntervalSeconds = 60;
+        
         public OrderExecutionService(
             ILogger<OrderExecutionService> logger,
             ITopstepXAdapterService topstepAdapter,
@@ -45,6 +49,16 @@ namespace BotCore.Services
             _logger = logger;
             _topstepAdapter = topstepAdapter;
             _metrics = metrics;
+            
+            // PHASE 3: Start reconciliation timer (every 60 seconds)
+            _reconciliationTimer = new Timer(
+                ReconcilePositionsWithBroker,
+                null,
+                TimeSpan.FromSeconds(ReconciliationIntervalSeconds),
+                TimeSpan.FromSeconds(ReconciliationIntervalSeconds)
+            );
+            
+            _logger.LogInformation("🔄 Position reconciliation timer started (interval: {Seconds}s)", ReconciliationIntervalSeconds);
         }
         
         // ========================================================================
@@ -579,6 +593,241 @@ namespace BotCore.Services
         }
         
         // ========================================================================
+        // PHASE 4: PERFORMANCE METRICS REPORTING (Steps 7-9)
+        // ========================================================================
+        
+        /// <summary>
+        /// PHASE 4 Step 9: Get execution quality report for a symbol
+        /// </summary>
+        public string GetExecutionQualityReport(string symbol)
+        {
+            var summary = _metrics?.GetMetricsSummary(symbol);
+            if (summary == null)
+            {
+                return $"No execution metrics available for {symbol}";
+            }
+            
+            return $@"
+📊 EXECUTION QUALITY REPORT - {symbol}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Orders:        {summary.TotalOrders} placed, {summary.TotalFills} filled
+✅ Fill Rate:     {summary.FillRate:F2}%
+⏱️  Avg Latency:   {summary.AverageLatencyMs:F2}ms
+📈 95th Percentile: {summary.Latency95thPercentileMs:F2}ms
+💸 Avg Slippage:  {summary.AverageSlippagePercent:F4}%
+❌ Rejections:    {summary.TotalRejections}
+🔄 Partial Fills: {summary.PartialFills}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+";
+        }
+        
+        /// <summary>
+        /// PHASE 4 Step 9: Check if execution quality has degraded beyond acceptable thresholds
+        /// </summary>
+        public bool CheckExecutionQualityThresholds(string symbol, out string alertMessage)
+        {
+            alertMessage = string.Empty;
+            var summary = _metrics?.GetMetricsSummary(symbol);
+            
+            if (summary == null || summary.TotalOrders < 5)
+            {
+                return true; // Not enough data yet
+            }
+            
+            var alerts = new List<string>();
+            
+            // Alert thresholds
+            const double MaxAcceptableLatencyMs = 500.0;
+            const double MaxAcceptableSlippagePercent = 0.2;
+            const double MinAcceptableFillRate = 90.0;
+            
+            if (summary.AverageLatencyMs > MaxAcceptableLatencyMs)
+            {
+                alerts.Add($"⚠️ High latency: {summary.AverageLatencyMs:F2}ms (threshold: {MaxAcceptableLatencyMs}ms)");
+            }
+            
+            if (summary.AverageSlippagePercent > MaxAcceptableSlippagePercent)
+            {
+                alerts.Add($"⚠️ High slippage: {summary.AverageSlippagePercent:F4}% (threshold: {MaxAcceptableSlippagePercent}%)");
+            }
+            
+            if (summary.FillRate < MinAcceptableFillRate)
+            {
+                alerts.Add($"⚠️ Low fill rate: {summary.FillRate:F2}% (threshold: {MinAcceptableFillRate}%)");
+            }
+            
+            if (alerts.Count > 0)
+            {
+                alertMessage = $"🚨 EXECUTION QUALITY ALERT for {symbol}:\n" + string.Join("\n", alerts);
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // ========================================================================
+        // PHASE 3: POSITION RECONCILIATION (Steps 5 & 6)
+        // ========================================================================
+        
+        /// <summary>
+        /// PHASE 3 Step 5: Periodic reconciliation - Compare bot state with broker reality
+        /// Runs every 60 seconds as a background task
+        /// </summary>
+        private async void ReconcilePositionsWithBroker(object? state)
+        {
+            try
+            {
+                _logger.LogDebug("🔄 [RECONCILIATION] Starting position reconciliation with broker...");
+                
+                // Get current positions from TopstepX broker
+                var brokerPositions = await GetBrokerPositionsAsync().ConfigureAwait(false);
+                if (brokerPositions == null)
+                {
+                    _logger.LogWarning("⚠️ [RECONCILIATION] Could not retrieve broker positions - skipping reconciliation");
+                    return;
+                }
+                
+                var discrepancies = 0;
+                var corrections = 0;
+                
+                // Check for positions in broker but not in bot
+                foreach (var brokerPos in brokerPositions)
+                {
+                    if (!_symbolToPositionId.TryGetValue(brokerPos.Symbol, out var positionId) ||
+                        !_positions.TryGetValue(positionId, out var botPos))
+                    {
+                        // PHASE 3 Step 6: Broker has position but bot doesn't
+                        _logger.LogWarning(
+                            "🚨 [RECONCILIATION] DISCREPANCY: Broker shows position {Symbol} {Qty} contracts @ ${Price:F2} but bot has no record",
+                            brokerPos.Symbol, brokerPos.Quantity, brokerPos.AveragePrice);
+                        
+                        // Auto-correction: Add to bot tracking
+                        var newPositionId = $"POS-RECONCILED-{brokerPos.Symbol}-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+                        RegisterPosition(newPositionId, brokerPos.Symbol, 
+                            brokerPos.Side ?? "UNKNOWN", 
+                            brokerPos.Quantity,
+                            brokerPos.AveragePrice,
+                            null, null);
+                        
+                        _logger.LogInformation(
+                            "✅ [RECONCILIATION] AUTO-CORRECTED: Added missing position {PositionId} to bot tracking",
+                            newPositionId);
+                        
+                        discrepancies++;
+                        corrections++;
+                        continue;
+                    }
+                    
+                    // Check for quantity mismatches
+                    if (botPos.Quantity != brokerPos.Quantity)
+                    {
+                        // PHASE 3 Step 6: Quantities differ - update bot to match broker
+                        _logger.LogWarning(
+                            "🚨 [RECONCILIATION] DISCREPANCY: Position {PositionId} quantity mismatch - " +
+                            "Bot: {BotQty}, Broker: {BrokerQty} | Broker is source of truth",
+                            positionId, botPos.Quantity, brokerPos.Quantity);
+                        
+                        var oldQty = botPos.Quantity;
+                        botPos.Quantity = brokerPos.Quantity;
+                        botPos.AveragePrice = brokerPos.AveragePrice; // Also sync avg price
+                        
+                        _logger.LogInformation(
+                            "✅ [RECONCILIATION] AUTO-CORRECTED: Updated {PositionId} quantity {OldQty} -> {NewQty}",
+                            positionId, oldQty, brokerPos.Quantity);
+                        
+                        discrepancies++;
+                        corrections++;
+                    }
+                }
+                
+                // Check for positions in bot but not in broker
+                foreach (var botPos in _positions.Values.ToList())
+                {
+                    var existsInBroker = brokerPositions.Any(bp => bp.Symbol == botPos.Symbol);
+                    
+                    if (!existsInBroker)
+                    {
+                        // PHASE 3 Step 6: Bot has position but broker doesn't
+                        _logger.LogError(
+                            "🚨🚨 [RECONCILIATION] CRITICAL DISCREPANCY: Bot shows position {PositionId} {Symbol} {Qty} contracts " +
+                            "but broker has NO POSITION - Removing from bot tracking and alerting",
+                            botPos.Id, botPos.Symbol, botPos.Quantity);
+                        
+                        // Auto-correction: Remove from bot tracking
+                        _positions.TryRemove(botPos.Id, out _);
+                        _symbolToPositionId.TryRemove(botPos.Symbol, out _);
+                        
+                        _logger.LogWarning(
+                            "⚠️ [RECONCILIATION] AUTO-CORRECTED: Removed phantom position {PositionId} from bot tracking",
+                            botPos.Id);
+                        
+                        // This is a CRITICAL alert - position exists in bot but not in broker
+                        _logger.LogCritical(
+                            "🚨🚨🚨 CRITICAL ALERT: Phantom position detected and removed. " +
+                            "Position {PositionId} {Symbol} existed in bot but not in broker. " +
+                            "This should be investigated immediately!",
+                            botPos.Id, botPos.Symbol);
+                        
+                        discrepancies++;
+                        corrections++;
+                    }
+                }
+                
+                if (discrepancies == 0)
+                {
+                    _logger.LogDebug("✅ [RECONCILIATION] Complete - No discrepancies found. Bot state matches broker.");
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "⚠️ [RECONCILIATION] Complete - Found {Discrepancies} discrepancies, applied {Corrections} auto-corrections",
+                        discrepancies, corrections);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [RECONCILIATION] Error during position reconciliation");
+            }
+        }
+        
+        /// <summary>
+        /// PHASE 3 Step 5: Get actual positions from TopstepX broker
+        /// </summary>
+        private async Task<List<BrokerPosition>?> GetBrokerPositionsAsync()
+        {
+            try
+            {
+                // Call TopstepX adapter to get real broker positions
+                var positions = await GetPositionsAsync().ConfigureAwait(false);
+                
+                // Convert to BrokerPosition format for comparison
+                return positions.Select(p => new BrokerPosition
+                {
+                    Symbol = p.Symbol,
+                    Quantity = p.Quantity,
+                    AveragePrice = p.AveragePrice,
+                    Side = p.Side
+                }).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving broker positions for reconciliation");
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// Helper class for broker position comparison
+        /// </summary>
+        private class BrokerPosition
+        {
+            public string Symbol { get; set; } = string.Empty;
+            public int Quantity { get; set; }
+            public decimal AveragePrice { get; set; }
+            public string? Side { get; set; }
+        }
+        
+        // ========================================================================
         // PHASE 1: EVENT PUBLISHING METHODS
         // ========================================================================
         
@@ -645,27 +894,91 @@ namespace BotCore.Services
             }
         }
         
+        /// <summary>
+        /// PHASE 2 Step 4: Update position tracking from fill and calculate realized P&L
+        /// </summary>
         private void UpdatePositionFromFill(FillEventData fillData)
         {
+            var timestamp = fillData.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            
             // Check if this is an existing position
             if (_symbolToPositionId.TryGetValue(fillData.Symbol, out var positionId) &&
                 _positions.TryGetValue(positionId, out var position))
             {
-                // Update existing position
                 var oldQuantity = position.Quantity;
                 var oldAvgPrice = position.AveragePrice;
                 
-                // Calculate new average price for position additions
-                if (fillData.Quantity > 0)
-                {
-                    var totalCost = (oldQuantity * oldAvgPrice) + (fillData.Quantity * fillData.FillPrice);
-                    position.Quantity = oldQuantity + fillData.Quantity;
-                    position.AveragePrice = position.Quantity > 0 ? totalCost / position.Quantity : fillData.FillPrice;
-                }
+                // Determine if this is adding to or closing position based on side
+                // If position is LONG and fill is for SELL, we're reducing/closing
+                // If position is SHORT and fill is for BUY, we're reducing/closing
+                var isClosingFill = (position.Side == "LONG" && fillData.Quantity < 0) ||
+                                   (position.Side == "SHORT" && fillData.Quantity > 0);
                 
-                _logger.LogDebug("Position {PositionId} updated from fill: {OldQty} -> {NewQty} contracts, avg price: ${AvgPrice:F2}",
-                    positionId, oldQuantity, position.Quantity, position.AveragePrice);
+                if (isClosingFill)
+                {
+                    // PHASE 2 Step 4: Calculate realized P&L when closing position
+                    var closedQuantity = Math.Abs(fillData.Quantity);
+                    var realizedPnL = position.Side == "LONG"
+                        ? (fillData.FillPrice - oldAvgPrice) * closedQuantity
+                        : (oldAvgPrice - fillData.FillPrice) * closedQuantity;
+                    
+                    // Subtract commission
+                    realizedPnL -= fillData.Commission;
+                    
+                    position.RealizedPnL += realizedPnL;
+                    position.Quantity = oldQuantity - closedQuantity;
+                    
+                    _logger.LogInformation(
+                        "💰 [{Timestamp}] Position {PositionId} CLOSED {Qty} contracts @ ${Price:F2} | " +
+                        "Realized P&L: ${PnL:F2} (Total Realized: ${TotalPnL:F2}) | Remaining: {Remaining} contracts",
+                        timestamp, positionId, closedQuantity, fillData.FillPrice,
+                        realizedPnL, position.RealizedPnL, position.Quantity);
+                    
+                    // If position fully closed, remove from tracking
+                    if (position.Quantity == 0)
+                    {
+                        _positions.TryRemove(positionId, out _);
+                        _symbolToPositionId.TryRemove(fillData.Symbol, out _);
+                        
+                        _logger.LogInformation(
+                            "🎯 [{Timestamp}] Position {PositionId} FULLY CLOSED | " +
+                            "Final Realized P&L: ${PnL:F2} | Avg Entry: ${Entry:F2}, Exit: ${Exit:F2}",
+                            timestamp, positionId, position.RealizedPnL, oldAvgPrice, fillData.FillPrice);
+                    }
+                }
+                else
+                {
+                    // Adding to position - calculate new average price
+                    var addQuantity = Math.Abs(fillData.Quantity);
+                    var totalCost = (oldQuantity * oldAvgPrice) + (addQuantity * fillData.FillPrice);
+                    position.Quantity = oldQuantity + addQuantity;
+                    position.AveragePrice = position.Quantity > 0 ? totalCost / position.Quantity : fillData.FillPrice;
+                    
+                    _logger.LogInformation(
+                        "📈 [{Timestamp}] Position {PositionId} ADDED {Qty} contracts @ ${Price:F2} | " +
+                        "New Qty: {NewQty}, New Avg Price: ${AvgPrice:F2}",
+                        timestamp, positionId, addQuantity, fillData.FillPrice,
+                        position.Quantity, position.AveragePrice);
+                }
             }
+            else
+            {
+                // New position - this shouldn't normally happen via fills
+                // Positions should be created when orders are placed
+                _logger.LogWarning(
+                    "⚠️ [{Timestamp}] Fill received for {Symbol} but no tracked position exists. OrderId: {OrderId}",
+                    timestamp, fillData.Symbol, fillData.OrderId);
+            }
+        }
+        
+        // ========================================================================
+        // DISPOSAL
+        // ========================================================================
+        
+        public void Dispose()
+        {
+            _reconciliationTimer?.Dispose();
+            _logger.LogInformation("🔄 OrderExecutionService disposed - reconciliation timer stopped");
         }
     }
     
