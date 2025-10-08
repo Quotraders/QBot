@@ -18,6 +18,7 @@ namespace BotCore.Services
     {
         private readonly ILogger<OrderExecutionService> _logger;
         private readonly ITopstepXAdapterService _topstepAdapter;
+        private readonly OrderExecutionMetrics? _metrics;
         
         // Position tracking: maps position ID (symbol-based) to position data
         private readonly ConcurrentDictionary<string, TradingBot.Abstractions.Position> _positions = new();
@@ -31,12 +32,19 @@ namespace BotCore.Services
         // Configuration snapshot tracking
         private const string DefaultConfigSnapshotId = "default-snapshot";
         
+        // PHASE 1: Event Infrastructure for fill notifications
+        public event EventHandler<OrderFillEventArgs>? OrderFilled;
+        public event EventHandler<OrderPlacedEventArgs>? OrderPlaced;
+        public event EventHandler<OrderRejectedEventArgs>? OrderRejected;
+        
         public OrderExecutionService(
             ILogger<OrderExecutionService> logger,
-            ITopstepXAdapterService topstepAdapter)
+            ITopstepXAdapterService topstepAdapter,
+            OrderExecutionMetrics? metrics = null)
         {
             _logger = logger;
             _topstepAdapter = topstepAdapter;
+            _metrics = metrics;
         }
         
         // ========================================================================
@@ -297,6 +305,20 @@ namespace BotCore.Services
                 
                 _orders.TryAdd(orderId, order);
                 
+                // PHASE 1: Record metrics for order placement
+                _metrics?.RecordOrderPlaced(symbol);
+                
+                // PHASE 1: Fire OrderPlaced event
+                OrderPlaced?.Invoke(this, new OrderPlacedEventArgs
+                {
+                    OrderId = orderId,
+                    Symbol = symbol,
+                    Quantity = quantity,
+                    Price = order.Price ?? 0,
+                    OrderType = "MARKET",
+                    Timestamp = DateTime.UtcNow
+                });
+                
                 // For closing orders, we don't use TopstepX PlaceOrderAsync
                 // We just mark them as filled since TopstepX handles the closing
                 if (tag?.StartsWith("CLOSE-") == true || tag?.StartsWith("PARTIAL-CLOSE-") == true)
@@ -319,6 +341,10 @@ namespace BotCore.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error placing market order for {Symbol}", symbol);
+                
+                // PHASE 1: Record rejection in metrics
+                _metrics?.RecordOrderRejected(symbol, ex.Message);
+                
                 return Task.FromResult(string.Empty);
             }
         }
@@ -543,5 +569,161 @@ namespace BotCore.Services
                 position.RealizedPnL = realizedPnL;
             }
         }
+        
+        /// <summary>
+        /// PHASE 1: Get execution metrics summary for a symbol
+        /// </summary>
+        public OrderExecutionMetricsSummary? GetMetricsSummary(string symbol)
+        {
+            return _metrics?.GetMetricsSummary(symbol);
+        }
+        
+        // ========================================================================
+        // PHASE 1: EVENT PUBLISHING METHODS
+        // ========================================================================
+        
+        /// <summary>
+        /// Notify subscribers that an order was filled
+        /// </summary>
+        internal void OnOrderFillReceived(FillEventData fillData)
+        {
+            try
+            {
+                _logger.LogInformation("📥 [FILL-EVENT] Received fill notification: {OrderId} {Symbol} {Qty} @ {Price}",
+                    fillData.OrderId, fillData.Symbol, fillData.Quantity, fillData.FillPrice);
+                
+                var isPartialFill = false;
+                
+                // Update order tracking if order exists
+                if (_orders.TryGetValue(fillData.OrderId, out var order))
+                {
+                    order.FilledQuantity += fillData.Quantity;
+                    isPartialFill = order.FilledQuantity < order.Quantity;
+                    order.Status = isPartialFill
+                        ? TradingBot.Abstractions.OrderStatus.PartiallyFilled
+                        : TradingBot.Abstractions.OrderStatus.Filled;
+                    order.UpdatedAt = DateTimeOffset.UtcNow;
+                    
+                    _logger.LogInformation("✅ [ORDER-UPDATE] Order {OrderId} updated: {FilledQty}/{TotalQty} filled, status: {Status}",
+                        fillData.OrderId, order.FilledQuantity, order.Quantity, order.Status);
+                    
+                    // PHASE 1: Record execution latency
+                    _metrics?.RecordExecutionLatency(fillData.OrderId, fillData.Symbol, 
+                        order.CreatedAt.DateTime, fillData.Timestamp);
+                    
+                    // PHASE 1: Record slippage if we have expected price
+                    if (order.Price.HasValue && order.Price.Value > 0)
+                    {
+                        _metrics?.RecordSlippage(fillData.OrderId, fillData.Symbol, 
+                            order.Price.Value, fillData.FillPrice, fillData.Quantity);
+                    }
+                }
+                
+                // PHASE 1: Record fill in metrics
+                _metrics?.RecordOrderFilled(fillData.Symbol, isPartialFill);
+                
+                // Update position tracking
+                UpdatePositionFromFill(fillData);
+                
+                // Raise event for external subscribers
+                OrderFilled?.Invoke(this, new OrderFillEventArgs
+                {
+                    OrderId = fillData.OrderId,
+                    Symbol = fillData.Symbol,
+                    Quantity = fillData.Quantity,
+                    FillPrice = fillData.FillPrice,
+                    Commission = fillData.Commission,
+                    Timestamp = fillData.Timestamp,
+                    Exchange = fillData.Exchange,
+                    LiquidityType = fillData.LiquidityType
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing fill event for order {OrderId}", fillData.OrderId);
+            }
+        }
+        
+        private void UpdatePositionFromFill(FillEventData fillData)
+        {
+            // Check if this is an existing position
+            if (_symbolToPositionId.TryGetValue(fillData.Symbol, out var positionId) &&
+                _positions.TryGetValue(positionId, out var position))
+            {
+                // Update existing position
+                var oldQuantity = position.Quantity;
+                var oldAvgPrice = position.AveragePrice;
+                
+                // Calculate new average price for position additions
+                if (fillData.Quantity > 0)
+                {
+                    var totalCost = (oldQuantity * oldAvgPrice) + (fillData.Quantity * fillData.FillPrice);
+                    position.Quantity = oldQuantity + fillData.Quantity;
+                    position.AveragePrice = position.Quantity > 0 ? totalCost / position.Quantity : fillData.FillPrice;
+                }
+                
+                _logger.LogDebug("Position {PositionId} updated from fill: {OldQty} -> {NewQty} contracts, avg price: ${AvgPrice:F2}",
+                    positionId, oldQuantity, position.Quantity, position.AveragePrice);
+            }
+        }
+    }
+    
+    // ========================================================================
+    // PHASE 1: EVENT DATA CLASSES
+    // ========================================================================
+    
+    /// <summary>
+    /// Event args for order fill notifications from TopstepX
+    /// </summary>
+    public class OrderFillEventArgs : EventArgs
+    {
+        public string OrderId { get; init; } = string.Empty;
+        public string Symbol { get; init; } = string.Empty;
+        public int Quantity { get; init; }
+        public decimal FillPrice { get; init; }
+        public decimal Commission { get; init; }
+        public DateTime Timestamp { get; init; }
+        public string Exchange { get; init; } = string.Empty;
+        public string LiquidityType { get; init; } = string.Empty;
+    }
+    
+    /// <summary>
+    /// Event args for order placement
+    /// </summary>
+    public class OrderPlacedEventArgs : EventArgs
+    {
+        public string OrderId { get; init; } = string.Empty;
+        public string Symbol { get; init; } = string.Empty;
+        public int Quantity { get; init; }
+        public decimal Price { get; init; }
+        public string OrderType { get; init; } = string.Empty;
+        public DateTime Timestamp { get; init; }
+    }
+    
+    /// <summary>
+    /// Event args for order rejection
+    /// </summary>
+    public class OrderRejectedEventArgs : EventArgs
+    {
+        public string OrderId { get; init; } = string.Empty;
+        public string Symbol { get; init; } = string.Empty;
+        public string Reason { get; init; } = string.Empty;
+        public DateTime Timestamp { get; init; }
+    }
+    
+    /// <summary>
+    /// Fill event data from TopstepX SDK
+    /// </summary>
+    public class FillEventData
+    {
+        public string OrderId { get; set; } = string.Empty;
+        public string Symbol { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+        public decimal Price { get; set; }
+        public decimal FillPrice { get; set; }
+        public DateTime Timestamp { get; set; }
+        public decimal Commission { get; set; }
+        public string Exchange { get; set; } = string.Empty;
+        public string LiquidityType { get; set; } = string.Empty;
     }
 }
