@@ -67,7 +67,7 @@ public class CloudModelSynchronizationService : BackgroundService
         _httpClient.Timeout = TimeSpan.FromMinutes(5); // Allow time for large model downloads
         if (!string.IsNullOrEmpty(_githubToken))
         {
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_githubToken}");
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"token {_githubToken}");
         }
         
         // Ensure models directory exists
