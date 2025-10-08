@@ -27,6 +27,17 @@ except ImportError as e:
     ) from e
 
 
+def requires_initialization(func):
+    """Decorator to check if adapter is initialized before method execution."""
+    async def wrapper(self, *args, **kwargs):
+        if not self._is_initialized or not self.suite:
+            raise RuntimeError("Adapter not initialized. Call initialize() first.")
+        return await func(self, *args, **kwargs)
+    wrapper.__name__ = func.__name__
+    wrapper.__doc__ = func.__doc__
+    return wrapper
+
+
 class AdapterRetryPolicy:
     """Centralized retry policy with bounded timeouts for fail-closed behavior."""
     
@@ -176,6 +187,64 @@ class TopstepXAdapter:
             **data
         }
         self.logger.info(f"[TELEMETRY] {telemetry}")
+    
+    def _validate_symbol(self, symbol: str) -> None:
+        """Validate symbol is in configured instruments.
+        
+        Args:
+            symbol: Instrument symbol to validate
+            
+        Raises:
+            ValueError: If symbol not in configured instruments
+        """
+        if symbol not in self.instruments:
+            raise ValueError(f"Symbol {symbol} not in configured instruments: {self.instruments}")
+    
+    def _parse_position_data(self, position) -> Optional[Dict[str, Any]]:
+        """Parse SDK position object into dictionary format.
+        
+        Args:
+            position: SDK Position object
+            
+        Returns:
+            Position dictionary or None if position is flat
+        """
+        try:
+            # Extract position data
+            contract_id = str(getattr(position, 'contractId', ''))
+            symbol = self._extract_symbol_from_contract_id(contract_id)
+            
+            # netPos is signed: positive = long, negative = short
+            net_pos = int(getattr(position, 'netPos', 0))
+            
+            # Determine side
+            if net_pos > 0:
+                side = "LONG"
+                avg_price = float(getattr(position, 'buyAvgPrice', 0.0))
+            elif net_pos < 0:
+                side = "SHORT"
+                avg_price = float(getattr(position, 'sellAvgPrice', 0.0))
+            else:
+                # Flat position, skip
+                return None
+            
+            # Get P&L data
+            unrealized_pnl = float(getattr(position, 'unrealizedPnl', 0.0))
+            realized_pnl = float(getattr(position, 'realizedPnl', 0.0))
+            position_id = str(getattr(position, 'id', contract_id))
+            
+            return {
+                'symbol': symbol,
+                'quantity': abs(net_pos),
+                'side': side,
+                'avg_price': avg_price,
+                'unrealized_pnl': unrealized_pnl,
+                'realized_pnl': realized_pnl,
+                'position_id': position_id
+            }
+        except Exception as e:
+            self.logger.warning(f"Failed to parse position: {e}")
+            return None
     
     def _extract_symbol_from_contract_id(self, contract_id: str) -> str:
         """
@@ -743,6 +812,7 @@ class TopstepXAdapter:
                 'last_check': datetime.now(timezone.utc).isoformat()
             }
 
+    @requires_initialization
     async def get_positions(self) -> List[Dict[str, Any]]:
         """
         PHASE 2: Get all current positions from TopstepX SDK.
@@ -759,53 +829,15 @@ class TopstepXAdapter:
                 - realized_pnl: float
                 - position_id: str
         """
-        if not self._is_initialized or not self.suite:
-            self.logger.warning("Adapter not initialized, returning empty positions")
-            return []
-        
         try:
             # Query all positions from SDK
             all_positions = await self.suite.positions.get_all_positions()
             
             result = []
             for position in all_positions:
-                try:
-                    # Extract position data
-                    contract_id = str(getattr(position, 'contractId', ''))
-                    symbol = self._extract_symbol_from_contract_id(contract_id)
-                    
-                    # netPos is signed: positive = long, negative = short
-                    net_pos = int(getattr(position, 'netPos', 0))
-                    
-                    # Determine side
-                    if net_pos > 0:
-                        side = "LONG"
-                        avg_price = float(getattr(position, 'buyAvgPrice', 0.0))
-                    elif net_pos < 0:
-                        side = "SHORT"
-                        avg_price = float(getattr(position, 'sellAvgPrice', 0.0))
-                    else:
-                        # Flat position, skip
-                        continue
-                    
-                    # Get P&L data
-                    unrealized_pnl = float(getattr(position, 'unrealizedPnl', 0.0))
-                    realized_pnl = float(getattr(position, 'realizedPnl', 0.0))
-                    position_id = str(getattr(position, 'id', contract_id))
-                    
-                    result.append({
-                        'symbol': symbol,
-                        'quantity': abs(net_pos),
-                        'side': side,
-                        'avg_price': avg_price,
-                        'unrealized_pnl': unrealized_pnl,
-                        'realized_pnl': realized_pnl,
-                        'position_id': position_id
-                    })
-                    
-                except Exception as e:
-                    self.logger.warning(f"Failed to parse position: {e}")
-                    continue
+                parsed = self._parse_position_data(position)
+                if parsed:
+                    result.append(parsed)
             
             self.logger.debug(f"[POSITIONS] Retrieved {len(result)} positions")
             return result
