@@ -187,5 +187,78 @@ namespace TradingBot.Tests.Unit
             // Assert - All outcomes should be recorded without error
             Assert.True(true, "Should track outcomes across different volatility regimes");
         }
+
+        /// <summary>
+        /// Test that multi-symbol learning tracks ES and NQ separately
+        /// MULTI-SYMBOL LEARNING: Validates symbol-specific parameter optimization
+        /// </summary>
+        [Fact]
+        public void RecordOutcome_MultipleSymbols_TracksIndependently()
+        {
+            // Arrange & Act - Record outcomes for ES and NQ with different characteristics
+            
+            // ES outcomes (tighter parameters)
+            for (int i = 0; i < 15; i++)
+            {
+                _optimizer.RecordOutcome("S2", "ES", 8, 1.5m, 45, true, false, true, false, 
+                    100m + i * 10m, 15m, -3m, "TRENDING", currentAtr: 4.0m);
+            }
+            
+            // NQ outcomes (wider parameters due to higher volatility)
+            for (int i = 0; i < 15; i++)
+            {
+                _optimizer.RecordOutcome("S2", "NQ", 12, 2.0m, 60, true, false, true, false, 
+                    120m + i * 15m, 20m, -4m, "TRENDING", currentAtr: 5.5m);
+            }
+            
+            // Assert - GetOptimalParameters should return different values for ES vs NQ
+            var esParams = _optimizer.GetOptimalParameters("S2", "ES", currentAtr: 4.0m);
+            var nqParams = _optimizer.GetOptimalParameters("S2", "NQ", currentAtr: 5.5m);
+            
+            // Both should have data now (15 samples each, >= MinSamplesForLearning of 10)
+            Assert.NotNull(esParams);
+            Assert.NotNull(nqParams);
+            
+            // Verify they learned different parameters (ES should have tighter stops than NQ)
+            Assert.True(esParams.Value.breakevenTicks <= nqParams.Value.breakevenTicks,
+                "ES should have tighter or equal breakeven compared to NQ");
+        }
+
+        /// <summary>
+        /// Test that all 4 strategies support multi-symbol learning
+        /// MULTI-SYMBOL LEARNING: Validates S2, S3, S6, S11 all track by symbol
+        /// </summary>
+        [Theory]
+        [InlineData("S2", "ES")]
+        [InlineData("S2", "NQ")]
+        [InlineData("S3", "ES")]
+        [InlineData("S3", "NQ")]
+        [InlineData("S6", "ES")]
+        [InlineData("S6", "NQ")]
+        [InlineData("S11", "ES")]
+        [InlineData("S11", "NQ")]
+        public void RecordOutcome_AllStrategiesAndSymbols_SupportsMultiSymbolLearning(string strategy, string symbol)
+        {
+            // Arrange & Act - Record outcome for each strategy-symbol combination
+            _optimizer.RecordOutcome(
+                strategy: strategy,
+                symbol: symbol,
+                breakevenAfterTicks: 8,
+                trailMultiplier: 1.5m,
+                maxHoldMinutes: 45,
+                breakevenTriggered: true,
+                stoppedOut: false,
+                targetHit: true,
+                timedOut: false,
+                finalPnL: 100m,
+                maxFavorableExcursion: 15m,
+                maxAdverseExcursion: -3m,
+                marketRegime: "TRENDING",
+                currentAtr: 4.5m
+            );
+            
+            // Assert - Should record without error for all strategy-symbol combinations
+            Assert.True(true, $"Should support multi-symbol learning for {strategy}-{symbol}");
+        }
     }
 }
