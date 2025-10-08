@@ -44,11 +44,13 @@ namespace BotCore.Services
         private readonly IServiceProvider _serviceProvider;
         private readonly ConcurrentDictionary<string, PositionManagementOutcome> _outcomes = new();
         private readonly ParameterChangeTracker _changeTracker;
+        private DateTime _lastExportTime = DateTime.MinValue;
         
         // Learning parameters
         private const int OptimizationIntervalSeconds = 60; // Run optimization every minute
         private const int MinSamplesForLearning = 10; // Need at least 10 samples to learn
         private const decimal LearningRate = 0.1m; // How quickly to adjust parameters
+        private const int ExportIntervalHours = 24; // Export learned parameters every 24 hours
         
         // Parameter ranges for learning
         private static readonly int[] BreakevenTickOptions = { 4, 6, 8, 10, 12, 16 };
@@ -114,6 +116,14 @@ namespace BotCore.Services
                 try
                 {
                     await RunOptimizationCycleAsync(stoppingToken).ConfigureAwait(false);
+                    
+                    // Check if it's time to export learned parameters (every 24 hours)
+                    var timeSinceLastExport = DateTime.UtcNow - _lastExportTime;
+                    if (timeSinceLastExport.TotalHours >= ExportIntervalHours)
+                    {
+                        ExportLearnedParameters();
+                        _lastExportTime = DateTime.UtcNow;
+                    }
                 }
                 catch (Exception ex)
                 {
