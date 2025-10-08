@@ -9955,3 +9955,115 @@ $ dotnet build TopstepX.Bot.sln -v quiet 2>&1 | grep -E "error (CA|S)" | wc -l
 
 **Phase 2 Progress**: 0.16% complete (18/11,440 violations fixed)
 
+
+---
+
+## Round 183: Phase 2 - S109 Magic Numbers in PositionManagementOptimizer
+
+**Date**: December 2024  
+**Agent**: GitHub Copilot  
+**Objective**: Phase 2 P1 (Correctness) - Extract magic numbers to named constants in PositionManagementOptimizer.cs
+
+| Rule | Count Fixed | Files Affected | Fix Applied |
+|------|-------------|----------------|-------------|
+| S109 | 44 | PositionManagementOptimizer.cs | Extracted statistical and confidence level constants |
+
+**Total Fixed: 44 S109 violations in PositionManagementOptimizer.cs**
+**S109 Total: 110 → 66 (40% reduction in S109)**
+**Total Violations: 11,422 → 11,354 (0.60% cumulative reduction)**
+
+**Files Modified**:
+1. `src/BotCore/Services/PositionManagementOptimizer.cs` (44 violations fixed)
+   - Added 4 new named constants
+   - Replaced inline confidence percentage values with named constants (0.80m, 0.90m, 0.95m)
+   - Replaced inline sample threshold values with existing constants (30, 100)
+   - Replaced inline minimum sample counts with named constant (10)
+   - Reused existing t-value constants (TValueFor80Percent, TValueFor90Percent, TValueFor95Percent, DefaultTValue)
+
+**Constants Added** (4 new constants):
+```csharp
+// Confidence percentage levels for statistical calculations
+private const decimal ConfidenceLevel80Percent = 0.80m; // 80% confidence level
+private const decimal ConfidenceLevel90Percent = 0.90m; // 90% confidence level
+private const decimal ConfidenceLevel95Percent = 0.95m; // 95% confidence level
+
+// Minimum samples for confidence metrics calculation
+private const int MinSamplesForConfidenceMetrics = 10; // Minimum samples for meaningful confidence intervals
+```
+
+**Rationale**: Extracted magic numbers used in position management optimization and statistical calculations. These values control:
+- Confidence interval calculations using t-distribution and z-distribution
+- Sample size thresholds for determining confidence scores (Low/Medium/High)
+- Statistical significance testing for parameter learning
+- Win rate percentage calculations
+
+All fixes reuse existing constants where possible (SmallSampleThreshold, LargeSampleThreshold, TValueFor80Percent, TValueFor90Percent, TValueFor95Percent) and add new constants only where needed for clarity.
+
+**Example Fixes**:
+
+```csharp
+// Before: Magic number for confidence threshold
+if (sampleSize < 30)
+{
+    return "Low";
+}
+else if (sampleSize < 100)
+{
+    return "Medium";
+}
+
+// After: Named constants from existing definitions
+if (sampleSize < SmallSampleThreshold)
+{
+    return "Low";
+}
+else if (sampleSize < LargeSampleThreshold)
+{
+    return "Medium";
+}
+
+// Before: Magic numbers in switch statement
+criticalValue = confidencePercentage switch
+{
+    0.80m => 1.282m,
+    0.90m => 1.645m,
+    0.95m => 1.960m,
+    _ => 1.960m
+};
+
+// After: Named constants
+criticalValue = confidencePercentage switch
+{
+    ConfidenceLevel80Percent => TValueFor80Percent,
+    ConfidenceLevel90Percent => TValueFor90Percent,
+    ConfidenceLevel95Percent => TValueFor95Percent,
+    _ => DefaultTValue
+};
+
+// Before: Magic number for minimum samples
+if (outcomes.Count < 10)
+{
+    return null;
+}
+
+// After: Named constant
+if (outcomes.Count < MinSamplesForConfidenceMetrics)
+{
+    return null;
+}
+```
+
+**Build Verification**:
+```bash
+$ dotnet build TopstepX.Bot.sln -v quiet 2>&1 | grep "error S109" | grep "PositionManagementOptimizer.cs" | wc -l
+0  # All S109 violations fixed in this file
+
+$ dotnet build TopstepX.Bot.sln -v quiet 2>&1 | grep "error S109" | wc -l
+66  # Down from 110
+
+$ dotnet build TopstepX.Bot.sln -v quiet 2>&1 | grep -E "error (CA|S)" | wc -l
+11354  # Down from 11422
+```
+
+**Phase 2 Progress**: 0.60% complete (68/11,354 violations fixed in 2 batches)
+
