@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -42,6 +43,14 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
     private double _connectionHealth;
     private readonly object _processLock = new();
     private bool _disposed;
+    
+    // PHASE 2: Fill event subscription infrastructure
+    private readonly CancellationTokenSource _fillEventCts = new();
+    private Task? _fillEventListenerTask;
+    private readonly ConcurrentQueue<BotCore.Services.FillEventData> _fillEventQueue = new();
+
+    // PHASE 2: Fill event callback for OrderExecutionService
+    public event EventHandler<BotCore.Services.FillEventData>? FillEventReceived;
 
     public TopstepXAdapterService(
         ILogger<TopstepXAdapterService> logger,
@@ -79,6 +88,10 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             {
                 _isInitialized = true;
                 _connectionHealth = 100.0;
+                
+                // PHASE 2: Start fill event listener
+                StartFillEventListener();
+                
                 _logger.LogInformation("✅ TopstepX adapter initialized successfully");
                 return true;
             }
@@ -737,12 +750,171 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
         }
     }
 
+    // ========================================================================
+    // PHASE 2: FILL EVENT LISTENER INFRASTRUCTURE
+    // ========================================================================
+    
+    /// <summary>
+    /// Start background task to listen for fill events from TopstepX SDK
+    /// </summary>
+    private void StartFillEventListener()
+    {
+        _fillEventListenerTask = Task.Run(async () =>
+        {
+            _logger.LogInformation("🎧 [FILL-LISTENER] Starting fill event listener...");
+            
+            while (!_fillEventCts.Token.IsCancellationRequested)
+            {
+                try
+                {
+                    // PHASE 2: Poll for fill events from Python SDK
+                    // In production, this would use WebSocket or streaming API
+                    await PollForFillEventsAsync(_fillEventCts.Token).ConfigureAwait(false);
+                    
+                    // Poll every 2 seconds to avoid excessive API calls
+                    await Task.Delay(TimeSpan.FromSeconds(2), _fillEventCts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected when shutting down
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error in fill event listener");
+                    
+                    // Reconnection logic: wait 5 seconds before retrying
+                    try
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(5), _fillEventCts.Token).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                }
+            }
+            
+            _logger.LogInformation("🛑 [FILL-LISTENER] Fill event listener stopped");
+        }, _fillEventCts.Token);
+    }
+    
+    /// <summary>
+    /// Poll Python SDK for new fill events
+    /// </summary>
+    private async Task PollForFillEventsAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var command = new { action = "get_fill_events" };
+            var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
+            
+            if (result.Success && result.Data != null)
+            {
+                // Check if we got fill events
+                if (result.Data.TryGetProperty("fills", out var fillsElement) && fillsElement.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var fillElement in fillsElement.EnumerateArray())
+                    {
+                        var fillEvent = ParseFillEvent(fillElement);
+                        if (fillEvent != null)
+                        {
+                            // Add to queue and notify subscribers
+                            _fillEventQueue.Enqueue(fillEvent);
+                            
+                            _logger.LogInformation("📥 [FILL-LISTENER] Received fill: {OrderId} {Symbol} {Qty} @ {Price}",
+                                fillEvent.OrderId, fillEvent.Symbol, fillEvent.Quantity, fillEvent.FillPrice);
+                            
+                            // Notify subscribers
+                            FillEventReceived?.Invoke(this, fillEvent);
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error polling for fill events");
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// Parse fill event from JSON
+    /// </summary>
+    private BotCore.Services.FillEventData? ParseFillEvent(JsonElement fillElement)
+    {
+        try
+        {
+            var orderId = fillElement.TryGetProperty("order_id", out var orderIdElement) ? orderIdElement.GetString() : null;
+            var symbol = fillElement.TryGetProperty("symbol", out var symbolElement) ? symbolElement.GetString() : null;
+            var quantity = fillElement.TryGetProperty("quantity", out var qtyElement) ? qtyElement.GetInt32() : 0;
+            var price = fillElement.TryGetProperty("price", out var priceElement) ? priceElement.GetDecimal() : 0m;
+            var fillPrice = fillElement.TryGetProperty("fill_price", out var fillPriceElement) ? fillPriceElement.GetDecimal() : price;
+            var commission = fillElement.TryGetProperty("commission", out var commElement) ? commElement.GetDecimal() : 0m;
+            var exchange = fillElement.TryGetProperty("exchange", out var exchElement) ? exchElement.GetString() : "CME";
+            var liquidityType = fillElement.TryGetProperty("liquidity_type", out var liqElement) ? liqElement.GetString() : "TAKER";
+            var timestampStr = fillElement.TryGetProperty("timestamp", out var tsElement) ? tsElement.GetString() : null;
+            
+            if (string.IsNullOrEmpty(orderId) || string.IsNullOrEmpty(symbol))
+            {
+                _logger.LogWarning("Received fill event with missing order_id or symbol");
+                return null;
+            }
+            
+            var timestamp = !string.IsNullOrEmpty(timestampStr) && DateTime.TryParse(timestampStr, out var parsedTs)
+                ? parsedTs
+                : DateTime.UtcNow;
+            
+            return new BotCore.Services.FillEventData
+            {
+                OrderId = orderId,
+                Symbol = symbol,
+                Quantity = quantity,
+                Price = price,
+                FillPrice = fillPrice,
+                Commission = commission,
+                Exchange = exchange ?? "CME",
+                LiquidityType = liquidityType ?? "TAKER",
+                Timestamp = timestamp
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error parsing fill event");
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// Subscribe to fill events with a callback
+    /// </summary>
+    public void SubscribeToFillEvents(Action<BotCore.Services.FillEventData> callback)
+    {
+        if (callback == null)
+        {
+            throw new ArgumentNullException(nameof(callback));
+        }
+        
+        FillEventReceived += (sender, fillData) => callback(fillData);
+        
+        _logger.LogInformation("✅ [FILL-LISTENER] Callback subscribed to fill events");
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (!_disposed)
         {
             try
             {
+                // PHASE 2: Stop fill event listener
+                _fillEventCts.Cancel();
+                if (_fillEventListenerTask != null)
+                {
+                    await _fillEventListenerTask.ConfigureAwait(false);
+                }
+                _fillEventCts.Dispose();
+                
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
                 await DisconnectAsync(cts.Token).ConfigureAwait(false);
             }
