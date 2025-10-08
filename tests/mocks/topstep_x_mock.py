@@ -200,15 +200,57 @@ class MockOpenOrder:
         self.price = price
 
 
+class MockOrder:
+    """Mock Order object for Phase 5"""
+    def __init__(self, order_id: str, status: int, size: int, fill_volume: int = 0, filled_price: float = 0.0):
+        self.id = order_id
+        self.orderId = order_id
+        self.status = status  # 0=None, 1=Open, 2=Filled, 3=Cancelled, 4=Expired, 5=Rejected, 6=Pending
+        self.size = size
+        self.fillVolume = fill_volume
+        self.filledPrice = filled_price
+        self.is_filled = fill_volume >= size
+        self.is_open = status == 1
+        self.is_cancelled = status == 3
+
+
 class MockOrders:
     def __init__(self, symbol, suite=None):
         self.symbol = symbol
         self.suite = suite
         self._open_orders = []  # Track open orders for testing
+        self._orders_by_id = {}  # Track orders by ID for get_order_by_id
+    
+    async def get_order_by_id(self, order_id: str):
+        """Get order by ID (Phase 5)"""
+        return self._orders_by_id.get(order_id)
+    
+    async def cancel_order(self, order_id: str) -> bool:
+        """Cancel a specific order (Phase 6)"""
+        if order_id in self._orders_by_id:
+            order = self._orders_by_id[order_id]
+            order.status = 3  # Cancelled
+            order.is_cancelled = True
+            order.is_open = False
+            return True
+        return False
+    
+    async def cancel_all_orders(self, contract_id: str = None) -> Dict[str, Any]:
+        """Cancel all orders (Phase 6)"""
+        cancelled_count = 0
+        for order_id, order in list(self._orders_by_id.items()):
+            if order.is_open:
+                order.status = 3
+                order.is_cancelled = True
+                order.is_open = False
+                cancelled_count += 1
+        return {'success': True, 'count': cancelled_count}
     
     async def place_market_order(self, contract_id: str, side: int, size: int):
         """Place market order (for closing positions)"""
         order_id = str(uuid.uuid4())
+        order = MockOrder(order_id, status=2, size=size, fill_volume=size, filled_price=18500.00)
+        self._orders_by_id[order_id] = order
         return MockOrderResponse(order_id)
     
     async def search_open_orders(self, contract_id: str = None):

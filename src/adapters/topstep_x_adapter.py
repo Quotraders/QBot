@@ -621,10 +621,10 @@ class TopstepXAdapter:
 
     async def get_health_score(self) -> Dict[str, Any]:
         """
-        Get comprehensive health metrics and statistics.
+        PHASE 7 ENHANCED: Get comprehensive health metrics and statistics.
         
         Returns:
-            Health score and system statistics
+            Health score and system statistics with enhanced monitoring
         """
         if not self._is_initialized or not self.suite:
             return {
@@ -661,6 +661,55 @@ class TopstepXAdapter:
             self._connection_health = overall_health
             self._last_health_check = datetime.now(timezone.utc)
             
+            # PHASE 7: Enhanced monitoring
+            
+            # 1. WebSocket connection status
+            websocket_connected = False
+            try:
+                if hasattr(self.suite, 'realtime_client'):
+                    realtime_client = self.suite.realtime_client
+                    if hasattr(realtime_client, 'is_connected'):
+                        websocket_connected = realtime_client.is_connected
+                    elif hasattr(realtime_client, 'connected'):
+                        websocket_connected = realtime_client.connected
+            except Exception as e:
+                self.logger.debug(f"WebSocket status check: {e}")
+            
+            # 2. Authentication validity check (lightweight API call)
+            auth_valid = True
+            try:
+                # Try getting stats as a lightweight auth check
+                test_stats = await self.suite.get_stats()
+                auth_valid = test_stats is not None
+            except Exception as e:
+                self.logger.warning(f"Auth validity check failed: {e}")
+                auth_valid = False
+            
+            # 3. Trading permissions check
+            trading_enabled = False
+            try:
+                if hasattr(self.suite, 'account'):
+                    account = self.suite.account
+                    if hasattr(account, 'canTrade'):
+                        trading_enabled = account.canTrade
+                    elif hasattr(account, 'can_trade'):
+                        trading_enabled = account.can_trade
+            except Exception as e:
+                self.logger.debug(f"Trading permission check: {e}")
+            
+            # 4. Rate limit tracking (if available)
+            rate_limit_remaining = None
+            rate_limit_reset = None
+            try:
+                if hasattr(self.suite, 'client'):
+                    client = self.suite.client
+                    if hasattr(client, 'rate_limit_remaining'):
+                        rate_limit_remaining = client.rate_limit_remaining
+                    if hasattr(client, 'rate_limit_reset'):
+                        rate_limit_reset = client.rate_limit_reset
+            except Exception as e:
+                self.logger.debug(f"Rate limit check: {e}")
+            
             health_data = {
                 'health_score': int(overall_health),
                 'status': 'healthy' if overall_health >= 80 else 'degraded' if overall_health >= 50 else 'critical',
@@ -668,7 +717,13 @@ class TopstepXAdapter:
                 'suite_stats': stats,
                 'last_check': self._last_health_check.isoformat(),
                 'uptime_seconds': (datetime.now(timezone.utc) - self._last_health_check).total_seconds(),
-                'initialized': self._is_initialized
+                'initialized': self._is_initialized,
+                # PHASE 7 enhancements
+                'websocket_connected': websocket_connected,
+                'auth_valid': auth_valid,
+                'trading_enabled': trading_enabled,
+                'rate_limit_remaining': rate_limit_remaining,
+                'rate_limit_reset': rate_limit_reset
             }
             
             # Log health status
@@ -1189,6 +1244,205 @@ class TopstepXAdapter:
                 'error': str(e)
             }
 
+    async def get_order_status(self, order_id: str) -> Optional[Dict[str, Any]]:
+        """
+        PHASE 5: Get status of a specific order.
+        
+        Args:
+            order_id: Order ID to query
+            
+        Returns:
+            Dictionary with order status details or None if not found
+        """
+        if not self._is_initialized or not self.suite:
+            return {
+                'success': False,
+                'error': 'Adapter not initialized'
+            }
+        
+        try:
+            # Query order from SDK
+            # Note: SDK access pattern may vary - adjust based on actual SDK API
+            # This assumes suite.orders.get_order_by_id() exists
+            order = None
+            
+            # Try to find order across all instruments
+            for symbol in self.instruments:
+                try:
+                    instrument_obj = self.suite[symbol]
+                    if hasattr(instrument_obj, 'orders'):
+                        # Attempt to get order by ID
+                        # SDK API may vary - this is based on problem statement guidance
+                        if hasattr(instrument_obj.orders, 'get_order_by_id'):
+                            order = await instrument_obj.orders.get_order_by_id(order_id)
+                            if order:
+                                break
+                except Exception:
+                    continue
+            
+            if not order:
+                return {
+                    'success': False,
+                    'error': f'Order {order_id} not found'
+                }
+            
+            # Transform Order object to dictionary
+            # Status codes: 0=None, 1=Open, 2=Filled, 3=Cancelled, 4=Expired, 5=Rejected, 6=Pending
+            status = int(getattr(order, 'status', 0))
+            size = int(getattr(order, 'size', 0))
+            fill_volume = int(getattr(order, 'fillVolume', 0))
+            filled_price = float(getattr(order, 'filledPrice', 0.0))
+            
+            result = {
+                'success': True,
+                'order_id': str(getattr(order, 'id', order_id)),
+                'status': status,
+                'filled_quantity': fill_volume,
+                'remaining_quantity': size - fill_volume,
+                'avg_fill_price': filled_price,
+                'is_filled': getattr(order, 'is_filled', fill_volume >= size),
+                'is_open': getattr(order, 'is_open', status == 1),
+                'is_cancelled': getattr(order, 'is_cancelled', status == 3)
+            }
+            
+            self.logger.info(f"[ORDER-STATUS] {order_id}: status={status} filled={fill_volume}/{size}")
+            
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Error getting order status for {order_id}: {e}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    async def cancel_order(self, order_id: str) -> Dict[str, Any]:
+        """
+        PHASE 6: Cancel a specific order.
+        
+        Args:
+            order_id: Order ID to cancel
+            
+        Returns:
+            Dictionary with cancellation result
+        """
+        if not self._is_initialized or not self.suite:
+            return {
+                'success': False,
+                'error': 'Adapter not initialized'
+            }
+        
+        try:
+            # Try to cancel order across all instruments
+            cancelled = False
+            
+            for symbol in self.instruments:
+                try:
+                    instrument_obj = self.suite[symbol]
+                    if hasattr(instrument_obj, 'orders'):
+                        # Attempt to cancel order
+                        result = await instrument_obj.orders.cancel_order(order_id)
+                        if result:
+                            cancelled = True
+                            break
+                except Exception:
+                    continue
+            
+            if cancelled:
+                self.logger.info(f"[CANCEL-ORDER] Successfully cancelled order {order_id}")
+                self._emit_telemetry("order_cancelled", {"order_id": order_id})
+                
+                return {
+                    'success': True,
+                    'order_id': order_id,
+                    'message': 'Order cancelled successfully'
+                }
+            else:
+                return {
+                    'success': False,
+                    'order_id': order_id,
+                    'error': 'Failed to cancel order or order not found'
+                }
+            
+        except Exception as e:
+            self.logger.error(f"Error cancelling order {order_id}: {e}")
+            return {
+                'success': False,
+                'order_id': order_id,
+                'error': str(e)
+            }
+    
+    async def cancel_all_orders(self, symbol: Optional[str] = None) -> Dict[str, Any]:
+        """
+        PHASE 6: Cancel all orders, optionally filtered by symbol.
+        
+        Args:
+            symbol: Optional symbol to filter cancellations
+            
+        Returns:
+            Dictionary with cancellation results
+        """
+        if not self._is_initialized or not self.suite:
+            return {
+                'success': False,
+                'error': 'Adapter not initialized'
+            }
+        
+        try:
+            cancelled_count = 0
+            
+            # Determine which symbols to process
+            symbols_to_process = [symbol] if symbol else self.instruments
+            
+            for sym in symbols_to_process:
+                try:
+                    instrument_obj = self.suite[sym]
+                    if hasattr(instrument_obj, 'orders'):
+                        # Get contract ID for filtering
+                        contract_id = None
+                        if symbol:
+                            # Try to determine contract ID from symbol
+                            # Map symbol to contract ID format
+                            symbol_to_contract = {
+                                'ES': 'CON.F.US.EP.Z25',
+                                'NQ': 'CON.F.US.ENQ.Z25',
+                                'MNQ': 'CON.F.US.MNQ.Z25',
+                                'MES': 'CON.F.US.MES.Z25'
+                            }
+                            contract_id = symbol_to_contract.get(sym)
+                        
+                        # Cancel all orders for this instrument
+                        result = await instrument_obj.orders.cancel_all_orders(contract_id=contract_id)
+                        
+                        # Result might be boolean or dict with count
+                        if isinstance(result, dict):
+                            cancelled_count += result.get('count', 1 if result.get('success') else 0)
+                        elif result:
+                            cancelled_count += 1
+                            
+                except Exception as e:
+                    self.logger.warning(f"Error cancelling orders for {sym}: {e}")
+                    continue
+            
+            self.logger.info(f"[CANCEL-ALL] Cancelled {cancelled_count} orders" + (f" for {symbol}" if symbol else ""))
+            self._emit_telemetry("orders_cancelled", {
+                "count": cancelled_count,
+                "symbol": symbol
+            })
+            
+            return {
+                'success': True,
+                'cancelled_count': cancelled_count,
+                'symbol': symbol
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error cancelling all orders: {e}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
     async def get_portfolio_status(self) -> Dict[str, Any]:
         """Get current portfolio positions and P&L."""
         if not self._is_initialized or not self.suite:
@@ -1429,6 +1683,21 @@ if __name__ == "__main__":
                                 stop_loss_price=float(cmd_data.get("stop_loss_price")),
                                 take_profit_price=float(cmd_data.get("take_profit_price"))
                             )
+                            return result
+                        
+                        elif action == "get_order_status":
+                            order_id = cmd_data.get("order_id")
+                            result = await adapter.get_order_status(order_id)
+                            return result
+                        
+                        elif action == "cancel_order":
+                            order_id = cmd_data.get("order_id")
+                            result = await adapter.cancel_order(order_id)
+                            return result
+                        
+                        elif action == "cancel_all_orders":
+                            symbol = cmd_data.get("symbol")  # Optional
+                            result = await adapter.cancel_all_orders(symbol)
                             return result
                             
                         elif action == "disconnect":

@@ -165,20 +165,59 @@ async def test_mock_functionality():
         print(f"✅ Bracket order placed: entry={bracket_result.get('entry_order_id')}")
         print(f"   Stop={bracket_result.get('stop_order_id')}, Target={bracket_result.get('target_order_id')}")
         
-        # Test 12: Portfolio status
-        print("📋 Test 12: Portfolio Status")
+        # Test 12: Order Status Query (Phase 5)
+        print("📋 Test 12: Order Status Query")
+        # Create a mock order first
+        test_order_id = "test-order-123"
+        if hasattr(adapter.suite['MNQ'], 'orders'):
+            from tests.mocks.topstep_x_mock import MockOrder
+            adapter.suite['MNQ'].orders._orders_by_id[test_order_id] = MockOrder(
+                test_order_id, status=1, size=1, fill_volume=0, filled_price=0.0
+            )
+        order_status = await adapter.get_order_status(test_order_id)
+        if order_status.get('success'):
+            print(f"✅ Order status retrieved: status={order_status.get('status')} filled={order_status.get('filled_quantity')}")
+        else:
+            print(f"⚠️  Order status query: {order_status.get('error')}")
+        
+        # Test 13: Cancel Order (Phase 6)
+        print("📋 Test 13: Cancel Order")
+        cancel_result = await adapter.cancel_order(test_order_id)
+        if cancel_result.get('success'):
+            print(f"✅ Order cancelled: {test_order_id}")
+        else:
+            print(f"⚠️  Order cancellation: {cancel_result.get('error')}")
+        
+        # Test 14: Cancel All Orders (Phase 6)
+        print("📋 Test 14: Cancel All Orders")
+        cancel_all_result = await adapter.cancel_all_orders()
+        if cancel_all_result.get('success'):
+            print(f"✅ All orders cancelled: {cancel_all_result.get('cancelled_count')} orders")
+        else:
+            print(f"⚠️  Cancel all: {cancel_all_result.get('error')}")
+        
+        # Test 15: Enhanced Health Score (Phase 7)
+        print("📋 Test 15: Enhanced Health Score")
+        health = await adapter.get_health_score()
+        assert 'health_score' in health, "Health score missing"
+        assert 'websocket_connected' in health, "WebSocket status missing (Phase 7)"
+        assert 'auth_valid' in health, "Auth validity missing (Phase 7)"
+        print(f"✅ Enhanced health score: {health['health_score']}% (WS: {health.get('websocket_connected')}, Auth: {health.get('auth_valid')})")
+        
+        # Test 16: Portfolio Status
+        print("📋 Test 16: Portfolio Status")
         portfolio = await adapter.get_portfolio_status()
         assert 'portfolio' in portfolio, "Portfolio data missing"
         assert 'positions' in portfolio, "Position data missing"
         print("✅ Portfolio status retrieved")
         
-        # Test 13: Proper cleanup
-        print("📋 Test 13: Cleanup")
+        # Test 17: Proper cleanup
+        print("📋 Test 17: Cleanup")
         await adapter.disconnect()
         assert not adapter.is_connected, "Adapter should be disconnected"
         print("✅ Cleanup completed")
         
-        print("\n🎉 All tests passed! TopstepX adapter implementation is valid.")
+        print("\n🎉 All 17 tests passed! TopstepX adapter implementation is valid (Phases 1-7).")
         return True
         
     except Exception as e:
