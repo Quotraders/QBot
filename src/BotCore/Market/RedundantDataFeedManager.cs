@@ -77,6 +77,46 @@ public class RedundantDataFeedManager : IDisposable
     private readonly Timer _healthCheckTimer;
     private readonly Timer _consistencyCheckTimer;
     private bool _disposed;
+    
+    // Data feed priority levels
+    private const int PRIMARY_FEED_PRIORITY = 1;
+    private const int BACKUP_FEED_PRIORITY = 2;
+    
+    // Data consistency thresholds
+    private const decimal PRICE_TOLERANCE = 0.001m;        // 0.1% price deviation tolerance
+    private const decimal PRICE_OUTLIER_THRESHOLD = 0.001m; // 0.1% threshold for outlier detection
+    private const decimal SPREAD_TOLERANCE = 0.05m;        // 5% spread deviation tolerance
+    private const decimal MINIMUM_PRICE_DEVIATION = 0.01m; // 1% minimum deviation threshold
+    private const decimal QUALITY_SCORE_PENALTY = 0.95m;   // Reduce quality score to 95% on issues
+    
+    // Time-based thresholds (seconds)
+    private const double FRESHNESS_TOLERANCE_SECONDS = 30; // Data freshness tolerance
+    private const double STALE_DATA_THRESHOLD_SECONDS = 30; // Consider data stale after this
+    
+    // Performance thresholds
+    private const double SLOW_RESPONSE_THRESHOLD_MS = 500; // Response time threshold in milliseconds
+    private const double HIGH_LATENCY_THRESHOLD_MS = 100;  // High latency warning threshold
+    private const int SIMULATION_DELAY_MS = 50;            // Delay for simulated operations
+    private const int DEFAULT_VOLUME = 1000;               // Default volume for test data
+    private const int RECONNECT_DELAY_SECONDS = 100;       // Delay for reconnection attempts
+    private const int STATUS_LOG_INTERVAL_SECONDS = 30;    // Log status every N seconds
+    
+    // Price-related test data constants
+    private const decimal ES_BASE_PRICE = 4500.00m;        // ES base price for test data
+    private const decimal ES_BID_PRICE = 4499.75m;         // ES bid price for test data
+    private const decimal ES_ASK_PRICE = 4500.25m;         // ES ask price for test data
+    private const decimal PRICE_VARIATION_RANGE = 10m;     // Price variation range (+/-)
+    private const decimal PRICE_VARIATION_OFFSET = 5m;     // Price variation offset
+    
+    // Percentage thresholds for validation
+    private const decimal HIGH_PERCENTAGE_THRESHOLD = 0.5m;  // 50% threshold
+    private const decimal LOW_PERCENTAGE_THRESHOLD = 0.3m;   // 30% threshold
+    private const decimal MINOR_PERCENTAGE_THRESHOLD = 0.2m; // 20% threshold
+    
+    // Data quality score penalties
+    private const double STALE_DATA_SCORE_PENALTY = 0.3;     // Penalty for 30+ second old data
+    private const double VERY_STALE_DATA_SCORE_PENALTY = 0.5; // Penalty for 1+ minute old data
+    private const double INVALID_SPREAD_SCORE_PENALTY = 0.2;  // Penalty for invalid bid/ask spread
 
     public event EventHandler<MarketData>? OnConsolidatedData;
     public event EventHandler<string>? OnFeedFailover;
@@ -98,8 +138,8 @@ public class RedundantDataFeedManager : IDisposable
         _logger.LogInformation("[DataFeed] Initializing data feeds");
         
         // Add data feeds (these would be actual implementations)
-        AddDataFeed(new TopstepXDataFeed { Priority = 1 });
-        AddDataFeed(new BackupDataFeed { Priority = 2 });
+        AddDataFeed(new TopstepXDataFeed { Priority = PRIMARY_FEED_PRIORITY });
+        AddDataFeed(new BackupDataFeed { Priority = BACKUP_FEED_PRIORITY });
         
         // Sort by priority
         _dataFeeds.Sort((a, b) => a.Priority.CompareTo(b.Priority));
@@ -306,7 +346,7 @@ public class RedundantDataFeedManager : IDisposable
                             health.DataQualityScore = CalculateDataQuality(testData);
                         }
                         
-                        if (latency > 100)
+                        if (latency > HIGH_LATENCY_THRESHOLD_MS)
                         {
                             _logger.LogWarning("[DataFeed] High latency on {FeedName}: {Latency}ms", feed.FeedName, latency);
                         }
@@ -421,7 +461,7 @@ public class RedundantDataFeedManager : IDisposable
                 }
                 
                 // Log periodic status
-                if (DateTime.UtcNow.Second % 30 == 0) // Every 30 seconds
+                if (DateTime.UtcNow.Second % STATUS_LOG_INTERVAL_SECONDS == 0) // Every 30 seconds
                 {
                     LogConsistencyStatus(consistency);
                 }
@@ -464,9 +504,9 @@ public class RedundantDataFeedManager : IDisposable
 
         // Determine overall consistency
         consistency.IsConsistent = 
-            maxDeviation < 0.001m && // 0.1% price tolerance
-            spreadDeviation < 0.05m && // 5% spread tolerance  
-            maxAge < 30; // 30 second freshness tolerance
+            maxDeviation < PRICE_TOLERANCE && // 0.1% price tolerance
+            spreadDeviation < SPREAD_TOLERANCE && // 5% spread tolerance  
+            maxAge < FRESHNESS_TOLERANCE_SECONDS; // 30 second freshness tolerance
 
         // Identify outliers
         if (!consistency.IsConsistent)
@@ -475,7 +515,7 @@ public class RedundantDataFeedManager : IDisposable
             foreach (var snapshot in snapshots)
             {
                 var deviation = Math.Abs(snapshot.Price - avgPrice) / avgPrice;
-                if (deviation == maxDeviation && deviation > 0.001m)
+                if (deviation == maxDeviation && deviation > PRICE_OUTLIER_THRESHOLD)
                 {
                     consistency.AddOutlierFeed(snapshot.FeedName);
                     consistency.AddIssue($"Price outlier: {snapshot.FeedName} deviates by {deviation:P2}");
@@ -485,7 +525,7 @@ public class RedundantDataFeedManager : IDisposable
             // Find stale data
             foreach (var snapshot in snapshots)
             {
-                if (snapshot.DataAge.TotalSeconds > 30)
+                if (snapshot.DataAge.TotalSeconds > STALE_DATA_THRESHOLD_SECONDS)
                 {
                     consistency.AddIssue($"Stale data: {snapshot.FeedName} is {snapshot.DataAge.TotalSeconds:F1}s old");
                 }
@@ -494,7 +534,7 @@ public class RedundantDataFeedManager : IDisposable
             // Find slow feeds
             foreach (var snapshot in snapshots)
             {
-                if (snapshot.ResponseTime.TotalMilliseconds > 500)
+                if (snapshot.ResponseTime.TotalMilliseconds > SLOW_RESPONSE_THRESHOLD_MS)
                 {
                     consistency.AddIssue($"Slow response: {snapshot.FeedName} took {snapshot.ResponseTime.TotalMilliseconds:F0}ms");
                 }
@@ -514,7 +554,7 @@ public class RedundantDataFeedManager : IDisposable
             {
                 if (_feedHealth.TryGetValue(outlierFeed, out var health))
                 {
-                    health.DataQualityScore *= 0.95; // Reduce quality score
+                    health.DataQualityScore *= QUALITY_SCORE_PENALTY; // Reduce quality score
                     _logger.LogWarning("[DataConsistency] Reduced quality score for {FeedName} to {Score:F2}", 
                         outlierFeed, health.DataQualityScore);
                 }
@@ -537,7 +577,7 @@ public class RedundantDataFeedManager : IDisposable
             await StoreConsistencyAlertAsync(alert).ConfigureAwait(false);
 
             // If deviation is severe, trigger failover
-            if (consistency.PriceDeviation > 0.01m) // 1% deviation
+            if (consistency.PriceDeviation > MINIMUM_PRICE_DEVIATION) // 1% deviation
             {
                 _logger.LogError("[DataConsistency] SEVERE inconsistency detected for {Symbol}: {Deviation:P2}", 
                     consistency.Symbol, consistency.PriceDeviation);
@@ -687,12 +727,12 @@ public class RedundantDataFeedManager : IDisposable
         
         // Reduce score for stale data
         var age = DateTime.UtcNow - data.Timestamp;
-        if (age > TimeSpan.FromSeconds(30)) score -= 0.3;
-        if (age > TimeSpan.FromMinutes(1)) score -= 0.5;
+        if (age > TimeSpan.FromSeconds(STALE_DATA_THRESHOLD_SECONDS)) score -= STALE_DATA_SCORE_PENALTY;
+        if (age > TimeSpan.FromMinutes(1)) score -= VERY_STALE_DATA_SCORE_PENALTY;
         
         // Reduce score for invalid prices
         if (data.Price <= 0) score = 0.0;
-        if (data.Bid >= data.Ask && data.Bid > 0 && data.Ask > 0) score -= 0.2;
+        if (data.Bid >= data.Ask && data.Bid > 0 && data.Ask > 0) score -= INVALID_SPREAD_SCORE_PENALTY;
         
         return Math.Max(0.0, score);
     }
@@ -766,10 +806,10 @@ public class TopstepXDataFeed : IDataFeed
         return new MarketData
         {
             Symbol = symbol,
-            Price = 4500.00m + (decimal)(Random.Shared.NextDouble() * 10 - 5),
-            Volume = 1000,
-            Bid = 4499.75m,
-            Ask = 4500.25m,
+            Price = ES_BASE_PRICE + (decimal)(Random.Shared.NextDouble() * PRICE_VARIATION_RANGE - PRICE_VARIATION_OFFSET),
+            Volume = DEFAULT_VOLUME,
+            Bid = ES_BID_PRICE,
+            Ask = ES_ASK_PRICE,
             Timestamp = DateTime.UtcNow,
             Source = FeedName
         };
@@ -777,7 +817,7 @@ public class TopstepXDataFeed : IDataFeed
 
     public async Task<OrderBook?> GetOrderBookAsync(string symbol)
     {
-        await Task.Delay(50).ConfigureAwait(false);
+        await Task.Delay(SIMULATION_DELAY_MS).ConfigureAwait(false);
         return new OrderBook { Symbol = symbol, Timestamp = DateTime.UtcNow };
     }
 
