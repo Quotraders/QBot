@@ -31,6 +31,11 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
     private bool _isConnectedToTopstep;
     private bool _adapterInitialized;
     
+    // Emergency controls and resource monitoring (read from environment)
+    private readonly bool _enableEmergencyStop;
+    private readonly long _maxMemoryUsageMb;
+    private readonly bool _enableResourceMonitoring;
+    
     // Workflow tracking for real stats
     private readonly Dictionary<string, UnifiedWorkflow> _registeredWorkflows = new();
     private readonly HashSet<string> _activeWorkflows = new();
@@ -53,6 +58,15 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         _intelligenceOrchestrator = null!; // Will be resolved later
         _dataOrchestrator = null!; // Will be resolved later
         _startTime = DateTime.UtcNow;
+        
+        // Read emergency controls from environment variables
+        _enableEmergencyStop = Environment.GetEnvironmentVariable("ENABLE_EMERGENCY_STOP") == "true";
+        _maxMemoryUsageMb = long.Parse(Environment.GetEnvironmentVariable("MAX_MEMORY_USAGE_MB") ?? "2048");
+        _enableResourceMonitoring = Environment.GetEnvironmentVariable("ENABLE_RESOURCE_MONITORING") == "1" 
+            || Environment.GetEnvironmentVariable("ENABLE_RESOURCE_MONITORING") == "true";
+        
+        _logger.LogInformation("🛡️ [UNIFIED-ORCHESTRATOR] Emergency controls: EmergencyStop={EmergencyStop}, ResourceMonitoring={ResourceMonitoring}, MaxMemoryMB={MaxMemory}",
+            _enableEmergencyStop, _enableResourceMonitoring, _maxMemoryUsageMb);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -184,6 +198,24 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
 
     private async Task ProcessSystemOperationsAsync(CancellationToken cancellationToken)
     {
+        // Monitor resource usage if enabled
+        if (_enableResourceMonitoring)
+        {
+            var currentMemoryMb = System.Diagnostics.Process.GetCurrentProcess().WorkingSet64 / (1024 * 1024);
+            if (currentMemoryMb > _maxMemoryUsageMb)
+            {
+                _logger.LogWarning("⚠️ Memory usage exceeded limit: {CurrentMB}MB > {MaxMB}MB", 
+                    currentMemoryMb, _maxMemoryUsageMb);
+                
+                if (_enableEmergencyStop)
+                {
+                    _logger.LogCritical("🚨 Triggering emergency shutdown due to memory limit breach");
+                    await ExecuteEmergencyShutdownAsync(cancellationToken).ConfigureAwait(false);
+                    return;
+                }
+            }
+        }
+        
         // Coordinate between all orchestrators and monitor SDK health
         if (_adapterInitialized && _topstepXAdapter.IsConnected)
         {
@@ -440,8 +472,25 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         {
             _logger.LogWarning("🚨 Emergency shutdown initiated");
             
-            // Implementation would perform emergency shutdown
-            await Task.CompletedTask.ConfigureAwait(false);
+            if (!_enableEmergencyStop)
+            {
+                _logger.LogWarning("⚠️ Emergency stop disabled by configuration - shutdown skipped");
+                return false;
+            }
+            
+            // Disconnect from TopstepX
+            if (_adapterInitialized)
+            {
+                _logger.LogInformation("📡 Disconnecting from TopstepX...");
+                await _topstepXAdapter.DisconnectAsync().ConfigureAwait(false);
+            }
+            
+            // Stop all active workflows
+            lock (_workflowLock)
+            {
+                _logger.LogInformation("🛑 Stopping {Count} active workflows", _activeWorkflows.Count);
+                _activeWorkflows.Clear();
+            }
             
             _logger.LogInformation("✅ Emergency shutdown completed");
             return true;
