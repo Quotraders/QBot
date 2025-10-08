@@ -42,7 +42,7 @@ Successfully merged all four environment template files into the main `.env` fil
 #### Section 1: Autonomous Trading Mode Configuration (12 settings)
 Full 24/7 autonomous trading capabilities
 ```bash
-AUTONOMOUS_MODE=false
+AUTONOMOUS_MODE=true
 AUTO_EXECUTION=false
 AUTO_STRATEGY_SELECTION=true
 AUTO_POSITION_SIZING=true
@@ -50,9 +50,9 @@ AUTO_RISK_ADJUSTMENT=true
 AUTO_PROFIT_TAKING=true
 AUTO_LOSS_MANAGEMENT=true
 CONTINUOUS_LEARNING=true
-TRADE_DURING_LUNCH=false
-TRADE_OVERNIGHT=false
-TRADE_PREMARKET=false
+TRADE_DURING_LUNCH=true
+TRADE_OVERNIGHT=true
+TRADE_PREMARKET=true
 MAX_CONTRACTS_PER_TRADE=5
 ```
 

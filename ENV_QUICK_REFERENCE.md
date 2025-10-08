@@ -11,7 +11,7 @@
 ### 🚀 Autonomous Trading
 ```bash
 ENABLE_AUTO_EXECUTION=true           # ✅ CHANGED: Now enabled for autonomous trading
-AUTONOMOUS_MODE=false                # Set to true for full autonomy
+AUTONOMOUS_MODE=true                 # ✅ CHANGED: Full autonomy enabled
 AUTO_STRATEGY_SELECTION=true
 AUTO_POSITION_SIZING=true
 AUTO_RISK_ADJUSTMENT=true
@@ -87,9 +87,9 @@ BOT_ALERT_SYSTEM_HEALTH=true          # System health alerts
 
 ## Trading Time Windows
 ```bash
-TRADE_DURING_LUNCH=false              # Skip lunch hour
-TRADE_OVERNIGHT=false                 # Skip overnight session
-TRADE_PREMARKET=false                 # Skip premarket hours
+TRADE_DURING_LUNCH=true               # ✅ CHANGED: Trade during lunch hour
+TRADE_OVERNIGHT=true                  # ✅ CHANGED: Trade overnight session
+TRADE_PREMARKET=true                  # ✅ CHANGED: Trade premarket hours
 MAX_CONTRACTS_PER_TRADE=5             # Max contract size
 ```
 
