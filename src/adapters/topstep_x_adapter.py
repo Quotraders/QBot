@@ -15,10 +15,11 @@ import time
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 from contextlib import asynccontextmanager
+from collections import deque
 
 # Import the real project-x-py SDK - fail hard if not available
 try:
-    from project_x_py import TradingSuite
+    from project_x_py import TradingSuite, EventType
 except ImportError as e:
     raise RuntimeError(
         "project-x-py SDK is required for production use. "
@@ -141,6 +142,10 @@ class TopstepXAdapter:
         self._connection_health = 0.0
         self._last_health_check: Optional[datetime] = None
         
+        # PHASE 1: Fill event storage queue (thread-safe with asyncio)
+        self._fill_events_queue: deque = deque(maxlen=1000)  # Keep last 1000 fills
+        self._fill_events_lock = asyncio.Lock()
+        
         # Configure production logging
         self.logger = logging.getLogger(f"TopstepXAdapter-{'-'.join(instruments)}")
         if not self.logger.handlers:
@@ -171,6 +176,111 @@ class TopstepXAdapter:
             **data
         }
         self.logger.info(f"[TELEMETRY] {telemetry}")
+    
+    def _extract_symbol_from_contract_id(self, contract_id: str) -> str:
+        """
+        Extract symbol from TopstepX contract ID format.
+        
+        Examples:
+            "CON.F.US.MNQ.H25" -> "MNQ"
+            "CON.F.US.EP.Z25" -> "ES" (EP maps to ES)
+            "CON.F.US.ENQ.Z25" -> "NQ" (ENQ maps to NQ)
+            
+        Args:
+            contract_id: TopstepX contract identifier
+            
+        Returns:
+            Extracted symbol or original contract_id if parsing fails
+        """
+        try:
+            parts = contract_id.split('.')
+            if len(parts) >= 4:
+                # TopstepX format: CON.F.US.SYMBOL.EXPIRY
+                instrument_part = parts[3]
+                
+                # Map TopstepX instrument codes to standard symbols
+                symbol_map = {
+                    "EP": "ES",    # E-mini S&P 500
+                    "ENQ": "NQ",   # E-mini NASDAQ
+                    "MNQ": "MNQ",  # Micro E-mini NASDAQ
+                    "MES": "ES",   # Micro E-mini S&P 500
+                }
+                
+                return symbol_map.get(instrument_part, instrument_part)
+        except Exception as e:
+            self.logger.warning(f"Failed to parse contract ID {contract_id}: {e}")
+        
+        return contract_id
+    
+    async def _on_order_filled(self, event_data: Any):
+        """
+        PHASE 1: WebSocket callback for ORDER_FILLED events.
+        
+        This callback is triggered when an order is filled via the SDK's
+        real-time WebSocket connection. It transforms the SDK event format
+        into the structure expected by the C# layer.
+        
+        Args:
+            event_data: Event data from project-x-py SDK
+        """
+        try:
+            # Extract fill details from SDK event data
+            # The SDK provides a GatewayUserTrade event with fill information
+            order_id = str(getattr(event_data, 'orderId', getattr(event_data, 'order_id', 'unknown')))
+            contract_id = str(getattr(event_data, 'contractId', getattr(event_data, 'contract_id', '')))
+            quantity = int(getattr(event_data, 'quantity', getattr(event_data, 'qty', 0)))
+            fill_price = float(getattr(event_data, 'price', getattr(event_data, 'fill_price', 0.0)))
+            commission = float(getattr(event_data, 'commission', 0.0))
+            timestamp_val = getattr(event_data, 'timestamp', None)
+            
+            # Extract symbol from contract ID
+            symbol = self._extract_symbol_from_contract_id(contract_id)
+            
+            # Determine liquidity type (MAKER/TAKER)
+            liquidity_type = str(getattr(event_data, 'liquidityType', 
+                                        getattr(event_data, 'liquidity_type', 'TAKER')))
+            
+            # Parse timestamp
+            if timestamp_val:
+                if isinstance(timestamp_val, (int, float)):
+                    # Assume milliseconds timestamp
+                    timestamp = datetime.fromtimestamp(timestamp_val / 1000.0, tz=timezone.utc)
+                elif isinstance(timestamp_val, str):
+                    timestamp = datetime.fromisoformat(timestamp_val.replace('Z', '+00:00'))
+                else:
+                    timestamp = datetime.now(timezone.utc)
+            else:
+                timestamp = datetime.now(timezone.utc)
+            
+            # Transform to C# expected format
+            fill_event = {
+                'order_id': order_id,
+                'symbol': symbol,
+                'quantity': quantity,
+                'price': fill_price,  # Entry price (same as fill_price for market orders)
+                'fill_price': fill_price,
+                'commission': commission,
+                'exchange': 'CME',  # Default for futures
+                'liquidity_type': liquidity_type,
+                'timestamp': timestamp.isoformat()
+            }
+            
+            # Add to queue with thread-safe lock
+            async with self._fill_events_lock:
+                self._fill_events_queue.append(fill_event)
+            
+            self.logger.info(
+                f"[FILL-EVENT] Order filled: {order_id} {symbol} {quantity} @ ${fill_price:.2f}"
+            )
+            self._emit_telemetry("order_filled", {
+                "order_id": order_id,
+                "symbol": symbol,
+                "quantity": quantity,
+                "fill_price": fill_price
+            })
+            
+        except Exception as e:
+            self.logger.error(f"Error processing fill event: {e}", exc_info=True)
 
     async def initialize(self) -> None:
         """Setup structured logging for production use."""
@@ -232,6 +342,20 @@ class TopstepXAdapter:
         self.suite = await self.retry_policy.execute_with_retry(
             _initialize_suite, "TradingSuite_initialization", self.logger
         )
+        
+        # PHASE 1: Subscribe to ORDER_FILLED events via WebSocket
+        try:
+            self.suite.on(EventType.ORDER_FILLED, self._on_order_filled)
+            self.logger.info("✅ Subscribed to ORDER_FILLED events via WebSocket")
+        except Exception as e:
+            error_msg = f"FAIL-CLOSED: Failed to subscribe to fill events: {e}"
+            self.logger.error(error_msg)
+            self._emit_telemetry("event_subscription_failed", {
+                "error": str(e),
+                "severity": "critical"
+            })
+            await self._cleanup_resources()
+            raise RuntimeError(error_msg) from e
         
         # Verify connection to ALL instruments - FAIL CLOSED if any fail
         connection_failures = []
@@ -459,10 +583,11 @@ class TopstepXAdapter:
 
     async def get_fill_events(self) -> Dict[str, Any]:
         """
-        PHASE 2: Get recent fill events from TopstepX SDK.
+        PHASE 1: Get recent fill events from TopstepX SDK.
         
-        This method polls for fill notifications. In production, this would
-        subscribe to real-time WebSocket events from the SDK.
+        This method returns fill events that have been collected via WebSocket
+        subscription to EventType.ORDER_FILLED. Events are stored in an in-memory
+        queue and retrieved by the C# layer via polling.
         
         Returns:
             Dictionary with fills array containing fill event data
@@ -474,29 +599,12 @@ class TopstepXAdapter:
             }
         
         try:
-            # PHASE 2: Mock implementation for now
-            # In production, this would query the SDK's trade history
-            # or subscribe to real-time fill events
+            # Read all events from queue and clear it (thread-safe)
+            async with self._fill_events_lock:
+                fills = list(self._fill_events_queue)
+                self._fill_events_queue.clear()
             
-            # For now, return empty array - actual implementation would:
-            # 1. Subscribe to SDK's trade event stream
-            # 2. Query recent trades from SDK
-            # 3. Filter for new fills since last poll
-            
-            fills = []
-            
-            # Example of what fill data would look like:
-            # fills.append({
-            #     'order_id': 'ORD-123456',
-            #     'symbol': 'ES',
-            #     'quantity': 1,
-            #     'price': 5000.00,
-            #     'fill_price': 5000.25,
-            #     'commission': 2.50,
-            #     'exchange': 'CME',
-            #     'liquidity_type': 'TAKER',
-            #     'timestamp': datetime.now(timezone.utc).isoformat()
-            # })
+            self.logger.debug(f"[FILL-EVENTS] Returning {len(fills)} fill events")
             
             return {
                 'fills': fills,
@@ -580,6 +688,105 @@ class TopstepXAdapter:
                 'last_check': datetime.now(timezone.utc).isoformat()
             }
 
+    async def get_positions(self) -> List[Dict[str, Any]]:
+        """
+        PHASE 2: Get all current positions from TopstepX SDK.
+        
+        Returns list of positions with details needed for reconciliation.
+        
+        Returns:
+            List of position dictionaries with keys:
+                - symbol: str (e.g., "ES", "MNQ")
+                - quantity: int (positive for long, negative for short)
+                - side: str ("LONG" or "SHORT")
+                - avg_price: float
+                - unrealized_pnl: float
+                - realized_pnl: float
+                - position_id: str
+        """
+        if not self._is_initialized or not self.suite:
+            self.logger.warning("Adapter not initialized, returning empty positions")
+            return []
+        
+        try:
+            # Query all positions from SDK
+            all_positions = await self.suite.positions.get_all_positions()
+            
+            result = []
+            for position in all_positions:
+                try:
+                    # Extract position data
+                    contract_id = str(getattr(position, 'contractId', ''))
+                    symbol = self._extract_symbol_from_contract_id(contract_id)
+                    
+                    # netPos is signed: positive = long, negative = short
+                    net_pos = int(getattr(position, 'netPos', 0))
+                    
+                    # Determine side
+                    if net_pos > 0:
+                        side = "LONG"
+                        avg_price = float(getattr(position, 'buyAvgPrice', 0.0))
+                    elif net_pos < 0:
+                        side = "SHORT"
+                        avg_price = float(getattr(position, 'sellAvgPrice', 0.0))
+                    else:
+                        # Flat position, skip
+                        continue
+                    
+                    # Get P&L data
+                    unrealized_pnl = float(getattr(position, 'unrealizedPnl', 0.0))
+                    realized_pnl = float(getattr(position, 'realizedPnl', 0.0))
+                    position_id = str(getattr(position, 'id', contract_id))
+                    
+                    result.append({
+                        'symbol': symbol,
+                        'quantity': abs(net_pos),
+                        'side': side,
+                        'avg_price': avg_price,
+                        'unrealized_pnl': unrealized_pnl,
+                        'realized_pnl': realized_pnl,
+                        'position_id': position_id
+                    })
+                    
+                except Exception as e:
+                    self.logger.warning(f"Failed to parse position: {e}")
+                    continue
+            
+            self.logger.debug(f"[POSITIONS] Retrieved {len(result)} positions")
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get positions: {e}")
+            return []
+    
+    async def get_position(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """
+        PHASE 2: Get a specific position by symbol.
+        
+        Args:
+            symbol: Trading symbol (e.g., "ES", "MNQ")
+            
+        Returns:
+            Position dictionary or None if not found
+        """
+        if not self._is_initialized or not self.suite:
+            return None
+        
+        try:
+            # Get all positions and filter by symbol
+            all_positions = await self.get_positions()
+            
+            for position in all_positions:
+                if position['symbol'] == symbol:
+                    return position
+            
+            self.logger.debug(f"[POSITION] No position found for {symbol}")
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get position for {symbol}: {e}")
+            return None
+
     async def get_portfolio_status(self) -> Dict[str, Any]:
         """Get current portfolio positions and P&L."""
         if not self._is_initialized or not self.suite:
@@ -589,30 +796,29 @@ class TopstepXAdapter:
             # Get portfolio data from TradingSuite
             suite_stats = await self.suite.get_stats()
             
+            # Use new get_positions() method for detailed position data
+            positions_list = await self.get_positions()
+            
+            # Transform to dict keyed by symbol for backward compatibility
             positions = {}
+            for pos in positions_list:
+                symbol = pos['symbol']
+                positions[symbol] = {
+                    'size': pos['quantity'] if pos['side'] == 'LONG' else -pos['quantity'],
+                    'average_price': pos['avg_price'],
+                    'unrealized_pnl': pos['unrealized_pnl'],
+                    'realized_pnl': pos['realized_pnl']
+                }
+            
+            # Add instruments with no position
             for instrument in self.instruments:
-                try:
-                    # Get position info for each instrument from the suite
-                    instrument_obj = self.suite[instrument]
-                    position_data = getattr(instrument_obj, 'positions', None)
-                    
-                    if position_data:
-                        positions[instrument] = {
-                            'size': getattr(position_data, 'quantity', 0),
-                            'average_price': getattr(position_data, 'avg_price', 0.0),
-                            'unrealized_pnl': getattr(position_data, 'unrealized_pnl', 0.0),
-                            'realized_pnl': getattr(position_data, 'realized_pnl', 0.0)
-                        }
-                    else:
-                        positions[instrument] = {
-                            'size': 0,
-                            'average_price': 0.0,
-                            'unrealized_pnl': 0.0,
-                            'realized_pnl': 0.0
-                        }
-                except Exception as e:
-                    self.logger.warning(f"Failed to get position for {instrument}: {e}")
-                    positions[instrument] = {'error': str(e)}
+                if instrument not in positions:
+                    positions[instrument] = {
+                        'size': 0,
+                        'average_price': 0.0,
+                        'unrealized_pnl': 0.0,
+                        'realized_pnl': 0.0
+                    }
                     
             return {
                 'portfolio': suite_stats,
@@ -785,6 +991,14 @@ if __name__ == "__main__":
                         elif action == "get_portfolio_status":
                             result = await adapter.get_portfolio_status()
                             return result
+                        
+                        elif action == "get_fill_events":
+                            result = await adapter.get_fill_events()
+                            return result
+                        
+                        elif action == "get_positions":
+                            positions = await adapter.get_positions()
+                            return {"success": True, "positions": positions}
                             
                         elif action == "disconnect":
                             await adapter.disconnect()
