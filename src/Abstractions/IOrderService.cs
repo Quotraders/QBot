@@ -32,6 +32,13 @@ namespace TradingBot.Abstractions
         Task<Position?> GetPositionAsync(string positionId);
         Task<List<Order>> GetActiveOrdersAsync();
     }
+    
+    /// <summary>
+    /// Advanced order types (OCO, Bracket, Iceberg) are available in OrderExecutionService
+    /// but not exposed in IOrderService interface to avoid breaking changes.
+    /// Cast to OrderExecutionService to access these features.
+    /// See ADVANCED_ORDER_TYPES_GUIDE.md for usage documentation.
+    /// </summary>
 
     /// <summary>
     /// Order status enumeration
