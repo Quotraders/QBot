@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using BotCore.Helpers;
 using TradingBot.Abstractions;
 using TradingBot.BotCore.Configuration;
 
@@ -144,6 +145,27 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
 
         try
         {
+            // Validate and round prices to valid tick increments before placing order
+            try
+            {
+                stopLoss = PriceHelper.RoundToTick(stopLoss, symbol);
+                takeProfit = PriceHelper.RoundToTick(takeProfit, symbol);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError("Price validation failed: {Error}", ex.Message);
+                return new OrderExecutionResult(
+                    false,
+                    null,
+                    ex.Message,
+                    symbol,
+                    size,
+                    0m,
+                    stopLoss,
+                    takeProfit,
+                    DateTime.UtcNow);
+            }
+            
             var currentPrice = await GetPriceAsync(symbol, cancellationToken).ConfigureAwait(false);
             
             _logger.LogInformation(

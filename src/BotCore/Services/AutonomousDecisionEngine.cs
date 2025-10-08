@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using BotCore.Models;
 using BotCore.Brain;
 using BotCore.Services;
+using BotCore.Helpers;
 using TradingBot.Abstractions;
 using TradingBot.BotCore.Services.Helpers;
 
@@ -754,6 +755,71 @@ public class AutonomousDecisionEngine : BackgroundService
         return Math.Max(1, Math.Min(contractCount, _config.MaxContractsPerTrade));
     }
     
+    /// <summary>
+    /// Validate trade risk parameters to ensure positive risk and reasonable R-multiple.
+    /// </summary>
+    /// <param name="entryPrice">Entry price for the trade</param>
+    /// <param name="stopPrice">Stop loss price</param>
+    /// <param name="targetPrice">Take profit price</param>
+    /// <param name="direction">Trade direction (Buy/Sell)</param>
+    /// <param name="errorReason">Output parameter with error description if validation fails</param>
+    /// <returns>True if trade risk is valid, false otherwise</returns>
+    private bool ValidateTradeRisk(decimal entryPrice, decimal stopPrice, decimal targetPrice, string direction, out string errorReason)
+    {
+        // Calculate risk (distance from entry to stop)
+        decimal risk = Math.Abs(entryPrice - stopPrice);
+        if (risk <= 0)
+        {
+            errorReason = "Invalid risk: stop loss would not limit losses";
+            return false;
+        }
+        
+        // Calculate reward (distance from entry to target)
+        decimal reward = Math.Abs(entryPrice - targetPrice);
+        if (reward <= 0)
+        {
+            errorReason = "Invalid reward: take profit would not secure profits";
+            return false;
+        }
+        
+        // Calculate R-multiple (reward-to-risk ratio)
+        decimal rMultiple = reward / risk;
+        if (rMultiple < 1.0m)
+        {
+            errorReason = $"Invalid R-multiple: {rMultiple:F2} is less than 1.0 (risk exceeds reward)";
+            return false;
+        }
+        
+        // Validate stop is on correct side for direction
+        if (direction == "Buy" && stopPrice >= entryPrice)
+        {
+            errorReason = "Invalid stop for buy: stop must be below entry price";
+            return false;
+        }
+        
+        if (direction == "Sell" && stopPrice <= entryPrice)
+        {
+            errorReason = "Invalid stop for sell: stop must be above entry price";
+            return false;
+        }
+        
+        // Validate target is on correct side for direction
+        if (direction == "Buy" && targetPrice <= entryPrice)
+        {
+            errorReason = "Invalid target for buy: target must be above entry price";
+            return false;
+        }
+        
+        if (direction == "Sell" && targetPrice >= entryPrice)
+        {
+            errorReason = "Invalid target for sell: target must be below entry price";
+            return false;
+        }
+        
+        errorReason = string.Empty;
+        return true;
+    }
+    
     private async Task<TradeExecutionResult> ExecuteTradeAsync(TradingOpportunity opportunity, int contractSize, CancellationToken cancellationToken)
     {
         try
@@ -763,6 +829,9 @@ public class AutonomousDecisionEngine : BackgroundService
             
             // Get current market price for order placement
             var currentPrice = opportunity.EntryPrice ?? await GetCurrentMarketPriceAsync(opportunity.Symbol, cancellationToken).ConfigureAwait(false);
+            
+            // Round entry price to valid tick to ensure compliance
+            currentPrice = PriceHelper.RoundToTick(currentPrice, opportunity.Symbol);
             
             // Calculate tick size based on symbol (ES and MNQ both use 0.25 ticks)
             const decimal tickSize = 0.25m;
@@ -785,6 +854,22 @@ public class AutonomousDecisionEngine : BackgroundService
                 stopLoss = currentPrice + (stopTicks * tickSize);
                 takeProfit = currentPrice - (targetTicks * tickSize);
                 orderSize = -contractSize; // Negative for sell
+            }
+            
+            // Round stop and target to valid ticks
+            stopLoss = PriceHelper.RoundToTick(stopLoss, opportunity.Symbol);
+            takeProfit = PriceHelper.RoundToTick(takeProfit, opportunity.Symbol);
+            
+            // Validate trade risk before placing order
+            if (!ValidateTradeRisk(currentPrice, stopLoss, takeProfit, opportunity.Direction, out string validationError))
+            {
+                _logger.LogError("❌ [TRADE-EXECUTION] Risk validation failed: {Error}", validationError);
+                return new TradeExecutionResult
+                {
+                    Success = false,
+                    ErrorMessage = $"Risk validation failed: {validationError}",
+                    Timestamp = DateTime.UtcNow
+                };
             }
             
             // Check if TopstepX adapter is available
