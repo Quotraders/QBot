@@ -167,7 +167,7 @@ public static class S15RlStrategy
             // Validate risk-reward
             var risk_amount = Math.Abs(entry - stop);
             var reward_amount = Math.Abs(target - entry);
-            if (risk_amount <= 0 || reward_amount / risk_amount < 1.0m)
+            if (risk_amount <= 0 || reward_amount / risk_amount < MinimumRiskRewardRatio)
             {
                 return candidates; // Poor risk-reward ratio
             }
