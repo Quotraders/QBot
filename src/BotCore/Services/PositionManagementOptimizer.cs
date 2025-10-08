@@ -181,18 +181,24 @@ namespace BotCore.Services
         private async Task RunOptimizationCycleAsync(CancellationToken cancellationToken)
         {
             var strategies = new[] { "S2", "S3", "S6", "S11" };
+            var symbols = new[] { "ES", "NQ" };
             
+            // MULTI-SYMBOL LEARNING: Iterate over all strategy-symbol combinations
+            // This enables separate optimization for S2-ES, S2-NQ, S3-ES, S3-NQ, S6-ES, S6-NQ, S11-ES, S11-NQ
             foreach (var strategy in strategies)
             {
-                try
+                foreach (var symbol in symbols)
                 {
-                    await OptimizeBreakevenParameterAsync(strategy, cancellationToken).ConfigureAwait(false);
-                    await OptimizeTrailingParameterAsync(strategy, cancellationToken).ConfigureAwait(false);
-                    await OptimizeTimeExitParameterAsync(strategy, cancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "❌ [PM-OPTIMIZER] Error optimizing parameters for {Strategy}", strategy);
+                    try
+                    {
+                        await OptimizeBreakevenParameterAsync(strategy, symbol, cancellationToken).ConfigureAwait(false);
+                        await OptimizeTrailingParameterAsync(strategy, symbol, cancellationToken).ConfigureAwait(false);
+                        await OptimizeTimeExitParameterAsync(strategy, symbol, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "❌ [PM-OPTIMIZER] Error optimizing parameters for {Strategy}-{Symbol}", strategy, symbol);
+                    }
                 }
             }
             
@@ -215,13 +221,15 @@ namespace BotCore.Services
         /// <summary>
         /// PHASE 3: Learn optimal breakeven trigger timing
         /// VOLATILITY SCALING + SESSION-SPECIFIC: Analyzes per volatility regime and trading session
+        /// MULTI-SYMBOL LEARNING: Analyzes separately per symbol (ES vs NQ)
         /// Analyzes: "Triggered BE at 8 ticks → stopped out, would have hit target"
         /// </summary>
-        private async Task OptimizeBreakevenParameterAsync(string strategy, CancellationToken cancellationToken)
+        private async Task OptimizeBreakevenParameterAsync(string strategy, string symbol, CancellationToken cancellationToken)
         {
             // Group by volatility regime and session for regime-specific learning
+            // MULTI-SYMBOL: Filter by both strategy AND symbol
             var regimeSessions = _outcomes.Values
-                .Where(o => o.Strategy == strategy && o.BreakevenTriggered)
+                .Where(o => o.Strategy == strategy && o.Symbol == symbol && o.BreakevenTriggered)
                 .GroupBy(o => new { o.VolatilityRegime, o.TradingSession })
                 .Where(g => g.Count() >= MinSamplesForLearning)
                 .ToList();
@@ -265,18 +273,19 @@ namespace BotCore.Services
                 
                 if (current != null && best.BreakevenTicks != current.BreakevenTicks && best.AvgPnL > current.AvgPnL * 1.1)
                 {
-                    // CONFIDENCE INTERVALS: Get statistical confidence for this recommendation
-                    var confidenceMetrics = GetBreakevenConfidenceMetrics(strategy, regime, session);
+                    // CONFIDENCE INTERVALS: Get statistical confidence for this recommendation (with symbol filtering)
+                    var confidenceMetrics = GetBreakevenConfidenceMetrics(strategy, symbol, regime, session);
                     var confidenceStr = confidenceMetrics != null 
                         ? FormatConfidenceMetrics(confidenceMetrics, "Breakeven", " ticks")
                         : "confidence: UNKNOWN";
                     
-                    _logger.LogInformation("💡 [PM-OPTIMIZER] Breakeven optimization for {Strategy} in {Regime}/{Session}: Current={Current} ticks (PnL={CurrentPnL:F2}), Optimal={Optimal} ticks (PnL={OptimalPnL:F2}) | {Confidence}",
-                        strategy, regime, session, current.BreakevenTicks, current.AvgPnL, best.BreakevenTicks, best.AvgPnL, confidenceStr);
+                    // MULTI-SYMBOL: Include symbol in logging
+                    _logger.LogInformation("💡 [PM-OPTIMIZER] Breakeven optimization for {Strategy}-{Symbol} in {Regime}/{Session}: Current={Current} ticks (PnL={CurrentPnL:F2}), Optimal={Optimal} ticks (PnL={OptimalPnL:F2}) | {Confidence}",
+                        strategy, symbol, regime, session, current.BreakevenTicks, current.AvgPnL, best.BreakevenTicks, best.AvgPnL, confidenceStr);
                     
-                    // Record regime/session-specific parameter change recommendation
+                    // MULTI-SYMBOL: Record regime/session/symbol-specific parameter change recommendation
                     _changeTracker.RecordChange(
-                        strategyName: strategy,
+                        strategyName: $"{strategy}-{symbol}",
                         parameterName: $"BreakevenAfterTicks_{regime}_{session}",
                         oldValue: current.BreakevenTicks.ToString(),
                         newValue: best.BreakevenTicks.ToString(),
@@ -294,13 +303,15 @@ namespace BotCore.Services
         /// <summary>
         /// PHASE 3: Learn optimal trailing stop distance
         /// VOLATILITY SCALING + SESSION-SPECIFIC: Analyzes per volatility regime and trading session
+        /// MULTI-SYMBOL LEARNING: Analyzes separately per symbol (ES vs NQ)
         /// Analyzes: "Trailing at 1.0x ATR → stopped out early, left $200 on table"
         /// </summary>
-        private async Task OptimizeTrailingParameterAsync(string strategy, CancellationToken cancellationToken)
+        private async Task OptimizeTrailingParameterAsync(string strategy, string symbol, CancellationToken cancellationToken)
         {
             // Group by volatility regime and session for regime-specific learning
+            // MULTI-SYMBOL: Filter by both strategy AND symbol
             var regimeSessions = _outcomes.Values
-                .Where(o => o.Strategy == strategy)
+                .Where(o => o.Strategy == strategy && o.Symbol == symbol)
                 .GroupBy(o => new { o.VolatilityRegime, o.TradingSession })
                 .Where(g => g.Count() >= MinSamplesForLearning)
                 .ToList();
@@ -344,17 +355,19 @@ namespace BotCore.Services
                 
                 if (current != null && Math.Abs(best.TrailMultiplier - current.TrailMultiplier) > 0.2m && best.AvgPnL > current.AvgPnL * 1.1)
                 {
-                    // CONFIDENCE INTERVALS: Get statistical confidence for this recommendation
-                    var confidenceMetrics = GetTrailingConfidenceMetrics(strategy, regime, session);
+                    // CONFIDENCE INTERVALS: Get statistical confidence for this recommendation (with symbol filtering)
+                    var confidenceMetrics = GetTrailingConfidenceMetrics(strategy, symbol, regime, session);
                     var confidenceStr = confidenceMetrics != null 
                         ? FormatConfidenceMetrics(confidenceMetrics, "Trailing", "x ATR")
                         : "confidence: UNKNOWN";
                     
-                    _logger.LogInformation("💡 [PM-OPTIMIZER] Trailing stop optimization for {Strategy} in {Regime}/{Session}: Current={Current:F1}x ATR (PnL={CurrentPnL:F2}, OpCost={CurrentOC:F2}), Optimal={Optimal:F1}x ATR (PnL={OptimalPnL:F2}, OpCost={OptimalOC:F2}) | {Confidence}",
-                        strategy, regime, session, current.TrailMultiplier, current.AvgPnL, current.OpportunityCost, best.TrailMultiplier, best.AvgPnL, best.OpportunityCost, confidenceStr);
+                    // MULTI-SYMBOL: Include symbol in logging
+                    _logger.LogInformation("💡 [PM-OPTIMIZER] Trailing stop optimization for {Strategy}-{Symbol} in {Regime}/{Session}: Current={Current:F1}x ATR (PnL={CurrentPnL:F2}, OpCost={CurrentOC:F2}), Optimal={Optimal:F1}x ATR (PnL={OptimalPnL:F2}, OpCost={OptimalOC:F2}) | {Confidence}",
+                        strategy, symbol, regime, session, current.TrailMultiplier, current.AvgPnL, current.OpportunityCost, best.TrailMultiplier, best.AvgPnL, best.OpportunityCost, confidenceStr);
                     
+                    // MULTI-SYMBOL: Record regime/session/symbol-specific parameter change recommendation
                     _changeTracker.RecordChange(
-                        strategyName: strategy,
+                        strategyName: $"{strategy}-{symbol}",
                         parameterName: $"TrailMultiplier_{regime}_{session}",
                         oldValue: current.TrailMultiplier.ToString("F1"),
                         newValue: best.TrailMultiplier.ToString("F1"),
@@ -371,12 +384,14 @@ namespace BotCore.Services
         
         /// <summary>
         /// PHASE 3: Learn optimal time exit thresholds
+        /// MULTI-SYMBOL LEARNING: Analyzes separately per symbol (ES vs NQ)
         /// Analyzes: "S2 needs 20m in ranging, 10m in trending"
         /// </summary>
-        private async Task OptimizeTimeExitParameterAsync(string strategy, CancellationToken cancellationToken)
+        private async Task OptimizeTimeExitParameterAsync(string strategy, string symbol, CancellationToken cancellationToken)
         {
+            // MULTI-SYMBOL: Filter by both strategy AND symbol
             var outcomes = _outcomes.Values
-                .Where(o => o.Strategy == strategy)
+                .Where(o => o.Strategy == strategy && o.Symbol == symbol)
                 .OrderByDescending(o => o.Timestamp)
                 .Take(100)
                 .ToList();
@@ -411,14 +426,16 @@ namespace BotCore.Services
                     
                     if (avgTimedOutOpCost > 5) // Significant opportunity cost
                     {
-                        _logger.LogInformation("💡 [PM-OPTIMIZER] Time exit analysis for {Strategy} in {Regime}: Winning trades avg {WinDur:F0}m, Timed out avg {TimedDur:F0}m with +{OpCost:F1} ticks lost",
-                            strategy, regimeName, avgWinningDuration, avgTimedOutDuration, avgTimedOutOpCost);
+                        // MULTI-SYMBOL: Include symbol in logging
+                        _logger.LogInformation("💡 [PM-OPTIMIZER] Time exit analysis for {Strategy}-{Symbol} in {Regime}: Winning trades avg {WinDur:F0}m, Timed out avg {TimedDur:F0}m with +{OpCost:F1} ticks lost",
+                            strategy, symbol, regimeName, avgWinningDuration, avgTimedOutDuration, avgTimedOutOpCost);
                         
                         // Recommend longer timeout if timed out trades had significant upside
                         var recommendedTimeout = (int)(avgWinningDuration * 1.5); // 50% buffer
                         
+                        // MULTI-SYMBOL: Record regime/symbol-specific parameter change recommendation
                         _changeTracker.RecordChange(
-                            strategyName: strategy,
+                            strategyName: $"{strategy}-{symbol}",
                             parameterName: $"MaxHoldMinutes_{regimeName}",
                             oldValue: avgTimedOutDuration.ToString("F0"),
                             newValue: recommendedTimeout.ToString(),
@@ -794,7 +811,7 @@ namespace BotCore.Services
             }
             
             // Get early MAE based on requested time window
-            var earlyMaeFunc = earlyMinutes switch
+            Func<PositionManagementOutcome, decimal> earlyMaeFunc = earlyMinutes switch
             {
                 1 => (PositionManagementOutcome o) => o.EarlyMae1Min,
                 2 => (PositionManagementOutcome o) => o.EarlyMae2Min,
@@ -947,10 +964,11 @@ namespace BotCore.Services
         /// <summary>
         /// CONFIDENCE INTERVALS: Get confidence metrics for learned breakeven parameter
         /// </summary>
-        public ConfidenceMetrics? GetBreakevenConfidenceMetrics(string strategy, string regime = "ALL", string session = "ALL")
+        public ConfidenceMetrics? GetBreakevenConfidenceMetrics(string strategy, string symbol = "ALL", string regime = "ALL", string session = "ALL")
         {
             var outcomes = _outcomes.Values
                 .Where(o => o.Strategy == strategy && o.BreakevenTriggered)
+                .Where(o => symbol == "ALL" || o.Symbol == symbol)
                 .Where(o => regime == "ALL" || o.VolatilityRegime == regime)
                 .Where(o => session == "ALL" || o.TradingSession == session)
                 .OrderByDescending(o => o.Timestamp)
@@ -971,10 +989,11 @@ namespace BotCore.Services
         /// <summary>
         /// CONFIDENCE INTERVALS: Get confidence metrics for learned trailing parameter
         /// </summary>
-        public ConfidenceMetrics? GetTrailingConfidenceMetrics(string strategy, string regime = "ALL", string session = "ALL")
+        public ConfidenceMetrics? GetTrailingConfidenceMetrics(string strategy, string symbol = "ALL", string regime = "ALL", string session = "ALL")
         {
             var outcomes = _outcomes.Values
                 .Where(o => o.Strategy == strategy)
+                .Where(o => symbol == "ALL" || o.Symbol == symbol)
                 .Where(o => regime == "ALL" || o.VolatilityRegime == regime)
                 .Where(o => session == "ALL" || o.TradingSession == session)
                 .OrderByDescending(o => o.Timestamp)
