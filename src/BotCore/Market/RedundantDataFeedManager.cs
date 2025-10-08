@@ -101,13 +101,6 @@ public class RedundantDataFeedManager : IDisposable
     private const int RECONNECT_DELAY_SECONDS = 100;       // Delay for reconnection attempts
     private const int STATUS_LOG_INTERVAL_SECONDS = 30;    // Log status every N seconds
     
-    // Price-related test data constants
-    private const decimal ES_BASE_PRICE = 4500.00m;        // ES base price for test data
-    private const decimal ES_BID_PRICE = 4499.75m;         // ES bid price for test data
-    private const decimal ES_ASK_PRICE = 4500.25m;         // ES ask price for test data
-    private const decimal PRICE_VARIATION_RANGE = 10m;     // Price variation range (+/-)
-    private const decimal PRICE_VARIATION_OFFSET = 5m;     // Price variation offset
-    
     // Percentage thresholds for validation
     private const decimal HIGH_PERCENTAGE_THRESHOLD = 0.5m;  // 50% threshold
     private const decimal LOW_PERCENTAGE_THRESHOLD = 0.3m;   // 30% threshold
@@ -554,7 +547,7 @@ public class RedundantDataFeedManager : IDisposable
             {
                 if (_feedHealth.TryGetValue(outlierFeed, out var health))
                 {
-                    health.DataQualityScore *= QUALITY_SCORE_PENALTY; // Reduce quality score
+                    health.DataQualityScore *= (double)QUALITY_SCORE_PENALTY; // Reduce quality score
                     _logger.LogWarning("[DataConsistency] Reduced quality score for {FeedName} to {Score:F2}", 
                         outlierFeed, health.DataQualityScore);
                 }
@@ -786,6 +779,15 @@ public class TopstepXDataFeed : IDataFeed
     // Primary feed simulation constants
     private const int ConnectionDelayMs = 100;
     private const int NetworkDelayMs = 50;
+    private const int SIMULATION_DELAY_MS = 50;            // Delay for simulated operations
+    private const int DEFAULT_VOLUME = 1000;               // Default volume for test data
+    
+    // Price-related test data constants
+    private const decimal ES_BASE_PRICE = 4500.00m;        // ES base price for test data
+    private const decimal ES_BID_PRICE = 4499.75m;         // ES bid price for test data
+    private const decimal ES_ASK_PRICE = 4500.25m;         // ES ask price for test data
+    private const decimal PRICE_VARIATION_RANGE = 10m;     // Price variation range (+/-)
+    private const decimal PRICE_VARIATION_OFFSET = 5m;     // Price variation offset
     
     public string FeedName => "TopstepX";
     public int Priority { get; set; } = 1;
@@ -806,7 +808,7 @@ public class TopstepXDataFeed : IDataFeed
         return new MarketData
         {
             Symbol = symbol,
-            Price = ES_BASE_PRICE + (decimal)(Random.Shared.NextDouble() * PRICE_VARIATION_RANGE - PRICE_VARIATION_OFFSET),
+            Price = ES_BASE_PRICE + (decimal)(Random.Shared.NextDouble() * (double)PRICE_VARIATION_RANGE - (double)PRICE_VARIATION_OFFSET),
             Volume = DEFAULT_VOLUME,
             Bid = ES_BID_PRICE,
             Ask = ES_ASK_PRICE,

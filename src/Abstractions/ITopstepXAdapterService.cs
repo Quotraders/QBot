@@ -43,8 +43,12 @@ namespace TradingBot.Abstractions
         Task InitializeAsync(CancellationToken cancellationToken = default);
         Task<double> GetHealthScoreAsync(CancellationToken cancellationToken = default);
         
-        // Order execution method for real trading
+        // Order execution methods for real trading
         Task<OrderExecutionResult> PlaceOrderAsync(string symbol, int size, decimal stopLoss, decimal takeProfit, CancellationToken cancellationToken = default);
         Task<decimal> GetPriceAsync(string symbol, CancellationToken cancellationToken = default);
+        Task<bool> ClosePositionAsync(string symbol, int quantity, CancellationToken cancellationToken = default);
+        Task<bool> ModifyStopLossAsync(string symbol, decimal stopPrice, CancellationToken cancellationToken = default);
+        Task<bool> ModifyTakeProfitAsync(string symbol, decimal takeProfitPrice, CancellationToken cancellationToken = default);
+        Task<bool> CancelOrderAsync(string orderId, CancellationToken cancellationToken = default);
     }
 }
