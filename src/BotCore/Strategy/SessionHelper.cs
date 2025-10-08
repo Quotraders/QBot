@@ -3,8 +3,25 @@ using System;
 namespace BotCore.Strategy
 {
     /// <summary>
+    /// Granular trading session types for session-specific learning
+    /// Used for position management optimization
+    /// </summary>
+    public enum GranularSessionType
+    {
+        PreMarket,      // 4:00 AM - 9:30 AM ET
+        LondonSession,  // 2:00 AM - 5:00 AM ET (European market hours)
+        NYOpen,         // 9:30 AM - 11:00 AM ET (NY market open - high volatility)
+        Lunch,          // 11:00 AM - 1:00 PM ET (lunch hour - typically choppy)
+        Afternoon,      // 1:00 PM - 3:00 PM ET (afternoon trading)
+        PowerHour,      // 3:00 PM - 4:00 PM ET (last hour - high volume)
+        PostRTH,        // 4:00 PM - 6:00 PM ET (after hours)
+        Overnight       // 6:00 PM - 4:00 AM ET (overnight session)
+    }
+
+    /// <summary>
     /// Helper class for trading session detection and utilities.
     /// Provides shared functionality for session-aware parameter loading across all strategies.
+    /// SESSION-SPECIFIC LEARNING: Now supports granular session detection
     /// </summary>
     public static class SessionHelper
     {
@@ -42,6 +59,69 @@ namespace BotCore.Strategy
                 // Fallback to RTH if timezone conversion fails
                 return "RTH";
             }
+        }
+        
+        /// <summary>
+        /// SESSION-SPECIFIC LEARNING: Get granular trading session for detailed analysis
+        /// Returns specific session type (LondonSession, NYOpen, Lunch, etc.)
+        /// </summary>
+        /// <param name="utcNow">Current UTC time</param>
+        /// <returns>GranularSessionType enum value</returns>
+        public static GranularSessionType GetGranularSession(DateTime utcNow)
+        {
+            try
+            {
+                var etNow = TimeZoneInfo.ConvertTimeFromUtc(utcNow, Et);
+                var timeOfDay = etNow.TimeOfDay;
+                
+                // 6:00 PM to 2:00 AM (next day) = Overnight
+                if (timeOfDay >= new TimeSpan(18, 0, 0) || timeOfDay < new TimeSpan(2, 0, 0))
+                    return GranularSessionType.Overnight;
+                
+                // 2:00 AM to 5:00 AM = London Session (European market hours overlap)
+                if (timeOfDay >= new TimeSpan(2, 0, 0) && timeOfDay < new TimeSpan(5, 0, 0))
+                    return GranularSessionType.LondonSession;
+                
+                // 5:00 AM to 9:30 AM = PreMarket
+                if (timeOfDay >= new TimeSpan(5, 0, 0) && timeOfDay < new TimeSpan(9, 30, 0))
+                    return GranularSessionType.PreMarket;
+                
+                // 9:30 AM to 11:00 AM = NY Open (high volatility period)
+                if (timeOfDay >= new TimeSpan(9, 30, 0) && timeOfDay < new TimeSpan(11, 0, 0))
+                    return GranularSessionType.NYOpen;
+                
+                // 11:00 AM to 1:00 PM = Lunch (typically choppy)
+                if (timeOfDay >= new TimeSpan(11, 0, 0) && timeOfDay < new TimeSpan(13, 0, 0))
+                    return GranularSessionType.Lunch;
+                
+                // 1:00 PM to 3:00 PM = Afternoon
+                if (timeOfDay >= new TimeSpan(13, 0, 0) && timeOfDay < new TimeSpan(15, 0, 0))
+                    return GranularSessionType.Afternoon;
+                
+                // 3:00 PM to 4:00 PM = Power Hour (last hour - high volume)
+                if (timeOfDay >= new TimeSpan(15, 0, 0) && timeOfDay < new TimeSpan(16, 0, 0))
+                    return GranularSessionType.PowerHour;
+                
+                // 4:00 PM to 6:00 PM = PostRTH
+                if (timeOfDay >= new TimeSpan(16, 0, 0) && timeOfDay < new TimeSpan(18, 0, 0))
+                    return GranularSessionType.PostRTH;
+                
+                // Default fallback
+                return GranularSessionType.Afternoon;
+            }
+            catch (Exception)
+            {
+                // Fallback to Afternoon if timezone conversion fails
+                return GranularSessionType.Afternoon;
+            }
+        }
+        
+        /// <summary>
+        /// SESSION-SPECIFIC LEARNING: Get granular session name as string
+        /// </summary>
+        public static string GetGranularSessionName(DateTime utcNow)
+        {
+            return GetGranularSession(utcNow).ToString();
         }
     }
 }
