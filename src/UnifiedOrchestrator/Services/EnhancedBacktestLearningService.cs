@@ -99,8 +99,15 @@ internal class EnhancedBacktestLearningService : BackgroundService
                     await RunUnifiedBacktestLearningAsync(schedulingRecommendation, stoppingToken).ConfigureAwait(false);
                 }
                 
-                // Use the exact interval recommended by UnifiedTradingBrain
-                var delayMinutes = schedulingRecommendation.HistoricalLearningIntervalMinutes;
+                // Use interval from environment variables if set, otherwise use UnifiedTradingBrain recommendation
+                // Priority: CONCURRENT_LEARNING_INTERVAL_MINUTES > UnifiedTradingBrain > default
+                var envInterval = Environment.GetEnvironmentVariable("CONCURRENT_LEARNING_INTERVAL_MINUTES");
+                var delayMinutes = !string.IsNullOrEmpty(envInterval) 
+                    ? int.Parse(envInterval) 
+                    : schedulingRecommendation.HistoricalLearningIntervalMinutes;
+                
+                _logger.LogInformation("[ENHANCED-BACKTEST] Next learning session in {Minutes} minutes (env override: {Override})", 
+                    delayMinutes, !string.IsNullOrEmpty(envInterval));
                 await Task.Delay(TimeSpan.FromMinutes(delayMinutes), stoppingToken).ConfigureAwait(false);
             }
             catch (Exception ex)
