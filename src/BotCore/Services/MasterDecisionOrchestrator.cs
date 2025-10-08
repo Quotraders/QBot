@@ -46,6 +46,11 @@ public class MasterDecisionOrchestrator : BackgroundService
     private const int DecisionIdRandomMin = 1000;           // Minimum random number for decision IDs
     private const int DecisionIdRandomMax = 9999;           // Maximum random number for decision IDs
     
+    // Percentage conversion and threshold constants
+    private const double PercentageMultiplier = 100.0;      // Multiplier to convert decimal to percentage (0.5 → 50%)
+    private const decimal HalfThreshold = 0.5m;             // Half threshold for various calculations
+    private const double MinimumSharpeForDivision = 0.01;   // Minimum Sharpe ratio to avoid division by zero
+    
     private readonly ILogger<MasterDecisionOrchestrator> _logger;
     private readonly IServiceProvider _serviceProvider;
     
@@ -890,7 +895,7 @@ public class MasterDecisionOrchestrator : BackgroundService
         var drawdownIncrease = currentMetrics.MaxDrawdown - _baselineDrawdown;
 
         _logger.LogInformation("📊 [GATE-5] Canary metrics - Trades: {Trades}, WinRate: {WR:F2}%, Sharpe: {SR:F2}, Drawdown: ${DD:F2}",
-            _canaryTradesCompleted, currentMetrics.WinRate * 100, currentMetrics.SharpeRatio, currentMetrics.MaxDrawdown);
+            _canaryTradesCompleted, currentMetrics.WinRate * PercentageMultiplier, currentMetrics.SharpeRatio, currentMetrics.MaxDrawdown);
 
         var isCatastrophic = currentMetrics.WinRate < catastrophicWinRateThreshold || 
                             currentMetrics.MaxDrawdown > catastrophicDrawdownDollars;
@@ -1013,8 +1018,8 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
     {
         _logger.LogWarning("🔄 [GATE-5] Executing canary rollback - deployment rejected");
         _logger.LogWarning("  Win Rate Drop: {Drop:F2}%, Drawdown: ${DD:F2}, Sharpe Drop: {SR:F2}%",
-            (_baselineWinRate - metrics.WinRate) * 100, metrics.MaxDrawdown, 
-            ((_baselineSharpeRatio - metrics.SharpeRatio) / Math.Max(_baselineSharpeRatio, 0.01)) * 100);
+            (_baselineWinRate - metrics.WinRate) * PercentageMultiplier, metrics.MaxDrawdown, 
+            ((_baselineSharpeRatio - metrics.SharpeRatio) / Math.Max(_baselineSharpeRatio, MinimumSharpeForDivision)) * PercentageMultiplier);
 
         var backupDir = Path.Combine("artifacts", "backup");
         var currentDir = Path.Combine("artifacts", "current");
@@ -1072,7 +1077,7 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
         
         _logger.LogInformation("🕊️ [CANARY] Monitoring started with baseline - WinRate: {WinRate:F2}%, " +
                              "Sharpe: {Sharpe:F2}, Drawdown: ${Drawdown:F2}, DailyPnL: ${DailyPnL:F2}",
-            baselineMetrics.GetValueOrDefault("win_rate", 0) * 100,
+            baselineMetrics.GetValueOrDefault("win_rate", 0) * PercentageMultiplier,
             baselineMetrics.GetValueOrDefault("sharpe_ratio", 0),
             baselineMetrics.GetValueOrDefault("drawdown", 0),
             baselineMetrics.GetValueOrDefault("daily_pnl", 0));
@@ -1113,7 +1118,7 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
 
         _logger.LogInformation("📊 [CANARY] Metrics - Trades: {Trades}, WinRate: {WR:F2}%, " +
                              "Sharpe: {SR:F2}, Drawdown: ${DD:F2}",
-            completedTrades, currentWinRate * 100, currentSharpe, currentDrawdown);
+            completedTrades, currentWinRate * PercentageMultiplier, currentSharpe, currentDrawdown);
 
         // Compare to baseline
         var baselineWinRate = _baselineMetrics.GetValueOrDefault("win_rate", 0.5);
@@ -1156,10 +1161,10 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
             rollbackTimestamp);
         _logger.LogError("📊 [ROLLBACK] Current Metrics - WinRate: {WR:F2}%, Sharpe: {SR:F2}, " +
                        "Drawdown: ${DD:F2}",
-            currentWinRate * 100, currentSharpe, currentDrawdown);
+            currentWinRate * PercentageMultiplier, currentSharpe, currentDrawdown);
         _logger.LogError("📊 [ROLLBACK] Baseline Metrics - WinRate: {WR:F2}%, Sharpe: {SR:F2}, " +
                        "Drawdown: ${DD:F2}",
-            _baselineMetrics.GetValueOrDefault("win_rate", 0) * 100,
+            _baselineMetrics.GetValueOrDefault("win_rate", 0) * PercentageMultiplier,
             _baselineMetrics.GetValueOrDefault("sharpe_ratio", 0),
             _baselineMetrics.GetValueOrDefault("drawdown", 0));
 
@@ -1327,7 +1332,7 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
                 _logger.LogWarning("⚠️ [METRICS] No recent trades found, using default baseline");
                 return new Dictionary<string, double>
                 {
-                    ["win_rate"] = 0.5,
+                    ["win_rate"] = (double)HalfThreshold,
                     ["daily_pnl"] = 0,
                     ["sharpe_ratio"] = 1.0,
                     ["drawdown"] = 0
@@ -1370,7 +1375,7 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
 
             _logger.LogInformation("✅ [METRICS] Baseline captured - Trades: {Count}, WinRate: {WR:F2}%, " +
                                  "DailyPnL: ${PnL:F2}, Sharpe: {SR:F2}, Drawdown: ${DD:F2}",
-                recentTrades.Count, winRate * 100, dailyPnl, sharpeRatio, maxDrawdown);
+                recentTrades.Count, winRate * PercentageMultiplier, dailyPnl, sharpeRatio, maxDrawdown);
 
             return metrics;
         }
@@ -1379,7 +1384,7 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
             _logger.LogError(ex, "❌ [METRICS] Failed to capture current metrics");
             return new Dictionary<string, double>
             {
-                ["win_rate"] = 0.5,
+                ["win_rate"] = (double)HalfThreshold,
                 ["daily_pnl"] = 0,
                 ["sharpe_ratio"] = 1.0,
                 ["drawdown"] = 0
@@ -1533,7 +1538,7 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
         // Log high-priority alert (actual alert service integration happens at orchestrator level)
         _logger.LogCritical("🚨 [ALERT] CANARY ROLLBACK TRIGGERED");
         _logger.LogCritical("📧 [ALERT] Message: {Message}", message);
-        _logger.LogCritical("📊 [ALERT] Win Rate: {WinRate:F2}%", winRate * 100);
+        _logger.LogCritical("📊 [ALERT] Win Rate: {WinRate:F2}%", winRate * PercentageMultiplier);
         _logger.LogCritical("📊 [ALERT] Sharpe Ratio: {Sharpe:F2}", sharpe);
         _logger.LogCritical("📊 [ALERT] Drawdown: ${Drawdown:F2}", drawdown);
         _logger.LogCritical("🕐 [ALERT] Timestamp: {Timestamp:yyyy-MM-dd HH:mm:ss} UTC", DateTime.UtcNow);
@@ -1543,7 +1548,7 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
         {
             await _botAlertService.AlertRollbackAsync(
                 message,
-                (decimal)(winRate * 100),
+                (decimal)(winRate * PercentageMultiplier),
                 (decimal)drawdown
             ).ConfigureAwait(false);
         }

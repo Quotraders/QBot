@@ -47,6 +47,27 @@ namespace BotCore.Services
         // NQ contract specifications
         private const decimal NqTickSize = 0.25m;
         private const int NqContractSize = 20;
+        
+        // Month number constants for futures contract codes
+        private const int JanuaryMonth = 1;
+        private const int FebruaryMonth = 2;
+        private const int MarchMonth = 3;
+        private const int AprilMonth = 4;
+        private const int MayMonth = 5;
+        private const int JuneMonth = 6;
+        private const int JulyMonth = 7;
+        private const int AugustMonth = 8;
+        private const int SeptemberMonth = 9;
+        private const int OctoberMonth = 10;
+        private const int NovemberMonth = 11;
+        private const int DecemberMonth = 12;
+        
+        // Contract symbol parsing constants
+        private const int BaseSymbolLength = 2; // ES, NQ are 2 characters
+        private const int MinContractSymbolLengthForYear = 3; // Base + month code + year
+        private const int YearDigits = 2; // Two-digit year in contract symbols
+        private const int YearThresholdForCenturyAdjustment = 50; // Years more than 50 in past get next century
+        private const int CenturyDivisor = 100; // For century calculations
 
         public ContractRolloverService(
             ILogger<ContractRolloverService> logger,
@@ -451,18 +472,18 @@ namespace BotCore.Services
         {
             return monthCode.ToUpper() switch
             {
-                "F" => 1,  // January
-                "G" => 2,  // February
-                "H" => 3,  // March
-                "J" => 4,  // April
-                "K" => 5,  // May
-                "M" => 6,  // June
-                "N" => 7,  // July
-                "Q" => 8,  // August
-                "U" => 9,  // September
-                "V" => 10, // October
-                "X" => 11, // November
-                "Z" => 12, // December
+                "F" => JanuaryMonth,  // January
+                "G" => FebruaryMonth,  // February
+                "H" => MarchMonth,  // March
+                "J" => AprilMonth,  // April
+                "K" => MayMonth,  // May
+                "M" => JuneMonth,  // June
+                "N" => JulyMonth,  // July
+                "Q" => AugustMonth,  // August
+                "U" => SeptemberMonth,  // September
+                "V" => OctoberMonth, // October
+                "X" => NovemberMonth, // November
+                "Z" => DecemberMonth, // December
                 _ => throw new ArgumentException($"Invalid month code: {monthCode}")
             };
         }
@@ -472,11 +493,11 @@ namespace BotCore.Services
         /// </summary>
         private static string ExtractBaseSymbol(string contractSymbol)
         {
-            if (contractSymbol.Length < 2)
+            if (contractSymbol.Length < BaseSymbolLength)
                 throw new ArgumentException("Invalid contract symbol format");
 
             // Handle ES/NQ (2 chars)
-            return contractSymbol[..2];
+            return contractSymbol[..BaseSymbolLength];
         }
 
         /// <summary>
@@ -497,21 +518,21 @@ namespace BotCore.Services
         private static int ExtractYear(string contractSymbol)
         {
             var baseLength = ExtractBaseSymbol(contractSymbol).Length;
-            if (contractSymbol.Length < baseLength + 3)
+            if (contractSymbol.Length < baseLength + MinContractSymbolLengthForYear)
                 throw new ArgumentException("Invalid contract symbol format");
 
-            var yearStr = contractSymbol.Substring(baseLength + 1, 2);
+            var yearStr = contractSymbol.Substring(baseLength + 1, YearDigits);
             if (!int.TryParse(yearStr, out var year))
                 throw new ArgumentException("Invalid year format in contract symbol");
 
             // Convert 2-digit year to 4-digit year
             var currentYear = DateTime.UtcNow.Year;
-            var currentCentury = (currentYear / 100) * 100;
+            var currentCentury = (currentYear / CenturyDivisor) * CenturyDivisor;
             var fullYear = currentCentury + year;
 
             // If the year is more than 50 years in the past, assume next century
-            if (fullYear < currentYear - 50)
-                fullYear += 100;
+            if (fullYear < currentYear - YearThresholdForCenturyAdjustment)
+                fullYear += CenturyDivisor;
 
             return fullYear;
         }
