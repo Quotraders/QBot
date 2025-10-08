@@ -457,6 +457,60 @@ class TopstepXAdapter:
                 'timestamp': datetime.now(timezone.utc).isoformat()
             }
 
+    async def get_fill_events(self) -> Dict[str, Any]:
+        """
+        PHASE 2: Get recent fill events from TopstepX SDK.
+        
+        This method polls for fill notifications. In production, this would
+        subscribe to real-time WebSocket events from the SDK.
+        
+        Returns:
+            Dictionary with fills array containing fill event data
+        """
+        if not self._is_initialized or not self.suite:
+            return {
+                'fills': [],
+                'error': 'Adapter not initialized'
+            }
+        
+        try:
+            # PHASE 2: Mock implementation for now
+            # In production, this would query the SDK's trade history
+            # or subscribe to real-time fill events
+            
+            # For now, return empty array - actual implementation would:
+            # 1. Subscribe to SDK's trade event stream
+            # 2. Query recent trades from SDK
+            # 3. Filter for new fills since last poll
+            
+            fills = []
+            
+            # Example of what fill data would look like:
+            # fills.append({
+            #     'order_id': 'ORD-123456',
+            #     'symbol': 'ES',
+            #     'quantity': 1,
+            #     'price': 5000.00,
+            #     'fill_price': 5000.25,
+            #     'commission': 2.50,
+            #     'exchange': 'CME',
+            #     'liquidity_type': 'TAKER',
+            #     'timestamp': datetime.now(timezone.utc).isoformat()
+            # })
+            
+            return {
+                'fills': fills,
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error getting fill events: {e}")
+            return {
+                'fills': [],
+                'error': str(e),
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            }
+
     async def get_health_score(self) -> Dict[str, Any]:
         """
         Get comprehensive health metrics and statistics.
