@@ -23,6 +23,7 @@ namespace TradingBot.Abstractions
         
         // Position management methods
         Task<bool> ClosePositionAsync(string positionId);
+        Task<bool> ClosePositionAsync(string positionId, int quantity, CancellationToken cancellationToken = default);
         Task<bool> ModifyStopLossAsync(string positionId, decimal stopPrice);
         Task<bool> ModifyTakeProfitAsync(string positionId, decimal takeProfitPrice);
         
