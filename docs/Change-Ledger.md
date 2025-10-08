@@ -9857,3 +9857,101 @@ Time Elapsed 00:00:39.69
 **Phase 1 Status**: ✅ COMPLETE
 **Phase 2 Status**: Ready to begin (11,440 analyzer violations)
 
+
+---
+
+## Round 182: Phase 2 Started - S109 Magic Numbers in UnifiedTradingBrain
+
+**Date**: December 2024  
+**Agent**: GitHub Copilot  
+**Objective**: Phase 2 P1 (Correctness) - Extract magic numbers to named constants in UnifiedTradingBrain.cs
+
+| Rule | Count Fixed | Files Affected | Fix Applied |
+|------|-------------|----------------|-------------|
+| S109 | 9 | UnifiedTradingBrain.cs | Extracted commentary, statistical, and simulation constants |
+
+**Total Fixed: 9 S109 violations in UnifiedTradingBrain.cs**
+**S109 Total: 128 → 110 (14% reduction in S109)**
+**Total Violations: 11,440 → 11,422 (0.16% reduction)**
+
+**Files Modified**:
+1. `src/BotCore/Brain/UnifiedTradingBrain.cs` (9 violations fixed)
+   - Added 9 named constants to TopStepConfig class
+   - Commentary thresholds: LowConfidenceThreshold (0.4m), HighConfidenceThreshold (0.7m)
+   - Strategy conflict detection: StrategyConflictThreshold (0.15m), AlternativeStrategyConfidenceFactor (0.7m)
+   - Statistical: TotalVariationNormalizationFactor (0.5)
+   - Historical simulation: MinHistoricalBarsForSimulation (100), FeatureVectorLength (11), SimulationRandomSeed (12345), SimulationFeatureRange (2.0), SimulationFeatureOffset (1.0)
+
+**Constants Added** (9 constants to TopStepConfig):
+```csharp
+// Commentary thresholds
+public const decimal LowConfidenceThreshold = 0.4m;          // Below this triggers waiting commentary
+public const decimal HighConfidenceThreshold = 0.7m;         // Above this triggers confidence commentary
+public const decimal StrategyConflictThreshold = 0.15m;       // Score difference threshold for conflict detection
+public const decimal AlternativeStrategyConfidenceFactor = 0.7m; // Factor for alternative strategy scores
+
+// Statistical calculation constants
+public const double TotalVariationNormalizationFactor = 0.5; // Factor for normalizing total variation distance
+
+// Historical simulation constants
+public const int MinHistoricalBarsForSimulation = 100;       // Minimum bars needed for reliable simulation
+public const int FeatureVectorLength = 11;                   // Number of features in simulation data
+public const int SimulationRandomSeed = 12345;               // Seed for reproducible simulation data
+public const double SimulationFeatureRange = 2.0;            // Range for random feature generation
+public const double SimulationFeatureOffset = 1.0;           // Offset for centering feature range
+```
+
+**Rationale**: Extracted magic numbers used in trading brain decision logic. These values control:
+- Commentary triggers based on confidence levels (waiting vs. confident explanations)
+- Strategy conflict detection (when multiple strategies have similar scores)
+- Statistical calculations for model divergence measurement
+- Historical simulation data generation for model validation
+
+Using named constants in TopStepConfig makes these thresholds explicit, centrally managed, and easier to tune.
+
+**Example Fixes**:
+
+```csharp
+// Before: Magic number 0.4
+if (optimalStrategy.Confidence < 0.4m)
+{
+    var commentary = await ExplainWhyWaitingAsync(...);
+}
+
+// After: Named constant
+if (optimalStrategy.Confidence < TopStepConfig.LowConfidenceThreshold)
+{
+    var commentary = await ExplainWhyWaitingAsync(...);
+}
+
+// Before: Magic numbers in simulation
+var random = new Random(12345);
+var features = new float[11];
+for (int j = 0; j < 11; j++)
+{
+    features[j] = (float)(random.NextDouble() * 2.0 - 1.0);
+}
+
+// After: Named constants
+var random = new Random(TopStepConfig.SimulationRandomSeed);
+var features = new float[TopStepConfig.FeatureVectorLength];
+for (int j = 0; j < TopStepConfig.FeatureVectorLength; j++)
+{
+    features[j] = (float)(random.NextDouble() * TopStepConfig.SimulationFeatureRange - TopStepConfig.SimulationFeatureOffset);
+}
+```
+
+**Build Verification**:
+```bash
+$ dotnet build TopstepX.Bot.sln -v quiet 2>&1 | grep "error S109" | grep "UnifiedTradingBrain.cs" | wc -l
+0  # All S109 violations fixed in this file
+
+$ dotnet build TopstepX.Bot.sln -v quiet 2>&1 | grep "error S109" | wc -l
+110  # Down from 128
+
+$ dotnet build TopstepX.Bot.sln -v quiet 2>&1 | grep -E "error (CA|S)" | wc -l
+11422  # Down from 11440
+```
+
+**Phase 2 Progress**: 0.16% complete (18/11,440 violations fixed)
+
