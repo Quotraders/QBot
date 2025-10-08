@@ -786,6 +786,408 @@ class TopstepXAdapter:
         except Exception as e:
             self.logger.error(f"Failed to get position for {symbol}: {e}")
             return None
+    
+    async def close_position(self, symbol: str, quantity: Optional[int] = None) -> Dict[str, Any]:
+        """
+        PHASE 3: Close a position by placing opposite side market order.
+        
+        Args:
+            symbol: Trading symbol (e.g., "ES", "MNQ")
+            quantity: Optional quantity to close (None = close entire position)
+            
+        Returns:
+            Dictionary with success, order_id, and closed_quantity
+        """
+        if not self._is_initialized or not self.suite:
+            return {
+                'success': False,
+                'error': 'Adapter not initialized'
+            }
+        
+        try:
+            # Get current position
+            all_positions = await self.suite.positions.get_all_positions()
+            
+            position = None
+            for pos in all_positions:
+                pos_symbol = self._extract_symbol_from_contract_id(str(getattr(pos, 'contractId', '')))
+                if pos_symbol == symbol:
+                    position = pos
+                    break
+            
+            if position is None:
+                return {
+                    'success': False,
+                    'error': f'No position found for {symbol}'
+                }
+            
+            net_pos = int(getattr(position, 'netPos', 0))
+            if net_pos == 0:
+                return {
+                    'success': False,
+                    'error': f'Position for {symbol} is flat (netPos=0)'
+                }
+            
+            # Determine quantity to close
+            close_qty = quantity if quantity is not None else abs(net_pos)
+            
+            # Validate quantity
+            if close_qty > abs(net_pos):
+                return {
+                    'success': False,
+                    'error': f'Cannot close {close_qty} contracts, position size is {abs(net_pos)}'
+                }
+            
+            # Determine opposite side: if long (netPos > 0), sell to close; if short, buy to close
+            # SDK uses: 0=Buy, 1=Sell
+            side = 1 if net_pos > 0 else 0
+            side_str = "SELL" if net_pos > 0 else "BUY"
+            
+            contract_id = str(getattr(position, 'contractId', ''))
+            
+            self.logger.info(f"[CLOSE-POSITION] Closing {symbol}: {side_str} {close_qty} contracts (position={net_pos})")
+            
+            # Place market order on opposite side to close through instrument
+            instrument_obj = self.suite[symbol]
+            order_result = await instrument_obj.orders.place_market_order(
+                contract_id=contract_id,
+                side=side,
+                size=close_qty
+            )
+            
+            order_id = str(getattr(order_result, 'id', getattr(order_result, 'orderId', 'unknown')))
+            
+            self.logger.info(f"✅ [CLOSE-POSITION] Position close order placed: {order_id}")
+            self._emit_telemetry("position_closed", {
+                "symbol": symbol,
+                "quantity": close_qty,
+                "side": side_str,
+                "order_id": order_id
+            })
+            
+            return {
+                'success': True,
+                'order_id': order_id,
+                'closed_quantity': close_qty,
+                'symbol': symbol
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error closing position for {symbol}: {e}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    async def modify_stop_loss(self, symbol: str, stop_price: float) -> Dict[str, Any]:
+        """
+        PHASE 3: Modify stop loss for a position.
+        
+        Args:
+            symbol: Trading symbol (e.g., "ES", "MNQ")
+            stop_price: New stop loss price
+            
+        Returns:
+            Dictionary with success and order_id
+        """
+        if not self._is_initialized or not self.suite:
+            return {
+                'success': False,
+                'error': 'Adapter not initialized'
+            }
+        
+        try:
+            # Get current position to determine contract ID
+            all_positions = await self.suite.positions.get_all_positions()
+            
+            position = None
+            for pos in all_positions:
+                pos_symbol = self._extract_symbol_from_contract_id(str(getattr(pos, 'contractId', '')))
+                if pos_symbol == symbol:
+                    position = pos
+                    break
+            
+            if position is None:
+                return {
+                    'success': False,
+                    'error': f'No position found for {symbol}'
+                }
+            
+            contract_id = str(getattr(position, 'contractId', ''))
+            
+            # Search for existing stop orders through instrument
+            instrument_obj = self.suite[symbol]
+            open_orders = await instrument_obj.orders.search_open_orders(contract_id=contract_id)
+            
+            # Filter for stop orders (type 4 = Stop)
+            stop_orders = [order for order in open_orders if getattr(order, 'type', None) == 4]
+            
+            if not stop_orders:
+                return {
+                    'success': False,
+                    'error': f'No stop order found for {symbol}. Create a stop order first before modifying.'
+                }
+            
+            # Modify the first stop order found
+            stop_order = stop_orders[0]
+            order_id = str(getattr(stop_order, 'id', getattr(stop_order, 'orderId', 'unknown')))
+            
+            self.logger.info(f"[MODIFY-STOP] Modifying stop loss for {symbol}: order={order_id} new_stop=${stop_price:.2f}")
+            
+            # Modify the stop order through instrument
+            modify_result = await instrument_obj.orders.modify_order(
+                order_id=order_id,
+                stop_price=stop_price
+            )
+            
+            self.logger.info(f"✅ [MODIFY-STOP] Stop loss modified successfully: {order_id}")
+            self._emit_telemetry("stop_loss_modified", {
+                "symbol": symbol,
+                "stop_price": stop_price,
+                "order_id": order_id
+            })
+            
+            return {
+                'success': True,
+                'order_id': order_id,
+                'symbol': symbol,
+                'stop_price': stop_price
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error modifying stop loss for {symbol}: {e}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    async def modify_take_profit(self, symbol: str, take_profit_price: float) -> Dict[str, Any]:
+        """
+        PHASE 3: Modify take profit for a position.
+        
+        Args:
+            symbol: Trading symbol (e.g., "ES", "MNQ")
+            take_profit_price: New take profit price
+            
+        Returns:
+            Dictionary with success and order_id
+        """
+        if not self._is_initialized or not self.suite:
+            return {
+                'success': False,
+                'error': 'Adapter not initialized'
+            }
+        
+        try:
+            # Get current position to determine contract ID and side
+            all_positions = await self.suite.positions.get_all_positions()
+            
+            position = None
+            for pos in all_positions:
+                pos_symbol = self._extract_symbol_from_contract_id(str(getattr(pos, 'contractId', '')))
+                if pos_symbol == symbol:
+                    position = pos
+                    break
+            
+            if position is None:
+                return {
+                    'success': False,
+                    'error': f'No position found for {symbol}'
+                }
+            
+            contract_id = str(getattr(position, 'contractId', ''))
+            net_pos = int(getattr(position, 'netPos', 0))
+            
+            if net_pos == 0:
+                return {
+                    'success': False,
+                    'error': f'Position for {symbol} is flat (netPos=0)'
+                }
+            
+            # Determine which side the take profit order should be
+            # If long position (netPos > 0), take profit is a sell limit (side=1)
+            # If short position (netPos < 0), take profit is a buy limit (side=0)
+            tp_side = 1 if net_pos > 0 else 0
+            
+            # Search for existing limit orders through instrument
+            instrument_obj = self.suite[symbol]
+            open_orders = await instrument_obj.orders.search_open_orders(contract_id=contract_id)
+            
+            # Filter for limit orders on the take profit side (type 1 = Limit)
+            tp_orders = [order for order in open_orders 
+                        if getattr(order, 'type', None) == 1 
+                        and getattr(order, 'side', None) == tp_side]
+            
+            if not tp_orders:
+                return {
+                    'success': False,
+                    'error': f'No take profit order found for {symbol}. Create a limit order first before modifying.'
+                }
+            
+            # Modify the first take profit order found
+            tp_order = tp_orders[0]
+            order_id = str(getattr(tp_order, 'id', getattr(tp_order, 'orderId', 'unknown')))
+            
+            self.logger.info(f"[MODIFY-TARGET] Modifying take profit for {symbol}: order={order_id} new_target=${take_profit_price:.2f}")
+            
+            # Modify the limit order through instrument
+            modify_result = await instrument_obj.orders.modify_order(
+                order_id=order_id,
+                limit_price=take_profit_price
+            )
+            
+            self.logger.info(f"✅ [MODIFY-TARGET] Take profit modified successfully: {order_id}")
+            self._emit_telemetry("take_profit_modified", {
+                "symbol": symbol,
+                "take_profit_price": take_profit_price,
+                "order_id": order_id
+            })
+            
+            return {
+                'success': True,
+                'order_id': order_id,
+                'symbol': symbol,
+                'take_profit_price': take_profit_price
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error modifying take profit for {symbol}: {e}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+    async def place_bracket_order(
+        self,
+        symbol: str,
+        side: str,
+        quantity: int,
+        entry_price: float,
+        stop_loss_price: float,
+        take_profit_price: float
+    ) -> Dict[str, Any]:
+        """
+        PHASE 4: Place bracket order with entry, stop loss, and take profit.
+        
+        Args:
+            symbol: Trading symbol (e.g., "ES", "MNQ")
+            side: "BUY" or "SELL"
+            quantity: Order quantity
+            entry_price: Entry limit price
+            stop_loss_price: Stop loss price
+            take_profit_price: Take profit price
+            
+        Returns:
+            Dictionary with bracket order details including all three order IDs
+        """
+        if not self._is_initialized or not self.suite:
+            return {
+                'success': False,
+                'error': 'Adapter not initialized'
+            }
+        
+        if symbol not in self.instruments:
+            return {
+                'success': False,
+                'error': f'Symbol {symbol} not in configured instruments: {self.instruments}'
+            }
+        
+        try:
+            # Convert side to SDK format: 0=Buy, 1=Sell
+            side_upper = side.upper()
+            if side_upper not in ['BUY', 'SELL']:
+                return {
+                    'success': False,
+                    'error': f'Invalid side: {side}. Must be BUY or SELL'
+                }
+            
+            sdk_side = 0 if side_upper == 'BUY' else 1
+            
+            # Get contract ID for the symbol
+            # For simplicity, we'll construct it from the symbol
+            # In production, this should query the SDK for the actual contract ID
+            contract_id_map = {
+                'MNQ': 'CON.F.US.MNQ.Z25',  # Example - should be dynamic
+                'ES': 'CON.F.US.EP.Z25',
+                'NQ': 'CON.F.US.ENQ.Z25'
+            }
+            
+            contract_id = contract_id_map.get(symbol)
+            if not contract_id:
+                # Fallback: try to get from position or use symbol as-is
+                contract_id = f"CON.F.US.{symbol}.Z25"
+            
+            self.logger.info(
+                f"[BRACKET] Placing bracket order: {symbol} {side} {quantity} "
+                f"entry=${entry_price:.2f} stop=${stop_loss_price:.2f} target=${take_profit_price:.2f}"
+            )
+            
+            # Place bracket order using SDK's native bracket support through instrument
+            instrument_obj = self.suite[symbol]
+            bracket_result = await instrument_obj.orders.place_bracket_order(
+                contract_id=contract_id,
+                side=sdk_side,
+                size=quantity,
+                entry_price=entry_price,
+                stop_loss_price=stop_loss_price,
+                take_profit_price=take_profit_price
+            )
+            
+            # Extract order IDs from bracket response
+            success = getattr(bracket_result, 'success', True)
+            entry_order_id = str(getattr(bracket_result, 'entry_order_id', 
+                                        getattr(bracket_result, 'entryOrderId', 'unknown')))
+            stop_order_id = str(getattr(bracket_result, 'stop_order_id',
+                                       getattr(bracket_result, 'stopOrderId', 'unknown')))
+            target_order_id = str(getattr(bracket_result, 'target_order_id',
+                                         getattr(bracket_result, 'targetOrderId', 'unknown')))
+            
+            # Get actual prices used (after tick alignment)
+            actual_entry = float(getattr(bracket_result, 'entry_price', entry_price))
+            actual_stop = float(getattr(bracket_result, 'stop_loss_price', stop_loss_price))
+            actual_target = float(getattr(bracket_result, 'take_profit_price', take_profit_price))
+            
+            error_message = getattr(bracket_result, 'error_message', None)
+            
+            if not success and error_message:
+                return {
+                    'success': False,
+                    'error': error_message
+                }
+            
+            self.logger.info(
+                f"✅ [BRACKET] Bracket order placed successfully: "
+                f"entry={entry_order_id} stop={stop_order_id} target={target_order_id}"
+            )
+            
+            self._emit_telemetry("bracket_order_placed", {
+                "symbol": symbol,
+                "side": side,
+                "quantity": quantity,
+                "entry_order_id": entry_order_id,
+                "stop_order_id": stop_order_id,
+                "target_order_id": target_order_id
+            })
+            
+            return {
+                'success': True,
+                'entry_order_id': entry_order_id,
+                'stop_order_id': stop_order_id,
+                'target_order_id': target_order_id,
+                'entry_price': actual_entry,
+                'stop_loss_price': actual_stop,
+                'take_profit_price': actual_target,
+                'symbol': symbol,
+                'side': side,
+                'quantity': quantity
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error placing bracket order for {symbol}: {e}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
 
     async def get_portfolio_status(self) -> Dict[str, Any]:
         """Get current portfolio positions and P&L."""
@@ -999,6 +1401,35 @@ if __name__ == "__main__":
                         elif action == "get_positions":
                             positions = await adapter.get_positions()
                             return {"success": True, "positions": positions}
+                        
+                        elif action == "close_position":
+                            symbol = cmd_data.get("symbol")
+                            quantity = cmd_data.get("quantity")
+                            result = await adapter.close_position(symbol, quantity)
+                            return result
+                        
+                        elif action == "modify_stop_loss":
+                            symbol = cmd_data.get("symbol")
+                            stop_price = float(cmd_data.get("stop_price"))
+                            result = await adapter.modify_stop_loss(symbol, stop_price)
+                            return result
+                        
+                        elif action == "modify_take_profit":
+                            symbol = cmd_data.get("symbol")
+                            take_profit_price = float(cmd_data.get("take_profit_price"))
+                            result = await adapter.modify_take_profit(symbol, take_profit_price)
+                            return result
+                        
+                        elif action == "place_bracket_order":
+                            result = await adapter.place_bracket_order(
+                                symbol=cmd_data.get("symbol"),
+                                side=cmd_data.get("side"),
+                                quantity=int(cmd_data.get("quantity")),
+                                entry_price=float(cmd_data.get("entry_price")),
+                                stop_loss_price=float(cmd_data.get("stop_loss_price")),
+                                take_profit_price=float(cmd_data.get("take_profit_price"))
+                            )
+                            return result
                             
                         elif action == "disconnect":
                             await adapter.disconnect()

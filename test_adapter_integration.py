@@ -28,7 +28,7 @@ from typing import Dict, Any
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'tests'))
 
 # Import mock for testing
-from mocks.topstep_x_mock import MockTradingSuite, EventType
+from mocks.topstep_x_mock import MockTradingSuite, EventType, MockOpenOrder
 
 # Mock the project_x_py module
 sys.modules['project_x_py'] = type('MockModule', (), {
@@ -110,15 +110,70 @@ async def test_mock_functionality():
         positions = await adapter.get_positions()
         print(f"✅ Positions retrieved: {len(positions)} positions")
         
-        # Test 8: Portfolio status
-        print("📋 Test 8: Portfolio Status")
+        # Test 8: Close Position (Phase 3)
+        print("📋 Test 8: Close Position")
+        if len(positions) > 0:
+            close_result = await adapter.close_position("MNQ", quantity=1)
+            assert close_result.get('success'), f"Close position failed: {close_result.get('error')}"
+            print(f"✅ Position close initiated: {close_result.get('order_id')}")
+        else:
+            print("⚠️  No positions to close (expected in mock)")
+        
+        # Test 9: Modify Stop Loss (Phase 3)
+        print("📋 Test 9: Modify Stop Loss")
+        if len(positions) > 0:
+            # Add mock stop order for testing
+            if hasattr(adapter.suite['MNQ'], 'orders'):
+                adapter.suite['MNQ'].orders._open_orders.append(
+                    MockOpenOrder('STOP-123', 4, 1, 18490.00)  # type=4 (Stop), side=1 (Sell)
+                )
+            modify_stop_result = await adapter.modify_stop_loss("MNQ", 18485.00)
+            if modify_stop_result.get('success'):
+                print(f"✅ Stop loss modified: {modify_stop_result.get('order_id')}")
+            else:
+                print(f"⚠️  Stop loss modification: {modify_stop_result.get('error')}")
+        else:
+            print("⚠️  No positions for stop loss modification")
+        
+        # Test 10: Modify Take Profit (Phase 3)
+        print("📋 Test 10: Modify Take Profit")
+        if len(positions) > 0:
+            # Add mock limit order for testing
+            if hasattr(adapter.suite['MNQ'], 'orders'):
+                adapter.suite['MNQ'].orders._open_orders.append(
+                    MockOpenOrder('LIMIT-123', 1, 1, 18520.00)  # type=1 (Limit), side=1 (Sell)
+                )
+            modify_tp_result = await adapter.modify_take_profit("MNQ", 18525.00)
+            if modify_tp_result.get('success'):
+                print(f"✅ Take profit modified: {modify_tp_result.get('order_id')}")
+            else:
+                print(f"⚠️  Take profit modification: {modify_tp_result.get('error')}")
+        else:
+            print("⚠️  No positions for take profit modification")
+        
+        # Test 11: Place Bracket Order (Phase 4)
+        print("📋 Test 11: Place Bracket Order")
+        bracket_result = await adapter.place_bracket_order(
+            symbol="ES",
+            side="BUY",
+            quantity=1,
+            entry_price=4500.00,
+            stop_loss_price=4490.00,
+            take_profit_price=4515.00
+        )
+        assert bracket_result.get('success'), f"Bracket order failed: {bracket_result.get('error')}"
+        print(f"✅ Bracket order placed: entry={bracket_result.get('entry_order_id')}")
+        print(f"   Stop={bracket_result.get('stop_order_id')}, Target={bracket_result.get('target_order_id')}")
+        
+        # Test 12: Portfolio status
+        print("📋 Test 12: Portfolio Status")
         portfolio = await adapter.get_portfolio_status()
         assert 'portfolio' in portfolio, "Portfolio data missing"
         assert 'positions' in portfolio, "Position data missing"
         print("✅ Portfolio status retrieved")
         
-        # Test 9: Proper cleanup
-        print("📋 Test 9: Cleanup")
+        # Test 13: Proper cleanup
+        print("📋 Test 13: Cleanup")
         await adapter.disconnect()
         assert not adapter.is_connected, "Adapter should be disconnected"
         print("✅ Cleanup completed")

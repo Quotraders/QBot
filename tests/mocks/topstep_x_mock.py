@@ -165,45 +165,114 @@ class MockFillEvent:
         self.timestamp = int(datetime.now(timezone.utc).timestamp() * 1000)
 
 
+class MockOrderResponse:
+    """Mock order response"""
+    def __init__(self, order_id: str):
+        self.id = order_id
+        self.orderId = order_id
+        self.success = True
+
+
+class MockBracketOrderResponse:
+    """Mock bracket order response"""
+    def __init__(self, entry_id: str, stop_id: str, target_id: str, 
+                 entry_price: float, stop_price: float, target_price: float):
+        self.success = True
+        self.entry_order_id = entry_id
+        self.entryOrderId = entry_id
+        self.stop_order_id = stop_id
+        self.stopOrderId = stop_id
+        self.target_order_id = target_id
+        self.targetOrderId = target_id
+        self.entry_price = entry_price
+        self.stop_loss_price = stop_price
+        self.take_profit_price = target_price
+        self.error_message = None
+
+
+class MockOpenOrder:
+    """Mock open order for searching"""
+    def __init__(self, order_id: str, order_type: int, side: int, price: float):
+        self.id = order_id
+        self.orderId = order_id
+        self.type = order_type  # 1=Limit, 4=Stop
+        self.side = side  # 0=Buy, 1=Sell
+        self.price = price
+
+
 class MockOrders:
     def __init__(self, symbol, suite=None):
         self.symbol = symbol
         self.suite = suite
-        
-    async def place_bracket_order(self, side, quantity, stop_loss, take_profit):
-        # Implement basic risk checking for validation
-        if quantity > 10:  # Simple risk check for oversized orders
-            raise ValueError(f"Order size {quantity} exceeds maximum allowed size of 10")
-        
+        self._open_orders = []  # Track open orders for testing
+    
+    async def place_market_order(self, contract_id: str, side: int, size: int):
+        """Place market order (for closing positions)"""
         order_id = str(uuid.uuid4())
-        result = {
-            "id": order_id,
-            "entry_order_id": str(uuid.uuid4()),
-            "stop_order_id": str(uuid.uuid4()),
-            "target_order_id": str(uuid.uuid4()),
-            "status": "accepted"
-        }
+        return MockOrderResponse(order_id)
+    
+    async def search_open_orders(self, contract_id: str = None):
+        """Search for open orders"""
+        # Return mock orders for testing
+        # Add a stop order (type 4) and limit order (type 1)
+        return self._open_orders
+    
+    async def modify_order(self, order_id: str, stop_price: float = None, limit_price: float = None):
+        """Modify an existing order"""
+        return MockOrderResponse(order_id)
+    
+    async def place_bracket_order(self, side=None, quantity=None, stop_loss=None, take_profit=None,
+                                  contract_id=None, size=None, entry_price=None, 
+                                  stop_loss_price=None, take_profit_price=None):
+        """Place bracket order with entry, stop, and target (supports both old and new signatures)"""
+        # Handle both old signature (side, quantity, stop_loss, take_profit) 
+        # and new signature (contract_id, side, size, entry_price, stop_loss_price, take_profit_price)
         
-        # Simulate a fill event after a short delay (for testing event subscription)
-        if self.suite:
-            async def emit_fill():
-                await asyncio.sleep(0.1)
-                # Get realistic price for the symbol
-                prices = {'MNQ': 18500.00, 'ES': 4500.00, 'NQ': 18500.00}
-                price = prices.get(self.symbol, 100.00)
-                
-                # Create mock contract ID
-                symbol_map = {'MNQ': 'MNQ', 'ES': 'EP', 'NQ': 'ENQ'}
-                contract_symbol = symbol_map.get(self.symbol, self.symbol)
-                contract_id = f"CON.F.US.{contract_symbol}.Z25"
-                
-                fill_event = MockFillEvent(order_id, contract_id, quantity, price)
-                await self.suite._emit_event(EventType.ORDER_FILLED, fill_event)
+        if contract_id is not None:
+            # New signature (Phase 4)
+            entry_id = str(uuid.uuid4())
+            stop_id = str(uuid.uuid4())
+            target_id = str(uuid.uuid4())
             
-            # Schedule the fill event emission
-            asyncio.create_task(emit_fill())
-        
-        return result
+            return MockBracketOrderResponse(
+                entry_id, stop_id, target_id,
+                entry_price or 0.0, stop_loss_price or 0.0, take_profit_price or 0.0
+            )
+        else:
+            # Old signature (place_order backward compatibility)
+            # Implement basic risk checking for validation
+            if quantity and quantity > 10:  # Simple risk check for oversized orders
+                raise ValueError(f"Order size {quantity} exceeds maximum allowed size of 10")
+            
+            order_id = str(uuid.uuid4())
+            result = {
+                "id": order_id,
+                "entry_order_id": str(uuid.uuid4()),
+                "stop_order_id": str(uuid.uuid4()),
+                "target_order_id": str(uuid.uuid4()),
+                "status": "accepted"
+            }
+            
+            # Simulate a fill event after a short delay (for testing event subscription)
+            if self.suite and quantity:
+                async def emit_fill():
+                    await asyncio.sleep(0.1)
+                    # Get realistic price for the symbol
+                    prices = {'MNQ': 18500.00, 'ES': 4500.00, 'NQ': 18500.00}
+                    price = prices.get(self.symbol, 100.00)
+                    
+                    # Create mock contract ID
+                    symbol_map = {'MNQ': 'MNQ', 'ES': 'EP', 'NQ': 'ENQ'}
+                    contract_symbol = symbol_map.get(self.symbol, self.symbol)
+                    contract_id_str = f"CON.F.US.{contract_symbol}.Z25"
+                    
+                    fill_event = MockFillEvent(order_id, contract_id_str, quantity, price)
+                    await self.suite._emit_event(EventType.ORDER_FILLED, fill_event)
+                
+                # Schedule the fill event emission
+                asyncio.create_task(emit_fill())
+            
+            return result
 
 
 class MockPositions:
