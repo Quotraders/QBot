@@ -73,6 +73,9 @@ public class AutonomousDecisionEngine : BackgroundService
     // Risk and compliance management
     private readonly TopStepComplianceManager _complianceManager;
     
+    // Real trading execution
+    private readonly ITopstepXAdapterService? _topstepXAdapter;
+    
     // Performance tracking and learning
     private readonly AutonomousPerformanceTracker _performanceTracker;
     private readonly MarketConditionAnalyzer _marketAnalyzer;
@@ -249,7 +252,8 @@ public class AutonomousDecisionEngine : BackgroundService
         UnifiedDecisionRouter decisionRouter,
         IMarketHours marketHours,
         IRiskManager riskManager,
-        IOptions<AutonomousConfig> config)
+        IOptions<AutonomousConfig> config,
+        ITopstepXAdapterService? topstepXAdapter = null)
     {
         ArgumentNullException.ThrowIfNull(config);
         ArgumentNullException.ThrowIfNull(unifiedBrain);
@@ -260,6 +264,7 @@ public class AutonomousDecisionEngine : BackgroundService
         _decisionRouter = decisionRouter;
         _marketHours = marketHours;
         _config = config.Value;
+        _topstepXAdapter = topstepXAdapter;
         
         _complianceManager = new TopStepComplianceManager(logger, config);
         _performanceTracker = new AutonomousPerformanceTracker(
@@ -756,25 +761,77 @@ public class AutonomousDecisionEngine : BackgroundService
             _logger.LogInformation("🔄 [TRADE-EXECUTION] Executing {Direction} {Symbol} {Size} contracts via {Strategy}",
                 opportunity.Direction, opportunity.Symbol, contractSize, opportunity.Strategy);
             
-            // For production deployment, this would integrate with the actual trading system
-            // This autonomous engine creates the trade decision and would route it through the proper execution channels
+            // Get current market price for order placement
+            var currentPrice = opportunity.EntryPrice ?? await GetCurrentMarketPriceAsync(opportunity.Symbol, cancellationToken).ConfigureAwait(false);
             
-            var tradingAction = opportunity.Direction == "Buy" ? TradingAction.Buy : TradingAction.Sell;
+            // Calculate tick size based on symbol (ES and MNQ both use 0.25 ticks)
+            const decimal tickSize = 0.25m;
+            const int stopTicks = 10;  // 10 ticks for stop loss
+            const int targetTicks = 15; // 15 ticks for take profit
             
-            _logger.LogInformation("✅ [TRADE-EXECUTION] Trade decision made successfully: {Action} {Symbol} {Contracts}",
-                tradingAction, opportunity.Symbol, contractSize);
+            // Calculate stop loss and take profit prices based on direction
+            decimal stopLoss;
+            decimal takeProfit;
+            int orderSize;
             
-            // Simulate successful execution for autonomous operation
-            var executedPrice = opportunity.EntryPrice ?? await GetCurrentMarketPriceAsync(opportunity.Symbol, cancellationToken).ConfigureAwait(false);
-            
-            return new TradeExecutionResult
+            if (opportunity.Direction == "Buy")
             {
-                Success = true,
-                OrderId = Guid.NewGuid().ToString(),
-                ExecutedSize = contractSize,
-                ExecutedPrice = executedPrice,
-                Timestamp = DateTime.UtcNow
-            };
+                stopLoss = currentPrice - (stopTicks * tickSize);
+                takeProfit = currentPrice + (targetTicks * tickSize);
+                orderSize = contractSize; // Positive for buy
+            }
+            else
+            {
+                stopLoss = currentPrice + (stopTicks * tickSize);
+                takeProfit = currentPrice - (targetTicks * tickSize);
+                orderSize = -contractSize; // Negative for sell
+            }
+            
+            // Check if TopstepX adapter is available
+            if (_topstepXAdapter == null || !_topstepXAdapter.IsConnected)
+            {
+                _logger.LogWarning("⚠️ [TRADE-EXECUTION] TopstepX adapter not available - order not placed");
+                return new TradeExecutionResult
+                {
+                    Success = false,
+                    ErrorMessage = "TopstepX adapter not connected",
+                    Timestamp = DateTime.UtcNow
+                };
+            }
+            
+            // Place real order via TopstepX adapter
+            var orderResult = await _topstepXAdapter.PlaceOrderAsync(
+                opportunity.Symbol,
+                orderSize,
+                stopLoss,
+                takeProfit,
+                cancellationToken).ConfigureAwait(false);
+            
+            if (orderResult.Success)
+            {
+                _logger.LogInformation("✅ [TRADE-EXECUTION] Real order executed: OrderId={OrderId}, Price=${Price:F2}, Stop=${Stop:F2}, Target=${Target:F2}",
+                    orderResult.OrderId, orderResult.EntryPrice, stopLoss, takeProfit);
+                
+                return new TradeExecutionResult
+                {
+                    Success = true,
+                    OrderId = orderResult.OrderId ?? Guid.NewGuid().ToString(),
+                    ExecutedSize = contractSize,
+                    ExecutedPrice = orderResult.EntryPrice,
+                    Timestamp = orderResult.Timestamp
+                };
+            }
+            else
+            {
+                _logger.LogError("❌ [TRADE-EXECUTION] Order placement failed: {Error}", orderResult.Error);
+                
+                return new TradeExecutionResult
+                {
+                    Success = false,
+                    ErrorMessage = orderResult.Error ?? "Order placement failed",
+                    Timestamp = orderResult.Timestamp
+                };
+            }
         }
         catch (Exception ex)
         {

@@ -798,7 +798,7 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<BotCore.Services.ITopstepXService, BotCore.Services.TopstepXService>();
         
         // TopstepX SDK Adapter Service - Production-ready Python SDK integration
-        services.AddSingleton<ITopstepXAdapterService, TopstepXAdapterService>();
+        services.AddSingleton<TradingBot.Abstractions.ITopstepXAdapterService, TopstepXAdapterService>();
         
         // TopstepX Integration Test Service for validation
         services.AddHostedService<TopstepXIntegrationTestService>();
