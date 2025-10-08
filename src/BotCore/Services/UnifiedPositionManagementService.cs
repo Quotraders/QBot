@@ -337,6 +337,10 @@ namespace BotCore.Services
             // FEATURE 4: Apply confidence-based adjustments to stop and target
             if (_confidenceAdjustmentEnabled)
             {
+                var originalStop = stopPrice;
+                var originalTarget = targetPrice;
+                var originalQuantity = quantity;
+                
                 var adjustedValues = ApplyConfidenceAdjustments(entryPrice, stopPrice, targetPrice, quantity, entryConfidence, symbol);
                 stopPrice = adjustedValues.adjustedStop;
                 targetPrice = adjustedValues.adjustedTarget;
@@ -344,6 +348,36 @@ namespace BotCore.Services
                 
                 _logger.LogInformation("💯 [POSITION-MGMT] Confidence-based adjustment: Confidence={Conf:F2}, Stop adjusted to {Stop:F2}, Target to {Target:F2}, Qty to {Qty}",
                     entryConfidence, stopPrice, targetPrice, quantity);
+                
+                // AI Commentary: Explain confidence adjustment (non-blocking) - need to create temp state for fire-and-forget
+                try
+                {
+                    var stopMultiplier = originalStop != 0 ? Math.Abs((stopPrice - entryPrice) / (originalStop - entryPrice)) : 1m;
+                    var targetMultiplier = originalTarget != 0 ? Math.Abs((targetPrice - entryPrice) / (originalTarget - entryPrice)) : 1m;
+                    
+                    // Create minimal state for commentary
+                    var tempState = new PositionManagementState
+                    {
+                        PositionId = positionId,
+                        Symbol = symbol,
+                        Strategy = strategy,
+                        EntryPrice = entryPrice,
+                        Quantity = quantity
+                    };
+                    
+                    ExplainConfidenceAdjustmentFireAndForget(
+                        tempState,
+                        entryConfidence,
+                        stopMultiplier,
+                        targetMultiplier,
+                        quantity,
+                        stopPrice,
+                        targetPrice);
+                }
+                catch
+                {
+                    // Silently ignore AI errors - don't disrupt position management
+                }
             }
             
             // Capture entry regime (Feature 1 & 3)
@@ -1248,27 +1282,48 @@ namespace BotCore.Services
                     return;
                 }
                 
-                // PHASE 4 NOTE: Partial close functionality requires IOrderService extension
-                // For production deployment, need to add: ClosePositionAsync(positionId, quantity, cancellationToken)
-                // Current implementation logs the intent and tracks state for monitoring
-                
-                _logger.LogInformation("💡 [POSITION-MGMT] PHASE 4 - Partial exit level reached for {PositionId}: Would close {Qty} contracts ({Pct:P0}), Reason: {Reason}",
-                    state.PositionId, quantityToClose, percentToClose, reason);
-                
-                // Track that this partial exit level was reached (for ML/RL learning)
-                state.SetProperty($"PartialExitReached_{percentToClose:P0}", DateTime.UtcNow);
-                
-                // NOTE: In production with extended IOrderService, would call:
-                // var orderService = _serviceProvider.GetService<IOrderService>();
-                // var success = await orderService.ClosePositionAsync(state.PositionId, quantityToClose, cancellationToken);
-                // if (success) state.Quantity -= quantityToClose;
+                // Get order service from DI container
+                var orderService = _serviceProvider.GetService<IOrderService>();
+                if (orderService != null)
+                {
+                    _logger.LogInformation("📉 [POSITION-MGMT] Executing partial close for {PositionId}: Closing {Qty} of {Total} contracts ({Pct:P0}), Reason: {Reason}",
+                        state.PositionId, quantityToClose, state.Quantity, percentToClose, reason);
+                    
+                    // Execute partial close using the new overloaded method
+                    var success = await orderService.ClosePositionAsync(state.PositionId, quantityToClose, cancellationToken).ConfigureAwait(false);
+                    
+                    if (success)
+                    {
+                        // Update position state to reflect partial close
+                        var remainingQuantity = state.Quantity - quantityToClose;
+                        state.Quantity = remainingQuantity;
+                        
+                        _logger.LogInformation("✅ [POSITION-MGMT] Partial close successful for {PositionId}: {Qty} contracts closed, {Remaining} remaining",
+                            state.PositionId, quantityToClose, remainingQuantity);
+                        
+                        // Track that this partial exit was executed (for ML/RL learning)
+                        state.SetProperty($"PartialExitExecuted_{percentToClose:P0}", DateTime.UtcNow);
+                    }
+                    else
+                    {
+                        _logger.LogError("❌ [POSITION-MGMT] Partial close FAILED for {PositionId}: Could not close {Qty} contracts",
+                            state.PositionId, quantityToClose);
+                    }
+                }
+                else
+                {
+                    // IOrderService not available - log warning
+                    _logger.LogWarning("⚠️ [POSITION-MGMT] IOrderService not available - cannot execute partial close for {PositionId} ({Qty} contracts)",
+                        state.PositionId, quantityToClose);
+                    
+                    // Track that this partial exit level was reached but not executed (for monitoring)
+                    state.SetProperty($"PartialExitReached_{percentToClose:P0}", DateTime.UtcNow);
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ [POSITION-MGMT] Error processing partial close for {PositionId}", state.PositionId);
             }
-            
-            await Task.CompletedTask;
         }
         
         /// <summary>
@@ -1659,6 +1714,28 @@ namespace BotCore.Services
                         
                         _logger.LogInformation("🎯 [POSITION-MGMT] Target adjusted for {PositionId} due to regime change: {OldTarget:F2} → {NewTarget:F2} ({Regime})",
                             state.PositionId, oldTarget, newDynamicTarget, newRegime);
+                        
+                        // AI Commentary: Explain dynamic target adjustment (non-blocking)
+                        try
+                        {
+                            var tickSize = GetTickSize(state.Symbol);
+                            var riskTicks = Math.Abs(state.EntryPrice - state.CurrentStopPrice) / tickSize;
+                            var oldTargetTicks = Math.Abs(oldTarget - state.EntryPrice) / tickSize;
+                            var newTargetTicks = Math.Abs(newDynamicTarget - state.EntryPrice) / tickSize;
+                            var oldTargetR = riskTicks > 0 ? oldTargetTicks / riskTicks : 0;
+                            var newTargetR = riskTicks > 0 ? newTargetTicks / riskTicks : 0;
+                            
+                            ExplainDynamicTargetAdjustmentFireAndForget(
+                                state,
+                                oldRegime,
+                                newRegime,
+                                oldTargetR,
+                                newTargetR);
+                        }
+                        catch
+                        {
+                            // Silently ignore AI errors - don't disrupt position management
+                        }
                     }
                     else
                     {
@@ -1724,6 +1801,22 @@ namespace BotCore.Services
                 {
                     _logger.LogWarning("🔄 [REGIME-FLIP] Exiting {PositionId} due to regime flip: {From} → {To}, PnL: ${PnL:F2}, Strategy: {Strategy}",
                         state.PositionId, state.EntryRegime, state.CurrentRegime, pnl, state.Strategy);
+                    
+                    // AI Commentary: Explain regime flip exit (non-blocking)
+                    try
+                    {
+                        ExplainRegimeFlipExitFireAndForget(
+                            state,
+                            state.EntryRegime,
+                            state.EntryRegimeConfidence,
+                            state.CurrentRegime,
+                            state.CurrentRegimeConfidence,
+                            pnl);
+                    }
+                    catch
+                    {
+                        // Silently ignore AI errors - don't disrupt position management
+                    }
                     
                     await RequestPositionCloseAsync(state, ExitReason.RegimeChange, cancellationToken).ConfigureAwait(false);
                 }
@@ -1879,6 +1972,21 @@ namespace BotCore.Services
                     {
                         _logger.LogDebug("⚠️ [MAE-LEARNING] Position {PositionId} approaching MAE threshold: {Current:F1} / {Threshold:F1} ticks",
                             state.PositionId, currentAdverseExcursion, optimalThreshold.Value);
+                        
+                        // AI Commentary: Explain MAE warning (non-blocking)
+                        try
+                        {
+                            var historicalSampleSize = 150; // Approximate - could be fetched from optimizer
+                            ExplainMaeWarningFireAndForget(
+                                state,
+                                optimalThreshold.Value,
+                                currentAdverseExcursion,
+                                historicalSampleSize);
+                        }
+                        catch
+                        {
+                            // Silently ignore AI errors - don't disrupt position management
+                        }
                     }
                 }
             }
@@ -2005,6 +2113,23 @@ namespace BotCore.Services
                     
                     _logger.LogInformation("⏱️ [PROGRESSIVE-TIGHTENING] Moved {PositionId} to breakeven (tier {Tier}, profit {Profit} ticks < required {Required})",
                         state.PositionId, newTier, profitTicks, currentTierRequirements.MinProfitTicksRequired);
+                    
+                    // AI Commentary: Explain progressive tightening (non-blocking)
+                    try
+                    {
+                        var minutesElapsed = (int)(DateTime.UtcNow - state.EntryTime).TotalMinutes;
+                        ExplainProgressiveTighteningFireAndForget(
+                            state,
+                            newTier,
+                            minutesElapsed,
+                            currentTierRequirements.MinutesThreshold,
+                            profitTicks,
+                            "Move stop to breakeven");
+                    }
+                    catch
+                    {
+                        // Silently ignore AI errors - don't disrupt position management
+                    }
                 }
             }
             else if (currentTierRequirements.Action == ProgressiveTighteningAction.ExitIfBelowThreshold)
@@ -2025,6 +2150,24 @@ namespace BotCore.Services
             {
                 _logger.LogWarning("⏱️ [PROGRESSIVE-TIGHTENING] Exiting {PositionId}: {Reason}",
                     state.PositionId, exitReason);
+                
+                // AI Commentary: Explain progressive tightening exit (non-blocking)
+                try
+                {
+                    var minutesElapsed = (int)(DateTime.UtcNow - state.EntryTime).TotalMinutes;
+                    ExplainProgressiveTighteningFireAndForget(
+                        state,
+                        newTier,
+                        minutesElapsed,
+                        currentTierRequirements.MinutesThreshold,
+                        profitTicks,
+                        exitReason);
+                }
+                catch
+                {
+                    // Silently ignore AI errors - don't disrupt position management
+                }
+                
                 await RequestPositionCloseAsync(state, ExitReason.TimeLimit, cancellationToken).ConfigureAwait(false);
             }
         }
@@ -2369,6 +2512,242 @@ Explain in 2-3 sentences why this volatility-adaptive stop adjustment makes sens
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "❌ [POSITION-AI] Error generating volatility commentary");
+                }
+            });
+        }
+        
+        /// <summary>
+        /// Fire-and-forget: Explain regime flip exit decision in background
+        /// </summary>
+        private void ExplainRegimeFlipExitFireAndForget(
+            PositionManagementState state,
+            string entryRegime,
+            decimal entryRegimeConfidence,
+            string currentRegime,
+            decimal currentRegimeConfidence,
+            decimal currentPnL)
+        {
+            if (!_commentaryEnabled || _ollamaClient == null)
+                return;
+            
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var isLong = state.Quantity > 0;
+                    var direction = isLong ? "LONG" : "SHORT";
+                    var confidenceDrop = entryRegimeConfidence - currentRegimeConfidence;
+                    var tickSize = GetTickSize(state.Symbol);
+                    var profitTicks = Math.Abs(currentPnL / (tickSize * 50m)); // Approximate ticks
+                    
+                    var prompt = $@"I am a trading bot. I just exited due to a regime flip:
+
+Position: {direction} {state.Symbol} at {state.EntryPrice:F2}
+Entry Regime: {entryRegime} (confidence: {entryRegimeConfidence:F2})
+Current Regime: {currentRegime} (confidence: {currentRegimeConfidence:F2})
+Confidence Drop: {confidenceDrop:F2}
+Strategy: {state.Strategy}
+P&L at Exit: ${currentPnL:F2} ({profitTicks:F1} ticks)
+
+Explain in 2-3 sentences why this regime change forced me to exit and protect my current P&L. Focus on why {state.Strategy} strategy requires the conditions that no longer exist. Speak as ME (the bot).";
+
+                    var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+                    if (!string.IsNullOrEmpty(response))
+                    {
+                        _logger.LogInformation("🤖💭 [POSITION-AI] Regime Flip Exit: {Commentary}", response);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ [POSITION-AI] Error generating regime flip commentary");
+                }
+            });
+        }
+        
+        /// <summary>
+        /// Fire-and-forget: Explain progressive tightening tier action in background
+        /// </summary>
+        private void ExplainProgressiveTighteningFireAndForget(
+            PositionManagementState state,
+            int tier,
+            int minutesElapsed,
+            int tierThreshold,
+            decimal profitTicks,
+            string action)
+        {
+            if (!_commentaryEnabled || _ollamaClient == null)
+                return;
+            
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var isLong = state.Quantity > 0;
+                    var direction = isLong ? "LONG" : "SHORT";
+                    var tickSize = GetTickSize(state.Symbol);
+                    var profitDollars = profitTicks * tickSize * 50m; // ES multiplier
+                    
+                    var prompt = $@"I am a trading bot. Progressive tightening tier triggered:
+
+Position: {direction} {state.Symbol} at {state.EntryPrice:F2}
+Hold Duration: {minutesElapsed} minutes (exceeded {tierThreshold} minute threshold)
+Tier Level: {tier}
+Current Profit: {profitTicks:F1} ticks (${profitDollars:F2})
+Action Taken: {action}
+Strategy: {state.Strategy}
+
+Explain in 2-3 sentences why time-based position management is taking this action. Reference how {state.Strategy} trades statistically perform after {minutesElapsed} minutes. Speak as ME (the bot).";
+
+                    var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+                    if (!string.IsNullOrEmpty(response))
+                    {
+                        _logger.LogInformation("🤖💭 [POSITION-AI] Progressive Tightening: {Commentary}", response);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ [POSITION-AI] Error generating progressive tightening commentary");
+                }
+            });
+        }
+        
+        /// <summary>
+        /// Fire-and-forget: Explain confidence-based parameter adjustment in background
+        /// </summary>
+        private void ExplainConfidenceAdjustmentFireAndForget(
+            PositionManagementState state,
+            decimal entryConfidence,
+            decimal stopMultiplier,
+            decimal targetMultiplier,
+            int adjustedQuantity,
+            decimal adjustedStop,
+            decimal adjustedTarget)
+        {
+            if (!_commentaryEnabled || _ollamaClient == null)
+                return;
+            
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var isLong = state.Quantity > 0;
+                    var direction = isLong ? "LONG" : "SHORT";
+                    var confidenceTier = entryConfidence >= 0.85m ? "Very High" : 
+                                        entryConfidence >= 0.75m ? "High" : 
+                                        entryConfidence >= 0.65m ? "Medium" : "Low";
+                    
+                    var prompt = $@"I am a trading bot. ML confidence adjusted my trade parameters:
+
+Position: {direction} {state.Symbol} at {state.EntryPrice:F2}
+ML Confidence: {entryConfidence:F2} ({confidenceTier} tier)
+Stop Multiplier: {stopMultiplier:F2}x (adjusted to ${adjustedStop:F2})
+Target Multiplier: {targetMultiplier:F2}x (adjusted to ${adjustedTarget:F2})
+Quantity: {adjustedQuantity} contracts
+Strategy: {state.Strategy}
+
+Explain in 2-3 sentences why this confidence level justifies these parameter adjustments. Reference historical win rates at this confidence level. Speak as ME (the bot).";
+
+                    var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+                    if (!string.IsNullOrEmpty(response))
+                    {
+                        _logger.LogInformation("🤖💭 [POSITION-AI] Confidence Adjustment: {Commentary}", response);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ [POSITION-AI] Error generating confidence adjustment commentary");
+                }
+            });
+        }
+        
+        /// <summary>
+        /// Fire-and-forget: Explain dynamic target adjustment in background
+        /// </summary>
+        private void ExplainDynamicTargetAdjustmentFireAndForget(
+            PositionManagementState state,
+            string entryRegime,
+            string currentRegime,
+            decimal oldTargetR,
+            decimal newTargetR)
+        {
+            if (!_commentaryEnabled || _ollamaClient == null)
+                return;
+            
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var isLong = state.Quantity > 0;
+                    var direction = isLong ? "LONG" : "SHORT";
+                    var targetChange = newTargetR - oldTargetR;
+                    var changeDirection = targetChange > 0 ? "extended" : "reduced";
+                    
+                    var prompt = $@"I am a trading bot. Market regime shift adjusted my target:
+
+Position: {direction} {state.Symbol} at {state.EntryPrice:F2}
+Entry Regime: {entryRegime}
+Current Regime: {currentRegime}
+Old Target: {oldTargetR:F1}R
+New Target: {newTargetR:F1}R (target {changeDirection} by {Math.Abs(targetChange):F1}R)
+Strategy: {state.Strategy}
+
+Explain in 2-3 sentences why this regime change requires a different profit target. Reference how {currentRegime} markets historically produce different move sizes. Speak as ME (the bot).";
+
+                    var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+                    if (!string.IsNullOrEmpty(response))
+                    {
+                        _logger.LogInformation("🤖💭 [POSITION-AI] Dynamic Target: {Commentary}", response);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ [POSITION-AI] Error generating dynamic target commentary");
+                }
+            });
+        }
+        
+        /// <summary>
+        /// Fire-and-forget: Explain MAE warning threshold in background
+        /// </summary>
+        private void ExplainMaeWarningFireAndForget(
+            PositionManagementState state,
+            decimal learnedMaeThreshold,
+            decimal currentMae,
+            int historicalSampleSize)
+        {
+            if (!_commentaryEnabled || _ollamaClient == null)
+                return;
+            
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var isLong = state.Quantity > 0;
+                    var direction = isLong ? "LONG" : "SHORT";
+                    var proximityPercent = (currentMae / learnedMaeThreshold) * 100m;
+                    var tickSize = GetTickSize(state.Symbol);
+                    var currentStopDistance = Math.Abs(state.CurrentStopPrice - state.EntryPrice) / tickSize;
+                    
+                    var prompt = $@"I am a trading bot. MAE approaching learned threshold:
+
+Position: {direction} {state.Symbol} at {state.EntryPrice:F2}
+Current MAE: {currentMae:F1} ticks
+Learned Optimal MAE: {learnedMaeThreshold:F1} ticks (from {historicalSampleSize} historical trades)
+MAE Proximity: {proximityPercent:F0}% of threshold
+Current Stop Distance: {currentStopDistance:F1} ticks
+Strategy: {state.Strategy}
+
+Explain in 2-3 sentences what this MAE warning means about my stop placement and whether I should tighten it. Reference the historical recovery rate when MAE exceeds this threshold. Speak as ME (the bot).";
+
+                    var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+                    if (!string.IsNullOrEmpty(response))
+                    {
+                        _logger.LogInformation("🤖💭 [POSITION-AI] MAE Warning: {Commentary}", response);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ [POSITION-AI] Error generating MAE warning commentary");
                 }
             });
         }

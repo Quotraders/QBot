@@ -800,6 +800,10 @@ Please check the configuration and ensure all required services are registered.
         // TopstepX SDK Adapter Service - Production-ready Python SDK integration
         services.AddSingleton<TradingBot.Abstractions.ITopstepXAdapterService, TopstepXAdapterService>();
         
+        // Order Execution Service - Implements IOrderService for position management
+        // Integrates with TopstepX adapter for order execution and partial closes
+        services.AddSingleton<TradingBot.Abstractions.IOrderService, BotCore.Services.OrderExecutionService>();
+        
         // TopstepX Integration Test Service for validation
         services.AddHostedService<TopstepXIntegrationTestService>();
 
