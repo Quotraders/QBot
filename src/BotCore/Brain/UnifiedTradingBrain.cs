@@ -138,7 +138,7 @@ namespace BotCore.Brain
     /// - Position sizing and risk management learns from all strategy results
     /// 
     /// INTEGRATION POINTS:
-    /// - TradingOrchestratorService calls this brain for live trading
+    /// - AutonomousDecisionEngine calls this brain for live trading
     /// - EnhancedBacktestLearningService uses same brain for historical replay
     /// - AllStrategies.generate_candidates() enhanced with brain decisions
     /// - Identical scheduling for Market Open: Light learning every 60 min, Market Closed: Intensive every 15 min
@@ -366,7 +366,7 @@ namespace BotCore.Brain
 
         /// <summary>
         /// MAIN BRAIN FUNCTION: Make intelligent trading decision
-        /// Called by TradingOrchestratorService.ExecuteESNQTradingAsync()
+        /// Called by AutonomousDecisionEngine for live trading
         /// 
         /// This replaces the manual strategy selection in AllStrategies.cs
         /// </summary>
@@ -1504,7 +1504,7 @@ Reason closed: {reason}
         }
 
         /// <summary>
-        /// Update P&L after trade completion - call this from TradingOrchestratorService
+        /// Update P&L after trade completion - call this from AutonomousDecisionEngine
         /// </summary>
         public void UpdatePnL(string strategy, decimal pnl)
         {
