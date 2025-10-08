@@ -46,6 +46,11 @@ namespace BotCore.Services
         private readonly ConcurrentDictionary<string, BracketOrderGroup> _bracketOrders = new();
         private readonly ConcurrentDictionary<string, IcebergOrderExecution> _icebergOrders = new();
         
+        // PHASE 5: Feature flags for advanced order types
+        private readonly bool _enableOcoOrders;
+        private readonly bool _enableBracketOrders;
+        private readonly bool _enableIcebergOrders;
+        
         public OrderExecutionService(
             ILogger<OrderExecutionService> logger,
             ITopstepXAdapterService topstepAdapter,
@@ -54,6 +59,18 @@ namespace BotCore.Services
             _logger = logger;
             _topstepAdapter = topstepAdapter;
             _metrics = metrics;
+            
+            // PHASE 5: Read feature flags from environment
+            _enableOcoOrders = Environment.GetEnvironmentVariable("ENABLE_OCO_ORDERS") == "true";
+            _enableBracketOrders = Environment.GetEnvironmentVariable("ENABLE_BRACKET_ORDERS") == "true";
+            _enableIcebergOrders = Environment.GetEnvironmentVariable("ENABLE_ICEBERG_ORDERS") == "true";
+            
+            if (_enableOcoOrders)
+                _logger.LogInformation("✅ [CONFIG] OCO orders enabled");
+            if (_enableBracketOrders)
+                _logger.LogInformation("✅ [CONFIG] Bracket orders enabled");
+            if (_enableIcebergOrders)
+                _logger.LogInformation("✅ [CONFIG] Iceberg orders enabled");
             
             // PHASE 3: Start reconciliation timer (every 60 seconds)
             _reconciliationTimer = new Timer(
@@ -999,6 +1016,13 @@ namespace BotCore.Services
             string orderType2,
             CancellationToken cancellationToken = default)
         {
+            // PHASE 5: Check if OCO orders are enabled
+            if (!_enableOcoOrders)
+            {
+                _logger.LogWarning("⚠️ [OCO] OCO orders are disabled. Set ENABLE_OCO_ORDERS=true in .env to enable.");
+                return (string.Empty, string.Empty, string.Empty);
+            }
+            
             try
             {
                 _logger.LogInformation(
@@ -1072,6 +1096,13 @@ namespace BotCore.Services
             string entryOrderType = "LIMIT",
             CancellationToken cancellationToken = default)
         {
+            // PHASE 5: Check if bracket orders are enabled
+            if (!_enableBracketOrders)
+            {
+                _logger.LogWarning("⚠️ [BRACKET] Bracket orders are disabled. Set ENABLE_BRACKET_ORDERS=true in .env to enable.");
+                return (string.Empty, string.Empty);
+            }
+            
             try
             {
                 _logger.LogInformation(
@@ -1162,6 +1193,13 @@ namespace BotCore.Services
             decimal? limitPrice = null,
             CancellationToken cancellationToken = default)
         {
+            // PHASE 5: Check if iceberg orders are enabled
+            if (!_enableIcebergOrders)
+            {
+                _logger.LogWarning("⚠️ [ICEBERG] Iceberg orders are disabled. Set ENABLE_ICEBERG_ORDERS=true in .env to enable.");
+                return string.Empty;
+            }
+            
             try
             {
                 _logger.LogInformation(
