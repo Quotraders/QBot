@@ -27,6 +27,7 @@ public static class S15RlStrategy
     private const decimal DefaultConfidenceThreshold = 0.6m;    // Minimum confidence for trade
     private const int DefaultQty = 1;                           // Default position size
     private const int MinimumBarsRequired = 20;                 // Minimum bars for feature computation
+    private const decimal MinimumRiskRewardRatio = 1.0m;        // Minimum acceptable risk-reward ratio
     
     // Shadow-only mode flag (environment-driven)
     private static bool IsTradingEnabled => 
@@ -198,7 +199,7 @@ public static class S15RlStrategy
             // Validate risk-reward
             var risk_amount = Math.Abs(entry - stop);
             var reward_amount = Math.Abs(target - entry);
-            if (risk_amount <= 0 || reward_amount / risk_amount < 1.0m)
+            if (risk_amount <= 0 || reward_amount / risk_amount < MinimumRiskRewardRatio)
             {
                 return candidates; // Poor risk-reward ratio
             }
