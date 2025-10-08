@@ -584,8 +584,9 @@ namespace BotCore.Services
         
         /// <summary>
         /// Notify subscribers that an order was filled
+        /// Called by TopstepXAdapterService when fill events are received
         /// </summary>
-        internal void OnOrderFillReceived(FillEventData fillData)
+        public void OnOrderFillReceived(FillEventData fillData)
         {
             try
             {
