@@ -56,7 +56,7 @@ namespace BotCore.Services
             }
         }
         
-        public async Task<string> GetStatusAsync()
+        public Task<string> GetStatusAsync()
         {
             try
             {
@@ -65,12 +65,12 @@ namespace BotCore.Services
                 var positionCount = _positions.Count;
                 var activeOrderCount = _orders.Count(o => o.Value.Status == TradingBot.Abstractions.OrderStatus.Pending || o.Value.Status == TradingBot.Abstractions.OrderStatus.PartiallyFilled);
                 
-                return $"Connected: {isConnected}, Health: {health:F1}%, Positions: {positionCount}, Active Orders: {activeOrderCount}";
+                return Task.FromResult($"Connected: {isConnected}, Health: {health:F1}%, Positions: {positionCount}, Active Orders: {activeOrderCount}");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting order service status");
-                return $"Error: {ex.Message}";
+                return Task.FromResult($"Error: {ex.Message}");
             }
         }
         
@@ -270,7 +270,7 @@ namespace BotCore.Services
         // ORDER PLACEMENT METHODS
         // ========================================================================
         
-        public async Task<string> PlaceMarketOrderAsync(string symbol, string side, int quantity, string? tag = null)
+        public Task<string> PlaceMarketOrderAsync(string symbol, string side, int quantity, string? tag = null)
         {
             try
             {
@@ -306,7 +306,7 @@ namespace BotCore.Services
                     order.UpdatedAt = DateTimeOffset.UtcNow;
                     
                     _logger.LogInformation("✅ [ORDER-EXEC] Close order {OrderId} marked as filled", orderId);
-                    return orderId;
+                    return Task.FromResult(orderId);
                 }
                 
                 // For entry orders, integrate with TopstepX adapter
@@ -314,16 +314,16 @@ namespace BotCore.Services
                 // Entry orders should be placed through higher-level services that provide full bracket info
                 
                 _logger.LogInformation("✅ [ORDER-EXEC] Order {OrderId} created", orderId);
-                return orderId;
+                return Task.FromResult(orderId);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error placing market order for {Symbol}", symbol);
-                return string.Empty;
+                return Task.FromResult(string.Empty);
             }
         }
         
-        public async Task<string> PlaceLimitOrderAsync(string symbol, string side, int quantity, decimal price, string? tag = null)
+        public Task<string> PlaceLimitOrderAsync(string symbol, string side, int quantity, decimal price, string? tag = null)
         {
             try
             {
@@ -350,16 +350,16 @@ namespace BotCore.Services
                 _orders.TryAdd(orderId, order);
                 
                 _logger.LogInformation("✅ [ORDER-EXEC] Limit order {OrderId} created", orderId);
-                return orderId;
+                return Task.FromResult(orderId);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error placing limit order for {Symbol}", symbol);
-                return string.Empty;
+                return Task.FromResult(string.Empty);
             }
         }
         
-        public async Task<string> PlaceStopOrderAsync(string symbol, string side, int quantity, decimal stopPrice, string? tag = null)
+        public Task<string> PlaceStopOrderAsync(string symbol, string side, int quantity, decimal stopPrice, string? tag = null)
         {
             try
             {
@@ -386,12 +386,12 @@ namespace BotCore.Services
                 _orders.TryAdd(orderId, order);
                 
                 _logger.LogInformation("✅ [ORDER-EXEC] Stop order {OrderId} created", orderId);
-                return orderId;
+                return Task.FromResult(orderId);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error placing stop order for {Symbol}", symbol);
-                return string.Empty;
+                return Task.FromResult(string.Empty);
             }
         }
         

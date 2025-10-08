@@ -78,6 +78,22 @@ namespace BotCore.Brain
         // Scheduling and learning intervals
         public const int MaintenanceLearningIntervalMinutes = 10;    // Learning interval during maintenance window
         public const int ClosedMarketLearningIntervalMinutes = 15;   // Learning interval when market is closed
+        
+        // Commentary thresholds
+        public const decimal LowConfidenceThreshold = 0.4m;          // Below this triggers waiting commentary
+        public const decimal HighConfidenceThreshold = 0.7m;         // Above this triggers confidence commentary
+        public const decimal StrategyConflictThreshold = 0.15m;       // Score difference threshold for conflict detection
+        public const decimal AlternativeStrategyConfidenceFactor = 0.7m; // Factor for alternative strategy scores
+        
+        // Statistical calculation constants
+        public const double TotalVariationNormalizationFactor = 0.5; // Factor for normalizing total variation distance
+        
+        // Historical simulation constants
+        public const int MinHistoricalBarsForSimulation = 100;       // Minimum bars needed for reliable simulation
+        public const int FeatureVectorLength = 11;                   // Number of features in simulation data
+        public const int SimulationRandomSeed = 12345;               // Seed for reproducible simulation data
+        public const double SimulationFeatureRange = 2.0;            // Range for random feature generation
+        public const double SimulationFeatureOffset = 1.0;           // Offset for centering feature range
         public const int OpenMarketLearningIntervalMinutes = 60;     // Learning interval when market is open
         public const int TrainingDataHistorySize = 2000;             // Number of recent decisions to use for training
         
@@ -492,7 +508,7 @@ namespace BotCore.Brain
                 if (_ollamaClient != null && (Environment.GetEnvironmentVariable("BOT_COMMENTARY_ENABLED") == "true"))
                 {
                     // Check for low confidence (waiting)
-                    if (optimalStrategy.Confidence < 0.4m)
+                    if (optimalStrategy.Confidence < TopStepConfig.LowConfidenceThreshold)
                     {
                         var commentary = await ExplainWhyWaitingAsync(context, optimalStrategy, priceDirection).ConfigureAwait(false);
                         if (!string.IsNullOrEmpty(commentary))
@@ -501,7 +517,7 @@ namespace BotCore.Brain
                         }
                     }
                     // Check for high confidence
-                    else if (optimalStrategy.Confidence > 0.7m)
+                    else if (optimalStrategy.Confidence > TopStepConfig.HighConfidenceThreshold)
                     {
                         var commentary = await ExplainConfidenceAsync(decision, context).ConfigureAwait(false);
                         if (!string.IsNullOrEmpty(commentary))
@@ -1206,12 +1222,12 @@ Reason closed: {reason}
                     foreach (var strategy in availableStrategies)
                     {
                         // Use confidence as a proxy for score (actual UCB scores would be tracked separately)
-                        allScores[strategy] = strategy == selection.SelectedArm ? selection.Confidence : selection.Confidence * 0.7m;
+                        allScores[strategy] = strategy == selection.SelectedArm ? selection.Confidence : selection.Confidence * TopStepConfig.AlternativeStrategyConfidenceFactor;
                     }
                     
                     // Check for strategy conflicts (multiple strategies with similar scores)
                     var topScores = allScores.OrderByDescending(kvp => kvp.Value).Take(2).ToList();
-                    if (topScores.Count > 1 && Math.Abs(topScores[0].Value - topScores[1].Value) < 0.15m)
+                    if (topScores.Count > 1 && Math.Abs(topScores[0].Value - topScores[1].Value) < TopStepConfig.StrategyConflictThreshold)
                     {
                         // Strategies are conflicting - close scores
                         var conflictExplanation = await ExplainConflictAsync(allScores, context).ConfigureAwait(false);
@@ -1656,7 +1672,7 @@ Reason closed: {reason}
                 RecommendedStrategy = "HOLD",
                 StrategyConfidence = 0m,
                 PriceDirection = BotCore.Brain.Models.PriceDirection.Sideways,
-                PriceProbability = 0.5m,
+                PriceProbability = TopStepConfig.NeutralProbability,
                 OptimalPositionMultiplier = 0m,
                 MarketRegime = BotCore.Brain.Models.MarketRegime.Normal,
                 EnhancedCandidates = new List<Candidate>(),
@@ -2466,7 +2482,7 @@ Reason closed: {reason}
                 }
             }
 
-            return count > 0 ? (totalVariation / count) * 0.5 : 0.0;
+            return count > 0 ? (totalVariation / count) * TopStepConfig.TotalVariationNormalizationFactor : 0.0;
         }
 
         private double CalculateKLDivergence(List<float[]> predictions1, List<float[]> predictions2, double minProb)
@@ -2558,7 +2574,7 @@ Reason closed: {reason}
                 var maxDrawdownMultiplier = _gate4Config.MaxDrawdownMultiplier;
                 
                 var historicalData = await LoadHistoricalDataAsync(simulationBars, cancellationToken);
-                if (historicalData.Count < 100)
+                if (historicalData.Count < TopStepConfig.MinHistoricalBarsForSimulation)
                 {
                     _logger.LogWarning("  Insufficient historical data for simulation - using available {Count} bars", historicalData.Count);
                 }
@@ -2611,14 +2627,14 @@ Reason closed: {reason}
             }
 
             var historicalData = new List<float[]>();
-            var random = new Random(12345);
+            var random = new Random(TopStepConfig.SimulationRandomSeed);
             
             for (int i = 0; i < count; i++)
             {
-                var features = new float[11];
-                for (int j = 0; j < 11; j++)
+                var features = new float[TopStepConfig.FeatureVectorLength];
+                for (int j = 0; j < TopStepConfig.FeatureVectorLength; j++)
                 {
-                    features[j] = (float)(random.NextDouble() * 2.0 - 1.0);
+                    features[j] = (float)(random.NextDouble() * TopStepConfig.SimulationFeatureRange - TopStepConfig.SimulationFeatureOffset);
                 }
                 historicalData.Add(features);
             }

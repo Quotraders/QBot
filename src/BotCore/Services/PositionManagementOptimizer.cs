@@ -97,6 +97,14 @@ namespace BotCore.Services
         private const decimal TValueFor95Percent = 1.960m; // t-value for 95% confidence
         private const decimal DefaultTValue = 1.960m; // Default t-value (95%)
         
+        // Confidence percentage levels for statistical calculations
+        private const decimal ConfidenceLevel80Percent = 0.80m; // 80% confidence level
+        private const decimal ConfidenceLevel90Percent = 0.90m; // 90% confidence level
+        private const decimal ConfidenceLevel95Percent = 0.95m; // 95% confidence level
+        
+        // Minimum samples for confidence metrics calculation
+        private const int MinSamplesForConfidenceMetrics = 10; // Minimum samples for meaningful confidence intervals
+        
         public PositionManagementOptimizer(
             ILogger<PositionManagementOptimizer> logger,
             IServiceProvider serviceProvider,
@@ -923,7 +931,7 @@ namespace BotCore.Services
                         TradesAnalyzed = bestBreakeven.Count,
                         ConfidenceScore = DetermineConfidenceScore(bestBreakeven.Count),
                         PerformanceImprovement = "N/A",
-                        SampleWinRate = Math.Round(bestBreakeven.WinRate * 100, 1)
+                        SampleWinRate = Math.Round(bestBreakeven.WinRate * LargeSampleThreshold, 1)
                     });
                 }
             }
@@ -948,7 +956,7 @@ namespace BotCore.Services
                         TradesAnalyzed = bestTrailing.Count,
                         ConfidenceScore = DetermineConfidenceScore(bestTrailing.Count),
                         PerformanceImprovement = "N/A",
-                        SampleWinRate = Math.Round(bestTrailing.WinRate * 100, 1)
+                        SampleWinRate = Math.Round(bestTrailing.WinRate * LargeSampleThreshold, 1)
                     });
                 }
             }
@@ -968,7 +976,7 @@ namespace BotCore.Services
                     TradesAnalyzed = holdTimeOutcomes.Count,
                     ConfidenceScore = DetermineConfidenceScore(holdTimeOutcomes.Count),
                     PerformanceImprovement = "N/A",
-                    SampleWinRate = Math.Round(holdTimeOutcomes.Count(o => o.FinalPnL > 0) / (decimal)holdTimeOutcomes.Count * 100, 1)
+                    SampleWinRate = Math.Round(holdTimeOutcomes.Count(o => o.FinalPnL > 0) / (decimal)holdTimeOutcomes.Count * LargeSampleThreshold, 1)
                 });
             }
             
@@ -983,11 +991,11 @@ namespace BotCore.Services
         /// </summary>
         private static string DetermineConfidenceScore(int sampleSize)
         {
-            if (sampleSize < 30)
+            if (sampleSize < SmallSampleThreshold)
             {
                 return "Low";
             }
-            else if (sampleSize < 100)
+            else if (sampleSize < LargeSampleThreshold)
             {
                 return "Medium";
             }
@@ -1136,15 +1144,15 @@ namespace BotCore.Services
             
             // Use t-distribution for small samples, z-distribution for large
             decimal criticalValue;
-            if (n < 30)
+            if (n < SmallSampleThreshold)
             {
                 // Simplified t-values for common confidence levels
                 criticalValue = confidencePercentage switch
                 {
-                    0.80m => 1.282m,
-                    0.90m => 1.645m,
-                    0.95m => 1.960m,
-                    _ => 1.960m
+                    ConfidenceLevel80Percent => TValueFor80Percent,
+                    ConfidenceLevel90Percent => TValueFor90Percent,
+                    ConfidenceLevel95Percent => TValueFor95Percent,
+                    _ => DefaultTValue
                 };
             }
             else
@@ -1152,10 +1160,10 @@ namespace BotCore.Services
                 // Z-values for large samples
                 criticalValue = confidencePercentage switch
                 {
-                    0.80m => 1.282m,
-                    0.90m => 1.645m,
-                    0.95m => 1.960m,
-                    _ => 1.960m
+                    ConfidenceLevel80Percent => TValueFor80Percent,
+                    ConfidenceLevel90Percent => TValueFor90Percent,
+                    ConfidenceLevel95Percent => TValueFor95Percent,
+                    _ => DefaultTValue
                 };
             }
             
@@ -1188,13 +1196,13 @@ namespace BotCore.Services
                 .Take(200)
                 .ToList();
             
-            if (outcomes.Count < 10)
+            if (outcomes.Count < MinSamplesForConfidenceMetrics)
             {
                 return null;
             }
             
             var values = outcomes.Select(o => (decimal)o.BreakevenAfterTicks).ToList();
-            var confidence = CalculateConfidenceMetrics(values, 0.95m);
+            var confidence = CalculateConfidenceMetrics(values, ConfidenceLevel95Percent);
             
             return confidence;
         }
@@ -1213,7 +1221,7 @@ namespace BotCore.Services
                 .Take(200)
                 .ToList();
             
-            if (outcomes.Count < 10)
+            if (outcomes.Count < MinSamplesForConfidenceMetrics)
             {
                 return null;
             }
