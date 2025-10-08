@@ -119,6 +119,88 @@ namespace BotCore.Services
         private const decimal DEFAULT_ENTRY_REGIME_CONFIDENCE = 0.75m;
         private const int MAE_MFE_SNAPSHOT_TOLERANCE_SECONDS = 5;
         
+        // Strategy-specific R-multiple targets (trending market)
+        private const decimal S2_TRENDING_R_MULTIPLE = 2.5m;
+        private const decimal S3_TRENDING_R_MULTIPLE = 3.0m;
+        private const decimal S6_TRENDING_R_MULTIPLE = 2.0m;
+        private const decimal S11_TRENDING_R_MULTIPLE = 2.5m;
+        
+        // Strategy-specific R-multiple targets (ranging market)
+        private const decimal S2_RANGING_R_MULTIPLE = 1.0m;
+        private const decimal S3_RANGING_R_MULTIPLE = 1.2m;
+        private const decimal S6_RANGING_R_MULTIPLE = 1.0m;
+        private const decimal S11_RANGING_R_MULTIPLE = 1.5m;
+        
+        // Strategy-specific R-multiple targets (default/mixed market)
+        private const decimal S2_DEFAULT_R_MULTIPLE = 1.5m;
+        private const decimal S3_DEFAULT_R_MULTIPLE = 1.8m;
+        private const decimal S6_DEFAULT_R_MULTIPLE = 1.2m;
+        private const decimal S11_DEFAULT_R_MULTIPLE = 1.8m;
+        private const decimal FALLBACK_DEFAULT_R_MULTIPLE = 1.5m;
+        
+        // Regime flip sensitivity thresholds (how easily strategy exits on regime change)
+        private const decimal S2_REGIME_FLIP_SENSITIVITY = 0.50m;
+        private const decimal S3_REGIME_FLIP_SENSITIVITY = 0.55m;
+        private const decimal S6_REGIME_FLIP_SENSITIVITY = 0.60m;
+        private const decimal S11_REGIME_FLIP_SENSITIVITY = 0.55m;
+        private const decimal DEFAULT_REGIME_FLIP_SENSITIVITY = 0.50m;
+        
+        // Confidence drop thresholds for regime-based exits
+        private const decimal MAJOR_CONFIDENCE_DROP_THRESHOLD_S2 = 0.75m;  // S2 exits if confidence drops below this
+        private const decimal MAJOR_CONFIDENCE_DROP_THRESHOLD_S3 = 0.30m;  // S3 confidence collapse threshold
+        private const decimal MAJOR_CONFIDENCE_DROP_THRESHOLD_S11 = 0.40m; // S11 severe confidence collapse threshold
+        private const decimal GENERAL_CONFIDENCE_DROP_THRESHOLD = 0.75m;   // General rule for profitable exits
+        private const decimal HIGH_CONFIDENCE_EXIT_THRESHOLD = 0.8m;       // High confidence for priority exits
+        
+        // Progressive tightening time thresholds (in minutes) - Strategy S2
+        private const int S2_TIER1_MINUTES = 15;
+        private const int S2_TIER2_MINUTES = 30;
+        private const int S2_TIER3_MINUTES = 45;
+        private const int S2_TIER4_MINUTES = 60;
+        
+        // Progressive tightening time thresholds (in minutes) - Strategy S3
+        private const int S3_TIER1_MINUTES = 20;
+        private const int S3_TIER2_MINUTES = 40;
+        private const int S3_TIER3_MINUTES = 60;
+        private const int S3_TIER4_MINUTES = 90;
+        
+        // Progressive tightening time thresholds (in minutes) - Strategy S6
+        private const int S6_TIER1_MINUTES = 10;
+        private const int S6_TIER2_MINUTES = 20;
+        private const int S6_TIER3_MINUTES = 30;
+        private const int S6_TIER4_MINUTES = 45;
+        
+        // Progressive tightening time thresholds (in minutes) - Strategy S11
+        private const int S11_TIER1_MINUTES = 20;
+        private const int S11_TIER2_MINUTES = 40;
+        private const int S11_TIER3_MINUTES = 60;
+        private const int S11_TIER4_MINUTES = 120;
+        
+        // Progressive tightening R-multiple requirements
+        private const decimal TIER2_R_MULTIPLE_REQUIREMENT = 1.0m;  // Tier 2 exit threshold
+        private const decimal TIER3_R_MULTIPLE_REQUIREMENT_S2 = 1.5m;  // S2 Tier 3
+        private const decimal TIER3_R_MULTIPLE_REQUIREMENT_S3 = 2.0m;  // S3 Tier 3
+        private const decimal TIER3_R_MULTIPLE_REQUIREMENT_S6 = 1.5m;  // S6 Tier 3
+        private const decimal TIER2_R_MULTIPLE_REQUIREMENT_S11 = 1.5m; // S11 Tier 2
+        
+        // Progressive tightening tick requirements
+        private const int MIN_PROFIT_TICKS_TIER1 = 0;  // Breakeven tier
+        private const int MIN_PROFIT_TICKS_S6_TIER1 = 6; // S6 momentum-specific requirement
+        
+        // Default progressive tightening thresholds (fallback strategy)
+        private const int DEFAULT_TIER1_MINUTES = 30;
+        private const int DEFAULT_TIER2_MINUTES = 60;
+        private const int DEFAULT_TIER3_MINUTES = 120;
+        
+        // Progressive tightening tier identifiers
+        private const int TIER_1 = 1;
+        private const int TIER_2 = 2;
+        private const int TIER_3 = 3;
+        private const int TIER_4 = 4;
+        
+        // MAE threshold warning level (80% of learned threshold)
+        private const decimal MAE_WARNING_THRESHOLD_MULTIPLIER = 0.8m;
+        
         // Confidence-based multipliers (default values)
         private const decimal CONFIDENCE_STOP_MULTIPLIER_VERY_HIGH_DEFAULT = 1.5m;
         private const decimal CONFIDENCE_TARGET_MULTIPLIER_VERY_HIGH_DEFAULT = 2.0m;
@@ -1516,11 +1598,11 @@ namespace BotCore.Services
             // Fallback defaults if environment variable not set
             return strategy switch
             {
-                "S2" => isTrending ? 2.5m : isRanging ? 1.0m : 1.5m,
-                "S3" => isTrending ? 3.0m : isRanging ? 1.2m : 1.8m,
-                "S6" => isTrending ? 2.0m : isRanging ? 1.0m : 1.2m,
-                "S11" => isTrending ? 2.5m : isRanging ? 1.5m : 1.8m,
-                _ => 1.5m // Default R-multiple
+                "S2" => isTrending ? S2_TRENDING_R_MULTIPLE : isRanging ? S2_RANGING_R_MULTIPLE : S2_DEFAULT_R_MULTIPLE,
+                "S3" => isTrending ? S3_TRENDING_R_MULTIPLE : isRanging ? S3_RANGING_R_MULTIPLE : S3_DEFAULT_R_MULTIPLE,
+                "S6" => isTrending ? S6_TRENDING_R_MULTIPLE : isRanging ? S6_RANGING_R_MULTIPLE : S6_DEFAULT_R_MULTIPLE,
+                "S11" => isTrending ? S11_TRENDING_R_MULTIPLE : isRanging ? S11_RANGING_R_MULTIPLE : S11_DEFAULT_R_MULTIPLE,
+                _ => FALLBACK_DEFAULT_R_MULTIPLE // Default R-multiple
             };
         }
         
@@ -1692,25 +1774,25 @@ namespace BotCore.Services
                     if (isTrendingToRanging && currentPnL > 0)
                         return true;
                     // Exit on major confidence drop
-                    if (isMajorConfidenceDrop && state.EntryConfidence < 0.75m)
+                    if (isMajorConfidenceDrop && state.EntryConfidence < MAJOR_CONFIDENCE_DROP_THRESHOLD_S2)
                         return true;
                     break;
                     
                 case "S3": // Multi-timeframe - Moderately sensitive
                     // Exit only on confidence collapse (> 0.30 drop)
-                    if (confidenceDrop > 0.30m)
+                    if (confidenceDrop > MAJOR_CONFIDENCE_DROP_THRESHOLD_S3)
                         return true;
                     break;
                     
                 case "S11": // Pattern-based - Less sensitive
                     // Exit only on severe confidence collapse (> 0.40 drop)
-                    if (confidenceDrop > 0.40m)
+                    if (confidenceDrop > MAJOR_CONFIDENCE_DROP_THRESHOLD_S11)
                         return true;
                     break;
             }
             
             // General rule: Exit if positive PnL and major unfavorable flip
-            if (currentPnL > 0 && (isTrendingToRanging || isRangingToVolatile) && state.EntryConfidence < 0.75m)
+            if (currentPnL > 0 && (isTrendingToRanging || isRangingToVolatile) && state.EntryConfidence < GENERAL_CONFIDENCE_DROP_THRESHOLD)
             {
                 return true;
             }
@@ -1733,11 +1815,11 @@ namespace BotCore.Services
             // Fallback defaults
             return strategy switch
             {
-                "S6" => 0.60m, // Most sensitive
-                "S2" => 0.50m,
-                "S3" => 0.55m,
-                "S11" => 0.55m,
-                _ => 0.50m
+                "S6" => S6_REGIME_FLIP_SENSITIVITY, // Most sensitive
+                "S2" => S2_REGIME_FLIP_SENSITIVITY,
+                "S3" => S3_REGIME_FLIP_SENSITIVITY,
+                "S11" => S11_REGIME_FLIP_SENSITIVITY,
+                _ => DEFAULT_REGIME_FLIP_SENSITIVITY
             };
         }
         
@@ -1793,7 +1875,7 @@ namespace BotCore.Services
                 else
                 {
                     // Log progress for monitoring (only if getting close to threshold)
-                    if (currentAdverseExcursion > optimalThreshold.Value * 0.8m)
+                    if (currentAdverseExcursion > optimalThreshold.Value * MAE_WARNING_THRESHOLD_MULTIPLIER)
                     {
                         _logger.LogDebug("⚠️ [MAE-LEARNING] Position {PositionId} approaching MAE threshold: {Current:F1} / {Threshold:F1} ticks",
                             state.PositionId, currentAdverseExcursion, optimalThreshold.Value);
@@ -1956,57 +2038,57 @@ namespace BotCore.Services
             {
                 "S2" => new List<ProgressiveTighteningThreshold>
                 {
-                    new() { Tier = 1, MinutesThreshold = 15, Action = ProgressiveTighteningAction.MoveStopToBreakeven, 
-                           MinProfitTicksRequired = 0, Description = "Move to breakeven if not profitable" },
-                    new() { Tier = 2, MinutesThreshold = 30, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
-                           MinRMultipleRequired = 1.0m, Description = "Exit if not at 1.0R" },
-                    new() { Tier = 3, MinutesThreshold = 45, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
-                           MinRMultipleRequired = 1.5m, Description = "Exit if not at 1.5R" },
-                    new() { Tier = 4, MinutesThreshold = 60, Action = ProgressiveTighteningAction.ForceExit, 
+                    new() { Tier = TIER_1, MinutesThreshold = S2_TIER1_MINUTES, Action = ProgressiveTighteningAction.MoveStopToBreakeven, 
+                           MinProfitTicksRequired = MIN_PROFIT_TICKS_TIER1, Description = "Move to breakeven if not profitable" },
+                    new() { Tier = TIER_2, MinutesThreshold = S2_TIER2_MINUTES, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = TIER2_R_MULTIPLE_REQUIREMENT, Description = "Exit if not at 1.0R" },
+                    new() { Tier = TIER_3, MinutesThreshold = S2_TIER3_MINUTES, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = TIER3_R_MULTIPLE_REQUIREMENT_S2, Description = "Exit if not at 1.5R" },
+                    new() { Tier = TIER_4, MinutesThreshold = S2_TIER4_MINUTES, Action = ProgressiveTighteningAction.ForceExit, 
                            Description = "Force exit at max hold time" }
                 },
                 
                 "S3" => new List<ProgressiveTighteningThreshold>
                 {
-                    new() { Tier = 1, MinutesThreshold = 20, Action = ProgressiveTighteningAction.MoveStopToBreakeven, 
-                           MinProfitTicksRequired = 0, Description = "Move to breakeven if not profitable" },
-                    new() { Tier = 2, MinutesThreshold = 40, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
-                           MinRMultipleRequired = 1.0m, Description = "Exit if not at 1.0R" },
-                    new() { Tier = 3, MinutesThreshold = 60, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
-                           MinRMultipleRequired = 2.0m, Description = "Exit if not at 2.0R" },
-                    new() { Tier = 4, MinutesThreshold = 90, Action = ProgressiveTighteningAction.ForceExit, 
+                    new() { Tier = TIER_1, MinutesThreshold = S3_TIER1_MINUTES, Action = ProgressiveTighteningAction.MoveStopToBreakeven, 
+                           MinProfitTicksRequired = MIN_PROFIT_TICKS_TIER1, Description = "Move to breakeven if not profitable" },
+                    new() { Tier = TIER_2, MinutesThreshold = S3_TIER2_MINUTES, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = TIER2_R_MULTIPLE_REQUIREMENT, Description = "Exit if not at 1.0R" },
+                    new() { Tier = TIER_3, MinutesThreshold = S3_TIER3_MINUTES, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = TIER3_R_MULTIPLE_REQUIREMENT_S3, Description = "Exit if not at 2.0R" },
+                    new() { Tier = TIER_4, MinutesThreshold = S3_TIER4_MINUTES, Action = ProgressiveTighteningAction.ForceExit, 
                            Description = "Force exit at max hold time" }
                 },
                 
                 "S6" => new List<ProgressiveTighteningThreshold>
                 {
-                    new() { Tier = 1, MinutesThreshold = 10, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
-                           MinProfitTicksRequired = 6, Description = "Exit if not at +6 ticks (momentum should move fast)" },
-                    new() { Tier = 2, MinutesThreshold = 20, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
-                           MinRMultipleRequired = 1.0m, Description = "Exit if not at 1.0R" },
-                    new() { Tier = 3, MinutesThreshold = 30, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
-                           MinRMultipleRequired = 1.5m, Description = "Exit if not at 1.5R" },
-                    new() { Tier = 4, MinutesThreshold = 45, Action = ProgressiveTighteningAction.ForceExit, 
+                    new() { Tier = TIER_1, MinutesThreshold = S6_TIER1_MINUTES, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinProfitTicksRequired = MIN_PROFIT_TICKS_S6_TIER1, Description = "Exit if not at +6 ticks (momentum should move fast)" },
+                    new() { Tier = TIER_2, MinutesThreshold = S6_TIER2_MINUTES, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = TIER2_R_MULTIPLE_REQUIREMENT, Description = "Exit if not at 1.0R" },
+                    new() { Tier = TIER_3, MinutesThreshold = S6_TIER3_MINUTES, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = TIER3_R_MULTIPLE_REQUIREMENT_S6, Description = "Exit if not at 1.5R" },
+                    new() { Tier = TIER_4, MinutesThreshold = S6_TIER4_MINUTES, Action = ProgressiveTighteningAction.ForceExit, 
                            Description = "Force exit at max hold time" }
                 },
                 
                 "S11" => new List<ProgressiveTighteningThreshold>
                 {
-                    new() { Tier = 1, MinutesThreshold = 20, Action = ProgressiveTighteningAction.MoveStopToBreakeven, 
-                           MinProfitTicksRequired = 0, Description = "Move to breakeven if not profitable" },
-                    new() { Tier = 2, MinutesThreshold = 40, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
-                           MinRMultipleRequired = 1.5m, Description = "Exit if not at 1.5R" },
-                    new() { Tier = 3, MinutesThreshold = 60, Action = ProgressiveTighteningAction.ForceExit, 
+                    new() { Tier = TIER_1, MinutesThreshold = S11_TIER1_MINUTES, Action = ProgressiveTighteningAction.MoveStopToBreakeven, 
+                           MinProfitTicksRequired = MIN_PROFIT_TICKS_TIER1, Description = "Move to breakeven if not profitable" },
+                    new() { Tier = TIER_2, MinutesThreshold = S11_TIER2_MINUTES, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = TIER2_R_MULTIPLE_REQUIREMENT_S11, Description = "Exit if not at 1.5R" },
+                    new() { Tier = TIER_3, MinutesThreshold = S11_TIER3_MINUTES, Action = ProgressiveTighteningAction.ForceExit, 
                            Description = "Force exit at max hold time" }
                 },
                 
                 _ => new List<ProgressiveTighteningThreshold>
                 {
-                    new() { Tier = 1, MinutesThreshold = 30, Action = ProgressiveTighteningAction.MoveStopToBreakeven, 
-                           MinProfitTicksRequired = 0, Description = "Move to breakeven if not profitable" },
-                    new() { Tier = 2, MinutesThreshold = 60, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
-                           MinRMultipleRequired = 1.0m, Description = "Exit if not at 1.0R" },
-                    new() { Tier = 3, MinutesThreshold = 120, Action = ProgressiveTighteningAction.ForceExit, 
+                    new() { Tier = TIER_1, MinutesThreshold = DEFAULT_TIER1_MINUTES, Action = ProgressiveTighteningAction.MoveStopToBreakeven, 
+                           MinProfitTicksRequired = MIN_PROFIT_TICKS_TIER1, Description = "Move to breakeven if not profitable" },
+                    new() { Tier = TIER_2, MinutesThreshold = DEFAULT_TIER2_MINUTES, Action = ProgressiveTighteningAction.ExitIfBelowThreshold, 
+                           MinRMultipleRequired = TIER2_R_MULTIPLE_REQUIREMENT, Description = "Exit if not at 1.0R" },
+                    new() { Tier = TIER_3, MinutesThreshold = DEFAULT_TIER3_MINUTES, Action = ProgressiveTighteningAction.ForceExit, 
                            Description = "Force exit at max hold time" }
                 }
             };
