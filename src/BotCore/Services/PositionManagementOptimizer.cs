@@ -71,11 +71,12 @@ namespace BotCore.Services
         
         public PositionManagementOptimizer(
             ILogger<PositionManagementOptimizer> logger,
-            IServiceProvider serviceProvider)
+            IServiceProvider serviceProvider,
+            ParameterChangeTracker changeTracker)
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
-            _changeTracker = new ParameterChangeTracker(capacity: 500);
+            _changeTracker = changeTracker;
         }
         
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)

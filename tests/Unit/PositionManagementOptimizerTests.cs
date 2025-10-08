@@ -25,7 +25,8 @@ namespace TradingBot.Tests.Unit
             _serviceProvider = services.BuildServiceProvider();
 
             var logger = _serviceProvider.GetRequiredService<ILogger<PositionManagementOptimizer>>();
-            _optimizer = new PositionManagementOptimizer(logger, _serviceProvider);
+            var changeTracker = new ParameterChangeTracker(capacity: 500);
+            _optimizer = new PositionManagementOptimizer(logger, _serviceProvider, changeTracker);
         }
 
         /// <summary>
