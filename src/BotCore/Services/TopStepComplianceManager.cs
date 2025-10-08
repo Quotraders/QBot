@@ -25,20 +25,20 @@ public class TopStepComplianceManager
     private readonly ILogger _logger;
     private readonly AutonomousConfig _config;
     
-    // TopStep compliance limits (with safety buffers)
-    private const decimal TopStepDailyLossLimit = -2400m;
-    private const decimal SafeDailyLossLimit = -1000m;    // Conservative safety buffer
-    private const decimal TopStepDrawdownLimit = -2500m;
-    private const decimal SafeDrawdownLimit = -2000m;     // Conservative safety buffer
+    // TopStep compliance limits (read from environment variables)
+    private readonly decimal TopStepDailyLossLimit;
+    private readonly decimal SafeDailyLossLimit;
+    private readonly decimal TopStepDrawdownLimit;
+    private readonly decimal SafeDrawdownLimit;
     
     // Compliance threshold percentages
     private const decimal WarningThresholdPercent = 0.8m;  // 80% threshold for warning
     private const decimal CriticalThresholdPercent = 0.9m; // 90% threshold for critical
     private const decimal PercentToDecimalConversion = 100m; // Convert decimal to percentage
     
-    // TopStep evaluation requirements
-    private const decimal ProfitTargetAmount = 3000m;      // $3,000 profit target for $50K account
-    private const int MinimumTradingDays = 5;              // Minimum 5 trading days required
+    // TopStep evaluation requirements (read from environment variables)
+    private readonly decimal ProfitTargetAmount;
+    private readonly int MinimumTradingDays;
     private const decimal DailyLossWarningThreshold = 200m; // Warning when remaining < $200
     private const decimal DrawdownWarningThreshold = 300m;  // Warning when remaining < $300
     
@@ -63,8 +63,28 @@ public class TopStepComplianceManager
         _logger = logger;
         _config = config.Value;
         
-        _logger.LogInformation("🛡️ [TOPSTEP-COMPLIANCE] Initialized with safety limits: Daily=${DailyLimit}, Drawdown=${DrawdownLimit}",
-            SafeDailyLossLimit, SafeDrawdownLimit);
+        // Read TopStep compliance limits from environment variables (with defaults)
+        TopStepDailyLossLimit = decimal.Parse(
+            Environment.GetEnvironmentVariable("TOPSTEP_DAILY_LOSS_LIMIT") ?? "-2400",
+            CultureInfo.InvariantCulture);
+        SafeDailyLossLimit = decimal.Parse(
+            Environment.GetEnvironmentVariable("TOPSTEP_SAFE_DAILY_LOSS_LIMIT") ?? "-1000",
+            CultureInfo.InvariantCulture);
+        TopStepDrawdownLimit = decimal.Parse(
+            Environment.GetEnvironmentVariable("TOPSTEP_DRAWDOWN_LIMIT") ?? "-2500",
+            CultureInfo.InvariantCulture);
+        SafeDrawdownLimit = decimal.Parse(
+            Environment.GetEnvironmentVariable("TOPSTEP_SAFE_DRAWDOWN_LIMIT") ?? "-2000",
+            CultureInfo.InvariantCulture);
+        ProfitTargetAmount = decimal.Parse(
+            Environment.GetEnvironmentVariable("TOPSTEP_PROFIT_TARGET") ?? "3000",
+            CultureInfo.InvariantCulture);
+        MinimumTradingDays = int.Parse(
+            Environment.GetEnvironmentVariable("TOPSTEP_MINIMUM_TRADING_DAYS") ?? "5",
+            CultureInfo.InvariantCulture);
+        
+        _logger.LogInformation("🛡️ [TOPSTEP-COMPLIANCE] Initialized with safety limits: Daily=${DailyLimit}, Drawdown=${DrawdownLimit}, ProfitTarget=${ProfitTarget}, MinDays={MinDays}",
+            SafeDailyLossLimit, SafeDrawdownLimit, ProfitTargetAmount, MinimumTradingDays);
     }
     
     /// <summary>
@@ -232,7 +252,7 @@ public class TopStepComplianceManager
     /// <summary>
     /// Get profit target for TopStep evaluation
     /// </summary>
-    public static decimal GetProfitTarget()
+    public decimal GetProfitTarget()
     {
         // TopStep evaluation profit targets
         // Evaluation: $3,000 profit target for $50K account
@@ -353,7 +373,7 @@ public class TopStepComplianceManager
         return Task.CompletedTask;
     }
     
-    private static int GetMinimumTradingDays()
+    private int GetMinimumTradingDays()
     {
         // TopStep evaluation requirements
         // Evaluation: Minimum 5 trading days
@@ -375,7 +395,7 @@ public class TopStepComplianceManager
         }
     }
     
-    private static List<string> GenerateRecommendations(ComplianceStatus status)
+    private List<string> GenerateRecommendations(ComplianceStatus status)
     {
         var recommendations = new List<string>();
         

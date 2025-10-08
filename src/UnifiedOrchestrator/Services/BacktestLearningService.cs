@@ -68,9 +68,13 @@ namespace UnifiedOrchestrator.Services
                     {
                         await RunBacktestingSession(stoppingToken).ConfigureAwait(false);
                         
-                        // Wait before next learning session (2 hours by default)
-                        var learningInterval = TimeSpan.FromMinutes(
-                            int.Parse(Environment.GetEnvironmentVariable("HISTORICAL_LEARNING_INTERVAL_MINUTES") ?? "120"));
+                        // Wait before next learning session - use CONCURRENT_LEARNING_INTERVAL_MINUTES for live trading
+                        // Falls back to HISTORICAL_LEARNING_INTERVAL_MINUTES if not set
+                        var intervalMinutes = int.Parse(
+                            Environment.GetEnvironmentVariable("CONCURRENT_LEARNING_INTERVAL_MINUTES") 
+                            ?? Environment.GetEnvironmentVariable("HISTORICAL_LEARNING_INTERVAL_MINUTES") 
+                            ?? "60");
+                        var learningInterval = TimeSpan.FromMinutes(intervalMinutes);
                         
                         _logger.LogInformation("⏱️ [BACKTEST_LEARNING] Waiting {Interval} before next learning session", learningInterval);
                         await Task.Delay(learningInterval, stoppingToken).ConfigureAwait(false);
