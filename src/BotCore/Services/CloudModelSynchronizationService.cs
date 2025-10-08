@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.IO.Compression;
 using BotCore.ML;
+using BotCore.Brain;
 
 namespace BotCore.Services;
 
@@ -19,6 +20,7 @@ public class CloudModelSynchronizationService : BackgroundService
     
     private readonly ILogger<CloudModelSynchronizationService> _logger;
     private readonly HttpClient _httpClient;
+    private readonly UnifiedTradingBrain? _tradingBrain;
     private readonly string _githubToken;
     private readonly string _repositoryOwner;
     private readonly string _repositoryName;
@@ -35,11 +37,13 @@ public class CloudModelSynchronizationService : BackgroundService
         HttpClient httpClient,
         IMLMemoryManager memoryManager,
         IConfiguration configuration,
+        UnifiedTradingBrain? tradingBrain = null,
         ProductionResilienceService? resilienceService = null,
         ProductionMonitoringService? monitoringService = null)
     {
         _logger = logger;
         _httpClient = httpClient;
+        _tradingBrain = tradingBrain;
         ArgumentNullException.ThrowIfNull(memoryManager);
         ArgumentNullException.ThrowIfNull(configuration);
         
@@ -63,7 +67,7 @@ public class CloudModelSynchronizationService : BackgroundService
         _httpClient.Timeout = TimeSpan.FromMinutes(5); // Allow time for large model downloads
         if (!string.IsNullOrEmpty(_githubToken))
         {
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_githubToken}");
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"token {_githubToken}");
         }
         
         // Ensure models directory exists
@@ -294,12 +298,20 @@ public class CloudModelSynchronizationService : BackgroundService
             using var archive = new ZipArchive(zipStream, ZipArchiveMode.Read);
             
             var extracted = false;
+            string? onnxModelPath = null;
+            
             foreach (var entry in archive.Entries)
             {
                 if (entry.Name.EndsWith(".onnx") || entry.Name.EndsWith(".pkl") || entry.Name.EndsWith(".json"))
                 {
                     var targetPath = DetermineModelPath(artifact.Name, entry.Name);
                     await ExtractAndSaveFileAsync(entry, targetPath, cancellationToken).ConfigureAwait(false);
+                    
+                    // Track ONNX model path for hot-swap
+                    if (entry.Name.EndsWith(".onnx"))
+                    {
+                        onnxModelPath = targetPath;
+                    }
                     
                     // Update model info
                     _currentModels[modelKey] = new ModelInfo
@@ -314,6 +326,29 @@ public class CloudModelSynchronizationService : BackgroundService
                     
                     extracted = true;
                     _logger.LogInformation("🌐 [CLOUD-SYNC] Model extracted: {Path}", targetPath);
+                }
+            }
+            
+            // Trigger hot-swap in UnifiedTradingBrain if we downloaded a new ONNX model
+            if (extracted && onnxModelPath != null && _tradingBrain != null)
+            {
+                try
+                {
+                    _logger.LogInformation("🔄 [CLOUD-SYNC] Triggering model hot-swap for: {ModelPath}", onnxModelPath);
+                    var reloadSuccess = await _tradingBrain.ReloadModelsAsync(onnxModelPath, cancellationToken).ConfigureAwait(false);
+                    
+                    if (reloadSuccess)
+                    {
+                        _logger.LogInformation("✅ [CLOUD-SYNC] Model hot-swap completed successfully");
+                    }
+                    else
+                    {
+                        _logger.LogWarning("⚠️ [CLOUD-SYNC] Model hot-swap failed - keeping current model");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ [CLOUD-SYNC] Exception during model hot-swap");
                 }
             }
             

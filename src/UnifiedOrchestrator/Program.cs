@@ -1770,7 +1770,7 @@ Please check the configuration and ensure all required services are registered.
             client.Timeout = TimeSpan.FromSeconds(60);
         });
         
-        // Register Cloud Model Synchronization Service - Automated GitHub model downloads
+        // Register Cloud Model Synchronization Service - Automated GitHub model downloads with hot-swap
         services.AddSingleton<BotCore.Services.CloudModelSynchronizationService>(provider =>
         {
             var logger = provider.GetRequiredService<ILogger<BotCore.Services.CloudModelSynchronizationService>>();
@@ -1778,11 +1778,12 @@ Please check the configuration and ensure all required services are registered.
             var httpClient = httpClientFactory.CreateClient(nameof(BotCore.Services.CloudModelSynchronizationService));
             var memoryManager = provider.GetRequiredService<BotCore.ML.IMLMemoryManager>();
             var configuration = provider.GetRequiredService<IConfiguration>();
+            var tradingBrain = provider.GetService<BotCore.Brain.UnifiedTradingBrain>();
             var resilienceService = provider.GetService<BotCore.Services.ProductionResilienceService>();
             var monitoringService = provider.GetService<BotCore.Services.ProductionMonitoringService>();
             
             return new BotCore.Services.CloudModelSynchronizationService(
-                logger, httpClient, memoryManager, configuration, resilienceService, monitoringService);
+                logger, httpClient, memoryManager, configuration, tradingBrain, resilienceService, monitoringService);
         });
         services.AddHostedService<BotCore.Services.CloudModelSynchronizationService>(provider => 
             provider.GetRequiredService<BotCore.Services.CloudModelSynchronizationService>());
