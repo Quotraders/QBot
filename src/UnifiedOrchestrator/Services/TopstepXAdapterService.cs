@@ -7,37 +7,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using BotCore.Helpers;
 using TradingBot.Abstractions;
 using TradingBot.BotCore.Configuration;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
-
-/// <summary>
-/// Service that manages the TopstepX Python SDK adapter
-/// Provides C# integration with the Python project-x-py SDK
-/// </summary>
-internal interface ITopstepXAdapterService
-{
-    Task<bool> InitializeAsync(CancellationToken cancellationToken = default);
-    Task<decimal> GetPriceAsync(string symbol, CancellationToken cancellationToken = default);
-    Task<OrderExecutionResult> PlaceOrderAsync(string symbol, int size, decimal stopLoss, decimal takeProfit, CancellationToken cancellationToken = default);
-    Task<HealthScoreResult> GetHealthScoreAsync(CancellationToken cancellationToken = default);
-    Task<PortfolioStatusResult> GetPortfolioStatusAsync(CancellationToken cancellationToken = default);
-    Task DisconnectAsync(CancellationToken cancellationToken = default);
-    bool IsConnected { get; }
-    double ConnectionHealth { get; }
-}
-
-internal record OrderExecutionResult(
-    bool Success,
-    string? OrderId,
-    string? Error,
-    string Symbol,
-    int Size,
-    decimal EntryPrice,
-    decimal StopLoss,
-    decimal TakeProfit,
-    DateTime Timestamp);
 
 internal record HealthScoreResult(
     int HealthScore,
@@ -58,7 +32,7 @@ internal record PositionInfo(
     decimal UnrealizedPnL,
     decimal RealizedPnL);
 
-internal class TopstepXAdapterService : ITopstepXAdapterService, IAsyncDisposable, IDisposable
+internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapterService, IAsyncDisposable, IDisposable
 {
     private readonly ILogger<TopstepXAdapterService> _logger;
     private readonly TopstepXConfiguration _config;
@@ -171,6 +145,27 @@ internal class TopstepXAdapterService : ITopstepXAdapterService, IAsyncDisposabl
 
         try
         {
+            // Validate and round prices to valid tick increments before placing order
+            try
+            {
+                stopLoss = PriceHelper.RoundToTick(stopLoss, symbol);
+                takeProfit = PriceHelper.RoundToTick(takeProfit, symbol);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError("Price validation failed: {Error}", ex.Message);
+                return new OrderExecutionResult(
+                    false,
+                    null,
+                    ex.Message,
+                    symbol,
+                    size,
+                    0m,
+                    stopLoss,
+                    takeProfit,
+                    DateTime.UtcNow);
+            }
+            
             var currentPrice = await GetPriceAsync(symbol, cancellationToken).ConfigureAwait(false);
             
             _logger.LogInformation(
@@ -398,6 +393,48 @@ internal class TopstepXAdapterService : ITopstepXAdapterService, IAsyncDisposabl
             throw;
         }
     }
+
+    // Implement interface methods from TradingBot.Abstractions.ITopstepXAdapterService
+    public async Task<bool> IsConnectedAsync()
+    {
+        return await Task.FromResult(IsConnected).ConfigureAwait(false);
+    }
+
+    public async Task<string> GetAccountStatusAsync()
+    {
+        try
+        {
+            var portfolioStatus = await GetPortfolioStatusAsync().ConfigureAwait(false);
+            return $"Connected: {IsConnected}, Health: {_connectionHealth:F1}%, Positions: {portfolioStatus.Positions.Count}";
+        }
+        catch
+        {
+            return $"Connected: {IsConnected}, Health: {_connectionHealth:F1}%";
+        }
+    }
+
+    public async Task<bool> IsHealthyAsync()
+    {
+        try
+        {
+            var healthScore = await GetHealthScoreAsync().ConfigureAwait(false);
+            return healthScore.HealthScore >= 80;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    async Task<double> TradingBot.Abstractions.ITopstepXAdapterService.GetHealthScoreAsync(CancellationToken cancellationToken)
+    {
+        var result = await GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
+        return result.HealthScore;
+    }
+
+    string TradingBot.Abstractions.ITopstepXAdapterService.ConnectionHealth => $"{_connectionHealth:F1}%";
+
+    public event EventHandler<TradingBot.Abstractions.StatusChangedEventArgs>? StatusChanged;
 
     private async Task ValidatePythonSDKAsync(CancellationToken cancellationToken)
     {

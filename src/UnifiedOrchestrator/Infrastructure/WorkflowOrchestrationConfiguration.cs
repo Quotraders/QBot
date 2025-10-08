@@ -56,14 +56,8 @@ internal static class WorkflowOrchestrationConfiguration
         }
         
         // Wire with existing orchestrator services
-        var tradingOrchestrator = serviceProvider.GetService<TradingOrchestratorService>();
         var workflowScheduler = serviceProvider.GetService<WorkflowSchedulerService>();
         var unifiedOrchestrator = serviceProvider.GetService<UnifiedOrchestratorService>();
-        
-        if (tradingOrchestrator != null)
-        {
-            logger.LogInformation("[Workflow-Config] Wired workflow orchestration with trading orchestrator");
-        }
         
         if (workflowScheduler != null)
         {

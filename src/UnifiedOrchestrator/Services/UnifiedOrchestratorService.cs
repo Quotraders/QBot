@@ -11,13 +11,15 @@ using System.Threading.Tasks;
 namespace TradingBot.UnifiedOrchestrator.Services;
 
 /// <summary>
-/// Main unified orchestrator service - coordinates all subsystems with TopstepX SDK integration
+/// System health monitoring and emergency control service.
+/// NOT the production trading path. Production trading happens in AutonomousDecisionEngine.
+/// This service monitors system health, TopstepX connection status, memory usage, and can trigger emergency shutdown.
+/// 
 /// Features:
-/// - Multi-instrument trading support (MNQ, ES)
-/// - Python SDK adapter integration
-/// - Risk management via managed_trade() context
-/// - Real-time health monitoring and statistics
-/// - Production-ready error handling
+/// - Resource monitoring (memory usage tracking)
+/// - TopstepX adapter health monitoring
+/// - Emergency shutdown capabilities
+/// - System status reporting
 /// </summary>
 internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestrator
 {
@@ -35,11 +37,6 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
     private readonly bool _enableEmergencyStop;
     private readonly long _maxMemoryUsageMb;
     private readonly bool _enableResourceMonitoring;
-    
-    // Workflow tracking for real stats
-    private readonly Dictionary<string, UnifiedWorkflow> _registeredWorkflows = new();
-    private readonly HashSet<string> _activeWorkflows = new();
-    private readonly object _workflowLock = new();
     
     // Agent session registry to prevent duplicates - addresses Comment #3304685224
     private readonly HashSet<string> _activeAgentSessions = new();
@@ -216,35 +213,22 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
             }
         }
         
-        // Coordinate between all orchestrators and monitor SDK health
+        // Monitor TopstepX adapter health if connected
         if (_adapterInitialized && _topstepXAdapter.IsConnected)
         {
             try
             {
-                // Periodic health check and price monitoring
                 var health = await _topstepXAdapter.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
                 if (health.HealthScore < 80)
                 {
                     _logger.LogWarning("⚠️ TopstepX adapter health degraded: {HealthScore}% - Status: {Status}", 
                         health.HealthScore, health.Status);
                 }
-                
-                // Log current prices for monitoring
-                await LogCurrentPricesAsync(cancellationToken).ConfigureAwait(false);
-                
-                // Check if demo trading should be performed
-                await ProcessDemoTradingAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in TopstepX SDK operations");
+                _logger.LogError(ex, "Error checking TopstepX adapter health");
             }
-        }
-        
-        // Check status of all orchestrator components
-        if (_tradingOrchestrator != null)
-        {
-            _logger.LogTrace("Processing trading orchestrator operations");
         }
         
         if (_intelligenceOrchestrator != null)
@@ -260,82 +244,6 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         await Task.CompletedTask.ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Log current prices for monitoring and health validation
-    /// </summary>
-    private async Task LogCurrentPricesAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            var mnqPrice = await _topstepXAdapter.GetPriceAsync("MNQ", cancellationToken).ConfigureAwait(false);
-            var esPrice = await _topstepXAdapter.GetPriceAsync("ES", cancellationToken).ConfigureAwait(false);
-            
-            _logger.LogDebug("[PRICES] MNQ: ${MNQPrice:F2}, ES: ${ESPrice:F2}", mnqPrice, esPrice);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug("Price monitoring error: {Error}", ex.Message);
-        }
-    }
-
-    /// <summary>
-    /// Demonstrate trading functionality as specified in requirements
-    /// This method shows how the adapter integrates with the orchestrator
-    /// </summary>
-    private async Task ProcessDemoTradingAsync(CancellationToken cancellationToken)
-    {
-        // Check if we should perform demo trading (every 5 minutes)
-        var currentTime = DateTime.UtcNow;
-        if (currentTime.Minute % 5 != 0 || currentTime.Second > 10)
-        {
-            return; // Only run on 5-minute intervals
-        }
-
-        try
-        {
-            _logger.LogInformation("🎯 Demonstrating TopstepX SDK integration...");
-            
-            // Get health score and validate system ready
-            var health = await _topstepXAdapter.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
-            if (health.HealthScore < 80)
-            {
-                _logger.LogWarning("❌ System health too low for trading: {HealthScore}%", health.HealthScore);
-                return;
-            }
-            
-            // Get current MNQ price for demo
-            var mnqPrice = await _topstepXAdapter.GetPriceAsync("MNQ", cancellationToken).ConfigureAwait(false);
-            _logger.LogInformation("📊 MNQ Price: ${Price:F2}", mnqPrice);
-            
-            // Place demonstration bracket order as specified in requirements
-            var orderResult = await _topstepXAdapter.PlaceOrderAsync(
-                symbol: "MNQ",
-                size: 1,
-                stopLoss: mnqPrice - 10m,
-                takeProfit: mnqPrice + 15m,
-                cancellationToken).ConfigureAwait(false);
-                
-            if (orderResult.Success)
-            {
-                _logger.LogInformation("✅ Demo order placed successfully: {OrderId}", orderResult.OrderId);
-                _logger.LogInformation("[ORDER-DEMO] {Symbol} size={Size} entry=${EntryPrice:F2} stop=${StopLoss:F2} target=${TakeProfit:F2}",
-                    orderResult.Symbol, orderResult.Size, orderResult.EntryPrice, orderResult.StopLoss, orderResult.TakeProfit);
-            }
-            else
-            {
-                _logger.LogError("❌ Demo order failed: {Error}", orderResult.Error);
-            }
-            
-            // Get portfolio status
-            var portfolio = await _topstepXAdapter.GetPortfolioStatusAsync(cancellationToken).ConfigureAwait(false);
-            _logger.LogInformation("📈 Portfolio updated - {PositionCount} positions tracked", portfolio.Positions.Count);
-            
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Demo trading process failed");
-        }
-    }
 
     private async Task ShutdownSystemAsync()
     {
@@ -384,61 +292,7 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
     /// Start trading demonstration as specified in requirements
     /// Shows complete SDK integration with TradingSuite.create() and managed_trade()
     /// </summary>
-    public async Task StartTradingDemoAsync(CancellationToken cancellationToken = default)
-    {
-        if (!_adapterInitialized || !_topstepXAdapter.IsConnected)
-        {
-            throw new InvalidOperationException("TopstepX adapter not initialized or connected");
-        }
 
-        try
-        {
-            _logger.LogInformation("🚀 Starting TopstepX SDK trading demonstration...");
-            
-            // Validate health score >= 80 as specified
-            var health = await _topstepXAdapter.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
-            if (health.HealthScore < 80)
-            {
-                throw new InvalidOperationException($"System health degraded: {health.HealthScore}% < 80%");
-            }
-            
-            _logger.LogInformation("✅ Health score validation passed: {HealthScore}%", health.HealthScore);
-            
-            // Get current prices for both instruments
-            var mnqPrice = await _topstepXAdapter.GetPriceAsync("MNQ", cancellationToken).ConfigureAwait(false);
-            var esPrice = await _topstepXAdapter.GetPriceAsync("ES", cancellationToken).ConfigureAwait(false);
-            
-            _logger.LogInformation("📊 Current Prices - MNQ: ${MNQPrice:F2}, ES: ${ESPrice:F2}", mnqPrice, esPrice);
-            
-            // Place bracket order for MNQ as specified in requirements  
-            var orderResult = await _topstepXAdapter.PlaceOrderAsync(
-                symbol: "MNQ",
-                size: 1,
-                stopLoss: mnqPrice - 10m,
-                takeProfit: mnqPrice + 15m,
-                cancellationToken).ConfigureAwait(false);
-                
-            if (!orderResult.Success)
-            {
-                throw new InvalidOperationException($"Order placement failed: {orderResult.Error}");
-            }
-            
-            _logger.LogInformation("✅ Bracket order placed successfully");
-            _logger.LogInformation("[ORDER] {Symbol} size={Size} entry=${EntryPrice:F2} stop=${StopLoss:F2} target=${TakeProfit:F2} orderId={OrderId}",
-                orderResult.Symbol, orderResult.Size, orderResult.EntryPrice, orderResult.StopLoss, orderResult.TakeProfit, orderResult.OrderId);
-                
-            // Get portfolio status to verify
-            var portfolio = await _topstepXAdapter.GetPortfolioStatusAsync(cancellationToken).ConfigureAwait(false);
-            _logger.LogInformation("📈 Portfolio status retrieved - {PositionCount} positions", portfolio.Positions.Count);
-            
-            _logger.LogInformation("✅ Trading demonstration completed successfully");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "❌ Trading demonstration failed");
-            throw;
-        }
-    }
 
     /// <summary>
     /// Get TopstepX adapter health and statistics
@@ -520,79 +374,7 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         return base.StopAsync(cancellationToken);
     }
 
-    public IReadOnlyList<UnifiedWorkflow> GetWorkflows()
-    {
-        lock (_workflowLock)
-        {
-            return _registeredWorkflows.Values.ToList();
-        }
-    }
 
-    public UnifiedWorkflow? GetWorkflow(string workflowId)
-    {
-        lock (_workflowLock)
-        {
-            _registeredWorkflows.TryGetValue(workflowId, out var workflow);
-            return workflow;
-        }
-    }
-
-    public async Task RegisterWorkflowAsync(UnifiedWorkflow workflow, CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("[UNIFIED] Registering workflow: {WorkflowId}", workflow.Id);
-        
-        lock (_workflowLock)
-        {
-            _registeredWorkflows[workflow.Id] = workflow;
-        }
-        
-        await Task.Delay(50, cancellationToken).ConfigureAwait(false); // Simulate registration
-        _logger.LogInformation("[UNIFIED] Workflow registered successfully: {WorkflowId}", workflow.Id);
-    }
-
-    public async Task<WorkflowExecutionResult> ExecuteWorkflowAsync(string workflowId, Dictionary<string, object>? parameters = null, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            _logger.LogInformation("[UNIFIED] Executing workflow: {WorkflowId}", workflowId);
-            
-            // Mark workflow as active
-            lock (_workflowLock)
-            {
-                _activeWorkflows.Add(workflowId);
-            }
-            
-            await Task.Delay(100, cancellationToken).ConfigureAwait(false); // Simulate execution
-            
-            var result = new WorkflowExecutionResult 
-            { 
-                Success = true, 
-                Results = new() { ["message"] = $"Workflow {workflowId} executed successfully" } 
-            };
-            
-            _logger.LogInformation("[UNIFIED] Workflow executed successfully: {WorkflowId}", workflowId);
-            return result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[UNIFIED] Failed to execute workflow: {WorkflowId}", workflowId);
-            return new WorkflowExecutionResult { Success = false, ErrorMessage = $"Workflow execution failed: {ex.Message}" };
-        }
-        finally
-        {
-            // Remove from active workflows
-            lock (_workflowLock)
-            {
-                _activeWorkflows.Remove(workflowId);
-            }
-        }
-    }
-
-    public IReadOnlyList<WorkflowExecutionContext> GetExecutionHistory(string workflowId, int limit)
-    {
-        // Implementation would return actual execution history
-        return new List<WorkflowExecutionContext>();
-    }
 
     public async Task<OrchestratorStatus> GetStatusAsync()
     {
