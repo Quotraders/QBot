@@ -296,7 +296,7 @@ namespace BotCore.Services
                 var best = analysis.First();
                 var current = analysis.FirstOrDefault(a => a.Count >= MinSamplesForHalfLearning);
                 
-                if (current != null && best.BreakevenTicks != current.BreakevenTicks && best.AvgPnL > current.AvgPnL * ParameterImprovementThreshold)
+                if (current != null && best.BreakevenTicks != current.BreakevenTicks && best.AvgPnL > current.AvgPnL * (double)ParameterImprovementThreshold)
                 {
                     // CONFIDENCE INTERVALS: Get statistical confidence for this recommendation (with symbol filtering)
                     var confidenceMetrics = GetBreakevenConfidenceMetrics(strategy, symbol, regime, session);
@@ -378,7 +378,7 @@ namespace BotCore.Services
                 var best = analysis.First();
                 var current = analysis.FirstOrDefault(a => a.Count >= MinSamplesForHalfLearning);
                 
-                if (current != null && Math.Abs(best.TrailMultiplier - current.TrailMultiplier) > TrailMultiplierSignificantDifference && best.AvgPnL > current.AvgPnL * ParameterImprovementThreshold)
+                if (current != null && (double)Math.Abs(best.TrailMultiplier - current.TrailMultiplier) > (double)TrailMultiplierSignificantDifference && best.AvgPnL > current.AvgPnL * (double)ParameterImprovementThreshold)
                 {
                     // CONFIDENCE INTERVALS: Get statistical confidence for this recommendation (with symbol filtering)
                     var confidenceMetrics = GetTrailingConfidenceMetrics(strategy, symbol, regime, session);
@@ -449,14 +449,14 @@ namespace BotCore.Services
                     var avgTimedOutDuration = timedOutTrades.Average(o => o.MaxHoldMinutes);
                     var avgTimedOutOpCost = timedOutTrades.Average(o => (double)o.MaxFavorableExcursion);
                     
-                    if (avgTimedOutOpCost > SignificantOpportunityCostTicks) // Significant opportunity cost
+                    if (avgTimedOutOpCost > (double)SignificantOpportunityCostTicks) // Significant opportunity cost
                     {
                         // MULTI-SYMBOL: Include symbol in logging
                         _logger.LogInformation("💡 [PM-OPTIMIZER] Time exit analysis for {Strategy}-{Symbol} in {Regime}: Winning trades avg {WinDur:F0}m, Timed out avg {TimedDur:F0}m with +{OpCost:F1} ticks lost",
                             strategy, symbol, regimeName, avgWinningDuration, avgTimedOutDuration, avgTimedOutOpCost);
                         
                         // Recommend longer timeout if timed out trades had significant upside
-                        var recommendedTimeout = (int)(avgWinningDuration * TimeExitBufferMultiplier); // 50% buffer
+                        var recommendedTimeout = (int)(avgWinningDuration * (double)TimeExitBufferMultiplier); // 50% buffer
                         
                         // MULTI-SYMBOL: Record regime/symbol-specific parameter change recommendation
                         _changeTracker.RecordChange(
