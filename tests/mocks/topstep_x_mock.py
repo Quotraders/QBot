@@ -8,22 +8,44 @@ for use in testing and development environments only.
 
 import asyncio
 import uuid
-from typing import Dict, Any
+from typing import Dict, Any, List, Callable, Optional
+from datetime import datetime, timezone
+
+
+class EventType:
+    """Mock EventType enum for SDK events"""
+    ORDER_FILLED = "ORDER_FILLED"
+    ORDER_PLACED = "ORDER_PLACED"
+    ORDER_CANCELLED = "ORDER_CANCELLED"
 
 
 class MockTradingSuite:
     def __init__(self, instruments, **kwargs):
         self.instruments = instruments
         self._connected = True
+        self._event_handlers: Dict[str, List[Callable]] = {}
+        self.positions = MockPositionsManager()
         
     @classmethod
     async def create(cls, instruments, **kwargs):
         # Simulate SDK initialization behavior
         await asyncio.sleep(0.1)  # Simulate connection delay
         return cls(instruments, **kwargs)
+    
+    def on(self, event_type: str, callback: Callable):
+        """Register event handler"""
+        if event_type not in self._event_handlers:
+            self._event_handlers[event_type] = []
+        self._event_handlers[event_type].append(callback)
+    
+    async def _emit_event(self, event_type: str, event_data: Any):
+        """Emit event to registered handlers"""
+        if event_type in self._event_handlers:
+            for handler in self._event_handlers[event_type]:
+                await handler(event_data)
         
     def __getitem__(self, instrument):
-        return MockInstrument(instrument)
+        return MockInstrument(instrument, suite=self)
         
     async def get_stats(self):
         return {
@@ -54,12 +76,52 @@ class MockTradingSuite:
         return MockManagedTradeContext(max_risk_percent)
 
 
+class MockPosition:
+    """Mock Position object from SDK"""
+    def __init__(self, contract_id: str, net_pos: int, buy_avg: float = 0.0, sell_avg: float = 0.0):
+        self.contractId = contract_id
+        self.netPos = net_pos
+        self.buyAvgPrice = buy_avg
+        self.sellAvgPrice = sell_avg
+        self.unrealizedPnl = 0.0
+        self.realizedPnl = 0.0
+        self.id = f"POS-{uuid.uuid4()}"
+        self.type = 1 if net_pos > 0 else 2  # 1=LONG, 2=SHORT
+        self.is_long = net_pos > 0
+        self.is_short = net_pos < 0
+
+
+class MockPositionsManager:
+    """Mock positions manager for suite.positions"""
+    def __init__(self):
+        self._positions: List[MockPosition] = []
+        
+    async def get_all_positions(self) -> List[MockPosition]:
+        """Get all positions"""
+        return self._positions
+    
+    async def get_position(self, contract_id: str) -> Optional[MockPosition]:
+        """Get specific position by contract ID"""
+        for pos in self._positions:
+            if pos.contractId == contract_id:
+                return pos
+        return None
+    
+    def _add_test_position(self, contract_id: str, net_pos: int, avg_price: float):
+        """Internal method to add test positions"""
+        if net_pos > 0:
+            self._positions.append(MockPosition(contract_id, net_pos, buy_avg=avg_price))
+        elif net_pos < 0:
+            self._positions.append(MockPosition(contract_id, net_pos, sell_avg=avg_price))
+
+
 class MockInstrument:
-    def __init__(self, symbol):
+    def __init__(self, symbol, suite=None):
         self.symbol = symbol
         self.data = MockData(symbol)
-        self.orders = MockOrders(symbol)
+        self.orders = MockOrders(symbol, suite=suite)
         self.positions = MockPositions()
+        self.suite = suite
         
     async def get_position(self):
         return {
@@ -86,22 +148,62 @@ class MockData:
         return prices.get(self.symbol, 100.00)
 
 
+class MockFillEvent:
+    """Mock fill event data"""
+    def __init__(self, order_id: str, contract_id: str, quantity: int, price: float):
+        self.orderId = order_id
+        self.order_id = order_id
+        self.contractId = contract_id
+        self.contract_id = contract_id
+        self.quantity = quantity
+        self.qty = quantity
+        self.price = price
+        self.fill_price = price
+        self.commission = 2.50
+        self.liquidityType = "TAKER"
+        self.liquidity_type = "TAKER"
+        self.timestamp = int(datetime.now(timezone.utc).timestamp() * 1000)
+
+
 class MockOrders:
-    def __init__(self, symbol):
+    def __init__(self, symbol, suite=None):
         self.symbol = symbol
+        self.suite = suite
         
     async def place_bracket_order(self, side, quantity, stop_loss, take_profit):
         # Implement basic risk checking for validation
         if quantity > 10:  # Simple risk check for oversized orders
             raise ValueError(f"Order size {quantity} exceeds maximum allowed size of 10")
-            
-        return {
-            "id": str(uuid.uuid4()),
+        
+        order_id = str(uuid.uuid4())
+        result = {
+            "id": order_id,
             "entry_order_id": str(uuid.uuid4()),
             "stop_order_id": str(uuid.uuid4()),
             "target_order_id": str(uuid.uuid4()),
             "status": "accepted"
         }
+        
+        # Simulate a fill event after a short delay (for testing event subscription)
+        if self.suite:
+            async def emit_fill():
+                await asyncio.sleep(0.1)
+                # Get realistic price for the symbol
+                prices = {'MNQ': 18500.00, 'ES': 4500.00, 'NQ': 18500.00}
+                price = prices.get(self.symbol, 100.00)
+                
+                # Create mock contract ID
+                symbol_map = {'MNQ': 'MNQ', 'ES': 'EP', 'NQ': 'ENQ'}
+                contract_symbol = symbol_map.get(self.symbol, self.symbol)
+                contract_id = f"CON.F.US.{contract_symbol}.Z25"
+                
+                fill_event = MockFillEvent(order_id, contract_id, quantity, price)
+                await self.suite._emit_event(EventType.ORDER_FILLED, fill_event)
+            
+            # Schedule the fill event emission
+            asyncio.create_task(emit_fill())
+        
+        return result
 
 
 class MockPositions:

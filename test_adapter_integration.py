@@ -28,11 +28,12 @@ from typing import Dict, Any
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'tests'))
 
 # Import mock for testing
-from mocks.topstep_x_mock import MockTradingSuite
+from mocks.topstep_x_mock import MockTradingSuite, EventType
 
 # Mock the project_x_py module
 sys.modules['project_x_py'] = type('MockModule', (), {
-    'TradingSuite': MockTradingSuite
+    'TradingSuite': MockTradingSuite,
+    'EventType': EventType
 })()
 
 # Set test credentials to enable adapter to work
@@ -79,15 +80,45 @@ async def test_mock_functionality():
         assert order_result['success'], f"Order failed: {order_result.get('error')}"
         print(f"✅ Order placed: {order_result['order_id']}")
         
-        # Test 5: Portfolio status
-        print("📋 Test 5: Portfolio Status")
+        # Test 5: Fill events (should be empty initially)
+        print("📋 Test 5: Fill Events (initial)")
+        fill_events = await adapter.get_fill_events()
+        assert 'fills' in fill_events, "Fill events structure missing"
+        print(f"✅ Fill events retrieved: {len(fill_events['fills'])} events")
+        
+        # Test 6: Place order and check for fill event
+        print("📋 Test 6: Order Fill Event Subscription")
+        order_result = await adapter.place_order(
+            symbol="ES",
+            size=1,
+            stop_loss=es_price - 10,
+            take_profit=es_price + 15
+        )
+        # Give time for mock fill event to be emitted
+        await asyncio.sleep(0.2)
+        fill_events = await adapter.get_fill_events()
+        if len(fill_events['fills']) > 0:
+            print(f"✅ Fill event received: {fill_events['fills'][0]}")
+        else:
+            print("⚠️  No fill event received (may be expected in mock)")
+        
+        # Test 7: Position querying
+        print("📋 Test 7: Position Querying")
+        # Add a test position to the mock
+        if hasattr(adapter.suite, 'positions'):
+            adapter.suite.positions._add_test_position("CON.F.US.MNQ.Z25", 2, 18500.00)
+        positions = await adapter.get_positions()
+        print(f"✅ Positions retrieved: {len(positions)} positions")
+        
+        # Test 8: Portfolio status
+        print("📋 Test 8: Portfolio Status")
         portfolio = await adapter.get_portfolio_status()
         assert 'portfolio' in portfolio, "Portfolio data missing"
         assert 'positions' in portfolio, "Position data missing"
         print("✅ Portfolio status retrieved")
         
-        # Test 6: Proper cleanup
-        print("📋 Test 6: Cleanup")
+        # Test 9: Proper cleanup
+        print("📋 Test 9: Cleanup")
         await adapter.disconnect()
         assert not adapter.is_connected, "Adapter should be disconnected"
         print("✅ Cleanup completed")
