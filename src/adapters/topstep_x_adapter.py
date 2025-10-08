@@ -487,6 +487,7 @@ class TopstepXAdapter:
             "status": "production_ready"
         })
 
+    @requires_initialization
     async def get_price(self, symbol: str) -> float:
         """
         Get current market price for instrument with retry policy and fail-closed behavior.
@@ -501,11 +502,7 @@ class TopstepXAdapter:
             RuntimeError: If price retrieval fails after retries
             ValueError: If symbol not configured
         """
-        if not self._is_initialized or not self.suite:
-            raise RuntimeError("Adapter not initialized. Call initialize() first.")
-            
-        if symbol not in self.instruments:
-            raise ValueError(f"Symbol {symbol} not in configured instruments: {self.instruments}")
+        self._validate_symbol(symbol)
         
         async def _get_price_operation():
             price = await self.suite[symbol].data.get_current_price()
@@ -529,34 +526,8 @@ class TopstepXAdapter:
                 "severity": "critical"
             })
             raise RuntimeError(error_msg) from e
-        """
-        Get current market price for instrument.
-        
-        Args:
-            symbol: Instrument symbol (e.g., 'MNQ', 'ES')
-            
-        Returns:
-            Current market price
-            
-        Raises:
-            RuntimeError: If not initialized or instrument not available
-            ValueError: If symbol is invalid
-        """
-        if not self._is_initialized or not self.suite:
-            raise RuntimeError("Adapter not initialized. Call initialize() first.")
-            
-        if symbol not in self.instruments:
-            raise ValueError(f"Symbol {symbol} not in configured instruments: {self.instruments}")
-            
-        try:
-            price = await self.suite[symbol].data.get_current_price()
-            self.logger.debug(f"[PRICE] {symbol}: ${price:.2f}")
-            return float(price)
-            
-        except Exception as e:
-            self.logger.error(f"Failed to get price for {symbol}: {e}")
-            raise RuntimeError(f"Price retrieval failed for {symbol}") from e
 
+    @requires_initialization
     async def place_order(
         self, 
         symbol: str, 
@@ -582,11 +553,7 @@ class TopstepXAdapter:
             RuntimeError: If order placement fails
             ValueError: If parameters are invalid
         """
-        if not self._is_initialized or not self.suite:
-            raise RuntimeError("Adapter not initialized. Call initialize() first.")
-            
-        if symbol not in self.instruments:
-            raise ValueError(f"Symbol {symbol} not in configured instruments: {self.instruments}")
+        self._validate_symbol(symbol)
             
         if size == 0:
             raise ValueError("Order size cannot be zero")
@@ -650,6 +617,7 @@ class TopstepXAdapter:
                 'timestamp': datetime.now(timezone.utc).isoformat()
             }
 
+    @requires_initialization
     async def get_fill_events(self) -> Dict[str, Any]:
         """
         PHASE 1: Get recent fill events from TopstepX SDK.
@@ -661,12 +629,6 @@ class TopstepXAdapter:
         Returns:
             Dictionary with fills array containing fill event data
         """
-        if not self._is_initialized or not self.suite:
-            return {
-                'fills': [],
-                'error': 'Adapter not initialized'
-            }
-        
         try:
             # Read all events from queue and clear it (thread-safe)
             async with self._fill_events_lock:
@@ -695,12 +657,6 @@ class TopstepXAdapter:
         Returns:
             Health score and system statistics with enhanced monitoring
         """
-        if not self._is_initialized or not self.suite:
-            return {
-                'health_score': 0,
-                'status': 'not_initialized',
-                'error': 'Adapter not initialized'
-            }
             
         try:
             # Get suite statistics
@@ -846,6 +802,7 @@ class TopstepXAdapter:
             self.logger.error(f"Failed to get positions: {e}")
             return []
     
+    @requires_initialization
     async def get_position(self, symbol: str) -> Optional[Dict[str, Any]]:
         """
         PHASE 2: Get a specific position by symbol.
@@ -856,8 +813,6 @@ class TopstepXAdapter:
         Returns:
             Position dictionary or None if not found
         """
-        if not self._is_initialized or not self.suite:
-            return None
         
         try:
             # Get all positions and filter by symbol
@@ -874,6 +829,7 @@ class TopstepXAdapter:
             self.logger.error(f"Failed to get position for {symbol}: {e}")
             return None
     
+    @requires_initialization
     async def close_position(self, symbol: str, quantity: Optional[int] = None) -> Dict[str, Any]:
         """
         PHASE 3: Close a position by placing opposite side market order.
@@ -885,11 +841,6 @@ class TopstepXAdapter:
         Returns:
             Dictionary with success, order_id, and closed_quantity
         """
-        if not self._is_initialized or not self.suite:
-            return {
-                'success': False,
-                'error': 'Adapter not initialized'
-            }
         
         try:
             # Get current position
@@ -966,6 +917,7 @@ class TopstepXAdapter:
                 'error': str(e)
             }
     
+    @requires_initialization
     async def modify_stop_loss(self, symbol: str, stop_price: float) -> Dict[str, Any]:
         """
         PHASE 3: Modify stop loss for a position.
@@ -977,11 +929,6 @@ class TopstepXAdapter:
         Returns:
             Dictionary with success and order_id
         """
-        if not self._is_initialized or not self.suite:
-            return {
-                'success': False,
-                'error': 'Adapter not initialized'
-            }
         
         try:
             # Get current position to determine contract ID
@@ -1048,6 +995,7 @@ class TopstepXAdapter:
                 'error': str(e)
             }
     
+    @requires_initialization
     async def modify_take_profit(self, symbol: str, take_profit_price: float) -> Dict[str, Any]:
         """
         PHASE 3: Modify take profit for a position.
@@ -1059,11 +1007,6 @@ class TopstepXAdapter:
         Returns:
             Dictionary with success and order_id
         """
-        if not self._is_initialized or not self.suite:
-            return {
-                'success': False,
-                'error': 'Adapter not initialized'
-            }
         
         try:
             # Get current position to determine contract ID and side
@@ -1144,6 +1087,7 @@ class TopstepXAdapter:
                 'error': str(e)
             }
 
+    @requires_initialization
     async def place_bracket_order(
         self,
         symbol: str,
@@ -1167,11 +1111,6 @@ class TopstepXAdapter:
         Returns:
             Dictionary with bracket order details including all three order IDs
         """
-        if not self._is_initialized or not self.suite:
-            return {
-                'success': False,
-                'error': 'Adapter not initialized'
-            }
         
         if symbol not in self.instruments:
             return {
@@ -1276,6 +1215,7 @@ class TopstepXAdapter:
                 'error': str(e)
             }
 
+    @requires_initialization
     async def get_order_status(self, order_id: str) -> Optional[Dict[str, Any]]:
         """
         PHASE 5: Get status of a specific order.
@@ -1286,11 +1226,6 @@ class TopstepXAdapter:
         Returns:
             Dictionary with order status details or None if not found
         """
-        if not self._is_initialized or not self.suite:
-            return {
-                'success': False,
-                'error': 'Adapter not initialized'
-            }
         
         try:
             # Query order from SDK
@@ -1348,6 +1283,7 @@ class TopstepXAdapter:
                 'error': str(e)
             }
     
+    @requires_initialization
     async def cancel_order(self, order_id: str) -> Dict[str, Any]:
         """
         PHASE 6: Cancel a specific order.
@@ -1358,11 +1294,6 @@ class TopstepXAdapter:
         Returns:
             Dictionary with cancellation result
         """
-        if not self._is_initialized or not self.suite:
-            return {
-                'success': False,
-                'error': 'Adapter not initialized'
-            }
         
         try:
             # Try to cancel order across all instruments
@@ -1404,6 +1335,7 @@ class TopstepXAdapter:
                 'error': str(e)
             }
     
+    @requires_initialization
     async def cancel_all_orders(self, symbol: Optional[str] = None) -> Dict[str, Any]:
         """
         PHASE 6: Cancel all orders, optionally filtered by symbol.
@@ -1414,11 +1346,6 @@ class TopstepXAdapter:
         Returns:
             Dictionary with cancellation results
         """
-        if not self._is_initialized or not self.suite:
-            return {
-                'success': False,
-                'error': 'Adapter not initialized'
-            }
         
         try:
             cancelled_count = 0
@@ -1475,11 +1402,9 @@ class TopstepXAdapter:
                 'error': str(e)
             }
 
+    @requires_initialization
     async def get_portfolio_status(self) -> Dict[str, Any]:
         """Get current portfolio positions and P&L."""
-        if not self._is_initialized or not self.suite:
-            raise RuntimeError("Adapter not initialized")
-            
         try:
             # Get portfolio data from TradingSuite
             suite_stats = await self.suite.get_stats()
