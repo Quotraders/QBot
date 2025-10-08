@@ -69,6 +69,30 @@ namespace BotCore.Services
         private readonly ConcurrentDictionary<string, System.Collections.Generic.Queue<decimal>> _atrHistory = new();
         private const int AtrHistorySize = 20; // Keep last 20 periods
         
+        // Learning thresholds and metrics
+        private const int MinSamplesForHalfLearning = 5; // Half of MinSamplesForLearning for current parameter check
+        private const decimal SignificantOpportunityCostTicks = 5m; // Minimum ticks for significant opportunity cost
+        private const decimal ParameterImprovementThreshold = 1.1m; // 10% improvement required to recommend change
+        private const decimal TrailMultiplierSignificantDifference = 0.2m; // Minimum difference in trail multipliers
+        private const decimal TimeExitBufferMultiplier = 1.5m; // 50% buffer for timeout recommendations
+        private const int MaxOutcomesInMemory = 1000; // Maximum number of outcomes to keep in memory
+        private const int MaeAnalysisSampleSize = 100; // Number of trades to analyze for MAE
+        private const int MinSamplesForMaeAnalysis = 10; // Minimum samples for MAE analysis
+        private const decimal MaePercentileP90 = 0.90m; // 90th percentile for MAE
+        private const decimal MaePercentileP95 = 0.95m; // 95th percentile for MAE
+        private const int MinSamplesPerMaeBucket = 5; // Minimum samples per MAE bucket
+        private const decimal MaeStopOutRateThreshold = 0.70m; // 70% stop-out rate threshold
+        private const decimal EarlyExitConfidenceThreshold = 0.80m; // 80% confidence for early exit
+        private const int EarlyExitMinSamples = 20; // Minimum samples for early exit recommendation
+        private const int SmallSampleThreshold = 30; // Threshold for using t-distribution vs z-distribution
+        private const int LargeSampleThreshold = 100; // Threshold for high confidence level
+        
+        // Statistical distribution critical values (t-distribution and z-distribution)
+        private const decimal TValueFor80Percent = 1.282m; // t-value for 80% confidence
+        private const decimal TValueFor90Percent = 1.645m; // t-value for 90% confidence
+        private const decimal TValueFor95Percent = 1.960m; // t-value for 95% confidence
+        private const decimal DefaultTValue = 1.960m; // Default t-value (95%)
+        
         public PositionManagementOptimizer(
             ILogger<PositionManagementOptimizer> logger,
             IServiceProvider serviceProvider,
@@ -166,7 +190,7 @@ namespace BotCore.Services
             _outcomes[outcomeKey] = outcome;
             
             // Log interesting outcomes
-            if (breakevenTriggered && stoppedOut && maxFavorableExcursion > breakevenAfterTicks + 5)
+            if (breakevenTriggered && stoppedOut && maxFavorableExcursion > breakevenAfterTicks + SignificantOpportunityCostTicks)
             {
                 _logger.LogWarning("📊 [PM-OPTIMIZER] Suboptimal breakeven: {Strategy} triggered BE at {BE} ticks, stopped out, but reached +{MaxFav} ticks",
                     strategy, breakevenAfterTicks, maxFavorableExcursion);
@@ -203,12 +227,12 @@ namespace BotCore.Services
                 }
             }
             
-            // Clean up old outcomes (keep last 1000)
-            if (_outcomes.Count > 1000)
+            // Clean up old outcomes (keep last MaxOutcomesInMemory)
+            if (_outcomes.Count > MaxOutcomesInMemory)
             {
                 var toRemove = _outcomes
                     .OrderBy(kvp => kvp.Value.Timestamp)
-                    .Take(_outcomes.Count - 1000)
+                    .Take(_outcomes.Count - MaxOutcomesInMemory)
                     .Select(kvp => kvp.Key)
                     .ToList();
                 
@@ -270,9 +294,9 @@ namespace BotCore.Services
                 }
                 
                 var best = analysis.First();
-                var current = analysis.FirstOrDefault(a => a.Count >= MinSamplesForLearning / 2);
+                var current = analysis.FirstOrDefault(a => a.Count >= MinSamplesForHalfLearning);
                 
-                if (current != null && best.BreakevenTicks != current.BreakevenTicks && best.AvgPnL > current.AvgPnL * 1.1)
+                if (current != null && best.BreakevenTicks != current.BreakevenTicks && best.AvgPnL > current.AvgPnL * (double)ParameterImprovementThreshold)
                 {
                     // CONFIDENCE INTERVALS: Get statistical confidence for this recommendation (with symbol filtering)
                     var confidenceMetrics = GetBreakevenConfidenceMetrics(strategy, symbol, regime, session);
@@ -352,9 +376,9 @@ namespace BotCore.Services
                 }
                 
                 var best = analysis.First();
-                var current = analysis.FirstOrDefault(a => a.Count >= MinSamplesForLearning / 2);
+                var current = analysis.FirstOrDefault(a => a.Count >= MinSamplesForHalfLearning);
                 
-                if (current != null && Math.Abs(best.TrailMultiplier - current.TrailMultiplier) > 0.2m && best.AvgPnL > current.AvgPnL * 1.1)
+                if (current != null && (double)Math.Abs(best.TrailMultiplier - current.TrailMultiplier) > (double)TrailMultiplierSignificantDifference && best.AvgPnL > current.AvgPnL * (double)ParameterImprovementThreshold)
                 {
                     // CONFIDENCE INTERVALS: Get statistical confidence for this recommendation (with symbol filtering)
                     var confidenceMetrics = GetTrailingConfidenceMetrics(strategy, symbol, regime, session);
@@ -425,14 +449,14 @@ namespace BotCore.Services
                     var avgTimedOutDuration = timedOutTrades.Average(o => o.MaxHoldMinutes);
                     var avgTimedOutOpCost = timedOutTrades.Average(o => (double)o.MaxFavorableExcursion);
                     
-                    if (avgTimedOutOpCost > 5) // Significant opportunity cost
+                    if (avgTimedOutOpCost > (double)SignificantOpportunityCostTicks) // Significant opportunity cost
                     {
                         // MULTI-SYMBOL: Include symbol in logging
                         _logger.LogInformation("💡 [PM-OPTIMIZER] Time exit analysis for {Strategy}-{Symbol} in {Regime}: Winning trades avg {WinDur:F0}m, Timed out avg {TimedDur:F0}m with +{OpCost:F1} ticks lost",
                             strategy, symbol, regimeName, avgWinningDuration, avgTimedOutDuration, avgTimedOutOpCost);
                         
                         // Recommend longer timeout if timed out trades had significant upside
-                        var recommendedTimeout = (int)(avgWinningDuration * 1.5); // 50% buffer
+                        var recommendedTimeout = (int)(avgWinningDuration * (double)TimeExitBufferMultiplier); // 50% buffer
                         
                         // MULTI-SYMBOL: Record regime/symbol-specific parameter change recommendation
                         _changeTracker.RecordChange(
@@ -579,10 +603,10 @@ namespace BotCore.Services
                 .Where(o => o.Strategy == strategy && o.TargetHit)
                 .Where(o => regime == "ALL" || o.MarketRegime == regime)
                 .OrderByDescending(o => o.Timestamp)
-                .Take(100)
+                .Take(MaeAnalysisSampleSize)
                 .ToList();
             
-            if (winningTrades.Count < 10)
+            if (winningTrades.Count < MinSamplesForMaeAnalysis)
             {
                 return null;
             }
@@ -593,8 +617,8 @@ namespace BotCore.Services
                 .ToList();
             
             var p50 = maeValues[maeValues.Count / 2];
-            var p90 = maeValues[(int)(maeValues.Count * 0.90)];
-            var p95 = maeValues[(int)(maeValues.Count * 0.95)];
+            var p90 = maeValues[(int)(maeValues.Count * MaePercentileP90)];
+            var p95 = maeValues[(int)(maeValues.Count * MaePercentileP95)];
             
             return (p50, p90, p95, winningTrades.Count);
         }
@@ -608,10 +632,10 @@ namespace BotCore.Services
                 .Where(o => o.Strategy == strategy && o.MaxFavorableExcursion > 0)
                 .Where(o => regime == "ALL" || o.MarketRegime == regime)
                 .OrderByDescending(o => o.Timestamp)
-                .Take(100)
+                .Take(MaeAnalysisSampleSize)
                 .ToList();
             
-            if (profitableTrades.Count < 10)
+            if (profitableTrades.Count < MinSamplesForMaeAnalysis)
             {
                 return null;
             }
@@ -840,12 +864,12 @@ namespace BotCore.Services
                     .Where(o => earlyMaeFunc(o) >= bucket.min && earlyMaeFunc(o) < bucket.max)
                     .ToList();
                 
-                if (bucketOutcomes.Count < 5) continue;  // Need at least 5 samples per bucket
+                if (bucketOutcomes.Count < MinSamplesPerMaeBucket) continue;  // Need at least minimum samples per bucket
                 
                 var stopOutRate = bucketOutcomes.Count(o => o.StoppedOut) / (decimal)bucketOutcomes.Count;
                 
-                // Find threshold where stop-out rate exceeds 70%
-                if (stopOutRate >= 0.70m && stopOutRate > highestStopOutRate)
+                // Find threshold where stop-out rate exceeds threshold
+                if (stopOutRate >= MaeStopOutRateThreshold && stopOutRate > highestStopOutRate)
                 {
                     highestMaeThreshold = bucket.min;
                     highestStopOutRate = stopOutRate;
@@ -856,7 +880,7 @@ namespace BotCore.Services
                     strategy, bucket.min, bucket.max, earlyMinutes, stopOutRate, bucketOutcomes.Count);
             }
             
-            if (highestStopOutRate >= 0.70m)
+            if (highestStopOutRate >= MaeStopOutRateThreshold)
             {
                 _logger.LogInformation("🚨 [MAE-CORRELATION] {Strategy}: Early MAE > {Threshold:F1} ticks @ {Time}min predicts stop-out with {Probability:P0} confidence (n={Samples})",
                     strategy, highestMaeThreshold, earlyMinutes, highestStopOutRate, totalSamples);
@@ -880,8 +904,8 @@ namespace BotCore.Services
                 return null;
             }
             
-            // Only return if we have high confidence (>= 80%) and sufficient samples (>= 20)
-            if (correlation.Value.stopOutProbability >= 0.80m && correlation.Value.sampleSize >= 20)
+            // Only return if we have high confidence and sufficient samples
+            if (correlation.Value.stopOutProbability >= EarlyExitConfidenceThreshold && correlation.Value.sampleSize >= EarlyExitMinSamples)
             {
                 return (correlation.Value.maeThreshold, correlation.Value.stopOutProbability);
             }

@@ -78,6 +78,24 @@ public class StrategyPerformanceAnalyzer
     // PnL thresholds for performance categorization
     private const decimal SmallProfitThreshold = 200m;
     private const decimal MediumProfitThreshold = 500m;
+    
+    // Strategy suitability and optimization thresholds
+    private const decimal StrongRecentPerformanceThreshold = 0.7m;
+    private const decimal TimeOptimizationMultiplier = 2m;         // Best hour must be 2x better than worst
+    private const decimal HighImpactTimeOptimizationScore = 0.8m;
+    private const decimal NegativePnLThreshold = -100m;            // Threshold for poor regime performance
+    private const decimal HighImpactRegimeOptimizationScore = 0.7m;
+    private const decimal RiskRewardRatioThreshold = 1.5m;         // Average loss should not exceed 1.5x average win
+    private const decimal VeryHighImpactRiskOptimizationScore = 0.9m;
+    private const int MinTradesForEntryOptimization = 20;
+    private const decimal HighImpactEntryOptimizationScore = 0.8m;
+    private const int DefaultBestTradingHour = 10;                 // Default best trading hour
+    private const int DefaultWorstTradingHour = 12;                // Default worst trading hour
+    private const int MinSnapshotsForTrendAnalysis = 10;
+    private const int TrendAnalysisRecentWindow = 10;
+    private const int TrendAnalysisFirstHalfSize = 5;
+    private const decimal TrendImprovementThreshold = 0.1m;        // 10% improvement to be considered improving
+    private const decimal TrendDecliningThreshold = -0.1m;         // -10% to be considered declining
     private const decimal LargeProfitThreshold = 1000m;
     private const decimal SmallLossThreshold = 200m;
     private const decimal MediumLossThreshold = 400m;
@@ -768,7 +786,7 @@ public class StrategyPerformanceAnalyzer
         }
         
         var recentScore = GetRecentPerformanceScore(strategy);
-        if (recentScore > 0.7m)
+        if (recentScore > StrongRecentPerformanceThreshold)
         {
             reasons.Add("strong recent performance");
         }
@@ -790,14 +808,14 @@ public class StrategyPerformanceAnalyzer
             var bestHour = hourlyPerformance.OrderByDescending(kvp => kvp.Value).First();
             var worstHour = hourlyPerformance.OrderBy(kvp => kvp.Value).First();
             
-            if (bestHour.Value > worstHour.Value * 2)
+            if (bestHour.Value > worstHour.Value * TimeOptimizationMultiplier)
             {
                 optimizations.Add(new StrategyOptimization
                 {
                     Strategy = strategy,
                     Type = "TIME_FOCUS",
                     Description = $"Focus trading during hour {bestHour.Key} (best performance: ${bestHour.Value:F2})",
-                    ImpactScore = 0.8m,
+                    ImpactScore = HighImpactTimeOptimizationScore,
                     Implementation = $"Increase allocation during {bestHour.Key}:00-{bestHour.Key + 1}:00"
                 });
             }
@@ -820,14 +838,14 @@ public class StrategyPerformanceAnalyzer
             var bestRegime = regimePerformance.OrderByDescending(kvp => kvp.Value).First();
             var worstRegime = regimePerformance.OrderBy(kvp => kvp.Value).First();
             
-            if (bestRegime.Value > 0 && worstRegime.Value < -100)
+            if (bestRegime.Value > 0 && worstRegime.Value < NegativePnLThreshold)
             {
                 optimizations.Add(new StrategyOptimization
                 {
                     Strategy = strategy,
                     Type = "REGIME_FILTER",
                     Description = $"Avoid trading during {worstRegime.Key} regime (performance: ${worstRegime.Value:F2})",
-                    ImpactScore = 0.7m,
+                    ImpactScore = HighImpactRegimeOptimizationScore,
                     Implementation = $"Add market regime filter to avoid {worstRegime.Key} conditions"
                 });
             }
@@ -841,14 +859,14 @@ public class StrategyPerformanceAnalyzer
         var optimizations = new List<StrategyOptimization>();
         var analysis = _strategyAnalysis[strategy];
         
-        if (analysis.AverageLoss != 0 && Math.Abs(analysis.AverageLoss) > analysis.AverageWin * 1.5m)
+        if (analysis.AverageLoss != 0 && Math.Abs(analysis.AverageLoss) > analysis.AverageWin * RiskRewardRatioThreshold)
         {
             optimizations.Add(new StrategyOptimization
             {
                 Strategy = strategy,
                 Type = "RISK_REWARD",
                 Description = $"Improve risk-reward ratio (AvgWin: ${analysis.AverageWin:F2}, AvgLoss: ${analysis.AverageLoss:F2})",
-                ImpactScore = 0.9m,
+                ImpactScore = VeryHighImpactRiskOptimizationScore,
                 Implementation = "Tighten stop losses or extend profit targets"
             });
         }
@@ -861,14 +879,14 @@ public class StrategyPerformanceAnalyzer
         var optimizations = new List<StrategyOptimization>();
         var analysis = _strategyAnalysis[strategy];
         
-        if (analysis.WinRate < 0.4m && analysis.AllTrades.Count > 20)
+        if (analysis.WinRate < LowWinRateThreshold && analysis.AllTrades.Count > MinTradesForEntryOptimization)
         {
             optimizations.Add(new StrategyOptimization
             {
                 Strategy = strategy,
                 Type = "ENTRY_CRITERIA",
                 Description = $"Low win rate ({analysis.WinRate:P1}) suggests entry criteria need refinement",
-                ImpactScore = 0.8m,
+                ImpactScore = HighImpactEntryOptimizationScore,
                 Implementation = "Review and tighten entry conditions"
             });
         }
@@ -906,7 +924,7 @@ public class StrategyPerformanceAnalyzer
         
         return hourlyPerformance.Any()
             ? hourlyPerformance.OrderByDescending(kvp => kvp.Value).First().Key
-            : 10; // Default
+            : DefaultBestTradingHour;
     }
     
     private int GetWorstTradingHour(string strategy)
@@ -917,25 +935,25 @@ public class StrategyPerformanceAnalyzer
         
         return hourlyPerformance.Any()
             ? hourlyPerformance.OrderBy(kvp => kvp.Value).First().Key
-            : 12; // Default
+            : DefaultWorstTradingHour;
     }
     
     private PerformanceTrend GetRecentPerformanceTrend(string strategy)
     {
         if (!_performanceHistory.TryGetValue(strategy, out var history) ||
-            history.Count < 10)
+            history.Count < MinSnapshotsForTrendAnalysis)
         {
             return PerformanceTrend.Stable;
         }
         
-        var recent = history.TakeLast(10).ToArray();
-        var firstHalf = recent.Take(5).Average(s => s.OverallScore);
-        var secondHalf = recent.Skip(5).Average(s => s.OverallScore);
+        var recent = history.TakeLast(TrendAnalysisRecentWindow).ToArray();
+        var firstHalf = recent.Take(TrendAnalysisFirstHalfSize).Average(s => s.OverallScore);
+        var secondHalf = recent.Skip(TrendAnalysisFirstHalfSize).Average(s => s.OverallScore);
         
         var improvement = secondHalf - firstHalf;
         
-        if (improvement > 0.1m) return PerformanceTrend.Improving;
-        if (improvement < -0.1m) return PerformanceTrend.Declining;
+        if (improvement > TrendImprovementThreshold) return PerformanceTrend.Improving;
+        if (improvement < TrendDecliningThreshold) return PerformanceTrend.Declining;
         return PerformanceTrend.Stable;
     }
 }

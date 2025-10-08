@@ -107,6 +107,40 @@ namespace BotCore.Services
         // Stop distance minimum (in R-multiples)
         private const decimal MIN_STOP_DISTANCE_R = 2m;
         
+        // Default configuration values for environment variable fallbacks
+        private const int DEFAULT_REGIME_CHECK_INTERVAL_SECONDS = 60;
+        private const decimal DEFAULT_TARGET_ADJUSTMENT_THRESHOLD = 0.3m;
+        private const decimal DEFAULT_REGIME_CONFIDENCE_DROP_THRESHOLD = 0.30m;
+        private const decimal DEFAULT_CONFIDENCE_VERY_HIGH_THRESHOLD = 0.85m;
+        private const decimal DEFAULT_CONFIDENCE_HIGH_THRESHOLD = 0.75m;
+        private const decimal DEFAULT_CONFIDENCE_MEDIUM_THRESHOLD = 0.70m;
+        private const decimal DEFAULT_CONFIDENCE_LOW_THRESHOLD = 0.65m;
+        private const int DEFAULT_PROGRESSIVE_TIGHTENING_INTERVAL_SECONDS = 60;
+        private const decimal DEFAULT_ENTRY_REGIME_CONFIDENCE = 0.75m;
+        private const int MAE_MFE_SNAPSHOT_TOLERANCE_SECONDS = 5;
+        
+        // Confidence-based multipliers (default values)
+        private const decimal CONFIDENCE_STOP_MULTIPLIER_VERY_HIGH_DEFAULT = 1.5m;
+        private const decimal CONFIDENCE_TARGET_MULTIPLIER_VERY_HIGH_DEFAULT = 2.0m;
+        private const decimal CONFIDENCE_STOP_MULTIPLIER_HIGH_DEFAULT = 1.3m;
+        private const decimal CONFIDENCE_TARGET_MULTIPLIER_HIGH_DEFAULT = 1.0m;
+        private const decimal CONFIDENCE_STOP_MULTIPLIER_MEDIUM_DEFAULT = 1.1m;
+        private const decimal CONFIDENCE_TARGET_MULTIPLIER_MEDIUM_DEFAULT = 0.8m;
+        private const decimal CONFIDENCE_STOP_MULTIPLIER_LOW_DEFAULT = 1.0m;
+        private const decimal CONFIDENCE_TARGET_MULTIPLIER_LOW_DEFAULT = 0.6m;
+        private const int CONFIDENCE_LOW_POSITION_SIZE_DIVISOR = 2;
+        private const decimal CONFIDENCE_VERY_LOW_STOP_MULTIPLIER = 0.8m;
+        private const decimal CONFIDENCE_VERY_LOW_TARGET_MULTIPLIER = 0.5m;
+        private const int CONFIDENCE_VERY_LOW_POSITION_SIZE_DIVISOR = 4;
+        
+        // Confidence-based adjustment multipliers
+        private const decimal CONFIDENCE_BREAKEVEN_MULTIPLIER_VERY_HIGH = 1.5m;
+        private const decimal CONFIDENCE_BREAKEVEN_MULTIPLIER_MEDIUM = 0.75m;
+        private const decimal CONFIDENCE_BREAKEVEN_MULTIPLIER_LOW = 0.5m;
+        private const decimal CONFIDENCE_TRAIL_MULTIPLIER_VERY_HIGH = 1.25m;
+        private const decimal CONFIDENCE_TRAIL_MULTIPLIER_MEDIUM = 0.75m;
+        private const decimal CONFIDENCE_TRAIL_MULTIPLIER_LOW = 0.5m;
+        
         public UnifiedPositionManagementService(
             ILogger<UnifiedPositionManagementService> logger,
             IServiceProvider serviceProvider,
@@ -128,8 +162,8 @@ namespace BotCore.Services
             
             // Load dynamic targeting configuration (Feature 1)
             _dynamicTargetsEnabled = Environment.GetEnvironmentVariable("BOT_DYNAMIC_TARGETS_ENABLED")?.ToLowerInvariant() == "true";
-            _regimeCheckIntervalSeconds = int.TryParse(Environment.GetEnvironmentVariable("BOT_REGIME_CHECK_INTERVAL_SECONDS"), out var regimeInterval) ? regimeInterval : 60;
-            _targetAdjustmentThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("BOT_TARGET_ADJUSTMENT_THRESHOLD"), out var threshold) ? threshold : 0.3m;
+            _regimeCheckIntervalSeconds = int.TryParse(Environment.GetEnvironmentVariable("BOT_REGIME_CHECK_INTERVAL_SECONDS"), out var regimeInterval) ? regimeInterval : DEFAULT_REGIME_CHECK_INTERVAL_SECONDS;
+            _targetAdjustmentThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("BOT_TARGET_ADJUSTMENT_THRESHOLD"), out var threshold) ? threshold : DEFAULT_TARGET_ADJUSTMENT_THRESHOLD;
             
             if (_dynamicTargetsEnabled)
             {
@@ -150,7 +184,7 @@ namespace BotCore.Services
             // Load regime monitoring configuration (Feature 3)
             _regimeMonitoringEnabled = Environment.GetEnvironmentVariable("BOT_REGIME_MONITORING_ENABLED")?.ToLowerInvariant() == "true";
             _regimeFlipExitEnabled = Environment.GetEnvironmentVariable("BOT_REGIME_FLIP_EXIT_ENABLED")?.ToLowerInvariant() == "true";
-            _regimeConfidenceDropThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("BOT_REGIME_CONFIDENCE_DROP_THRESHOLD"), out var dropThreshold) ? dropThreshold : 0.30m;
+            _regimeConfidenceDropThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("BOT_REGIME_CONFIDENCE_DROP_THRESHOLD"), out var dropThreshold) ? dropThreshold : DEFAULT_REGIME_CONFIDENCE_DROP_THRESHOLD;
             
             if (_regimeMonitoringEnabled)
             {
@@ -160,10 +194,10 @@ namespace BotCore.Services
             
             // Load confidence-based adjustment configuration (Feature 4)
             _confidenceAdjustmentEnabled = Environment.GetEnvironmentVariable("BOT_CONFIDENCE_ADJUSTMENT_ENABLED")?.ToLowerInvariant() == "true";
-            _confidenceVeryHighThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_VERY_HIGH_THRESHOLD"), out var vhThreshold) ? vhThreshold : 0.85m;
-            _confidenceHighThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_HIGH_THRESHOLD"), out var hThreshold) ? hThreshold : 0.75m;
-            _confidenceMediumThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_MEDIUM_THRESHOLD"), out var mThreshold) ? mThreshold : 0.70m;
-            _confidenceLowThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_LOW_THRESHOLD"), out var lThreshold) ? lThreshold : 0.65m;
+            _confidenceVeryHighThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_VERY_HIGH_THRESHOLD"), out var vhThreshold) ? vhThreshold : DEFAULT_CONFIDENCE_VERY_HIGH_THRESHOLD;
+            _confidenceHighThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_HIGH_THRESHOLD"), out var hThreshold) ? hThreshold : DEFAULT_CONFIDENCE_HIGH_THRESHOLD;
+            _confidenceMediumThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_MEDIUM_THRESHOLD"), out var mThreshold) ? mThreshold : DEFAULT_CONFIDENCE_MEDIUM_THRESHOLD;
+            _confidenceLowThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_LOW_THRESHOLD"), out var lThreshold) ? lThreshold : DEFAULT_CONFIDENCE_LOW_THRESHOLD;
             
             if (_confidenceAdjustmentEnabled)
             {
@@ -173,7 +207,7 @@ namespace BotCore.Services
             
             // Load progressive tightening configuration (Feature 5)
             _progressiveTighteningEnabled = Environment.GetEnvironmentVariable("BOT_PROGRESSIVE_TIGHTENING_ENABLED")?.ToLowerInvariant() == "true";
-            _progressiveTighteningCheckIntervalSeconds = int.TryParse(Environment.GetEnvironmentVariable("BOT_PROGRESSIVE_TIGHTENING_CHECK_INTERVAL_SECONDS"), out var ptInterval) ? ptInterval : 60;
+            _progressiveTighteningCheckIntervalSeconds = int.TryParse(Environment.GetEnvironmentVariable("BOT_PROGRESSIVE_TIGHTENING_CHECK_INTERVAL_SECONDS"), out var ptInterval) ? ptInterval : DEFAULT_PROGRESSIVE_TIGHTENING_INTERVAL_SECONDS;
             
             if (_progressiveTighteningEnabled)
             {
@@ -242,7 +276,7 @@ namespace BotCore.Services
                     {
                         entryRegime = regimeService.GetCurrentRegimeAsync(symbol).GetAwaiter().GetResult();
                         // Note: RegimeDetectionService doesn't provide confidence yet, using default
-                        entryRegimeConfidence = 0.75m; // Default confidence
+                        entryRegimeConfidence = DEFAULT_ENTRY_REGIME_CONFIDENCE;
                     }
                 }
             }
@@ -657,10 +691,10 @@ namespace BotCore.Services
             
             foreach (var target in targetIntervals)
             {
-                // Check if we're within 5 seconds of target and haven't recorded yet
-                if (Math.Abs(elapsedSeconds - target) <= 5)
+                // Check if we're within tolerance seconds of target and haven't recorded yet
+                if (Math.Abs(elapsedSeconds - target) <= MAE_MFE_SNAPSHOT_TOLERANCE_SECONDS)
                 {
-                    var alreadyRecorded = state.MaeSnapshots.Any(s => Math.Abs(s.ElapsedSeconds - target) <= 5);
+                    var alreadyRecorded = state.MaeSnapshots.Any(s => Math.Abs(s.ElapsedSeconds - target) <= MAE_MFE_SNAPSHOT_TOLERANCE_SECONDS);
                     if (!alreadyRecorded)
                     {
                         return true;
@@ -1346,30 +1380,30 @@ namespace BotCore.Services
             
             if (confidence >= _confidenceVeryHighThreshold) // Very High: 0.85-1.0
             {
-                stopMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_STOP_MULTIPLIER_VERY_HIGH"), out var sm) ? sm : 1.5m;
-                targetMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_TARGET_MULTIPLIER_VERY_HIGH"), out var tm) ? tm : 2.0m;
+                stopMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_STOP_MULTIPLIER_VERY_HIGH"), out var sm) ? sm : CONFIDENCE_STOP_MULTIPLIER_VERY_HIGH_DEFAULT;
+                targetMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_TARGET_MULTIPLIER_VERY_HIGH"), out var tm) ? tm : CONFIDENCE_TARGET_MULTIPLIER_VERY_HIGH_DEFAULT;
             }
             else if (confidence >= _confidenceHighThreshold) // High: 0.75-0.85
             {
-                stopMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_STOP_MULTIPLIER_HIGH"), out var sm) ? sm : 1.3m;
-                targetMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_TARGET_MULTIPLIER_HIGH"), out var tm) ? tm : 1.0m;
+                stopMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_STOP_MULTIPLIER_HIGH"), out var sm) ? sm : CONFIDENCE_STOP_MULTIPLIER_HIGH_DEFAULT;
+                targetMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_TARGET_MULTIPLIER_HIGH"), out var tm) ? tm : CONFIDENCE_TARGET_MULTIPLIER_HIGH_DEFAULT;
             }
             else if (confidence >= _confidenceMediumThreshold) // Medium: 0.70-0.75
             {
-                stopMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_STOP_MULTIPLIER_MEDIUM"), out var sm) ? sm : 1.1m;
-                targetMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_TARGET_MULTIPLIER_MEDIUM"), out var tm) ? tm : 0.8m;
+                stopMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_STOP_MULTIPLIER_MEDIUM"), out var sm) ? sm : CONFIDENCE_STOP_MULTIPLIER_MEDIUM_DEFAULT;
+                targetMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_TARGET_MULTIPLIER_MEDIUM"), out var tm) ? tm : CONFIDENCE_TARGET_MULTIPLIER_MEDIUM_DEFAULT;
             }
             else if (confidence >= _confidenceLowThreshold) // Low: 0.65-0.70
             {
-                stopMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_STOP_MULTIPLIER_LOW"), out var sm) ? sm : 1.0m;
-                targetMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_TARGET_MULTIPLIER_LOW"), out var tm) ? tm : 0.6m;
-                adjustedQuantity = Math.Max(1, quantity / 2); // Reduce position size by 50%
+                stopMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_STOP_MULTIPLIER_LOW"), out var sm) ? sm : CONFIDENCE_STOP_MULTIPLIER_LOW_DEFAULT;
+                targetMultiplier = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_TARGET_MULTIPLIER_LOW"), out var tm) ? tm : CONFIDENCE_TARGET_MULTIPLIER_LOW_DEFAULT;
+                adjustedQuantity = Math.Max(1, quantity / CONFIDENCE_LOW_POSITION_SIZE_DIVISOR); // Reduce position size by 50%
             }
             else // Very Low: < 0.65 (should not happen, but handle it)
             {
-                stopMultiplier = 0.8m;
-                targetMultiplier = 0.5m;
-                adjustedQuantity = Math.Max(1, quantity / 4); // Reduce to 25%
+                stopMultiplier = CONFIDENCE_VERY_LOW_STOP_MULTIPLIER;
+                targetMultiplier = CONFIDENCE_VERY_LOW_TARGET_MULTIPLIER;
+                adjustedQuantity = Math.Max(1, quantity / CONFIDENCE_VERY_LOW_POSITION_SIZE_DIVISOR); // Reduce to 25%
             }
             
             // Apply multipliers to risk and reward
@@ -1397,13 +1431,13 @@ namespace BotCore.Services
                 return defaultTicks;
             
             if (confidence >= _confidenceVeryHighThreshold)
-                return (int)(defaultTicks * 1.5m); // 12 ticks if default is 8
+                return (int)(defaultTicks * CONFIDENCE_BREAKEVEN_MULTIPLIER_VERY_HIGH); // 12 ticks if default is 8
             else if (confidence >= _confidenceHighThreshold)
                 return defaultTicks; // Standard
             else if (confidence >= _confidenceMediumThreshold)
-                return (int)(defaultTicks * 0.75m); // 6 ticks if default is 8
+                return (int)(defaultTicks * CONFIDENCE_BREAKEVEN_MULTIPLIER_MEDIUM); // 6 ticks if default is 8
             else
-                return (int)(defaultTicks * 0.5m); // 4 ticks if default is 8
+                return (int)(defaultTicks * CONFIDENCE_BREAKEVEN_MULTIPLIER_LOW); // 4 ticks if default is 8
         }
         
         /// <summary>
@@ -1415,13 +1449,13 @@ namespace BotCore.Services
                 return defaultTicks;
             
             if (confidence >= _confidenceVeryHighThreshold)
-                return (int)(defaultTicks * 1.25m); // Loose trail, let profit run
+                return (int)(defaultTicks * CONFIDENCE_TRAIL_MULTIPLIER_VERY_HIGH); // Loose trail, let profit run
             else if (confidence >= _confidenceHighThreshold)
                 return defaultTicks; // Standard
             else if (confidence >= _confidenceMediumThreshold)
-                return (int)(defaultTicks * 0.75m); // Tighter trail
+                return (int)(defaultTicks * CONFIDENCE_TRAIL_MULTIPLIER_MEDIUM); // Tighter trail
             else
-                return (int)(defaultTicks * 0.5m); // Very tight trail
+                return (int)(defaultTicks * CONFIDENCE_TRAIL_MULTIPLIER_LOW); // Very tight trail
         }
         
         // ========================================================================
