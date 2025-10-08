@@ -41,6 +41,11 @@ namespace BotCore.Services
         private readonly Timer? _reconciliationTimer;
         private const int ReconciliationIntervalSeconds = 60;
         
+        // PHASE 5: Advanced order types tracking
+        private readonly ConcurrentDictionary<string, OcoOrderPair> _ocoOrders = new();
+        private readonly ConcurrentDictionary<string, BracketOrderGroup> _bracketOrders = new();
+        private readonly ConcurrentDictionary<string, IcebergOrderExecution> _icebergOrders = new();
+        
         public OrderExecutionService(
             ILogger<OrderExecutionService> logger,
             ITopstepXAdapterService topstepAdapter,
@@ -819,7 +824,7 @@ namespace BotCore.Services
         /// <summary>
         /// Helper class for broker position comparison
         /// </summary>
-        private class BrokerPosition
+        private sealed class BrokerPosition
         {
             public string Symbol { get; set; } = string.Empty;
             public int Quantity { get; set; }
@@ -835,7 +840,7 @@ namespace BotCore.Services
         /// Notify subscribers that an order was filled
         /// Called by TopstepXAdapterService when fill events are received
         /// </summary>
-        public void OnOrderFillReceived(FillEventData fillData)
+        public async void OnOrderFillReceived(FillEventData fillData)
         {
             try
             {
@@ -887,6 +892,9 @@ namespace BotCore.Services
                     Exchange = fillData.Exchange,
                     LiquidityType = fillData.LiquidityType
                 });
+                
+                // PHASE 5: Process advanced order types (OCO, Bracket, Iceberg)
+                await ProcessAdvancedOrderFillAsync(fillData.OrderId, fillData).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -972,6 +980,361 @@ namespace BotCore.Services
         }
         
         // ========================================================================
+        // PHASE 5: ADVANCED ORDER TYPE METHODS
+        // ========================================================================
+        
+        /// <summary>
+        /// Place OCO (One-Cancels-Other) order pair
+        /// When one order fills, the other is automatically cancelled
+        /// </summary>
+        public async Task<(string OcoId, string OrderId1, string OrderId2)> PlaceOcoOrderAsync(
+            string symbol,
+            string side1,
+            int quantity1,
+            decimal price1,
+            string orderType1,
+            string side2,
+            int quantity2,
+            decimal price2,
+            string orderType2,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "🔗 [OCO] Placing OCO order pair for {Symbol}: " +
+                    "Order1={Type1} {Side1} {Qty1}@{Price1}, Order2={Type2} {Side2} {Qty2}@{Price2}",
+                    symbol, orderType1, side1, quantity1, price1, orderType2, side2, quantity2, price2);
+                
+                // Generate OCO ID
+                var ocoId = $"OCO-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{symbol}";
+                
+                // Place first order
+                var orderId1 = orderType1.ToUpperInvariant() == "LIMIT"
+                    ? await PlaceLimitOrderAsync(symbol, side1, quantity1, price1, $"OCO-{ocoId}").ConfigureAwait(false)
+                    : await PlaceStopOrderAsync(symbol, side1, quantity1, price1, $"OCO-{ocoId}").ConfigureAwait(false);
+                
+                if (string.IsNullOrEmpty(orderId1))
+                {
+                    _logger.LogError("❌ [OCO] Failed to place first order in OCO pair");
+                    return (string.Empty, string.Empty, string.Empty);
+                }
+                
+                // Place second order
+                var orderId2 = orderType2.ToUpperInvariant() == "LIMIT"
+                    ? await PlaceLimitOrderAsync(symbol, side2, quantity2, price2, $"OCO-{ocoId}").ConfigureAwait(false)
+                    : await PlaceStopOrderAsync(symbol, side2, quantity2, price2, $"OCO-{ocoId}").ConfigureAwait(false);
+                
+                if (string.IsNullOrEmpty(orderId2))
+                {
+                    _logger.LogError("❌ [OCO] Failed to place second order, cancelling first order");
+                    await CancelOrderAsync(orderId1).ConfigureAwait(false);
+                    return (string.Empty, string.Empty, string.Empty);
+                }
+                
+                // Create OCO tracking record
+                var ocoOrder = new OcoOrderPair
+                {
+                    OcoId = ocoId,
+                    OrderId1 = orderId1,
+                    OrderId2 = orderId2,
+                    Symbol = symbol,
+                    CreatedAt = DateTime.UtcNow,
+                    Status = OcoStatus.Active
+                };
+                
+                _ocoOrders.TryAdd(ocoId, ocoOrder);
+                
+                _logger.LogInformation("✅ [OCO] OCO order pair {OcoId} created with orders {OrderId1} and {OrderId2}",
+                    ocoId, orderId1, orderId2);
+                
+                return (ocoId, orderId1, orderId2);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error placing OCO order for {Symbol}", symbol);
+                return (string.Empty, string.Empty, string.Empty);
+            }
+        }
+        
+        /// <summary>
+        /// Place bracket order (entry + stop-loss + take-profit)
+        /// When entry fills, stop and target are automatically placed
+        /// Stop and target are linked as OCO - if one fills, the other cancels
+        /// </summary>
+        public async Task<(string BracketId, string EntryOrderId)> PlaceBracketOrderAsync(
+            string symbol,
+            string side,
+            int quantity,
+            decimal entryPrice,
+            decimal stopPrice,
+            decimal targetPrice,
+            string entryOrderType = "LIMIT",
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "🎯 [BRACKET] Placing bracket order for {Symbol}: {Side} {Qty} " +
+                    "Entry={Entry:F2} Stop={Stop:F2} Target={Target:F2}",
+                    symbol, side, quantity, entryPrice, stopPrice, targetPrice);
+                
+                // Validate bracket parameters
+                var isLong = side.ToUpperInvariant() == "BUY";
+                if (isLong)
+                {
+                    if (stopPrice >= entryPrice)
+                    {
+                        _logger.LogError("❌ [BRACKET] Invalid bracket: stop price must be below entry for long");
+                        return (string.Empty, string.Empty);
+                    }
+                    if (targetPrice <= entryPrice)
+                    {
+                        _logger.LogError("❌ [BRACKET] Invalid bracket: target price must be above entry for long");
+                        return (string.Empty, string.Empty);
+                    }
+                }
+                else
+                {
+                    if (stopPrice <= entryPrice)
+                    {
+                        _logger.LogError("❌ [BRACKET] Invalid bracket: stop price must be above entry for short");
+                        return (string.Empty, string.Empty);
+                    }
+                    if (targetPrice >= entryPrice)
+                    {
+                        _logger.LogError("❌ [BRACKET] Invalid bracket: target price must be below entry for short");
+                        return (string.Empty, string.Empty);
+                    }
+                }
+                
+                // Generate bracket ID
+                var bracketId = $"BRACKET-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{symbol}";
+                
+                // Place entry order
+                var entryOrderId = entryOrderType.ToUpperInvariant() == "MARKET"
+                    ? await PlaceMarketOrderAsync(symbol, side, quantity, $"BRACKET-ENTRY-{bracketId}").ConfigureAwait(false)
+                    : await PlaceLimitOrderAsync(symbol, side, quantity, entryPrice, $"BRACKET-ENTRY-{bracketId}").ConfigureAwait(false);
+                
+                if (string.IsNullOrEmpty(entryOrderId))
+                {
+                    _logger.LogError("❌ [BRACKET] Failed to place entry order");
+                    return (string.Empty, string.Empty);
+                }
+                
+                // Create bracket tracking record
+                var bracketOrder = new BracketOrderGroup
+                {
+                    BracketId = bracketId,
+                    Symbol = symbol,
+                    EntryOrderId = entryOrderId,
+                    EntryPrice = entryPrice,
+                    StopPrice = stopPrice,
+                    TargetPrice = targetPrice,
+                    Quantity = quantity,
+                    Side = side,
+                    CreatedAt = DateTime.UtcNow,
+                    Status = BracketStatus.Pending
+                };
+                
+                _bracketOrders.TryAdd(bracketId, bracketOrder);
+                
+                _logger.LogInformation("✅ [BRACKET] Bracket order {BracketId} created with entry order {EntryOrderId}",
+                    bracketId, entryOrderId);
+                
+                return (bracketId, entryOrderId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error placing bracket order for {Symbol}", symbol);
+                return (string.Empty, string.Empty);
+            }
+        }
+        
+        /// <summary>
+        /// Place iceberg order - large order executed in smaller hidden chunks
+        /// </summary>
+        public async Task<string> PlaceIcebergOrderAsync(
+            string symbol,
+            string side,
+            int totalQuantity,
+            int displayQuantity,
+            decimal? limitPrice = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "🧊 [ICEBERG] Placing iceberg order for {Symbol}: {Side} {Total} total, {Display} per chunk @ {Price}",
+                    symbol, side, totalQuantity, displayQuantity, limitPrice?.ToString("F2") ?? "MARKET");
+                
+                // Validate parameters
+                if (displayQuantity >= totalQuantity)
+                {
+                    _logger.LogWarning("⚠️ [ICEBERG] Display quantity >= total, placing single order instead");
+                    return limitPrice.HasValue
+                        ? await PlaceLimitOrderAsync(symbol, side, totalQuantity, limitPrice.Value).ConfigureAwait(false)
+                        : await PlaceMarketOrderAsync(symbol, side, totalQuantity).ConfigureAwait(false);
+                }
+                
+                if (displayQuantity <= 0)
+                {
+                    _logger.LogError("❌ [ICEBERG] Invalid display quantity: {Display}", displayQuantity);
+                    return string.Empty;
+                }
+                
+                // Generate iceberg ID
+                var icebergId = $"ICEBERG-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{symbol}";
+                
+                // Create iceberg tracking record
+                var icebergOrder = new IcebergOrderExecution
+                {
+                    IcebergId = icebergId,
+                    Symbol = symbol,
+                    Side = side,
+                    TotalQuantity = totalQuantity,
+                    DisplayQuantity = displayQuantity,
+                    FilledQuantity = 0,
+                    LimitPrice = limitPrice,
+                    CreatedAt = DateTime.UtcNow,
+                    Status = IcebergStatus.Active
+                };
+                
+                _icebergOrders.TryAdd(icebergId, icebergOrder);
+                
+                // Place first chunk
+                var firstChunkQty = Math.Min(displayQuantity, totalQuantity);
+                var firstOrderId = limitPrice.HasValue
+                    ? await PlaceLimitOrderAsync(symbol, side, firstChunkQty, limitPrice.Value, $"ICEBERG-{icebergId}").ConfigureAwait(false)
+                    : await PlaceMarketOrderAsync(symbol, side, firstChunkQty, $"ICEBERG-{icebergId}").ConfigureAwait(false);
+                
+                if (string.IsNullOrEmpty(firstOrderId))
+                {
+                    _logger.LogError("❌ [ICEBERG] Failed to place first chunk");
+                    icebergOrder.Status = IcebergStatus.Error;
+                    return string.Empty;
+                }
+                
+                icebergOrder.ChildOrderIds.Add(firstOrderId);
+                
+                _logger.LogInformation("✅ [ICEBERG] Iceberg order {IcebergId} created, first chunk {OrderId} placed",
+                    icebergId, firstOrderId);
+                
+                return icebergId;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error placing iceberg order for {Symbol}", symbol);
+                return string.Empty;
+            }
+        }
+        
+        /// <summary>
+        /// Process fill event for advanced order types
+        /// Handles OCO cancellation and bracket/iceberg progression
+        /// </summary>
+        private async Task ProcessAdvancedOrderFillAsync(string orderId, FillEventData fillData)
+        {
+            // Check if this is part of an OCO pair
+            var ocoOrder = _ocoOrders.Values.FirstOrDefault(o => 
+                o.OrderId1 == orderId || o.OrderId2 == orderId);
+            
+            if (ocoOrder != null && ocoOrder.Status == OcoStatus.Active)
+            {
+                _logger.LogInformation("🔗 [OCO] Order {OrderId} in OCO pair {OcoId} filled, cancelling other order",
+                    orderId, ocoOrder.OcoId);
+                
+                // Cancel the other order
+                var otherOrderId = ocoOrder.OrderId1 == orderId ? ocoOrder.OrderId2 : ocoOrder.OrderId1;
+                await CancelOrderAsync(otherOrderId).ConfigureAwait(false);
+                
+                ocoOrder.Status = OcoStatus.OneFilled;
+                ocoOrder.FilledOrderId = orderId;
+                ocoOrder.CancelledOrderId = otherOrderId;
+            }
+            
+            // Check if this is a bracket entry order
+            var bracketOrder = _bracketOrders.Values.FirstOrDefault(b => b.EntryOrderId == orderId);
+            
+            if (bracketOrder != null && bracketOrder.Status == BracketStatus.Pending)
+            {
+                _logger.LogInformation("🎯 [BRACKET] Entry order {OrderId} in bracket {BracketId} filled, placing stop and target",
+                    orderId, bracketOrder.BracketId);
+                
+                // Determine opposite side for stop and target
+                var exitSide = bracketOrder.Side.ToUpperInvariant() == "BUY" ? "SELL" : "BUY";
+                
+                // Place stop and target as OCO pair
+                var (ocoId, stopOrderId, targetOrderId) = await PlaceOcoOrderAsync(
+                    bracketOrder.Symbol,
+                    exitSide, bracketOrder.Quantity, bracketOrder.StopPrice, "STOP",
+                    exitSide, bracketOrder.Quantity, bracketOrder.TargetPrice, "LIMIT",
+                    CancellationToken.None).ConfigureAwait(false);
+                
+                if (!string.IsNullOrEmpty(ocoId))
+                {
+                    bracketOrder.StopOrderId = stopOrderId;
+                    bracketOrder.TargetOrderId = targetOrderId;
+                    bracketOrder.Status = BracketStatus.EntryFilled;
+                    
+                    _logger.LogInformation("✅ [BRACKET] Bracket {BracketId} stop and target placed: {StopId} / {TargetId}",
+                        bracketOrder.BracketId, stopOrderId, targetOrderId);
+                }
+                else
+                {
+                    _logger.LogError("❌ [BRACKET] Failed to place stop and target for bracket {BracketId}",
+                        bracketOrder.BracketId);
+                    bracketOrder.Status = BracketStatus.Error;
+                }
+            }
+            
+            // Check if this is an iceberg order chunk
+            var icebergOrder = _icebergOrders.Values.FirstOrDefault(i => 
+                i.ChildOrderIds.Contains(orderId) && i.Status == IcebergStatus.Active);
+            
+            if (icebergOrder != null)
+            {
+                _logger.LogInformation("🧊 [ICEBERG] Chunk {OrderId} in iceberg {IcebergId} filled with {Qty} contracts",
+                    orderId, icebergOrder.IcebergId, fillData.Quantity);
+                
+                icebergOrder.FilledQuantity += fillData.Quantity;
+                
+                // Check if more chunks are needed
+                var remainingQty = icebergOrder.TotalQuantity - icebergOrder.FilledQuantity;
+                
+                if (remainingQty > 0)
+                {
+                    var nextChunkQty = Math.Min(icebergOrder.DisplayQuantity, remainingQty);
+                    
+                    _logger.LogInformation("🧊 [ICEBERG] Placing next chunk for {IcebergId}: {Qty} of {Remaining} remaining",
+                        icebergOrder.IcebergId, nextChunkQty, remainingQty);
+                    
+                    var nextOrderId = icebergOrder.LimitPrice.HasValue
+                        ? await PlaceLimitOrderAsync(icebergOrder.Symbol, icebergOrder.Side, nextChunkQty, 
+                            icebergOrder.LimitPrice.Value, $"ICEBERG-{icebergOrder.IcebergId}").ConfigureAwait(false)
+                        : await PlaceMarketOrderAsync(icebergOrder.Symbol, icebergOrder.Side, nextChunkQty, 
+                            $"ICEBERG-{icebergOrder.IcebergId}").ConfigureAwait(false);
+                    
+                    if (!string.IsNullOrEmpty(nextOrderId))
+                    {
+                        icebergOrder.ChildOrderIds.Add(nextOrderId);
+                    }
+                    else
+                    {
+                        _logger.LogError("❌ [ICEBERG] Failed to place next chunk for {IcebergId}", icebergOrder.IcebergId);
+                        icebergOrder.Status = IcebergStatus.Error;
+                    }
+                }
+                else
+                {
+                    _logger.LogInformation("✅ [ICEBERG] Iceberg order {IcebergId} completed: {Total} contracts filled",
+                        icebergOrder.IcebergId, icebergOrder.TotalQuantity);
+                    icebergOrder.Status = IcebergStatus.Completed;
+                }
+            }
+        }
+        
+        // ========================================================================
         // DISPOSAL
         // ========================================================================
         
@@ -1039,5 +1402,97 @@ namespace BotCore.Services
         public decimal Commission { get; set; }
         public string Exchange { get; set; } = string.Empty;
         public string LiquidityType { get; set; } = string.Empty;
+    }
+    
+    // ========================================================================
+    // PHASE 5: ADVANCED ORDER TYPE DATA STRUCTURES
+    // ========================================================================
+    
+    /// <summary>
+    /// OCO (One-Cancels-Other) order pair tracking
+    /// </summary>
+    internal sealed class OcoOrderPair
+    {
+        public string OcoId { get; set; } = string.Empty;
+        public string OrderId1 { get; set; } = string.Empty;
+        public string OrderId2 { get; set; } = string.Empty;
+        public string Symbol { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public OcoStatus Status { get; set; } = OcoStatus.Active;
+        public string? FilledOrderId { get; set; }
+        public string? CancelledOrderId { get; set; }
+    }
+    
+    /// <summary>
+    /// OCO order status
+    /// </summary>
+    internal enum OcoStatus
+    {
+        Active,
+        OneFilled,
+        BothCancelled,
+        Expired
+    }
+    
+    /// <summary>
+    /// Bracket order group tracking (entry + stop + target)
+    /// </summary>
+    internal sealed class BracketOrderGroup
+    {
+        public string BracketId { get; set; } = string.Empty;
+        public string Symbol { get; set; } = string.Empty;
+        public string? EntryOrderId { get; set; }
+        public string? StopOrderId { get; set; }
+        public string? TargetOrderId { get; set; }
+        public decimal EntryPrice { get; set; }
+        public decimal StopPrice { get; set; }
+        public decimal TargetPrice { get; set; }
+        public int Quantity { get; set; }
+        public string Side { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+        public BracketStatus Status { get; set; } = BracketStatus.Pending;
+    }
+    
+    /// <summary>
+    /// Bracket order status
+    /// </summary>
+    internal enum BracketStatus
+    {
+        Pending,
+        EntryFilled,
+        StopFilled,
+        TargetFilled,
+        Cancelled,
+        Error
+    }
+    
+    /// <summary>
+    /// Iceberg order execution tracking
+    /// </summary>
+    internal sealed class IcebergOrderExecution
+    {
+        public string IcebergId { get; set; } = string.Empty;
+        public string Symbol { get; set; } = string.Empty;
+        public string Side { get; set; } = string.Empty;
+        public int TotalQuantity { get; set; }
+        public int DisplayQuantity { get; set; }
+        public int FilledQuantity { get; set; }
+        public decimal? LimitPrice { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public IcebergStatus Status { get; set; } = IcebergStatus.Active;
+        public List<string> ChildOrderIds { get; } = new();
+        public decimal? InitialMarketPrice { get; set; }
+        public decimal MaxSlippageTicks { get; set; } = 2.0m;
+    }
+    
+    /// <summary>
+    /// Iceberg order status
+    /// </summary>
+    internal enum IcebergStatus
+    {
+        Active,
+        Completed,
+        Cancelled,
+        Error
     }
 }
