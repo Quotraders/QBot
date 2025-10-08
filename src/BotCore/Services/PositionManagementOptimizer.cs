@@ -103,6 +103,7 @@ namespace BotCore.Services
         /// Record position management outcome for learning
         /// VOLATILITY SCALING: Now accepts currentAtr for regime-aware learning
         /// SESSION-SPECIFIC LEARNING: Automatically detects trading session
+        /// MAE CORRELATION: Accepts time-stamped MAE data for early stop-out prediction
         /// </summary>
         public void RecordOutcome(
             string strategy,
@@ -118,7 +119,11 @@ namespace BotCore.Services
             decimal maxFavorableExcursion,
             decimal maxAdverseExcursion,
             string marketRegime = "UNKNOWN",
-            decimal currentAtr = 0m)
+            decimal currentAtr = 0m,
+            decimal earlyMae1Min = 0m,
+            decimal earlyMae2Min = 0m,
+            decimal earlyMae5Min = 0m,
+            int tradeDurationSeconds = 0)
         {
             var outcomeKey = $"{strategy}_{symbol}_{DateTime.UtcNow.Ticks}";
             
@@ -149,7 +154,12 @@ namespace BotCore.Services
                 MarketRegime = marketRegime,
                 CurrentAtr = currentAtr,
                 VolatilityRegime = volatilityRegime.ToString(),
-                TradingSession = tradingSession
+                TradingSession = tradingSession,
+                // MAE CORRELATION: Store time-stamped MAE data
+                EarlyMae1Min = earlyMae1Min,
+                EarlyMae2Min = earlyMae2Min,
+                EarlyMae5Min = earlyMae5Min,
+                TradeDurationSeconds = tradeDurationSeconds
             };
             
             _outcomes[outcomeKey] = outcome;
@@ -255,8 +265,14 @@ namespace BotCore.Services
                 
                 if (current != null && best.BreakevenTicks != current.BreakevenTicks && best.AvgPnL > current.AvgPnL * 1.1)
                 {
-                    _logger.LogInformation("💡 [PM-OPTIMIZER] Breakeven optimization for {Strategy} in {Regime}/{Session}: Current={Current} ticks (PnL={CurrentPnL:F2}), Optimal={Optimal} ticks (PnL={OptimalPnL:F2})",
-                        strategy, regime, session, current.BreakevenTicks, current.AvgPnL, best.BreakevenTicks, best.AvgPnL);
+                    // CONFIDENCE INTERVALS: Get statistical confidence for this recommendation
+                    var confidenceMetrics = GetBreakevenConfidenceMetrics(strategy, regime, session);
+                    var confidenceStr = confidenceMetrics != null 
+                        ? FormatConfidenceMetrics(confidenceMetrics, "Breakeven", " ticks")
+                        : "confidence: UNKNOWN";
+                    
+                    _logger.LogInformation("💡 [PM-OPTIMIZER] Breakeven optimization for {Strategy} in {Regime}/{Session}: Current={Current} ticks (PnL={CurrentPnL:F2}), Optimal={Optimal} ticks (PnL={OptimalPnL:F2}) | {Confidence}",
+                        strategy, regime, session, current.BreakevenTicks, current.AvgPnL, best.BreakevenTicks, best.AvgPnL, confidenceStr);
                     
                     // Record regime/session-specific parameter change recommendation
                     _changeTracker.RecordChange(
@@ -264,7 +280,7 @@ namespace BotCore.Services
                         parameterName: $"BreakevenAfterTicks_{regime}_{session}",
                         oldValue: current.BreakevenTicks.ToString(),
                         newValue: best.BreakevenTicks.ToString(),
-                        reason: $"ML/RL learning ({regime}/{session}): Better PnL ({best.AvgPnL:F2} vs {current.AvgPnL:F2}), Win rate {best.WinRate:P0}",
+                        reason: $"ML/RL learning ({regime}/{session}): Better PnL ({best.AvgPnL:F2} vs {current.AvgPnL:F2}), Win rate {best.WinRate:P0} | {confidenceStr}",
                         outcomePnl: (decimal)best.AvgPnL,
                         wasCorrect: true,
                         marketSnapshotId: $"{regime}_{session}"
@@ -328,15 +344,21 @@ namespace BotCore.Services
                 
                 if (current != null && Math.Abs(best.TrailMultiplier - current.TrailMultiplier) > 0.2m && best.AvgPnL > current.AvgPnL * 1.1)
                 {
-                    _logger.LogInformation("💡 [PM-OPTIMIZER] Trailing stop optimization for {Strategy} in {Regime}/{Session}: Current={Current:F1}x ATR (PnL={CurrentPnL:F2}, OpCost={CurrentOC:F2}), Optimal={Optimal:F1}x ATR (PnL={OptimalPnL:F2}, OpCost={OptimalOC:F2})",
-                        strategy, regime, session, current.TrailMultiplier, current.AvgPnL, current.OpportunityCost, best.TrailMultiplier, best.AvgPnL, best.OpportunityCost);
+                    // CONFIDENCE INTERVALS: Get statistical confidence for this recommendation
+                    var confidenceMetrics = GetTrailingConfidenceMetrics(strategy, regime, session);
+                    var confidenceStr = confidenceMetrics != null 
+                        ? FormatConfidenceMetrics(confidenceMetrics, "Trailing", "x ATR")
+                        : "confidence: UNKNOWN";
+                    
+                    _logger.LogInformation("💡 [PM-OPTIMIZER] Trailing stop optimization for {Strategy} in {Regime}/{Session}: Current={Current:F1}x ATR (PnL={CurrentPnL:F2}, OpCost={CurrentOC:F2}), Optimal={Optimal:F1}x ATR (PnL={OptimalPnL:F2}, OpCost={OptimalOC:F2}) | {Confidence}",
+                        strategy, regime, session, current.TrailMultiplier, current.AvgPnL, current.OpportunityCost, best.TrailMultiplier, best.AvgPnL, best.OpportunityCost, confidenceStr);
                     
                     _changeTracker.RecordChange(
                         strategyName: strategy,
                         parameterName: $"TrailMultiplier_{regime}_{session}",
                         oldValue: current.TrailMultiplier.ToString("F1"),
                         newValue: best.TrailMultiplier.ToString("F1"),
-                        reason: $"ML/RL learning ({regime}/{session}): Better PnL ({best.AvgPnL:F2} vs {current.AvgPnL:F2}), Lower opportunity cost",
+                        reason: $"ML/RL learning ({regime}/{session}): Better PnL ({best.AvgPnL:F2} vs {current.AvgPnL:F2}), Lower opportunity cost | {confidenceStr}",
                         outcomePnl: (decimal)best.AvgPnL,
                         wasCorrect: true,
                         marketSnapshotId: $"{regime}_{session}"
@@ -744,6 +766,254 @@ namespace BotCore.Services
                 AvgMaxAdverseExcursion = outcomes.Average(o => o.MaxAdverseExcursion)
             };
         }
+        
+        // ========================================================================
+        // FEATURE 3: MAE CORRELATION ANALYSIS - Early Stop-Out Prediction
+        // ========================================================================
+        
+        /// <summary>
+        /// MAE CORRELATION: Analyze correlation between early MAE and stop-out outcomes
+        /// Returns threshold where early MAE predicts stop-out with high confidence
+        /// </summary>
+        public (decimal maeThreshold, decimal stopOutProbability, int sampleSize)? AnalyzeMaeCorrelation(
+            string strategy, 
+            int earlyMinutes = 2)
+        {
+            var minSamples = 30;  // Need at least 30 samples for correlation
+            
+            var outcomes = _outcomes.Values
+                .Where(o => o.Strategy == strategy)
+                .Where(o => o.TradeDurationSeconds >= earlyMinutes * 60)  // Only trades that lasted long enough
+                .OrderByDescending(o => o.Timestamp)
+                .Take(200)
+                .ToList();
+            
+            if (outcomes.Count < minSamples)
+            {
+                return null;
+            }
+            
+            // Get early MAE based on requested time window
+            var earlyMaeFunc = earlyMinutes switch
+            {
+                1 => (PositionManagementOutcome o) => o.EarlyMae1Min,
+                2 => (PositionManagementOutcome o) => o.EarlyMae2Min,
+                5 => (PositionManagementOutcome o) => o.EarlyMae5Min,
+                _ => (PositionManagementOutcome o) => o.EarlyMae2Min
+            };
+            
+            // Group by MAE buckets and calculate stop-out rates
+            var buckets = new[]
+            {
+                (min: 0m, max: 2m),
+                (min: 2m, max: 4m),
+                (min: 4m, max: 6m),
+                (min: 6m, max: 8m),
+                (min: 8m, max: 999m)
+            };
+            
+            decimal highestMaeThreshold = 0m;
+            decimal highestStopOutRate = 0m;
+            var totalSamples = 0;
+            
+            foreach (var bucket in buckets)
+            {
+                var bucketOutcomes = outcomes
+                    .Where(o => earlyMaeFunc(o) >= bucket.min && earlyMaeFunc(o) < bucket.max)
+                    .ToList();
+                
+                if (bucketOutcomes.Count < 5) continue;  // Need at least 5 samples per bucket
+                
+                var stopOutRate = bucketOutcomes.Count(o => o.StoppedOut) / (decimal)bucketOutcomes.Count;
+                
+                // Find threshold where stop-out rate exceeds 70%
+                if (stopOutRate >= 0.70m && stopOutRate > highestStopOutRate)
+                {
+                    highestMaeThreshold = bucket.min;
+                    highestStopOutRate = stopOutRate;
+                    totalSamples = bucketOutcomes.Count;
+                }
+                
+                _logger.LogDebug("📊 [MAE-CORRELATION] {Strategy} MAE {Min}-{Max} ticks @ {Time}min: {StopOutRate:P0} stop-out rate (n={Count})",
+                    strategy, bucket.min, bucket.max, earlyMinutes, stopOutRate, bucketOutcomes.Count);
+            }
+            
+            if (highestStopOutRate >= 0.70m)
+            {
+                _logger.LogInformation("🚨 [MAE-CORRELATION] {Strategy}: Early MAE > {Threshold:F1} ticks @ {Time}min predicts stop-out with {Probability:P0} confidence (n={Samples})",
+                    strategy, highestMaeThreshold, earlyMinutes, highestStopOutRate, totalSamples);
+                
+                return (highestMaeThreshold, highestStopOutRate, totalSamples);
+            }
+            
+            return null;
+        }
+        
+        /// <summary>
+        /// MAE CORRELATION: Get early exit threshold for a strategy based on MAE correlation
+        /// Returns MAE threshold in ticks and confidence level
+        /// </summary>
+        public (decimal maeThreshold, decimal confidence)? GetEarlyExitThreshold(string strategy, int earlyMinutes = 2)
+        {
+            var correlation = AnalyzeMaeCorrelation(strategy, earlyMinutes);
+            
+            if (!correlation.HasValue)
+            {
+                return null;
+            }
+            
+            // Only return if we have high confidence (>= 80%) and sufficient samples (>= 20)
+            if (correlation.Value.stopOutProbability >= 0.80m && correlation.Value.sampleSize >= 20)
+            {
+                return (correlation.Value.maeThreshold, correlation.Value.stopOutProbability);
+            }
+            
+            return null;
+        }
+        
+        // ========================================================================
+        // FEATURE 4: CONFIDENCE INTERVALS - Statistical Confidence Scoring
+        // ========================================================================
+        
+        /// <summary>
+        /// CONFIDENCE INTERVALS: Calculate statistical confidence metrics for a parameter
+        /// </summary>
+        private ConfidenceMetrics CalculateConfidenceMetrics(List<decimal> values, decimal confidencePercentage = 0.95m)
+        {
+            if (values.Count == 0)
+            {
+                return new ConfidenceMetrics
+                {
+                    SampleSize = 0,
+                    Level = ConfidenceLevel.Insufficient
+                };
+            }
+            
+            var n = values.Count;
+            var mean = values.Average();
+            var variance = values.Sum(x => (x - mean) * (x - mean)) / n;
+            var stdDev = (decimal)Math.Sqrt((double)variance);
+            var stdError = stdDev / (decimal)Math.Sqrt(n);
+            
+            // Determine confidence level based on sample size
+            var level = n switch
+            {
+                < 10 => ConfidenceLevel.Insufficient,
+                < 30 => ConfidenceLevel.Low,
+                < 100 => ConfidenceLevel.Medium,
+                _ => ConfidenceLevel.High
+            };
+            
+            // Use t-distribution for small samples, z-distribution for large
+            decimal criticalValue;
+            if (n < 30)
+            {
+                // Simplified t-values for common confidence levels
+                criticalValue = confidencePercentage switch
+                {
+                    0.80m => 1.282m,
+                    0.90m => 1.645m,
+                    0.95m => 1.960m,
+                    _ => 1.960m
+                };
+            }
+            else
+            {
+                // Z-values for large samples
+                criticalValue = confidencePercentage switch
+                {
+                    0.80m => 1.282m,
+                    0.90m => 1.645m,
+                    0.95m => 1.960m,
+                    _ => 1.960m
+                };
+            }
+            
+            var marginOfError = criticalValue * stdError;
+            
+            return new ConfidenceMetrics
+            {
+                Mean = mean,
+                StandardDeviation = stdDev,
+                StandardError = stdError,
+                ConfidenceIntervalLow = mean - marginOfError,
+                ConfidenceIntervalHigh = mean + marginOfError,
+                SampleSize = n,
+                Level = level,
+                ConfidencePercentage = confidencePercentage
+            };
+        }
+        
+        /// <summary>
+        /// CONFIDENCE INTERVALS: Get confidence metrics for learned breakeven parameter
+        /// </summary>
+        public ConfidenceMetrics? GetBreakevenConfidenceMetrics(string strategy, string regime = "ALL", string session = "ALL")
+        {
+            var outcomes = _outcomes.Values
+                .Where(o => o.Strategy == strategy && o.BreakevenTriggered)
+                .Where(o => regime == "ALL" || o.VolatilityRegime == regime)
+                .Where(o => session == "ALL" || o.TradingSession == session)
+                .OrderByDescending(o => o.Timestamp)
+                .Take(200)
+                .ToList();
+            
+            if (outcomes.Count < 10)
+            {
+                return null;
+            }
+            
+            var values = outcomes.Select(o => (decimal)o.BreakevenAfterTicks).ToList();
+            var confidence = CalculateConfidenceMetrics(values, 0.95m);
+            
+            return confidence;
+        }
+        
+        /// <summary>
+        /// CONFIDENCE INTERVALS: Get confidence metrics for learned trailing parameter
+        /// </summary>
+        public ConfidenceMetrics? GetTrailingConfidenceMetrics(string strategy, string regime = "ALL", string session = "ALL")
+        {
+            var outcomes = _outcomes.Values
+                .Where(o => o.Strategy == strategy)
+                .Where(o => regime == "ALL" || o.VolatilityRegime == regime)
+                .Where(o => session == "ALL" || o.TradingSession == session)
+                .OrderByDescending(o => o.Timestamp)
+                .Take(200)
+                .ToList();
+            
+            if (outcomes.Count < 10)
+            {
+                return null;
+            }
+            
+            var values = outcomes.Select(o => o.TrailMultiplier).ToList();
+            var confidence = CalculateConfidenceMetrics(values, 0.95m);
+            
+            return confidence;
+        }
+        
+        /// <summary>
+        /// CONFIDENCE INTERVALS: Format confidence metrics for logging
+        /// </summary>
+        private string FormatConfidenceMetrics(ConfidenceMetrics metrics, string parameterName, string unit = "")
+        {
+            var levelStr = metrics.Level switch
+            {
+                ConfidenceLevel.Insufficient => "INSUFFICIENT DATA",
+                ConfidenceLevel.Low => "LOW",
+                ConfidenceLevel.Medium => "MEDIUM",
+                ConfidenceLevel.High => "HIGH",
+                _ => "UNKNOWN"
+            };
+            
+            if (metrics.Level == ConfidenceLevel.Insufficient)
+            {
+                return $"{parameterName}: INSUFFICIENT DATA (n={metrics.SampleSize})";
+            }
+            
+            var ciPercent = (int)(metrics.ConfidencePercentage * 100);
+            return $"{parameterName}: {metrics.Mean:F1}{unit} [{metrics.ConfidenceIntervalLow:F1}-{metrics.ConfidenceIntervalHigh:F1}{unit} @ {ciPercent}% CI] (n={metrics.SampleSize}, σ={metrics.StandardDeviation:F2}, {levelStr} confidence)";
+        }
     }
     
     /// <summary>
@@ -772,6 +1042,38 @@ namespace BotCore.Services
         
         // SESSION-SPECIFIC LEARNING: Track trading session
         public string TradingSession { get; set; } = "RTH";
+        
+        // MAE CORRELATION ANALYSIS: Time-stamped MAE progression
+        public decimal EarlyMae1Min { get; set; }  // MAE after 1 minute
+        public decimal EarlyMae2Min { get; set; }  // MAE after 2 minutes
+        public decimal EarlyMae5Min { get; set; }  // MAE after 5 minutes
+        public int TradeDurationSeconds { get; set; }  // Total trade duration
+    }
+    
+    /// <summary>
+    /// Confidence level for learned parameters
+    /// </summary>
+    public enum ConfidenceLevel
+    {
+        Insufficient,  // < 10 samples
+        Low,           // 10-30 samples
+        Medium,        // 30-100 samples
+        High           // 100+ samples
+    }
+    
+    /// <summary>
+    /// Statistical confidence metrics for a learned parameter
+    /// </summary>
+    public sealed class ConfidenceMetrics
+    {
+        public decimal Mean { get; set; }
+        public decimal StandardDeviation { get; set; }
+        public decimal StandardError { get; set; }
+        public decimal ConfidenceIntervalLow { get; set; }
+        public decimal ConfidenceIntervalHigh { get; set; }
+        public int SampleSize { get; set; }
+        public ConfidenceLevel Level { get; set; }
+        public decimal ConfidencePercentage { get; set; }  // 80%, 90%, 95%
     }
     
     /// <summary>

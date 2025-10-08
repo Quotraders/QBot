@@ -156,6 +156,11 @@ namespace BotCore.Models
         private readonly System.Collections.Generic.Dictionary<string, object> _dynamicProperties = new();
         
         /// <summary>
+        /// MAE CORRELATION: Time-stamped MAE snapshots for correlation analysis
+        /// </summary>
+        public System.Collections.Generic.List<MaeSnapshot> MaeSnapshots { get; set; } = new();
+        
+        /// <summary>
         /// Check if a dynamic property exists
         /// </summary>
         public bool HasProperty(string key)
@@ -178,6 +183,16 @@ namespace BotCore.Models
         {
             _dynamicProperties[key] = value;
         }
+    }
+    
+    /// <summary>
+    /// MAE CORRELATION: Time-stamped MAE snapshot for tracking early adverse movement
+    /// </summary>
+    public sealed class MaeSnapshot
+    {
+        public DateTime Timestamp { get; set; }
+        public decimal MaeValue { get; set; }
+        public int ElapsedSeconds { get; set; }
     }
     
     /// <summary>

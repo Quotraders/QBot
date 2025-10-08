@@ -361,6 +361,12 @@ namespace BotCore.Services
                 // VOLATILITY SCALING: Calculate current ATR for regime-aware learning
                 var currentAtr = EstimateCurrentVolatility(state);
                 
+                // MAE CORRELATION: Extract early MAE values from snapshots
+                var tradeDuration = (int)(DateTime.UtcNow - state.EntryTime).TotalSeconds;
+                var earlyMae1Min = GetMaeAtTime(state, 60);
+                var earlyMae2Min = GetMaeAtTime(state, 120);
+                var earlyMae5Min = GetMaeAtTime(state, 300);
+                
                 optimizer.RecordOutcome(
                     strategy: state.Strategy,
                     symbol: state.Symbol,
@@ -375,7 +381,11 @@ namespace BotCore.Services
                     maxFavorableExcursion: maxFavTicks,
                     maxAdverseExcursion: maxAdvTicks,
                     marketRegime: marketRegime,
-                    currentAtr: currentAtr  // VOLATILITY SCALING: Pass ATR for regime detection
+                    currentAtr: currentAtr,  // VOLATILITY SCALING: Pass ATR for regime detection
+                    earlyMae1Min: earlyMae1Min,  // MAE CORRELATION: MAE after 1 minute
+                    earlyMae2Min: earlyMae2Min,  // MAE CORRELATION: MAE after 2 minutes
+                    earlyMae5Min: earlyMae5Min,  // MAE CORRELATION: MAE after 5 minutes
+                    tradeDurationSeconds: tradeDuration  // MAE CORRELATION: Total trade duration
                 );
                 
                 _logger.LogDebug("📊 [POSITION-MGMT] Reported outcome to optimizer: {Strategy} {Symbol}, BE={BE}, StoppedOut={SO}, TargetHit={TH}, TimedOut={TO}, PnL={PnL} ticks",
@@ -595,8 +605,9 @@ namespace BotCore.Services
         
         /// <summary>
         /// Update max favorable and adverse excursion tracking
+        /// MAE CORRELATION: Also tracks time-stamped MAE snapshots
         /// </summary>
-        private static void UpdateMaxExcursion(PositionManagementState state, decimal currentPrice)
+        private void UpdateMaxExcursion(PositionManagementState state, decimal currentPrice)
         {
             var isLong = state.Quantity > 0;
             
@@ -616,6 +627,48 @@ namespace BotCore.Services
                 if (currentPrice > state.MaxAdversePrice)
                     state.MaxAdversePrice = currentPrice;
             }
+            
+            // MAE CORRELATION: Track MAE snapshots for time-series analysis
+            var elapsedSeconds = (int)(DateTime.UtcNow - state.EntryTime).TotalSeconds;
+            var tickSize = GetTickSize(state.Symbol);
+            var currentMae = isLong
+                ? (state.MaxAdversePrice - state.EntryPrice) / tickSize
+                : (state.EntryPrice - state.MaxAdversePrice) / tickSize;
+            
+            // Record snapshot at key intervals (1min, 2min, 5min, 10min)
+            if (ShouldRecordMaeSnapshot(state, elapsedSeconds))
+            {
+                state.MaeSnapshots.Add(new MaeSnapshot
+                {
+                    Timestamp = DateTime.UtcNow,
+                    MaeValue = Math.Abs(currentMae),
+                    ElapsedSeconds = elapsedSeconds
+                });
+            }
+        }
+        
+        /// <summary>
+        /// MAE CORRELATION: Determine if we should record MAE snapshot at this time
+        /// Records at 1min, 2min, 5min, 10min intervals (with 5-second tolerance)
+        /// </summary>
+        private static bool ShouldRecordMaeSnapshot(PositionManagementState state, int elapsedSeconds)
+        {
+            var targetIntervals = new[] { 60, 120, 300, 600 }; // 1min, 2min, 5min, 10min
+            
+            foreach (var target in targetIntervals)
+            {
+                // Check if we're within 5 seconds of target and haven't recorded yet
+                if (Math.Abs(elapsedSeconds - target) <= 5)
+                {
+                    var alreadyRecorded = state.MaeSnapshots.Any(s => Math.Abs(s.ElapsedSeconds - target) <= 5);
+                    if (!alreadyRecorded)
+                    {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
         }
         
         /// <summary>
@@ -1029,6 +1082,24 @@ namespace BotCore.Services
             // Simplified: use max excursion range as volatility proxy
             var range = Math.Abs(state.MaxFavorablePrice - state.MaxAdversePrice);
             return range > 0 ? range : ATR_MULTIPLIER_UNIT;
+        }
+        
+        /// <summary>
+        /// MAE CORRELATION: Get MAE value at specific elapsed time from snapshots
+        /// </summary>
+        private decimal GetMaeAtTime(PositionManagementState state, int targetSeconds)
+        {
+            if (state.MaeSnapshots.Count == 0)
+            {
+                return 0m;
+            }
+            
+            // Find snapshot closest to target time
+            var closest = state.MaeSnapshots
+                .OrderBy(s => Math.Abs(s.ElapsedSeconds - targetSeconds))
+                .FirstOrDefault();
+            
+            return closest?.MaeValue ?? 0m;
         }
         
         /// <summary>
