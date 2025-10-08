@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using BotCore.Models;
 using BotCore.Bandits;
+using TradingBot.Abstractions.Helpers;
 
 namespace BotCore.Services
 {
@@ -810,6 +812,182 @@ namespace BotCore.Services
         }
         
         // ========================================================================
+        // LEARNED PARAMETERS EXPORT - Phase 1 Implementation
+        // ========================================================================
+        
+        /// <summary>
+        /// Export learned parameters to JSON files for review and analysis.
+        /// Creates individual files per strategy in artifacts/learned_parameters/.
+        /// Safe to call - failures are logged but don't crash trading system.
+        /// </summary>
+        public void ExportLearnedParameters()
+        {
+            try
+            {
+                _logger.LogInformation("📤 [PM-OPTIMIZER] Starting learned parameters export...");
+                
+                // Create output directory if it doesn't exist
+                var artifactsDir = Path.Combine(AppContext.BaseDirectory, "artifacts", "learned_parameters");
+                Directory.CreateDirectory(artifactsDir);
+                
+                // Export for each strategy: S2, S3, S6, S11
+                var strategies = new[] { "S2", "S3", "S6", "S11" };
+                var exportedCount = 0;
+                
+                foreach (var strategy in strategies)
+                {
+                    try
+                    {
+                        var exportData = BuildStrategyExportData(strategy);
+                        var fileName = Path.Combine(artifactsDir, $"{strategy}_learned_params.json");
+                        var json = JsonSerializationHelper.SerializePretty(exportData);
+                        File.WriteAllText(fileName, json);
+                        
+                        _logger.LogInformation("✅ [PM-OPTIMIZER] Exported {Strategy} learned parameters: {TotalTrades} trades analyzed, {ParamCount} parameters tracked",
+                            strategy, exportData.TotalTradesAnalyzed, exportData.Parameters.Count);
+                        exportedCount++;
+                    }
+                    catch (UnauthorizedAccessException ex)
+                    {
+                        _logger.LogError(ex, "❌ [PM-OPTIMIZER] Access denied writing export file for {Strategy}", strategy);
+                    }
+                    catch (IOException ex)
+                    {
+                        _logger.LogError(ex, "❌ [PM-OPTIMIZER] IO error writing export file for {Strategy}", strategy);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "❌ [PM-OPTIMIZER] Unexpected error exporting {Strategy} parameters", strategy);
+                    }
+                }
+                
+                _logger.LogInformation("📦 [PM-OPTIMIZER] Export complete. Successfully exported {Count}/{Total} strategies", 
+                    exportedCount, strategies.Length);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [PM-OPTIMIZER] Critical error in learned parameters export");
+            }
+        }
+        
+        /// <summary>
+        /// Build export data structure for a specific strategy
+        /// </summary>
+        private StrategyLearnedParameters BuildStrategyExportData(string strategy)
+        {
+            var outcomes = _outcomes.Values
+                .Where(o => o.Strategy == strategy)
+                .OrderByDescending(o => o.Timestamp)
+                .ToList();
+            
+            var exportData = new StrategyLearnedParameters
+            {
+                StrategyName = strategy,
+                ExportTimestamp = DateTime.UtcNow,
+                TotalTradesAnalyzed = outcomes.Count,
+                Parameters = new List<LearnedParameter>()
+            };
+            
+            if (outcomes.Count == 0)
+            {
+                return exportData;
+            }
+            
+            // Analyze breakeven distance parameter
+            var breakevenOutcomes = outcomes.Where(o => o.BreakevenTriggered).ToList();
+            if (breakevenOutcomes.Count >= MinSamplesForLearning)
+            {
+                var bestBreakeven = breakevenOutcomes
+                    .GroupBy(o => o.BreakevenAfterTicks)
+                    .Select(g => new { Ticks = g.Key, AvgPnL = g.Average(o => o.FinalPnL), Count = g.Count(), WinRate = g.Count(o => o.FinalPnL > 0) / (decimal)g.Count() })
+                    .OrderByDescending(x => x.AvgPnL)
+                    .FirstOrDefault();
+                
+                if (bestBreakeven != null)
+                {
+                    exportData.Parameters.Add(new LearnedParameter
+                    {
+                        ParameterName = "BreakevenAfterTicks",
+                        CurrentConfiguredValue = "N/A",
+                        LearnedOptimalValue = bestBreakeven.Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        TradesAnalyzed = bestBreakeven.Count,
+                        ConfidenceScore = DetermineConfidenceScore(bestBreakeven.Count),
+                        PerformanceImprovement = "N/A",
+                        SampleWinRate = Math.Round(bestBreakeven.WinRate * 100, 1)
+                    });
+                }
+            }
+            
+            // Analyze trailing stop multiplier parameter
+            var trailingOutcomes = outcomes.ToList();
+            if (trailingOutcomes.Count >= MinSamplesForLearning)
+            {
+                var bestTrailing = trailingOutcomes
+                    .GroupBy(o => o.TrailMultiplier)
+                    .Select(g => new { Multiplier = g.Key, AvgPnL = g.Average(o => o.FinalPnL), Count = g.Count(), WinRate = g.Count(o => o.FinalPnL > 0) / (decimal)g.Count() })
+                    .OrderByDescending(x => x.AvgPnL)
+                    .FirstOrDefault();
+                
+                if (bestTrailing != null)
+                {
+                    exportData.Parameters.Add(new LearnedParameter
+                    {
+                        ParameterName = "TrailingStopMultiplier",
+                        CurrentConfiguredValue = "N/A",
+                        LearnedOptimalValue = bestTrailing.Multiplier.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        TradesAnalyzed = bestTrailing.Count,
+                        ConfidenceScore = DetermineConfidenceScore(bestTrailing.Count),
+                        PerformanceImprovement = "N/A",
+                        SampleWinRate = Math.Round(bestTrailing.WinRate * 100, 1)
+                    });
+                }
+            }
+            
+            // Analyze hold time limits parameter
+            var holdTimeOutcomes = outcomes.Where(o => !o.TimedOut).ToList();
+            if (holdTimeOutcomes.Count >= MinSamplesForLearning)
+            {
+                var avgDuration = holdTimeOutcomes.Average(o => o.TradeDurationSeconds) / 60.0; // Convert to minutes
+                var recommendedMaxHold = (int)Math.Ceiling(avgDuration * 1.5); // 50% buffer
+                
+                exportData.Parameters.Add(new LearnedParameter
+                {
+                    ParameterName = "MaxHoldTimeMinutes",
+                    CurrentConfiguredValue = "N/A",
+                    LearnedOptimalValue = recommendedMaxHold.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    TradesAnalyzed = holdTimeOutcomes.Count,
+                    ConfidenceScore = DetermineConfidenceScore(holdTimeOutcomes.Count),
+                    PerformanceImprovement = "N/A",
+                    SampleWinRate = Math.Round(holdTimeOutcomes.Count(o => o.FinalPnL > 0) / (decimal)holdTimeOutcomes.Count * 100, 1)
+                });
+            }
+            
+            return exportData;
+        }
+        
+        /// <summary>
+        /// Determine confidence score based on sample size
+        /// Less than 30 trades: Low
+        /// 30-100 trades: Medium
+        /// Over 100 trades: High
+        /// </summary>
+        private static string DetermineConfidenceScore(int sampleSize)
+        {
+            if (sampleSize < 30)
+            {
+                return "Low";
+            }
+            else if (sampleSize < 100)
+            {
+                return "Medium";
+            }
+            else
+            {
+                return "High";
+            }
+        }
+        
+        // ========================================================================
         // FEATURE 3: MAE CORRELATION ANALYSIS - Early Stop-Out Prediction
         // ========================================================================
         
@@ -1135,5 +1313,30 @@ namespace BotCore.Services
         public decimal TimedOutRate { get; set; }
         public decimal AvgMaxFavorableExcursion { get; set; }
         public decimal AvgMaxAdverseExcursion { get; set; }
+    }
+    
+    /// <summary>
+    /// Export data structure for strategy learned parameters
+    /// </summary>
+    public sealed class StrategyLearnedParameters
+    {
+        public string StrategyName { get; set; } = string.Empty;
+        public DateTime ExportTimestamp { get; set; }
+        public int TotalTradesAnalyzed { get; set; }
+        public List<LearnedParameter> Parameters { get; set; } = new();
+    }
+    
+    /// <summary>
+    /// Individual learned parameter with confidence metrics
+    /// </summary>
+    public sealed class LearnedParameter
+    {
+        public string ParameterName { get; set; } = string.Empty;
+        public string CurrentConfiguredValue { get; set; } = string.Empty;
+        public string LearnedOptimalValue { get; set; } = string.Empty;
+        public int TradesAnalyzed { get; set; }
+        public string ConfidenceScore { get; set; } = string.Empty;
+        public string PerformanceImprovement { get; set; } = string.Empty;
+        public decimal SampleWinRate { get; set; }
     }
 }
