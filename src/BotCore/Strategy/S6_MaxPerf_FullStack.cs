@@ -76,6 +76,12 @@ namespace TopstepX.S6
             return obj is Bar1M other && Equals(other);
         }
 
+        public bool Equals(Bar1M other)
+        {
+            return TimeET == other.TimeET && Open == other.Open && High == other.High && 
+                   Low == other.Low && Close == other.Close && Volume.Equals(other.Volume);
+        }
+
         public override int GetHashCode()
         {
             return HashCode.Combine(TimeET, Open, High, Low, Close, Volume);
@@ -89,12 +95,6 @@ namespace TopstepX.S6
         public static bool operator !=(Bar1M left, Bar1M right)
         {
             return !(left == right);
-        }
-
-        public bool Equals(Bar1M other)
-        {
-            return TimeET == other.TimeET && Open == other.Open && High == other.High && 
-                   Low == other.Low && Close == other.Close && Volume.Equals(other.Volume);
         }
     }
 
@@ -142,6 +142,12 @@ namespace TopstepX.S6
             return obj is DepthLadder other && Equals(other);
         }
 
+        public bool Equals(DepthLadder other)
+        {
+            return TimeET == other.TimeET && BestBid == other.BestBid && BestAsk == other.BestAsk && 
+                   BidSize.Equals(other.BidSize) && AskSize.Equals(other.AskSize);
+        }
+
         public override int GetHashCode()
         {
             return HashCode.Combine(TimeET, BestBid, BestAsk, BidSize, AskSize);
@@ -155,12 +161,6 @@ namespace TopstepX.S6
         public static bool operator !=(DepthLadder left, DepthLadder right)
         {
             return !(left == right);
-        }
-
-        public bool Equals(DepthLadder other)
-        {
-            return TimeET == other.TimeET && BestBid == other.BestBid && BestAsk == other.BestAsk && 
-                   BidSize.Equals(other.BidSize) && AskSize.Equals(other.AskSize);
         }
     }
 
@@ -306,8 +306,8 @@ namespace TopstepX.S6
         public int RvolLookbackDays { get; set; } = 20;
 
         // failed breakout
-        public int FailBreakPenetrationTicks_ES { get; set; } = 3;
-        public int FailBreakPenetrationTicks_NQ { get; set; } = 4;
+        public int FailBreakPenetrationTicksES { get; set; } = 3;
+        public int FailBreakPenetrationTicksNQ { get; set; } = 4;
     }
 
     // --- STRATEGY ---
@@ -426,8 +426,13 @@ namespace TopstepX.S6
 
             if (regime == Mode.Reversal)
             {
-                if (side == Side.Buy && s.ExpectedR(false, avgPx) >= _cfg.FlipMinR) { _router.ClosePosition(positionId); TryEnterReversal(s); }
-                else if (side == Side.Sell && s.ExpectedR(true, avgPx) >= _cfg.FlipMinR) { _router.ClosePosition(positionId); TryEnterReversal(s); }
+                bool shouldFlip = (side == Side.Buy && s.ExpectedR(false, avgPx) >= _cfg.FlipMinR) || 
+                                  (side == Side.Sell && s.ExpectedR(true, avgPx) >= _cfg.FlipMinR);
+                if (shouldFlip)
+                {
+                    _router.ClosePosition(positionId);
+                    TryEnterReversal(s);
+                }
             }
 
             double r = s.RealizedR(side, avgPx);
@@ -481,17 +486,14 @@ namespace TopstepX.S6
 
                 // build 5m aggregate at minute 4/9/14...
                 int mod5 = bar.TimeET.Minute % 5;
-                if (mod5 == IndicatorConstants.FiveMinuteAggregationTrigger)
+                if (mod5 == IndicatorConstants.FiveMinuteAggregationTrigger && Min1.Count >= IndicatorConstants.FiveMinuteBarsToAggregate)
                 {
                     // aggregate last 5 1m bars
-                    if (Min1.Count >= IndicatorConstants.FiveMinuteBarsToAggregate)
-                    {
                         var b4 = Min1.Last(IndicatorConstants.PreviousBar4Index); var b3 = Min1.Last(IndicatorConstants.PreviousBar3Index); var b2 = Min1.Last(IndicatorConstants.PreviousBar2Index); var b1 = Min1.Last(IndicatorConstants.PreviousBar1Index); var b0 = Min1.Last(IndicatorConstants.CurrentBarIndex);
                         long o = b4.Open; long h = Math.Max(Math.Max(Math.Max(Math.Max(b4.High,b3.High),b2.High),b1.High),b0.High);
                         long l = Math.Min(Math.Min(Math.Min(Math.Min(b4.Low, b3.Low), b2.Low), b1.Low), b0.Low);
                         long c = b0.Close; double v = b4.Volume + b3.Volume + b2.Volume + b1.Volume + b0.Volume;
                         Min5.Add(new Bar1M(bar.TimeET, o,h,l,c,v));
-                    }
                 }
 
                 // ON range until 09:28
@@ -511,7 +513,21 @@ namespace TopstepX.S6
                 // gap compute at 09:30 bar
                 if (!GapComputed && bar.TimeET.TimeOfDay >= C.RTHOpen)
                 {
-                    RTHOpenPx = ToPx(bar.Open); GapPts = RTHOpenPx - ToPx(PremarketLast); GapDir = GapPts>0?1:(GapPts<0?-1:0); GapComputed=true;
+                    RTHOpenPx = ToPx(bar.Open); 
+                    GapPts = RTHOpenPx - ToPx(PremarketLast); 
+                    if (GapPts > 0) 
+                    {
+                        GapDir = 1;
+                    }
+                    else if (GapPts < 0) 
+                    {
+                        GapDir = -1;
+                    }
+                    else 
+                    {
+                        GapDir = 0;
+                    }
+                    GapComputed = true;
                 }
 
                 // indicators
@@ -631,7 +647,7 @@ namespace TopstepX.S6
 
             public bool FailedBreakout(bool failedAboveONH)
             {
-                int pen = Instr==Instrument.ES? C.FailBreakPenetrationTicks_ES : C.FailBreakPenetrationTicks_NQ;
+                int pen = Instr==Instrument.ES? C.FailBreakPenetrationTicksES : C.FailBreakPenetrationTicksNQ;
                 if (Min1.Count < 3) 
                 {
                     return false; 
