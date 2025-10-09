@@ -63,9 +63,18 @@ namespace BotCore.Services
                 {
                     await MonitorZoneBreaksAsync(stoppingToken).ConfigureAwait(false);
                 }
-                catch (Exception ex)
+                catch (OperationCanceledException)
                 {
-                    _logger.LogError(ex, "❌ [ZONE-BREAK] Error in zone break monitoring loop");
+                    // Cancellation requested, exit gracefully
+                    break;
+                }
+                catch (InvalidOperationException ex)
+                {
+                    _logger.LogError(ex, "❌ [ZONE-BREAK] Invalid operation in zone break monitoring");
+                }
+                catch (ArgumentException ex)
+                {
+                    _logger.LogError(ex, "❌ [ZONE-BREAK] Invalid argument in zone break monitoring");
                 }
                 
                 await Task.Delay(TimeSpan.FromSeconds(MonitoringIntervalSeconds), stoppingToken).ConfigureAwait(false);
@@ -99,9 +108,17 @@ namespace BotCore.Services
                 {
                     await CheckPositionForZoneBreaksAsync(position, zoneService, cancellationToken).ConfigureAwait(false);
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
-                    _logger.LogWarning(ex, "⚠️ [ZONE-BREAK] Error checking zone breaks for position {Symbol}", position.Symbol);
+                    _logger.LogWarning(ex, "⚠️ [ZONE-BREAK] Invalid operation checking zone breaks for position {Symbol}", position.Symbol);
+                }
+                catch (ArgumentException ex)
+                {
+                    _logger.LogWarning(ex, "⚠️ [ZONE-BREAK] Invalid argument checking zone breaks for position {Symbol}", position.Symbol);
+                }
+                catch (NullReferenceException ex)
+                {
+                    _logger.LogWarning(ex, "⚠️ [ZONE-BREAK] Null reference checking zone breaks for position {Symbol}", position.Symbol);
                 }
             }
             
@@ -324,9 +341,13 @@ namespace BotCore.Services
                     _logger.LogInformation("📢 [ZONE-BREAK] Notified position management of {Type} event for {Symbol}",
                         breakEvent.BreakType, breakEvent.Symbol);
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "❌ [ZONE-BREAK] Error processing zone break event for {Symbol}", breakEvent.Symbol);
+                    _logger.LogError(ex, "❌ [ZONE-BREAK] Invalid operation processing zone break event for {Symbol}", breakEvent.Symbol);
+                }
+                catch (ArgumentException ex)
+                {
+                    _logger.LogError(ex, "❌ [ZONE-BREAK] Invalid argument processing zone break event for {Symbol}", breakEvent.Symbol);
                 }
             }
             

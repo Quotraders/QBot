@@ -165,11 +165,23 @@ public class WalkForwardTrainer
                              $"Train={fold.TrainingSamples}, Test={fold.TestSamples}, " +
                              $"Accuracy={metrics.Accuracy:P1}, Brier={metrics.BrierScore:F3}");
         }
-        catch (Exception ex)
+        catch (System.IO.FileNotFoundException ex)
         {
             fold.Status = FoldStatus.Error;
             fold.ErrorMessage = ex.Message;
-            Console.WriteLine($"[WALK-FORWARD] Fold {foldNumber} failed: {ex.Message}");
+            Console.WriteLine($"[WALK-FORWARD] Fold {foldNumber} failed - file not found: {ex.Message}");
+        }
+        catch (InvalidOperationException ex)
+        {
+            fold.Status = FoldStatus.Error;
+            fold.ErrorMessage = ex.Message;
+            Console.WriteLine($"[WALK-FORWARD] Fold {foldNumber} failed - invalid operation: {ex.Message}");
+        }
+        catch (ArgumentException ex)
+        {
+            fold.Status = FoldStatus.Error;
+            fold.ErrorMessage = ex.Message;
+            Console.WriteLine($"[WALK-FORWARD] Fold {foldNumber} failed - invalid argument: {ex.Message}");
         }
 
         return fold;
@@ -264,9 +276,19 @@ public class WalkForwardTrainer
             Console.WriteLine($"[WALK-FORWARD] Evaluation complete: {predictions.Count} predictions");
             return metrics;
         }
-        catch (Exception ex)
+        catch (System.IO.FileNotFoundException ex)
         {
-            Console.WriteLine($"[WALK-FORWARD] Evaluation error: {ex.Message}");
+            Console.WriteLine($"[WALK-FORWARD] Evaluation error - model file not found: {ex.Message}");
+            return new ValidationMetrics();
+        }
+        catch (InvalidOperationException ex)
+        {
+            Console.WriteLine($"[WALK-FORWARD] Evaluation error - invalid operation: {ex.Message}");
+            return new ValidationMetrics();
+        }
+        catch (ArgumentException ex)
+        {
+            Console.WriteLine($"[WALK-FORWARD] Evaluation error - invalid argument: {ex.Message}");
             return new ValidationMetrics();
         }
     }
@@ -299,9 +321,19 @@ public class WalkForwardTrainer
             var probability = 1.0f / (1.0f + (float)Math.Exp(-output));
             return (decimal)probability;
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            Console.WriteLine($"[WALK-FORWARD] ONNX inference error: {ex.Message}, using feature fallback");
+            Console.WriteLine($"[WALK-FORWARD] ONNX inference error - invalid operation: {ex.Message}, using feature fallback");
+            return CalculateAdvancedFeaturePrediction(sample);
+        }
+        catch (ArgumentException ex)
+        {
+            Console.WriteLine($"[WALK-FORWARD] ONNX inference error - invalid argument: {ex.Message}, using feature fallback");
+            return CalculateAdvancedFeaturePrediction(sample);
+        }
+        catch (IndexOutOfRangeException ex)
+        {
+            Console.WriteLine($"[WALK-FORWARD] ONNX inference error - index out of range: {ex.Message}, using feature fallback");
             return CalculateAdvancedFeaturePrediction(sample);
         }
     }

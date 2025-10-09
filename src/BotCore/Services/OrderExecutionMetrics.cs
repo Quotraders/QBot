@@ -21,6 +21,8 @@ namespace BotCore.Services
         // Configuration
         private const int MaxRecordsToKeep = 1000;
         private const int StatisticsWindowMinutes = 60;
+        private const double PercentageConversionFactor = 100.0; // Convert decimal to percentage
+        private const double Percentile95 = 95.0; // 95th percentile for latency calculations
         
         public OrderExecutionMetrics(ILogger<OrderExecutionMetrics> logger)
         {
@@ -221,9 +223,9 @@ namespace BotCore.Services
                 TotalFills = stats.TotalFills,
                 PartialFills = stats.PartialFills,
                 TotalRejections = stats.TotalRejections,
-                FillRate = stats.TotalOrders > 0 ? (double)stats.TotalFills / stats.TotalOrders * 100 : 0,
+                FillRate = stats.TotalOrders > 0 ? (double)stats.TotalFills / stats.TotalOrders * PercentageConversionFactor : 0,
                 AverageLatencyMs = GetAverageLatencyMs(symbol),
-                Latency95thPercentileMs = GetLatencyPercentile(symbol, 95.0),
+                Latency95thPercentileMs = GetLatencyPercentile(symbol, Percentile95),
                 AverageSlippagePercent = GetAverageSlippagePercent(symbol),
                 LastFillTime = stats.LastFillTime,
                 LastRejectionTime = stats.LastRejectionTime,

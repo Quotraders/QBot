@@ -28,6 +28,7 @@ public class S15ShadowLearningService : BackgroundService
     private const double MIN_SHARPE_MULTIPLIER_THIN = 1.30;  // 30% for thin markets
     private const double BOOTSTRAP_P_VALUE_THRESHOLD = 0.05;
     private const double CANARY_TRAFFIC_PERCENTAGE = 0.05;  // 5% traffic for canary
+    private const int MaxRecentDecisionsToKeep = 100; // Keep last 100 decisions when resetting
     
     private int _totalShadowDecisions = 0;
     private bool _isPromotedToCanary = false;
@@ -239,7 +240,7 @@ public class S15ShadowLearningService : BackgroundService
         _totalShadowDecisions = 0;
         
         // Keep recent decisions for next evaluation
-        foreach (var d in decisions.TakeLast(100))
+        foreach (var d in decisions.TakeLast(MaxRecentDecisionsToKeep))
         {
             _shadowDecisions.Enqueue(d);
         }

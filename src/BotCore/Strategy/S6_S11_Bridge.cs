@@ -679,9 +679,19 @@ namespace BotCore.Strategy
                 var baseParams = TradingBot.Abstractions.StrategyParameters.S6Parameters.LoadOptimal();
                 sessionParams = baseParams.LoadOptimalForSession(sessionName);
             }
-            catch (Exception)
+            catch (System.IO.FileNotFoundException)
             {
-                // Parameter loading failed, will use S6RuntimeConfig defaults
+                // Parameter file not found, will use S6RuntimeConfig defaults
+                sessionParams = null;
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                // Parameter file parsing failed, will use S6RuntimeConfig defaults
+                sessionParams = null;
+            }
+            catch (InvalidOperationException)
+            {
+                // Parameter loading operation invalid, will use S6RuntimeConfig defaults
                 sessionParams = null;
             }
             
@@ -779,9 +789,19 @@ namespace BotCore.Strategy
                 var baseParams = TradingBot.Abstractions.StrategyParameters.S11Parameters.LoadOptimal();
                 sessionParams = baseParams.LoadOptimalForSession(sessionName);
             }
-            catch (Exception)
+            catch (System.IO.FileNotFoundException)
             {
-                // Parameter loading failed, will use S11RuntimeConfig defaults
+                // Parameter file not found, will use S11RuntimeConfig defaults
+                sessionParams = null;
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                // Parameter file parsing failed, will use S11RuntimeConfig defaults
+                sessionParams = null;
+            }
+            catch (InvalidOperationException)
+            {
+                // Parameter loading operation invalid, will use S11RuntimeConfig defaults
                 sessionParams = null;
             }
             

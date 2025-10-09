@@ -129,9 +129,19 @@ namespace BotCore.Strategy
                 var baseParams = TradingBot.Abstractions.StrategyParameters.S3Parameters.LoadOptimal();
                 sessionParams = baseParams.LoadOptimalForSession(sessionName);
             }
-            catch (Exception)
+            catch (System.IO.FileNotFoundException)
             {
-                // Parameter loading failed, will use S3RuntimeConfig defaults
+                // Parameter file not found, will use S3RuntimeConfig defaults
+                sessionParams = null;
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                // Parameter file parsing failed, will use S3RuntimeConfig defaults
+                sessionParams = null;
+            }
+            catch (InvalidOperationException)
+            {
+                // Parameter loading operation invalid, will use S3RuntimeConfig defaults
                 sessionParams = null;
             }
 

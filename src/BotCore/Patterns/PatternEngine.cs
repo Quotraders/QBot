@@ -322,10 +322,16 @@ public class PatternEngine : IComponentHealth
                     ["Detectors"] = string.Join(", ", detectorTypes)
                 }));
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             return Task.FromResult(HealthCheckResult.Unhealthy(
-                $"Error checking health: {ex.Message}",
+                $"Invalid operation during health check: {ex.Message}",
+                new Dictionary<string, object> { ["Exception"] = ex.GetType().Name }));
+        }
+        catch (NullReferenceException ex)
+        {
+            return Task.FromResult(HealthCheckResult.Unhealthy(
+                $"Null reference during health check: {ex.Message}",
                 new Dictionary<string, object> { ["Exception"] = ex.GetType().Name }));
         }
     }

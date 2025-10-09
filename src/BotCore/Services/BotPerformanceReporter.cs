@@ -25,6 +25,11 @@ public class BotPerformanceReporter
     private readonly List<TradeRecord> _todayTrades = new();
     private readonly List<TradeRecord> _weekTrades = new();
     
+    // Summary timing constants
+    private const int DaysInWeek = 7; // Days in a week for weekly summary threshold
+    private const double DefaultDailySummaryHour = 17.0; // 5:00 PM EST - futures market close
+    private const double DefaultWeeklySummaryHour = 18.0; // 6:00 PM EST - end of futures week on Friday
+    
     public BotPerformanceReporter(
         ILogger<BotPerformanceReporter> logger,
         OllamaClient? ollamaClient = null)
@@ -267,7 +272,7 @@ Week-End Analysis: What patterns emerged this week? Which strategies excelled an
         // Check if it's Friday, past weekly summary time, and we haven't generated one this week
         return now.DayOfWeek == DayOfWeek.Friday 
             && now.TimeOfDay >= weeklySummaryTime.TimeOfDay 
-            && (now - _lastWeeklySummary).TotalDays >= 7;
+            && (now - _lastWeeklySummary).TotalDays >= DaysInWeek;
     }
 
     private static DateTime GetDailySummaryTime()
@@ -278,7 +283,7 @@ Week-End Analysis: What patterns emerged this week? Which strategies excelled an
         {
             return DateTime.Today.Add(time);
         }
-        return DateTime.Today.AddHours(17.0); // 5:00 PM EST
+        return DateTime.Today.AddHours(DefaultDailySummaryHour); // 5:00 PM EST
     }
 
     private static DateTime GetWeeklySummaryTime()
@@ -289,7 +294,7 @@ Week-End Analysis: What patterns emerged this week? Which strategies excelled an
         {
             return DateTime.Today.Add(time);
         }
-        return DateTime.Today.AddHours(18.0); // 6:00 PM EST
+        return DateTime.Today.AddHours(DefaultWeeklySummaryHour); // 6:00 PM EST
     }
 
     private sealed class TradeRecord
