@@ -409,7 +409,7 @@ namespace BotCore.Services
             }
         }
 
-        private MarketRegime ClassifyRegime(decimal prediction, decimal[] features)
+        private static MarketRegime ClassifyRegime(decimal prediction, decimal[] features)
         {
             var volatility = (double)features[0];
             var trend = (double)features[1];

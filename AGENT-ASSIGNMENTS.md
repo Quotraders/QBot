@@ -20,11 +20,11 @@ Last Updated: 2025-01-09 04:25:30
 - **Branch:** fix/botcore-services-analyzers
 - **Scope:** src/BotCore/Services/**/*.cs ONLY
 - **Status:** In Progress ✅
-- **Errors Fixed:** 20 (CA1822: 134→114)
-- **Files Modified:** 2
-- **Last Commit:** fix(services): Fixed CA1822 static method violations
-- **Last Update:** 2025-10-09 05:25:40
-- **Current File:** Working on CA1822 violations (114 remaining)
+- **Errors Fixed:** 86 (CA1822: 134→80, Total: 6022→5936)
+- **Files Modified:** 7
+- **Last Commit:** fix(services): Fixed 66 more CA1822 violations across 5 files
+- **Last Update:** 2025-10-09 05:35:15
+- **Current File:** Working on remaining CA1822 violations (80 remaining)
 
 ---
 

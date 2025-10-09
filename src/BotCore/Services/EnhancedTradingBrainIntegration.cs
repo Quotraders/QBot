@@ -319,7 +319,7 @@ public class EnhancedTradingBrainIntegration
     /// <summary>
     /// Enhance confidence by blending original with ensemble predictions
     /// </summary>
-    private decimal EnhanceConfidence(decimal originalConfidence, decimal strategyConfidence, decimal priceConfidence)
+    private static decimal EnhanceConfidence(decimal originalConfidence, decimal strategyConfidence, decimal priceConfidence)
     {
         // Weighted average: 50% original, 30% strategy ensemble, 20% price ensemble
         var enhancedConfidence = (originalConfidence * OriginalConfidenceWeight) + 
@@ -421,7 +421,7 @@ public class EnhancedTradingBrainIntegration
     /// <summary>
     /// Generate human-readable enhancement reason
     /// </summary>
-    private string GenerateEnhancementReason(
+    private static string GenerateEnhancementReason(
         BrainTradingDecision originalDecision,
         EnsemblePrediction strategyPred, 
         EnsemblePrediction pricePred, 
@@ -617,7 +617,7 @@ public class EnhancedTradingBrainIntegration
 
     #region Helper Methods
 
-    private double[] ExtractContextVector(BrainMarketContext marketContext)
+    private static double[] ExtractContextVector(BrainMarketContext marketContext)
     {
         // Extract and normalize market context into feature vector
         return new double[] { 
@@ -629,7 +629,7 @@ public class EnhancedTradingBrainIntegration
         };
     }
 
-    private double[] ExtractMarketFeatures(BrainMarketContext marketContext)
+    private static double[] ExtractMarketFeatures(BrainMarketContext marketContext)
     {
         // Extract market features for price prediction
         return new double[] { 
@@ -642,7 +642,7 @@ public class EnhancedTradingBrainIntegration
         };
     }
 
-    private double[] CreateStateVector(ServicesTradingDecision decision, BrainMarketContext marketContext)
+    private static double[] CreateStateVector(ServicesTradingDecision decision, BrainMarketContext marketContext)
     {
         // Create state vector for CVaR-PPO using available properties
         return new double[] { 
@@ -659,7 +659,7 @@ public class EnhancedTradingBrainIntegration
     /// <summary>
     /// Convert Dictionary marketContext to MarketContext
     /// </summary>
-    private BrainMarketContext ConvertToMarketContext(Dictionary<string, object> marketContext)
+    private static BrainMarketContext ConvertToMarketContext(Dictionary<string, object> marketContext)
     {
         var brainContext = new BrainMarketContext();
         
@@ -695,7 +695,7 @@ public class EnhancedTradingBrainIntegration
         return brainContext;
     }
 
-    private Env CreateSampleEnv()
+    private static Env CreateSampleEnv()
     {
         return new Env
         {
@@ -705,7 +705,7 @@ public class EnhancedTradingBrainIntegration
         };
     }
 
-    private Levels CreateSampleLevels()
+    private static Levels CreateSampleLevels()
     {
         var basePrice = 4500.0m;
         return new Levels
@@ -723,7 +723,7 @@ public class EnhancedTradingBrainIntegration
         };
     }
 
-    private IList<Bar> CreateSampleBars()
+    private static IList<Bar> CreateSampleBars()
     {
         var bars = new List<Bar>();
         var basePrice = 4500.0m;
@@ -751,7 +751,7 @@ public class EnhancedTradingBrainIntegration
         return bars;
     }
 
-    private RiskEngine CreateSampleRisk()
+    private static RiskEngine CreateSampleRisk()
     {
         var riskEngine = new RiskEngine();
         riskEngine.cfg.risk_per_trade = DefaultBarCount; // $100 risk per trade
@@ -760,7 +760,7 @@ public class EnhancedTradingBrainIntegration
         return riskEngine;
     }
 
-    private BrainTradingDecision ConvertBrainToTradingDecision(object brainDecision)
+    private static BrainTradingDecision ConvertBrainToTradingDecision(object brainDecision)
     {
         // Convert UnifiedTradingBrain decision format to BotCore TradingDecision
         if (brainDecision == null)
@@ -802,7 +802,7 @@ public class EnhancedTradingBrainIntegration
         };
     }
 
-    private BrainTradingDecision CreateFallbackTradingDecision()
+    private static BrainTradingDecision CreateFallbackTradingDecision()
     {
         return new BrainTradingDecision
         {
@@ -816,7 +816,7 @@ public class EnhancedTradingBrainIntegration
     /// <summary>
     /// Convert BrainTradingDecision to ServicesTradingDecision for ensemble processing
     /// </summary>
-    private ServicesTradingDecision ConvertToServicesDecision(BrainTradingDecision brainDecision)
+    private static ServicesTradingDecision ConvertToServicesDecision(BrainTradingDecision brainDecision)
     {
         return new ServicesTradingDecision
         {
