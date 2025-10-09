@@ -74,10 +74,10 @@ public sealed class PatternSignalResolver : IFeatureResolver
             var patternScores = await patternEngine.GetCurrentScoresAsync(symbol, cancellationToken).ConfigureAwait(false);
             
             // Pattern signal detection based on scores and confidence
-            var isPatternPresent = _patternType.ToLowerInvariant() switch
+            var isPatternPresent = _patternType.ToUpperInvariant() switch
             {
-                "doji" => DetectDojiPattern(patternScores),
-                "hammer" => DetectHammerPattern(patternScores),
+                "DOJI" => DetectDojiPattern(patternScores),
+                "HAMMER" => DetectHammerPattern(patternScores),
                 _ => throw new InvalidOperationException($"Unknown pattern type: {_patternType}")
             };
             

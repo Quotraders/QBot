@@ -168,7 +168,7 @@ public sealed class ConfigurationLocks
         var compliantSettings = report.Settings.Values.Where(s => s.IsCompliant).ToList();
         var nonCompliantSettings = report.Settings.Values.Where(s => !s.IsCompliant).ToList();
         
-        if (nonCompliantSettings.Any())
+        if (nonCompliantSettings.Count > 0)
         {
             audit.AppendLine(CultureInfo.InvariantCulture, $"❌ NON-COMPLIANT SETTINGS:");
             foreach (var setting in nonCompliantSettings)

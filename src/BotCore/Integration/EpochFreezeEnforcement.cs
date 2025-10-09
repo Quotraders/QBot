@@ -494,7 +494,7 @@ public sealed class EpochFreezeEnforcement
                 var tags = new Dictionary<string, object>
                 {
                     ["symbol"] = snapshot.Symbol,
-                    ["direction"] = snapshot.Direction.ToString().ToLowerInvariant()
+                    ["direction"] = snapshot.Direction.ToString().ToUpperInvariant()
                 };
                 
                 await metricsService.RecordCounterAsync("epoch_freeze.snapshots_captured", 1, tags, cancellationToken).ConfigureAwait(false);
@@ -531,7 +531,7 @@ public sealed class EpochFreezeEnforcement
                     {
                         ["position_id"] = result.PositionId,
                         ["violation_type"] = violation.ViolationType,
-                        ["severity"] = violation.Severity.ToString().ToLowerInvariant()
+                        ["severity"] = violation.Severity.ToString().ToUpperInvariant()
                     };
                     
                     await metricsService.RecordCounterAsync("epoch_freeze.violations", 1, tags, cancellationToken).ConfigureAwait(false);
@@ -566,7 +566,7 @@ public sealed class EpochFreezeEnforcement
                 var tags = new Dictionary<string, object>
                 {
                     ["symbol"] = snapshot.Symbol,
-                    ["direction"] = snapshot.Direction.ToString().ToLowerInvariant()
+                    ["direction"] = snapshot.Direction.ToString().ToUpperInvariant()
                 };
                 
                 await metricsService.RecordCounterAsync("epoch_freeze.epochs_released", 1, tags, cancellationToken).ConfigureAwait(false);
