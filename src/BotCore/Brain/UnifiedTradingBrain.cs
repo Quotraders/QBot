@@ -1892,6 +1892,7 @@ Reason closed: {reason}
 
         private async Task UpdateUnifiedLearningAsync(CancellationToken cancellationToken)
         {
+            _ = cancellationToken; // Reserved for future async operations
             try
             {
                 _logger.LogInformation("🔄 [UNIFIED-LEARNING] Starting unified learning update across all strategies...");
@@ -2661,7 +2662,7 @@ Reason closed: {reason}
             return historicalData;
         }
 
-        private async Task<double> SimulateDrawdownAsync(
+        private static async Task<double> SimulateDrawdownAsync(
             InferenceSession session,
             List<float[]> historicalData,
             CancellationToken cancellationToken)
@@ -2807,6 +2808,7 @@ Reason closed: {reason}
             string newModelPath,
             CancellationToken cancellationToken)
         {
+            _ = cancellationToken; // Reserved for future async operations
             try
             {
                 var oldVersion = File.Exists(currentModelPath) 
@@ -2948,6 +2950,7 @@ Explain in 1-2 sentences why I'm waiting and what I'm looking for. Speak as ME (
             BrainDecision decision,
             MarketContext context)
         {
+            _ = context; // Reserved for future context-aware explanations
             if (_ollamaClient == null)
                 return string.Empty;
 
