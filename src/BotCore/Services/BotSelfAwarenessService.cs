@@ -125,9 +125,9 @@ public sealed class BotSelfAwarenessService : BackgroundService
             
             _logger.LogInformation("🤖 [SELF-AWARENESS] Self-awareness system stopped");
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException ex)
         {
-            _logger.LogInformation("🤖 [SELF-AWARENESS] Self-awareness cancelled during startup");
+            _logger.LogInformation(ex, "🤖 [SELF-AWARENESS] Self-awareness cancelled during startup");
         }
         catch (Exception ex)
         {

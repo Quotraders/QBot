@@ -610,7 +610,7 @@ public class AutonomousDecisionEngine : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogDebug("Using fallback market data: {Error}", ex.Message);
+                _logger.LogDebug(ex, "Using fallback market data: {Error}", ex.Message);
             }
             
             var marketContext = new TradingBot.Abstractions.MarketContext
