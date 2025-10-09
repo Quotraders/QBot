@@ -4,6 +4,7 @@ using BotCore.Configuration;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -73,11 +74,11 @@ namespace BotCore.Features
                     return;
                 }
 
-                var high = Convert.ToDecimal(highProperty.GetValue(barData));
-                var low = Convert.ToDecimal(lowProperty.GetValue(barData));
-                var close = Convert.ToDecimal(closeProperty.GetValue(barData));
-                var volume = Convert.ToDecimal(volumeProperty.GetValue(barData));
-                var timestamp = timestampProperty != null ? Convert.ToDateTime(timestampProperty.GetValue(barData)) : DateTime.UtcNow;
+                var high = Convert.ToDecimal(highProperty.GetValue(barData), CultureInfo.InvariantCulture);
+                var low = Convert.ToDecimal(lowProperty.GetValue(barData), CultureInfo.InvariantCulture);
+                var close = Convert.ToDecimal(closeProperty.GetValue(barData), CultureInfo.InvariantCulture);
+                var volume = Convert.ToDecimal(volumeProperty.GetValue(barData), CultureInfo.InvariantCulture);
+                var timestamp = timestampProperty != null ? Convert.ToDateTime(timestampProperty.GetValue(barData), CultureInfo.InvariantCulture) : DateTime.UtcNow;
 
                 // Calculate OFI proxy using bar-based approximation
                 // True OFI requires tick data, but we can approximate using bar characteristics

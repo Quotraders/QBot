@@ -91,10 +91,10 @@ public class YamlStrategy
     public string Family { get; set; } = string.Empty;
     public string Bias { get; set; } = "both";
     public YamlWhen? When { get; set; }
-    public List<string>? Contra { get; set; }
-    public List<string>? Confluence { get; set; }
+    public List<string>? Contra { get; init; }
+    public List<string>? Confluence { get; init; }
     public YamlPlaybook? Playbook { get; set; }
-    public List<string>? TelemetryTags { get; set; }
+    public List<string>? TelemetryTags { get; init; }
 }
 
 /// <summary>
@@ -102,8 +102,8 @@ public class YamlStrategy
 /// </summary>
 public class YamlWhen
 {
-    public List<string>? Regime { get; set; }
-    public List<string>? Micro { get; set; }
+    public List<string>? Regime { get; init; }
+    public List<string>? Micro { get; init; }
 }
 
 /// <summary>

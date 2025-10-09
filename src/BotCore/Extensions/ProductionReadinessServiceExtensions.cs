@@ -19,6 +19,9 @@ namespace BotCore.Extensions
         private const int DevMinBarsSeen = 5;
         private const int DevMinSeededBars = 3;
         private const int DevMinLiveTicks = 1;
+        
+        // Default seeding contracts for production
+        private static readonly string[] DefaultSeedingContracts = new[] { "CON.F.US.EP.Z25", "CON.F.US.ENQ.Z25" };
 
         /// <summary>
         /// Register all production readiness services
@@ -65,7 +68,7 @@ namespace BotCore.Extensions
                 config.MarketDataTimeoutSeconds = MarketDataTimeoutSeconds;
                 config.EnableHistoricalSeeding = true;
                 config.EnableProgressiveReadiness = true;
-                config.SeedingContracts = new[] { "CON.F.US.EP.Z25", "CON.F.US.ENQ.Z25" };
+                config.SeedingContracts = DefaultSeedingContracts;
 
                 // Environment-specific settings
                 config.Environment = new EnvironmentSettings

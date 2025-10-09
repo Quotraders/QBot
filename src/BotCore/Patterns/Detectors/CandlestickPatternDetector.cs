@@ -309,7 +309,7 @@ public class CandlestickPatternDetector : IPatternDetector
         return new PatternResult
         {
             Score = score,
-            Direction = directional ? (type.Contains("Piercing") || type.Contains("Bottom") ? 1 : -1) : 0,
+            Direction = directional ? (type.Contains("Piercing", StringComparison.Ordinal) || type.Contains("Bottom", StringComparison.Ordinal) ? 1 : -1) : 0,
             Confidence = score,
             Metadata = new Dictionary<string, object> { ["type"] = type }
         };

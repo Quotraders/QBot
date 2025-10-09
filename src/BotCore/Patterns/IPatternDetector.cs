@@ -65,7 +65,7 @@ public class PatternResult
     /// <summary>
     /// Additional metadata for the pattern
     /// </summary>
-    public Dictionary<string, object> Metadata { get; set; } = new();
+    public Dictionary<string, object> Metadata { get; init; } = new();
     
     /// <summary>
     /// Timestamp when pattern was detected

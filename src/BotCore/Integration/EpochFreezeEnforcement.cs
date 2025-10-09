@@ -630,7 +630,7 @@ public sealed class EpochSnapshot
     public double EntryPrice { get; set; }
     public double PositionSize { get; set; }
     public PositionDirection Direction { get; set; }
-    public Dictionary<string, ZoneAnchor> ZoneAnchors { get; set; } = new();
+    public Dictionary<string, ZoneAnchor> ZoneAnchors { get; init; } = new();
     public BracketSnapshot BracketSettings { get; set; } = new();
     public bool IsFrozen { get; set; }
 }
@@ -693,7 +693,7 @@ public sealed class EpochFreezeValidationResult
     public string PositionId { get; set; } = string.Empty;
     public DateTime ValidationTime { get; set; }
     public bool IsValid { get; set; }
-    public List<FreezeViolation> Violations { get; set; } = new();
+    public List<FreezeViolation> Violations { get; init; } = new();
     public string? Note { get; set; }
 }
 

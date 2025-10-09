@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -275,13 +276,13 @@ public sealed class YamlSchemaValidator
     {
         var fileName = Path.GetFileName(filePath).ToLowerInvariant();
         
-        if (fileName.Contains("strategy") || fileName.StartsWith("s2") || fileName.StartsWith("s3") || 
+        if (fileName.Contains("strategy", StringComparison.Ordinal) || fileName.StartsWith("s2") || fileName.StartsWith("s3") || 
             fileName.StartsWith("s6") || fileName.StartsWith("s11"))
         {
             return "strategy";
         }
         
-        if (fileName.Contains("pattern"))
+        if (fileName.Contains("pattern", StringComparison.Ordinal))
         {
             return "pattern";
         }
@@ -475,17 +476,17 @@ public sealed class YamlSchemaValidator
         
         var report = new StringBuilder();
         
-        report.AppendLine("=== YAML SCHEMA VALIDATION REPORT ===");
-        report.AppendLine($"Directory: {result.DirectoryPath}");
-        report.AppendLine($"Search Pattern: {result.SearchPattern}");
-        report.AppendLine($"Validation Time: {result.ValidationTimeMs:F2}ms");
-        report.AppendLine($"Overall Status: {(result.IsAllValid ? "✅ ALL VALID" : "❌ VALIDATION FAILED")}");
-        report.AppendLine($"Files: {result.ValidFiles}/{result.TotalFiles} valid");
+        report.AppendLine(CultureInfo.InvariantCulture, $"=== YAML SCHEMA VALIDATION REPORT ===");
+        report.AppendLine(CultureInfo.InvariantCulture, $"Directory: {result.DirectoryPath}");
+        report.AppendLine(CultureInfo.InvariantCulture, $"Search Pattern: {result.SearchPattern}");
+        report.AppendLine(CultureInfo.InvariantCulture, $"Validation Time: {result.ValidationTimeMs:F2}ms");
+        report.AppendLine(CultureInfo.InvariantCulture, $"Overall Status: {(result.IsAllValid ? "✅ ALL VALID" : "❌ VALIDATION FAILED")}");
+        report.AppendLine(CultureInfo.InvariantCulture, $"Files: {result.ValidFiles}/{result.TotalFiles} valid");
         report.AppendLine();
         
         if (!string.IsNullOrEmpty(result.DirectoryError))
         {
-            report.AppendLine($"Directory Error: {result.DirectoryError}");
+            report.AppendLine(CultureInfo.InvariantCulture, $"Directory Error: {result.DirectoryError}");
             report.AppendLine();
         }
         
@@ -495,17 +496,17 @@ public sealed class YamlSchemaValidator
         
         if (invalidFiles.Any())
         {
-            report.AppendLine("❌ INVALID FILES:");
+            report.AppendLine(CultureInfo.InvariantCulture, $"❌ INVALID FILES:");
             foreach (var file in invalidFiles)
             {
-                report.AppendLine($"  {Path.GetFileName(file.FilePath)}:");
+                report.AppendLine(CultureInfo.InvariantCulture, $"  {Path.GetFileName(file.FilePath)}:");
                 foreach (var error in file.Errors)
                 {
-                    report.AppendLine($"    ERROR: {error}");
+                    report.AppendLine(CultureInfo.InvariantCulture, $"    ERROR: {error}");
                 }
                 foreach (var warning in file.Warnings)
                 {
-                    report.AppendLine($"    WARNING: {warning}");
+                    report.AppendLine(CultureInfo.InvariantCulture, $"    WARNING: {warning}");
                 }
             }
             report.AppendLine();
@@ -513,12 +514,12 @@ public sealed class YamlSchemaValidator
         
         if (validFiles.Any())
         {
-            report.AppendLine("✅ VALID FILES:");
+            report.AppendLine(CultureInfo.InvariantCulture, $"✅ VALID FILES:");
             foreach (var file in validFiles)
             {
                 var warningCount = file.Warnings.Count;
                 var warningText = warningCount > 0 ? $" ({warningCount} warnings)" : "";
-                report.AppendLine($"  {Path.GetFileName(file.FilePath)}{warningText}");
+                report.AppendLine(CultureInfo.InvariantCulture, $"  {Path.GetFileName(file.FilePath)}{warningText}");
             }
         }
         
