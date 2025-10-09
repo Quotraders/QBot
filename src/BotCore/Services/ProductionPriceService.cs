@@ -80,8 +80,8 @@ public static class ProductionPriceService
         if (string.IsNullOrWhiteSpace(symbol)) return false;
         
         var upperSymbol = symbol.ToUpperInvariant();
-        return upperSymbol.Contains("ES") || upperSymbol.Contains("MES") || 
-               upperSymbol.Contains("E-MINI") || upperSymbol.Contains("EMINI");
+        return upperSymbol.Contains("ES", StringComparison.Ordinal) || upperSymbol.Contains("MES", StringComparison.Ordinal) || 
+               upperSymbol.Contains("E-MINI", StringComparison.Ordinal) || upperSymbol.Contains("EMINI", StringComparison.Ordinal);
     }
 
     /// <summary>
