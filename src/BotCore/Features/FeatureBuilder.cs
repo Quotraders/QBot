@@ -3,6 +3,7 @@ using BotCore.Config;
 using BotCore.Services;
 using TradingBot.Abstractions;
 using Microsoft.Extensions.Logging;
+using System.Reflection;
 
 namespace BotCore.Features;
 
