@@ -13,34 +13,36 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ---
 
-### 🔧 Round 196 - Phase 2: Agent 2 BotCore Services CA1822 Fixes
+### 🔧 Round 197 - Phase 2: Agent 2 BotCore Services CA1822 & CA1860 Fixes
 
 **Date**: January 2025 (2025-01-09)
 **Agent**: Agent 2 (GitHub Copilot)  
 **Branch**: fix/botcore-services-analyzers  
-**Objective**: Fix CA1822 (static method) violations in BotCore/Services folder following minimal-change approach
+**Objective**: Fix CA1822 (static method) and CA1860 (prefer Count over Any) violations in BotCore/Services folder following minimal-change approach
 
 | Error Code | Count Before | Count After | Fixes Applied |
 |------------|--------------|-------------|---------------|
 | CA1822 | 134 | 24 | Marked 110 helper methods as static |
-| **Total Services/** | **6,022** | **5,836** | **186 violations fixed (3.1%)** |
+| CA1860 | 94 | 74 | Replaced .Any() with .Count comparisons |
+| **Total Services/** | **6,022** | **5,816** | **206 violations fixed (3.4%)** |
 
-**Files Modified (14 files)**:
+**Files Modified (16 files)**:
 1. `src/BotCore/Services/ZoneBreakMonitoringService.cs` - 2 methods marked static
 2. `src/BotCore/Services/UnifiedPositionManagementService.cs` - 8 methods marked static  
 3. `src/BotCore/Services/EnhancedBacktestService.cs` - 1 method marked static
 4. `src/BotCore/Services/EnhancedTradingBrainIntegration.cs` - 16 methods marked static
-5. `src/BotCore/Services/TimeOptimizedStrategyManager.cs` - 22 methods marked static
+5. `src/BotCore/Services/TimeOptimizedStrategyManager.cs` - 22 methods marked static + 3 CA1860 fixes
 6. `src/BotCore/Services/BotHealthReporter.cs` - 1 method marked static
 7. `src/BotCore/Services/CloudModelDownloader.cs` - 1 method marked static
 8. `src/BotCore/Services/AutonomousDecisionEngine.cs` - 1 method marked static
 9. `src/BotCore/Services/S15ShadowLearningService.cs` - 3 methods marked static
 10. `src/BotCore/Services/PositionManagementOptimizer.cs` - 1 method marked static
 11. `src/BotCore/Services/MasterDecisionOrchestrator.cs` - 1 method marked static
+12. `src/BotCore/Services/StrategyPerformanceAnalyzer.cs` - 7 CA1860 fixes
 
 **Detailed Analysis**:
 
-**CA1822 - Member Does Not Access Instance Data**:
+**CA1822 - Member Does Not Access Instance Data (110 fixes)**:
 - **Pattern**: Pure calculation/helper methods that don't use instance state
 - **Solution**: Added `static` keyword to method declarations
 - **Examples**:
@@ -49,19 +51,28 @@ This ledger documents all fixes made during the analyzer compliance initiative i
   - `CalculateMomentum(IReadOnlyList<Bar> bars, int period)` - Technical indicator calculation
   - `ConvertToServicesDecision(BrainTradingDecision brain)` - Pure transformation
 
+**CA1860 - Prefer Count Over Any (20 fixes)**:
+- **Pattern**: Replace `.Any()` with `.Count > 0` or `.Count == 0` for better performance and clarity
+- **Solution**: Changed collection checks to use Count property
+- **Examples**:
+  - `if (signals.Any())` → `if (signals.Count > 0)`
+  - `if (!gaps.Any())` → `if (gaps.Count == 0)`
+  - `reasons.Any() ? ... : ...` → `reasons.Count > 0 ? ... : ...`
+
 **Remaining CA1822 (24)**:
 - Most are stub methods in MasterDecisionOrchestrator.cs (ContinuousLearningManager, ContractRolloverManager)
 - These will use instance fields (_logger, _serviceProvider) when implemented
 - **Decision**: Left as instance methods per guidebook: "Exception: imminent instance use (document)"
 
 **Reality Check - Services Folder Scope**:
-- **CA1848** (3,550 violations, 60% of total): LoggerMessage pattern - TOO INVASIVE for minimal-change approach
-- **CA1031** (450 violations, 8%): Exception handling refactoring - COMPLEX, requires careful analysis
-- **Remaining** (~1,800 violations, 32%): Mix of simple and complex fixes
+- **CA1848** (3,562 violations, 61% of total): LoggerMessage pattern - TOO INVASIVE for minimal-change approach
+- **CA1031** (454 violations, 8%): Exception handling refactoring - COMPLEX, requires careful analysis
+- **CA1860** (74 violations remaining): Can continue incrementally
+- **Remaining** (~1,700 violations, 29%): Mix of simple and complex fixes
 
 **Rationale**: 
 - Followed minimal-change production guardrails
-- CA1822 fixes are mechanical, safe, and don't change behavior
+- CA1822 and CA1860 fixes are mechanical, safe, and don't change behavior
 - Avoided large-scale refactoring (CA1848, CA1031) that would violate minimal-change principle
 - Documented patterns for systematic future fixes
 
@@ -73,10 +84,88 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 - File boundary respected (Services/ only)
 
 **Next Steps**:
+- Continue CA1860 fixes (74 remaining)
 - Other agents will address their assigned scopes
 - CA1848 (logging) requires strategic decision: LoggerMessage vs source generators
 - CA1031 (exceptions) requires careful analysis of each catch block
 - Collection properties (CA2227/CA1002) can be fixed with init-only setters for DTOs
+
+---
+
+### 🔧 Round 196 - Phase 2: ML and Brain Analyzer Fixes (Agent 3)
+
+**Date**: January 2025  
+**Agent**: GitHub Copilot Agent 3  
+**Branch**: fix/ml-brain-analyzers  
+**Scope**: src/BotCore/ML/**/*.cs AND src/BotCore/Brain/**/*.cs ONLY  
+**Objective**: Fix analyzer violations in ML and Brain folders with zero suppressions
+
+| Error Code | Count Before | Count After | Fix Applied |
+|------------|--------------|-------------|-------------|
+| CA1003 | 4 | 0 | Changed events to use EventHandler<T> with EventArgs |
+| CA1034 | 2 | 0 | Moved nested types outside parent class |
+| CA1707 | 4 | 0 | Renamed properties to remove underscores |
+| S1450 | 1 | 0 | Converted field to local variable |
+| CA1822 | 5 | 0 | Made helper methods static |
+| S6608 | 6 | 0 | Used indexing instead of First()/Last() |
+| CA1305 | 4 | 0 | Added CultureInfo.InvariantCulture to ToString() |
+| CA1307 | 4 | 0 | Added StringComparison.Ordinal to string operations |
+| **Total** | **1306** | **1242** | **64 errors fixed** |
+
+**Files Modified (6 files)**:
+1. `src/BotCore/ML/OnnxModelLoader.cs` - CA1003, CA1307
+2. `src/BotCore/ML/OnnxModelValidationService.cs` - CA1034
+3. `src/BotCore/ML/UCBManager.cs` - CA1707
+4. `src/BotCore/ML/StrategyMlModelManager.cs` - S1450
+5. `src/BotCore/ML/MLSystemConsolidationService.cs` - CA1307
+6. `src/BotCore/Brain/UnifiedTradingBrain.cs` - CA1822, S6608, CA1305
+
+**Detailed Fixes**:
+
+**CA1003 - Event Handler Pattern (4 fixes)**:
+- Changed `Action<ModelHotReloadEvent>` to `EventHandler<ModelHotReloadEvent>`
+- Changed `Action<ModelHealthEvent>` to `EventHandler<ModelHealthEvent>`
+- Made event argument classes inherit from EventArgs
+- Updated all event invocations to pass `this` as sender
+
+**CA1034 - Nested Types (2 fixes)**:
+- Moved `ValidationResult` class outside of `OnnxModelValidationService`
+- Moved `ValidationSummary` class outside of `OnnxModelValidationService`
+
+**CA1707 - Naming Convention (4 fixes)**:
+- Renamed `ES_ATR` to `ESAtr`
+- Renamed `NQ_ATR` to `NQAtr`
+- Renamed `RSI_ES` to `RsiES`
+- Renamed `RSI_NQ` to `RsiNQ`
+
+**S1450 - Private Field Used Only in Constructor (1 fix)**:
+- Converted `_modelsPath` field to local variable in `StrategyMlModelManager`
+
+**CA1822 - Methods Should Be Static (5 fixes)**:
+- Made `RunInference` static in `UnifiedTradingBrain`
+- Made `CalculateTotalVariationDistance` static
+- Made `CalculateKLDivergence` static
+- Made `GetCurrentModelPath` static
+- Made `GetModelVersion` static
+
+**S6608 - Indexing Optimization (6 fixes)**:
+- Replaced `.First()` with `[0]` indexing
+- Replaced `.Last()` with `[Count - 1]` indexing
+
+**CA1305/CA1307 - Globalization (8 fixes)**:
+- Added `CultureInfo.InvariantCulture` to `ToString()` calls
+- Added `StringComparison.Ordinal` to `Contains()` and `Replace()` calls
+
+**Remaining Work**:
+- 1242 errors remaining in ML and Brain folders
+- Major categories: CA1848 (644 logging), CA1031 (144 exceptions), CA5394 (40 security)
+- S104 (2 file size) deferred - requires major refactoring beyond minimal changes
+
+**Guardrails Compliance**: ✅
+- No suppressions or pragmas
+- No config modifications
+- All fixes are production-ready code
+- Follows existing patterns
 
 ---
 

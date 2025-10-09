@@ -49,7 +49,6 @@ namespace BotCore.ML
     public sealed class StrategyMlModelManager : IDisposable
     {
         private readonly ILogger _logger;
-        private readonly string _modelsPath;
         private readonly IMLMemoryManager? _memoryManager;
         private readonly OnnxModelLoader? _onnxLoader;
         private bool _disposed;
@@ -79,12 +78,12 @@ namespace BotCore.ML
             _logger = logger;
             _memoryManager = memoryManager;
             _onnxLoader = onnxLoader;
-            _modelsPath = Path.Combine(AppContext.BaseDirectory, "models");
+            var modelsPath = Path.Combine(AppContext.BaseDirectory, "models");
 
             // Use your actual trained models instead of simulated "latest_" paths
-            _rlSizerPath = Path.Combine(_modelsPath, "rl", "cvar_ppo_agent.onnx");
-            _metaClassifierPath = Path.Combine(_modelsPath, "rl_model.onnx"); 
-            _execQualityPath = Path.Combine(_modelsPath, "rl", "test_cvar_ppo.onnx");
+            _rlSizerPath = Path.Combine(modelsPath, "rl", "cvar_ppo_agent.onnx");
+            _metaClassifierPath = Path.Combine(modelsPath, "rl_model.onnx"); 
+            _execQualityPath = Path.Combine(modelsPath, "rl", "test_cvar_ppo.onnx");
 
             _logger.LogInformation("[ML-Manager] Initialized - RL enabled: {Enabled}, Memory management: {MemoryEnabled}", 
                 IsEnabled, _memoryManager != null);
