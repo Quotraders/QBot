@@ -60,7 +60,7 @@ namespace BotCore
                       Environment.GetEnvironmentVariable("MANIFEST_HMAC_KEY") ??
                       throw new InvalidOperationException("MANIFEST_HMAC_KEY required");
 
-            _pollIntervalSeconds = int.Parse(_config["ModelUpdater:PollIntervalSeconds"] ?? "300"); // 5 minutes default
+            _pollIntervalSeconds = int.Parse(_config["ModelUpdater:PollIntervalSeconds"] ?? "300", System.Globalization.CultureInfo.InvariantCulture); // 5 minutes default
             _modelsPath = Path.Combine("models", "onnx");
 
             Directory.CreateDirectory(_modelsPath);

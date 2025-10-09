@@ -290,11 +290,11 @@ namespace BotCore.Services
                         var botBar = new BotCore.Models.Bar
                         {
                             Symbol = contractId, // Use contractId as Symbol since ContractId doesn't exist
-                            Open = Convert.ToDecimal(bar["open"]),
-                            High = Convert.ToDecimal(bar["high"]),
-                            Low = Convert.ToDecimal(bar["low"]),
-                            Close = Convert.ToDecimal(bar["close"]),
-                            Volume = Convert.ToInt32(bar.GetValueOrDefault("volume", 0)), // Convert to int
+                            Open = Convert.ToDecimal(bar["open"], System.Globalization.CultureInfo.InvariantCulture),
+                            High = Convert.ToDecimal(bar["high"], System.Globalization.CultureInfo.InvariantCulture),
+                            Low = Convert.ToDecimal(bar["low"], System.Globalization.CultureInfo.InvariantCulture),
+                            Close = Convert.ToDecimal(bar["close"], System.Globalization.CultureInfo.InvariantCulture),
+                            Volume = Convert.ToInt32(bar.GetValueOrDefault("volume", 0), System.Globalization.CultureInfo.InvariantCulture), // Convert to int
                             Ts = DateTime.TryParse(bar["timestamp"].ToString(), out var ts) ? 
                                 ((DateTimeOffset)ts).ToUnixTimeMilliseconds() : // Convert DateTime to long
                                 ((DateTimeOffset)DateTime.UtcNow).ToUnixTimeMilliseconds(),

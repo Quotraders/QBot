@@ -274,8 +274,8 @@ public class ExecutionAnalyzer
             var successCount = zoneData?.GetValueOrDefault("success_count", 0);
             var testCount = zoneData?.GetValueOrDefault("test_count", 0);
 
-            var newSuccessCount = Convert.ToInt32(successCount) + (successful ? 1 : 0);
-            var newTestCount = Convert.ToInt32(testCount) + 1;
+            var newSuccessCount = Convert.ToInt32(successCount, System.Globalization.CultureInfo.InvariantCulture) + (successful ? 1 : 0);
+            var newTestCount = Convert.ToInt32(testCount, System.Globalization.CultureInfo.InvariantCulture) + 1;
             var newSuccessRate = newTestCount > 0 ? (double)newSuccessCount / newTestCount : 0;
 
             feedback[zoneKey] = new

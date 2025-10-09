@@ -339,7 +339,7 @@ namespace BotCore
                 trade.Symbol ?? "ES",
                 trade.Session ?? "RTH",
                 trade.Regime ?? "Range",
-                trade.RMultiple?.ToString("F4") ?? "0",
+                trade.RMultiple?.ToString("F4", System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                 trade.SlipTicks.ToString("F2", CultureInfo.InvariantCulture)
             };
 

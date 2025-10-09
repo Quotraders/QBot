@@ -371,7 +371,7 @@ namespace BotCore
             try
             {
                 // Extract all required fields for CSV export
-                var timestamp = json.TryGetProperty("Timestamp", out var ts) ? ts.GetDateTime().ToString("yyyy-MM-dd HH:mm:ss") : "";
+                var timestamp = json.TryGetProperty("Timestamp", out var ts) ? ts.GetDateTime().ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) : "";
                 var strategy = json.TryGetProperty("Strategy", out var strat) ? strat.GetString() : "";
                 var signalId = json.TryGetProperty("SignalId", out var sig) ? sig.GetString() : "";
                 var session = json.TryGetProperty("Session", out var sess) ? sess.GetString() : "";

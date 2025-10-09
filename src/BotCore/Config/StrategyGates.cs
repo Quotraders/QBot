@@ -147,7 +147,7 @@ public static class StrategyGates
         if (cfg.AlwaysOn.Enabled) return true; // never block in AlwaysOn
         var gf = cfg.GlobalFilters;
         var name = s.Name.ToLowerInvariant();
-        var breakout = name.Contains("breakout") || name.Contains("trend") || name.Contains("squeeze") || name.Contains("drive");
+        var breakout = name.Contains("breakout", StringComparison.Ordinal) || name.Contains("trend", StringComparison.Ordinal) || name.Contains("squeeze", StringComparison.Ordinal) || name.Contains("drive", StringComparison.Ordinal);
         var spreadMax = breakout ? gf.SpreadTicksMaxBo : gf.SpreadTicksMax;
         if (snap.SpreadTicks > spreadMax) return false;
         if (snap.SignalBarAtrMult > gf.SignalBarMaxAtrMult) return false;

@@ -66,11 +66,11 @@ namespace BotCore.Features
                     return;
                 }
 
-                var open = Convert.ToDecimal(openProperty.GetValue(barData));
-                var high = Convert.ToDecimal(highProperty.GetValue(barData));
-                var low = Convert.ToDecimal(lowProperty.GetValue(barData));
-                var close = Convert.ToDecimal(closeProperty.GetValue(barData));
-                var volume = Convert.ToDecimal(volumeProperty.GetValue(barData));
+                var open = Convert.ToDecimal(openProperty.GetValue(barData), System.Globalization.CultureInfo.InvariantCulture);
+                var high = Convert.ToDecimal(highProperty.GetValue(barData), System.Globalization.CultureInfo.InvariantCulture);
+                var low = Convert.ToDecimal(lowProperty.GetValue(barData), System.Globalization.CultureInfo.InvariantCulture);
+                var close = Convert.ToDecimal(closeProperty.GetValue(barData), System.Globalization.CultureInfo.InvariantCulture);
+                var volume = Convert.ToDecimal(volumeProperty.GetValue(barData), System.Globalization.CultureInfo.InvariantCulture);
 
                 // Calculate liquidity absorption metrics
                 var bodySize = Math.Abs(close - open);

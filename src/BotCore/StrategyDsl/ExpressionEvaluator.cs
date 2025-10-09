@@ -63,18 +63,18 @@ public class ExpressionEvaluator
             expression = expression.Trim();
 
             // Handle logical operators (AND, OR)
-            if (expression.Contains(" AND "))
+            if (expression.Contains(" AND ", StringComparison.Ordinal))
             {
                 return EvaluateLogicalAnd(expression);
             }
 
-            if (expression.Contains(" OR "))
+            if (expression.Contains(" OR ", StringComparison.Ordinal))
             {
                 return EvaluateLogicalOr(expression);
             }
 
             // Handle parentheses (simple nested evaluation)
-            if (expression.Contains('(') && expression.Contains(')'))
+            if (expression.Contains('(', StringComparison.Ordinal) && expression.Contains(')', StringComparison.Ordinal))
             {
                 return EvaluateWithParentheses(expression);
             }
@@ -200,7 +200,7 @@ public class ExpressionEvaluator
             var innerResult = EvaluateExpression(innerExpression);
             
             // Replace the parenthetical expression with its result
-            var replacedExpression = expression.Replace(innerMatch.Value, innerResult.ToString().ToLower());
+            var replacedExpression = expression.Replace(innerMatch.Value, innerResult.ToString().ToLower(), StringComparison.Ordinal);
             return EvaluateExpression(replacedExpression);
         }
 
@@ -246,7 +246,7 @@ public class ExpressionEvaluator
         }
 
         // Handle simple feature existence or boolean features
-        if (condition.Contains('.'))
+        if (condition.Contains('.', StringComparison.Ordinal))
         {
             var featureValue = GetFeatureValue(condition);
             if (featureValue is bool boolValue)
@@ -311,7 +311,7 @@ public class ExpressionEvaluator
         }
 
         // Handle time comparisons
-        if (featureName.Contains("time") && TimeSpan.TryParse(valueStr, out var timeValue))
+        if (featureName.Contains("time", StringComparison.Ordinal) && TimeSpan.TryParse(valueStr, out var timeValue))
         {
             if (TimeSpan.TryParse(featureValue.ToString(), out var featureTime))
             {
@@ -331,7 +331,7 @@ public class ExpressionEvaluator
         // Handle numeric comparisons
         if (double.TryParse(valueStr, out var numericValue))
         {
-            var featureNumericValue = Convert.ToDouble(featureValue);
+            var featureNumericValue = Convert.ToDouble(featureValue, System.Globalization.CultureInfo.InvariantCulture);
             
             return operatorStr switch
             {

@@ -1733,7 +1733,7 @@ namespace TopstepX.Bot.Core.Services
             
             // Reduce score for poor adapter health
             if (!_topstepXAdapter.IsConnected) score -= (double)VolatilityFilterThreshold;
-            if (double.TryParse(_topstepXAdapter.ConnectionHealth.Replace("%", ""), out var healthValue) && healthValue < MinimumHealthScore) 
+            if (double.TryParse(_topstepXAdapter.ConnectionHealth.Replace("%", "", StringComparison.Ordinal), out var healthValue) && healthValue < MinimumHealthScore) 
                 score -= (double)VolatilityFilterThreshold;
             
             // Reduce score for stale data
