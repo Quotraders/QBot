@@ -71,9 +71,9 @@ namespace BotCore.Features
                         // FAIL-CLOSED: If no bar sources found and fail-closed is enabled
                         if (_config.FailOnMissingBarSources)
                         {
-                            var missingSourcesMessage = $"[BAR-DISPATCHER] [AUDIT-VIOLATION] No bar sources available - Expected: {string.Join(", ", _config.ExpectedBarSources)} - FAIL-CLOSED + TELEMETRY";
-                            _logger.LogError(missingSourcesMessage);
-                            throw new InvalidOperationException(missingSourcesMessage);
+                            var expectedSources = string.Join(", ", _config.ExpectedBarSources);
+                            _logger.LogError("[BAR-DISPATCHER] [AUDIT-VIOLATION] No bar sources available - Expected: {ExpectedSources} - FAIL-CLOSED + TELEMETRY", expectedSources);
+                            throw new InvalidOperationException($"[BAR-DISPATCHER] [AUDIT-VIOLATION] No bar sources available - Expected: {expectedSources} - FAIL-CLOSED + TELEMETRY");
                         }
                         
                         if (_config.EnableExplicitHolds)

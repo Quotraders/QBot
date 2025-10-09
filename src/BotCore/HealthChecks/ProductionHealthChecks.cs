@@ -209,9 +209,8 @@ public class TopstepXApiHealthCheck : IHealthCheck
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             
             // Check API endpoint availability
-            using var response = await _httpClient.GetAsync(
-                $"{_config.Value.ApiBaseUrl}/api/health", 
-                cancellationToken).ConfigureAwait(false);
+            var healthUri = new Uri($"{_config.Value.ApiBaseUrl}/api/health");
+            using var response = await _httpClient.GetAsync(healthUri, cancellationToken).ConfigureAwait(false);
 
             stopwatch.Stop();
 
@@ -322,7 +321,8 @@ public class TopstepXSignalRHealthCheck : IHealthCheck
     {
         try
         {
-            using var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+            var uri = new Uri(url);
+            using var response = await httpClient.GetAsync(uri, cancellationToken).ConfigureAwait(false);
             return (response.IsSuccessStatusCode, $"Status: {response.StatusCode}");
         }
         catch (HttpRequestException ex)

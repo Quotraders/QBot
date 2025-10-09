@@ -50,9 +50,8 @@ namespace BotCore.Features
             // FAIL-CLOSED: Reject missing/invalid configuration 
             if (!publishIntervalMinutes.HasValue || publishIntervalMinutes <= 0)
             {
-                var errorMsg = $"[FEATURE-PUBLISHER] FAIL-CLOSED: Invalid/missing FeaturePublishingIntervalMinutes configuration: {publishIntervalMinutes}. Must be > 0.";
-                _logger.LogError(errorMsg);
-                throw new InvalidOperationException(errorMsg);
+                _logger.LogError("[FEATURE-PUBLISHER] FAIL-CLOSED: Invalid/missing FeaturePublishingIntervalMinutes configuration: {Interval}. Must be > 0", publishIntervalMinutes);
+                throw new InvalidOperationException($"[FEATURE-PUBLISHER] FAIL-CLOSED: Invalid/missing FeaturePublishingIntervalMinutes configuration: {publishIntervalMinutes}. Must be > 0.");
             }
             
             var publishInterval = TimeSpan.FromMinutes(publishIntervalMinutes.Value);
