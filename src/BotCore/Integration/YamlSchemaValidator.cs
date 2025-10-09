@@ -533,7 +533,7 @@ public sealed class YamlSchemaDefinition
     public string Name { get; set; } = string.Empty;
     public string[] RequiredFields { get; set; } = Array.Empty<string>();
     public string[] OptionalFields { get; set; } = Array.Empty<string>();
-    public Dictionary<string, Func<object, bool>> FieldValidators { get; set; } = new();
+    public Dictionary<string, Func<object, bool>> FieldValidators { get; init; } = new();
 }
 
 /// <summary>
@@ -580,5 +580,5 @@ public sealed class YamlDirectoryValidationResult
     public int InvalidFiles { get; set; }
     public bool IsAllValid { get; set; }
     public string? DirectoryError { get; set; }
-    public List<YamlValidationResult> FileResults { get; set; } = new();
+    public List<YamlValidationResult> FileResults { get; init; } = new();
 }
