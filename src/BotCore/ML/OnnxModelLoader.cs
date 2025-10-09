@@ -375,6 +375,7 @@ public sealed class OnnxModelLoader : IDisposable
             return new ModelLoadResult { Session = null, IsHealthy = false };
         }
 
+        InferenceSession? session = null;
         try
         {
             var startTime = DateTime.UtcNow;
@@ -383,7 +384,7 @@ public sealed class OnnxModelLoader : IDisposable
             var metadata = await GetModelMetadataAsync(modelPath).ConfigureAwait(false);
             
             // Load the ONNX model
-            var session = new InferenceSession(modelPath, _sessionOptions);
+            session = new InferenceSession(modelPath, _sessionOptions);
             
             var loadDuration = DateTime.UtcNow - startTime;
             
@@ -412,15 +413,18 @@ public sealed class OnnxModelLoader : IDisposable
 
             LogHealthProbePassed(_logger, modelPath, null);
             
-            return new ModelLoadResult 
+            var result = new ModelLoadResult 
             { 
                 Session = session, 
                 Metadata = metadata, 
                 IsHealthy = isHealthy 
             };
+            session = null; // Transfer ownership to result
+            return result;
         }
         catch (Exception ex)
         {
+            session?.Dispose();
             LogModelLoadError(_logger, modelPath, ex);
             return new ModelLoadResult { Session = null, IsHealthy = false };
         }
@@ -1113,7 +1117,7 @@ public sealed class OnnxModelLoader : IDisposable
                 return null;
             }
 
-            var latestVersion = versions.First();
+            var latestVersion = versions[0];
             var metadataPath = Path.Combine(modelDir, latestVersion, "metadata.json");
             
             if (!File.Exists(metadataPath))
@@ -1253,24 +1257,21 @@ public sealed class OnnxModelLoader : IDisposable
     private async Task CompressModelAsync(string modelPath, CancellationToken cancellationToken)
     {
         // Compress model file using GZip compression
-        await Task.Run(() =>
+        var compressedPath = modelPath + ".gz";
+        
+        using (var originalFileStream = File.OpenRead(modelPath))
+        using (var compressedFileStream = File.Create(compressedPath))
+        using (var compressionStream = new System.IO.Compression.GZipStream(compressedFileStream, System.IO.Compression.CompressionMode.Compress))
         {
-            var compressedPath = modelPath + ".gz";
-            
-            using (var originalFileStream = File.OpenRead(modelPath))
-            using (var compressedFileStream = File.Create(compressedPath))
-            using (var compressionStream = new System.IO.Compression.GZipStream(compressedFileStream, System.IO.Compression.CompressionMode.Compress))
-            {
-                originalFileStream.CopyTo(compressionStream);
-            }
-            
-            var originalSize = new FileInfo(modelPath).Length;
-            var compressedSize = new FileInfo(compressedPath).Length;
-            var compressionRatio = (double)compressedSize / originalSize;
-            
-            _logger.LogInformation("[ONNX-Registry] Model compressed: {ModelPath} (ratio: {Ratio:P1})", 
-                modelPath, compressionRatio);
-        }, cancellationToken).ConfigureAwait(false);
+            await originalFileStream.CopyToAsync(compressionStream, cancellationToken).ConfigureAwait(false);
+        }
+        
+        var originalSize = new FileInfo(modelPath).Length;
+        var compressedSize = new FileInfo(compressedPath).Length;
+        var compressionRatio = (double)compressedSize / originalSize;
+        
+        _logger.LogInformation("[ONNX-Registry] Model compressed: {ModelPath} (ratio: {Ratio:P1})", 
+            modelPath, compressionRatio);
     }
 
     private async Task UpdateRegistryIndexAsync(ModelRegistryEntry entry, CancellationToken cancellationToken)

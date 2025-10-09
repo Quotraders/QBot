@@ -197,6 +197,9 @@ namespace BotCore.Brain
         private readonly List<TradingDecision> _decisionHistory = new();
         private DateTime _lastModelUpdate = DateTime.MinValue;
         
+        // Cached JsonSerializerOptions for performance
+        private static readonly JsonSerializerOptions CachedJsonOptions = new() { WriteIndented = true };
+        
         // Unified Trading Brain Constants
         // Learning system constants
         private const int MinDecisionsForLearningUpdate = 50;        // Minimum decisions for learning update
@@ -224,6 +227,13 @@ namespace BotCore.Brain
         private const int LunchEndHour = 13;                         // Lunch session end hour (1 PM)
         private const int AfternoonFadeStartHour = 13;               // Afternoon fade start hour (1 PM)
         private const int AfternoonFadeEndHour = 16;                 // Afternoon fade end hour (4 PM)
+        
+        // Market session hour constants (UTC)
+        private const int PreMarketStartHour = 8;                    // Pre-market start hour (8 AM UTC)
+        private const int RegularTradingStartHour = 13;              // Regular trading start hour (1 PM UTC)
+        private const int RegularTradingEndHour = 20;                // Regular trading end hour (8 PM UTC)
+        private const int AfterHoursEndHour = 22;                    // After hours end hour (10 PM UTC)
+        private const decimal TrendStrengthThreshold = 0.2m;         // Trend strength classification threshold
         
         // Multi-strategy learning state
         private readonly Dictionary<string, StrategyPerformance> _strategyPerformance = new();
@@ -414,7 +424,7 @@ namespace BotCore.Brain
             try
             {
                 // PHASE 2: Check economic calendar before trading
-                var calendarCheckEnabled = Environment.GetEnvironmentVariable("BOT_CALENDAR_CHECK_ENABLED")?.ToLowerInvariant() == "true";
+                var calendarCheckEnabled = Environment.GetEnvironmentVariable("BOT_CALENDAR_CHECK_ENABLED")?.ToUpperInvariant() == "TRUE";
                 if (calendarCheckEnabled && _economicEventManager != null)
                 {
                     // Check if symbol trading should be restricted
@@ -542,9 +552,23 @@ namespace BotCore.Brain
                         
                         // Determine session based on time of day
                         var currentHour = DateTime.UtcNow.Hour;
-                        var sessionName = currentHour >= 13 && currentHour < 20 ? "RegularTrading" : 
-                                         currentHour >= 8 && currentHour < 13 ? "PreMarket" :
-                                         currentHour >= 20 && currentHour < 22 ? "AfterHours" : "Closed";
+                        string sessionName;
+                        if (currentHour >= RegularTradingStartHour && currentHour < RegularTradingEndHour)
+                        {
+                            sessionName = "RegularTrading";
+                        }
+                        else if (currentHour >= PreMarketStartHour && currentHour < RegularTradingStartHour)
+                        {
+                            sessionName = "PreMarket";
+                        }
+                        else if (currentHour >= RegularTradingEndHour && currentHour < AfterHoursEndHour)
+                        {
+                            sessionName = "AfterHours";
+                        }
+                        else
+                        {
+                            sessionName = "Closed";
+                        }
                         
                         // Create default zone snapshot (no zone service in brain yet)
                         var emptyZoneSnapshot = new Zones.ZoneSnapshot(
@@ -566,11 +590,25 @@ namespace BotCore.Brain
                         };
                         emptyPatternScores.SetDetectedPatterns(System.Array.Empty<BotCore.Patterns.PatternDetail>());
                         
+                        string trend;
+                        if (context.TrendStrength > TrendStrengthThreshold)
+                        {
+                            trend = "Bullish";
+                        }
+                        else if (context.TrendStrength < -TrendStrengthThreshold)
+                        {
+                            trend = "Bearish";
+                        }
+                        else
+                        {
+                            trend = "Neutral";
+                        }
+                        
                         var snapshot = BotCore.Services.MarketSnapshotStore.CreateSnapshot(
                             symbol: decision.Symbol,
                             currentPrice: currentPrice,
                             vix: vixValue,
-                            trend: context.TrendStrength > 0.2m ? "Bullish" : context.TrendStrength < -0.2m ? "Bearish" : "Neutral",
+                            trend: trend,
                             session: sessionName,
                             zoneSnapshot: emptyZoneSnapshot,
                             patternScores: emptyPatternScores,
@@ -831,9 +869,18 @@ namespace BotCore.Brain
                     var latestContext = _marketContexts.Values.LastOrDefault();
                     if (latestContext != null)
                     {
-                        trend = latestContext.TrendStrength > StrongTrendThreshold ? "Bullish" 
-                            : latestContext.TrendStrength < -StrongTrendThreshold ? "Bearish" 
-                            : "Neutral";
+                        if (latestContext.TrendStrength > StrongTrendThreshold)
+                        {
+                            trend = "Bullish";
+                        }
+                        else if (latestContext.TrendStrength < -StrongTrendThreshold)
+                        {
+                            trend = "Bearish";
+                        }
+                        else
+                        {
+                            trend = "Neutral";
+                        }
                     }
                 }
                 
@@ -923,14 +970,39 @@ namespace BotCore.Brain
                         var vixValue = _latestEnv?.volz ?? 0m;
                         var currentPrice = _latestBars?.LastOrDefault()?.Close ?? 0m;
                         var currentHour = DateTime.UtcNow.Hour;
-                        var sessionName = currentHour >= 13 && currentHour < 20 ? "RegularTrading" : 
-                                         currentHour >= 8 && currentHour < 13 ? "PreMarket" :
-                                         currentHour >= 20 && currentHour < 22 ? "AfterHours" : "Closed";
+                        string sessionName;
+                        if (currentHour >= RegularTradingStartHour && currentHour < RegularTradingEndHour)
+                        {
+                            sessionName = "RegularTrading";
+                        }
+                        else if (currentHour >= PreMarketStartHour && currentHour < RegularTradingStartHour)
+                        {
+                            sessionName = "PreMarket";
+                        }
+                        else if (currentHour >= RegularTradingEndHour && currentHour < AfterHoursEndHour)
+                        {
+                            sessionName = "AfterHours";
+                        }
+                        else
+                        {
+                            sessionName = "Closed";
+                        }
                         
                         // Get trend from latest context
                         var latestContext = _marketContexts.Values.LastOrDefault();
-                        var trendName = latestContext != null && latestContext.TrendStrength > 0.2m ? "Bullish" : 
-                                       latestContext != null && latestContext.TrendStrength < -0.2m ? "Bearish" : "Neutral";
+                        string trendName;
+                        if (latestContext != null && latestContext.TrendStrength > TrendStrengthThreshold)
+                        {
+                            trendName = "Bullish";
+                        }
+                        else if (latestContext != null && latestContext.TrendStrength < -TrendStrengthThreshold)
+                        {
+                            trendName = "Bearish";
+                        }
+                        else
+                        {
+                            trendName = "Neutral";
+                        }
                         
                         // Create default zone snapshot and pattern scores for similarity search
                         var emptyZoneSnapshot = new Zones.ZoneSnapshot(
@@ -982,6 +1054,9 @@ namespace BotCore.Brain
                     }
                 }
                 
+                var riskSection = !string.IsNullOrEmpty(riskContext) ? $"Risk Assessment: {riskContext}\n\n" : "";
+                var historicalSection = !string.IsNullOrEmpty(historicalContext) ? $"Historical Context: {historicalContext}\n\n" : "";
+                
                 var prompt = $@"I am a trading bot. I'm about to take this trade:
 Strategy: {decision.RecommendedStrategy}
 Direction: {decision.PriceDirection}
@@ -990,7 +1065,7 @@ Market Regime: {decision.MarketRegime}
 
 Current context: {currentContext}
 
-{(!string.IsNullOrEmpty(riskContext) ? $"Risk Assessment: {riskContext}\n\n" : "")}{(!string.IsNullOrEmpty(historicalContext) ? $"Historical Context: {historicalContext}\n\n" : "")}Explain in 2-3 sentences why I'm taking this trade. Speak as ME (the bot), not as an observer.";
+{riskSection}{historicalSection}Explain in 2-3 sentences why I'm taking this trade. Speak as ME (the bot), not as an observer.";
                 
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
@@ -1019,7 +1094,19 @@ Current context: {currentContext}
             {
                 var result = wasCorrect ? "WIN" : "LOSS";
                 var durationMinutes = (int)holdTime.TotalMinutes;
-                var reason = pnl > 0 ? "target hit" : pnl < 0 ? "stop hit" : "timeout";
+                string reason;
+                if (pnl > 0)
+                {
+                    reason = "target hit";
+                }
+                else if (pnl < 0)
+                {
+                    reason = "stop hit";
+                }
+                else
+                {
+                    reason = "timeout";
+                }
                 
                 // Hook 3: Add learning commentary (if enabled)
                 string learningContext = string.Empty;
@@ -1147,8 +1234,20 @@ Reason closed: {reason}
             if (_metaClassifier == null || !IsInitialized)
             {
                 // Fallback: use volatility-based regime detection
-                return Task.FromResult(context.Volatility > WeakTrendThreshold ? MarketRegime.HighVolatility :
-                       context.Volatility < LowVolatilityThreshold ? MarketRegime.LowVolatility : MarketRegime.Normal);
+                MarketRegime regime;
+                if (context.Volatility > WeakTrendThreshold)
+                {
+                    regime = MarketRegime.HighVolatility;
+                }
+                else if (context.Volatility < LowVolatilityThreshold)
+                {
+                    regime = MarketRegime.LowVolatility;
+                }
+                else
+                {
+                    regime = MarketRegime.Normal;
+                }
+                return Task.FromResult(regime);
             }
 
             try
@@ -1408,7 +1507,7 @@ Reason closed: {reason}
                 context.Volatility,
                 context.VolumeRatio,
                 context.TrendStrength
-            }).ConfigureAwait(false) : 0.5m;
+            }, cancellationToken).ConfigureAwait(false) : 0.5m;
             
             var confidenceMultiplier = modelConfidence;
 
@@ -1889,6 +1988,7 @@ Reason closed: {reason}
 
         private async Task UpdateUnifiedLearningAsync(CancellationToken cancellationToken)
         {
+            _ = cancellationToken; // Reserved for future async operations
             try
             {
                 _logger.LogInformation("🔄 [UNIFIED-LEARNING] Starting unified learning update across all strategies...");
@@ -2217,7 +2317,7 @@ Reason closed: {reason}
 
                 // Check 1: Feature specification compatibility
                 _logger.LogInformation("[1/4] Validating feature specification compatibility...");
-                var featureCheckPassed = await ValidateFeatureSpecificationAsync(newModelPath, cancellationToken);
+                var featureCheckPassed = await ValidateFeatureSpecificationAsync(newModelPath, cancellationToken).ConfigureAwait(false);
                 if (!featureCheckPassed)
                 {
                     var reason = "Feature specification mismatch - new model expects different input features";
@@ -2236,7 +2336,7 @@ Reason closed: {reason}
                 if (File.Exists(currentModelPath))
                 {
                     var (distributionValid, divergence) = await ComparePredictionDistributionsAsync(
-                        currentModelPath, newModelPath, sanityTestVectors, cancellationToken);
+                        currentModelPath, newModelPath, sanityTestVectors, cancellationToken).ConfigureAwait(false);
                     
                     if (!distributionValid)
                     {
@@ -2253,7 +2353,7 @@ Reason closed: {reason}
 
                 // Check 4: NaN/Infinity validation
                 _logger.LogInformation("[4/4] Validating model outputs for NaN/Infinity...");
-                var outputValidationPassed = await ValidateModelOutputsAsync(newModelPath, sanityTestVectors, cancellationToken);
+                var outputValidationPassed = await ValidateModelOutputsAsync(newModelPath, sanityTestVectors, cancellationToken).ConfigureAwait(false);
                 if (!outputValidationPassed)
                 {
                     var reason = "Model produces NaN or Infinity values - unstable model";
@@ -2267,7 +2367,7 @@ Reason closed: {reason}
                 {
                     _logger.LogInformation("[5/5] Running historical replay simulation...");
                     var (simulationPassed, drawdownRatio) = await RunHistoricalSimulationAsync(
-                        currentModelPath, newModelPath, cancellationToken);
+                        currentModelPath, newModelPath, cancellationToken).ConfigureAwait(false);
                     
                     if (!simulationPassed)
                     {
@@ -2301,10 +2401,10 @@ Reason closed: {reason}
                 if (!File.Exists(featureSpecPath))
                 {
                     _logger.LogWarning("Feature specification not found - creating default");
-                    await CreateDefaultFeatureSpecificationAsync(featureSpecPath, cancellationToken);
+                    await CreateDefaultFeatureSpecificationAsync(featureSpecPath, cancellationToken).ConfigureAwait(false);
                 }
 
-                var featureSpec = await File.ReadAllTextAsync(featureSpecPath, cancellationToken);
+                var featureSpec = await File.ReadAllTextAsync(featureSpecPath, cancellationToken).ConfigureAwait(false);
                 _ = JsonSerializer.Deserialize<Dictionary<string, object>>(featureSpec);
                 
                 // For now, we'll validate that the model file exists and is a valid ONNX file
@@ -2382,7 +2482,7 @@ Reason closed: {reason}
             try
             {
                 Directory.CreateDirectory(cacheDir);
-                var json = JsonSerializer.Serialize(vectors, new JsonSerializerOptions { WriteIndented = true });
+                var json = JsonSerializer.Serialize(vectors, CachedJsonOptions);
                 File.WriteAllText(cachePath, json);
                 _logger.LogInformation("  Cached {Count} sanity test vectors for future use", count);
             }
@@ -2417,8 +2517,8 @@ Reason closed: {reason}
 
                 foreach (var vector in testVectors)
                 {
-                    var currentOutput = await Task.Run(() => RunInference(currentSession, vector), cancellationToken);
-                    var newOutput = await Task.Run(() => RunInference(newSession, vector), cancellationToken);
+                    var currentOutput = await Task.Run(() => RunInference(currentSession, vector), cancellationToken).ConfigureAwait(false);
+                    var newOutput = await Task.Run(() => RunInference(newSession, vector), cancellationToken).ConfigureAwait(false);
                     
                     currentPredictions.Add(currentOutput);
                     newPredictions.Add(newOutput);
@@ -2465,7 +2565,8 @@ Reason closed: {reason}
             var inputs = new List<NamedOnnxValue> { NamedOnnxValue.CreateFromTensor(inputName, inputTensor) };
             
             using var results = session.Run(inputs);
-            var output = results.First().AsEnumerable<float>().ToArray();
+            var resultsList = results.ToList();
+            var output = resultsList[0].AsEnumerable<float>().ToArray();
             
             return output;
         }
@@ -2539,7 +2640,7 @@ Reason closed: {reason}
 
                 foreach (var vector in testVectors)
                 {
-                    var output = await Task.Run(() => RunInference(session, vector), cancellationToken);
+                    var output = await Task.Run(() => RunInference(session, vector), cancellationToken).ConfigureAwait(false);
                     
                     foreach (var value in output)
                     {
@@ -2578,7 +2679,7 @@ Reason closed: {reason}
                 var simulationBars = _gate4Config.SimulationBars;
                 var maxDrawdownMultiplier = _gate4Config.MaxDrawdownMultiplier;
                 
-                var historicalData = await LoadHistoricalDataAsync(simulationBars, cancellationToken);
+                var historicalData = await LoadHistoricalDataAsync(simulationBars, cancellationToken).ConfigureAwait(false);
                 if (historicalData.Count < TopStepConfig.MinHistoricalBarsForSimulation)
                 {
                     _logger.LogWarning("  Insufficient historical data for simulation - using available {Count} bars", historicalData.Count);
@@ -2587,8 +2688,8 @@ Reason closed: {reason}
                 currentSession = new InferenceSession(currentModelPath);
                 newSession = new InferenceSession(newModelPath);
 
-                var currentMaxDrawdown = await SimulateDrawdownAsync(currentSession, historicalData, cancellationToken);
-                var newMaxDrawdown = await SimulateDrawdownAsync(newSession, historicalData, cancellationToken);
+                var currentMaxDrawdown = await SimulateDrawdownAsync(currentSession, historicalData, cancellationToken).ConfigureAwait(false);
+                var newMaxDrawdown = await SimulateDrawdownAsync(newSession, historicalData, cancellationToken).ConfigureAwait(false);
 
                 var drawdownRatio = currentMaxDrawdown > 0 ? newMaxDrawdown / currentMaxDrawdown : 1.0;
 
@@ -2618,7 +2719,7 @@ Reason closed: {reason}
             {
                 if (File.Exists(dataPath))
                 {
-                    var json = await File.ReadAllTextAsync(dataPath, cancellationToken);
+                    var json = await File.ReadAllTextAsync(dataPath, cancellationToken).ConfigureAwait(false);
                     var data = JsonSerializer.Deserialize<List<float[]>>(json);
                     if (data != null && data.Count > 0)
                     {
@@ -2646,8 +2747,8 @@ Reason closed: {reason}
             try
             {
                 Directory.CreateDirectory(dataDir);
-                var json = JsonSerializer.Serialize(historicalData, new JsonSerializerOptions { WriteIndented = true });
-                await File.WriteAllTextAsync(dataPath, json, cancellationToken);
+                var json = JsonSerializer.Serialize(historicalData, CachedJsonOptions);
+                await File.WriteAllTextAsync(dataPath, json, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -2657,7 +2758,7 @@ Reason closed: {reason}
             return historicalData;
         }
 
-        private async Task<double> SimulateDrawdownAsync(
+        private static async Task<double> SimulateDrawdownAsync(
             InferenceSession session,
             List<float[]> historicalData,
             CancellationToken cancellationToken)
@@ -2668,7 +2769,7 @@ Reason closed: {reason}
 
             foreach (var data in historicalData)
             {
-                var prediction = await Task.Run(() => RunInference(session, data), cancellationToken);
+                var prediction = await Task.Run(() => RunInference(session, data), cancellationToken).ConfigureAwait(false);
                 
                 var simulatedReturn = prediction.Length > 0 ? prediction[0] * 0.01 : 0.0;
                 equity += simulatedReturn;
@@ -2711,8 +2812,8 @@ Reason closed: {reason}
             };
 
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            var json = JsonSerializer.Serialize(spec, new JsonSerializerOptions { WriteIndented = true });
-            await File.WriteAllTextAsync(path, json, cancellationToken);
+            var json = JsonSerializer.Serialize(spec, CachedJsonOptions);
+            await File.WriteAllTextAsync(path, json, cancellationToken).ConfigureAwait(false);
             _logger.LogInformation("Created default feature specification at {Path}", path);
         }
 
@@ -2730,7 +2831,7 @@ Reason closed: {reason}
                 _logger.LogInformation("🔄 [MODEL-RELOAD] Starting model reload: {NewModel}", newModelPath);
 
                 var (isValid, reason) = await ValidateModelForReloadAsync(
-                    newModelPath, currentModelPath, cancellationToken);
+                    newModelPath, currentModelPath, cancellationToken).ConfigureAwait(false);
 
                 if (!isValid)
                 {
@@ -2742,7 +2843,7 @@ Reason closed: {reason}
                 _logger.LogInformation("💾 [MODEL-RELOAD] Backup created: {BackupPath}", backupPath);
 
                 var (swapSuccess, oldVersion, newVersion) = await AtomicModelSwapAsync(
-                    currentModelPath, newModelPath, cancellationToken);
+                    currentModelPath, newModelPath, cancellationToken).ConfigureAwait(false);
 
                 if (!swapSuccess)
                 {
@@ -2803,6 +2904,7 @@ Reason closed: {reason}
             string newModelPath,
             CancellationToken cancellationToken)
         {
+            _ = cancellationToken; // Reserved for future async operations
             try
             {
                 var oldVersion = File.Exists(currentModelPath) 
@@ -2883,9 +2985,9 @@ Reason closed: {reason}
                 Directory.CreateDirectory(Path.GetDirectoryName(dataPath)!);
                 
                 await File.WriteAllTextAsync(dataPath, JsonSerializer.Serialize(unifiedTrainingData, 
-                    new JsonSerializerOptions { WriteIndented = true }), cancellationToken).ConfigureAwait(false);
+                    CachedJsonOptions), cancellationToken).ConfigureAwait(false);
                 await File.WriteAllTextAsync(perfPath, JsonSerializer.Serialize(strategyPerformanceData, 
-                    new JsonSerializerOptions { WriteIndented = true }), cancellationToken).ConfigureAwait(false);
+                    CachedJsonOptions), cancellationToken).ConfigureAwait(false);
                 
                 _logger.LogInformation("✅ [UNIFIED-RETRAIN] Training data exported: {Count} decisions, {StrategyCount} strategies", 
                     unifiedTrainingData.Count(), _strategyPerformance.Count);
@@ -2944,6 +3046,7 @@ Explain in 1-2 sentences why I'm waiting and what I'm looking for. Speak as ME (
             BrainDecision decision,
             MarketContext context)
         {
+            _ = context; // Reserved for future context-aware explanations
             if (_ollamaClient == null)
                 return string.Empty;
 
@@ -3292,7 +3395,7 @@ Explain in 1-2 sentences what I learned and how it will improve my future tradin
                 {
                     var statsPath = Path.Combine("logs", $"brain_stats_{DateTime.Now:yyyyMMdd}.json");
                     Directory.CreateDirectory(Path.GetDirectoryName(statsPath)!);
-                    File.WriteAllText(statsPath, JsonSerializer.Serialize(stats, new JsonSerializerOptions { WriteIndented = true }));
+                    File.WriteAllText(statsPath, JsonSerializer.Serialize(stats, CachedJsonOptions));
                     _logger.LogInformation("📊 [UNIFIED-BRAIN] Statistics saved: {Decisions} decisions, {WinRate:P1} win rate",
                         DecisionsToday, WinRateToday);
                 }
