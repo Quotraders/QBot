@@ -217,7 +217,7 @@ public class S15ShadowLearningService : BackgroundService
         };
     }
 
-    private static double BootstrapTest(List<double> sample1, List<double> sample2, int iterations = 10000)
+    private static double BootstrapTest(IReadOnlyList<double> sample1, IReadOnlyList<double> sample2, int iterations = 10000)
     {
         if (sample1.Count == 0 || sample2.Count == 0) return 1.0;
         
@@ -298,5 +298,5 @@ public class PerformanceMetrics
     public double WinRate { get; set; }
     public double Sharpe { get; set; }
     public double MeanPnL { get; set; }
-    public List<double> PnLs { get; set; } = new();
+    public IReadOnlyList<double> PnLs { get; init; } = new List<double>();
 }
