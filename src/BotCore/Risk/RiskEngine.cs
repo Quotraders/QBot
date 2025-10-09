@@ -170,11 +170,10 @@ namespace BotCore.Risk
             public decimal DrawdownAmount { get; set; }
             public double DrawdownPercent { get; set; }
             public DateTime PeakTime { get; set; }
-            public DateTime DrawdownStart { get; set; }
+            public DateTime DrawdownStart { get; internal set; }
             public TimeSpan DrawdownDuration { get; set; }
             public int ConsecutiveLosses { get; set; }
             private readonly List<decimal> _lossSequence = new();
-            public IReadOnlyList<decimal> LossSequence => _lossSequence;
             
             internal void AddLoss(decimal loss) => _lossSequence.Add(loss);
             internal void ClearLossSequence() => _lossSequence.Clear();
