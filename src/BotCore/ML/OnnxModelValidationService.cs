@@ -55,6 +55,67 @@ public sealed class OnnxModelValidationService
     private const long GigabytesInBytes = 2L * 1024 * 1024 * 1024; // 2GB limit per model
     private const int MaxLoadTimeSeconds = 30; // Maximum acceptable load time
 
+    // Structured logging delegates
+    private static readonly Action<ILogger, string, Exception?> LogModelAdded =
+        LoggerMessage.Define<string>(
+            LogLevel.Debug,
+            new EventId(1, nameof(LogModelAdded)),
+            "[ONNX-Validation] Added model for validation: {ModelPath}");
+
+    private static readonly Action<ILogger, string, Exception?> LogDirectoryNotFound =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(2, nameof(LogDirectoryNotFound)),
+            "[ONNX-Validation] Model directory not found: {Directory}");
+
+    private static readonly Action<ILogger, int, string, Exception?> LogModelsDiscovered =
+        LoggerMessage.Define<int, string>(
+            LogLevel.Information,
+            new EventId(3, nameof(LogModelsDiscovered)),
+            "[ONNX-Validation] Discovered {ModelCount} ONNX models in {Directory}");
+
+    private static readonly Action<ILogger, int, Exception?> LogValidationStarting =
+        LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(4, nameof(LogValidationStarting)),
+            "[ONNX-Validation] Starting validation of {ModelCount} models");
+
+    private static readonly Action<ILogger, string, string, Exception?> LogValidationFailed =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Error,
+            new EventId(5, nameof(LogValidationFailed)),
+            "[ONNX-Validation] Model validation FAILED: {ModelPath} - {Error}");
+
+    private static readonly Action<ILogger, string, double, long, int, int, Exception?> LogValidationSuccess =
+        LoggerMessage.Define<string, double, long, int, int>(
+            LogLevel.Information,
+            new EventId(6, nameof(LogValidationSuccess)),
+            "[ONNX-Validation] Model validation SUCCESS: {ModelPath} (Load: {LoadTime}ms, Memory: {MemoryMB}MB, I/O: {InputCount}/{OutputCount})");
+
+    private static readonly Action<ILogger, int, int, Exception?> LogValidationCompleted =
+        LoggerMessage.Define<int, int>(
+            LogLevel.Information,
+            new EventId(7, nameof(LogValidationCompleted)),
+            "[ONNX-Validation] Validation completed: {ValidCount}/{TotalCount} models valid");
+
+    private static readonly Action<ILogger, Exception?> LogSomeModelsFailed =
+        LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(8, nameof(LogSomeModelsFailed)),
+            "[ONNX-Validation] Some models failed validation - check logs for details");
+
+    private static readonly Action<ILogger, string, Exception?> LogValidationException =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(9, nameof(LogValidationException)),
+            "[ONNX-Validation] Exception validating model: {ModelPath}");
+
+    private static readonly Action<ILogger, Exception?> LogReportGenerated =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(10, nameof(LogReportGenerated)),
+            "[ONNX-Validation] Validation report generated");
+
     public OnnxModelValidationService(ILogger<OnnxModelValidationService> logger, OnnxModelLoader modelLoader)
     {
         _logger = logger;
@@ -69,7 +130,7 @@ public sealed class OnnxModelValidationService
         if (!string.IsNullOrEmpty(modelPath) && !_modelPaths.Contains(modelPath))
         {
             _modelPaths.Add(modelPath);
-            _logger.LogDebug("[ONNX-Validation] Added model for validation: {ModelPath}", modelPath);
+            LogModelAdded(_logger, modelPath, null);
         }
     }
 
@@ -97,7 +158,7 @@ public sealed class OnnxModelValidationService
         {
             if (!Directory.Exists(directory))
             {
-                _logger.LogWarning("[ONNX-Validation] Model directory not found: {Directory}", directory);
+                LogDirectoryNotFound(_logger, directory, null);
                 continue;
             }
 
@@ -107,8 +168,7 @@ public sealed class OnnxModelValidationService
                 AddModelPath(file);
             }
 
-            _logger.LogInformation("[ONNX-Validation] Discovered {ModelCount} ONNX models in {Directory}", 
-                onnxFiles.Length, directory);
+            LogModelsDiscovered(_logger, onnxFiles.Length, directory, null);
         }
     }
 
@@ -117,7 +177,7 @@ public sealed class OnnxModelValidationService
     /// </summary>
     public async Task<bool> ValidateAllModelsAsync()
     {
-        _logger.LogInformation("[ONNX-Validation] Starting validation of {ModelCount} models", _modelPaths.Count);
+        LogValidationStarting(_logger, _modelPaths.Count, null);
 
         var allValid = true;
         var validationTasks = new List<Task<ValidationResult>>();
@@ -139,26 +199,23 @@ public sealed class OnnxModelValidationService
             if (!result.IsValid)
             {
                 allValid = false;
-                _logger.LogError("[ONNX-Validation] Model validation FAILED: {ModelPath} - {Error}", 
-                    result.ModelPath, result.ErrorMessage);
+                LogValidationFailed(_logger, result.ModelPath, result.ErrorMessage, null);
             }
             else
             {
-                _logger.LogInformation("[ONNX-Validation] Model validation SUCCESS: {ModelPath} " +
-                    "(Load: {LoadTime}ms, Memory: {MemoryMB}MB, I/O: {InputCount}/{OutputCount})",
-                    result.ModelPath, result.LoadTime.TotalMilliseconds, result.MemoryUsage / KilobytesToMegabytes / KilobytesToMegabytes,
-                    result.InputCount, result.OutputCount);
+                LogValidationSuccess(_logger, result.ModelPath, result.LoadTime.TotalMilliseconds, 
+                    result.MemoryUsage / KilobytesToMegabytes / KilobytesToMegabytes,
+                    result.InputCount, result.OutputCount, null);
             }
         }
 
         // Summary
         var validCount = results.Count(r => r.IsValid);
-        _logger.LogInformation("[ONNX-Validation] Validation completed: {ValidCount}/{TotalCount} models valid", 
-            validCount, results.Length);
+        LogValidationCompleted(_logger, validCount, results.Length, null);
 
         if (!allValid)
         {
-            _logger.LogWarning("[ONNX-Validation] Some models failed validation - check logs for details");
+            LogSomeModelsFailed(_logger, null);
         }
 
         return allValid;
@@ -227,7 +284,7 @@ public sealed class OnnxModelValidationService
         {
             result.IsValid = false;
             result.ErrorMessage = ex.Message;
-            _logger.LogError(ex, "[ONNX-Validation] Exception validating model: {ModelPath}", modelPath);
+            LogValidationException(_logger, modelPath, ex);
         }
 
         return result;
@@ -323,7 +380,7 @@ public sealed class OnnxModelValidationService
             }
         }
 
-        _logger.LogInformation("[ONNX-Validation] Validation report generated");
+        LogReportGenerated(_logger, null);
         return sb.ToString();
     }
 }
