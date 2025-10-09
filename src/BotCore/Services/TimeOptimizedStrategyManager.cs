@@ -273,7 +273,7 @@ namespace BotCore.Services
             }
 
             // Select best signal
-            if (signals.Any())
+            if (signals.Count > 0)
             {
                 var bestSignal = signals.OrderByDescending(s => s.Score).First();
 
@@ -885,7 +885,7 @@ namespace BotCore.Services
                 }
             }
             
-            if (!gaps.Any()) return 0m;
+            if (gaps.Count == 0) return 0m;
             
             var avgGap = gaps.Average();
             
@@ -911,7 +911,7 @@ namespace BotCore.Services
                 }
             }
             
-            if (!priceChanges.Any()) return DefaultTrendStress;
+            if (priceChanges.Count == 0) return DefaultTrendStress;
             
             var avgChange = priceChanges.Average();
             
