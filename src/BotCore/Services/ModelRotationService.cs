@@ -321,7 +321,7 @@ namespace BotCore.Services
         private void EmitRotationTelemetry(string newRegime)
         {
             // Emit model.tranche_selected{regime} telemetry
-            _logger.LogInformation("[MODEL-ROTATION] [TELEMETRY] model.tranche_selected.{Regime} = 1", newRegime.ToLowerInvariant());
+            _logger.LogInformation("[MODEL-ROTATION] [TELEMETRY] model.tranche_selected.{Regime} = 1", newRegime.ToUpperInvariant());
         }
 
         public void Dispose()

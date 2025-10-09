@@ -1763,8 +1763,8 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
         try
         {
             // Check if enabled in configuration
-            var dailyEnabled = Environment.GetEnvironmentVariable("BOT_DAILY_SUMMARY_ENABLED")?.ToLowerInvariant() == "true";
-            var weeklyEnabled = Environment.GetEnvironmentVariable("BOT_WEEKLY_SUMMARY_ENABLED")?.ToLowerInvariant() == "true";
+            var dailyEnabled = Environment.GetEnvironmentVariable("BOT_DAILY_SUMMARY_ENABLED")?.ToUpperInvariant() == "TRUE";
+            var weeklyEnabled = Environment.GetEnvironmentVariable("BOT_WEEKLY_SUMMARY_ENABLED")?.ToUpperInvariant() == "TRUE";
 
             // Generate daily summary if needed
             if (dailyEnabled && _performanceReporter.ShouldGenerateDailySummary())

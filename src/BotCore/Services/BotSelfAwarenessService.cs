@@ -58,7 +58,7 @@ public sealed class BotSelfAwarenessService : BackgroundService
         ArgumentNullException.ThrowIfNull(configuration);
         
         // Read configuration
-        _selfAwarenessEnabled = configuration["BOT_SELF_AWARENESS_ENABLED"]?.ToLowerInvariant() == "true";
+        _selfAwarenessEnabled = configuration["BOT_SELF_AWARENESS_ENABLED"]?.ToUpperInvariant() == "TRUE";
         
         var healthCheckMinutes = int.TryParse(configuration["BOT_HEALTH_CHECK_INTERVAL_MINUTES"], out var hcm) ? hcm : 5;
         _healthCheckInterval = TimeSpan.FromMinutes(healthCheckMinutes);

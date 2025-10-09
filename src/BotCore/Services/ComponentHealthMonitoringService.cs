@@ -164,7 +164,7 @@ public sealed class ComponentHealthMonitoringService : BackgroundService
         _logger.LogWarning(message);
 
         // If Ollama is available and enabled, generate a plain English explanation
-        var selfAwarenessEnabled = Environment.GetEnvironmentVariable("BOT_SELF_AWARENESS_ENABLED")?.ToLowerInvariant() == "true";
+        var selfAwarenessEnabled = Environment.GetEnvironmentVariable("BOT_SELF_AWARENESS_ENABLED")?.ToUpperInvariant() == "TRUE";
         if (_ollamaClient != null && selfAwarenessEnabled)
         {
             try
@@ -209,7 +209,7 @@ Explain in one sentence what this means for my operation and what action should 
         _logger.LogInformation(message);
 
         // Generate AI explanation for degraded components if enabled
-        var selfAwarenessEnabled = Environment.GetEnvironmentVariable("BOT_SELF_AWARENESS_ENABLED")?.ToLowerInvariant() == "true";
+        var selfAwarenessEnabled = Environment.GetEnvironmentVariable("BOT_SELF_AWARENESS_ENABLED")?.ToUpperInvariant() == "TRUE";
         if (_ollamaClient != null && selfAwarenessEnabled)
         {
             try

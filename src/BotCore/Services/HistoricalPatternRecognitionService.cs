@@ -226,10 +226,10 @@ Explain what I should learn from these past experiences in 2-3 sentences. Speak 
 
     private static double NormalizeTrend(string trend)
     {
-        return trend.ToLowerInvariant() switch
+        return trend.ToUpperInvariant() switch
         {
-            "bullish" => BullishTrendValue,
-            "bearish" => BearishTrendValue,
+            "BULLISH" => BullishTrendValue,
+            "BEARISH" => BearishTrendValue,
             _ => NeutralTrendValue
         };
     }

@@ -496,9 +496,9 @@ public class CloudModelSynchronizationService : BackgroundService
     /// </summary>
     private string DetermineModelPath(string artifactName, string fileName)
     {
-        var lowerName = artifactName.ToLowerInvariant();
+        var upperName = artifactName.ToUpperInvariant();
         
-        if (lowerName.Contains("cvar", StringComparison.Ordinal) || lowerName.Contains("ppo", StringComparison.Ordinal) || lowerName.Contains("rl", StringComparison.Ordinal))
+        if (upperName.Contains("CVAR", StringComparison.Ordinal) || upperName.Contains("PPO", StringComparison.Ordinal) || upperName.Contains("RL", StringComparison.Ordinal))
         {
             return Path.Combine(_modelsDirectory, "rl", fileName);
         }
