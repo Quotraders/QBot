@@ -176,8 +176,8 @@ public class ReversalPatternDetector : IPatternDetector
         // Need at least 2 gaps in opposite directions
         if (gaps.Count < KeyReversalBars) return new PatternResult { Score = 0, Confidence = 0 };
 
-        var firstGap = gaps.First();
-        var lastGap = gaps.Last();
+        var firstGap = gaps[0];
+        var lastGap = gaps[^1];
 
         // Gaps should be in opposite directions
         if (firstGap.Direction == lastGap.Direction) 
@@ -209,7 +209,7 @@ public class ReversalPatternDetector : IPatternDetector
         var trendBars = bars.TakeLast(ExhaustionGapFullLookback).Take(ExhaustionGapTrendBars).ToList();
         if (trendBars.Count < ExhaustionGapTrendBars) return new PatternResult { Score = 0, Confidence = 0 };
 
-        var trendSlope = (double)(trendBars.Last().Close - trendBars.First().Close) / trendBars.Count;
+        var trendSlope = (double)(trendBars[^1].Close - trendBars[0].Close) / trendBars.Count;
         
         // Look for gap in trend direction followed by reversal
         for (int i = 1; i < recent.Count - 1; i++)
@@ -259,7 +259,7 @@ public class ReversalPatternDetector : IPatternDetector
         if (bars.Count < ClimaxReversalBars) return new PatternResult { Score = 0, Confidence = 0 };
 
         var recent = bars.TakeLast(ClimaxReversalLookback).ToList();
-        var current = recent.Last();
+        var current = recent[^1];
         
         // Look for unusually large bar with high volume (if available)
         var avgRange = recent.Take(ClimaxReversalAvgBars).Select(b => (double)(b.High - b.Low)).Average();
@@ -374,8 +374,8 @@ public class ReversalPatternDetector : IPatternDetector
         var firstThird = recent.Take(TrendExhaustionSegmentBars).ToList();
         var lastThird = recent.TakeLast(TrendExhaustionSegmentBars).ToList();
         
-        var earlySlope = (double)(firstThird.Last().Close - firstThird.First().Close) / firstThird.Count;
-        var lateSlope = (double)(lastThird.Last().Close - lastThird.First().Close) / lastThird.Count;
+        var earlySlope = (double)(firstThird[^1].Close - firstThird[0].Close) / firstThird.Count;
+        var lateSlope = (double)(lastThird[^1].Close - lastThird[0].Close) / lastThird.Count;
         
         // Check for momentum divergence
         bool trendWeakening = false;

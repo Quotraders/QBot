@@ -519,7 +519,7 @@ public sealed class ShadowModeManager
     /// <summary>
     /// Emit shadow registration telemetry
     /// </summary>
-    private async Task EmitShadowRegistrationTelemetryAsync(ShadowStrategy strategy, CancellationToken cancellationToken)
+    private static async Task EmitShadowRegistrationTelemetryAsync(ShadowStrategy strategy, CancellationToken cancellationToken)
     {
         // Telemetry emission removed - tags preparation no longer needed
         await Task.CompletedTask.ConfigureAwait(false);
@@ -528,7 +528,7 @@ public sealed class ShadowModeManager
     /// <summary>
     /// Emit shadow pick telemetry
     /// </summary>
-    private async Task EmitShadowPickTelemetryAsync(ShadowPick pick, CancellationToken cancellationToken)
+    private static async Task EmitShadowPickTelemetryAsync(ShadowPick pick, CancellationToken cancellationToken)
     {
         // Telemetry emission removed - tags preparation no longer needed
         await Task.CompletedTask.ConfigureAwait(false);
@@ -537,7 +537,7 @@ public sealed class ShadowModeManager
     /// <summary>
     /// Emit shadow trade telemetry
     /// </summary>
-    private async Task EmitShadowTradeTelemetryAsync(ShadowTrade trade, CancellationToken cancellationToken)
+    private static async Task EmitShadowTradeTelemetryAsync(ShadowTrade trade, CancellationToken cancellationToken)
     {
         // Telemetry emission removed - tags preparation no longer needed
         await Task.CompletedTask.ConfigureAwait(false);
@@ -546,7 +546,7 @@ public sealed class ShadowModeManager
     /// <summary>
     /// Emit shadow promotion telemetry
     /// </summary>
-    private async Task EmitShadowPromotionTelemetryAsync(ShadowStrategy strategy, PromotionMetrics metrics, CancellationToken cancellationToken)
+    private static async Task EmitShadowPromotionTelemetryAsync(ShadowStrategy strategy, PromotionMetrics metrics, CancellationToken cancellationToken)
     {
         // Telemetry emission removed - tags preparation no longer needed
         await Task.CompletedTask.ConfigureAwait(false);
@@ -555,7 +555,7 @@ public sealed class ShadowModeManager
     /// <summary>
     /// Emit shadow demotion telemetry
     /// </summary>
-    private async Task EmitShadowDemotionTelemetryAsync(ShadowStrategy strategy, string reason, CancellationToken cancellationToken)
+    private static async Task EmitShadowDemotionTelemetryAsync(ShadowStrategy strategy, string reason, CancellationToken cancellationToken)
     {
         // Telemetry emission removed - tags preparation no longer needed
         await Task.CompletedTask.ConfigureAwait(false);
@@ -614,7 +614,7 @@ public sealed class ShadowStrategyRegistration
     public int? MinTradesForPromotion { get; set; }
     public double? WinRateThreshold { get; set; }
     public bool? AutoPromotionEnabled { get; set; }
-    public Dictionary<string, object> StrategyConfig { get; set; } = new();
+    public Dictionary<string, object> StrategyConfig { get; init; } = new();
 }
 
 /// <summary>
@@ -631,7 +631,7 @@ public sealed class ShadowStrategy
     public int MinTradesForPromotion { get; set; }
     public double WinRateThreshold { get; set; }
     public bool AutoPromotionEnabled { get; set; }
-    public Dictionary<string, object> StrategyConfig { get; set; } = new();
+    public Dictionary<string, object> StrategyConfig { get; init; } = new();
     public ShadowStrategyStatus Status { get; set; }
     public DateTime? PromotedAt { get; set; }
     public DateTime? DemotedAt { get; set; }
@@ -662,7 +662,7 @@ public sealed class ShadowPickRequest
     public double StopLoss { get; set; }
     public double TakeProfit { get; set; }
     public double RiskAmount { get; set; }
-    public Dictionary<string, object> MarketConditions { get; set; } = new();
+    public Dictionary<string, object> MarketConditions { get; init; } = new();
 }
 
 /// <summary>
@@ -710,7 +710,7 @@ public sealed class ShadowPick
     public double TakeProfit { get; set; }
     public double RiskAmount { get; set; }
     public DateTime CreatedAt { get; set; }
-    public Dictionary<string, object> MarketConditions { get; set; } = new();
+    public Dictionary<string, object> MarketConditions { get; init; } = new();
 }
 
 /// <summary>
@@ -770,8 +770,8 @@ public sealed class ShadowPerformanceTracker
 {
     public string StrategyName { get; set; } = string.Empty;
     public DateTime StartTime { get; set; }
-    public List<ShadowTrade> Trades { get; set; } = new();
-    public Dictionary<DateTime, DailyPerformanceStats> DailyStats { get; set; } = new();
+    public List<ShadowTrade> Trades { get; init; } = new();
+    public Dictionary<DateTime, DailyPerformanceStats> DailyStats { get; init; } = new();
 }
 
 /// <summary>

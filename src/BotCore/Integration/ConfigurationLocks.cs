@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 
 namespace BotCore.Integration;
@@ -157,10 +158,10 @@ public sealed class ConfigurationLocks
         var report = ValidateConfigurationLocks();
         var audit = new StringBuilder();
         
-        audit.AppendLine("=== PRODUCTION CONFIGURATION LOCKS AUDIT ===");
-        audit.AppendLine($"Validated: {report.ValidatedAt:yyyy-MM-dd HH:mm:ss} UTC");
-        audit.AppendLine($"Overall Compliance: {(report.IsCompliant ? "✅ COMPLIANT" : "❌ NON-COMPLIANT")}");
-        audit.AppendLine($"Total Settings Checked: {report.Settings.Count}");
+        audit.AppendLine(CultureInfo.InvariantCulture, $"=== PRODUCTION CONFIGURATION LOCKS AUDIT ===");
+        audit.AppendLine(CultureInfo.InvariantCulture, $"Validated: {report.ValidatedAt:yyyy-MM-dd HH:mm:ss} UTC");
+        audit.AppendLine(CultureInfo.InvariantCulture, $"Overall Compliance: {(report.IsCompliant ? "✅ COMPLIANT" : "❌ NON-COMPLIANT")}");
+        audit.AppendLine(CultureInfo.InvariantCulture, $"Total Settings Checked: {report.Settings.Count}");
         audit.AppendLine();
         
         // Group by compliance status
@@ -169,24 +170,24 @@ public sealed class ConfigurationLocks
         
         if (nonCompliantSettings.Any())
         {
-            audit.AppendLine("❌ NON-COMPLIANT SETTINGS:");
+            audit.AppendLine(CultureInfo.InvariantCulture, $"❌ NON-COMPLIANT SETTINGS:");
             foreach (var setting in nonCompliantSettings)
             {
-                audit.AppendLine($"  {setting.Key}:");
-                audit.AppendLine($"    Expected: {setting.ExpectedValue}");
-                audit.AppendLine($"    Actual: {setting.ActualValue}");
+                audit.AppendLine(CultureInfo.InvariantCulture, $"  {setting.Key}:");
+                audit.AppendLine(CultureInfo.InvariantCulture, $"    Expected: {setting.ExpectedValue}");
+                audit.AppendLine(CultureInfo.InvariantCulture, $"    Actual: {setting.ActualValue}");
                 if (!string.IsNullOrEmpty(setting.Description))
                 {
-                    audit.AppendLine($"    Description: {setting.Description}");
+                    audit.AppendLine(CultureInfo.InvariantCulture, $"    Description: {setting.Description}");
                 }
             }
             audit.AppendLine();
         }
         
-        audit.AppendLine("✅ COMPLIANT SETTINGS:");
+        audit.AppendLine(CultureInfo.InvariantCulture, $"✅ COMPLIANT SETTINGS:");
         foreach (var setting in compliantSettings)
         {
-            audit.AppendLine($"  {setting.Key}: {setting.ActualValue}");
+            audit.AppendLine(CultureInfo.InvariantCulture, $"  {setting.Key}: {setting.ActualValue}");
         }
         
         return audit.ToString();

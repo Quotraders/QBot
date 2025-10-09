@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace BotCore.StrategyDsl;
@@ -145,9 +146,9 @@ public class ExpressionEvaluator
     /// <summary>
     /// Async wrapper for expression evaluation (compatible with knowledge graph)
     /// </summary>
-    public async Task<ExpressionResult> EvaluateAsync(string expression, Dictionary<string, object> features)
+    public Task<ExpressionResult> EvaluateAsync(string expression, Dictionary<string, object> features)
     {
-        return await Task.Run(() =>
+        return Task.Run(() =>
         {
             try
             {
@@ -175,18 +176,21 @@ public class ExpressionEvaluator
                 _logger.LogError(ex, "Failed to evaluate expression: {Expression}", expression);
                 return new ExpressionResult { IsSuccess = false, ErrorMessage = ex.Message };
             }
-        }).ConfigureAwait(false);
+        });
     }
+
+    private static readonly string[] AndSeparator = new[] { " AND " };
+    private static readonly string[] OrSeparator = new[] { " OR " };
 
     private bool EvaluateLogicalAnd(string expression)
     {
-        var parts = expression.Split(new[] { " AND " }, StringSplitOptions.RemoveEmptyEntries);
+        var parts = expression.Split(AndSeparator, StringSplitOptions.RemoveEmptyEntries);
         return parts.All(part => EvaluateExpression(part.Trim()));
     }
 
     private bool EvaluateLogicalOr(string expression)
     {
-        var parts = expression.Split(new[] { " OR " }, StringSplitOptions.RemoveEmptyEntries);
+        var parts = expression.Split(OrSeparator, StringSplitOptions.RemoveEmptyEntries);
         return parts.Any(part => EvaluateExpression(part.Trim()));
     }
 
@@ -200,7 +204,7 @@ public class ExpressionEvaluator
             var innerResult = EvaluateExpression(innerExpression);
             
             // Replace the parenthetical expression with its result
-            var replacedExpression = expression.Replace(innerMatch.Value, innerResult.ToString().ToLower(), StringComparison.Ordinal);
+            var replacedExpression = expression.Replace(innerMatch.Value, innerResult.ToString().ToLower(CultureInfo.InvariantCulture), StringComparison.Ordinal);
             return EvaluateExpression(replacedExpression);
         }
 

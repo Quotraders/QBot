@@ -272,15 +272,15 @@ public sealed class YamlSchemaValidator
     /// </summary>
     private static string? DetermineSchemaType(string filePath)
     {
-        var fileName = Path.GetFileName(filePath).ToLowerInvariant();
+        var fileName = Path.GetFileName(filePath).ToUpperInvariant();
         
-        if (fileName.Contains("strategy", StringComparison.Ordinal) || fileName.StartsWith("s2") || fileName.StartsWith("s3") || 
-            fileName.StartsWith("s6") || fileName.StartsWith("s11"))
+        if (fileName.Contains("STRATEGY", StringComparison.Ordinal) || fileName.StartsWith("S2", StringComparison.Ordinal) || fileName.StartsWith("S3", StringComparison.Ordinal) || 
+            fileName.StartsWith("S6", StringComparison.Ordinal) || fileName.StartsWith("S11", StringComparison.Ordinal))
         {
             return "strategy";
         }
         
-        if (fileName.Contains("pattern", StringComparison.Ordinal))
+        if (fileName.Contains("PATTERN", StringComparison.Ordinal))
         {
             return "pattern";
         }
@@ -533,7 +533,7 @@ public sealed class YamlSchemaDefinition
     public string Name { get; set; } = string.Empty;
     public string[] RequiredFields { get; set; } = Array.Empty<string>();
     public string[] OptionalFields { get; set; } = Array.Empty<string>();
-    public Dictionary<string, Func<object, bool>> FieldValidators { get; set; } = new();
+    public Dictionary<string, Func<object, bool>> FieldValidators { get; init; } = new();
 }
 
 /// <summary>
@@ -580,5 +580,5 @@ public sealed class YamlDirectoryValidationResult
     public int InvalidFiles { get; set; }
     public bool IsAllValid { get; set; }
     public string? DirectoryError { get; set; }
-    public List<YamlValidationResult> FileResults { get; set; } = new();
+    public List<YamlValidationResult> FileResults { get; init; } = new();
 }

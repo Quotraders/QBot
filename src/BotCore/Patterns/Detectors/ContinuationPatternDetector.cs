@@ -133,12 +133,12 @@ public class ContinuationPatternDetector : IPatternDetector
         
         if (trendBars.Count < FlagMinTrendBars) return new PatternResult { Score = 0, Confidence = 0 };
         
-        var trendSlope = (double)(trendBars.Last().Close - trendBars.First().Close) / trendBars.Count;
+        var trendSlope = (double)(trendBars[^1].Close - trendBars[0].Close) / trendBars.Count;
         if (trendSlope <= 0) return new PatternResult { Score = 0, Confidence = 0 }; // Must be uptrend
 
         // Check for consolidation/pullback in remaining bars
         var consolidationBars = recent.Skip(trendPortion).ToList();
-        var consolidationSlope = Math.Abs((double)(consolidationBars.Last().Close - consolidationBars.First().Close) / consolidationBars.Count);
+        var consolidationSlope = Math.Abs((double)(consolidationBars[^1].Close - consolidationBars[0].Close) / consolidationBars.Count);
         
         // Flag should be relatively flat compared to prior trend
         var slopeRatio = consolidationSlope / Math.Abs(trendSlope);
@@ -175,11 +175,11 @@ public class ContinuationPatternDetector : IPatternDetector
         
         if (trendBars.Count < FlagMinTrendBars) return new PatternResult { Score = 0, Confidence = 0 };
         
-        var trendSlope = (double)(trendBars.Last().Close - trendBars.First().Close) / trendBars.Count;
+        var trendSlope = (double)(trendBars[^1].Close - trendBars[0].Close) / trendBars.Count;
         if (trendSlope >= 0) return new PatternResult { Score = 0, Confidence = 0 }; // Must be downtrend
 
         var consolidationBars = recent.Skip(trendPortion).ToList();
-        var consolidationSlope = Math.Abs((double)(consolidationBars.Last().Close - consolidationBars.First().Close) / consolidationBars.Count);
+        var consolidationSlope = Math.Abs((double)(consolidationBars[^1].Close - consolidationBars[0].Close) / consolidationBars.Count);
         
         var slopeRatio = consolidationSlope / Math.Abs(trendSlope);
         
@@ -228,7 +228,7 @@ public class ContinuationPatternDetector : IPatternDetector
         if (trendBars.Count < PennantMinTrendBars || pennantBars.Count < PennantMinConsolidationBars) 
             return new PatternResult { Score = 0, Confidence = 0 };
 
-        var trendSlope = (double)(trendBars.Last().Close - trendBars.First().Close) / trendBars.Count;
+        var trendSlope = (double)(trendBars[^1].Close - trendBars[0].Close) / trendBars.Count;
         
         // Validate trend direction
         if (bullish && trendSlope <= 0) return new PatternResult { Score = 0, Confidence = 0 };

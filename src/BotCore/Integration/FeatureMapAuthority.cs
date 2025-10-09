@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Reflection;
 using System.Text;
 using System.Threading;
@@ -410,12 +411,12 @@ public sealed class FeatureMapAuthority
         var report = GetManifestReport();
         var audit = new StringBuilder();
         
-        audit.AppendLine("=== FEATURE RESOLVER MANIFEST AUDIT ===");
-        audit.AppendLine($"Generated: {report.GeneratedAt:yyyy-MM-dd HH:mm:ss} UTC");
-        audit.AppendLine($"Total Resolvers: {report.TotalResolvers}");
-        audit.AppendLine($"Resolver Calls: {report.ResolverCalls}");
-        audit.AppendLine($"Missing Feature Calls: {report.MissingFeatureCalls}");
-        audit.AppendLine($"Resolver Errors: {report.ResolverErrors}");
+        audit.AppendLine(CultureInfo.InvariantCulture, $"=== FEATURE RESOLVER MANIFEST AUDIT ===");
+        audit.AppendLine(CultureInfo.InvariantCulture, $"Generated: {report.GeneratedAt:yyyy-MM-dd HH:mm:ss} UTC");
+        audit.AppendLine(CultureInfo.InvariantCulture, $"Total Resolvers: {report.TotalResolvers}");
+        audit.AppendLine(CultureInfo.InvariantCulture, $"Resolver Calls: {report.ResolverCalls}");
+        audit.AppendLine(CultureInfo.InvariantCulture, $"Missing Feature Calls: {report.MissingFeatureCalls}");
+        audit.AppendLine(CultureInfo.InvariantCulture, $"Resolver Errors: {report.ResolverErrors}");
         audit.AppendLine();
         
         // Group by feature category
@@ -430,11 +431,11 @@ public sealed class FeatureMapAuthority
         
         foreach (var group in featureGroups.OrderBy(g => g.Key))
         {
-            audit.AppendLine($"[{group.Key.ToUpperInvariant()}] ({group.Value.Count} features)");
+            audit.AppendLine(CultureInfo.InvariantCulture, $"[{group.Key.ToUpperInvariant()}] ({group.Value.Count} features)");
             foreach (var feature in group.Value.OrderBy(f => f))
             {
                 var resolverType = report.RegisteredFeatures[feature];
-                audit.AppendLine($"  {feature} → {resolverType}");
+                audit.AppendLine(CultureInfo.InvariantCulture, $"  {feature} → {resolverType}");
             }
             audit.AppendLine();
         }

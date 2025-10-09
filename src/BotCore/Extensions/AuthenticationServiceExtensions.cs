@@ -61,9 +61,9 @@ internal sealed class FuncTopstepAuthWrapper : ITopstepAuth
         return (jwt, expiry);
     }
 
-    public async Task EnsureFreshTokenAsync(CancellationToken ct = default)
+    public Task EnsureFreshTokenAsync(CancellationToken ct = default)
     {
-        await GetFreshJwtAsync(ct).ConfigureAwait(false);
+        return GetFreshJwtAsync(ct);
     }
 
     private static DateTimeOffset GetJwtExpiryUtc(string jwt)

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using System.Globalization;
 
 namespace BotCore.StrategyDsl;
 
@@ -325,7 +326,7 @@ public class FeatureBusMapper
     private static object? GetDefaultValueForIdentifier(string identifier)
     {
         // Provide sensible defaults for common identifiers when values are missing
-        return identifier.ToLower() switch
+        return identifier.ToLower(CultureInfo.InvariantCulture) switch
         {
             var id when id.Contains("time_of_day", StringComparison.Ordinal) => TimeSpan.FromHours(12), // Noon
             var id when id.Contains("_score", StringComparison.Ordinal) => 0.0,
