@@ -20,11 +20,11 @@ Last Updated: 2025-01-09 04:25:30
 - **Branch:** fix/botcore-services-analyzers
 - **Scope:** src/BotCore/Services/**/*.cs ONLY
 - **Status:** In Progress ✅
-- **Errors Fixed:** 154 (CA1822: 134→44, Total: 6022→5868)
-- **Files Modified:** 9
-- **Last Commit:** fix(services): Fixed 36 more CA1822 violations in TimeOptimizedStrategyManager and AutonomousDecisionEngine
-- **Last Update:** 2025-10-09 05:45:20
-- **Current File:** Working on remaining CA1822 violations (44 remaining)
+- **Errors Fixed:** 186 (CA1822: 134→24, Total: 6022→5836)
+- **Files Modified:** 14
+- **Last Commit:** fix(services): Fixed 22 more CA1822 violations across 6 files
+- **Last Update:** 2025-10-09 05:50:25
+- **Current File:** Completing CA1822, moving to other violations
 
 ---
 

@@ -498,7 +498,7 @@ namespace BotCore.Services
             }
         }
 
-        private Env CreateEnvironment(IReadOnlyList<Bar> bars)
+        private static Env CreateEnvironment(IReadOnlyList<Bar> bars)
         {
             // Create environment for strategy evaluation
             return new Env
@@ -834,7 +834,7 @@ namespace BotCore.Services
             return totalVolume > 0 ? volumeWeightedSum / totalVolume : bars.Last().Close;
         }
 
-        private decimal CalculateMarketStress(IReadOnlyList<Bar> bars)
+        private static decimal CalculateMarketStress(IReadOnlyList<Bar> bars)
         {
             if (bars.Count < MinimumBarsForStressCalculation) return MediumStressLevel; // Medium stress
 

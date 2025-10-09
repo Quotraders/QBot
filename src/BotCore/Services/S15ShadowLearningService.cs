@@ -162,7 +162,7 @@ public class S15ShadowLearningService : BackgroundService
         await PromoteToCanaryAsync(s15Metrics, baselineMetrics, pValue);
     }
 
-    private PerformanceMetrics CalculateMetrics(List<ShadowDecision> decisions)
+    private static PerformanceMetrics CalculateMetrics(List<ShadowDecision> decisions)
     {
         if (decisions.Count == 0)
         {
@@ -187,7 +187,7 @@ public class S15ShadowLearningService : BackgroundService
         };
     }
 
-    private PerformanceMetrics CalculateBaselineMetrics(List<ShadowDecision> decisions)
+    private static PerformanceMetrics CalculateBaselineMetrics(List<ShadowDecision> decisions)
     {
         var tradedDecisions = decisions.Where(d => d.ActualDecision != "HOLD").ToList();
         if (tradedDecisions.Count == 0)
@@ -213,7 +213,7 @@ public class S15ShadowLearningService : BackgroundService
         };
     }
 
-    private double BootstrapTest(List<double> sample1, List<double> sample2, int iterations = 10000)
+    private static double BootstrapTest(List<double> sample1, List<double> sample2, int iterations = 10000)
     {
         if (sample1.Count == 0 || sample2.Count == 0) return 1.0;
         

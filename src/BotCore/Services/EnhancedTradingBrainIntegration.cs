@@ -332,7 +332,7 @@ public class EnhancedTradingBrainIntegration
     /// <summary>
     /// Enhance position sizing using CVaR and ensemble insights
     /// </summary>
-    private decimal EnhancePositionSizing(decimal originalSize, EnsembleActionResult ensembleAction, decimal confidence, EnsemblePrediction pricePrediction)
+    private static decimal EnhancePositionSizing(decimal originalSize, EnsembleActionResult ensembleAction, decimal confidence, EnsemblePrediction pricePrediction)
     {
         var sizeMultiplier = BasePositionSizeMultiplier;
         
@@ -370,7 +370,7 @@ public class EnhancedTradingBrainIntegration
     /// <summary>
     /// Enhance risk level based on CVaR and market conditions
     /// </summary>
-    private decimal EnhanceRiskLevel(decimal originalRisk, double cvarEstimate, EnsemblePrediction pricePrediction)
+    private static decimal EnhanceRiskLevel(decimal originalRisk, double cvarEstimate, EnsemblePrediction pricePrediction)
     {
         var riskAdjustment = DefaultPredictionConfidence; // Initialize the variable
         
@@ -396,7 +396,7 @@ public class EnhancedTradingBrainIntegration
     /// <summary>
     /// Calculate market timing signal
     /// </summary>
-    private string CalculateMarketTiming(EnsemblePrediction pricePrediction, EnsembleActionResult ensembleAction, BrainMarketContext marketContext)
+    private static string CalculateMarketTiming(EnsemblePrediction pricePrediction, EnsembleActionResult ensembleAction, BrainMarketContext marketContext)
     {
         if (pricePrediction.Result is PriceDirectionPrediction pricePred)
         {

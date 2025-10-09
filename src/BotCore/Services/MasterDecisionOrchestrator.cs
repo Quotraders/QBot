@@ -1566,7 +1566,7 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
         return Task.CompletedTask;
     }
 
-    private void CopyDirectory(string sourceDir, string destinationDir)
+    private static void CopyDirectory(string sourceDir, string destinationDir)
     {
         Directory.CreateDirectory(destinationDir);
 
