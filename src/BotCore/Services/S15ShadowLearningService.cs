@@ -48,12 +48,12 @@ public class S15ShadowLearningService : BackgroundService
         {
             try
             {
-                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken).ConfigureAwait(false);
                 
                 // Check if we have enough shadow decisions to evaluate
                 if (_totalShadowDecisions >= MIN_SHADOW_DECISIONS && !_isPromotedToCanary)
                 {
-                    await EvaluatePromotionAsync(stoppingToken);
+                    await EvaluatePromotionAsync(stoppingToken).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
@@ -163,7 +163,7 @@ public class S15ShadowLearningService : BackgroundService
         
         // All checks passed - promote to canary
         _logger.LogInformation("=== GATE 3 PASSED - Promoting S15 to canary mode ===");
-        await PromoteToCanaryAsync(s15Metrics, baselineMetrics, pValue);
+        await PromoteToCanaryAsync(s15Metrics, baselineMetrics, pValue).ConfigureAwait(false);
     }
 
     private static PerformanceMetrics CalculateMetrics(List<ShadowDecision> decisions)
@@ -274,7 +274,7 @@ public class S15ShadowLearningService : BackgroundService
         var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config", "s15_promotion.json");
         Directory.CreateDirectory(Path.GetDirectoryName(configPath) ?? ".");
         
-        await File.WriteAllTextAsync(configPath, JsonSerializer.Serialize(promotionConfig, s_jsonOptions));
+        await File.WriteAllTextAsync(configPath, JsonSerializer.Serialize(promotionConfig, s_jsonOptions)).ConfigureAwait(false);
         
         _logger.LogInformation("✓ S15 promoted to canary mode with {Pct:P1} traffic", CANARY_TRAFFIC_PERCENTAGE);
         _logger.LogInformation("  Config written to: {Path}", configPath);

@@ -610,7 +610,7 @@ public class UnifiedDecisionRouter
                         TimeSpan.FromTicks((long)decisions.Average(d => d.HoldTime.Ticks)) : TimeSpan.Zero
                 };
                 
-                stats.SourceStats.Add(sourceStats);
+                stats.SourceStatsInternal.Add(sourceStats);
             }
             
             return stats;
@@ -854,9 +854,12 @@ public class UnifiedTradingDecision
 
 public class MarketAnalysis
 {
+    private readonly List<string> _signals = new();
+    
     public bool IsUptrend { get; set; }
     public decimal Strength { get; set; }
-    public List<string> Signals { get; } = new();
+    public IReadOnlyList<string> Signals => _signals;
+    internal List<string> SignalsInternal => _signals;
 }
 
 public class DecisionOutcome
@@ -878,7 +881,10 @@ public class DecisionOutcome
 
 public class DecisionRouterStats
 {
-    public List<SourceStats> SourceStats { get; } = new();
+    private readonly List<SourceStats> _sourceStats = new();
+    
+    public IReadOnlyList<SourceStats> SourceStats => _sourceStats;
+    internal List<SourceStats> SourceStatsInternal => _sourceStats;
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 }
 

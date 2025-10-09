@@ -217,10 +217,10 @@ public class TradingFeedbackService : BackgroundService
         }
         
         // Calculate rolling accuracy
-        metrics.AccuracyHistory.Add(outcome.PredictionAccuracy);
-        if (metrics.AccuracyHistory.Count > RollingAccuracyWindowSize) // Keep last N trades
+        metrics.AccuracyHistoryInternal.Add(outcome.PredictionAccuracy);
+        if (metrics.AccuracyHistoryInternal.Count > RollingAccuracyWindowSize) // Keep last N trades
         {
-            metrics.AccuracyHistory.RemoveAt(0);
+            metrics.AccuracyHistoryInternal.RemoveAt(0);
         }
         
         // Phase 6A: Exception Guards - Add .Count > 0 check before .Average()
@@ -381,7 +381,7 @@ public class TradingFeedbackService : BackgroundService
             // Populate readonly collections
             foreach (var strategy in strategies)
             {
-                retrainingRequest.Strategies.Add(strategy);
+                retrainingRequest.StrategiesInternal.Add(strategy);
             }
             
             var filteredMetrics = _performanceMetrics.Values
@@ -389,7 +389,7 @@ public class TradingFeedbackService : BackgroundService
                 .ToList();
             foreach (var metric in filteredMetrics)
             {
-                retrainingRequest.PerformanceMetrics.Add(metric);
+                retrainingRequest.PerformanceMetricsInternal.Add(metric);
             }
             
             // Save retraining request
@@ -435,7 +435,7 @@ public class TradingFeedbackService : BackgroundService
             var overallPerformanceList = _performanceMetrics.Values.ToList();
             foreach (var metric in overallPerformanceList)
             {
-                ensembleRequest.OverallPerformance.Add(metric);
+                ensembleRequest.OverallPerformanceInternal.Add(metric);
             }
             
             // Save ensemble retraining request
@@ -550,7 +550,7 @@ public class TradingFeedbackService : BackgroundService
         var strategyMetrics = _performanceMetrics.Values.ToList();
         foreach (var metric in strategyMetrics)
         {
-            summary.StrategyMetrics.Add(metric);
+            summary.StrategyMetricsInternal.Add(metric);
         }
         
         var modelMetrics = _ensemble.GetModelPerformanceStats();
@@ -609,6 +609,8 @@ public class PredictionFeedback
 
 public class TradingPerformanceMetrics
 {
+    private readonly List<double> _accuracyHistory = new();
+    
     public string Strategy { get; set; } = string.Empty;
     public string Symbol { get; set; } = string.Empty;
     public int TotalTrades { get; set; }
@@ -618,7 +620,8 @@ public class TradingPerformanceMetrics
     public double WinRate { get; set; }
     public double AccuracyVolatility { get; set; }
     public decimal TotalPnL { get; set; }
-    public List<double> AccuracyHistory { get; } = new();
+    public IReadOnlyList<double> AccuracyHistory => _accuracyHistory;
+    internal List<double> AccuracyHistoryInternal => _accuracyHistory;
     public DateTime FirstTrade { get; set; }
     public DateTime LastUpdate { get; set; }
 }
@@ -635,31 +638,42 @@ public class PerformanceIssue
 
 public class ModelRetrainingRequest
 {
+    private readonly List<string> _strategies = new();
+    private readonly List<TradingPerformanceMetrics> _performanceMetrics = new();
+    
     public DateTime Timestamp { get; set; }
-    public List<string> Strategies { get; } = new();
+    public IReadOnlyList<string> Strategies => _strategies;
+    internal List<string> StrategiesInternal => _strategies;
     public string Reason { get; set; } = string.Empty;
-    public List<TradingPerformanceMetrics> PerformanceMetrics { get; } = new();
+    public IReadOnlyList<TradingPerformanceMetrics> PerformanceMetrics => _performanceMetrics;
+    internal List<TradingPerformanceMetrics> PerformanceMetricsInternal => _performanceMetrics;
     public double TriggerThreshold { get; set; }
     public int MinSamples { get; set; }
 }
 
 public class EnsembleRetrainingRequest
 {
+    private readonly List<TradingPerformanceMetrics> _overallPerformance = new();
+    
     public DateTime Timestamp { get; set; }
     public string Reason { get; set; } = string.Empty;
     public Dictionary<string, ModelPerformance> ModelPerformance { get; } = new();
-    public List<TradingPerformanceMetrics> OverallPerformance { get; } = new();
+    public IReadOnlyList<TradingPerformanceMetrics> OverallPerformance => _overallPerformance;
+    internal List<TradingPerformanceMetrics> OverallPerformanceInternal => _overallPerformance;
     public double TriggerThreshold { get; set; }
 }
 
 public class PerformanceSummary
 {
+    private readonly List<TradingPerformanceMetrics> _strategyMetrics = new();
+    
     public DateTime Timestamp { get; set; }
     public int TotalStrategies { get; set; }
     public int TotalTrades { get; set; }
     public double OverallAccuracy { get; set; }
     public decimal OverallPnL { get; set; }
-    public List<TradingPerformanceMetrics> StrategyMetrics { get; } = new();
+    public IReadOnlyList<TradingPerformanceMetrics> StrategyMetrics => _strategyMetrics;
+    internal List<TradingPerformanceMetrics> StrategyMetricsInternal => _strategyMetrics;
     public Dictionary<string, ModelPerformance> ModelMetrics { get; } = new();
     public DateTime LastRetrainingTrigger { get; set; }
 }

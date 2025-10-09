@@ -252,13 +252,11 @@ public class TopStepComplianceManager
     /// <summary>
     /// Get profit target for TopStep evaluation
     /// </summary>
-    public decimal GetProfitTarget()
-    {
+    public decimal ProfitTarget =>
         // TopStep evaluation profit targets
         // Evaluation: $3,000 profit target for $50K account
         // Funded: No specific target, but consistent profitability expected
-        return ProfitTargetAmount;
-    }
+        ProfitTargetAmount;
     
     /// <summary>
     /// Check if minimum trading days requirement is met
@@ -293,7 +291,7 @@ public class TopStepComplianceManager
         await Task.CompletedTask.ConfigureAwait(false);
         
         var status = GetComplianceStatus();
-        var profitTarget = GetProfitTarget();
+        var profitTarget = ProfitTarget;
         var progressToTarget = (status.AccountBalance - 50000m) / profitTarget * 100m;
         
         // Build recommendations list first
@@ -417,7 +415,7 @@ public class TopStepComplianceManager
             recommendations.Add($"Continue trading for {status.DaysUntilMinimum} more days to meet minimum requirement");
         }
         
-        var profitTarget = GetProfitTarget();
+        var profitTarget = ProfitTarget;
         var remainingTarget = profitTarget - (status.AccountBalance - 50000m);
         if (remainingTarget > 0)
         {

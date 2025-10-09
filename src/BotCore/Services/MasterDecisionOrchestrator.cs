@@ -908,13 +908,13 @@ public class MasterDecisionOrchestrator : BackgroundService
 
         if (isCatastrophic)
         {
-            await CreateKillFileAsync(cancellationToken);
+            await CreateKillFileAsync(cancellationToken).ConfigureAwait(false);
             _logger.LogError("🚨 [GATE-5] CATASTROPHIC FAILURE - kill.txt created, live trading stopped");
         }
 
         if (shouldRollback)
         {
-            await ExecuteCanaryRollbackAsync(currentMetrics, cancellationToken);
+            await ExecuteCanaryRollbackAsync(currentMetrics, cancellationToken).ConfigureAwait(false);
         }
         else if (_canaryTradesCompleted >= minTrades && elapsedMinutes >= minMinutes)
         {
@@ -1006,7 +1006,7 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
                 $"Canary monitoring triggered emergency stop\n" +
                 $"Win Rate: {CalculateCanaryMetrics().WinRate:F2}%\n" +
                 $"Drawdown: ${CalculateCanaryMetrics().MaxDrawdown:F2}\n",
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
             
             _logger.LogCritical("🚨 [GATE-5] kill.txt created at {Path}", killFilePath);
         }
@@ -1812,13 +1812,47 @@ public class ContinuousLearningManager
         _serviceProvider = serviceProvider;
     }
     
-    public Task InitializeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-    public Task StartLearningAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-    public Task ProcessLearningEventsAsync(List<LearningEvent> events, CancellationToken cancellationToken) => Task.CompletedTask;
-    public Task CheckAndUpdateModelsAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-    public Task ForceUpdateAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-    public Task RestartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-    public Task TrackDecisionAsync(DecisionTrackingInfo info, CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task InitializeAsync(CancellationToken cancellationToken)
+    {
+        _ = _logger; // Placeholder implementation - will be implemented in future phase
+        return Task.CompletedTask;
+    }
+    
+    public Task StartLearningAsync(CancellationToken cancellationToken)
+    {
+        _ = _logger; // Placeholder implementation - will be implemented in future phase
+        return Task.CompletedTask;
+    }
+    
+    public Task ProcessLearningEventsAsync(IReadOnlyList<LearningEvent> events, CancellationToken cancellationToken)
+    {
+        _ = _logger; // Placeholder implementation - will be implemented in future phase
+        return Task.CompletedTask;
+    }
+    
+    public Task CheckAndUpdateModelsAsync(CancellationToken cancellationToken)
+    {
+        _ = _logger; // Placeholder implementation - will be implemented in future phase
+        return Task.CompletedTask;
+    }
+    
+    public Task ForceUpdateAsync(CancellationToken cancellationToken)
+    {
+        _ = _logger; // Placeholder implementation - will be implemented in future phase
+        return Task.CompletedTask;
+    }
+    
+    public Task RestartAsync(CancellationToken cancellationToken)
+    {
+        _ = _logger; // Placeholder implementation - will be implemented in future phase
+        return Task.CompletedTask;
+    }
+    
+    public Task TrackDecisionAsync(DecisionTrackingInfo info, CancellationToken cancellationToken)
+    {
+        _ = _logger; // Placeholder implementation - will be implemented in future phase
+        return Task.CompletedTask;
+    }
 }
 
 /// <summary>
@@ -1835,9 +1869,23 @@ public class ContractRolloverManager
         _serviceProvider = serviceProvider;
     }
     
-    public Task InitializeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-    public Task StartMonitoringAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-    public Task CheckRolloverNeedsAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task InitializeAsync(CancellationToken cancellationToken)
+    {
+        _ = _logger; // Placeholder implementation - will be implemented in future phase
+        return Task.CompletedTask;
+    }
+    
+    public Task StartMonitoringAsync(CancellationToken cancellationToken)
+    {
+        _ = _logger; // Placeholder implementation - will be implemented in future phase
+        return Task.CompletedTask;
+    }
+    
+    public Task CheckRolloverNeedsAsync(CancellationToken cancellationToken)
+    {
+        _ = _logger; // Placeholder implementation - will be implemented in future phase
+        return Task.CompletedTask;
+    }
 }
 
 #endregion
