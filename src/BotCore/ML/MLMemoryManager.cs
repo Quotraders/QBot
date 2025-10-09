@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.ML.OnnxRuntime;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -413,7 +414,22 @@ public class MLMemoryManager : IMLMemoryManager
             // Return the InferenceSession with proper type casting
             return session as T;
         }
-        catch (Exception ex)
+        catch (OnnxRuntimeException ex)
+        {
+            LogOnnxLoadError(_logger, modelPath, ex);
+            return null;
+        }
+        catch (FileNotFoundException ex)
+        {
+            LogOnnxLoadError(_logger, modelPath, ex);
+            return null;
+        }
+        catch (InvalidOperationException ex)
+        {
+            LogOnnxLoadError(_logger, modelPath, ex);
+            return null;
+        }
+        catch (ArgumentException ex)
         {
             LogOnnxLoadError(_logger, modelPath, ex);
             return null;
@@ -609,10 +625,14 @@ public class MLMemoryManager : IMLMemoryManager
             
             if (freedMemory > MEANINGFUL_CLEANUP_THRESHOLD_MB || modelsToRemove.Count > 0)
             {
-                LogCleanupFreed(_logger, freedMemory, modelsToRemove.Count, null);
+                LogCleanupFreed(_logger, (long)freedMemory, modelsToRemove.Count, null);
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
+        {
+            LogCleanupFailed(_logger, ex);
+        }
+        catch (OutOfMemoryException ex)
         {
             LogCleanupFailed(_logger, ex);
         }
@@ -674,7 +694,11 @@ public class MLMemoryManager : IMLMemoryManager
                 }
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
+        {
+            LogMonitoringFailed(_logger, ex);
+        }
+        catch (ArgumentException ex)
         {
             LogMonitoringFailed(_logger, ex);
         }
@@ -756,7 +780,11 @@ public class MLMemoryManager : IMLMemoryManager
                     await Task.Delay(GC_MONITORING_DELAY_MS).ConfigureAwait(false);
                 }
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
+            {
+                LogGCMonitoringFailed(_logger, ex);
+            }
+            catch (ArgumentOutOfRangeException ex)
             {
                 LogGCMonitoringFailed(_logger, ex);
             }
