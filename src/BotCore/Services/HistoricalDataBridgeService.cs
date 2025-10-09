@@ -592,8 +592,8 @@ namespace BotCore.Services
             {
                 "CON.F.US.EP.Z25" => EsFuturesBasePrice, // ES futures
                 "CON.F.US.ENQ.Z25" => NqFuturesBasePrice, // NQ futures
-                _ when contractId.Contains("EP") => EsFuturesBasePrice, // ES variants
-                _ when contractId.Contains("ENQ") => NqFuturesBasePrice, // NQ variants
+                _ when contractId.Contains("EP", StringComparison.Ordinal) => EsFuturesBasePrice, // ES variants
+                _ when contractId.Contains("ENQ", StringComparison.Ordinal) => NqFuturesBasePrice, // NQ variants
                 _ => GenericContractFallbackPrice // Generic fallback
             };
         }
@@ -604,8 +604,8 @@ namespace BotCore.Services
             {
                 "CON.F.US.EP.Z25" => "ES",
                 "CON.F.US.ENQ.Z25" => "NQ",
-                _ when contractId.Contains("EP") => "ES",
-                _ when contractId.Contains("ENQ") => "NQ",
+                _ when contractId.Contains("EP", StringComparison.Ordinal) => "ES",
+                _ when contractId.Contains("ENQ", StringComparison.Ordinal) => "NQ",
                 _ => "UNKNOWN"
             };
         }

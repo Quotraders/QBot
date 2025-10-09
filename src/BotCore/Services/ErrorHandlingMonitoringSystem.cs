@@ -185,7 +185,7 @@ namespace TopstepX.Bot.Core.Services
         
         private static string GenerateErrorId(string component, Exception exception)
         {
-            var baseString = $"{component}_{exception.GetType().Name}_{exception.Message?.GetHashCode()}";
+            var baseString = $"{component}_{exception.GetType().Name}_{exception.Message?.GetHashCode(StringComparison.Ordinal)}";
             return Convert.ToHexString(System.Text.Encoding.UTF8.GetBytes(baseString))[..ErrorIdLength];
         }
         
