@@ -290,7 +290,7 @@ public sealed class DecisionFusionCoordinator
             }
             
             var value = configuration.GetValue<double>(key);
-            if (value == 0.0 && !configuration.GetSection(key).Exists())
+            if (Math.Abs(value) < double.Epsilon && !configuration.GetSection(key).Exists())
             {
                 _logger.LogTrace("Configuration key {Key} not found - using default {Default}", key, defaultValue);
                 return defaultValue;

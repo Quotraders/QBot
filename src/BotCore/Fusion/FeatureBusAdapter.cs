@@ -1238,7 +1238,8 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         try
         {
             var barAggregators = _serviceProvider.GetServices<BotCore.Market.BarAggregator>();
-            foreach (var aggregator in barAggregators)
+            var aggregator = barAggregators.FirstOrDefault();
+            if (aggregator != null)
             {
                 var history = aggregator.GetHistory(symbol);
                 return history.Count;

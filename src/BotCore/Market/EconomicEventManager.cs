@@ -236,8 +236,8 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
     {
         // Production implementation: Load from external economic calendar APIs
         // This could integrate with Fed data, economic calendar APIs, etc.
-        var events = new List<EconomicEvent>();
-
+        List<EconomicEvent> events;
+        
         try
         {
             // PHASE 2: Try loading from ForexFactory data first
@@ -394,7 +394,6 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "[EconomicEventManager] Error parsing ForexFactory event");
-                    continue;
                 }
             }
             
