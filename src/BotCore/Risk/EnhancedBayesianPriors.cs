@@ -330,7 +330,7 @@ public class EnhancedBayesianPriors : IBayesianPriors
     private static decimal SampleBeta(decimal alpha, decimal beta)
     {
         // Box-Muller transform for Beta sampling
-        var random = new Random();
+        var random = Random.Shared;
 
         // Use Gamma sampling to generate Beta
         var x = SampleGamma(alpha, random, CancellationToken.None);

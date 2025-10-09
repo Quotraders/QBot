@@ -31,7 +31,6 @@ namespace BotCore.Services
     {
         private readonly ILogger<EnhancedBacktestService> _logger;
         private readonly BacktestEnhancementConfiguration _config;
-        private readonly Random _random;
 
         // S109: Market friction simulation constants
         private const int MaxSimulationDelayMs = 100;
@@ -56,7 +55,6 @@ namespace BotCore.Services
         {
             _logger = logger;
             _config = (config ?? throw new ArgumentNullException(nameof(config))).Value;
-            _random = new Random();
         }
 
         /// <summary>
@@ -195,7 +193,7 @@ namespace BotCore.Services
             slippageAmount *= (decimal)quantityMultiplier;
             
             // Add random variance (±20% of calculated slippage)
-            var variance = 1.0 + (_random.NextDouble() - 0.5) * 0.4;
+            var variance = 1.0 + (Random.Shared.NextDouble() - 0.5) * 0.4;
             slippageAmount *= (decimal)variance;
             
             // Ensure minimum tick size
@@ -329,9 +327,9 @@ namespace BotCore.Services
             {
                 Timestamp = timestamp,
                 Symbol = symbol,
-                VolatilityScore = BaseVolatilityScore + _random.NextDouble() * VolatilityScoreRange, // 0.5 to 1.0
-                LiquidityScore = isMarketOpen ? MarketOpenLiquidityBase + _random.NextDouble() * MarketOpenLiquidityRange : MarketClosedLiquidityBase + _random.NextDouble() * MarketClosedLiquidityRange,
-                MarketStress = _random.NextDouble() * MaxMarketStress, // 0 to 0.3
+                VolatilityScore = BaseVolatilityScore + Random.Shared.NextDouble() * VolatilityScoreRange, // 0.5 to 1.0
+                LiquidityScore = isMarketOpen ? MarketOpenLiquidityBase + Random.Shared.NextDouble() * MarketOpenLiquidityRange : MarketClosedLiquidityBase + Random.Shared.NextDouble() * MarketClosedLiquidityRange,
+                MarketStress = Random.Shared.NextDouble() * MaxMarketStress, // 0 to 0.3
                 IsMarketOpen = isMarketOpen
             };
         }

@@ -565,7 +565,7 @@ namespace BotCore.Services
                 var barStart = currentTime.AddMinutes(-i - 1);
                 
                 // Simple price movement simulation for warm-up
-                var priceVariation = (decimal)(new Random().NextDouble() - 0.5) * (basePrice * 0.001m);
+                var priceVariation = (decimal)(Random.Shared.NextDouble() - 0.5) * (basePrice * 0.001m);
                 var price = basePrice + priceVariation;
                 
                 var bar = new BotCore.Models.Bar
@@ -576,7 +576,7 @@ namespace BotCore.Services
                     High = price + Math.Abs(priceVariation) * 0.5m,
                     Low = price - Math.Abs(priceVariation) * 0.5m,
                     Close = price,
-                    Volume = 100 + new Random().Next(1, 500) // Synthetic volume
+                    Volume = 100 + Random.Shared.Next(1, 500) // Synthetic volume
                 };
                 
                 bars.Add(bar);
