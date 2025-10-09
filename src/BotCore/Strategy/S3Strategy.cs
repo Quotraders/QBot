@@ -87,9 +87,17 @@ namespace BotCore.Strategy
             {
                 try
                 {
-                    DateTime utc = b.Ts > 0
-                        ? DateTimeOffset.FromUnixTimeMilliseconds(b.Ts).UtcDateTime
-                        : (b.Start.Kind == DateTimeKind.Utc ? b.Start : DateTime.SpecifyKind(b.Start, DateTimeKind.Utc));
+                    DateTime utc;
+                    if (b.Ts > 0)
+                    {
+                        utc = DateTimeOffset.FromUnixTimeMilliseconds(b.Ts).UtcDateTime;
+                    }
+                    else
+                    {
+                        utc = b.Start.Kind == DateTimeKind.Utc 
+                            ? b.Start 
+                            : DateTime.SpecifyKind(b.Start, DateTimeKind.Utc);
+                    }
                     return TimeZoneInfo.ConvertTimeFromUtc(utc, Et);
                 }
                 catch (TimeZoneNotFoundException ex)
@@ -742,12 +750,12 @@ namespace BotCore.Strategy
             int m = today.Month; if (m % QuarterlyMonthDivisor != 0) return false; // Mar/Jun/Sep/Dec only
             int firstThu = FirstWeekdayOfMonth(today.Year, m, DayOfWeek.Thursday);
             int secondThu = firstThu + WeekDaysToAdd;
-            var center = new DateTime(today.Year, m, secondThu);
+            var center = new DateTime(today.Year, m, secondThu, 0, 0, 0, DateTimeKind.Utc);
             return (today - center).TotalDays <= daysBefore && (center - today).TotalDays <= daysAfter;
         }
         private static int FirstWeekdayOfMonth(int y, int m, DayOfWeek dow)
         { 
-            var d = new DateTime(y, m, 1); 
+            var d = new DateTime(y, m, 1, 0, 0, 0, DateTimeKind.Utc); 
             while (d.DayOfWeek != dow) 
             {
                 d = d.AddDays(1); 

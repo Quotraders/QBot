@@ -508,7 +508,10 @@ namespace TopstepX.S6
                 // gap compute at 09:30 bar
                 if (!GapComputed && bar.TimeET.TimeOfDay >= C.RTHOpen)
                 {
-                    RTHOpenPx = ToPx(bar.Open); GapPts = RTHOpenPx - ToPx(PremarketLast); GapDir = GapPts>0?1:(GapPts<0?-1:0); GapComputed=true;
+                    RTHOpenPx = ToPx(bar.Open);
+                    GapPts = RTHOpenPx - ToPx(PremarketLast);
+                    GapDir = GapPts > 0 ? 1 : (GapPts < 0 ? -1 : 0);
+                    GapComputed = true;
                 }
 
                 // indicators

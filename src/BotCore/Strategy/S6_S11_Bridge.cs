@@ -721,7 +721,7 @@ namespace BotCore.Strategy
                 {
                     // Use loaded parameters with fallback to RuntimeConfig
                     var minAtr = S6RuntimeConfig.MinAtr;
-                    var stopAtrMult = sessionParams?.StopAtrMult ?? (double)S6RuntimeConfig.StopAtrMult;
+                    var stopAtrMult = (decimal)(sessionParams?.StopAtrMult ?? (double)S6RuntimeConfig.StopAtrMult);
                     var targetAtrMult = S6RuntimeConfig.TargetAtrMult; // Use RuntimeConfig for now, can be extended later
                     
                     var lastBar = bars.Last();
@@ -730,8 +730,8 @@ namespace BotCore.Strategy
                     
                     if (atr > minAtr)
                     {
-                        var stop = entry - atr * (decimal)stopAtrMult;
-                        var target = entry + atr * (decimal)targetAtrMult;
+                        var stop = entry - atr * stopAtrMult;
+                        var target = entry + atr * targetAtrMult;
                         
                         var candidate = new Candidate
                         {
@@ -831,7 +831,7 @@ namespace BotCore.Strategy
                 {
                     // Use loaded parameters with fallback to RuntimeConfig
                     var minAtr = S11RuntimeConfig.MinAtr;
-                    var stopAtrMult = sessionParams?.StopAtrMult ?? (double)S11RuntimeConfig.StopAtrMult;
+                    var stopAtrMult = (decimal)(sessionParams?.StopAtrMult ?? (double)S11RuntimeConfig.StopAtrMult);
                     var targetAtrMult = S11RuntimeConfig.TargetAtrMult; // Use RuntimeConfig for now, can be extended later
                     
                     var lastBar = bars.Last();
@@ -840,8 +840,8 @@ namespace BotCore.Strategy
                     
                     if (atr > minAtr)
                     {
-                        var stop = entry + atr * (decimal)stopAtrMult;
-                        var target = entry - atr * (decimal)targetAtrMult;
+                        var stop = entry + atr * stopAtrMult;
+                        var target = entry - atr * targetAtrMult;
                         
                         var candidate = new Candidate
                         {

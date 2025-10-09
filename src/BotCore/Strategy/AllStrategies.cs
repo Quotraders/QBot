@@ -646,9 +646,19 @@ namespace BotCore.Strategy
                 var baseParams = TradingBot.Abstractions.StrategyParameters.S2Parameters.LoadOptimal();
                 sessionParams = baseParams.LoadOptimalForSession(sessionName);
             }
-            catch (Exception)
+            catch (FileNotFoundException)
             {
-                // Parameter loading failed, will use S2RuntimeConfig defaults
+                // Parameter file not found, use S2RuntimeConfig defaults (expected in new deployments)
+                sessionParams = null;
+            }
+            catch (JsonException)
+            {
+                // Parameter file corrupted, use S2RuntimeConfig defaults
+                sessionParams = null;
+            }
+            catch (InvalidOperationException)
+            {
+                // Parameter validation failed, use S2RuntimeConfig defaults
                 sessionParams = null;
             }
             
@@ -662,9 +672,17 @@ namespace BotCore.Strategy
             {
                 try
                 {
-                    DateTime utc = b.Ts > 0
-                        ? DateTimeOffset.FromUnixTimeMilliseconds(b.Ts).UtcDateTime
-                        : (b.Start.Kind == DateTimeKind.Utc ? b.Start : DateTime.SpecifyKind(b.Start, DateTimeKind.Utc));
+                    DateTime utc;
+                    if (b.Ts > 0)
+                    {
+                        utc = DateTimeOffset.FromUnixTimeMilliseconds(b.Ts).UtcDateTime;
+                    }
+                    else
+                    {
+                        utc = b.Start.Kind == DateTimeKind.Utc 
+                            ? b.Start 
+                            : DateTime.SpecifyKind(b.Start, DateTimeKind.Utc);
+                    }
                     return TimeZoneInfo.ConvertTimeFromUtc(utc, et);
                 }
                 catch (ArgumentException)
@@ -813,7 +831,7 @@ namespace BotCore.Strategy
                     var rollDay = DateTime.UtcNow.Date;
                     if (rollDay.Month is QuarterlyRollMonth1 or QuarterlyRollMonth2 or QuarterlyRollMonth3 or QuarterlyRollMonth4)
                     {
-                        DateTime first = new(rollDay.Year, rollDay.Month, 1);
+                        DateTime first = new(rollDay.Year, rollDay.Month, 1, 0, 0, 0, DateTimeKind.Utc);
                         int add = ((int)DayOfWeek.Friday - (int)first.DayOfWeek + 7) % 7;
                         DateTime firstFri = first.AddDays(add);
                         DateTime secondFri = firstFri.AddDays(7);
@@ -863,7 +881,19 @@ namespace BotCore.Strategy
             // RS peer directional veto (Patch B): use other index short-term slope to block fades against strong move
             try
             {
-                string peer = symbol.Contains("ES", StringComparison.OrdinalIgnoreCase) ? "NQ" : symbol.Contains("NQ", StringComparison.OrdinalIgnoreCase) ? "ES" : string.Empty;
+                string peer;
+                if (symbol.Contains("ES", StringComparison.OrdinalIgnoreCase))
+                {
+                    peer = "NQ";
+                }
+                else if (symbol.Contains("NQ", StringComparison.OrdinalIgnoreCase))
+                {
+                    peer = "ES";
+                }
+                else
+                {
+                    peer = string.Empty;
+                }
                 if (!string.IsNullOrWhiteSpace(peer) && S2RuntimeConfig.RsPeerThreshold > 0m && ExternalGetBars != null)
                 {
                     var pb = ExternalGetBars(peer) ?? [];
