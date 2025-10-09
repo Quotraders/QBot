@@ -450,39 +450,91 @@ internal class PromotionService : IPromotionService
         }
     }
 
-    private async Task ValidatePerformanceImprovementAsync(PromotionDecision decision, ModelVersion champion, ModelVersion challenger)
+    private async Task ValidatePerformanceImprovementAsync(PromotionDecision decision, ModelVersion champion, ModelVersion challenger, CancellationToken cancellationToken)
     {
-        await Task.CompletedTask.ConfigureAwait(false);
+        // Run REAL shadow test using ShadowTester instead of mock data
+        _logger.LogInformation("Running shadow test to validate performance improvement for challenger {ChallengerVersionId}", 
+            challenger.VersionId);
         
-        // Compare performance metrics
-        decision.SharpeImprovement = challenger.Sharpe - champion.Sharpe;
-        decision.SortinoImprovement = challenger.Sortino - champion.Sortino;
-        decision.CVaRImprovement = challenger.CVaR - champion.CVaR;
-        decision.DrawdownImprovement = challenger.MaxDrawdown - champion.MaxDrawdown;
-
-        // Validate improvements meet thresholds
-        if (decision.SharpeImprovement <= 0)
+        try
         {
-            decision.ValidationErrors.Add($"Sharpe ratio not improved: {decision.SharpeImprovement:F4}");
+            var shadowTestConfig = new ShadowTestConfig
+            {
+                MinTrades = 50,
+                MinSessions = 5,
+                MaxTestDuration = TimeSpan.FromDays(7),
+                SignificanceLevel = 0.05m
+            };
+
+            var shadowTestReport = await _shadowTester.RunShadowTestAsync(
+                champion.Algorithm, 
+                challenger.VersionId, 
+                shadowTestConfig, 
+                cancellationToken).ConfigureAwait(false);
+
+            // Use REAL metrics from shadow test instead of comparing model metadata
+            decision.SharpeImprovement = (double)(shadowTestReport.ChallengerSharpe - shadowTestReport.ChampionSharpe);
+            decision.SortinoImprovement = (double)(shadowTestReport.ChallengerSortino - shadowTestReport.ChampionSortino);
+            decision.CVaRImprovement = (double)(shadowTestReport.ChallengerCVaR - shadowTestReport.ChampionCVaR);
+            decision.DrawdownImprovement = (double)(shadowTestReport.ChallengerMaxDrawdown - shadowTestReport.ChampionMaxDrawdown);
+
+            // Use REAL statistical test results
+            decision.PValue = (double)shadowTestReport.PValue;
+            decision.StatisticallySignificant = shadowTestReport.StatisticallySignificant;
+            decision.ConfidenceInterval = 0.95; // Fixed confidence interval
+
+            _logger.LogInformation("Shadow test completed - Sharpe improvement: {SharpeImp:F4}, p-value: {PValue:F4}, significant: {Significant}",
+                decision.SharpeImprovement, decision.PValue, decision.StatisticallySignificant);
+
+            // Validate improvements meet thresholds
+            if (decision.SharpeImprovement <= 0)
+            {
+                decision.ValidationErrors.Add($"Sharpe ratio not improved: {decision.SharpeImprovement:F4}");
+            }
+
+            if (decision.SortinoImprovement <= 0)
+            {
+                decision.ValidationErrors.Add($"Sortino ratio not improved: {decision.SortinoImprovement:F4}");
+            }
+
+            if (decision.CVaRImprovement <= 0)
+            {
+                decision.ValidationErrors.Add($"CVaR not improved: {decision.CVaRImprovement:F4}");
+            }
+
+            if (!decision.StatisticallySignificant)
+            {
+                decision.ValidationErrors.Add($"Performance improvement not statistically significant (p={decision.PValue:F4})");
+            }
+
+            // Validate behavior alignment from shadow test
+            if (shadowTestReport.DecisionAlignment < 0.8m)
+            {
+                decision.RiskConcerns.Add($"Low decision alignment: {shadowTestReport.DecisionAlignment:P1}");
+            }
+
+            decision.PassedBehaviorAlignment = shadowTestReport.DecisionAlignment >= 0.8m && 
+                                              shadowTestReport.TimingAlignment >= 0.8m &&
+                                              shadowTestReport.SizeAlignment >= 0.7m;
         }
-
-        if (decision.SortinoImprovement <= 0)
+        catch (Exception ex)
         {
-            decision.ValidationErrors.Add($"Sortino ratio not improved: {decision.SortinoImprovement:F4}");
-        }
-
-        if (decision.CVaRImprovement <= 0)
-        {
-            decision.ValidationErrors.Add($"CVaR not improved: {decision.CVaRImprovement:F4}");
-        }
-
-        // Mock statistical significance (would use real historical testing)
-        decision.PValue = 0.03m; // Mock p-value
-        decision.StatisticallySignificant = decision.PValue < 0.05m;
-        
-        if (!decision.StatisticallySignificant)
-        {
-            decision.ValidationErrors.Add($"Performance improvement not statistically significant (p={decision.PValue:F4})");
+            _logger.LogError(ex, "Shadow test failed for challenger {ChallengerVersionId}", challenger.VersionId);
+            
+            // Fall back to metadata comparison if shadow test fails
+            decision.SharpeImprovement = (double)(challenger.Sharpe - champion.Sharpe);
+            decision.SortinoImprovement = (double)(challenger.Sortino - champion.Sortino);
+            decision.CVaRImprovement = (double)(challenger.CVaR - champion.CVaR);
+            decision.DrawdownImprovement = (double)(challenger.MaxDrawdown - champion.MaxDrawdown);
+            decision.PValue = 0.999; // Conservative fallback - assume not significant
+            decision.StatisticallySignificant = false;
+            decision.ValidationErrors.Add($"Shadow test failed: {ex.Message} - using conservative metrics");
+            
+            // Still validate basic improvements
+            if (decision.SharpeImprovement <= 0)
+            {
+                decision.ValidationErrors.Add($"Sharpe ratio not improved: {decision.SharpeImprovement:F4}");
+            }
         }
     }
 
