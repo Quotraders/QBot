@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -330,21 +331,19 @@ public class EnhancedBayesianPriors : IBayesianPriors
     private static decimal SampleBeta(decimal alpha, decimal beta)
     {
         // Box-Muller transform for Beta sampling
-        var random = Random.Shared;
-
         // Use Gamma sampling to generate Beta
-        var x = SampleGamma(alpha, random, CancellationToken.None);
-        var y = SampleGamma(beta, random, CancellationToken.None);
+        var x = SampleGamma(alpha, CancellationToken.None);
+        var y = SampleGamma(beta, CancellationToken.None);
 
         return x / (x + y);
     }
 
-    private static decimal SampleGamma(decimal shape, Random random, CancellationToken cancellationToken = default)
+    private static decimal SampleGamma(decimal shape, CancellationToken cancellationToken = default)
     {
         // Simple gamma sampling using acceptance-rejection
         if (shape < 1m)
         {
-            return SampleGamma(shape + 1m, random, cancellationToken) * (decimal)Math.Pow(random.NextDouble(), 1.0 / (double)shape);
+            return SampleGamma(shape + 1m, cancellationToken) * (decimal)Math.Pow(GetSecureRandomDouble(), 1.0 / (double)shape);
         }
 
         var d = shape - 1m / 3m;
@@ -352,8 +351,8 @@ public class EnhancedBayesianPriors : IBayesianPriors
 
         while (!cancellationToken.IsCancellationRequested)
         {
-            var x = (decimal)random.NextDouble();
-            var y = (decimal)random.NextDouble();
+            var x = (decimal)GetSecureRandomDouble();
+            var y = (decimal)GetSecureRandomDouble();
 
             var z = (decimal)Math.Sqrt(-2.0 * Math.Log((double)x)) * (decimal)Math.Cos(2.0 * Math.PI * (double)y);
             var v = (1m + c * z) * (1m + c * z) * (1m + c * z);
@@ -366,6 +365,16 @@ public class EnhancedBayesianPriors : IBayesianPriors
         
         // Fallback if cancellation was requested
         return d; // Return a reasonable default value
+    }
+
+    private static double GetSecureRandomDouble()
+    {
+        // Generate a cryptographically secure random double in [0, 1)
+        Span<byte> bytes = stackalloc byte[8];
+        RandomNumberGenerator.Fill(bytes);
+        var value = BitConverter.ToUInt64(bytes);
+        // Scale to [0, 1) by dividing by max ulong value
+        return (double)value / ulong.MaxValue;
     }
 
     private void InitializeHierarchicalStructure()
