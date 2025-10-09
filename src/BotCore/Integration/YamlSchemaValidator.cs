@@ -272,15 +272,15 @@ public sealed class YamlSchemaValidator
     /// </summary>
     private static string? DetermineSchemaType(string filePath)
     {
-        var fileName = Path.GetFileName(filePath).ToLowerInvariant();
+        var fileName = Path.GetFileName(filePath).ToUpperInvariant();
         
-        if (fileName.Contains("strategy", StringComparison.Ordinal) || fileName.StartsWith("s2") || fileName.StartsWith("s3") || 
-            fileName.StartsWith("s6") || fileName.StartsWith("s11"))
+        if (fileName.Contains("STRATEGY", StringComparison.Ordinal) || fileName.StartsWith("S2", StringComparison.Ordinal) || fileName.StartsWith("S3", StringComparison.Ordinal) || 
+            fileName.StartsWith("S6", StringComparison.Ordinal) || fileName.StartsWith("S11", StringComparison.Ordinal))
         {
             return "strategy";
         }
         
-        if (fileName.Contains("pattern", StringComparison.Ordinal))
+        if (fileName.Contains("PATTERN", StringComparison.Ordinal))
         {
             return "pattern";
         }
