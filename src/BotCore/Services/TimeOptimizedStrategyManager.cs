@@ -498,7 +498,7 @@ namespace BotCore.Services
             }
         }
 
-        private Env CreateEnvironment(IReadOnlyList<Bar> bars)
+        private static Env CreateEnvironment(IReadOnlyList<Bar> bars)
         {
             // Create environment for strategy evaluation
             return new Env
@@ -668,7 +668,7 @@ namespace BotCore.Services
             return (currentPrice - previousPrice) / previousPrice;
         }
 
-        private double CalculateRSI(IReadOnlyList<Bar> bars, int period)
+        private static double CalculateRSI(IReadOnlyList<Bar> bars, int period)
         {
             if (bars.Count < period + 1) return NeutralRSIValue; // Neutral RSI
 
@@ -699,7 +699,7 @@ namespace BotCore.Services
             return MaxRSIValue - (MaxRSIValue / (1 + rs));
         }
 
-        private VolumeProfileData CalculateVolumeProfile(IReadOnlyList<Bar> bars)
+        private static VolumeProfileData CalculateVolumeProfile(IReadOnlyList<Bar> bars)
         {
             if (bars.Count < MinimumBarsForVolumeProfile)
             {
@@ -736,7 +736,7 @@ namespace BotCore.Services
             };
         }
 
-        private decimal CalculateOrderBookImbalance(TradingBot.Abstractions.MarketData data)
+        private static decimal CalculateOrderBookImbalance(TradingBot.Abstractions.MarketData data)
         {
             // Use Bid/Ask prices to estimate imbalance since TradingBot.Abstractions.MarketData doesn't have sizes
             if (data.Bid == 0 && data.Ask == 0) return 0m;
@@ -768,7 +768,7 @@ namespace BotCore.Services
             return (decimal)Math.Max(0, timeToClose.TotalHours / HoursInDay); // Normalized to 0-1
         }
 
-        private decimal CalculateATRNormalized(IReadOnlyList<Bar> bars)
+        private static decimal CalculateATRNormalized(IReadOnlyList<Bar> bars)
         {
             if (bars.Count < ATRPeriod) return DefaultATRNormalized; // Default 1% ATR
 
@@ -793,7 +793,7 @@ namespace BotCore.Services
             return currentPrice > 0 ? atr / currentPrice : DefaultATRNormalized; // Normalized ATR
         }
 
-        private decimal CalculateBollingerPosition(IReadOnlyList<Bar> bars)
+        private static decimal CalculateBollingerPosition(IReadOnlyList<Bar> bars)
         {
             if (bars.Count < BollingerBandsPeriod) return MiddleOfBands; // Middle of bands
 
@@ -814,7 +814,7 @@ namespace BotCore.Services
             return Math.Max(0, Math.Min(1, (currentPrice - lowerBand) / (upperBand - lowerBand)));
         }
 
-        private decimal CalculateVWAP(IReadOnlyList<Bar> bars)
+        private static decimal CalculateVWAP(IReadOnlyList<Bar> bars)
         {
             if (bars.Count == 0) return 0m;
 
@@ -852,7 +852,7 @@ namespace BotCore.Services
             return Math.Max(0, Math.Min(1, combinedStress));
         }
 
-        private decimal CalculateVolumeStress(IReadOnlyList<Bar> recent)
+        private static decimal CalculateVolumeStress(IReadOnlyList<Bar> recent)
         {
             if (recent.Count < MinimumBarsForVolumeStress) return DefaultVolumeStress;
             
@@ -867,7 +867,7 @@ namespace BotCore.Services
             return Math.Max(0, Math.Min(1, (volumeRatio - (decimal)DefaultConfidenceMultiplier) / VolumeStressNormalizationFactor));
         }
 
-        private decimal CalculateGapStress(IReadOnlyList<Bar> recent)
+        private static decimal CalculateGapStress(IReadOnlyList<Bar> recent)
         {
             if (recent.Count < MinimumBarsForGapAnalysis) return 0m;
             
@@ -893,7 +893,7 @@ namespace BotCore.Services
             return Math.Max(0, Math.Min(1, avgGap / GapStressThreshold));
         }
 
-        private decimal CalculateTrendStress(IReadOnlyList<Bar> recent)
+        private static decimal CalculateTrendStress(IReadOnlyList<Bar> recent)
         {
             if (recent.Count < MinimumBarsForTrendStress) return DefaultTrendStress;
             
@@ -919,7 +919,7 @@ namespace BotCore.Services
             return Math.Max(0, Math.Min(1, avgChange / TrendStressNormalizationFactor)); // 1% baseline
         }
 
-        private decimal[] CreateDefaultFeatures()
+        private static decimal[] CreateDefaultFeatures()
         {
             // Return default feature set when insufficient data
             return new decimal[]
