@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -99,8 +100,8 @@ namespace BotCore.Features
                     return;
                 }
 
-                var close = Convert.ToDecimal(closeProperty.GetValue(barData));
-                var timestamp = timestampProperty != null ? Convert.ToDateTime(timestampProperty.GetValue(barData)) : DateTime.UtcNow;
+                var close = Convert.ToDecimal(closeProperty.GetValue(barData), CultureInfo.InvariantCulture);
+                var timestamp = timestampProperty != null ? Convert.ToDateTime(timestampProperty.GetValue(barData), CultureInfo.InvariantCulture) : DateTime.UtcNow;
 
                 // Add to price history
                 state.PriceHistory.Add(new PricePoint { Price = (double)close, Timestamp = timestamp });
