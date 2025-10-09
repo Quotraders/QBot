@@ -70,6 +70,97 @@ public sealed class MLSystemConsolidationService
     private readonly ILogger<MLSystemConsolidationService> _logger;
     private readonly List<ConsolidationAction> _consolidationActions = new();
 
+    // Structured logging delegates
+    private static readonly Action<ILogger, Exception?> LogAnalysisStarting =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(1, nameof(LogAnalysisStarting)),
+            "[ML-Consolidation] Starting duplicate ML system analysis");
+
+    private static readonly Action<ILogger, int, int, Exception?> LogAnalysisComplete =
+        LoggerMessage.Define<int, int>(
+            LogLevel.Information,
+            new EventId(2, nameof(LogAnalysisComplete)),
+            "[ML-Consolidation] Analysis complete - {DuplicatesFound} duplicates found, {ActionsPlanned} actions planned");
+
+    private static readonly Action<ILogger, Exception?> LogDirectoriesNotFound =
+        LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(3, nameof(LogDirectoriesNotFound)),
+            "[ML-Consolidation] ML directories not found for analysis");
+
+    private static readonly Action<ILogger, bool, Exception?> LogExecutionStarting =
+        LoggerMessage.Define<bool>(
+            LogLevel.Information,
+            new EventId(4, nameof(LogExecutionStarting)),
+            "[ML-Consolidation] Starting consolidation execution (DryRun: {DryRun})");
+
+    private static readonly Action<ILogger, string, Exception?> LogActionFailed =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(5, nameof(LogActionFailed)),
+            "[ML-Consolidation] Failed to execute action: {Action}");
+
+    private static readonly Action<ILogger, int, int, Exception?> LogExecutionCompleted =
+        LoggerMessage.Define<int, int>(
+            LogLevel.Information,
+            new EventId(6, nameof(LogExecutionCompleted)),
+            "[ML-Consolidation] Consolidation completed - {Completed} completed, {Failed} failed");
+
+    private static readonly Action<ILogger, string, string, Exception?> LogExecutingAction =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Information,
+            new EventId(7, nameof(LogExecutingAction)),
+            "[ML-Consolidation] Executing: {Action} - {SourcePath}");
+
+    private static readonly Action<ILogger, string, Exception?> LogDryRunAction =
+        LoggerMessage.Define<string>(
+            LogLevel.Information,
+            new EventId(8, nameof(LogDryRunAction)),
+            "[ML-Consolidation] DRY RUN: Would execute {Action}");
+
+    private static readonly Action<ILogger, string, Exception?> LogUnknownAction =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(9, nameof(LogUnknownAction)),
+            "[ML-Consolidation] Unknown action: {Action}");
+
+    private static readonly Action<ILogger, string, Exception?> LogBackupCreated =
+        LoggerMessage.Define<string>(
+            LogLevel.Information,
+            new EventId(10, nameof(LogBackupCreated)),
+            "[ML-Consolidation] Created backup: {BackupPath}");
+
+    private static readonly Action<ILogger, int, Exception?> LogLinesRemoved =
+        LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(11, nameof(LogLinesRemoved)),
+            "[ML-Consolidation] Removed {LineCount} lines of duplicate MLMemoryManager");
+
+    private static readonly Action<ILogger, string, Exception?> LogDuplicateRemoved =
+        LoggerMessage.Define<string>(
+            LogLevel.Information,
+            new EventId(12, nameof(LogDuplicateRemoved)),
+            "[ML-Consolidation] Successfully removed duplicate MLMemoryManager from {SourcePath}");
+
+    private static readonly Action<ILogger, string, Exception?> LogAnalyzingManagers =
+        LoggerMessage.Define<string>(
+            LogLevel.Information,
+            new EventId(13, nameof(LogAnalyzingManagers)),
+            "[ML-Consolidation] Analyzing ML model managers in {SourcePath}");
+
+    private static readonly Action<ILogger, string, string, Exception?> LogAnalyzingConflict =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Information,
+            new EventId(14, nameof(LogAnalyzingConflict)),
+            "[ML-Consolidation] Analyzing file conflict: {SourcePath} vs {TargetPath}");
+
+    private static readonly Action<ILogger, Exception?> LogReportGenerated =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(15, nameof(LogReportGenerated)),
+            "[ML-Consolidation] Consolidation report generated");
+
     public MLSystemConsolidationService(ILogger<MLSystemConsolidationService> logger)
     {
         _logger = logger;
@@ -80,7 +171,7 @@ public sealed class MLSystemConsolidationService
     /// </summary>
     public async Task<ConsolidationPlan> AnalyzeDuplicateSystemsAsync()
     {
-        _logger.LogInformation("[ML-Consolidation] Starting duplicate ML system analysis");
+        LogAnalysisStarting(_logger, null);
 
         var plan = new ConsolidationPlan();
 
@@ -123,8 +214,7 @@ public sealed class MLSystemConsolidationService
         // Check for other potential duplicates
         await AnalyzeMLDirectoriesAsync(plan).ConfigureAwait(false);
 
-        _logger.LogInformation("[ML-Consolidation] Analysis complete - {DuplicatesFound} duplicates found, {ActionsPlanned} actions planned",
-            plan.DuplicatesFound, _consolidationActions.Count);
+        LogAnalysisComplete(_logger, plan.DuplicatesFound, _consolidationActions.Count, null);
 
         return plan;
     }
@@ -136,7 +226,7 @@ public sealed class MLSystemConsolidationService
 
         if (!Directory.Exists(botCoreMLDir) || !Directory.Exists(enhancedDir))
         {
-            _logger.LogWarning("[ML-Consolidation] ML directories not found for analysis");
+            LogDirectoriesNotFound(_logger, null);
             return;
         }
 
@@ -175,7 +265,7 @@ public sealed class MLSystemConsolidationService
     /// </summary>
     public async Task<ConsolidationResult> ExecuteConsolidationAsync(bool dryRun = true)
     {
-        _logger.LogInformation("[ML-Consolidation] Starting consolidation execution (DryRun: {DryRun})", dryRun);
+        LogExecutionStarting(_logger, dryRun, null);
 
         var result = new ConsolidationResult
         {
@@ -192,7 +282,7 @@ public sealed class MLSystemConsolidationService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[ML-Consolidation] Failed to execute action: {Action}", action.Action);
+                LogActionFailed(_logger, action.Action, ex);
                 action.Status = ConsolidationStatus.Failed;
                 action.ErrorMessage = ex.Message;
                 result.ActionsFailed++;
@@ -202,19 +292,18 @@ public sealed class MLSystemConsolidationService
         result.EndTime = DateTime.UtcNow;
         result.Duration = result.EndTime - result.StartTime;
 
-        _logger.LogInformation("[ML-Consolidation] Consolidation completed - {Completed} completed, {Failed} failed",
-            result.ActionsCompleted, result.ActionsFailed);
+        LogExecutionCompleted(_logger, result.ActionsCompleted, result.ActionsFailed, null);
 
         return result;
     }
 
     private async Task ExecuteActionAsync(ConsolidationAction action, bool dryRun)
     {
-        _logger.LogInformation("[ML-Consolidation] Executing: {Action} - {SourcePath}", action.Action, action.SourcePath);
+        LogExecutingAction(_logger, action.Action, action.SourcePath, null);
 
         if (dryRun)
         {
-            _logger.LogInformation("[ML-Consolidation] DRY RUN: Would execute {Action}", action.Action);
+            LogDryRunAction(_logger, action.Action, null);
             action.Status = ConsolidationStatus.Completed;
             return;
         }
@@ -234,7 +323,7 @@ public sealed class MLSystemConsolidationService
                 break;
 
             default:
-                _logger.LogWarning("[ML-Consolidation] Unknown action: {Action}", action.Action);
+                LogUnknownAction(_logger, action.Action, null);
                 action.Status = ConsolidationStatus.Skipped;
                 break;
         }
@@ -254,7 +343,7 @@ public sealed class MLSystemConsolidationService
         // Create backup
         var backupPath = action.SourcePath + ".backup." + DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
         await File.WriteAllTextAsync(backupPath, content).ConfigureAwait(false);
-        _logger.LogInformation("[ML-Consolidation] Created backup: {BackupPath}", backupPath);
+        LogBackupCreated(_logger, backupPath, null);
 
         // Remove the MLMemoryManager class from Enhanced/MLRLSystem.cs
         var lines = content.Split('\n').ToList();
@@ -284,7 +373,7 @@ public sealed class MLSystemConsolidationService
                     var linesToRemove = i - mlMemoryManagerStart + 1;
                     lines.RemoveRange(mlMemoryManagerStart, linesToRemove);
                     
-                    _logger.LogInformation("[ML-Consolidation] Removed {LineCount} lines of duplicate MLMemoryManager", linesToRemove);
+                    LogLinesRemoved(_logger, linesToRemove, null);
                     break;
                 }
             }
@@ -295,14 +384,14 @@ public sealed class MLSystemConsolidationService
         await File.WriteAllTextAsync(action.SourcePath, cleanedContent).ConfigureAwait(false);
 
         action.Status = ConsolidationStatus.Completed;
-        _logger.LogInformation("[ML-Consolidation] Successfully removed duplicate MLMemoryManager from {SourcePath}", action.SourcePath);
+        LogDuplicateRemoved(_logger, action.SourcePath, null);
     }
 
     private Task AnalyzeMLModelManagersAsync(ConsolidationAction action)
     {
         // This would analyze different ML model manager implementations
         // For now, just log the analysis
-        _logger.LogInformation("[ML-Consolidation] Analyzing ML model managers in {SourcePath}", action.SourcePath);
+        LogAnalyzingManagers(_logger, action.SourcePath, null);
         action.Status = ConsolidationStatus.Completed;
         return Task.CompletedTask;
     }
@@ -310,8 +399,7 @@ public sealed class MLSystemConsolidationService
     private Task AnalyzeFileConflictAsync(ConsolidationAction action)
     {
         // This would analyze file conflicts and suggest resolution
-        _logger.LogInformation("[ML-Consolidation] Analyzing file conflict: {SourcePath} vs {TargetPath}", 
-            action.SourcePath, action.TargetPath);
+        LogAnalyzingConflict(_logger, action.SourcePath, action.TargetPath, null);
         action.Status = ConsolidationStatus.Completed;
         return Task.CompletedTask;
     }
@@ -371,7 +459,7 @@ public sealed class MLSystemConsolidationService
         sb.AppendLine("4. Run tests to ensure functionality is preserved");
         sb.AppendLine("5. Clean up unused Enhanced ML code");
 
-        _logger.LogInformation("[ML-Consolidation] Consolidation report generated");
+        LogReportGenerated(_logger, null);
         return sb.ToString();
     }
 }
