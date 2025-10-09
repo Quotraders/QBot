@@ -781,7 +781,7 @@ public sealed class OnnxModelLoader : IDisposable
                 });
             }
         }
-        catch (Exception ex)
+        catch (OnnxRuntimeException ex)
         {
             LogHotReloadException(_logger, modelFile, ex);
             
@@ -791,6 +791,32 @@ public sealed class OnnxModelLoader : IDisposable
                 ModelPath = modelFile,
                 IsHealthy = false,
                 ErrorMessage = $"Hot-reload error: {ex.Message}",
+                CheckedAt = DateTime.UtcNow
+            });
+        }
+        catch (FileNotFoundException ex)
+        {
+            LogHotReloadException(_logger, modelFile, ex);
+            
+            ModelHealthChanged?.Invoke(this, new ModelHealthEventArgs
+            {
+                ModelKey = modelKey,
+                ModelPath = modelFile,
+                IsHealthy = false,
+                ErrorMessage = $"Hot-reload error - file not found: {ex.Message}",
+                CheckedAt = DateTime.UtcNow
+            });
+        }
+        catch (IOException ex)
+        {
+            LogHotReloadException(_logger, modelFile, ex);
+            
+            ModelHealthChanged?.Invoke(this, new ModelHealthEventArgs
+            {
+                ModelKey = modelKey,
+                ModelPath = modelFile,
+                IsHealthy = false,
+                ErrorMessage = $"Hot-reload error - I/O error: {ex.Message}",
                 CheckedAt = DateTime.UtcNow
             });
         }
@@ -855,7 +881,17 @@ public sealed class OnnxModelLoader : IDisposable
                 LastModified = File.GetLastWriteTimeUtc(modelPath)
             };
         }
-        catch (Exception ex)
+        catch (OnnxRuntimeException ex)
+        {
+            LogMetadataError(_logger, modelPath, ex);
+            return null;
+        }
+        catch (FileNotFoundException ex)
+        {
+            LogMetadataError(_logger, modelPath, ex);
+            return null;
+        }
+        catch (UnauthorizedAccessException ex)
         {
             LogMetadataError(_logger, modelPath, ex);
             return null;
@@ -957,7 +993,17 @@ public sealed class OnnxModelLoader : IDisposable
                 return null;
             }
         }
-        catch (Exception ex)
+        catch (OnnxRuntimeException ex)
+        {
+            LogCannedInputError(_logger, inputName, ex);
+            return null;
+        }
+        catch (InvalidOperationException ex)
+        {
+            LogCannedInputError(_logger, inputName, ex);
+            return null;
+        }
+        catch (ArgumentException ex)
         {
             LogCannedInputError(_logger, inputName, ex);
             return null;
@@ -1045,9 +1091,13 @@ public sealed class OnnxModelLoader : IDisposable
                 {
                     session.Dispose();
                 }
-                catch (Exception ex)
+                catch (ObjectDisposedException ex)
                 {
-                    _logger.LogWarning(ex, "[ONNX-Loader] Error disposing model session");
+                    _logger.LogWarning(ex, "[ONNX-Loader] Model session already disposed");
+                }
+                catch (InvalidOperationException ex)
+                {
+                    _logger.LogWarning(ex, "[ONNX-Loader] Error disposing model session - invalid operation");
                 }
             }
             
@@ -1117,8 +1167,27 @@ public sealed class OnnxModelLoader : IDisposable
                     _logger.LogDebug("[ONNX-Registry] Model deployed atomically: {Model}", Path.GetFileName(registryModelPath));
                 }
             }
-            catch
+            catch (IOException ex)
             {
+                _logger.LogError(ex, "[ONNX-Registry] Failed to deploy model atomically - I/O error");
+                // Cleanup temp file on error
+                if (File.Exists(tempModelPath))
+                {
+                    try 
+                    { 
+                        File.Delete(tempModelPath); 
+                    } 
+                    catch (Exception cleanupEx)
+                    {
+                        // Ignore cleanup errors - temp file deletion is best-effort
+                        _logger.LogDebug(cleanupEx, "[ONNX-Loader] Failed to cleanup temp file: {TempPath}", tempModelPath);
+                    }
+                }
+                throw;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogError(ex, "[ONNX-Registry] Failed to deploy model atomically - access denied");
                 // Cleanup temp file on error
                 if (File.Exists(tempModelPath))
                 {
@@ -1198,9 +1267,24 @@ public sealed class OnnxModelLoader : IDisposable
             
             return entry;
         }
-        catch (Exception ex)
+        catch (DirectoryNotFoundException ex)
         {
-            _logger.LogError(ex, "[ONNX-Registry] Failed to get latest model: {ModelName}", modelName);
+            _logger.LogError(ex, "[ONNX-Registry] Failed to get latest model - directory not found: {ModelName}", modelName);
+            return null;
+        }
+        catch (FileNotFoundException ex)
+        {
+            _logger.LogError(ex, "[ONNX-Registry] Failed to get latest model - file not found: {ModelName}", modelName);
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "[ONNX-Registry] Failed to get latest model - invalid JSON: {ModelName}", modelName);
+            return null;
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "[ONNX-Registry] Failed to get latest model - I/O error: {ModelName}", modelName);
             return null;
         }
     }
@@ -1268,9 +1352,24 @@ public sealed class OnnxModelLoader : IDisposable
             _logger.LogInformation("[ONNX-Registry] Health check completed: {HealthyCount}/{TotalCount} healthy", 
                 report.ModelStatuses.Count(s => s.IsHealthy), report.ModelStatuses.Count);
         }
-        catch (Exception ex)
+        catch (DirectoryNotFoundException ex)
         {
-            _logger.LogError(ex, "[ONNX-Registry] Failed to perform health check");
+            _logger.LogError(ex, "[ONNX-Registry] Failed to perform health check - directory not found");
+            report.IsHealthy = false;
+        }
+        catch (FileNotFoundException ex)
+        {
+            _logger.LogError(ex, "[ONNX-Registry] Failed to perform health check - file not found");
+            report.IsHealthy = false;
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "[ONNX-Registry] Failed to perform health check - I/O error");
+            report.IsHealthy = false;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "[ONNX-Registry] Failed to perform health check - access denied");
             report.IsHealthy = false;
         }
 
@@ -1306,9 +1405,17 @@ public sealed class OnnxModelLoader : IDisposable
                 }
             }
         }
-        catch (Exception ex)
+        catch (DirectoryNotFoundException ex)
         {
-            _logger.LogError(ex, "[ONNX-Registry] Failed to cleanup old model versions");
+            _logger.LogError(ex, "[ONNX-Registry] Failed to cleanup old model versions - directory not found");
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "[ONNX-Registry] Failed to cleanup old model versions - I/O error");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "[ONNX-Registry] Failed to cleanup old model versions - access denied");
         }
         
         return Task.CompletedTask;
