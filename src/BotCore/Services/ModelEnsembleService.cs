@@ -10,7 +10,7 @@ namespace BotCore.Services;
 /// Production-grade ensemble service that combines predictions from multiple models
 /// Enhances existing UnifiedTradingBrain by providing blended predictions
 /// </summary>
-public class ModelEnsembleService
+public class ModelEnsembleService : IDisposable
 {
     private readonly ILogger<ModelEnsembleService> _logger;
     private readonly IMLMemoryManager _memoryManager;
@@ -18,6 +18,7 @@ public class ModelEnsembleService
     private readonly ConcurrentDictionary<string, LoadedModel> _loadedModels = new();
     private readonly ConcurrentDictionary<string, ModelPerformance> _modelPerformance = new();
     private readonly object _ensembleLock = new();
+    private bool _disposed;
     
     // Configuration
     private readonly double _cloudModelWeight = 0.70; // 70% cloud models
@@ -329,9 +330,8 @@ public class ModelEnsembleService
                 {
                     runtimeMode = TradingBot.Abstractions.RlRuntimeMode.InferenceOnly;
                 }
-                // TODO: CA2000 - CVaRPPO implements IDisposable but is stored in _loadedModels without disposal
-                // This requires ModelEnsembleService to implement IDisposable/IAsyncDisposable
-                // and properly dispose all loaded models. Architectural fix needed.
+                // CA2000: CVaRPPO is stored in _loadedModels and disposed in Dispose() method
+                // This service implements IDisposable and is registered as singleton in DI container
                 var cvarAgent = new CVaRPPO(
                     Microsoft.Extensions.Logging.Abstractions.NullLogger<CVaRPPO>.Instance, 
                     config,
@@ -746,6 +746,52 @@ public class ModelEnsembleService
             Weight = model.Weight,
             ModelName = model.Name
         });
+    }
+    
+    /// <summary>
+    /// Dispose all loaded models that implement IDisposable (e.g., CVaRPPO)
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+    
+    /// <summary>
+    /// Protected dispose pattern implementation
+    /// </summary>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+        
+        if (disposing)
+        {
+            // Dispose all loaded models that implement IDisposable
+            foreach (var kvp in _loadedModels)
+            {
+                if (kvp.Value.Model is IDisposable disposable)
+                {
+                    try
+                    {
+                        disposable.Dispose();
+                        _logger.LogDebug("🔀 [ENSEMBLE] Disposed model: {ModelName}", kvp.Key);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "🔀 [ENSEMBLE] Error disposing model {ModelName}", kvp.Key);
+                    }
+                }
+            }
+            
+            _loadedModels.Clear();
+            _modelPerformance.Clear();
+            _logger.LogInformation("🔀 [ENSEMBLE] Service disposed successfully");
+        }
+        
+        _disposed = true;
     }
 
     #endregion
