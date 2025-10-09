@@ -315,19 +315,17 @@ public class ExpressionEvaluator
         }
 
         // Handle time comparisons
-        if (featureName.Contains("time", StringComparison.Ordinal) && TimeSpan.TryParse(valueStr, out var timeValue))
+        if (featureName.Contains("time", StringComparison.Ordinal) && TimeSpan.TryParse(valueStr, out var timeValue) && TimeSpan.TryParse(featureValue.ToString(), out var featureTime))
         {
-            if (TimeSpan.TryParse(featureValue.ToString(), out var featureTime))
+            return operatorStr switch
             {
-                return operatorStr switch
-                {
-                    ">=" => featureTime >= timeValue,
-                    "<=" => featureTime <= timeValue,
-                    ">" => featureTime > timeValue,
-                    "<" => featureTime < timeValue,
-                    "==" => featureTime == timeValue,
-                    "!=" => featureTime != timeValue,
-                    _ => false
+                ">=" => featureTime >= timeValue,
+                "<=" => featureTime <= timeValue,
+                ">" => featureTime > timeValue,
+                "<" => featureTime < timeValue,
+                "==" => featureTime == timeValue,
+                "!=" => featureTime != timeValue,
+                _ => false
                 };
             }
         }
