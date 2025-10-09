@@ -18,6 +18,7 @@ namespace TradingBot.BotCore.Services
         private readonly ILogger<OnnxModelCompatibilityService> _logger;
         private readonly Dictionary<string, ModelCard> _registeredModels = new();
         private readonly object _registryLock = new();
+        private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
 
         public OnnxModelCompatibilityService(ILogger<OnnxModelCompatibilityService> logger)
         {
@@ -48,7 +49,7 @@ namespace TradingBot.BotCore.Services
 
             // Save model card to disk
             var cardPath = modelPath + ".card.json";
-            var json = JsonSerializer.Serialize(modelCard, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(modelCard, s_jsonOptions);
             await File.WriteAllTextAsync(cardPath, json).ConfigureAwait(false);
             
             _logger.LogInformation("💾 [ONNX-COMPAT] Model card saved: {CardPath}", cardPath);
