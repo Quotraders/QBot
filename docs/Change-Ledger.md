@@ -12262,3 +12262,52 @@ All `new Random()` instances successfully replaced with `Random.Shared`.
 - **Maintainability**: Single shared instance is easier to reason about
 
 ---
+
+---
+
+### [2025-10-09] Verification: No Hardcoded Position Multiplier 2.5 Violations (AGENT-1)
+
+**Files verified**
+- All C# source files across the repository
+- `src/BotCore/Services/TradingBotParameterProvider.cs`
+- `tools/enforce_business_rules.ps1`
+- `src/UnifiedOrchestrator/**/*.cs`
+
+**Verification Results**
+- Business rules (MSB3073): ✅ **PASSING** (exit code 0)
+- Hardcoded position sizing `2.5`: ✅ **NONE FOUND** (0 violations)
+- UnifiedOrchestrator analyzer violations: ✅ **ZERO**
+- Compiler errors in UnifiedOrchestrator: ✅ **ZERO**
+
+**What was verified**
+- Executed comprehensive search for hardcoded `2.5` position sizing values using pattern: `(PositionSize|positionSize|Position|position).*[:=]\s*(2\.5)[^0-9f]`
+- Verified all `2.5` occurrences are legitimate constants:
+  - `SecondPartialExitThreshold = 2.5m` - Multi-level exit threshold at 2.5R (R-multiples)
+  - `S2_TRENDING_R_MULTIPLE = 2.5m` - Strategy R-multiple target
+  - `S11_TRENDING_R_MULTIPLE = 2.5m` - Strategy R-multiple target
+  - `S11MaxMultiplierBound = 2.5m` - Strategy parameter bound
+  - `MaximumFactorClamp = 2.5m` - Clamping limit for factor calculations
+  - Test values and simulation constants
+- Confirmed `TradingBotParameterProvider.GetPositionSizeMultiplier()` properly calls `MLConfigurationService.GetPositionSizeMultiplier()`
+- Default fallback is `2.0` (not `2.5`) in `TradingBotParameterProvider`
+
+**Verification Commands (copy CLI output)**
+
+```bash
+$ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/enforce_business_rules.ps1 -Mode Business
+Guardrail 'Business' checks passed.
+Exit code: 0
+
+$ git grep -n -E '(PositionSize|positionSize|Position|position).*[:=]\s*(2\.5)[^0-9f]' -- '*.cs' | grep -v 'Test' | grep -v 'test'
+# No results - zero violations
+
+$ dotnet build src/UnifiedOrchestrator/UnifiedOrchestrator.csproj 2>&1 | grep 'error' | grep 'UnifiedOrchestrator' | wc -l
+0
+```
+
+**Notes**
+- Repository is already fully compliant with business rule requirements
+- Previous agent (2025-10-09 07:40:00) fixed hardcoded `0.7` AI confidence values
+- The "position sizing 2.5" issue mentioned in instructions was already resolved or never existed
+- All position sizing uses proper dependency injection via `IMLConfigurationService`
+- No code changes were necessary - verification only
