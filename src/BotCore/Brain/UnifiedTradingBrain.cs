@@ -432,9 +432,9 @@ namespace BotCore.Brain
                         e.Impact >= BotCore.Market.EventImpact.High && 
                         e.AffectedSymbols.Contains(symbol)).ToList();
                     
-                    if (highImpactEvents.Any())
+                    if (highImpactEvents.Count > 0)
                     {
-                        var nextEvent = highImpactEvents.First();
+                        var nextEvent = highImpactEvents[0];
                         var minutesUntil = (nextEvent.ScheduledTime - DateTime.UtcNow).TotalMinutes;
                         _logger.LogWarning("📅 [CALENDAR-BLOCK] High-impact event '{Event}' in {Minutes:F0} minutes - blocking trades", 
                             nextEvent.Name, minutesUntil);
@@ -823,7 +823,7 @@ namespace BotCore.Brain
                 
                 // Get current market trend
                 var trend = "Unknown";
-                if (_marketContexts.Any())
+                if (!_marketContexts.IsEmpty)
                 {
                     var latestContext = _marketContexts.Values.LastOrDefault();
                     if (latestContext != null)
@@ -1750,7 +1750,7 @@ Reason closed: {reason}
                 .ToList();
                 
             // Fallback to time-based if no intersection
-            if (!availableStrategies.Any())
+            if (availableStrategies.Count == 0)
             {
                 availableStrategies = timeBasedStrategies.ToList();
             }

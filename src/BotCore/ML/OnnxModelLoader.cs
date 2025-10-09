@@ -348,7 +348,7 @@ public sealed class OnnxModelLoader : IDisposable
             var inferenceDuration = DateTime.UtcNow - startTime;
 
             // Validate outputs
-            var outputCount = results.Count();
+            var outputCount = results.Count;
             if (outputCount == 0)
             {
                 return Task.FromResult(new HealthProbeResult 
@@ -980,7 +980,7 @@ public sealed class OnnxModelLoader : IDisposable
                 .OrderByDescending(v => v)
                 .ToList();
 
-            if (!versions.Any())
+            if (versions.Count == 0)
             {
                 return null;
             }
