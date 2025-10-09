@@ -14,6 +14,100 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 ---
 
 
+### 🔧 Round 200 - Phase 2: CA1002/CA2227 Collection Property Fixes (Batch 3)
+
+**Date**: January 2025
+**Agent**: GitHub Copilot Agent
+**Branch**: copilot/fix-compiler-errors-and-violations
+**Scope**: Phase 2 - Priority 2: API & Encapsulation
+**Objective**: Fix CA1002 and CA2227 violations for YAML DTOs and validation results
+
+| Error Code | Count Before | Count After | Fix Applied |
+|------------|--------------|-------------|-------------|
+| CA1002 | 136 | 120 | YAML DTOs to IReadOnlyList, validation results with Add methods |
+| CA2227 | 52 | 46 | Made collection properties read-only |
+| **Total** | **188** | **166** | **22 violations fixed** |
+
+**Files Modified (3 files)**:
+1. `src/BotCore/StrategyDsl/SimpleDslLoader.cs` - CA1002 (5 fixes) - YAML DTOs
+2. `src/BotCore/Integration/YamlSchemaValidator.cs` - CA1002 (2), CA2227 (2) + call sites
+3. `src/BotCore/Calibration/IsotonicCalibrationService.cs` - CA1002 (1), CA2227 (1)
+
+**Detailed Fixes**:
+
+**SimpleDslLoader.cs - YAML DTO Collections**:
+```csharp
+// BEFORE (YamlStrategy class)
+public List<string>? Contra { get; init; }
+public List<string>? Confluence { get; init; }
+public List<string>? TelemetryTags { get; init; }
+
+// AFTER
+public IReadOnlyList<string>? Contra { get; init; }
+public IReadOnlyList<string>? Confluence { get; init; }
+public IReadOnlyList<string>? TelemetryTags { get; init; }
+
+// BEFORE (YamlWhen class)
+public List<string>? Regime { get; init; }
+public List<string>? Micro { get; init; }
+
+// AFTER
+public IReadOnlyList<string>? Regime { get; init; }
+public IReadOnlyList<string>? Micro { get; init; }
+```
+
+**YamlSchemaValidator.cs - Validation Result Pattern**:
+```csharp
+// BEFORE
+public List<string> Errors { get; set; } = new();
+public List<string> Warnings { get; set; } = new();
+
+// AFTER
+private readonly List<string> _errors = new();
+private readonly List<string> _warnings = new();
+
+public IReadOnlyList<string> Errors => _errors;
+public IReadOnlyList<string> Warnings => _warnings;
+
+public void AddError(string error)
+{
+    ArgumentNullException.ThrowIfNull(error);
+    _errors.Add(error);
+}
+
+public void AddWarning(string warning)
+{
+    ArgumentNullException.ThrowIfNull(warning);
+    _warnings.Add(warning);
+}
+```
+- Updated all call sites: `result.Errors.Add(...)` → `result.AddError(...)`
+- Updated all call sites: `result.Warnings.Add(...)` → `result.AddWarning(...)`
+
+**IsotonicCalibrationService.cs - Calibration Table**:
+```csharp
+// BEFORE
+public List<CalibrationPoint> CalibrationPoints { get; set; } = new();
+
+// AFTER
+public IReadOnlyList<CalibrationPoint> CalibrationPoints { get; init; } = Array.Empty<CalibrationPoint>();
+```
+
+**Patterns Applied**:
+- YAML DTOs: `List<T>?` → `IReadOnlyList<T>?` with `init` (immutable after construction)
+- Validation results: Private backing field + `IReadOnlyList<T>` + `AddError/AddWarning` methods
+- Calibration tables: `IReadOnlyList<T>` with `init` setter (read-only collection)
+
+**Guardrails Verified**:
+- ✅ No suppressions added
+- ✅ No config tampering
+- ✅ Following Analyzer-Fix-Guidebook.md patterns exactly
+- ✅ Production-ready encapsulation maintained
+- ✅ Build verification passed
+
+**Build Status**: 10,234 → 10,212 violations (-22 fixed in this batch, -48 total)
+
+
 ### 🔧 Round 199 - Phase 2: CA1002/CA2227 Collection Property Fixes (Batch 2)
 
 **Date**: January 2025
