@@ -217,7 +217,7 @@ public sealed class ConfigurationLocks
 public sealed class ConfigurationLockReport
 {
     public DateTime ValidatedAt { get; set; }
-    public Dictionary<string, ConfigurationSettingStatus> Settings { get; set; } = new();
+    public Dictionary<string, ConfigurationSettingStatus> Settings { get; init; } = new();
     public bool IsCompliant { get; set; }
 }
 
