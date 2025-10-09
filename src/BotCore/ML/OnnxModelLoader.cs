@@ -457,7 +457,7 @@ public sealed class OnnxModelLoader : IDisposable
             foreach (var metadataFile in metadataFiles)
             {
                 var lastWriteTime = File.GetLastWriteTimeUtc(metadataFile);
-                var modelName = Path.GetFileNameWithoutExtension(metadataFile).Replace("_latest", "");
+                var modelName = Path.GetFileNameWithoutExtension(metadataFile).Replace("_latest", "", StringComparison.Ordinal);
                 
                 // Check if this metadata file has been updated since last check
                 var cacheKey = $"registry_{modelName}_lastcheck";

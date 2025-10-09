@@ -8,6 +8,7 @@ using BotCore.Bandits;
 using BotCore.Brain.Models;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Text.Json;
 using TradingBot.RLAgent; // For CVaRPPO and ActionResult
 using Microsoft.ML.OnnxRuntime;
@@ -769,8 +770,8 @@ namespace BotCore.Brain
                             _parameterTracker.RecordChange(
                                 strategyName: strategy,
                                 parameterName: "StrategyWeight",
-                                oldValue: reward.ToString("F3"),
-                                newValue: crossLearningReward.ToString("F3"),
+                                oldValue: reward.ToString("F3", CultureInfo.InvariantCulture),
+                                newValue: crossLearningReward.ToString("F3", CultureInfo.InvariantCulture),
                                 reason: reason,
                                 outcomePnl: reward,
                                 wasCorrect: wasCorrect
@@ -2772,7 +2773,7 @@ Reason closed: {reason}
             var backupDir = Path.Combine("models", "backup");
             Directory.CreateDirectory(backupDir);
             
-            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
             var backupPath = Path.Combine(backupDir, $"unified_brain_{timestamp}.onnx");
 
             if (File.Exists(currentModelPath))
@@ -2834,7 +2835,7 @@ Reason closed: {reason}
             }
 
             var fileInfo = new FileInfo(modelPath);
-            var timestamp = fileInfo.LastWriteTimeUtc.ToString("yyyyMMdd_HHmmss");
+            var timestamp = fileInfo.LastWriteTimeUtc.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
             var size = fileInfo.Length;
             
             return $"{timestamp}_{size}";
