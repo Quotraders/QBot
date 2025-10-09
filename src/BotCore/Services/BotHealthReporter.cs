@@ -199,7 +199,7 @@ public class BotHealthReporter
             prompt.AppendLine("Metrics:");
             foreach (var metric in healthResult.Metrics)
             {
-                prompt.AppendLine($"  - {metric.Key}: {metric.Value}");
+                prompt.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"  - {metric.Key}: {metric.Value}");
             }
         }
 
@@ -224,7 +224,7 @@ public class BotHealthReporter
             prompt.AppendLine("Metrics:");
             foreach (var metric in healthResult.Metrics)
             {
-                prompt.AppendLine($"  - {metric.Key}: {metric.Value}");
+                prompt.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"  - {metric.Key}: {metric.Value}");
             }
         }
 
