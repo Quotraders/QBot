@@ -217,7 +217,7 @@ public class S15ShadowLearningService : BackgroundService
     {
         if (sample1.Count == 0 || sample2.Count == 0) return 1.0;
         
-        var observedDiff = sample1.Average() - sample2.Average();
+        _ = sample1.Average() - sample2.Average();
         var combined = sample1.Concat(sample2).ToArray();
         var random = new Random(42);
         
