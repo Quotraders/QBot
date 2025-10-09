@@ -16,14 +16,12 @@
       "Dev": {
         "MinBarsSeen": 5,
         "MinSeededBars": 3,
-        "MinLiveTicks": 1,
-        "AllowMockData": false
+        "MinLiveTicks": 1
       },
       "Production": {
         "MinBarsSeen": 10,
         "MinSeededBars": 12,
-        "MinLiveTicks": 2,
-        "AllowMockData": false
+        "MinLiveTicks": 2
       }
     }
   }

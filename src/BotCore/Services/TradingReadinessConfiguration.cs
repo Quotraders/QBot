@@ -113,7 +113,6 @@ namespace BotCore.Services
         public int MinBarsSeen { get; set; } = DevMinBarsSeen;
         public int MinSeededBars { get; set; } = DevMinSeededBars;
         public int MinLiveTicks { get; set; } = DevMinLiveTicks;
-        public bool AllowMockData { get; set; } = true;
     }
 
     public class ProductionEnvironmentSettings
@@ -126,7 +125,6 @@ namespace BotCore.Services
         public int MinBarsSeen { get; set; } = ProductionMinBarsSeen;
         public int MinSeededBars { get; set; } = ProductionMinSeededBars;
         public int MinLiveTicks { get; set; } = ProductionMinLiveTicks;
-        public bool AllowMockData { get; set; }
     }
 
     /// <summary>

@@ -75,15 +75,13 @@ namespace BotCore.Extensions
                     {
                         MinBarsSeen = DevMinBarsSeen,
                         MinSeededBars = DevMinSeededBars,
-                        MinLiveTicks = DevMinLiveTicks,
-                        AllowMockData = true
+                        MinLiveTicks = DevMinLiveTicks
                     },
                     Production = new ProductionEnvironmentSettings
                     {
                         MinBarsSeen = ProductionMinBarsSeen,
                         MinSeededBars = ProductionMinSeededBars,
-                        MinLiveTicks = ProductionMinLiveTicks,
-                        AllowMockData = false
+                        MinLiveTicks = ProductionMinLiveTicks
                     }
                 };
             });

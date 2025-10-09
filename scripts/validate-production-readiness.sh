@@ -27,11 +27,6 @@ if grep -q '"ClientType": "Mock"' src/UnifiedOrchestrator/appsettings.json; then
     exit 1
 fi
 
-if grep -q '"AllowMockData": true' src/UnifiedOrchestrator/appsettings.json; then
-    echo "❌ CONFIGURATION ERROR: Mock data still allowed"
-    exit 1
-fi
-
 # Check for empty catch blocks
 echo "🛡️ Checking error handling..."
 if find src/ -name "*.cs" -exec grep -l "catch.*{.*}" {} \; | head -1 >/dev/null; then

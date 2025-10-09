@@ -65,18 +65,7 @@ internal class ProductionReadinessStartupService : IHostedService
             _logger.LogError("❌ [CONFIG-PROOF] TopstepXClient:ClientType = '{ClientType}' (NOT PRODUCTION)", clientType);
         }
 
-        // 2. Verify AllowMockData setting
-        var allowMockData = _configuration.GetValue<bool>("AllowMockData", false);
-        if (!allowMockData)
-        {
-            _logger.LogInformation("✅ [CONFIG-PROOF] AllowMockData = false (SIMULATION DATA DISABLED)");
-        }
-        else
-        {
-            _logger.LogWarning("⚠️ [CONFIG-PROOF] AllowMockData = true (SIMULATION DATA ENABLED - NOT RECOMMENDED FOR PRODUCTION)");
-        }
-
-        // 3. Verify API endpoints use HTTPS
+        // 2. Verify API endpoints use HTTPS
         var apiBaseUrl = _configuration["TopstepX:ApiBaseUrl"];
         if (!string.IsNullOrEmpty(apiBaseUrl) && apiBaseUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
