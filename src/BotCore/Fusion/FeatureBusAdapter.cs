@@ -984,7 +984,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     
                     // Find the volume concentration range
                     var maxVolumeIndex = volumeProfile.OrderByDescending(kv => kv.Value).First().Key;
-                    var currentPrice = recentBars.Last().Close;
+                    var currentPrice = recentBars[^1].Close;
                     var currentBucketIndex = (int)Math.Min(bucketCount - 1, (currentPrice - minPrice) / bucketSize);
                     
                     // VPR score: proximity to high-volume areas

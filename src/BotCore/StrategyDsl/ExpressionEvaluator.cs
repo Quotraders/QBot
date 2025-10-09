@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace BotCore.StrategyDsl;
@@ -145,9 +146,9 @@ public class ExpressionEvaluator
     /// <summary>
     /// Async wrapper for expression evaluation (compatible with knowledge graph)
     /// </summary>
-    public async Task<ExpressionResult> EvaluateAsync(string expression, Dictionary<string, object> features)
+    public Task<ExpressionResult> EvaluateAsync(string expression, Dictionary<string, object> features)
     {
-        return await Task.Run(() =>
+        return Task.Run(() =>
         {
             try
             {
@@ -175,7 +176,7 @@ public class ExpressionEvaluator
                 _logger.LogError(ex, "Failed to evaluate expression: {Expression}", expression);
                 return new ExpressionResult { IsSuccess = false, ErrorMessage = ex.Message };
             }
-        }).ConfigureAwait(false);
+        });
     }
 
     private bool EvaluateLogicalAnd(string expression)
@@ -200,7 +201,7 @@ public class ExpressionEvaluator
             var innerResult = EvaluateExpression(innerExpression);
             
             // Replace the parenthetical expression with its result
-            var replacedExpression = expression.Replace(innerMatch.Value, innerResult.ToString().ToLower(), StringComparison.Ordinal);
+            var replacedExpression = expression.Replace(innerMatch.Value, innerResult.ToString().ToLower(CultureInfo.InvariantCulture), StringComparison.Ordinal);
             return EvaluateExpression(replacedExpression);
         }
 
