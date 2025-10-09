@@ -861,7 +861,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             if (history.Count >= MinimumBarsForTechnicals)
             {
                 var recentBars = history.TakeLast(MinimumBarsForCalculation).ToList();
-                var baselineVolume = (double)history.TakeLast(MinimumBarsForTechnicals).Take(MinimumBarsForCalculation).Average(b => b.Volume);
+                var baselineVolume = history.TakeLast(MinimumBarsForTechnicals).Take(MinimumBarsForCalculation).Average(b => b.Volume);
                 
                 // Get configuration values instead of hardcoded multipliers
                 var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
@@ -912,7 +912,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             if (history.Count >= MinimumBarsForTechnicals)
             {
                 var recentBars = history.TakeLast(MinimumBarsForCalculation).ToList();
-                var baselineVolume = (double)history.TakeLast(MinimumBarsForTechnicals).Take(MinimumBarsForCalculation).Average(b => b.Volume);
+                var baselineVolume = history.TakeLast(MinimumBarsForTechnicals).Take(MinimumBarsForCalculation).Average(b => b.Volume);
                 
                 // Get configuration values instead of hardcoded multipliers (reuse from bull calculation)
                 var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();

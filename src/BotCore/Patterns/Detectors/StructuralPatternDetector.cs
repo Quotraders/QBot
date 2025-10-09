@@ -292,9 +292,9 @@ public class StructuralPatternDetector : IPatternDetector
         
         // Look for tight trading range
         var recentRange = bars.TakeLast(5).Select(b => b.High - b.Low).Average();
-        var avgRange = (decimal)recentRange;
+        var avgRange = recentRange;
         
-        var score = (decimal)recentRange < avgRange * 0.5m ? 0.6 : 0.0;
+        var score = recentRange < avgRange * 0.5m ? 0.6 : 0.0;
         
         return new PatternResult
         {
@@ -305,7 +305,7 @@ public class StructuralPatternDetector : IPatternDetector
             { 
                 ["type"] = type,
                 ["range"] = (double)range,
-                ["consolidation_ratio"] = (double)((decimal)recentRange / avgRange)
+                ["consolidation_ratio"] = (double)(recentRange / avgRange)
             }
         };
     }

@@ -82,6 +82,9 @@ public class RedundantDataFeedManager : IDisposable
     private const int PRIMARY_FEED_PRIORITY = 1;
     private const int BACKUP_FEED_PRIORITY = 2;
     
+    // JSON serialization options
+    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+    
     // Data consistency thresholds
     private const decimal PRICE_TOLERANCE = 0.001m;        // 0.1% price deviation tolerance
     private const decimal PRICE_OUTLIER_THRESHOLD = 0.001m; // 0.1% threshold for outlier detection
@@ -629,7 +632,7 @@ public class RedundantDataFeedManager : IDisposable
             Directory.CreateDirectory(alertsDir);
             
             var alertFile = Path.Combine(alertsDir, $"alert_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json");
-            var json = System.Text.Json.JsonSerializer.Serialize(alert, new JsonSerializerOptions { WriteIndented = true });
+            var json = System.Text.Json.JsonSerializer.Serialize(alert, s_jsonOptions);
             await File.WriteAllTextAsync(alertFile, json).ConfigureAwait(false);
             
             _logger.LogDebug("[DataConsistency] Alert stored to {AlertFile}", alertFile);

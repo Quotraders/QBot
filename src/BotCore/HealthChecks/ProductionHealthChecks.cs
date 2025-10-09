@@ -113,6 +113,7 @@ public class ProductionHealthCheckEndpoint : IHealthCheckEndpoint
 {
     private readonly HealthCheckService _healthCheckService;
     private readonly ILogger<ProductionHealthCheckEndpoint> _logger;
+    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
 
     public ProductionHealthCheckEndpoint(
         HealthCheckService healthCheckService,
@@ -168,12 +169,12 @@ public class ProductionHealthCheckEndpoint : IHealthCheckEndpoint
                     })
             };
 
-            return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+            return JsonSerializer.Serialize(result, s_jsonOptions);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to generate health report");
-            return JsonSerializer.Serialize(new { status = "Unhealthy", error = ex.Message });
+            return JsonSerializer.Serialize(new { status = "Unhealthy", error = ex.Message }, s_jsonOptions);
         }
     }
 }
