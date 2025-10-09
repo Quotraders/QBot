@@ -3088,9 +3088,24 @@ Reason closed: {reason}
 
                 return true;
             }
-            catch (Exception ex)
+            catch (OnnxRuntimeException ex)
             {
-                _logger.LogError(ex, "❌ [MODEL-RELOAD] Exception during model reload");
+                _logger.LogError(ex, "❌ [MODEL-RELOAD] ONNX runtime error during model reload");
+                return false;
+            }
+            catch (FileNotFoundException ex)
+            {
+                _logger.LogError(ex, "❌ [MODEL-RELOAD] Model file not found during reload");
+                return false;
+            }
+            catch (IOException ex)
+            {
+                _logger.LogError(ex, "❌ [MODEL-RELOAD] I/O error during model reload");
+                return false;
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "❌ [MODEL-RELOAD] Invalid operation during model reload");
                 return false;
             }
         }
@@ -3156,9 +3171,19 @@ Reason closed: {reason}
 
                 return Task.FromResult((true, oldVersion, newVersion));
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                _logger.LogError(ex, "  Atomic swap failed");
+                _logger.LogError(ex, "  Atomic swap failed - I/O error");
+                return Task.FromResult((false, string.Empty, string.Empty));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogError(ex, "  Atomic swap failed - access denied");
+                return Task.FromResult((false, string.Empty, string.Empty));
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "  Atomic swap failed - invalid operation");
                 return Task.FromResult((false, string.Empty, string.Empty));
             }
         }
@@ -3224,9 +3249,21 @@ Reason closed: {reason}
                 
                 // Enhanced Python training scripts for multi-strategy learning would be integrated here
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-RETRAIN] Unified model retraining failed");
+                _logger.LogError(ex, "❌ [UNIFIED-RETRAIN] Unified model retraining failed - I/O error");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-RETRAIN] Unified model retraining failed - access denied");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-RETRAIN] Unified model retraining failed - invalid operation");
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-RETRAIN] Unified model retraining failed - JSON error");
             }
         }
 
@@ -3262,9 +3299,19 @@ Explain in 1-2 sentences why I'm waiting and what I'm looking for. Speak as ME (
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining why waiting");
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining why waiting - invalid operation");
+                return string.Empty;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining why waiting - HTTP request failed");
+                return string.Empty;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining why waiting - task cancelled");
                 return string.Empty;
             }
         }
@@ -3298,9 +3345,19 @@ Explain in 1-2 sentences why I'm so confident. Speak as ME (the bot).";
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining high confidence");
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining high confidence - invalid operation");
+                return string.Empty;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining high confidence - HTTP request failed");
+                return string.Empty;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining high confidence - task cancelled");
                 return string.Empty;
             }
         }
@@ -3331,9 +3388,19 @@ Explain in 1-2 sentences why strategies disagree and what this means. Speak as M
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining strategy conflict");
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining strategy conflict - invalid operation");
+                return string.Empty;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining strategy conflict - HTTP request failed");
+                return string.Empty;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining strategy conflict - task cancelled");
                 return string.Empty;
             }
         }
@@ -3380,9 +3447,19 @@ Analyze in 2-3 sentences: What went wrong? Was it my entry timing, stop placemen
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-FAILURE-ANALYSIS] Error analyzing trade failure");
+                _logger.LogError(ex, "❌ [BOT-FAILURE-ANALYSIS] Error analyzing trade failure - invalid operation");
+                return string.Empty;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-FAILURE-ANALYSIS] Error analyzing trade failure - HTTP request failed");
+                return string.Empty;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-FAILURE-ANALYSIS] Error analyzing trade failure - task cancelled");
                 return string.Empty;
             }
         }
@@ -3420,9 +3497,19 @@ Explain in 1-2 sentences why Neural UCB selected this strategy over others. Spea
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [STRATEGY-SELECTION] Error explaining strategy selection");
+                _logger.LogError(ex, "❌ [STRATEGY-SELECTION] Error explaining strategy selection - invalid operation");
+                return string.Empty;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "❌ [STRATEGY-SELECTION] Error explaining strategy selection - HTTP request failed");
+                return string.Empty;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ [STRATEGY-SELECTION] Error explaining strategy selection - task cancelled");
                 return string.Empty;
             }
         }
@@ -3454,9 +3541,19 @@ Explain in 1-2 sentences what this regime means and how it affects my trading. S
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [MARKET-REGIME] Error explaining market regime");
+                _logger.LogError(ex, "❌ [MARKET-REGIME] Error explaining market regime - invalid operation");
+                return string.Empty;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "❌ [MARKET-REGIME] Error explaining market regime - HTTP request failed");
+                return string.Empty;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ [MARKET-REGIME] Error explaining market regime - task cancelled");
                 return string.Empty;
             }
         }
@@ -3486,9 +3583,19 @@ Explain in 1-2 sentences what I learned and how it will improve my future tradin
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-LEARNING] Error explaining learning update");
+                _logger.LogError(ex, "❌ [BOT-LEARNING] Error explaining learning update - invalid operation");
+                return string.Empty;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-LEARNING] Error explaining learning update - HTTP request failed");
+                return string.Empty;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-LEARNING] Error explaining learning update - task cancelled");
                 return string.Empty;
             }
         }
@@ -3629,9 +3736,17 @@ Explain in 1-2 sentences what I learned and how it will improve my future tradin
                     _logger.LogInformation("📊 [UNIFIED-BRAIN] Statistics saved: {Decisions} decisions, {WinRate:P1} win rate",
                         DecisionsToday, WinRateToday);
                 }
-                catch (Exception ex)
+                catch (IOException ex)
                 {
-                    _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Error saving statistics");
+                    _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Error saving statistics - I/O error");
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Error saving statistics - access denied");
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Error saving statistics - JSON serialization error");
                 }
                 
                 // Dispose managed resources
@@ -3655,9 +3770,9 @@ Explain in 1-2 sentences what I learned and how it will improve my future tradin
                 {
                     // Expected during shutdown - ignore
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Error disposing managed resources");
+                    _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Error disposing managed resources - invalid operation");
                 }
             }
         }
