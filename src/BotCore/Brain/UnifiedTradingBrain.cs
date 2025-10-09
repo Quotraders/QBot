@@ -1283,7 +1283,7 @@ Reason closed: {reason}
                 var recentBars = bars.TakeLast(5).ToList();
                 if (recentBars.Count >= 2)
                 {
-                    var priceChange = recentBars.Last().Close - recentBars.First().Close;
+                    var priceChange = recentBars[recentBars.Count - 1].Close - recentBars[0].Close;
                     var direction = priceChange > 0 ? PriceDirection.Up : PriceDirection.Down;
                     var probability = Math.Min(0.75m, 0.5m + Math.Abs(priceChange) / (context.Atr ?? 10));
                     
@@ -1305,7 +1305,7 @@ Reason closed: {reason}
                 var ema50 = CalculateEMA(bars, 50);
                 var rsi = CalculateRSI(bars, 14);
                 
-                var isUptrend = ema20 > ema50 && bars.Last().Close > ema20;
+                var isUptrend = ema20 > ema50 && bars[bars.Count - 1].Close > ema20;
                 var isOversold = rsi < 30;
                 var isOverbought = rsi > 70;
                 
@@ -1858,7 +1858,7 @@ Reason closed: {reason}
             if (bars.Count < TopStepConfig.MinBarsPeriod) return 0;
             
             var recent = bars.TakeLast(TopStepConfig.MinBarsPeriod).ToList();
-            var slope = (recent.Last().Close - recent.First().Close) / recent.Count;
+            var slope = (recent[recent.Count - 1].Close - recent[0].Close) / recent.Count;
             return Math.Abs(slope) / (recent.Average(b => Math.Abs(b.High - b.Low)));
         }
 
@@ -1866,7 +1866,7 @@ Reason closed: {reason}
         {
             if (bars.Count < TopStepConfig.MinBarsExtended) return TopStepConfig.NeutralProbability;
             
-            var currentVol = Math.Abs(bars.Last().High - bars.Last().Low);
+            var currentVol = Math.Abs(bars[bars.Count - 1].High - bars[bars.Count - 1].Low);
             var historicalVols = bars.TakeLast(TopStepConfig.MinBarsExtended).Select(b => Math.Abs(b.High - b.Low)).OrderBy(v => v).ToList();
             
             var rank = historicalVols.Count(v => v < currentVol) / (decimal)historicalVols.Count;
@@ -1878,7 +1878,7 @@ Reason closed: {reason}
             if (bars.Count < 5) return 0;
             
             var recent = bars.TakeLast(5).ToList();
-            return (recent.Last().Close - recent.First().Close) / recent.First().Close;
+            return (recent[recent.Count - 1].Close - recent[0].Close) / recent[0].Close;
         }
 
         private async Task UpdateUnifiedLearningAsync(CancellationToken cancellationToken)
@@ -2451,7 +2451,7 @@ Reason closed: {reason}
             }
         }
 
-        private float[] RunInference(InferenceSession session, float[] inputVector)
+        private static float[] RunInference(InferenceSession session, float[] inputVector)
         {
             var inputName = session.InputMetadata.Keys.First();
             
@@ -2464,7 +2464,7 @@ Reason closed: {reason}
             return output;
         }
 
-        private double CalculateTotalVariationDistance(List<float[]> predictions1, List<float[]> predictions2)
+        private static double CalculateTotalVariationDistance(List<float[]> predictions1, List<float[]> predictions2)
         {
             double totalVariation = 0.0;
             int count = 0;
@@ -2484,7 +2484,7 @@ Reason closed: {reason}
             return count > 0 ? (totalVariation / count) * TopStepConfig.TotalVariationNormalizationFactor : 0.0;
         }
 
-        private double CalculateKLDivergence(List<float[]> predictions1, List<float[]> predictions2, double minProb)
+        private static double CalculateKLDivergence(List<float[]> predictions1, List<float[]> predictions2, double minProb)
         {
             double klDivergence = 0.0;
             int count = 0;
@@ -2759,7 +2759,7 @@ Reason closed: {reason}
             }
         }
 
-        private string GetCurrentModelPath()
+        private static string GetCurrentModelPath()
         {
             var modelDir = Path.Combine("models", "current");
             Directory.CreateDirectory(modelDir);
@@ -2826,7 +2826,7 @@ Reason closed: {reason}
             }
         }
 
-        private string GetModelVersion(string modelPath)
+        private static string GetModelVersion(string modelPath)
         {
             if (!File.Exists(modelPath))
             {
