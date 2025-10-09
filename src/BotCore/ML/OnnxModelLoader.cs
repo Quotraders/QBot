@@ -300,7 +300,15 @@ public sealed class OnnxModelLoader : IDisposable
                     return result;
                 }
             }
-            catch (Exception ex)
+            catch (OnnxRuntimeException ex)
+            {
+                LogLoadAttemptFailed(_logger, candidate, ex);
+            }
+            catch (FileNotFoundException ex)
+            {
+                LogLoadAttemptFailed(_logger, candidate, ex);
+            }
+            catch (InvalidOperationException ex)
             {
                 LogLoadAttemptFailed(_logger, candidate, ex);
             }
@@ -357,7 +365,15 @@ public sealed class OnnxModelLoader : IDisposable
                 }
             }
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            LogFallbackError(_logger, modelPath, ex);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            LogFallbackError(_logger, modelPath, ex);
+        }
+        catch (ArgumentException ex)
         {
             LogFallbackError(_logger, modelPath, ex);
         }
@@ -422,7 +438,19 @@ public sealed class OnnxModelLoader : IDisposable
             session = null; // Transfer ownership to result
             return result;
         }
-        catch (Exception ex)
+        catch (OnnxRuntimeException ex)
+        {
+            session?.Dispose();
+            LogModelLoadError(_logger, modelPath, ex);
+            return new ModelLoadResult { Session = null, IsHealthy = false };
+        }
+        catch (FileNotFoundException ex)
+        {
+            session?.Dispose();
+            LogModelLoadError(_logger, modelPath, ex);
+            return new ModelLoadResult { Session = null, IsHealthy = false };
+        }
+        catch (InvalidOperationException ex)
         {
             session?.Dispose();
             LogModelLoadError(_logger, modelPath, ex);
@@ -508,7 +536,23 @@ public sealed class OnnxModelLoader : IDisposable
                 InferenceDurationMs = inferenceDuration.TotalMilliseconds 
             });
         }
-        catch (Exception ex)
+        catch (OnnxRuntimeException ex)
+        {
+            return Task.FromResult(new HealthProbeResult 
+            { 
+                IsHealthy = false, 
+                ErrorMessage = ex.Message 
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Task.FromResult(new HealthProbeResult 
+            { 
+                IsHealthy = false, 
+                ErrorMessage = ex.Message 
+            });
+        }
+        catch (ArgumentException ex)
         {
             return Task.FromResult(new HealthProbeResult 
             { 
@@ -557,7 +601,15 @@ public sealed class OnnxModelLoader : IDisposable
                 }
             }
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            LogHotReloadError(_logger, ex);
+        }
+        catch (InvalidOperationException ex)
+        {
+            LogHotReloadError(_logger, ex);
+        }
+        catch (ArgumentException ex)
         {
             LogHotReloadError(_logger, ex);
         }
@@ -605,7 +657,15 @@ public sealed class OnnxModelLoader : IDisposable
                 }
             }
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            LogRegistryCheckError(_logger, ex);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            LogRegistryCheckError(_logger, ex);
+        }
+        catch (ArgumentException ex)
         {
             LogRegistryCheckError(_logger, ex);
         }
@@ -655,7 +715,15 @@ public sealed class OnnxModelLoader : IDisposable
                 }
             }
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            LogSacCheckError(_logger, ex);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            LogSacCheckError(_logger, ex);
+        }
+        catch (ArgumentException ex)
         {
             LogSacCheckError(_logger, ex);
         }
