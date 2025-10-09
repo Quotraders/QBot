@@ -204,16 +204,17 @@ namespace BotCore.Strategy
             // Dispatch to the specific strategy function based on def.Name (S1..S14)
             var env = new Env { atr = bars.Count > 0 ? (decimal?)Math.Abs(bars[^1].High - bars[^1].Low) : null, volz = VolZ(bars) };
             var levels = new Levels();
-            var riskEngine = risk as RiskEngine;
+            RiskEngine? riskEngine = null;
             var disposeRiskEngine = false;
-            if (riskEngine == null)
-            {
-                riskEngine = new RiskEngine();
-                disposeRiskEngine = true;
-            }
-
             try
             {
+                riskEngine = risk as RiskEngine;
+                if (riskEngine == null)
+                {
+                    riskEngine = new RiskEngine();
+                    disposeRiskEngine = true;
+                }
+
                 var map = new Dictionary<string, Func<string, Env, Levels, IList<Bar>, RiskEngine, List<Candidate>>>(StringComparer.OrdinalIgnoreCase)
                 {
                     ["S2"] = S2,
