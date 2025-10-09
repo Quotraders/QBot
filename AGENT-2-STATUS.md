@@ -102,20 +102,35 @@
 
 ---
 
-## 🎯 Session Complete - Next Steps for Future Work
-- ✅ CA2227 - Collection Setters COMPLETE (7 violations cleared)
-- ✅ CA1002 - Collection Properties COMPLETE (23 violations cleared)
-- ✅ CA1869 - JsonSerializerOptions COMPLETE (10 violations cleared, 42 remaining outside Services scope)
-- ✅ CA1308/CA1304/CA1311 - Globalization BATCH COMPLETE (40 violations cleared, ~72 remaining)
-- ❌ CA1031/S2139 - Exception Handling DEFERRED (450 CA1031 + 16 S2139)
-  - Analysis complete - most properly log with context
-  - Deliberately broad for trading safety
-  - Per guidebook: "Do not change exception handling that is deliberately broad for safety"
-- Remaining high-value targets for future sessions:
-  - CA1308/CA1304/CA1311 - More globalization fixes (72 remaining)
-  - S1172 - Unused parameters (130 violations - remove or document)
-  - CA1826 - Use Count property instead of Any() with Count (24 violations)
-  - S3358 - Extract ternaries (28 violations - readability)
+## 🎯 Session Status - Remaining Work
+
+### Completed This Session ✅
+- ✅ CA1869 - JsonSerializerOptions COMPLETE (50 violations fixed)
+- ✅ CA1308 - Globalization ToUpperInvariant COMPLETE (28 violations fixed)
+
+### Remaining High-Value Targets
+- S1172 - Unused parameters (130 violations)
+  - Many are cancellationToken or future-use parameters
+  - Need careful analysis to avoid breaking interfaces
+- CA1002 - Collection Properties (46 violations)
+  - Convert List<T> properties to IReadOnlyList<T>
+  - Some are DTOs that need mutability consideration
+- CA5394 - Insecure Random (70 violations)
+  - All are Random.Shared in simulation/testing code
+  - False positives for non-cryptographic use
+- CA1031/S2139 - Exception Handling (450+ violations)
+  - Most are deliberately broad for trading safety
+  - Deferred per guidebook guidance
+- CA1812 - Unused classes (2 violations)
+  - JSON deserialization DTOs - false positives
+- CA1859 - Return concrete types (5 violations)
+  - Conflicts with CA1002 guidance
+  
+### High-Volume Violations (Deferred)
+- CA1848 - Logging performance (3,530 violations)
+  - Too invasive, would rewrite all logging calls
+- CA1031 - Generic exceptions (450 violations)
+  - Most are correct for production safety
 
 ---
 
