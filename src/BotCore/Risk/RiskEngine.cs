@@ -51,8 +51,8 @@ namespace BotCore.Risk
             if (pv <= 0) return (0, 0);
 
             // If equity% configured and equity provided, use it, else fall back to fixed RPT
-            var usePct = cfg.risk_pct_of_equity > 0m && accountEquity > 0m;
-            var rpt = usePct ? Math.Round(accountEquity * cfg.risk_pct_of_equity, 2) : cfg.risk_per_trade;
+            var usePct = cfg.RiskPctOfEquity > 0m && accountEquity > 0m;
+            var rpt = usePct ? Math.Round(accountEquity * cfg.RiskPctOfEquity, 2) : cfg.RiskPerTrade;
             var raw = (int)System.Math.Floor((double)(rpt / (dist * pv)));
             var lot = BotCore.Models.InstrumentMeta.LotStep(symbol);
             var qty = System.Math.Max(0, raw - (raw % System.Math.Max(1, lot)));
@@ -64,8 +64,8 @@ namespace BotCore.Risk
             return (qty, rpt);
         }
 
-        public bool ShouldHaltDay(decimal realizedPnlToday) => cfg.max_daily_drawdown > 0 && -realizedPnlToday >= cfg.max_daily_drawdown;
-        public bool ShouldHaltWeek(decimal realizedPnlWeek) => cfg.max_weekly_drawdown > 0 && -realizedPnlWeek >= cfg.max_weekly_drawdown;
+        public bool ShouldHaltDay(decimal realizedPnlToday) => cfg.MaxDailyDrawdown > 0 && -realizedPnlToday >= cfg.MaxDailyDrawdown;
+        public bool ShouldHaltWeek(decimal realizedPnlWeek) => cfg.MaxWeeklyDrawdown > 0 && -realizedPnlWeek >= cfg.MaxWeeklyDrawdown;
 
         public DrawdownAnalysis GetDrawdownAnalysis() => _drawdownProtection.AnalyzeDrawdownPattern();
     }
