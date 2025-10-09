@@ -90,6 +90,187 @@ public class MLMemoryManager : IMLMemoryManager
         public WeakReference? WeakRef { get; set; }
     }
 
+    // Structured logging delegates
+    private static readonly Action<ILogger, Exception?> LogManagerInitialized =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(1, nameof(LogManagerInitialized)),
+            "[ML-Memory] MLMemoryManager initialized with real ONNX loader");
+
+    private static readonly Action<ILogger, Exception?> LogServicesStarting =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(2, nameof(LogServicesStarting)),
+            "[ML-Memory] Starting memory management services");
+
+    private static readonly Action<ILogger, string, Exception?> LogModelReused =
+        LoggerMessage.Define<string>(
+            LogLevel.Debug,
+            new EventId(3, nameof(LogModelReused)),
+            "[ML-Memory] Reusing cached model: {ModelId}");
+
+    private static readonly Action<ILogger, string, Exception?> LogModelLoadFailed =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(4, nameof(LogModelLoadFailed)),
+            "[ML-Memory] Failed to load model from: {ModelPath}");
+
+    private static readonly Action<ILogger, double, Exception?> LogMemoryPressure =
+        LoggerMessage.Define<double>(
+            LogLevel.Warning,
+            new EventId(5, nameof(LogMemoryPressure)),
+            "[ML-Memory] Memory pressure detected ({MemoryMB:F1}MB), will monitor for cleanup");
+
+    private static readonly Action<ILogger, string, string, double, Exception?> LogModelLoaded =
+        LoggerMessage.Define<string, string, double>(
+            LogLevel.Information,
+            new EventId(6, nameof(LogModelLoaded)),
+            "[ML-Memory] Loaded model: {ModelId} v{Version} ({MemoryMB:F1}MB)");
+
+    private static readonly Action<ILogger, string, Exception?> LogModelLoadError =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(7, nameof(LogModelLoadError)),
+            "[ML-Memory] Error loading model: {ModelPath}");
+
+    private static readonly Action<ILogger, string, Exception?> LogOnnxModelLoading =
+        LoggerMessage.Define<string>(
+            LogLevel.Information,
+            new EventId(8, nameof(LogOnnxModelLoading)),
+            "[ML-Memory] Loading ONNX model: {ModelPath}");
+
+    private static readonly Action<ILogger, string, Exception?> LogModelFileNotFound =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(9, nameof(LogModelFileNotFound)),
+            "[ML-Memory] Model file not found: {ModelPath}");
+
+    private static readonly Action<ILogger, string, Exception?> LogOnnxLoadFailed =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(10, nameof(LogOnnxLoadFailed)),
+            "[ML-Memory] Failed to load ONNX model: {ModelPath}");
+
+    private static readonly Action<ILogger, string, int, int, Exception?> LogOnnxModelLoadedSuccess =
+        LoggerMessage.Define<string, int, int>(
+            LogLevel.Information,
+            new EventId(11, nameof(LogOnnxModelLoadedSuccess)),
+            "[ML-Memory] ONNX model loaded successfully: {ModelPath}, Inputs: {InputCount}, Outputs: {OutputCount}");
+
+    private static readonly Action<ILogger, string, Exception?> LogOnnxLoadError =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(12, nameof(LogOnnxLoadError)),
+            "[ML-Memory] Error loading ONNX model: {ModelPath}");
+
+    private static readonly Action<ILogger, double, Exception?> LogHighMemoryUsage =
+        LoggerMessage.Define<double>(
+            LogLevel.Warning,
+            new EventId(13, nameof(LogHighMemoryUsage)),
+            "[ML-Memory] Memory usage high ({MemoryMB:F1}MB), starting intelligent cleanup");
+
+    private static readonly Action<ILogger, Exception?> LogCriticalMemory =
+        LoggerMessage.Define(
+            LogLevel.Critical,
+            new EventId(14, nameof(LogCriticalMemory)),
+            "[ML-Memory] Memory critically high, suggesting collection to runtime");
+
+    private static readonly Action<ILogger, string, Exception?> LogUnusedModelRemoved =
+        LoggerMessage.Define<string>(
+            LogLevel.Debug,
+            new EventId(15, nameof(LogUnusedModelRemoved)),
+            "[ML-Memory] Removed unused model: {Key}");
+
+    private static readonly Action<ILogger, int, int, Exception?> LogCleanupCompleted =
+        LoggerMessage.Define<int, int>(
+            LogLevel.Information,
+            new EventId(16, nameof(LogCleanupCompleted)),
+            "[ML-Memory] Intelligent cleanup completed - removed {RemovedCount} unused models, {DeadRefs} dead references");
+
+    private static readonly Action<ILogger, string, Exception?> LogOldVersionRemoved =
+        LoggerMessage.Define<string>(
+            LogLevel.Information,
+            new EventId(17, nameof(LogOldVersionRemoved)),
+            "[ML-Memory] Removed old model version: {Key}");
+
+    private static readonly Action<ILogger, long, int, Exception?> LogCleanupFreed =
+        LoggerMessage.Define<long, int>(
+            LogLevel.Information,
+            new EventId(18, nameof(LogCleanupFreed)),
+            "[ML-Memory] Intelligent cleanup freed {FreedMB}MB, removed {ModelCount} models");
+
+    private static readonly Action<ILogger, Exception?> LogCleanupFailed =
+        LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(19, nameof(LogCleanupFailed)),
+            "[ML-Memory] Intelligent cleanup failed");
+
+    private static readonly Action<ILogger, double, Exception?> LogCriticalMemoryPercentage =
+        LoggerMessage.Define<double>(
+            LogLevel.Critical,
+            new EventId(20, nameof(LogCriticalMemoryPercentage)),
+            "[ML-Memory] CRITICAL: Memory usage at {MemoryPercentage:F1}%");
+
+    private static readonly Action<ILogger, double, Exception?> LogHighMemoryPercentage =
+        LoggerMessage.Define<double>(
+            LogLevel.Warning,
+            new EventId(21, nameof(LogHighMemoryPercentage)),
+            "[ML-Memory] High memory usage: {MemoryPercentage:F1}%");
+
+    private static readonly Action<ILogger, Exception?> LogMonitoringFailed =
+        LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(22, nameof(LogMonitoringFailed)),
+            "[ML-Memory] Memory monitoring failed");
+
+    private static readonly Action<ILogger, Exception?> LogEmergencyCleanup =
+        LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(23, nameof(LogEmergencyCleanup)),
+            "[ML-Memory] Starting intelligent emergency cleanup");
+
+    private static readonly Action<ILogger, long, int, Exception?> LogEmergencyCleanupCompleted =
+        LoggerMessage.Define<long, int>(
+            LogLevel.Information,
+            new EventId(24, nameof(LogEmergencyCleanupCompleted)),
+            "[ML-Memory] Emergency cleanup completed - freed ~{FreedMB}MB from {ModelCount} models");
+
+    private static readonly Action<ILogger, Exception?> LogGCApproaching =
+        LoggerMessage.Define(
+            LogLevel.Debug,
+            new EventId(25, nameof(LogGCApproaching)),
+            "[ML-Memory] Full GC approaching - preparing cleanup");
+
+    private static readonly Action<ILogger, Exception?> LogGCCompleted =
+        LoggerMessage.Define(
+            LogLevel.Debug,
+            new EventId(26, nameof(LogGCCompleted)),
+            "[ML-Memory] Full GC completed");
+
+    private static readonly Action<ILogger, Exception?> LogGCMonitoringFailed =
+        LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(27, nameof(LogGCMonitoringFailed)),
+            "[ML-Memory] GC monitoring failed");
+
+    private static readonly Action<ILogger, double, double, int, int, Exception?> LogMemorySnapshot =
+        LoggerMessage.Define<double, double, int, int>(
+            LogLevel.Information,
+            new EventId(28, nameof(LogMemorySnapshot)),
+            "[ML-Memory] Memory snapshot - Total: {TotalMB:F1}MB, ML: {MLMB:F1}MB, Models: {ModelCount}, Leaks: {LeakCount}");
+
+    private static readonly Action<ILogger, string, Exception?> LogMemoryLeak =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(29, nameof(LogMemoryLeak)),
+            "[ML-Memory] {Leak}");
+
+    private static readonly Action<ILogger, Exception?> LogManagerDisposing =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(30, nameof(LogManagerDisposing)),
+            "[ML-Memory] Disposing MLMemoryManager");
+
     public MLMemoryManager(ILogger<MLMemoryManager> logger, OnnxModelLoader onnxLoader)
     {
         _logger = logger;
@@ -99,7 +280,7 @@ public class MLMemoryManager : IMLMemoryManager
         _garbageCollector = new Timer(CollectGarbage, null, Timeout.Infinite, Timeout.Infinite);
         _memoryMonitor = new Timer(MonitorMemory, null, Timeout.Infinite, Timeout.Infinite);
         
-        _logger.LogInformation("[ML-Memory] MLMemoryManager initialized with real ONNX loader");
+        LogManagerInitialized(_logger, null);
     }
 
     /// <summary>
@@ -107,7 +288,7 @@ public class MLMemoryManager : IMLMemoryManager
     /// </summary>
     public Task InitializeMemoryManagementAsync()
     {
-        _logger.LogInformation("[ML-Memory] Starting memory management services");
+        LogServicesStarting(_logger, null);
         
         // Start garbage collection timer
         _garbageCollector.Change(TimeSpan.Zero, TimeSpan.FromMinutes(GC_COLLECTION_INTERVAL_MINUTES));
@@ -138,7 +319,7 @@ public class MLMemoryManager : IMLMemoryManager
         {
             existing.UsageCount++;
             existing.LastUsed = DateTime.UtcNow;
-            _logger.LogDebug("[ML-Memory] Reusing cached model: {ModelId}", modelId);
+            LogModelReused(_logger, modelId, null);
             return existing.Model as T;
         }
         
@@ -152,7 +333,7 @@ public class MLMemoryManager : IMLMemoryManager
             
             if (model == null)
             {
-                _logger.LogWarning("[ML-Memory] Failed to load model from: {ModelPath}", modelPath);
+                LogModelLoadFailed(_logger, modelPath, null);
                 return null;
             }
             
@@ -176,8 +357,8 @@ public class MLMemoryManager : IMLMemoryManager
             // Register for memory pressure notifications
             if (memoryAfter > MAX_MEMORY_BYTES * WARNING_THRESHOLD)
             {
-                _logger.LogWarning("[ML-Memory] Memory pressure detected ({MemoryMB:F1}MB), will monitor for cleanup", 
-                    memoryAfter / BYTES_TO_MB);
+                LogMemoryPressure(_logger, 
+                    memoryAfter / BYTES_TO_MB, null);
             }
             
             _activeModels[versionKey] = modelVersion;
@@ -189,14 +370,13 @@ public class MLMemoryManager : IMLMemoryManager
             // Cleanup old versions
             await CleanupOldVersionsAsync(modelId).ConfigureAwait(false);
             
-            _logger.LogInformation("[ML-Memory] Loaded model: {ModelId} v{Version} ({MemoryMB:F1}MB)", 
-                modelId, version, modelVersion.MemoryFootprint / BYTES_TO_MB);
+            LogModelLoaded(_logger, modelId, version, modelVersion.MemoryFootprint / BYTES_TO_MB, null);
             
             return model;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ML-Memory] Error loading model: {ModelPath}", modelPath);
+            LogModelLoadError(_logger, modelPath, ex);
             throw;
         }
     }
@@ -208,11 +388,11 @@ public class MLMemoryManager : IMLMemoryManager
     {
         try
         {
-            _logger.LogInformation("[ML-Memory] Loading ONNX model: {ModelPath}", modelPath);
+            LogOnnxModelLoading(_logger, modelPath, null);
             
             if (!File.Exists(modelPath))
             {
-                _logger.LogWarning("[ML-Memory] Model file not found: {ModelPath}", modelPath);
+                LogModelFileNotFound(_logger, modelPath, null);
                 return null;
             }
 
@@ -221,22 +401,21 @@ public class MLMemoryManager : IMLMemoryManager
             
             if (session == null)
             {
-                _logger.LogError("[ML-Memory] Failed to load ONNX model: {ModelPath}", modelPath);
+                LogOnnxLoadFailed(_logger, modelPath, null);
                 return null;
             }
 
             // Log model metadata for verification
             var inputCount = session.InputMetadata?.Count ?? 0;
             var outputCount = session.OutputMetadata?.Count ?? 0;
-            _logger.LogInformation("[ML-Memory] ONNX model loaded successfully: {ModelPath}, Inputs: {InputCount}, Outputs: {OutputCount}", 
-                modelPath, inputCount, outputCount);
+            LogOnnxModelLoadedSuccess(_logger, modelPath, inputCount, outputCount, null);
             
             // Return the InferenceSession with proper type casting
             return session as T;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ML-Memory] Error loading ONNX model: {ModelPath}", modelPath);
+            LogOnnxLoadError(_logger, modelPath, ex);
             return null;
         }
     }
@@ -247,8 +426,7 @@ public class MLMemoryManager : IMLMemoryManager
         
         if (currentMemory > MAX_MEMORY_BYTES * VERY_HIGH_THRESHOLD)
         {
-            _logger.LogWarning("[ML-Memory] Memory usage high ({MemoryMB:F1}MB), starting intelligent cleanup", 
-                currentMemory / BYTES_TO_MB);
+            LogHighMemoryUsage(_logger, currentMemory / BYTES_TO_MB, null);
                 
             // Intelligent cleanup based on usage patterns
             await PerformIntelligentCleanupAsync().ConfigureAwait(false);
@@ -269,7 +447,7 @@ public class MLMemoryManager : IMLMemoryManager
             // Only as last resort, suggest collection to runtime
             if (currentMemory > MAX_MEMORY_BYTES * CRITICAL_THRESHOLD)
             {
-                _logger.LogCritical("[ML-Memory] Memory critically high, suggesting collection to runtime");
+                LogCriticalMemory(_logger, null);
                 GC.Collect(0, GCCollectionMode.Optimized, false); // Gentle suggestion only
                 await Task.Delay(POST_GC_DELAY_MS).ConfigureAwait(false); // Give runtime time to respond
                 
@@ -315,7 +493,7 @@ public class MLMemoryManager : IMLMemoryManager
                     }
                 }
                 removed.Model = null;
-                _logger.LogDebug("[ML-Memory] Removed unused model: {Key}", key);
+                LogUnusedModelRemoved(_logger, key, null);
             }
         }
         
@@ -330,8 +508,7 @@ public class MLMemoryManager : IMLMemoryManager
             _activeModels.TryRemove(key, out _);
         }
         
-        _logger.LogInformation("[ML-Memory] Intelligent cleanup completed - removed {RemovedCount} unused models, {DeadRefs} dead references", 
-            candidatesForRemoval.Count, deadReferences.Count);
+        LogCleanupCompleted(_logger, candidatesForRemoval.Count, deadReferences.Count, null);
     }
 
     private Task CleanupOldVersionsAsync(string modelId)
@@ -367,7 +544,7 @@ public class MLMemoryManager : IMLMemoryManager
                     // Clear strong reference
                     removed.Model = null;
                     
-                    _logger.LogInformation("[ML-Memory] Removed old model version: {Key}", key);
+                    LogOldVersionRemoved(_logger, key, null);
                 }
             }
         }
@@ -432,13 +609,12 @@ public class MLMemoryManager : IMLMemoryManager
             
             if (freedMemory > MEANINGFUL_CLEANUP_THRESHOLD_MB || modelsToRemove.Count > 0)
             {
-                _logger.LogInformation("[ML-Memory] Intelligent cleanup freed {FreedMB}MB, removed {ModelCount} models", 
-                    freedMemory, modelsToRemove.Count);
+                LogCleanupFreed(_logger, freedMemory, modelsToRemove.Count, null);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ML-Memory] Intelligent cleanup failed");
+            LogCleanupFailed(_logger, ex);
         }
     }
 
@@ -475,29 +651,38 @@ public class MLMemoryManager : IMLMemoryManager
             
             if (memoryPercentage > CRITICAL_MEMORY_PERCENTAGE)
             {
-                _logger.LogCritical("[ML-Memory] CRITICAL: Memory usage at {MemoryPercentage:F1}%", memoryPercentage);
+                LogCriticalMemoryPercentage(_logger, memoryPercentage, null);
                 _ = Task.Run(AggressiveCleanupAsync);
             }
             else if (memoryPercentage > HIGH_MEMORY_PERCENTAGE)
             {
-                _logger.LogWarning("[ML-Memory] High memory usage: {MemoryPercentage:F1}%", memoryPercentage);
+                LogHighMemoryPercentage(_logger, memoryPercentage, null);
             }
             
             // Log detailed snapshot periodically
             if (DateTime.UtcNow.Minute % MEMORY_SNAPSHOT_LOG_INTERVAL_MINUTES == 0)
             {
-                LogMemorySnapshot(snapshot);
+                LogMemorySnapshot(_logger, snapshot.TotalMemory / BYTES_TO_MB, snapshot.MLMemory / BYTES_TO_MB,
+                    snapshot.LoadedModels, snapshot.MemoryLeaks.Count, null);
+                    
+                if (snapshot.MemoryLeaks.Any())
+                {
+                    foreach (var leak in snapshot.MemoryLeaks)
+                    {
+                        LogMemoryLeak(_logger, leak, null);
+                    }
+                }
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ML-Memory] Memory monitoring failed");
+            LogMonitoringFailed(_logger, ex);
         }
     }
 
     private Task AggressiveCleanupAsync()
     {
-        _logger.LogWarning("[ML-Memory] Starting intelligent emergency cleanup");
+        LogEmergencyCleanup(_logger, null);
         
         // Remove least recently used models with priority on memory footprint
         var modelsToUnload = _activeModels.Values
@@ -544,8 +729,7 @@ public class MLMemoryManager : IMLMemoryManager
             GC.Collect(GEN2_COLLECTION_GENERATION, GCCollectionMode.Optimized, false); // Gentle suggestion
         }
         
-        _logger.LogInformation("[ML-Memory] Emergency cleanup completed - freed ~{FreedMB}MB from {ModelCount} models", 
-            totalFreed / BYTES_TO_MB, modelsToUnload.Count);
+        LogEmergencyCleanupCompleted(_logger, (long)(totalFreed / BYTES_TO_MB), modelsToUnload.Count, null);
         return Task.CompletedTask;
     }
 
@@ -560,13 +744,13 @@ public class MLMemoryManager : IMLMemoryManager
                     GCNotificationStatus status = GC.WaitForFullGCApproach();
                     if (status == GCNotificationStatus.Succeeded)
                     {
-                        _logger.LogDebug("[ML-Memory] Full GC approaching - preparing cleanup");
+                        LogGCApproaching(_logger, null);
                     }
                     
                     status = GC.WaitForFullGCComplete();
                     if (status == GCNotificationStatus.Succeeded)
                     {
-                        _logger.LogDebug("[ML-Memory] Full GC completed");
+                        LogGCCompleted(_logger, null);
                     }
                     
                     await Task.Delay(GC_MONITORING_DELAY_MS).ConfigureAwait(false);
@@ -574,27 +758,12 @@ public class MLMemoryManager : IMLMemoryManager
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[ML-Memory] GC monitoring failed");
+                LogGCMonitoringFailed(_logger, ex);
             }
         });
     }
 
-    private void LogMemorySnapshot(MemorySnapshot snapshot)
-    {
-        _logger.LogInformation("[ML-Memory] Memory snapshot - Total: {TotalMB:F1}MB, ML: {MLMB:F1}MB, Models: {ModelCount}, Leaks: {LeakCount}",
-            snapshot.TotalMemory / BYTES_TO_MB,
-            snapshot.MLMemory / BYTES_TO_MB,
-            snapshot.LoadedModels,
-            snapshot.MemoryLeaks.Count);
-            
-        if (snapshot.MemoryLeaks.Any())
-        {
-            foreach (var leak in snapshot.MemoryLeaks)
-            {
-                _logger.LogWarning("[ML-Memory] {Leak}", leak);
-            }
-        }
-    }
+
 
     /// <summary>
     /// Get current memory usage statistics
@@ -631,7 +800,7 @@ public class MLMemoryManager : IMLMemoryManager
         {
             if (disposing)
             {
-                _logger.LogInformation("[ML-Memory] Disposing MLMemoryManager");
+                LogManagerDisposing(_logger, null);
                 
                 _garbageCollector?.Dispose();
                 _memoryMonitor?.Dispose();
