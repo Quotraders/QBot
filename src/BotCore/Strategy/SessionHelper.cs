@@ -54,9 +54,19 @@ namespace BotCore.Strategy
                 
                 return "RTH"; // Default fallback
             }
-            catch (Exception)
+            catch (TimeZoneNotFoundException)
             {
-                // Fallback to RTH if timezone conversion fails
+                // Fallback to RTH if Eastern timezone not found
+                return "RTH";
+            }
+            catch (InvalidTimeZoneException)
+            {
+                // Fallback to RTH if timezone data is invalid
+                return "RTH";
+            }
+            catch (ArgumentException)
+            {
+                // Fallback to RTH if conversion arguments are invalid
                 return "RTH";
             }
         }
@@ -109,9 +119,19 @@ namespace BotCore.Strategy
                 // Default fallback
                 return GranularSessionType.Afternoon;
             }
-            catch (Exception)
+            catch (TimeZoneNotFoundException)
             {
-                // Fallback to Afternoon if timezone conversion fails
+                // Fallback to Afternoon if Eastern timezone not found
+                return GranularSessionType.Afternoon;
+            }
+            catch (InvalidTimeZoneException)
+            {
+                // Fallback to Afternoon if timezone data is invalid
+                return GranularSessionType.Afternoon;
+            }
+            catch (ArgumentException)
+            {
+                // Fallback to Afternoon if conversion arguments are invalid
                 return GranularSessionType.Afternoon;
             }
         }
