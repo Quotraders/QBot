@@ -401,8 +401,8 @@ public sealed class YamlSchemaValidator
             return false;
             
         // Validate action type
-        var validActions = new[] { "buy", "sell", "hold", "close" };
-        if (!validActions.Contains(action.ToLowerInvariant()))
+        var validActions = new[] { "BUY", "SELL", "HOLD", "CLOSE" };
+        if (!validActions.Contains(action.ToUpperInvariant()))
             return false;
             
         return true;
@@ -436,10 +436,10 @@ public sealed class YamlSchemaValidator
     {
         var validTypes = new[]
         {
-            "candlestick", "reversal", "continuation", "volume", "momentum", "structural"
+            "CANDLESTICK", "REVERSAL", "CONTINUATION", "VOLUME", "MOMENTUM", "STRUCTURAL"
         };
         
-        return validTypes.Contains(type.ToLowerInvariant());
+        return validTypes.Contains(type.ToUpperInvariant());
     }
     
     /// <summary>
@@ -492,7 +492,7 @@ public sealed class YamlSchemaValidator
         var validFiles = result.FileResults.Where(r => r.IsValid).ToList();
         var invalidFiles = result.FileResults.Where(r => !r.IsValid).ToList();
         
-        if (invalidFiles.Any())
+        if (invalidFiles.Count > 0)
         {
             report.AppendLine(CultureInfo.InvariantCulture, $"❌ INVALID FILES:");
             foreach (var file in invalidFiles)
@@ -510,7 +510,7 @@ public sealed class YamlSchemaValidator
             report.AppendLine();
         }
         
-        if (validFiles.Any())
+        if (validFiles.Count > 0)
         {
             report.AppendLine(CultureInfo.InvariantCulture, $"✅ VALID FILES:");
             foreach (var file in validFiles)

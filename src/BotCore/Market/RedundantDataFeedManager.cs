@@ -102,6 +102,9 @@ public class RedundantDataFeedManager : IDisposable
     private const double STALE_DATA_SCORE_PENALTY = 0.3;     // Penalty for 30+ second old data
     private const double VERY_STALE_DATA_SCORE_PENALTY = 0.5; // Penalty for 1+ minute old data
     private const double INVALID_SPREAD_SCORE_PENALTY = 0.2;  // Penalty for invalid bid/ask spread
+    
+    // Common futures symbols for consistency checks
+    private static readonly string[] CommonFuturesSymbols = new[] { "ES", "NQ", "YM", "RTY" };
 
     public event EventHandler<MarketData>? OnConsolidatedData;
     public event EventHandler<string>? OnFeedFailover;
@@ -367,9 +370,7 @@ public class RedundantDataFeedManager : IDisposable
         {
             try
             {
-                var symbols = new[] { "ES", "NQ", "YM", "RTY" }; // Common futures symbols
-                
-                foreach (var symbol in symbols)
+                foreach (var symbol in CommonFuturesSymbols)
                 {
                     await CheckSymbolConsistencyAsync(symbol).ConfigureAwait(false);
                 }
@@ -472,8 +473,8 @@ public class RedundantDataFeedManager : IDisposable
 
         // Analyze bid-ask consistency  
         var spreads = snapshots.Where(s => s.Ask > s.Bid).Select(s => s.Ask - s.Bid).ToList();
-        var avgSpread = spreads.Any() ? spreads.Average() : 0m;
-        var spreadDeviation = spreads.Any() ? spreads.Max(s => Math.Abs(s - avgSpread) / avgSpread) : 0m;
+        var avgSpread = spreads.Count > 0 ? spreads.Average() : 0m;
+        var spreadDeviation = spreads.Count > 0 ? spreads.Max(s => Math.Abs(s - avgSpread) / avgSpread) : 0m;
 
         // Analyze data freshness
         var dataAges = snapshots.Select(s => s.DataAge.TotalSeconds).ToList();

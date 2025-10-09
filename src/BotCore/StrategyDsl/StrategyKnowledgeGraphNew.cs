@@ -423,8 +423,8 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
 
         // All micro conditions must pass
         var tasks = microConditions.Select(condition => EvaluateExpressionAsync(condition, symbol, cancellationToken));
-        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
-        return results.All(r => r);
+        var results = (await Task.WhenAll(tasks).ConfigureAwait(false)).ToList();
+        return results.TrueForAll(r => r);
     }
 
     private async Task<bool> EvaluateContraindicationsAsync(DslStrategy card, string symbol, CancellationToken cancellationToken)
@@ -435,8 +435,8 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
 
         // Any contraindication passing blocks the strategy
         var tasks = contraindications.Select(condition => EvaluateExpressionAsync(condition, symbol, cancellationToken));
-        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
-        return results.Any(r => r);
+        var results = (await Task.WhenAll(tasks).ConfigureAwait(false)).ToList();
+        return results.Exists(r => r);
     }
 
     private async Task<List<string>> EvaluateConfluenceAsync(DslStrategy card, string symbol, CancellationToken cancellationToken)
@@ -482,9 +482,9 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
                         return featureValue <= threshold;
                 }
             }
-            else if (expression.Contains(">", StringComparison.Ordinal))
+            else if (expression.Contains('>'))
             {
-                var parts = expression.Split(">", StringSplitOptions.TrimEntries);
+                var parts = expression.Split('>', StringSplitOptions.TrimEntries);
                 if (parts.Length == 2)
                 {
                     var featureValue = await _probe.GetAsync(symbol, parts[0], cancellationToken).ConfigureAwait(false);
@@ -505,15 +505,15 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
             {
                 var parts = expression.Split("or", StringSplitOptions.TrimEntries);
                 var tasks = parts.Select(part => EvaluateExpressionAsync(part.Trim(), symbol, cancellationToken));
-                var results = await Task.WhenAll(tasks).ConfigureAwait(false);
-                return results.Any(r => r);
+                var results = (await Task.WhenAll(tasks).ConfigureAwait(false)).ToList();
+                return results.Exists(r => r);
             }
             else if (expression.Contains("and", StringComparison.Ordinal))
             {
                 var parts = expression.Split("and", StringSplitOptions.TrimEntries);
                 var tasks = parts.Select(part => EvaluateExpressionAsync(part.Trim(), symbol, cancellationToken));
-                var results = await Task.WhenAll(tasks).ConfigureAwait(false);
-                return results.All(r => r);
+                var results = (await Task.WhenAll(tasks).ConfigureAwait(false)).ToList();
+                return results.TrueForAll(r => r);
             }
 
             return false;

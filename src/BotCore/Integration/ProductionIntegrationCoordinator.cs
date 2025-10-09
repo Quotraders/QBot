@@ -111,9 +111,7 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
     {
         _logger.LogInformation("Phase 1: Validating system integrity...");
         
-        try
-        {
-            lock (_statusLock)
+        lock (_statusLock)
             {
                 _currentStatus = IntegrationStatus.ValidatingSystem;
             }
@@ -145,13 +143,7 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
                     yamlValidation.ValidFiles, yamlValidation.TotalFiles);
             }
             
-            _logger.LogInformation("✅ Phase 1 completed - System integrity validated");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Phase 1 failed - System integrity validation error");
-            throw;
-        }
+        _logger.LogInformation("✅ Phase 1 completed - System integrity validated");
     }
     
     /// <summary>
@@ -161,9 +153,7 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
     {
         _logger.LogInformation("Phase 2: Initializing integration components...");
         
-        try
-        {
-            lock (_statusLock)
+        lock (_statusLock)
             {
                 _currentStatus = IntegrationStatus.InitializingComponents;
             }
@@ -185,13 +175,7 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
             _logger.LogInformation("Telemetry service: {HealthStatus}, Config snapshot: {ConfigSnapshotId}", 
                 telemetryHealth.IsHealthy ? "Healthy" : "Degraded", telemetryHealth.ConfigSnapshotId);
             
-            _logger.LogInformation("✅ Phase 2 completed - Integration components initialized");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Phase 2 failed - Component initialization error");
-            throw;
-        }
+        _logger.LogInformation("✅ Phase 2 completed - Integration components initialized");
     }
     
     /// <summary>
@@ -201,9 +185,7 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
     {
         _logger.LogInformation("Phase 3: Validating runtime integration...");
         
-        try
-        {
-            lock (_statusLock)
+        lock (_statusLock)
             {
                 _currentStatus = IntegrationStatus.ValidatingRuntime;
             }
@@ -217,13 +199,7 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
             // 3.3: Test telemetry emission
             await TestTelemetryEmissionAsync(cancellationToken).ConfigureAwait(false);
             
-            _logger.LogInformation("✅ Phase 3 completed - Runtime integration validated");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Phase 3 failed - Runtime validation error");
-            throw;
-        }
+        _logger.LogInformation("✅ Phase 3 completed - Runtime integration validated");
     }
     
     /// <summary>
@@ -401,7 +377,7 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
             {
                 var tags = new Dictionary<string, object>
                 {
-                    ["status"] = _currentStatus.ToString().ToLowerInvariant(),
+                    ["status"] = _currentStatus.ToString().ToUpperInvariant(),
                     ["config_snapshot_id"] = _telemetryService.Value.GetConfigurationSnapshotId()
                 };
                 

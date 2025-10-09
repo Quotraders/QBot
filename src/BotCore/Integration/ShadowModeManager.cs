@@ -51,9 +51,7 @@ public sealed class ShadowModeManager
         if (string.IsNullOrWhiteSpace(registration.StrategyName))
             throw new ArgumentException("Strategy name cannot be null or empty", nameof(registration));
             
-        try
-        {
-            var shadowStrategy = new ShadowStrategy
+        var shadowStrategy = new ShadowStrategy
             {
                 Name = registration.StrategyName,
                 Enabled = registration.Enabled,
@@ -85,19 +83,8 @@ public sealed class ShadowModeManager
             // Emit registration telemetry
             await EmitShadowRegistrationTelemetryAsync(shadowStrategy, cancellationToken).ConfigureAwait(false);
             
-            _logger.LogInformation("Shadow strategy registered: {StrategyName} - Auto-promotion: {AutoPromotion}, Min trades: {MinTrades}, Win rate threshold: {WinRate:P2}",
-                registration.StrategyName, shadowStrategy.AutoPromotionEnabled, shadowStrategy.MinTradesForPromotion, shadowStrategy.WinRateThreshold);
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogError(ex, "Invalid argument registering shadow strategy: {StrategyName}", registration.StrategyName);
-            throw;
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogError(ex, "Invalid operation registering shadow strategy: {StrategyName}", registration.StrategyName);
-            throw;
-        }
+        _logger.LogInformation("Shadow strategy registered: {StrategyName} - Auto-promotion: {AutoPromotion}, Min trades: {MinTrades}, Win rate threshold: {WinRate:P2}",
+            registration.StrategyName, shadowStrategy.AutoPromotionEnabled, shadowStrategy.MinTradesForPromotion, shadowStrategy.WinRateThreshold);
     }
     
     /// <summary>
@@ -342,9 +329,7 @@ public sealed class ShadowModeManager
             throw new ArgumentException("Strategy name cannot be null or empty", nameof(strategyName));
         ArgumentNullException.ThrowIfNull(metrics);
             
-        try
-        {
-            ShadowStrategy? shadowStrategy;
+        ShadowStrategy? shadowStrategy;
             lock (_shadowLock)
             {
                 if (!_shadowStrategies.TryGetValue(strategyName, out shadowStrategy))
@@ -365,19 +350,8 @@ public sealed class ShadowModeManager
             // Emit promotion telemetry
             await EmitShadowPromotionTelemetryAsync(shadowStrategy, metrics, cancellationToken).ConfigureAwait(false);
             
-            _logger.LogInformation("🎉 Shadow strategy PROMOTED to live trading: {StrategyName} - Win rate: {WinRate:P2}, Trades: {TotalTrades}, Total PnL: {TotalPnL:C}, Sharpe: {Sharpe:F2}",
-                strategyName, metrics.WinRate, metrics.TotalTrades, metrics.TotalPnL, metrics.SharpeRatio);
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogError(ex, "Invalid argument promoting shadow strategy: {StrategyName}", strategyName);
-            throw;
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogError(ex, "Invalid operation promoting shadow strategy: {StrategyName}", strategyName);
-            throw;
-        }
+        _logger.LogInformation("🎉 Shadow strategy PROMOTED to live trading: {StrategyName} - Win rate: {WinRate:P2}, Trades: {TotalTrades}, Total PnL: {TotalPnL:C}, Sharpe: {Sharpe:F2}",
+            strategyName, metrics.WinRate, metrics.TotalTrades, metrics.TotalPnL, metrics.SharpeRatio);
     }
     
     /// <summary>
@@ -390,9 +364,7 @@ public sealed class ShadowModeManager
         if (string.IsNullOrWhiteSpace(reason))
             throw new ArgumentException("Reason cannot be null or empty", nameof(reason));
             
-        try
-        {
-            ShadowStrategy? shadowStrategy;
+        ShadowStrategy? shadowStrategy;
             lock (_shadowLock)
             {
                 if (!_shadowStrategies.TryGetValue(strategyName, out shadowStrategy))
@@ -413,18 +385,7 @@ public sealed class ShadowModeManager
             // Emit demotion telemetry
             await EmitShadowDemotionTelemetryAsync(shadowStrategy, reason, cancellationToken).ConfigureAwait(false);
             
-            _logger.LogWarning("Shadow strategy DEMOTED back to shadow mode: {StrategyName} - Reason: {Reason}", strategyName, reason);
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogError(ex, "Invalid argument demoting shadow strategy: {StrategyName}", strategyName);
-            throw;
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogError(ex, "Invalid operation demoting shadow strategy: {StrategyName}", strategyName);
-            throw;
-        }
+        _logger.LogWarning("Shadow strategy DEMOTED back to shadow mode: {StrategyName} - Reason: {Reason}", strategyName, reason);
     }
     
     /// <summary>

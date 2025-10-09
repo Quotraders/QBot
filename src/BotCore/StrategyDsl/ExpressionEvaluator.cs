@@ -184,14 +184,14 @@ public class ExpressionEvaluator
 
     private bool EvaluateLogicalAnd(string expression)
     {
-        var parts = expression.Split(AndSeparator, StringSplitOptions.RemoveEmptyEntries);
-        return parts.All(part => EvaluateExpression(part.Trim()));
+        var parts = expression.Split(AndSeparator, StringSplitOptions.RemoveEmptyEntries).ToList();
+        return parts.TrueForAll(part => EvaluateExpression(part.Trim()));
     }
 
     private bool EvaluateLogicalOr(string expression)
     {
-        var parts = expression.Split(OrSeparator, StringSplitOptions.RemoveEmptyEntries);
-        return parts.Any(part => EvaluateExpression(part.Trim()));
+        var parts = expression.Split(OrSeparator, StringSplitOptions.RemoveEmptyEntries).ToList();
+        return parts.Exists(part => EvaluateExpression(part.Trim()));
     }
 
     private bool EvaluateWithParentheses(string expression)
