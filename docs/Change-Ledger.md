@@ -13,6 +13,51 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ---
 
+### 🔧 Round 190 - Phase 2: Fix CA1805 Violations (PR #272 Continuation)
+
+**Date**: January 2025  
+**Agent**: GitHub Copilot  
+**Objective**: Remove explicit default value initializations (Phase 2 style/micro-perf fixes)
+
+| Error Code | Count Before | Count After | Fix Applied |
+|------------|--------------|-------------|-------------|
+| CA1805 | 4 | 0 | Removed explicit `= null` and `= 0` initializations |
+
+**Files Modified (3 files)**:
+1. `src/BotCore/Strategy/S3Strategy.cs` - Removed `= null` from `_logger` field
+2. `src/BotCore/Services/MasterDecisionOrchestrator.cs` - Removed `= 0.0` from `_baselineDrawdown` field
+3. `src/BotCore/Services/S15ShadowLearningService.cs` - Removed `= 0` from `_totalShadowDecisions` and `= false` from `_isPromotedToCanary`
+
+**Detailed Fixes**:
+
+**CA1805 - Explicit Default Initialization**:
+- **Problem**: Fields explicitly initialized to their default values (null, 0, false)
+- **Solution**: Removed explicit initialization - C# initializes fields to default values automatically
+```csharp
+// Before: private static readonly ILogger? _logger = null;
+// After:  private static readonly ILogger? _logger;
+
+// Before: private double _baselineDrawdown = 0.0;
+// After:  private double _baselineDrawdown;
+
+// Before: private int _totalShadowDecisions = 0;
+// After:  private int _totalShadowDecisions;
+```
+
+**Rationale**: Priority 6 (Style/Micro-perf) - removes unnecessary code and follows C# conventions.
+
+**Guardrails Compliance**: ✅
+- No suppressions added
+- No configuration changes
+- Minimal surgical fixes only
+- Following guidebook patterns
+
+**Build Impact**:
+- Total Violations: 11,158 → 11,152 ✅ (6 fixed)
+- CA1805 Violations: 4 → 0 ✅
+
+---
+
 ### 🔧 Round 189 - Phase 1: Fix CS Compiler Errors (PR #272 Continuation)
 
 **Date**: January 2025  

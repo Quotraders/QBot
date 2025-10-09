@@ -95,7 +95,7 @@ public class MasterDecisionOrchestrator : BackgroundService
     private int _canaryTradesCompleted;
     private double _baselineWinRate = 0.5; // Default 50% win rate baseline
     private double _baselineSharpeRatio = 1.0; // Default 1.0 Sharpe ratio baseline
-    private double _baselineDrawdown = 0.0; // Default 0 drawdown baseline
+    private double _baselineDrawdown; // Default 0 drawdown baseline
     private readonly IGate5Config _gate5Config;
     
     public MasterDecisionOrchestrator(
