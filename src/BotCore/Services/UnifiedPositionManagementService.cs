@@ -337,10 +337,6 @@ namespace BotCore.Services
             // FEATURE 4: Apply confidence-based adjustments to stop and target
             if (_confidenceAdjustmentEnabled)
             {
-                var originalStop = stopPrice;
-                var originalTarget = targetPrice;
-                var originalQuantity = quantity;
-                
                 var adjustedValues = ApplyConfidenceAdjustments(entryPrice, stopPrice, targetPrice, quantity, entryConfidence, symbol);
                 stopPrice = adjustedValues.adjustedStop;
                 targetPrice = adjustedValues.adjustedTarget;
@@ -2081,7 +2077,6 @@ namespace BotCore.Services
                 return; // No tier change
             }
             
-            var previousTier = state.ProgressiveTighteningTier;
             state.ProgressiveTighteningTier = newTier;
             
             // Get current tier requirements

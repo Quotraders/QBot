@@ -49,12 +49,9 @@ namespace BotCore.Services
         // Learning parameters
         private const int OptimizationIntervalSeconds = 60; // Run optimization every minute
         private const int MinSamplesForLearning = 10; // Need at least 10 samples to learn
-        private const decimal LearningRate = 0.1m; // How quickly to adjust parameters
         private const int ExportIntervalHours = 24; // Export learned parameters every 24 hours
         
         // Parameter ranges for learning
-        private static readonly int[] BreakevenTickOptions = { 4, 6, 8, 10, 12, 16 };
-        private static readonly decimal[] TrailMultiplierOptions = { 0.8m, 1.0m, 1.2m, 1.5m, 1.8m, 2.0m };
         private static readonly int[] TimeExitMinutesOptions = { 15, 30, 45, 60, 90, 120 };
         
         // VOLATILITY SCALING: ATR thresholds for regime detection (in ticks)

@@ -96,15 +96,7 @@ public class RedundantDataFeedManager : IDisposable
     // Performance thresholds
     private const double SLOW_RESPONSE_THRESHOLD_MS = 500; // Response time threshold in milliseconds
     private const double HIGH_LATENCY_THRESHOLD_MS = 100;  // High latency warning threshold
-    private const int SIMULATION_DELAY_MS = 50;            // Delay for simulated operations
-    private const int DEFAULT_VOLUME = 1000;               // Default volume for test data
-    private const int RECONNECT_DELAY_SECONDS = 100;       // Delay for reconnection attempts
     private const int STATUS_LOG_INTERVAL_SECONDS = 30;    // Log status every N seconds
-    
-    // Percentage thresholds for validation
-    private const decimal HIGH_PERCENTAGE_THRESHOLD = 0.5m;  // 50% threshold
-    private const decimal LOW_PERCENTAGE_THRESHOLD = 0.3m;   // 30% threshold
-    private const decimal MINOR_PERCENTAGE_THRESHOLD = 0.2m; // 20% threshold
     
     // Data quality score penalties
     private const double STALE_DATA_SCORE_PENALTY = 0.3;     // Penalty for 30+ second old data

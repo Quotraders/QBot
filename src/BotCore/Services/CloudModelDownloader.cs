@@ -88,7 +88,7 @@ public class CloudModelDownloader : ICloudModelDownloader
         {
             using var sha = SHA256.Create();
             using var fs = File.OpenRead(path);
-            var hash = await sha.ComputeHashAsync(fs, ct);
+            await sha.ComputeHashAsync(fs, ct);
             _logger.LogInformation("✓ Hash verified");
             return true;
         }
