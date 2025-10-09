@@ -502,11 +502,11 @@ public class CloudModelSynchronizationService : BackgroundService
         {
             return Path.Combine(_modelsDirectory, "rl", fileName);
         }
-        else if (lowerName.Contains("ensemble", StringComparison.Ordinal) || lowerName.Contains("blend", StringComparison.Ordinal))
+        else if (upperName.Contains("ENSEMBLE", StringComparison.Ordinal) || upperName.Contains("BLEND", StringComparison.Ordinal))
         {
             return Path.Combine(_modelsDirectory, "ensemble", fileName);
         }
-        else if (lowerName.Contains("cloud", StringComparison.Ordinal))
+        else if (upperName.Contains("CLOUD", StringComparison.Ordinal))
         {
             return Path.Combine(_modelsDirectory, "cloud", fileName);
         }
