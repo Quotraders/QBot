@@ -409,7 +409,7 @@ namespace BotCore.Services
             }
         }
 
-        private MarketRegime ClassifyRegime(decimal prediction, decimal[] features)
+        private static MarketRegime ClassifyRegime(decimal prediction, decimal[] features)
         {
             var volatility = (double)features[0];
             var trend = (double)features[1];
@@ -431,7 +431,7 @@ namespace BotCore.Services
             };
         }
 
-        private MarketRegime GetRegimeFallback(decimal[] features)
+        private static MarketRegime GetRegimeFallback(decimal[] features)
         {
             var volatility = (double)features[0];
             var trend = (double)features[1];
@@ -445,7 +445,7 @@ namespace BotCore.Services
             };
         }
 
-        private double CalculateRecentVolatility(IReadOnlyList<Bar> bars)
+        private static double CalculateRecentVolatility(IReadOnlyList<Bar> bars)
         {
             if (bars.Count < MinimumBarsForVolatility) return DefaultVolatilityFallback;
 
@@ -461,7 +461,7 @@ namespace BotCore.Services
             return Math.Sqrt(variance) * Math.Sqrt(AnnualizationFactor); // Annualized volatility proxy
         }
 
-        private double CalculateTrend(IReadOnlyList<Bar> bars)
+        private static double CalculateTrend(IReadOnlyList<Bar> bars)
         {
             if (bars.Count < MinimumBarsForTrend) return DefaultTrendFallback;
 
@@ -508,13 +508,13 @@ namespace BotCore.Services
             };
         }
 
-        private Levels CreateLevels()
+        private static Levels CreateLevels()
         {
             // Create levels for strategy evaluation - Levels class is empty, just return new instance
             return new Levels();
         }
 
-        private BotCore.Models.Signal? ConvertToSignal(Candidate candidate, string strategyId)
+        private static BotCore.Models.Signal? ConvertToSignal(Candidate candidate, string strategyId)
         {
             if (candidate == null) return null;
 
@@ -536,7 +536,7 @@ namespace BotCore.Services
             };
         }
 
-        private bool ShouldCheckCorrelation(string instrument)
+        private static bool ShouldCheckCorrelation(string instrument)
         {
             return instrument == "ES" || instrument == "NQ";
         }
@@ -588,7 +588,7 @@ namespace BotCore.Services
         /// <summary>
         /// Calculate returns (percentage changes) from price series
         /// </summary>
-        private double[] CalculateReturns(double[] prices)
+        private static double[] CalculateReturns(double[] prices)
         {
             if (prices.Length < 2) return Array.Empty<double>();
             
@@ -606,7 +606,7 @@ namespace BotCore.Services
         /// <summary>
         /// Calculate Pearson correlation coefficient between two return series
         /// </summary>
-        private double CalculatePearsonCorrelation(double[] series1, double[] series2)
+        private static double CalculatePearsonCorrelation(double[] series1, double[] series2)
         {
             if (series1.Length != series2.Length || series1.Length == 0)
                 return FallbackCorrelation; // Fallback
@@ -658,7 +658,7 @@ namespace BotCore.Services
         // SOPHISTICATED TECHNICAL ANALYSIS METHODS FOR PRODUCTION
         // ================================================================================
 
-        private double CalculateMomentum(IReadOnlyList<Bar> bars, int period)
+        private static double CalculateMomentum(IReadOnlyList<Bar> bars, int period)
         {
             if (bars.Count < period + 1) return 0.0;
 
