@@ -71,6 +71,169 @@ namespace BotCore.ML
         private const decimal MinimumQualityClamp = 0.1m;
         private const decimal MaximumQualityClamp = 1.0m;
 
+        // Structured logging delegates
+        private static readonly Action<ILogger, bool, bool, Exception?> LogMlManagerInitialized =
+            LoggerMessage.Define<bool, bool>(
+                LogLevel.Information,
+                new EventId(1, nameof(LogMlManagerInitialized)),
+                "[ML-Manager] Initialized - RL enabled: {Enabled}, Memory management: {MemoryEnabled}");
+
+        private static readonly Action<ILogger, string, string, bool, float, Exception?> LogOnnxSignalFilter =
+            LoggerMessage.Define<string, string, bool, float>(
+                LogLevel.Information,
+                new EventId(2, nameof(LogOnnxSignalFilter)),
+                "[ML-Manager] 🧠 REAL ONNX signal filter: {Strategy}-{Symbol} = {Accept} (prob: {Probability:F3})");
+
+        private static readonly Action<ILogger, Exception?> LogMetaClassifierFileNotFound =
+            LoggerMessage.Define(
+                LogLevel.Warning,
+                new EventId(3, nameof(LogMetaClassifierFileNotFound)),
+                "[ML-Manager] Meta-classifier file not found, using basic rules");
+
+        private static readonly Action<ILogger, Exception?> LogMetaClassifierInvalidOperation =
+            LoggerMessage.Define(
+                LogLevel.Warning,
+                new EventId(4, nameof(LogMetaClassifierInvalidOperation)),
+                "[ML-Manager] Invalid meta-classifier operation, using basic rules");
+
+        private static readonly Action<ILogger, Exception?> LogMetaClassifierInvalidArgument =
+            LoggerMessage.Define(
+                LogLevel.Warning,
+                new EventId(5, nameof(LogMetaClassifierInvalidArgument)),
+                "[ML-Manager] Invalid meta-classifier argument, using basic rules");
+
+        private static readonly Action<ILogger, string, string, Exception?> LogSignalFilterInvalidOperation =
+            LoggerMessage.Define<string, string>(
+                LogLevel.Error,
+                new EventId(6, nameof(LogSignalFilterInvalidOperation)),
+                "[ML-Manager] Invalid operation in signal filtering for {Strategy}-{Symbol}");
+
+        private static readonly Action<ILogger, string, string, Exception?> LogSignalFilterInvalidArgument =
+            LoggerMessage.Define<string, string>(
+                LogLevel.Error,
+                new EventId(7, nameof(LogSignalFilterInvalidArgument)),
+                "[ML-Manager] Invalid argument in signal filtering for {Strategy}-{Symbol}");
+
+        private static readonly Action<ILogger, string, Exception?> LogOnnxModelNotFound =
+            LoggerMessage.Define<string>(
+                LogLevel.Information,
+                new EventId(8, nameof(LogOnnxModelNotFound)),
+                "[ML-Manager] ONNX model not found at {Path}, using fallback");
+
+        private static readonly Action<ILogger, Exception?> LogRlModelLoaderError =
+            LoggerMessage.Define(
+                LogLevel.Warning,
+                new EventId(9, nameof(LogRlModelLoaderError)),
+                "[ML-Manager] RL model loader error, using fallback");
+
+        private static readonly Action<ILogger, Exception?> LogRlModelInferenceError =
+            LoggerMessage.Define(
+                LogLevel.Warning,
+                new EventId(10, nameof(LogRlModelInferenceError)),
+                "[ML-Manager] RL model inference error, using fallback");
+
+        private static readonly Action<ILogger, Exception?> LogRlModelFileNotFound =
+            LoggerMessage.Define(
+                LogLevel.Warning,
+                new EventId(11, nameof(LogRlModelFileNotFound)),
+                "[ML-Manager] RL model file not found, using fallback");
+
+        private static readonly Action<ILogger, string, Exception?> LogExecQualityModelNotFound =
+            LoggerMessage.Define<string>(
+                LogLevel.Information,
+                new EventId(12, nameof(LogExecQualityModelNotFound)),
+                "[ML-Manager] Execution quality model not found at {Path}, using fallback scoring");
+
+        private static readonly Action<ILogger, Exception?> LogExecQualityModelError =
+            LoggerMessage.Define(
+                LogLevel.Error,
+                new EventId(13, nameof(LogExecQualityModelError)),
+                "[ML-Manager] Error in execution quality model prediction, using fallback");
+
+        private static readonly Action<ILogger, decimal, string, Exception?> LogExecutionQualityScore =
+            LoggerMessage.Define<decimal, string>(
+                LogLevel.Information,
+                new EventId(14, nameof(LogExecutionQualityScore)),
+                "[ML-Manager] Execution quality score: {Score:F3} for {Symbol}");
+
+        private static readonly Action<ILogger, string, string, decimal, decimal, decimal, Exception?> LogOnnxPositionSizing =
+            LoggerMessage.Define<string, string, decimal, decimal, decimal>(
+                LogLevel.Information,
+                new EventId(15, nameof(LogOnnxPositionSizing)),
+                "[ML-Manager] 🧠 REAL ONNX position sizing: {Strategy}-{Symbol} = {Multiplier:F2} (qScore: {QScore:F2}, score: {Score:F2})");
+
+        private static readonly Action<ILogger, Exception?> LogOnnxModelFileNotFound =
+            LoggerMessage.Define(
+                LogLevel.Warning,
+                new EventId(16, nameof(LogOnnxModelFileNotFound)),
+                "[ML-Manager] ONNX model file not found, using fallback");
+
+        private static readonly Action<ILogger, Exception?> LogOnnxModelInvalidOperation =
+            LoggerMessage.Define(
+                LogLevel.Warning,
+                new EventId(17, nameof(LogOnnxModelInvalidOperation)),
+                "[ML-Manager] Invalid ONNX model operation, using fallback");
+
+        private static readonly Action<ILogger, Exception?> LogOnnxModelInvalidArgument =
+            LoggerMessage.Define(
+                LogLevel.Warning,
+                new EventId(18, nameof(LogOnnxModelInvalidArgument)),
+                "[ML-Manager] Invalid ONNX model argument, using fallback");
+
+        private static readonly Action<ILogger, Exception?> LogOnnxModelNotAvailable =
+            LoggerMessage.Define(
+                LogLevel.Warning,
+                new EventId(19, nameof(LogOnnxModelNotAvailable)),
+                "[ML-Manager] ONNX model not available, using fallback multiplier");
+
+        private static readonly Action<ILogger, decimal, decimal, decimal, decimal, Exception?> LogOnnxExecutionQuality =
+            LoggerMessage.Define<decimal, decimal, decimal, decimal>(
+                LogLevel.Information,
+                new EventId(20, nameof(LogOnnxExecutionQuality)),
+                "[ML-Manager] 🧠 REAL ONNX execution quality: {Price} = {Quality:F3} (spread: {Spread}, volume: {Volume})");
+
+        private static readonly Action<ILogger, Exception?> LogExecQualityFileNotFound =
+            LoggerMessage.Define(
+                LogLevel.Warning,
+                new EventId(21, nameof(LogExecQualityFileNotFound)),
+                "[ML-Manager] Execution quality model file not found, using fallback");
+
+        private static readonly Action<ILogger, Exception?> LogExecQualityInvalidOperation =
+            LoggerMessage.Define(
+                LogLevel.Warning,
+                new EventId(22, nameof(LogExecQualityInvalidOperation)),
+                "[ML-Manager] Invalid execution quality model operation, using fallback");
+
+        private static readonly Action<ILogger, Exception?> LogExecQualityInvalidArgument =
+            LoggerMessage.Define(
+                LogLevel.Warning,
+                new EventId(23, nameof(LogExecQualityInvalidArgument)),
+                "[ML-Manager] Invalid execution quality model argument, using fallback");
+
+        private static readonly Action<ILogger, string, Exception?> LogExecutionQualityError =
+            LoggerMessage.Define<string>(
+                LogLevel.Error,
+                new EventId(24, nameof(LogExecutionQualityError)),
+                "[ML-Manager] Error calculating execution quality for {Symbol}");
+
+        private static readonly Action<ILogger, Exception?> LogMlManagerDisposed =
+            LoggerMessage.Define(
+                LogLevel.Information,
+                new EventId(25, nameof(LogMlManagerDisposed)),
+                "[ML-Manager] Disposed");
+
+        private static readonly Action<ILogger, string, string, Exception?> LogPositionSizeInvalidOperation =
+            LoggerMessage.Define<string, string>(
+                LogLevel.Error,
+                new EventId(26, nameof(LogPositionSizeInvalidOperation)),
+                "[ML-Manager] Invalid operation getting position size multiplier for {Strategy}-{Symbol}");
+
+        private static readonly Action<ILogger, string, string, Exception?> LogPositionSizeInvalidArgument =
+            LoggerMessage.Define<string, string>(
+                LogLevel.Error,
+                new EventId(27, nameof(LogPositionSizeInvalidArgument)),
+                "[ML-Manager] Invalid argument getting position size multiplier for {Strategy}-{Symbol}");
+
         public static bool IsEnabled => Environment.GetEnvironmentVariable("RL_ENABLED") == "1";
 
         public StrategyMlModelManager(ILogger logger, IMLMemoryManager? memoryManager = null, OnnxModelLoader? onnxLoader = null)
@@ -85,8 +248,7 @@ namespace BotCore.ML
             _metaClassifierPath = Path.Combine(modelsPath, "rl_model.onnx"); 
             _execQualityPath = Path.Combine(modelsPath, "rl", "test_cvar_ppo.onnx");
 
-            _logger.LogInformation("[ML-Manager] Initialized - RL enabled: {Enabled}, Memory management: {MemoryEnabled}", 
-                IsEnabled, _memoryManager != null);
+            LogMlManagerInitialized(_logger, IsEnabled, _memoryManager != null, null);
         }
 
         /// <summary>
@@ -136,44 +298,42 @@ namespace BotCore.ML
 
                             // Run inference with real ML model
                             using var results = session.Run(inputs);
-                            var output = results.FirstOrDefault()?.AsEnumerable<float>()?.FirstOrDefault() ?? 1.0f;
+                            var resultsList = results.ToList();
+                            var output = resultsList.Count > 0 ? resultsList[0].AsEnumerable<float>().FirstOrDefault() : 1.0f;
                             
                             // Convert to decimal and clamp for safety
                             decimal multiplier = Math.Clamp((decimal)output, 0.25m, 2.0m);
 
-                            _logger.LogInformation("[ML-Manager] 🧠 REAL ONNX position sizing: {Strategy}-{Symbol} = {Multiplier:F2} (qScore: {QScore:F2}, score: {Score:F2})",
-                                strategyId, symbol, multiplier, qScore, score);
+                            LogOnnxPositionSizing(_logger, strategyId, symbol, multiplier, qScore, score, null);
 
                             return multiplier;
                         }
                     }
                     catch (System.IO.FileNotFoundException modelEx)
                     {
-                        _logger.LogWarning(modelEx, "[ML-Manager] ONNX model file not found, using fallback");
+                        LogOnnxModelFileNotFound(_logger, modelEx);
                     }
                     catch (InvalidOperationException modelEx)
                     {
-                        _logger.LogWarning(modelEx, "[ML-Manager] Invalid ONNX model operation, using fallback");
+                        LogOnnxModelInvalidOperation(_logger, modelEx);
                     }
                     catch (ArgumentException modelEx)
                     {
-                        _logger.LogWarning(modelEx, "[ML-Manager] Invalid ONNX model argument, using fallback");
+                        LogOnnxModelInvalidArgument(_logger, modelEx);
                     }
                 }
                 
-                _logger.LogWarning("[ML-Manager] ONNX model not available, using fallback multiplier");
+                LogOnnxModelNotAvailable(_logger, null);
                 return DefaultPositionSizeMultiplier;
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[ML-Manager] Invalid operation getting position size multiplier for {Strategy}-{Symbol}",
-                    strategyId, symbol);
+                LogPositionSizeInvalidOperation(_logger, strategyId, symbol, ex);
                 return DefaultPositionSizeMultiplier; // Fallback to default
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "[ML-Manager] Invalid argument getting position size multiplier for {Strategy}-{Symbol}",
-                    strategyId, symbol);
+                LogPositionSizeInvalidArgument(_logger, strategyId, symbol, ex);
                 return DefaultPositionSizeMultiplier; // Fallback to default
             }
         }
@@ -208,7 +368,7 @@ namespace BotCore.ML
                         if (session != null)
                         {
                             // Create feature array for classification
-                            var features = new float[] { (float)price, (float)score, (float)qScore, bars.Count > 0 ? (float)bars.Last().Volume : 0f };
+                            var features = new float[] { (float)price, (float)score, (float)qScore, bars.Count > 0 ? (float)bars[bars.Count - 1].Volume : 0f };
                             var inputTensor = new Microsoft.ML.OnnxRuntime.Tensors.DenseTensor<float>(features, new int[] { 1, features.Length });
                             
                             var inputs = new List<Microsoft.ML.OnnxRuntime.NamedOnnxValue>
@@ -218,27 +378,27 @@ namespace BotCore.ML
 
                             // Run real ML classification
                             using var results = session.Run(inputs);
-                            var probability = results.FirstOrDefault()?.AsEnumerable<float>()?.FirstOrDefault() ?? 0.5f;
+                            var resultsList = results.ToList();
+                            var probability = resultsList.Count > 0 ? resultsList[0].AsEnumerable<float>().FirstOrDefault() : 0.5f;
                             
                             bool shouldAccept = probability > 0.5f;
 
-                            _logger.LogInformation("[ML-Manager] 🧠 REAL ONNX signal filter: {Strategy}-{Symbol} = {Accept} (prob: {Probability:F3})",
-                                strategyId, symbol, shouldAccept ? "ACCEPT" : "REJECT", probability);
+                            LogOnnxSignalFilter(_logger, strategyId, symbol, shouldAccept, probability, null);
 
                             return shouldAccept;
                         }
                     }
                     catch (System.IO.FileNotFoundException modelEx)
                     {
-                        _logger.LogWarning(modelEx, "[ML-Manager] Meta-classifier file not found, using basic rules");
+                        LogMetaClassifierFileNotFound(_logger, modelEx);
                     }
                     catch (InvalidOperationException modelEx)
                     {
-                        _logger.LogWarning(modelEx, "[ML-Manager] Invalid meta-classifier operation, using basic rules");
+                        LogMetaClassifierInvalidOperation(_logger, modelEx);
                     }
                     catch (ArgumentException modelEx)
                     {
-                        _logger.LogWarning(modelEx, "[ML-Manager] Invalid meta-classifier argument, using basic rules");
+                        LogMetaClassifierInvalidArgument(_logger, modelEx);
                     }
                 }
 
@@ -257,14 +417,12 @@ namespace BotCore.ML
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[ML-Manager] Invalid operation in signal filtering for {Strategy}-{Symbol}",
-                    strategyId, symbol);
+                LogSignalFilterInvalidOperation(_logger, strategyId, symbol, ex);
                 return true; // Default to accepting signal
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "[ML-Manager] Invalid argument in signal filtering for {Strategy}-{Symbol}",
-                    strategyId, symbol);
+                LogSignalFilterInvalidArgument(_logger, strategyId, symbol, ex);
                 return true; // Default to accepting signal
             }
         }
@@ -310,23 +468,22 @@ namespace BotCore.ML
                             
                             decimal finalScore = Math.Clamp((decimal)mlQualityScore, 0.1m, 1.0m);
 
-                            _logger.LogInformation("[ML-Manager] 🧠 REAL ONNX execution quality: {Price} = {Quality:F3} (spread: {Spread}, volume: {Volume})",
-                                price, finalScore, spread, volume);
+                            LogOnnxExecutionQuality(_logger, price, finalScore, spread, volume, null);
 
                             return finalScore;
                         }
                     }
                     catch (System.IO.FileNotFoundException modelEx)
                     {
-                        _logger.LogWarning(modelEx, "[ML-Manager] Execution quality model file not found, using fallback");
+                        LogExecQualityFileNotFound(_logger, modelEx);
                     }
                     catch (InvalidOperationException modelEx)
                     {
-                        _logger.LogWarning(modelEx, "[ML-Manager] Invalid execution quality model operation, using fallback");
+                        LogExecQualityInvalidOperation(_logger, modelEx);
                     }
                     catch (ArgumentException modelEx)
                     {
-                        _logger.LogWarning(modelEx, "[ML-Manager] Invalid execution quality model argument, using fallback");
+                        LogExecQualityInvalidArgument(_logger, modelEx);
                     }
                 }
 
@@ -349,7 +506,7 @@ namespace BotCore.ML
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[ML-Manager] Error calculating execution quality for {Symbol}", symbol);
+                LogExecutionQualityError(_logger, symbol, ex);
                 return DefaultExecutionQuality; // Default score
             }
         }
@@ -360,7 +517,7 @@ namespace BotCore.ML
             _disposed = true;
 
             _memoryManager?.Dispose();
-            _logger.LogInformation("[ML-Manager] Disposed");
+            LogMlManagerDisposed(_logger, null);
         }
     }
 
