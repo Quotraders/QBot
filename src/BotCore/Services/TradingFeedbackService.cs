@@ -12,6 +12,8 @@ namespace BotCore.Services;
 /// </summary>
 public class TradingFeedbackService : BackgroundService
 {
+    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+
     private readonly ILogger<TradingFeedbackService> _logger;
     private readonly CloudModelSynchronizationService _cloudSync;
     private readonly ModelEnsembleService _ensemble;
@@ -392,7 +394,7 @@ public class TradingFeedbackService : BackgroundService
             
             // Save retraining request
             var requestPath = Path.Combine(_feedbackDataPath, $"retraining_request_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json");
-            var requestJson = JsonSerializer.Serialize(retrainingRequest, new JsonSerializerOptions { WriteIndented = true });
+            var requestJson = JsonSerializer.Serialize(retrainingRequest, s_jsonOptions);
             await File.WriteAllTextAsync(requestPath, requestJson, cancellationToken).ConfigureAwait(false);
             
             _logger.LogInformation("🔄 [FEEDBACK] Retraining request saved: {Path}", requestPath);
@@ -438,7 +440,7 @@ public class TradingFeedbackService : BackgroundService
             
             // Save ensemble retraining request
             var requestPath = Path.Combine(_feedbackDataPath, $"ensemble_retraining_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json");
-            var requestJson = JsonSerializer.Serialize(ensembleRequest, new JsonSerializerOptions { WriteIndented = true });
+            var requestJson = JsonSerializer.Serialize(ensembleRequest, s_jsonOptions);
             await File.WriteAllTextAsync(requestPath, requestJson, cancellationToken).ConfigureAwait(false);
             
             _logger.LogInformation("🔄 [FEEDBACK] Ensemble retraining request saved: {Path}", requestPath);
@@ -469,7 +471,7 @@ public class TradingFeedbackService : BackgroundService
                 outcomes = outcomes
             };
             
-            var json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(data, s_jsonOptions);
             await File.WriteAllTextAsync(filePath, json, cancellationToken).ConfigureAwait(false);
             
             _logger.LogDebug("🔄 [FEEDBACK] Saved {Count} outcomes to {Path}", outcomes.Count, filePath);
@@ -497,7 +499,7 @@ public class TradingFeedbackService : BackgroundService
                 issues = issues
             };
             
-            var json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(data, s_jsonOptions);
             await File.WriteAllTextAsync(filePath, json, cancellationToken).ConfigureAwait(false);
             
             _logger.LogDebug("🔄 [FEEDBACK] Saved {Count} performance issues to {Path}", issues.Count, filePath);

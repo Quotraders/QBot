@@ -170,7 +170,7 @@ public class BotHealthReporter
     private static string GenerateBasicExplanation(string componentName, HealthCheckResult healthResult)
     {
         var explanation = new StringBuilder();
-        explanation.Append(System.Globalization.CultureInfo.InvariantCulture, $"My {componentName} is {healthResult.Status.ToLowerInvariant()}. ");
+        explanation.Append(System.Globalization.CultureInfo.InvariantCulture, $"My {componentName} is {healthResult.Status.ToUpperInvariant()}. ");
 
         if (healthResult.Status == "Unhealthy")
         {

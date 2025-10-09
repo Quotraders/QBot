@@ -12,6 +12,8 @@ namespace BotCore.Services;
 /// </summary>
 public class ProductionMonitoringService : IHealthCheck
 {
+    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+
     // Monitoring thresholds and constants
     private const int PeriodicLoggingInterval = 10; // Log every N predictions
     private const double FailureRateWarningThreshold = 0.1; // 10% failure rate
@@ -226,7 +228,7 @@ public class ProductionMonitoringService : IHealthCheck
     public string ExportMetricsAsJson()
     {
         var metrics = GetSystemMetrics();
-        return JsonSerializer.Serialize(metrics, new JsonSerializerOptions { WriteIndented = true });
+        return JsonSerializer.Serialize(metrics, s_jsonOptions);
     }
 
     private void InitializeMetrics()
@@ -247,7 +249,7 @@ public class ProductionMonitoringService : IHealthCheck
         {
             lock (_metricsLock)
             {
-                var modelMetrics = _performanceMetrics.Where(kvp => kvp.Key.StartsWith("model_")).ToList();
+                var modelMetrics = _performanceMetrics.Where(kvp => kvp.Key.StartsWith("model_", StringComparison.Ordinal)).ToList();
                 
                 if (modelMetrics.Count == 0)
                 {
@@ -330,7 +332,7 @@ public class ProductionMonitoringService : IHealthCheck
         {
             lock (_metricsLock)
             {
-                var tradingMetrics = _performanceMetrics.Where(kvp => kvp.Key.StartsWith("trading_")).ToList();
+                var tradingMetrics = _performanceMetrics.Where(kvp => kvp.Key.StartsWith("trading_", StringComparison.Ordinal)).ToList();
                 
                 if (tradingMetrics.Count == 0)
                 {

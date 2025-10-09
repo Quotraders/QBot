@@ -31,13 +31,6 @@ public class ProductionOrderEvidenceService
         string customTag,
         CancellationToken cancellationToken = default)
     {
-        var result = new OrderEvidenceResult
-        {
-            OrderId = orderId,
-            CustomTag = customTag,
-            Timestamp = DateTime.UtcNow
-        };
-
         _logger.LogInformation("🔍 [ORDER-EVIDENCE] Verifying fill evidence for tag: {CustomTag}, orderId: {OrderId}", 
             customTag, orderId ?? "NULL");
 
@@ -47,11 +40,14 @@ public class ProductionOrderEvidenceService
         // Requirement 2: Fill event from User Hub
         bool hasFillEvent = fillEvent != null;
         
+        // Build evidence types list
+        var evidenceTypes = new List<string>();
+        
         // Log evidence findings
         if (hasOrderId)
         {
             _logger.LogInformation("✅ [ORDER-EVIDENCE] Evidence 1: OrderId present - {OrderId}", orderId);
-            result.EvidenceTypes.Add("OrderId");
+            evidenceTypes.Add("OrderId");
         }
         else
         {
@@ -62,9 +58,7 @@ public class ProductionOrderEvidenceService
         {
             _logger.LogInformation("✅ [ORDER-EVIDENCE] Evidence 2: Fill event present - OrderId: {EventOrderId}, FillPrice: {FillPrice}, Qty: {Qty}", 
                 fillEvent?.OrderId ?? "unknown", fillEvent?.FillPrice ?? 0, fillEvent?.Quantity ?? 0);
-            result.EvidenceTypes.Add("FillEvent");
-            result.FillPrice = fillEvent?.FillPrice ?? 0;
-            result.Quantity = fillEvent?.Quantity ?? 0;
+            evidenceTypes.Add("FillEvent");
         }
         else
         {
@@ -78,9 +72,18 @@ public class ProductionOrderEvidenceService
         /// </summary>
         _logger.LogInformation("⏳ [ORDER-EVIDENCE] Evidence 3: Trade search verification service integration");
 
-        // Determine if we have sufficient evidence
-        result.HasSufficientEvidence = hasOrderId && hasFillEvent;
-        result.TotalEvidenceCount = result.EvidenceTypes.Count;
+        // Create result with all gathered evidence
+        var result = new OrderEvidenceResult
+        {
+            OrderId = orderId,
+            CustomTag = customTag,
+            Timestamp = DateTime.UtcNow,
+            EvidenceTypes = evidenceTypes,
+            FillPrice = hasFillEvent ? fillEvent?.FillPrice ?? 0 : null,
+            Quantity = hasFillEvent ? fillEvent?.Quantity ?? 0 : null,
+            HasSufficientEvidence = hasOrderId && hasFillEvent,
+            TotalEvidenceCount = evidenceTypes.Count
+        };
 
         if (result.HasSufficientEvidence)
         {
@@ -141,7 +144,7 @@ public class OrderEvidenceResult
     public string? OrderId { get; set; }
     public string CustomTag { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; }
-    public List<string> EvidenceTypes { get; } = new();
+    public IReadOnlyList<string> EvidenceTypes { get; init; } = Array.Empty<string>();
     public int TotalEvidenceCount { get; set; }
     public bool HasSufficientEvidence { get; set; }
     public decimal? FillPrice { get; set; }

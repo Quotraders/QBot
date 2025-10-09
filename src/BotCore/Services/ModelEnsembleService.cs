@@ -439,13 +439,13 @@ public class ModelEnsembleService
     /// </summary>
     private static bool IsModelRelevant(string modelName, string predictionType)
     {
-        var lowerName = modelName.ToLowerInvariant();
+        var upperName = modelName.ToUpperInvariant();
         
-        return predictionType.ToLowerInvariant() switch
+        return predictionType.ToUpperInvariant() switch
         {
-            "strategy_selection" => lowerName.Contains("strategy", StringComparison.Ordinal) || lowerName.Contains("ucb", StringComparison.Ordinal) || lowerName.Contains("selection", StringComparison.Ordinal),
-            "price_prediction" => lowerName.Contains("price", StringComparison.Ordinal) || lowerName.Contains("lstm", StringComparison.Ordinal) || lowerName.Contains("direction", StringComparison.Ordinal),
-            "cvar_ppo" => lowerName.Contains("cvar", StringComparison.Ordinal) || lowerName.Contains("ppo", StringComparison.Ordinal) || lowerName.Contains("rl", StringComparison.Ordinal),
+            "STRATEGY_SELECTION" => upperName.Contains("STRATEGY", StringComparison.Ordinal) || upperName.Contains("UCB", StringComparison.Ordinal) || upperName.Contains("SELECTION", StringComparison.Ordinal),
+            "PRICE_PREDICTION" => upperName.Contains("PRICE", StringComparison.Ordinal) || upperName.Contains("LSTM", StringComparison.Ordinal) || upperName.Contains("DIRECTION", StringComparison.Ordinal),
+            "CVAR_PPO" => upperName.Contains("CVAR", StringComparison.Ordinal) || upperName.Contains("PPO", StringComparison.Ordinal) || upperName.Contains("RL", StringComparison.Ordinal),
             _ => false
         };
     }
@@ -509,10 +509,10 @@ public class ModelEnsembleService
             var performance = _modelPerformance.GetValueOrDefault(prediction.ModelName);
             var weight = (performance?.AccuracyScore ?? 1.0) * prediction.Weight;
             
-            var directionValue = prediction.Direction.ToLowerInvariant() switch
+            var directionValue = prediction.Direction.ToUpperInvariant() switch
             {
-                "up" or "bullish" or "long" => 1.0,
-                "down" or "bearish" or "short" => -1.0,
+                "UP" or "BULLISH" or "LONG" => 1.0,
+                "DOWN" or "BEARISH" or "SHORT" => -1.0,
                 _ => 0.0 // Sideways
             };
             

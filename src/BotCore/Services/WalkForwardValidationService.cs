@@ -30,6 +30,8 @@ namespace BotCore.Services
     /// </summary>
     public class WalkForwardValidationService : IWalkForwardValidationService
     {
+        private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+
         private const int MaxValidationWindows = 1000;
         private const int PercentageMultiplier = 100;
         
@@ -296,7 +298,7 @@ namespace BotCore.Services
                     result.AggregateSharpeRatio, result.AggregateMaxDrawdown * PercentageMultiplier, result.AggregateWinRate, result.AggregateTotalTrades);
 
                 // Save detailed results to file
-                var resultJson = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+                var resultJson = JsonSerializer.Serialize(result, s_jsonOptions);
                 var resultPath = Path.Combine("./validation_results", $"walk_forward_{result.StrategyName}_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json");
                 await File.WriteAllTextAsync(resultPath, resultJson).ConfigureAwait(false);
 
@@ -452,7 +454,7 @@ namespace BotCore.Services
                     CreatedAt = DateTime.UtcNow
                 };
 
-                var metadataJson = JsonSerializer.Serialize(modelMetadata, new JsonSerializerOptions { WriteIndented = true });
+                var metadataJson = JsonSerializer.Serialize(modelMetadata, s_jsonOptions);
                 await File.WriteAllTextAsync(modelPath, metadataJson, cancellationToken).ConfigureAwait(false);
 
                 // Verify model version to ensure uniqueness
@@ -627,7 +629,7 @@ namespace BotCore.Services
                     history = history.OrderByDescending(h => h.ValidationStarted).Take(MaxHistoryRecords).ToList();
                 }
 
-                var historyJson = JsonSerializer.Serialize(history, new JsonSerializerOptions { WriteIndented = true });
+                var historyJson = JsonSerializer.Serialize(history, s_jsonOptions);
                 await File.WriteAllTextAsync(_validationHistoryPath, historyJson).ConfigureAwait(false);
             }
             catch (System.IO.IOException ex)

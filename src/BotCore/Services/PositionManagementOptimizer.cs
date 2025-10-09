@@ -510,7 +510,7 @@ namespace BotCore.Services
         /// </summary>
         public decimal? GetOptimalEarlyExitThreshold(string strategy, string regime = "ALL")
         {
-            var maeEnabled = Environment.GetEnvironmentVariable("BOT_MAE_LEARNING_ENABLED")?.ToLowerInvariant() == "true";
+            var maeEnabled = Environment.GetEnvironmentVariable("BOT_MAE_LEARNING_ENABLED")?.ToUpperInvariant() == "TRUE";
             if (!maeEnabled)
             {
                 return null; // Feature disabled
@@ -557,7 +557,7 @@ namespace BotCore.Services
         /// </summary>
         public decimal? GetOptimalTrailingDistance(string strategy, string regime = "ALL")
         {
-            var mfeEnabled = Environment.GetEnvironmentVariable("BOT_MFE_LEARNING_ENABLED")?.ToLowerInvariant() == "true";
+            var mfeEnabled = Environment.GetEnvironmentVariable("BOT_MFE_LEARNING_ENABLED")?.ToUpperInvariant() == "TRUE";
             if (!mfeEnabled)
             {
                 return null; // Feature disabled

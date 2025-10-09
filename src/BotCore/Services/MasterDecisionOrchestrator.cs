@@ -34,6 +34,8 @@ namespace BotCore.Services;
 /// </summary>
 public class MasterDecisionOrchestrator : BackgroundService
 {
+    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+
     // Trading reward calculation constants
     private const decimal MaxTimeRewardMagnitude = 0.1m;    // Maximum time-based reward/penalty
     private const double HoursInDay = 24.0;                 // Hours in a day for time calculations
@@ -791,7 +793,7 @@ public class MasterDecisionOrchestrator : BackgroundService
             context.Volume = volume;
             
         // Add technical indicators from metadata
-        foreach (var kvp in metadata.Where(m => m.Key.StartsWith("tech_")))
+        foreach (var kvp in metadata.Where(m => m.Key.StartsWith("tech_", StringComparison.Ordinal)))
         {
             if (kvp.Value is double techValue)
             {
@@ -1454,10 +1456,7 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
             };
 
             var manifestPath = Path.Combine(backupDir, "manifest.json");
-            var manifestJson = JsonSerializer.Serialize(manifest, new JsonSerializerOptions 
-            { 
-                WriteIndented = true 
-            });
+            var manifestJson = JsonSerializer.Serialize(manifest, s_jsonOptions);
             await File.WriteAllTextAsync(manifestPath, manifestJson, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -1729,7 +1728,7 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
             var reportPath = Path.Combine("reports", $"performance_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json");
             Directory.CreateDirectory(Path.GetDirectoryName(reportPath)!);
             
-            var json = JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(report, s_jsonOptions);
             await File.WriteAllTextAsync(reportPath, json, cancellationToken).ConfigureAwait(false);
             
             _logger.LogInformation("📊 [PERFORMANCE-REPORT] Generated detailed report: {ReportPath}", reportPath);
@@ -1764,8 +1763,8 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
         try
         {
             // Check if enabled in configuration
-            var dailyEnabled = Environment.GetEnvironmentVariable("BOT_DAILY_SUMMARY_ENABLED")?.ToLowerInvariant() == "true";
-            var weeklyEnabled = Environment.GetEnvironmentVariable("BOT_WEEKLY_SUMMARY_ENABLED")?.ToLowerInvariant() == "true";
+            var dailyEnabled = Environment.GetEnvironmentVariable("BOT_DAILY_SUMMARY_ENABLED")?.ToUpperInvariant() == "TRUE";
+            var weeklyEnabled = Environment.GetEnvironmentVariable("BOT_WEEKLY_SUMMARY_ENABLED")?.ToUpperInvariant() == "TRUE";
 
             // Generate daily summary if needed
             if (dailyEnabled && _performanceReporter.ShouldGenerateDailySummary())

@@ -362,7 +362,7 @@ namespace BotCore.Services
                 
                 // For closing orders, we don't use TopstepX PlaceOrderAsync
                 // We just mark them as filled since TopstepX handles the closing
-                if (tag?.StartsWith("CLOSE-") == true || tag?.StartsWith("PARTIAL-CLOSE-") == true)
+                if (tag?.StartsWith("CLOSE-", StringComparison.Ordinal) == true || tag?.StartsWith("PARTIAL-CLOSE-", StringComparison.Ordinal) == true)
                 {
                     order.Status = TradingBot.Abstractions.OrderStatus.Filled;
                     order.FilledQuantity = quantity;

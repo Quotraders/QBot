@@ -16,6 +16,13 @@ namespace BotCore.Services;
 /// </summary>
 public class CloudModelSynchronizationService : BackgroundService
 {
+    private static readonly JsonSerializerOptions s_jsonOptionsSnakeCase = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+    };
+    
+    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+
     // Version display constants
     private const int GitShaDisplayLength = 8; // Number of git SHA characters to display
     
@@ -216,10 +223,7 @@ public class CloudModelSynchronizationService : BackgroundService
             }
             
             var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            var result = JsonSerializer.Deserialize<GitHubWorkflowRunsResponse>(content, new JsonSerializerOptions 
-            { 
-                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower 
-            });
+            var result = JsonSerializer.Deserialize<GitHubWorkflowRunsResponse>(content, s_jsonOptionsSnakeCase);
             
             // Filter for ML training workflows
             var mlWorkflows = result?.WorkflowRuns?.Where(r => 
@@ -254,10 +258,7 @@ public class CloudModelSynchronizationService : BackgroundService
             }
             
             var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            var result = JsonSerializer.Deserialize<GitHubArtifactsResponse>(content, new JsonSerializerOptions 
-            { 
-                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower 
-            });
+            var result = JsonSerializer.Deserialize<GitHubArtifactsResponse>(content, s_jsonOptionsSnakeCase);
             
             return result?.Artifacts ?? System.Array.Empty<Artifact>();
         }
@@ -303,13 +304,13 @@ public class CloudModelSynchronizationService : BackgroundService
             
             foreach (var entry in archive.Entries)
             {
-                if (entry.Name.EndsWith(".onnx") || entry.Name.EndsWith(".pkl") || entry.Name.EndsWith(".json"))
+                if (entry.Name.EndsWith(".onnx", StringComparison.Ordinal) || entry.Name.EndsWith(".pkl", StringComparison.Ordinal) || entry.Name.EndsWith(".json", StringComparison.Ordinal))
                 {
                     var targetPath = DetermineModelPath(artifact.Name, entry.Name);
                     await ExtractAndSaveFileAsync(entry, targetPath, cancellationToken).ConfigureAwait(false);
                     
                     // Track ONNX model path for hot-swap
-                    if (entry.Name.EndsWith(".onnx"))
+                    if (entry.Name.EndsWith(".onnx", StringComparison.Ordinal))
                     {
                         onnxModelPath = targetPath;
                     }
@@ -495,17 +496,17 @@ public class CloudModelSynchronizationService : BackgroundService
     /// </summary>
     private string DetermineModelPath(string artifactName, string fileName)
     {
-        var lowerName = artifactName.ToLowerInvariant();
+        var upperName = artifactName.ToUpperInvariant();
         
-        if (lowerName.Contains("cvar", StringComparison.Ordinal) || lowerName.Contains("ppo", StringComparison.Ordinal) || lowerName.Contains("rl", StringComparison.Ordinal))
+        if (upperName.Contains("CVAR", StringComparison.Ordinal) || upperName.Contains("PPO", StringComparison.Ordinal) || upperName.Contains("RL", StringComparison.Ordinal))
         {
             return Path.Combine(_modelsDirectory, "rl", fileName);
         }
-        else if (lowerName.Contains("ensemble", StringComparison.Ordinal) || lowerName.Contains("blend", StringComparison.Ordinal))
+        else if (upperName.Contains("ENSEMBLE", StringComparison.Ordinal) || upperName.Contains("BLEND", StringComparison.Ordinal))
         {
             return Path.Combine(_modelsDirectory, "ensemble", fileName);
         }
-        else if (lowerName.Contains("cloud", StringComparison.Ordinal))
+        else if (upperName.Contains("CLOUD", StringComparison.Ordinal))
         {
             return Path.Combine(_modelsDirectory, "cloud", fileName);
         }
@@ -602,7 +603,7 @@ public class CloudModelSynchronizationService : BackgroundService
                 registry.AddModel(model);
             }
             
-            var json = JsonSerializer.Serialize(registry, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(registry, s_jsonOptions);
             await File.WriteAllTextAsync(registryPath, json, cancellationToken).ConfigureAwait(false);
             
             _logger.LogDebug("🌐 [CLOUD-SYNC] Model registry updated with {Count} models", _currentModels.Count);

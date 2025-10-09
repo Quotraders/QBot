@@ -48,7 +48,7 @@ namespace BotCore.Services
                 {
                     _logger.LogWarning("No recent execution data for {Symbol}, using estimated slippage", symbol);
                     // Return market-based estimate for the symbol
-                    return symbol.StartsWith("ES") ? EstimatedSlippageEsSymbols : EstimatedSlippageOtherSymbols; // ES has higher slippage than typical stocks
+                    return symbol.StartsWith("ES", StringComparison.Ordinal) ? EstimatedSlippageEsSymbols : EstimatedSlippageOtherSymbols; // ES has higher slippage than typical stocks
                 }
 
                 var avgSlippage = recentExecutions.Average(e => e.SlippageBasisPoints);

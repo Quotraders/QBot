@@ -13,6 +13,12 @@ namespace TradingBot.BotCore.Services
     /// </summary>
     public class ConfigurationSchemaService
     {
+        private static readonly JsonSerializerOptions s_jsonOptions = new()
+        {
+            WriteIndented = true,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        };
+
         private readonly ILogger<ConfigurationSchemaService> _logger;
         private readonly Dictionary<string, IConfigurationMigrator> _migrators = new();
 
@@ -92,11 +98,7 @@ namespace TradingBot.BotCore.Services
                 configuration.SchemaVersion = GetCurrentVersion<T>();
                 configuration.LastModified = DateTime.UtcNow;
 
-                var json = JsonSerializer.Serialize(configuration, new JsonSerializerOptions 
-                { 
-                    WriteIndented = true,
-                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-                });
+                var json = JsonSerializer.Serialize(configuration, s_jsonOptions);
 
                 await File.WriteAllTextAsync(filePath, json).ConfigureAwait(false);
                 
@@ -189,6 +191,8 @@ namespace TradingBot.BotCore.Services
     /// </summary>
     public class MLConfigurationMigrator : IConfigurationMigrator
     {
+        private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+
         private readonly ILogger _logger;
         
         // Configuration migration constants
@@ -230,7 +234,7 @@ namespace TradingBot.BotCore.Services
             migrated["SchemaVersion"] = $"\"{toVersion}\"";
             migrated["LastModified"] = $"\"{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}\"";
 
-            return JsonSerializer.Serialize(migrated, new JsonSerializerOptions { WriteIndented = true });
+            return JsonSerializer.Serialize(migrated, s_jsonOptions);
         }
     }
 
@@ -239,6 +243,8 @@ namespace TradingBot.BotCore.Services
     /// </summary>
     public class RiskConfigurationMigrator : IConfigurationMigrator
     {
+        private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+
         private readonly ILogger _logger;
 
         public RiskConfigurationMigrator(ILogger logger)
@@ -263,7 +269,7 @@ namespace TradingBot.BotCore.Services
             migrated["SchemaVersion"] = $"\"{toVersion}\"";
             migrated["LastModified"] = $"\"{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}\"";
 
-            return JsonSerializer.Serialize(migrated, new JsonSerializerOptions { WriteIndented = true });
+            return JsonSerializer.Serialize(migrated, s_jsonOptions);
         }
     }
 
@@ -272,6 +278,8 @@ namespace TradingBot.BotCore.Services
     /// </summary>
     public class ExecutionConfigurationMigrator : IConfigurationMigrator
     {
+        private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+
         private readonly ILogger _logger;
 
         public ExecutionConfigurationMigrator(ILogger logger)
@@ -296,7 +304,7 @@ namespace TradingBot.BotCore.Services
             migrated["SchemaVersion"] = $"\"{toVersion}\"";
             migrated["LastModified"] = $"\"{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}\"";
 
-            return JsonSerializer.Serialize(migrated, new JsonSerializerOptions { WriteIndented = true });
+            return JsonSerializer.Serialize(migrated, s_jsonOptions);
         }
     }
 }

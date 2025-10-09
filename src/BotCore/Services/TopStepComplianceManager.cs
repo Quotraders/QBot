@@ -296,6 +296,9 @@ public class TopStepComplianceManager
         var profitTarget = GetProfitTarget();
         var progressToTarget = (status.AccountBalance - 50000m) / profitTarget * 100m;
         
+        // Build recommendations list first
+        var recommendations = GenerateRecommendations(status);
+        
         var report = new ComplianceReport
         {
             Date = DateTime.Today,
@@ -303,15 +306,9 @@ public class TopStepComplianceManager
             ProfitTarget = profitTarget,
             ProgressToTarget = Math.Max(0, progressToTarget),
             IsOnTrack = status.IsCompliant && progressToTarget > 0,
-            MinimumDaysRemaining = Math.Max(0, GetMinimumTradingDays() - _tradingDaysCompleted)
+            MinimumDaysRemaining = Math.Max(0, GetMinimumTradingDays() - _tradingDaysCompleted),
+            Recommendations = recommendations.ToList()
         };
-        
-        // Add recommendations to the read-only collection
-        var recommendations = GenerateRecommendations(status);
-        foreach (var recommendation in recommendations)
-        {
-            report.Recommendations.Add(recommendation);
-        }
         
         return report;
     }
@@ -457,5 +454,5 @@ public class ComplianceReport
     public decimal ProgressToTarget { get; set; }
     public bool IsOnTrack { get; set; }
     public int MinimumDaysRemaining { get; set; }
-    public List<string> Recommendations { get; } = new();
+    public IReadOnlyList<string> Recommendations { get; init; } = Array.Empty<string>();
 }
