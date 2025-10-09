@@ -68,6 +68,8 @@ public class S15ShadowLearningService : BackgroundService
     /// </summary>
     public void RecordShadowDecision(ShadowDecision decision)
     {
+        ArgumentNullException.ThrowIfNull(decision);
+        
         _shadowDecisions.Enqueue(decision);
         Interlocked.Increment(ref _totalShadowDecisions);
         

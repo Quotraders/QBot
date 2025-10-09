@@ -1813,13 +1813,13 @@ public class ContinuousLearningManager
         _serviceProvider = serviceProvider;
     }
     
-    public static Task InitializeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-    public static Task StartLearningAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-    public static Task ProcessLearningEventsAsync(List<LearningEvent> events, CancellationToken cancellationToken) => Task.CompletedTask;
-    public static Task CheckAndUpdateModelsAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-    public static Task ForceUpdateAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-    public static Task RestartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-    public static Task TrackDecisionAsync(DecisionTrackingInfo info, CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task InitializeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task StartLearningAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task ProcessLearningEventsAsync(List<LearningEvent> events, CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task CheckAndUpdateModelsAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task ForceUpdateAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task RestartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task TrackDecisionAsync(DecisionTrackingInfo info, CancellationToken cancellationToken) => Task.CompletedTask;
 }
 
 /// <summary>
@@ -1836,9 +1836,9 @@ public class ContractRolloverManager
         _serviceProvider = serviceProvider;
     }
     
-    public static Task InitializeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-    public static Task StartMonitoringAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-    public static Task CheckRolloverNeedsAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task InitializeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task StartMonitoringAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task CheckRolloverNeedsAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }
 
 #endregion

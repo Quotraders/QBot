@@ -332,6 +332,8 @@ namespace BotCore.Services
             BracketMode bracketMode,
             decimal entryConfidence = 0.75m)
         {
+            ArgumentNullException.ThrowIfNull(bracketMode);
+            
             // Save original values before confidence adjustments
             var originalStop = stopPrice;
             var originalTarget = targetPrice;
@@ -1337,6 +1339,8 @@ namespace BotCore.Services
         /// </summary>
         public async void OnZoneBreak(ZoneBreakEvent breakEvent)
         {
+            ArgumentNullException.ThrowIfNull(breakEvent);
+            
             try
             {
                 // Find positions for this symbol
