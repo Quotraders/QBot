@@ -386,7 +386,7 @@ namespace BotCore.Services
         public string StrategyName { get; set; } = string.Empty;
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
-        public List<SignalEvent> Signals { get; } = new();
+        public IReadOnlyList<SignalEvent> Signals { get; } = new List<SignalEvent>();
         public bool EnableMarketFriction { get; set; } = true;
     }
 

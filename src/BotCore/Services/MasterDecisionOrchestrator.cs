@@ -1815,7 +1815,7 @@ public class ContinuousLearningManager
     
     public Task InitializeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     public Task StartLearningAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-    public Task ProcessLearningEventsAsync(List<LearningEvent> events, CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task ProcessLearningEventsAsync(IReadOnlyList<LearningEvent> events, CancellationToken cancellationToken) => Task.CompletedTask;
     public Task CheckAndUpdateModelsAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     public Task ForceUpdateAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     public Task RestartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -1935,7 +1935,7 @@ public class PerformanceReport
 {
     public DateTime Timestamp { get; set; }
     public OverallStats OverallStats { get; set; } = new();
-    public List<DecisionPerformance> SourcePerformance { get; } = new();
+    public IReadOnlyList<DecisionPerformance> SourcePerformance { get; } = new List<DecisionPerformance>();
 }
 
 public class OverallStats

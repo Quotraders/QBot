@@ -517,7 +517,7 @@ namespace BotCore.Services
         public bool IsValid { get; set; }
         public bool IsDuplicate { get; set; }
         public bool IntegrityValid { get; set; }
-        public List<string> ValidationErrors { get; } = new();
+        public IReadOnlyList<string> ValidationErrors { get; } = new List<string>();
         public ModelMetadata? Metadata { get; set; }
         public DateTime VerificationTime { get; set; }
     }
@@ -540,7 +540,7 @@ namespace BotCore.Services
     /// </summary>
     public class ModelVersionRegistry
     {
-        public List<ModelVersionInfo> Versions { get; } = new();
+        public IReadOnlyList<ModelVersionInfo> Versions { get; } = new List<ModelVersionInfo>();
         public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
         public string RegistryVersion { get; set; } = "1.0";
     }

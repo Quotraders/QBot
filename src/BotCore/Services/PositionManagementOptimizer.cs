@@ -1286,7 +1286,7 @@ namespace BotCore.Services
         public string StrategyName { get; set; } = string.Empty;
         public DateTime ExportTimestamp { get; set; }
         public int TotalTradesAnalyzed { get; set; }
-        public List<LearnedParameter> Parameters { get; set; } = new();
+        public IReadOnlyList<LearnedParameter> Parameters { get; init; } = new List<LearnedParameter>();
     }
     
     /// <summary>
