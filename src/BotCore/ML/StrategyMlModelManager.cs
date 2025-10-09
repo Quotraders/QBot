@@ -148,18 +148,32 @@ namespace BotCore.ML
                             return multiplier;
                         }
                     }
-                    catch (Exception modelEx)
+                    catch (System.IO.FileNotFoundException modelEx)
                     {
-                        _logger.LogWarning(modelEx, "[ML-Manager] Failed to load ONNX model, using fallback");
+                        _logger.LogWarning(modelEx, "[ML-Manager] ONNX model file not found, using fallback");
+                    }
+                    catch (InvalidOperationException modelEx)
+                    {
+                        _logger.LogWarning(modelEx, "[ML-Manager] Invalid ONNX model operation, using fallback");
+                    }
+                    catch (ArgumentException modelEx)
+                    {
+                        _logger.LogWarning(modelEx, "[ML-Manager] Invalid ONNX model argument, using fallback");
                     }
                 }
                 
                 _logger.LogWarning("[ML-Manager] ONNX model not available, using fallback multiplier");
                 return DefaultPositionSizeMultiplier;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[ML-Manager] Error getting position size multiplier for {Strategy}-{Symbol}",
+                _logger.LogError(ex, "[ML-Manager] Invalid operation getting position size multiplier for {Strategy}-{Symbol}",
+                    strategyId, symbol);
+                return DefaultPositionSizeMultiplier; // Fallback to default
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "[ML-Manager] Invalid argument getting position size multiplier for {Strategy}-{Symbol}",
                     strategyId, symbol);
                 return DefaultPositionSizeMultiplier; // Fallback to default
             }
@@ -215,9 +229,17 @@ namespace BotCore.ML
                             return shouldAccept;
                         }
                     }
-                    catch (Exception modelEx)
+                    catch (System.IO.FileNotFoundException modelEx)
                     {
-                        _logger.LogWarning(modelEx, "[ML-Manager] Failed to load meta-classifier, using basic rules");
+                        _logger.LogWarning(modelEx, "[ML-Manager] Meta-classifier file not found, using basic rules");
+                    }
+                    catch (InvalidOperationException modelEx)
+                    {
+                        _logger.LogWarning(modelEx, "[ML-Manager] Invalid meta-classifier operation, using basic rules");
+                    }
+                    catch (ArgumentException modelEx)
+                    {
+                        _logger.LogWarning(modelEx, "[ML-Manager] Invalid meta-classifier argument, using basic rules");
                     }
                 }
 
@@ -234,9 +256,15 @@ namespace BotCore.ML
 
                 return true;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[ML-Manager] Error in signal filtering for {Strategy}-{Symbol}",
+                _logger.LogError(ex, "[ML-Manager] Invalid operation in signal filtering for {Strategy}-{Symbol}",
+                    strategyId, symbol);
+                return true; // Default to accepting signal
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "[ML-Manager] Invalid argument in signal filtering for {Strategy}-{Symbol}",
                     strategyId, symbol);
                 return true; // Default to accepting signal
             }
@@ -289,9 +317,17 @@ namespace BotCore.ML
                             return finalScore;
                         }
                     }
-                    catch (Exception modelEx)
+                    catch (System.IO.FileNotFoundException modelEx)
                     {
-                        _logger.LogWarning(modelEx, "[ML-Manager] Failed to load execution quality model, using fallback");
+                        _logger.LogWarning(modelEx, "[ML-Manager] Execution quality model file not found, using fallback");
+                    }
+                    catch (InvalidOperationException modelEx)
+                    {
+                        _logger.LogWarning(modelEx, "[ML-Manager] Invalid execution quality model operation, using fallback");
+                    }
+                    catch (ArgumentException modelEx)
+                    {
+                        _logger.LogWarning(modelEx, "[ML-Manager] Invalid execution quality model argument, using fallback");
                     }
                 }
 

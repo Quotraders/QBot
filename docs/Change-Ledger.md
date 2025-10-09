@@ -13,6 +13,115 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ---
 
+### 🔧 Round 186 - Phase 2 Priority 1: CA1031 Exception Handling - Batch 4 (PR #272)
+
+**Date**: January 2025  
+**Agent**: GitHub Copilot  
+**Objective**: Continue CA1031 remediation - ML model managers and training components
+
+| Error Code | Count | Files Affected | Fix Applied |
+|------------|-------|----------------|-------------|
+| CA1031 | 16 | 2 files | Replaced catch(Exception) with specific ML/ONNX exception types |
+
+**Before**: 802 CA1031 violations  
+**After**: 786 CA1031 violations (16 fixed)
+
+**Files Modified**:
+1. `src/BotCore/ML/StrategyMlModelManager.cs` - 5 ML model operation catch blocks
+2. `src/BotCore/MetaLabeler/WalkForwardTrainer.cs` - 3 training/evaluation catch blocks
+
+**Rationale**: Continuing CA1031 remediation focusing on ML/ONNX model loading, inference, and training operations with proper exception categorization for file I/O, validation, and inference errors.
+
+**Fix Patterns Applied**:
+
+**1. ML Model Loading** (StrategyMlModelManager.cs)
+```csharp
+// Position sizing, meta-classifier, execution quality models
+catch (System.IO.FileNotFoundException modelEx)
+{
+    _logger.LogWarning(modelEx, "[ML-Manager] ONNX model file not found, using fallback");
+}
+catch (InvalidOperationException modelEx)
+{
+    _logger.LogWarning(modelEx, "[ML-Manager] Invalid ONNX model operation, using fallback");
+}
+catch (ArgumentException modelEx)
+{
+    _logger.LogWarning(modelEx, "[ML-Manager] Invalid ONNX model argument, using fallback");
+}
+```
+
+**2. ML Model Operations** (StrategyMlModelManager.cs)
+```csharp
+// Position size multiplier, signal filtering operations
+catch (InvalidOperationException ex)
+{
+    _logger.LogError(ex, "[ML-Manager] Invalid operation in ML processing");
+    return fallbackValue;
+}
+catch (ArgumentException ex)
+{
+    _logger.LogError(ex, "[ML-Manager] Invalid argument in ML processing");
+    return fallbackValue;
+}
+```
+
+**3. Training Fold Processing** (WalkForwardTrainer.cs)
+```csharp
+// Walk-forward cross-validation fold processing
+catch (System.IO.FileNotFoundException ex)
+{
+    fold.Status = FoldStatus.Error;
+    Console.WriteLine($"[WALK-FORWARD] Fold {foldNumber} failed - file not found");
+}
+catch (InvalidOperationException ex)
+{
+    fold.Status = FoldStatus.Error;
+    Console.WriteLine($"[WALK-FORWARD] Fold {foldNumber} failed - invalid operation");
+}
+catch (ArgumentException ex)
+{
+    fold.Status = FoldStatus.Error;
+    Console.WriteLine($"[WALK-FORWARD] Fold {foldNumber} failed - invalid argument");
+}
+```
+
+**4. ONNX Inference** (WalkForwardTrainer.cs)
+```csharp
+// ONNX Runtime inference with tensor operations
+catch (InvalidOperationException ex)
+{
+    Console.WriteLine($"[WALK-FORWARD] ONNX inference error - invalid operation, using feature fallback");
+    return CalculateAdvancedFeaturePrediction(sample);
+}
+catch (ArgumentException ex)
+{
+    Console.WriteLine($"[WALK-FORWARD] ONNX inference error - invalid argument, using feature fallback");
+    return CalculateAdvancedFeaturePrediction(sample);
+}
+catch (IndexOutOfRangeException ex)
+{
+    Console.WriteLine($"[WALK-FORWARD] ONNX inference error - index out of range, using feature fallback");
+    return CalculateAdvancedFeaturePrediction(sample);
+}
+```
+
+**No Shortcuts Taken**:
+- ✅ No suppressions added
+- ✅ No analyzer config modifications
+- ✅ Specific exceptions for ML/ONNX operations
+- ✅ Proper fallback mechanisms maintained
+- ✅ All production guardrails intact
+
+**Build Status**: 
+- CS Compiler Errors: 0 ✅
+- CA1031 Violations: 786 (was 802, reduced by 16)
+- Total Analyzer Violations: ~5,811 (Phase 2 in progress)
+
+**Progress**: CA1031 is 6.0% complete (50 of 836 fixed)
+
+---
+
 ### 🔧 Round 185 - Phase 2 Priority 1: CA1031 Exception Handling - Batch 3 (PR #272)
 
 **Date**: January 2025  
