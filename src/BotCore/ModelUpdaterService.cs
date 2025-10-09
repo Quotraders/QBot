@@ -400,14 +400,38 @@ namespace BotCore
 
                 return true;
             }
-            catch (Exception ex)
+            catch (System.Net.Http.HttpRequestException ex)
             {
-                _log.LogError(ex, "[ModelUpdater] Failed to download/install model {ModelName}", modelName);
+                _log.LogError(ex, "[ModelUpdater] Network error downloading model {ModelName}", modelName);
 
                 // Clean up temp file
                 if (File.Exists(tempPath))
                 {
-                    try { File.Delete(tempPath); } catch { }
+                    try { File.Delete(tempPath); } catch (System.IO.IOException) { }
+                }
+
+                return false;
+            }
+            catch (System.IO.IOException ex)
+            {
+                _log.LogError(ex, "[ModelUpdater] I/O error installing model {ModelName}", modelName);
+
+                // Clean up temp file
+                if (File.Exists(tempPath))
+                {
+                    try { File.Delete(tempPath); } catch (System.IO.IOException) { }
+                }
+
+                return false;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _log.LogError(ex, "[ModelUpdater] Access denied installing model {ModelName}", modelName);
+
+                // Clean up temp file
+                if (File.Exists(tempPath))
+                {
+                    try { File.Delete(tempPath); } catch (System.IO.IOException) { }
                 }
 
                 return false;

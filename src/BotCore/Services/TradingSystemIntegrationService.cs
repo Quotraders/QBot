@@ -703,9 +703,13 @@ namespace TopstepX.Bot.Core.Services
                     {
                         await _volOfVolGuardService.CalculateVolOfVolAdjustmentAsync(symbol, currentAtr).ConfigureAwait(false);
                     }
-                    catch (Exception ex)
+                    catch (InvalidOperationException ex)
                     {
-                        _logger.LogError(ex, "[VOL-OF-VOL-GUARD] Failed to update volatility history for {Symbol}", symbol);
+                        _logger.LogError(ex, "[VOL-OF-VOL-GUARD] Invalid operation updating volatility history for {Symbol}", symbol);
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        _logger.LogError(ex, "[VOL-OF-VOL-GUARD] Invalid argument updating volatility history for {Symbol}", symbol);
                     }
                 }).ConfigureAwait(false);
 
@@ -1302,9 +1306,13 @@ namespace TopstepX.Bot.Core.Services
                             {
                                 await _correlationCapService.UpdatePriceDataAsync(symbol, marketData.LastPrice, DateTime.UtcNow).ConfigureAwait(false);
                             }
-                            catch (Exception ex)
+                            catch (InvalidOperationException ex)
                             {
-                                _logger.LogError(ex, "[CORRELATION-CAP] Failed to update price history for {Symbol}", symbol);
+                                _logger.LogError(ex, "[CORRELATION-CAP] Invalid operation updating price history for {Symbol}", symbol);
+                            }
+                            catch (ArgumentException ex)
+                            {
+                                _logger.LogError(ex, "[CORRELATION-CAP] Invalid argument updating price history for {Symbol}", symbol);
                             }
                         }).ConfigureAwait(false);
                     }
