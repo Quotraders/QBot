@@ -149,70 +149,6 @@ public class AutonomousDecisionEngine : BackgroundService
     private const decimal PreMarketMultiplier = 0.8m;           // Pre-market - lower volume
     private const decimal DefaultTimeMultiplier = 1.0m;         // Default time multiplier
     
-    // Strategy baseline performance statistics (S2 - VWAP Mean Reversion)
-    private const decimal S2BaselineTotalPnL = 1250m;           // S2 baseline total P&L
-    private const int S2BaselineTotalTrades = 45;               // S2 baseline total trades
-    private const decimal S2BaselineWinRate = 0.67m;            // S2 baseline win rate (67%)
-    private const decimal S2BaselineAverageWin = 85m;           // S2 baseline average win
-    private const decimal S2BaselineAverageLoss = -42m;         // S2 baseline average loss
-    private const decimal S2BaselineMaxDrawdown = -180m;        // S2 baseline max drawdown
-    
-    // Strategy baseline performance statistics (S3 - Compression Breakout)
-    private const decimal S3BaselineTotalPnL = 1850m;           // S3 baseline total P&L
-    private const int S3BaselineTotalTrades = 32;               // S3 baseline total trades
-    private const decimal S3BaselineWinRate = 0.71m;            // S3 baseline win rate (71%)
-    private const decimal S3BaselineAverageWin = 125m;          // S3 baseline average win
-    private const decimal S3BaselineAverageLoss = -55m;         // S3 baseline average loss
-    private const decimal S3BaselineMaxDrawdown = -220m;        // S3 baseline max drawdown
-    private const int S3TimeOffsetHours = 3;                    // S3 time offset for last trade (hours)
-    
-    // Strategy baseline performance statistics (S6 - Opening Drive)
-    private const decimal S6BaselineTotalPnL = 2100m;           // S6 baseline total P&L
-    private const int S6BaselineTotalTrades = 28;               // S6 baseline total trades
-    private const decimal S6BaselineWinRate = 0.75m;            // S6 baseline win rate (75%)
-    private const decimal S6BaselineAverageWin = 165m;          // S6 baseline average win
-    private const decimal S6BaselineAverageLoss = -58m;         // S6 baseline average loss
-    private const decimal S6BaselineMaxDrawdown = -145m;        // S6 baseline max drawdown
-    private const int S6TimeOffsetHours = 18;                   // S6 time offset for last trade (hours)
-    
-    // Strategy baseline performance statistics (S11 - ADR Exhaustion)
-    private const decimal S11BaselineTotalPnL = 1650m;          // S11 baseline total P&L
-    private const int S11BaselineTotalTrades = 38;              // S11 baseline total trades
-    private const decimal S11BaselineWinRate = 0.68m;           // S11 baseline win rate (68%)
-    private const decimal S11BaselineAverageWin = 105m;         // S11 baseline average win
-    private const decimal S11BaselineAverageLoss = -48m;        // S11 baseline average loss
-    private const decimal S11BaselineMaxDrawdown = -165m;       // S11 baseline max drawdown
-    private const int S11TimeOffsetHours = 5;                   // S11 time offset for last trade (hours)
-    
-    // Default strategy baseline performance statistics
-    private const decimal DefaultBaselineTotalPnL = 1000m;      // Default baseline total P&L
-    private const int DefaultBaselineTotalTrades = 25;          // Default baseline total trades
-    private const decimal DefaultBaselineWinRate = 0.60m;       // Default baseline win rate (60%)
-    private const decimal DefaultBaselineAverageWin = 80m;      // Default baseline average win
-    private const decimal DefaultBaselineAverageLoss = -50m;    // Default baseline average loss
-    private const decimal DefaultBaselineMaxDrawdown = -200m;   // Default baseline max drawdown
-    private const int DefaultLastTradeDaysOffset = 1;           // Default days offset for last trade
-    
-    // Account balance thresholds
-    private const decimal MinimumAccountBalanceForScaling = 500m;  // Minimum balance for risk scaling
-    private const decimal AccountBalanceScalingFactor = 1000m;  // Factor for account balance scaling
-    private const decimal MaxAccountBalanceScaling = 15000m;    // Maximum account balance for scaling
-    
-    // Sample trade generation constants
-    private const double ESSymbolProbability = 0.3;             // Probability threshold for ES symbol (30% NQ, 70% ES)
-    private const double BuyDirectionProbability = 0.5;         // Probability threshold for buy direction (50/50)
-    private const decimal ESBasePriceForSimulation = 4500m;     // ES base price for trade simulation
-    private const int ESPriceVariationRange = 200;              // ES price variation range
-    private const int ESPriceVariationOffset = 100;             // ES price variation offset
-    private const int MaximumPositionSize = 4;                  // Maximum position size for simulation
-    private const decimal MinimumTradeConfidence = 0.6m;        // Minimum confidence for trades (60%)
-    private const decimal MaximumConfidenceRange = 0.3m;        // Maximum confidence range (30%)
-    private const int MinimumTradeExitMinutes = 15;             // Minimum exit time (minutes)
-    private const int MaximumTradeExitMinutes = 240;            // Maximum exit time (minutes)
-    private const decimal WinningTradeMinRMultiple = 1.5m;      // Minimum R-multiple for winning trades
-    private const decimal WinningTradeRMultipleRange = 1.5m;    // R-multiple range for winning trades
-    private const decimal LosingTradeRMultiple = -1m;           // R-multiple for losing trades
-    
     // Performance alert thresholds
     private const decimal LargeDailyLossThreshold = -500m;      // Threshold for large daily loss alert
     private const decimal LowWinRateThreshold = 0.3m;           // Threshold for low win rate alert
@@ -1065,15 +1001,20 @@ public class AutonomousDecisionEngine : BackgroundService
             // Load recent performance data for all strategies
             var performanceData = await LoadHistoricalPerformanceDataAsync(cancellationToken).ConfigureAwait(false);
             
-            // Initialize strategy performance metrics
-            await InitializeStrategyMetricsAsync(performanceData, cancellationToken).ConfigureAwait(false);
-            
-            _logger.LogInformation("✅ [AUTONOMOUS-ENGINE] Historical performance data loaded successfully");
+            if (performanceData.Count > 0)
+            {
+                // Initialize strategy performance metrics from real data
+                await InitializeStrategyMetricsAsync(performanceData, cancellationToken).ConfigureAwait(false);
+                _logger.LogInformation("✅ [AUTONOMOUS-ENGINE] Historical performance data loaded successfully");
+            }
+            else
+            {
+                _logger.LogWarning("⚠️ [AUTONOMOUS-ENGINE] No historical data available, starting fresh with zero trades");
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "⚠️ [AUTONOMOUS-ENGINE] Failed to load historical data, using default metrics");
-            await InitializeDefaultMetricsAsync(cancellationToken).ConfigureAwait(false);
+            _logger.LogWarning(ex, "⚠️ [AUTONOMOUS-ENGINE] Failed to load historical data, starting fresh with zero trades");
         }
     }
     
@@ -1448,11 +1389,12 @@ public class AutonomousDecisionEngine : BackgroundService
                 if (strategyPerformance != null)
                 {
                     performanceData[strategy] = strategyPerformance;
+                    _logger.LogDebug("📊 [AUTONOMOUS-ENGINE] Loaded real performance data for {Strategy}", strategy);
                 }
                 else
                 {
-                    // Create realistic baseline performance data
-                    performanceData[strategy] = CreateBaselinePerformanceData(strategy);
+                    // Skip strategy - no real data available
+                    _logger.LogDebug("⚠️ [AUTONOMOUS-ENGINE] No historical data for {Strategy}, skipping initialization", strategy);
                 }
             }
             
@@ -1466,11 +1408,10 @@ public class AutonomousDecisionEngine : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "⚠️ [AUTONOMOUS-ENGINE] Failed to load historical performance data");
+            _logger.LogWarning(ex, "⚠️ [AUTONOMOUS-ENGINE] Failed to load historical performance data, starting with empty metrics");
             
-            // Create baseline data for all strategies
-            return StrategyConstants.AllStrategies
-                .ToDictionary(s => s, CreateBaselinePerformanceData);
+            // Return empty dictionary - no fake data
+            return new Dictionary<string, StrategyPerformanceData>();
         }
     }
     
@@ -1491,72 +1432,7 @@ public class AutonomousDecisionEngine : BackgroundService
         }
     }
     
-    /// <summary>
-    /// Create realistic baseline performance data for a strategy
-    /// </summary>
-    private StrategyPerformanceData CreateBaselinePerformanceData(string strategy)
-    {
-        // Each strategy has different baseline characteristics based on their design
-        return strategy switch
-        {
-            "S2" => new StrategyPerformanceData
-            {
-                Strategy = "S2",
-                TotalPnL = S2BaselineTotalPnL,
-                TotalTrades = S2BaselineTotalTrades,
-                WinRate = S2BaselineWinRate,
-                AverageWin = S2BaselineAverageWin,
-                AverageLoss = S2BaselineAverageLoss,
-                MaxDrawdown = S2BaselineMaxDrawdown,
-                LastTradeDate = DateTime.UtcNow.AddDays(-DefaultLastTradeDaysOffset)
-            },
-            "S3" => new StrategyPerformanceData
-            {
-                Strategy = "S3",
-                TotalPnL = S3BaselineTotalPnL,
-                TotalTrades = S3BaselineTotalTrades,
-                WinRate = S3BaselineWinRate,
-                AverageWin = S3BaselineAverageWin,
-                AverageLoss = S3BaselineAverageLoss,
-                MaxDrawdown = S3BaselineMaxDrawdown,
-                LastTradeDate = DateTime.UtcNow.AddHours(-S3TimeOffsetHours)
-            },
-            "S6" => new StrategyPerformanceData
-            {
-                Strategy = "S6",
-                TotalPnL = S6BaselineTotalPnL,
-                TotalTrades = S6BaselineTotalTrades,
-                WinRate = S6BaselineWinRate,
-                AverageWin = S6BaselineAverageWin,
-                AverageLoss = S6BaselineAverageLoss,
-                MaxDrawdown = S6BaselineMaxDrawdown,
-                LastTradeDate = DateTime.UtcNow.AddHours(-S6TimeOffsetHours)
-            },
-            "S11" => new StrategyPerformanceData
-            {
-                Strategy = "S11",
-                TotalPnL = S11BaselineTotalPnL,
-                TotalTrades = S11BaselineTotalTrades,
-                WinRate = S11BaselineWinRate,
-                AverageWin = S11BaselineAverageWin,
-                AverageLoss = S11BaselineAverageLoss,
-                MaxDrawdown = S11BaselineMaxDrawdown,
-                LastTradeDate = DateTime.UtcNow.AddHours(-S11TimeOffsetHours)
-            },
-            _ => new StrategyPerformanceData
-            {
-                Strategy = strategy,
-                TotalPnL = DefaultBaselineTotalPnL,
-                TotalTrades = DefaultBaselineTotalTrades,
-                WinRate = DefaultBaselineWinRate,
-                AverageWin = DefaultBaselineAverageWin,
-                AverageLoss = DefaultBaselineAverageLoss,
-                MaxDrawdown = DefaultBaselineMaxDrawdown,
-                LastTradeDate = DateTime.UtcNow.AddDays(-DefaultLastTradeDaysOffset)
-            }
-        };
-    }
-    
+
     /// <summary>
     /// Initialize strategy metrics from historical data
     /// </summary>
@@ -1569,17 +1445,14 @@ public class AutonomousDecisionEngine : BackgroundService
             
             if (_strategyMetrics.TryGetValue(strategy, out var metrics))
             {
-                // Initialize from historical performance
+                // Initialize from real historical performance only
                 metrics.TotalTrades = performance.TotalTrades;
                 metrics.WinningTrades = (int)(performance.TotalTrades * performance.WinRate);
                 metrics.LosingTrades = performance.TotalTrades - metrics.WinningTrades;
                 metrics.TotalProfit = performance.AverageWin * metrics.WinningTrades;
                 metrics.TotalLoss = performance.AverageLoss * metrics.LosingTrades;
                 
-                // Generate some recent synthetic trades for immediate operation
-                var generatedTrades = GenerateRecentTradesFromPerformance(strategy, performance);
-                metrics.ReplaceRecentTrades(generatedTrades);
-                
+                // Leave recent trades empty - will be populated as real trades happen
                 _logger.LogInformation("📊 [AUTONOMOUS-ENGINE] Initialized {Strategy}: {Trades} trades, {WinRate:P} win rate, ${PnL:F0} P&L",
                     strategy, metrics.TotalTrades, performance.WinRate, performance.TotalPnL);
             }
@@ -1588,71 +1461,8 @@ public class AutonomousDecisionEngine : BackgroundService
         return Task.CompletedTask;
     }
     
-    /// <summary>
-    /// Generate recent trades from performance data for immediate operation
-    /// </summary>
-    private static List<AutonomousTradeOutcome> GenerateRecentTradesFromPerformance(string strategy, StrategyPerformanceData performance)
-    {
-        var recentTrades = new List<AutonomousTradeOutcome>();
-        var random = Random.Shared;
-        var tradesCount = Math.Min(20, performance.TotalTrades); // Last 20 trades or total if less
-        
-        for (int i = 0; i < tradesCount; i++)
-        {
-            var isWin = random.NextDouble() < (double)performance.WinRate;
-            var pnl = isWin ? 
-                performance.AverageWin * (0.5m + (decimal)random.NextDouble()) : // 50%-150% of avg win
-                performance.AverageLoss * (0.5m + (decimal)random.NextDouble()); // 50%-150% of avg loss
-            
-            var tradeTime = DateTime.UtcNow.AddDays(-random.Next(1, 30)).AddHours(-random.Next(0, 24));
-            
-            recentTrades.Add(new AutonomousTradeOutcome
-            {
-                Strategy = strategy,
-                Symbol = random.NextDouble() > ESSymbolProbability ? "ES" : "NQ", // 70% ES, 30% NQ
-                Direction = random.NextDouble() > BuyDirectionProbability ? "Buy" : "Sell",
-                EntryTime = tradeTime,
-                EntryPrice = strategy.Contains("ES") ? ESBasePriceForSimulation + (decimal)(random.NextDouble() * (double)ESPriceVariationRange - (double)ESPriceVariationOffset) : MaxAccountBalanceScaling + (decimal)(random.NextDouble() * (double)AccountBalanceScalingFactor - (double)MinimumAccountBalanceForScaling),
-                Size = random.Next(1, MaximumPositionSize),
-                Confidence = MinimumTradeConfidence + ((decimal)random.NextDouble() * MaximumConfidenceRange), // 60%-90% confidence
-                AutonomousMarketRegime = (AutonomousMarketRegime)random.Next(1, MinimumTradesForWinRateAlert),
-                PnL = pnl,
-                ExitTime = tradeTime.AddMinutes(random.Next(MinimumTradeExitMinutes, MaximumTradeExitMinutes)),
-                ExitPrice = 0m, // Will be calculated
-                RMultiple = isWin ? WinningTradeMinRMultiple + (decimal)random.NextDouble() * WinningTradeRMultipleRange : LosingTradeRMultiple
-            });
-        }
-        
-        return recentTrades.OrderByDescending(t => t.EntryTime).ToList();
-    }
-    
-    /// <summary>
-    /// Initialize default metrics when historical data is unavailable
-    /// </summary>
-    private Task InitializeDefaultMetricsAsync(CancellationToken cancellationToken = default)
-    {
-        foreach (var strategy in StrategyConstants.AllStrategies)
-        {
-            if (_strategyMetrics.TryGetValue(strategy, out var metrics))
-            {
-                var baselineData = CreateBaselinePerformanceData(strategy);
-                
-                // Initialize with baseline data
-                metrics.TotalTrades = baselineData.TotalTrades;
-                metrics.WinningTrades = (int)(baselineData.TotalTrades * baselineData.WinRate);
-                metrics.LosingTrades = baselineData.TotalTrades - metrics.WinningTrades;
-                metrics.TotalProfit = baselineData.AverageWin * metrics.WinningTrades;
-                metrics.TotalLoss = baselineData.AverageLoss * metrics.LosingTrades;
-                var generatedTrades = GenerateRecentTradesFromPerformance(strategy, baselineData);
-                metrics.ReplaceRecentTrades(generatedTrades);
-                
-                _logger.LogInformation("📊 [AUTONOMOUS-ENGINE] Initialized default metrics for {Strategy}: {Trades} trades, {WinRate:P} win rate",
-                    strategy, metrics.TotalTrades, baselineData.WinRate);
-            }
-        }
-        return Task.CompletedTask;
-    }
-    
+
+
     /// <summary>
     /// Send performance metrics to monitoring system
     /// </summary>
