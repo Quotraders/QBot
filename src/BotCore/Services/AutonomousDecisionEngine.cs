@@ -1594,7 +1594,7 @@ public class AutonomousDecisionEngine : BackgroundService
     private static List<AutonomousTradeOutcome> GenerateRecentTradesFromPerformance(string strategy, StrategyPerformanceData performance)
     {
         var recentTrades = new List<AutonomousTradeOutcome>();
-        var random = new Random();
+        var random = Random.Shared;
         var tradesCount = Math.Min(20, performance.TotalTrades); // Last 20 trades or total if less
         
         for (int i = 0; i < tradesCount; i++)

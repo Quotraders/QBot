@@ -122,9 +122,9 @@ public sealed class OllamaClient : IDisposable
     }
 
     /// <summary>
-    /// Response model from Ollama API
+    /// Response model from Ollama API - used by System.Text.Json for deserialization
     /// </summary>
-    private sealed class OllamaResponse
+    public sealed class OllamaResponse
     {
         [JsonPropertyName("response")]
         public string Response { get; set; } = string.Empty;

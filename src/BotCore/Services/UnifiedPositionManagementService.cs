@@ -368,9 +368,10 @@ namespace BotCore.Services
                         stopPrice,
                         targetPrice);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Silently ignore AI errors - don't disrupt position management
+                    // Log AI errors but don't disrupt position management
+                    _logger.LogDebug(ex, "[POSITION-MGMT] AI explanation failed for position {PositionId}", positionId);
                 }
             }
             
@@ -586,9 +587,10 @@ namespace BotCore.Services
                             
                             ExplainTimeBasedExitFireAndForget(state, holdDuration, currentPnL, marketRegime);
                         }
-                        catch
+                        catch (Exception ex)
                         {
-                            // Silently ignore AI errors
+                            // Log AI errors but don't disrupt position management
+                            _logger.LogDebug(ex, "[POSITION-MGMT] AI explanation failed for time-based exit");
                         }
                         
                         await RequestPositionCloseAsync(state, ExitReason.TimeLimit, cancellationToken).ConfigureAwait(false);
@@ -675,9 +677,10 @@ namespace BotCore.Services
                 
                 ExplainBreakevenProtectionFireAndForget(state, unrealizedPnL, profitTicks, breakevenStop, marketRegime);
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently ignore AI errors - don't disrupt position management
+                // Log AI errors but don't disrupt position management
+                _logger.LogDebug(ex, "[POSITION-MGMT] AI explanation failed for breakeven protection");
             }
         }
         
@@ -728,9 +731,10 @@ namespace BotCore.Services
                     
                     ExplainTrailingStopActivationFireAndForget(state, unrealizedPnL, profitTicks, newStopPrice, marketRegime);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Silently ignore AI errors - don't disrupt position management
+                    // Log AI errors but don't disrupt position management
+                    _logger.LogDebug(ex, "[POSITION-MGMT] AI explanation failed for trailing stop activation");
                 }
             }
         }
@@ -1078,9 +1082,10 @@ namespace BotCore.Services
                     var partialQuantity = Math.Floor(state.Quantity * FIRST_PARTIAL_EXIT_PERCENTAGE);
                     ExplainPartialExitFireAndForget(state, rMultiple, FIRST_PARTIAL_DISPLAY_PERCENT, partialQuantity, "First Target (1.5R)");
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Silently ignore AI errors
+                    // Log AI errors but don't disrupt position management
+                    _logger.LogDebug(ex, "[POSITION-MGMT] AI explanation failed for first partial exit");
                 }
                 
                 await RequestPartialCloseAsync(state, FIRST_PARTIAL_EXIT_PERCENTAGE, ExitReason.Partial, cancellationToken).ConfigureAwait(false);
@@ -1098,9 +1103,10 @@ namespace BotCore.Services
                     var partialQuantity = Math.Floor(state.Quantity * SECOND_PARTIAL_EXIT_PERCENTAGE);
                     ExplainPartialExitFireAndForget(state, rMultiple, SECOND_PARTIAL_DISPLAY_PERCENT, partialQuantity, "Second Target (2.5R)");
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Silently ignore AI errors
+                    // Log AI errors but don't disrupt position management
+                    _logger.LogDebug(ex, "[POSITION-MGMT] AI explanation failed for second partial exit");
                 }
                 
                 await RequestPartialCloseAsync(state, SECOND_PARTIAL_EXIT_PERCENTAGE, ExitReason.Partial, cancellationToken).ConfigureAwait(false);
@@ -1118,9 +1124,10 @@ namespace BotCore.Services
                     var partialQuantity = Math.Floor(state.Quantity * FINAL_PARTIAL_EXIT_PERCENTAGE);
                     ExplainPartialExitFireAndForget(state, rMultiple, FINAL_PARTIAL_DISPLAY_PERCENT, partialQuantity, "Runner Position (4.0R)");
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Silently ignore AI errors
+                    // Log AI errors but don't disrupt position management
+                    _logger.LogDebug(ex, "[POSITION-MGMT] AI explanation failed for final partial exit");
                 }
                 
                 await RequestPartialCloseAsync(state, FINAL_PARTIAL_EXIT_PERCENTAGE, ExitReason.Target, cancellationToken).ConfigureAwait(false);
@@ -1632,11 +1639,19 @@ namespace BotCore.Services
             var isRanging = regimeKey.Contains("RANGE");
             
             // Get environment variable for this strategy and regime
-            var envVarName = isTrending 
-                ? $"{strategy}_TARGET_TRENDING" 
-                : isRanging 
-                    ? $"{strategy}_TARGET_RANGING" 
-                    : $"{strategy}_TARGET_TRENDING"; // Default to trending if unknown
+            string envVarName;
+            if (isTrending)
+            {
+                envVarName = $"{strategy}_TARGET_TRENDING";
+            }
+            else if (isRanging)
+            {
+                envVarName = $"{strategy}_TARGET_RANGING";
+            }
+            else
+            {
+                envVarName = $"{strategy}_TARGET_TRENDING"; // Default to trending if unknown
+            }
             
             var envValue = Environment.GetEnvironmentVariable(envVarName);
             if (decimal.TryParse(envValue, out var rMultiple))
@@ -1645,14 +1660,44 @@ namespace BotCore.Services
             }
             
             // Fallback defaults if environment variable not set
-            return strategy switch
+            decimal GetRegimeSpecificRMultiple(string strat)
             {
-                "S2" => isTrending ? S2_TRENDING_R_MULTIPLE : isRanging ? S2_RANGING_R_MULTIPLE : S2_DEFAULT_R_MULTIPLE,
-                "S3" => isTrending ? S3_TRENDING_R_MULTIPLE : isRanging ? S3_RANGING_R_MULTIPLE : S3_DEFAULT_R_MULTIPLE,
-                "S6" => isTrending ? S6_TRENDING_R_MULTIPLE : isRanging ? S6_RANGING_R_MULTIPLE : S6_DEFAULT_R_MULTIPLE,
-                "S11" => isTrending ? S11_TRENDING_R_MULTIPLE : isRanging ? S11_RANGING_R_MULTIPLE : S11_DEFAULT_R_MULTIPLE,
-                _ => FALLBACK_DEFAULT_R_MULTIPLE // Default R-multiple
-            };
+                if (isTrending)
+                {
+                    return strat switch
+                    {
+                        "S2" => S2_TRENDING_R_MULTIPLE,
+                        "S3" => S3_TRENDING_R_MULTIPLE,
+                        "S6" => S6_TRENDING_R_MULTIPLE,
+                        "S11" => S11_TRENDING_R_MULTIPLE,
+                        _ => FALLBACK_DEFAULT_R_MULTIPLE
+                    };
+                }
+                else if (isRanging)
+                {
+                    return strat switch
+                    {
+                        "S2" => S2_RANGING_R_MULTIPLE,
+                        "S3" => S3_RANGING_R_MULTIPLE,
+                        "S6" => S6_RANGING_R_MULTIPLE,
+                        "S11" => S11_RANGING_R_MULTIPLE,
+                        _ => FALLBACK_DEFAULT_R_MULTIPLE
+                    };
+                }
+                else
+                {
+                    return strat switch
+                    {
+                        "S2" => S2_DEFAULT_R_MULTIPLE,
+                        "S3" => S3_DEFAULT_R_MULTIPLE,
+                        "S6" => S6_DEFAULT_R_MULTIPLE,
+                        "S11" => S11_DEFAULT_R_MULTIPLE,
+                        _ => FALLBACK_DEFAULT_R_MULTIPLE
+                    };
+                }
+            }
+            
+            return GetRegimeSpecificRMultiple(strategy);
         }
         
         /// <summary>

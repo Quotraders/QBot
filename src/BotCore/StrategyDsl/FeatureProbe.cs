@@ -412,18 +412,18 @@ public sealed class FeatureProbe
 
     // Production calculation methods (simplified for implementation)
     // CA1822/S2325: Made static as they don't access instance data
-    private static double CalculateZoneDistanceAtr(string symbol) => Math.Abs(new Random().NextDouble() - SimulationCenterValue) * SimulationRangeMultiplier;
-    private static double CalculateBreakoutScore(string symbol) => Math.Min(1.0, Math.Max(0.0, new Random().NextDouble()));
-    private static double CalculateZonePressure(string symbol) => (new Random().NextDouble() - SimulationCenterValue) * SimulationRangeMultiplier;
-    private static string GetCurrentZoneType(string symbol) => new Random().NextDouble() > SimulationCenterValue ? "supply" : "demand";
-    private static string DetermineMarketRegime(string symbol) => new[] { "trending", "ranging", "high_vol", "compression" }[new Random().Next(SimulationRegimeCount)];
-    private static double CalculateVolatilityZScore(string symbol) => (new Random().NextDouble() - SimulationCenterValue) * SimulationVolatilityMultiplier;
-    private static double CalculateTrendStrength(string symbol) => Math.Min(1.0, Math.Max(-1.0, (new Random().NextDouble() - SimulationCenterValue) * SimulationRangeMultiplier));
-    private static double CalculateOrderFlowImbalance(string symbol) => (new Random().NextDouble() - SimulationCenterValue) * SimulationRangeMultiplier;
-    private static string CalculateVolumeProfile(string symbol) => new[] { "bullish", "bearish", "balanced" }[new Random().Next(SimulationVolumeProfileCount)];
-    private static double CalculateMomentumZScore(string symbol) => (new Random().NextDouble() - SimulationCenterValue) * SimulationVolatilityMultiplier;
-    private static double CalculateVwapDistance(string symbol) => (new Random().NextDouble() - SimulationCenterValue) * SimulationVwapDistanceRange;
-    private static double CalculateSessionVolume(string symbol) => new Random().Next(MinSessionVolume, MaxSessionVolume);
+    private static double CalculateZoneDistanceAtr(string symbol) => Math.Abs(Random.Shared.NextDouble() - SimulationCenterValue) * SimulationRangeMultiplier;
+    private static double CalculateBreakoutScore(string symbol) => Math.Min(1.0, Math.Max(0.0, Random.Shared.NextDouble()));
+    private static double CalculateZonePressure(string symbol) => (Random.Shared.NextDouble() - SimulationCenterValue) * SimulationRangeMultiplier;
+    private static string GetCurrentZoneType(string symbol) => Random.Shared.NextDouble() > SimulationCenterValue ? "supply" : "demand";
+    private static string DetermineMarketRegime(string symbol) => new[] { "trending", "ranging", "high_vol", "compression" }[Random.Shared.Next(SimulationRegimeCount)];
+    private static double CalculateVolatilityZScore(string symbol) => (Random.Shared.NextDouble() - SimulationCenterValue) * SimulationVolatilityMultiplier;
+    private static double CalculateTrendStrength(string symbol) => Math.Min(1.0, Math.Max(-1.0, (Random.Shared.NextDouble() - SimulationCenterValue) * SimulationRangeMultiplier));
+    private static double CalculateOrderFlowImbalance(string symbol) => (Random.Shared.NextDouble() - SimulationCenterValue) * SimulationRangeMultiplier;
+    private static string CalculateVolumeProfile(string symbol) => new[] { "bullish", "bearish", "balanced" }[Random.Shared.Next(SimulationVolumeProfileCount)];
+    private static double CalculateMomentumZScore(string symbol) => (Random.Shared.NextDouble() - SimulationCenterValue) * SimulationVolatilityMultiplier;
+    private static double CalculateVwapDistance(string symbol) => (Random.Shared.NextDouble() - SimulationCenterValue) * SimulationVwapDistanceRange;
+    private static double CalculateSessionVolume(string symbol) => Random.Shared.Next(MinSessionVolume, MaxSessionVolume);
 }
 
 /// <summary>

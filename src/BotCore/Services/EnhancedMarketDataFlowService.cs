@@ -593,10 +593,10 @@ namespace BotCore.Services
                 {
                     Symbol = symbol,
                     Timestamp = DateTime.UtcNow,
-                    Bid = 4500.25m + (decimal)(new Random().NextDouble() * 10),
-                    Ask = 4500.50m + (decimal)(new Random().NextDouble() * 10),
-                    Last = 4500.375m + (decimal)(new Random().NextDouble() * 10),
-                    Volume = new Random().Next(1000, 10000)
+                    Bid = 4500.25m + (decimal)(Random.Shared.NextDouble() * 10),
+                    Ask = 4500.50m + (decimal)(Random.Shared.NextDouble() * 10),
+                    Last = 4500.375m + (decimal)(Random.Shared.NextDouble() * 10),
+                    Volume = Random.Shared.Next(1000, 10000)
                 };
 
                 // Process the snapshot data
