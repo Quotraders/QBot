@@ -199,7 +199,7 @@ namespace BotCore.Services
         private async Task<JsonElement> ExecutePostWithRetryAsync(string endpoint, object requestData, CancellationToken cancellationToken)
         {
             var json = JsonSerializer.Serialize(requestData);
-            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
             const int maxRetries = 3;
             var baseDelay = TimeSpan.FromSeconds(RetryBaseDelaySeconds);

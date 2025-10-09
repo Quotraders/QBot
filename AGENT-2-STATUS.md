@@ -1,6 +1,6 @@
 # 🤖 Agent 2: BotCore Services Status
 
-**Last Updated:** 2025-01-XX (Continuing - Latest Session)  
+**Last Updated:** 2025-01-XX (Continuing - Current Session)  
 **Branch:** copilot/fix-analyzer-violations-botcore  
 **Status:** 🔄 IN PROGRESS - Phase 1 ✅ Complete | Phase 2 In Progress
 
@@ -9,21 +9,42 @@
 ## 📊 Scope
 - **Folder:** `src/BotCore/Services/**/*.cs` ONLY
 - **Files in Scope:** ~121 files
-- **Initial Errors:** 5,132 violations (latest session start)
+- **Initial Errors:** 5,026 violations (current session start)
 
 ---
 
-## ✅ Progress Summary - Latest Session
-- **Errors Fixed This Session:** 146 violations (38 CA2007 + 20 CA1822 + 13+ CA1002 + 4 CA1024 + CS bugfix)
-- **Files Modified This Session:** 14 unique files
-- **Commits Pushed:** 5 batches
-- **Current Violation Count:** 5,026 (down from 5,132)
-- **Net Reduction:** -106 violations (2.1% of total)
+## ✅ Progress Summary - Current Session
+- **Errors Fixed This Session:** 8 violations (8 CA2000)
+- **Files Modified This Session:** 8 unique files
+- **Commits Pushed:** 1 batch
+- **Current Violation Count:** 5,018 (down from 5,026)
+- **Net Reduction:** -8 violations (0.16% of total)
 - **Phase 1 Status:** ✅ 0 CS compiler errors in Services folder
 
 ---
 
-## 📝 Recent Work (Latest Session - Continuation)
+## 📝 Recent Work (Current Session - Continuation)
+
+### Batch 1: CA2000 - Disposal Issues (8 fixed - IN PROGRESS)
+- Fixed real disposal leaks and false positives by adding `using` statements
+- Files fixed:
+  1. WalkForwardValidationService.cs - SemaphoreSlim disposal (real leak)
+  2. TradingSystemIntegrationService.cs - StringContent disposal
+  3. OrderFillConfirmationSystem.cs - StringContent disposal
+  4. TopstepXHttpClient.cs - StringContent disposal
+  5. ProductionTopstepXApiClient.cs - StringContent disposal
+  6. OllamaClient.cs - StringContent disposal
+  7. CloudDataUploader.cs - StringContent and ByteArrayContent disposal (2 fixes)
+  8. TradingBotTuningRunner.cs - HttpRequestMessage disposal
+  9. ModelEnsembleService.cs - CVaRPPO disposal (documented TODO, architectural fix needed)
+- Pattern: Added `using var` or `using` statement for IDisposable objects
+- Note: StringContent passed to HttpClient are technically false positives (HttpClient takes ownership), but using statements don't hurt
+- Real issue: SemaphoreSlim was not being disposed - fixed
+- Architectural issue: CVaRPPO implements IDisposable but ModelEnsembleService doesn't dispose loaded models - requires larger fix
+
+---
+
+## 📝 Recent Work (Previous Session - Latest)
 
 ### Batch 10: CA1002 - Method Signatures (3 fixed - COMPLETE ✅)
 - Changed method return types and parameters from `List<T>` to `IReadOnlyList<T>`

@@ -327,7 +327,7 @@ namespace TradingBot.BotCore.Services
         {
             var jwt = await getJwtToken().ConfigureAwait(false);
             
-            var request = new HttpRequestMessage(HttpMethod.Post, "/api/History/retrieveBars")
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/History/retrieveBars")
             {
                 Headers = { { "Authorization", $"Bearer {jwt}" } },
                 Content = JsonContent.Create(new

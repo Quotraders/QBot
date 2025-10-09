@@ -338,7 +338,7 @@ namespace TopstepX.Bot.Core.Services
                     };
                     
                     var json = JsonSerializer.Serialize(cancelPayload);
-                    var content = new StringContent(json, Encoding.UTF8, "application/json");
+                    using var content = new StringContent(json, Encoding.UTF8, "application/json");
                     
                     var response = await _httpClient.PostAsync("/api/Order/cancel", content).ConfigureAwait(false);
                     

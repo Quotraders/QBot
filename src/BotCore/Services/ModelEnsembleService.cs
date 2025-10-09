@@ -329,6 +329,9 @@ public class ModelEnsembleService
                 {
                     runtimeMode = TradingBot.Abstractions.RlRuntimeMode.InferenceOnly;
                 }
+                // TODO: CA2000 - CVaRPPO implements IDisposable but is stored in _loadedModels without disposal
+                // This requires ModelEnsembleService to implement IDisposable/IAsyncDisposable
+                // and properly dispose all loaded models. Architectural fix needed.
                 var cvarAgent = new CVaRPPO(
                     Microsoft.Extensions.Logging.Abstractions.NullLogger<CVaRPPO>.Instance, 
                     config,

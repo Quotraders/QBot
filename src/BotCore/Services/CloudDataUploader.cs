@@ -41,7 +41,7 @@ public class CloudDataUploader : ICloudDataUploader
             
             // Upload to cloud storage (Azure Blob, AWS S3, etc.)
             using var httpClient = new HttpClient();
-            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
             
             var cloudEndpoint = Environment.GetEnvironmentVariable("CLOUD_UPLOAD_ENDPOINT") ?? "https://api.cloudprovider.com/upload/trades";
             var response = await httpClient.PostAsync(cloudEndpoint, content).ConfigureAwait(false);
@@ -78,7 +78,7 @@ public class CloudDataUploader : ICloudDataUploader
             
             // Upload to cloud storage
             using var httpClient = new HttpClient();
-            var content = new ByteArrayContent(compressedData);
+            using var content = new ByteArrayContent(compressedData);
             content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/gzip");
             
             var cloudEndpoint = Environment.GetEnvironmentVariable("CLOUD_UPLOAD_ENDPOINT") ?? "https://api.cloudprovider.com/upload/market";

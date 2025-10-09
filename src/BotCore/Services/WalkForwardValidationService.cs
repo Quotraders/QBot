@@ -101,7 +101,7 @@ namespace BotCore.Services
 
                 // Process each validation window
                 var validationTasks = new List<Task<WindowResult>>();
-                var semaphore = new SemaphoreSlim(Environment.ProcessorCount, Environment.ProcessorCount); // Limit concurrent validations
+                using var semaphore = new SemaphoreSlim(Environment.ProcessorCount, Environment.ProcessorCount); // Limit concurrent validations
 
                 foreach (var window in windows)
                 {
