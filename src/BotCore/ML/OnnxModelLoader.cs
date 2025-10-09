@@ -300,7 +300,15 @@ public sealed class OnnxModelLoader : IDisposable
                     return result;
                 }
             }
-            catch (Exception ex)
+            catch (OnnxRuntimeException ex)
+            {
+                LogLoadAttemptFailed(_logger, candidate, ex);
+            }
+            catch (FileNotFoundException ex)
+            {
+                LogLoadAttemptFailed(_logger, candidate, ex);
+            }
+            catch (InvalidOperationException ex)
             {
                 LogLoadAttemptFailed(_logger, candidate, ex);
             }
@@ -422,7 +430,19 @@ public sealed class OnnxModelLoader : IDisposable
             session = null; // Transfer ownership to result
             return result;
         }
-        catch (Exception ex)
+        catch (OnnxRuntimeException ex)
+        {
+            session?.Dispose();
+            LogModelLoadError(_logger, modelPath, ex);
+            return new ModelLoadResult { Session = null, IsHealthy = false };
+        }
+        catch (FileNotFoundException ex)
+        {
+            session?.Dispose();
+            LogModelLoadError(_logger, modelPath, ex);
+            return new ModelLoadResult { Session = null, IsHealthy = false };
+        }
+        catch (InvalidOperationException ex)
         {
             session?.Dispose();
             LogModelLoadError(_logger, modelPath, ex);
@@ -508,7 +528,23 @@ public sealed class OnnxModelLoader : IDisposable
                 InferenceDurationMs = inferenceDuration.TotalMilliseconds 
             });
         }
-        catch (Exception ex)
+        catch (OnnxRuntimeException ex)
+        {
+            return Task.FromResult(new HealthProbeResult 
+            { 
+                IsHealthy = false, 
+                ErrorMessage = ex.Message 
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Task.FromResult(new HealthProbeResult 
+            { 
+                IsHealthy = false, 
+                ErrorMessage = ex.Message 
+            });
+        }
+        catch (ArgumentException ex)
         {
             return Task.FromResult(new HealthProbeResult 
             { 
