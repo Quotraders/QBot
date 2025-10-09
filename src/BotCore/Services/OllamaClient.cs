@@ -59,7 +59,7 @@ public sealed class OllamaClient : IDisposable
             };
 
             var jsonContent = JsonSerializer.Serialize(requestObject);
-            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+            using var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
             // Send POST request to Ollama
             var response = await _httpClient.PostAsync(

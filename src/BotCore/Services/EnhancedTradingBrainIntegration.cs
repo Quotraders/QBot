@@ -403,15 +403,27 @@ public class EnhancedTradingBrainIntegration
             // Strong directional signal with high action probability
             if (pricePred.Probability > (double)StrongSignalProbabilityThreshold && ensembleAction.ActionProbability > (double)ActionProbabilityThreshold)
             {
-                return pricePred.Direction == "Up" ? "STRONG_BUY" : 
-                       pricePred.Direction == "Down" ? "STRONG_SELL" : "HOLD";
+                return GetStrongSignal(pricePred.Direction);
             }
             
             // Moderate signal
             if (pricePred.Probability > (double)ModerateSignalProbabilityThreshold)
             {
-                return pricePred.Direction == "Up" ? "BUY" : 
-                       pricePred.Direction == "Down" ? "SELL" : "NEUTRAL";
+                return GetModerateSignal(pricePred.Direction);
+            }
+            
+            static string GetStrongSignal(string direction)
+            {
+                if (direction == "Up") return "STRONG_BUY";
+                if (direction == "Down") return "STRONG_SELL";
+                return "HOLD";
+            }
+            
+            static string GetModerateSignal(string direction)
+            {
+                if (direction == "Up") return "BUY";
+                if (direction == "Down") return "SELL";
+                return "NEUTRAL";
             }
         }
         

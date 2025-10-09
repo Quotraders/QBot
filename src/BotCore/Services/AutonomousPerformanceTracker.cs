@@ -439,7 +439,9 @@ public class AutonomousPerformanceTracker
         var totalWins = winningTrades.Sum(t => t.PnL);
         var totalLosses = Math.Abs(losingTrades.Sum(t => t.PnL));
         
-        return totalLosses > 0 ? totalWins / totalLosses : totalWins > 0 ? MaxProfitFactorWhenNoLosses : 0m;
+        if (totalLosses > 0) return totalWins / totalLosses;
+        if (totalWins > 0) return MaxProfitFactorWhenNoLosses;
+        return 0m;
     }
     
     private decimal CalculateSharpeRatio()

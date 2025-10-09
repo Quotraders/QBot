@@ -1051,7 +1051,7 @@ namespace BotCore.Services
                 var ocoId = $"OCO-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{symbol}";
                 
                 // Place first order
-                var orderId1 = orderType1.ToUpperInvariant() == "LIMIT"
+                var orderId1 = orderType1.Equals("LIMIT", StringComparison.OrdinalIgnoreCase)
                     ? await PlaceLimitOrderAsync(symbol, side1, quantity1, price1, $"OCO-{ocoId}").ConfigureAwait(false)
                     : await PlaceStopOrderAsync(symbol, side1, quantity1, price1, $"OCO-{ocoId}").ConfigureAwait(false);
                 
@@ -1062,7 +1062,7 @@ namespace BotCore.Services
                 }
                 
                 // Place second order
-                var orderId2 = orderType2.ToUpperInvariant() == "LIMIT"
+                var orderId2 = orderType2.Equals("LIMIT", StringComparison.OrdinalIgnoreCase)
                     ? await PlaceLimitOrderAsync(symbol, side2, quantity2, price2, $"OCO-{ocoId}").ConfigureAwait(false)
                     : await PlaceStopOrderAsync(symbol, side2, quantity2, price2, $"OCO-{ocoId}").ConfigureAwait(false);
                 
@@ -1131,7 +1131,7 @@ namespace BotCore.Services
                     symbol, side, quantity, entryPrice, stopPrice, targetPrice);
                 
                 // Validate bracket parameters
-                var isLong = side.ToUpperInvariant() == "BUY";
+                var isLong = side.Equals("BUY", StringComparison.OrdinalIgnoreCase);
                 if (isLong)
                 {
                     if (stopPrice >= entryPrice)
@@ -1163,7 +1163,7 @@ namespace BotCore.Services
                 var bracketId = $"BRACKET-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{symbol}";
                 
                 // Place entry order
-                var entryOrderId = entryOrderType.ToUpperInvariant() == "MARKET"
+                var entryOrderId = entryOrderType.Equals("MARKET", StringComparison.OrdinalIgnoreCase)
                     ? await PlaceMarketOrderAsync(symbol, side, quantity, $"BRACKET-ENTRY-{bracketId}").ConfigureAwait(false)
                     : await PlaceLimitOrderAsync(symbol, side, quantity, entryPrice, $"BRACKET-ENTRY-{bracketId}").ConfigureAwait(false);
                 
@@ -1320,7 +1320,7 @@ namespace BotCore.Services
                     orderId, bracketOrder.BracketId);
                 
                 // Determine opposite side for stop and target
-                var exitSide = bracketOrder.Side.ToUpperInvariant() == "BUY" ? "SELL" : "BUY";
+                var exitSide = bracketOrder.Side.Equals("BUY", StringComparison.OrdinalIgnoreCase) ? "SELL" : "BUY";
                 
                 // Place stop and target as OCO pair
                 var (ocoId, stopOrderId, targetOrderId) = await PlaceOcoOrderAsync(

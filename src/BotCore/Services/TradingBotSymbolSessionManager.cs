@@ -367,9 +367,9 @@ namespace TradingBot.BotCore.Services
                     _logger.LogInformation("Loaded {Count} configurations from {Path}", savedConfigurations.Count, _configurationPath);
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
-                _logger.LogDebug("Configuration loading was cancelled");
+                _logger.LogDebug(ex, "Configuration loading was cancelled");
                 throw;
             }
             catch (FileNotFoundException ex)

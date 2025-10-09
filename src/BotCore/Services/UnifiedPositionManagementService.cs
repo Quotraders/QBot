@@ -2633,9 +2633,19 @@ Explain in 2-3 sentences why time-based position management is taking this actio
                 {
                     var isLong = state.Quantity > 0;
                     var direction = isLong ? "LONG" : "SHORT";
-                    var confidenceTier = entryConfidence >= 0.85m ? "Very High" : 
-                                        entryConfidence >= 0.75m ? "High" : 
-                                        entryConfidence >= 0.65m ? "Medium" : "Low";
+                    var confidenceTier = GetConfidenceTier(entryConfidence);
+                    
+                    static string GetConfidenceTier(decimal confidence)
+                    {
+                        const decimal VeryHighConfidenceThreshold = 0.85m;
+                        const decimal HighConfidenceThreshold = 0.75m;
+                        const decimal MediumConfidenceThreshold = 0.65m;
+                        
+                        if (confidence >= VeryHighConfidenceThreshold) return "Very High";
+                        if (confidence >= HighConfidenceThreshold) return "High";
+                        if (confidence >= MediumConfidenceThreshold) return "Medium";
+                        return "Low";
+                    }
                     
                     var prompt = $@"I am a trading bot. ML confidence adjusted my trade parameters:
 

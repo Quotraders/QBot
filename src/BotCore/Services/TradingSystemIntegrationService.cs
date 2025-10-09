@@ -288,9 +288,9 @@ namespace TopstepX.Bot.Core.Services
                 {
                     await SetupTopstepXAdapterAsync(combinedCts.Token).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+                catch (OperationCanceledException ex) when (timeoutCts.IsCancellationRequested)
                 {
-                    _logger.LogWarning("⚠️ TopstepX adapter setup timed out after 2 minutes, continuing with degraded functionality");
+                    _logger.LogWarning(ex, "⚠️ TopstepX adapter setup timed out after 2 minutes, continuing with degraded functionality");
                 }
                 
                 // Setup event handlers
@@ -320,9 +320,9 @@ namespace TopstepX.Bot.Core.Services
                     await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken).ConfigureAwait(false);
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
-                _logger.LogInformation("🛑 Trading System Integration Service stopping...");
+                _logger.LogInformation(ex, "🛑 Trading System Integration Service stopping...");
             }
             catch (InvalidOperationException ex)
             {
@@ -538,13 +538,13 @@ namespace TopstepX.Bot.Core.Services
                     type = GetOrderTypeValue(request.OrderType), // ProjectX: 1=Limit, 2=Market, 4=Stop
                     side = GetSideValue(request.Side),         // ProjectX: 0=Bid(buy), 1=Ask(sell)
                     size = request.Quantity,                   // ProjectX expects integer size
-                    limitPrice = request.OrderType.ToUpperInvariant() == "LIMIT" ? entryPrice : (decimal?)null,
-                    stopPrice = request.OrderType.ToUpperInvariant() == "STOP" ? entryPrice : (decimal?)null,
+                    limitPrice = request.OrderType.Equals("LIMIT", StringComparison.OrdinalIgnoreCase) ? entryPrice : (decimal?)null,
+                    stopPrice = request.OrderType.Equals("STOP", StringComparison.OrdinalIgnoreCase) ? entryPrice : (decimal?)null,
                     customTag = customTag
                 };
 
                 var json = JsonSerializer.Serialize(orderPayload);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 var response = await _httpClient.PostAsync("/api/Order/place", content, cancellationToken).ConfigureAwait(false);
 
@@ -645,9 +645,9 @@ namespace TopstepX.Bot.Core.Services
             {
                 _logger.LogError(ex, "[STRATEGY] Invalid operation during trade opportunity evaluation");
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
-                _logger.LogWarning("[STRATEGY] Trade opportunity evaluation cancelled");
+                _logger.LogWarning(ex, "[STRATEGY] Trade opportunity evaluation cancelled");
             }
             catch (ArgumentException ex)
             {
@@ -762,9 +762,9 @@ namespace TopstepX.Bot.Core.Services
             {
                 _logger.LogError(ex, "[ML/RL-STRATEGY] Invalid argument in ML/RL-enhanced strategy evaluation for {Symbol}", symbol);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
-                _logger.LogWarning("[ML/RL-STRATEGY] ML/RL-enhanced strategy evaluation cancelled for {Symbol}", symbol);
+                _logger.LogWarning(ex, "[ML/RL-STRATEGY] ML/RL-enhanced strategy evaluation cancelled for {Symbol}", symbol);
             }
         }
 
@@ -811,9 +811,9 @@ namespace TopstepX.Bot.Core.Services
                 _logger.LogError(ex, "[ML/RL-FEATURES] Invalid argument generating features for {Symbol}", symbol);
                 return null;
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
-                _logger.LogWarning("[ML/RL-FEATURES] Feature generation cancelled for {Symbol}", symbol);
+                _logger.LogWarning(ex, "[ML/RL-FEATURES] Feature generation cancelled for {Symbol}", symbol);
                 return null;
             }
         }
@@ -984,9 +984,9 @@ namespace TopstepX.Bot.Core.Services
             {
                 _logger.LogError(ex, "[ML/RL-EXECUTION] Invalid argument processing ML/RL enhanced signal for {Symbol}", signal.Symbol);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
-                _logger.LogWarning("[ML/RL-EXECUTION] Processing ML/RL enhanced signal cancelled for {Symbol}", signal.Symbol);
+                _logger.LogWarning(ex, "[ML/RL-EXECUTION] Processing ML/RL enhanced signal cancelled for {Symbol}", signal.Symbol);
             }
         }
 
@@ -1256,9 +1256,9 @@ namespace TopstepX.Bot.Core.Services
                 {
                     _logger.LogError(ex, "[STRATEGY] Invalid operation in timer callback");
                 }
-                catch (OperationCanceledException)
+                catch (OperationCanceledException ex)
                 {
-                    _logger.LogWarning("[STRATEGY] Timer callback operation cancelled");
+                    _logger.LogWarning(ex, "[STRATEGY] Timer callback operation cancelled");
                 }
             });
         }

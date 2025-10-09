@@ -96,8 +96,11 @@ public class TopstepXHttpClient : ITopstepXHttpClient, IDisposable
             httpContent = new StringContent(json, Encoding.UTF8, "application/json");
         }
 
-        var response = await PostAsync(requestUri, httpContent, cancellationToken).ConfigureAwait(false);
-        return await DeserializeResponseAsync<T>(response, cancellationToken).ConfigureAwait(false);
+        using (httpContent)
+        {
+            var response = await PostAsync(requestUri, httpContent, cancellationToken).ConfigureAwait(false);
+            return await DeserializeResponseAsync<T>(response, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
