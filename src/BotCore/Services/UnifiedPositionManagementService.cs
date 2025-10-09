@@ -2637,9 +2637,13 @@ Explain in 2-3 sentences why time-based position management is taking this actio
                     
                     static string GetConfidenceTier(decimal confidence)
                     {
-                        if (confidence >= 0.85m) return "Very High";
-                        if (confidence >= 0.75m) return "High";
-                        if (confidence >= 0.65m) return "Medium";
+                        const decimal VeryHighConfidenceThreshold = 0.85m;
+                        const decimal HighConfidenceThreshold = 0.75m;
+                        const decimal MediumConfidenceThreshold = 0.65m;
+                        
+                        if (confidence >= VeryHighConfidenceThreshold) return "Very High";
+                        if (confidence >= HighConfidenceThreshold) return "High";
+                        if (confidence >= MediumConfidenceThreshold) return "Medium";
                         return "Low";
                     }
                     

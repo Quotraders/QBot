@@ -60,9 +60,13 @@ public class ExecutionAnalyzer
 
             string DetermineQuality(decimal slippagePct)
             {
-                if (slippagePct < 0.02m) return "excellent";
-                if (slippagePct < 0.05m) return "good";
-                if (slippagePct < 0.1m) return "fair";
+                const decimal ExcellentSlippageThreshold = 0.02m;
+                const decimal GoodSlippageThreshold = 0.05m;
+                const decimal FairSlippageThreshold = 0.1m;
+                
+                if (slippagePct < ExcellentSlippageThreshold) return "excellent";
+                if (slippagePct < GoodSlippageThreshold) return "good";
+                if (slippagePct < FairSlippageThreshold) return "fair";
                 return "poor";
             }
 
@@ -159,15 +163,18 @@ public class ExecutionAnalyzer
 
             string DetermineOutcomeQuality(bool isSuccessful, decimal conf)
             {
+                const decimal HighConfidenceThreshold = 0.7m;
+                const decimal MediumConfidenceThreshold = 0.4m;
+                
                 if (isSuccessful)
                 {
-                    if (conf > 0.7m) return "high_confidence_success";
-                    if (conf > 0.4m) return "medium_confidence_success";
+                    if (conf > HighConfidenceThreshold) return "high_confidence_success";
+                    if (conf > MediumConfidenceThreshold) return "medium_confidence_success";
                     return "low_confidence_success";
                 }
                 else
                 {
-                    if (conf > 0.7m) return "high_confidence_failure";
+                    if (conf > HighConfidenceThreshold) return "high_confidence_failure";
                     return "failed";
                 }
             }
