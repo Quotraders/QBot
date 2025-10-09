@@ -133,7 +133,7 @@ namespace BotCore.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[WALK-FORWARD] Error in walk-forward validation for {Strategy}", request.StrategyName);
-                throw;
+                throw new InvalidOperationException($"Walk-forward validation failed for strategy {request.StrategyName}", ex);
             }
         }
 
@@ -198,7 +198,7 @@ namespace BotCore.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[WALK-FORWARD] Error generating validation windows");
-                throw;
+                throw new InvalidOperationException($"Failed to generate validation windows from {startDate} to {endDate}", ex);
             }
         }
 
@@ -230,7 +230,7 @@ namespace BotCore.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[MODEL-VALIDATION] Error validating model on window {WindowIndex}", window.WindowIndex);
-                throw;
+                throw new InvalidOperationException($"Model validation failed on window {window.WindowIndex}", ex);
             }
         }
 
@@ -473,7 +473,7 @@ namespace BotCore.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[MODEL-TRAINING] Error training model for window {WindowIndex}", window.WindowIndex);
-                throw;
+                throw new InvalidOperationException($"Model training failed for window {window.WindowIndex}", ex);
             }
         }
 

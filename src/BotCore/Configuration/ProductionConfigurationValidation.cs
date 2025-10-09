@@ -697,7 +697,7 @@ public class ConfigurationValidationStartupService : IHostedService
         catch (Exception ex)
         {
             _logger.LogCritical(ex, "❌ [CONFIG] Configuration validation failed - stopping application");
-            throw; // Fail-fast startup
+            throw new InvalidOperationException("Production configuration validation failed - application cannot start with invalid configuration", ex);
         }
     }
 

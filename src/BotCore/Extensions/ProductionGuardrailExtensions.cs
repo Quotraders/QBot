@@ -81,7 +81,7 @@ public static class ProductionGuardrailExtensions
         catch (Exception ex)
         {
             logger?.LogCritical(ex, "❌ [SETUP] Production guardrail validation FAILED");
-            throw;
+            throw new InvalidOperationException("Production guardrail validation failed - cannot proceed with startup", ex);
         }
     }
 
