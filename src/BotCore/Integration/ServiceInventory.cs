@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -154,20 +155,20 @@ public sealed class ServiceInventory
         var report = GenerateInventoryReport();
         var audit = new StringBuilder();
         
-        audit.AppendLine("=== PRODUCTION SERVICE INVENTORY AUDIT ===");
-        audit.AppendLine($"Generated: {report.GeneratedAt:yyyy-MM-dd HH:mm:ss} UTC");
-        audit.AppendLine($"Total Categories: {report.Services.Count}");
-        audit.AppendLine($"Total Services: {report.Services.Values.Sum(s => s.Count)}");
+        audit.AppendLine(CultureInfo.InvariantCulture, $"=== PRODUCTION SERVICE INVENTORY AUDIT ===");
+        audit.AppendLine(CultureInfo.InvariantCulture, $"Generated: {report.GeneratedAt:yyyy-MM-dd HH:mm:ss} UTC");
+        audit.AppendLine(CultureInfo.InvariantCulture, $"Total Categories: {report.Services.Count}");
+        audit.AppendLine(CultureInfo.InvariantCulture, $"Total Services: {report.Services.Values.Sum(s => s.Count)}");
         audit.AppendLine();
         
         foreach (var category in report.Services)
         {
-            audit.AppendLine($"[{category.Key}]");
+            audit.AppendLine(CultureInfo.InvariantCulture, $"[{category.Key}]");
             foreach (var service in category.Value)
             {
                 var status = service.IsRegistered ? "✅ REGISTERED" : "❌ NOT REGISTERED";
-                audit.AppendLine($"  {service.Name}: {status}");
-                audit.AppendLine($"    Type: {service.Type}");
+                audit.AppendLine(CultureInfo.InvariantCulture, $"  {service.Name}: {status}");
+                audit.AppendLine(CultureInfo.InvariantCulture, $"    Type: {service.Type}");
             }
             audit.AppendLine();
         }
@@ -182,7 +183,7 @@ public sealed class ServiceInventory
 public sealed class ServiceInventoryReport
 {
     public DateTime GeneratedAt { get; set; }
-    public Dictionary<string, List<ServiceInfo>> Services { get; set; } = new();
+    public Dictionary<string, List<ServiceInfo>> Services { get; init; } = new();
 }
 
 /// <summary>

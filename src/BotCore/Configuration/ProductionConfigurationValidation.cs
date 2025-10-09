@@ -716,7 +716,7 @@ public class ConfigurationValidationStartupService : IHostedService
         }
         catch (OptionsValidationException ex)
         {
-            _logger.LogError("❌ [CONFIG] {Section} validation failed: {Failures}", 
+            _logger.LogError(ex, "❌ [CONFIG] {Section} validation failed: {Failures}", 
                 sectionName, string.Join("; ", ex.Failures));
             throw;
         }
