@@ -280,7 +280,21 @@ public sealed class MLSystemConsolidationService
                 await ExecuteActionAsync(action, dryRun).ConfigureAwait(false);
                 result.ActionsCompleted++;
             }
-            catch (Exception ex)
+            catch (IOException ex)
+            {
+                LogActionFailed(_logger, action.Action, ex);
+                action.Status = ConsolidationStatus.Failed;
+                action.ErrorMessage = ex.Message;
+                result.ActionsFailed++;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                LogActionFailed(_logger, action.Action, ex);
+                action.Status = ConsolidationStatus.Failed;
+                action.ErrorMessage = ex.Message;
+                result.ActionsFailed++;
+            }
+            catch (InvalidOperationException ex)
             {
                 LogActionFailed(_logger, action.Action, ex);
                 action.Status = ConsolidationStatus.Failed;

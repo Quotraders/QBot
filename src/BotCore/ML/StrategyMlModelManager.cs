@@ -505,7 +505,12 @@ namespace BotCore.ML
 
                 return Math.Clamp(qualityScore, MinimumQualityClamp, MaximumQualityClamp);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
+            {
+                LogExecutionQualityError(_logger, symbol, ex);
+                return DefaultExecutionQuality; // Default score
+            }
+            catch (ArgumentException ex)
             {
                 LogExecutionQualityError(_logger, symbol, ex);
                 return DefaultExecutionQuality; // Default score
