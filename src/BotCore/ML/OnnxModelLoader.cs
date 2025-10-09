@@ -1257,24 +1257,21 @@ public sealed class OnnxModelLoader : IDisposable
     private async Task CompressModelAsync(string modelPath, CancellationToken cancellationToken)
     {
         // Compress model file using GZip compression
-        await Task.Run(() =>
+        var compressedPath = modelPath + ".gz";
+        
+        using (var originalFileStream = File.OpenRead(modelPath))
+        using (var compressedFileStream = File.Create(compressedPath))
+        using (var compressionStream = new System.IO.Compression.GZipStream(compressedFileStream, System.IO.Compression.CompressionMode.Compress))
         {
-            var compressedPath = modelPath + ".gz";
-            
-            using (var originalFileStream = File.OpenRead(modelPath))
-            using (var compressedFileStream = File.Create(compressedPath))
-            using (var compressionStream = new System.IO.Compression.GZipStream(compressedFileStream, System.IO.Compression.CompressionMode.Compress))
-            {
-                originalFileStream.CopyTo(compressionStream);
-            }
-            
-            var originalSize = new FileInfo(modelPath).Length;
-            var compressedSize = new FileInfo(compressedPath).Length;
-            var compressionRatio = (double)compressedSize / originalSize;
-            
-            _logger.LogInformation("[ONNX-Registry] Model compressed: {ModelPath} (ratio: {Ratio:P1})", 
-                modelPath, compressionRatio);
-        }, cancellationToken).ConfigureAwait(false);
+            await originalFileStream.CopyToAsync(compressionStream, cancellationToken).ConfigureAwait(false);
+        }
+        
+        var originalSize = new FileInfo(modelPath).Length;
+        var compressedSize = new FileInfo(compressedPath).Length;
+        var compressionRatio = (double)compressedSize / originalSize;
+        
+        _logger.LogInformation("[ONNX-Registry] Model compressed: {ModelPath} (ratio: {Ratio:P1})", 
+            modelPath, compressionRatio);
     }
 
     private async Task UpdateRegistryIndexAsync(ModelRegistryEntry entry, CancellationToken cancellationToken)

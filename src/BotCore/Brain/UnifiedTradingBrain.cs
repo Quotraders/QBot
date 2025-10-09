@@ -228,6 +228,13 @@ namespace BotCore.Brain
         private const int AfternoonFadeStartHour = 13;               // Afternoon fade start hour (1 PM)
         private const int AfternoonFadeEndHour = 16;                 // Afternoon fade end hour (4 PM)
         
+        // Market session hour constants (UTC)
+        private const int PreMarketStartHour = 8;                    // Pre-market start hour (8 AM UTC)
+        private const int RegularTradingStartHour = 13;              // Regular trading start hour (1 PM UTC)
+        private const int RegularTradingEndHour = 20;                // Regular trading end hour (8 PM UTC)
+        private const int AfterHoursEndHour = 22;                    // After hours end hour (10 PM UTC)
+        private const decimal TrendStrengthThreshold = 0.2m;         // Trend strength classification threshold
+        
         // Multi-strategy learning state
         private readonly Dictionary<string, StrategyPerformance> _strategyPerformance = new();
         private readonly Dictionary<string, List<BotCore.Brain.Models.MarketCondition>> _strategyOptimalConditions = new();
@@ -545,9 +552,23 @@ namespace BotCore.Brain
                         
                         // Determine session based on time of day
                         var currentHour = DateTime.UtcNow.Hour;
-                        var sessionName = currentHour >= 13 && currentHour < 20 ? "RegularTrading" : 
-                                         currentHour >= 8 && currentHour < 13 ? "PreMarket" :
-                                         currentHour >= 20 && currentHour < 22 ? "AfterHours" : "Closed";
+                        string sessionName;
+                        if (currentHour >= RegularTradingStartHour && currentHour < RegularTradingEndHour)
+                        {
+                            sessionName = "RegularTrading";
+                        }
+                        else if (currentHour >= PreMarketStartHour && currentHour < RegularTradingStartHour)
+                        {
+                            sessionName = "PreMarket";
+                        }
+                        else if (currentHour >= RegularTradingEndHour && currentHour < AfterHoursEndHour)
+                        {
+                            sessionName = "AfterHours";
+                        }
+                        else
+                        {
+                            sessionName = "Closed";
+                        }
                         
                         // Create default zone snapshot (no zone service in brain yet)
                         var emptyZoneSnapshot = new Zones.ZoneSnapshot(
@@ -569,11 +590,25 @@ namespace BotCore.Brain
                         };
                         emptyPatternScores.SetDetectedPatterns(System.Array.Empty<BotCore.Patterns.PatternDetail>());
                         
+                        string trend;
+                        if (context.TrendStrength > TrendStrengthThreshold)
+                        {
+                            trend = "Bullish";
+                        }
+                        else if (context.TrendStrength < -TrendStrengthThreshold)
+                        {
+                            trend = "Bearish";
+                        }
+                        else
+                        {
+                            trend = "Neutral";
+                        }
+                        
                         var snapshot = BotCore.Services.MarketSnapshotStore.CreateSnapshot(
                             symbol: decision.Symbol,
                             currentPrice: currentPrice,
                             vix: vixValue,
-                            trend: context.TrendStrength > 0.2m ? "Bullish" : context.TrendStrength < -0.2m ? "Bearish" : "Neutral",
+                            trend: trend,
                             session: sessionName,
                             zoneSnapshot: emptyZoneSnapshot,
                             patternScores: emptyPatternScores,
@@ -834,9 +869,18 @@ namespace BotCore.Brain
                     var latestContext = _marketContexts.Values.LastOrDefault();
                     if (latestContext != null)
                     {
-                        trend = latestContext.TrendStrength > StrongTrendThreshold ? "Bullish" 
-                            : latestContext.TrendStrength < -StrongTrendThreshold ? "Bearish" 
-                            : "Neutral";
+                        if (latestContext.TrendStrength > StrongTrendThreshold)
+                        {
+                            trend = "Bullish";
+                        }
+                        else if (latestContext.TrendStrength < -StrongTrendThreshold)
+                        {
+                            trend = "Bearish";
+                        }
+                        else
+                        {
+                            trend = "Neutral";
+                        }
                     }
                 }
                 
@@ -926,14 +970,39 @@ namespace BotCore.Brain
                         var vixValue = _latestEnv?.volz ?? 0m;
                         var currentPrice = _latestBars?.LastOrDefault()?.Close ?? 0m;
                         var currentHour = DateTime.UtcNow.Hour;
-                        var sessionName = currentHour >= 13 && currentHour < 20 ? "RegularTrading" : 
-                                         currentHour >= 8 && currentHour < 13 ? "PreMarket" :
-                                         currentHour >= 20 && currentHour < 22 ? "AfterHours" : "Closed";
+                        string sessionName;
+                        if (currentHour >= RegularTradingStartHour && currentHour < RegularTradingEndHour)
+                        {
+                            sessionName = "RegularTrading";
+                        }
+                        else if (currentHour >= PreMarketStartHour && currentHour < RegularTradingStartHour)
+                        {
+                            sessionName = "PreMarket";
+                        }
+                        else if (currentHour >= RegularTradingEndHour && currentHour < AfterHoursEndHour)
+                        {
+                            sessionName = "AfterHours";
+                        }
+                        else
+                        {
+                            sessionName = "Closed";
+                        }
                         
                         // Get trend from latest context
                         var latestContext = _marketContexts.Values.LastOrDefault();
-                        var trendName = latestContext != null && latestContext.TrendStrength > 0.2m ? "Bullish" : 
-                                       latestContext != null && latestContext.TrendStrength < -0.2m ? "Bearish" : "Neutral";
+                        string trendName;
+                        if (latestContext != null && latestContext.TrendStrength > TrendStrengthThreshold)
+                        {
+                            trendName = "Bullish";
+                        }
+                        else if (latestContext != null && latestContext.TrendStrength < -TrendStrengthThreshold)
+                        {
+                            trendName = "Bearish";
+                        }
+                        else
+                        {
+                            trendName = "Neutral";
+                        }
                         
                         // Create default zone snapshot and pattern scores for similarity search
                         var emptyZoneSnapshot = new Zones.ZoneSnapshot(
@@ -985,6 +1054,9 @@ namespace BotCore.Brain
                     }
                 }
                 
+                var riskSection = !string.IsNullOrEmpty(riskContext) ? $"Risk Assessment: {riskContext}\n\n" : "";
+                var historicalSection = !string.IsNullOrEmpty(historicalContext) ? $"Historical Context: {historicalContext}\n\n" : "";
+                
                 var prompt = $@"I am a trading bot. I'm about to take this trade:
 Strategy: {decision.RecommendedStrategy}
 Direction: {decision.PriceDirection}
@@ -993,7 +1065,7 @@ Market Regime: {decision.MarketRegime}
 
 Current context: {currentContext}
 
-{(!string.IsNullOrEmpty(riskContext) ? $"Risk Assessment: {riskContext}\n\n" : "")}{(!string.IsNullOrEmpty(historicalContext) ? $"Historical Context: {historicalContext}\n\n" : "")}Explain in 2-3 sentences why I'm taking this trade. Speak as ME (the bot), not as an observer.";
+{riskSection}{historicalSection}Explain in 2-3 sentences why I'm taking this trade. Speak as ME (the bot), not as an observer.";
                 
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
