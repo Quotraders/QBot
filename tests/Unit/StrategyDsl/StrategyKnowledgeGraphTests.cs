@@ -17,7 +17,7 @@ namespace BotCore.Tests.StrategyDsl;
 public sealed class StrategyKnowledgeGraphTests
 {
     private readonly Mock<ILogger<StrategyKnowledgeGraph>> _loggerMock;
-    private readonly Mock<FeatureProbe> _featureProbeMock;
+    private readonly Mock<IFeatureProbe> _featureProbeMock;
     private readonly Mock<DslLoader> _dslLoaderMock;
     private readonly Mock<ExpressionEvaluator> _expressionEvaluatorMock;
     private readonly Mock<IOptionsMonitor<StrategyKnowledgeGraphOptions>> _optionsMock;
@@ -27,11 +27,7 @@ public sealed class StrategyKnowledgeGraphTests
     public StrategyKnowledgeGraphTests()
     {
         _loggerMock = new Mock<ILogger<StrategyKnowledgeGraph>>();
-        _featureProbeMock = new Mock<FeatureProbe>(
-            Mock.Of<ILogger<FeatureProbe>>(),
-            Mock.Of<IConfiguration>(),
-            Mock.Of<PatternEngine>(),
-            Mock.Of<FeatureBusMapper>());
+        _featureProbeMock = new Mock<IFeatureProbe>();
         _dslLoaderMock = new Mock<DslLoader>(
             Mock.Of<ILogger<DslLoader>>(),
             Mock.Of<IOptionsMonitor<DslLoaderOptions>>());

@@ -39,7 +39,6 @@ namespace BotCore.Services
     {
         // Data flow monitoring constants
         private const int DataFlowCheckIntervalMilliseconds = 1000; // Check every 1 second
-        private const int SnapshotSimulationDelayMilliseconds = 100; // Snapshot API call simulation delay
         
         private readonly ILogger<EnhancedMarketDataFlowService> _logger;
         private readonly DataFlowEnhancementConfiguration _config;
@@ -585,9 +584,9 @@ namespace BotCore.Services
                 // In production, this would make an actual API call to TopstepX
                 // For now, we'll simulate the request
                 
-                // Simulate API call delay
-                await Task.Delay(SnapshotSimulationDelayMilliseconds).ConfigureAwait(false);
-
+                // Small async yield to maintain async pattern
+                await Task.Yield();
+                
                 // Simulate successful snapshot response
                 var snapshotData = new
                 {
