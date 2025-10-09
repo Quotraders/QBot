@@ -6,6 +6,7 @@ using BotCore.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using BotCore.Market;
@@ -163,9 +164,27 @@ namespace BotCore.Features
                         _logger.LogWarning("[BAR-DISPATCHER] [AUDIT-VIOLATION] Service type {ServiceType} not found in loaded assemblies", serviceTypeName);
                     }
                 }
-                catch (Exception ex)
+                catch (TypeLoadException ex)
                 {
-                    _logger.LogWarning(ex, "[BAR-DISPATCHER] [AUDIT-VIOLATION] Failed to hook into {ServiceType}", serviceTypeName);
+                    _logger.LogWarning(ex, "[BAR-DISPATCHER] [AUDIT-VIOLATION] Type load failed for {ServiceType}", serviceTypeName);
+                    
+                    if (_config.EnableExplicitHolds)
+                    {
+                        _logger.LogError("[BAR-DISPATCHER] [AUDIT-VIOLATION] Failed to hook into expected bar source {ServiceType} - EXPLICIT HOLD TRIGGERED + TELEMETRY", serviceTypeName);
+                    }
+                }
+                catch (TargetInvocationException ex)
+                {
+                    _logger.LogWarning(ex, "[BAR-DISPATCHER] [AUDIT-VIOLATION] Invocation failed for {ServiceType}", serviceTypeName);
+                    
+                    if (_config.EnableExplicitHolds)
+                    {
+                        _logger.LogError("[BAR-DISPATCHER] [AUDIT-VIOLATION] Failed to hook into expected bar source {ServiceType} - EXPLICIT HOLD TRIGGERED + TELEMETRY", serviceTypeName);
+                    }
+                }
+                catch (InvalidOperationException ex)
+                {
+                    _logger.LogWarning(ex, "[BAR-DISPATCHER] [AUDIT-VIOLATION] Invalid operation for {ServiceType}", serviceTypeName);
                     
                     if (_config.EnableExplicitHolds)
                     {
@@ -204,9 +223,20 @@ namespace BotCore.Features
                 
                 return hookedAnyEvent;
             }
-            catch (Exception ex)
+            catch (TargetInvocationException ex)
             {
-                _logger.LogWarning(ex, "[BAR-DISPATCHER] [AUDIT-VIOLATION] Failed to inspect service events for {ServiceType}", service.GetType().Name);
+                _logger.LogWarning(ex, "[BAR-DISPATCHER] [AUDIT-VIOLATION] Reflection invocation failed for {ServiceType}", service.GetType().Name);
+                
+                if (_config.EnableExplicitHolds)
+                {
+                    _logger.LogError("[BAR-DISPATCHER] [AUDIT-VIOLATION] Critical failure inspecting bar source - EXPLICIT HOLD TRIGGERED + TELEMETRY");
+                }
+                
+                return false;
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "[BAR-DISPATCHER] [AUDIT-VIOLATION] Invalid operation inspecting events for {ServiceType}", service.GetType().Name);
                 
                 if (_config.EnableExplicitHolds)
                 {
@@ -245,9 +275,14 @@ namespace BotCore.Features
                     _logger.LogTrace("[BAR-DISPATCHER] Completed processing bar for {Symbol} with {ResolverCount} resolvers", 
                         symbol, _resolvers.Count());
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "[BAR-DISPATCHER] [AUDIT-VIOLATION] Failed to process bar for {Symbol} - FAIL-CLOSED + TELEMETRY", symbol);
+                    _logger.LogError(ex, "[BAR-DISPATCHER] [AUDIT-VIOLATION] Invalid operation processing bar for {Symbol} - FAIL-CLOSED + TELEMETRY", symbol);
+                    // Log but don't rethrow in fire-and-forget context
+                }
+                catch (TaskCanceledException ex)
+                {
+                    _logger.LogError(ex, "[BAR-DISPATCHER] [AUDIT-VIOLATION] Task cancelled processing bar for {Symbol} - FAIL-CLOSED + TELEMETRY", symbol);
                     // Log but don't rethrow in fire-and-forget context
                 }
             });

@@ -3,6 +3,7 @@ using BotCore.Config;
 using BotCore.Services;
 using TradingBot.Abstractions;
 using Microsoft.Extensions.Logging;
+using System.Reflection;
 
 namespace BotCore.Features;
 
@@ -143,11 +144,39 @@ public class FeatureBuilder
             
             return features;
         }
-        catch (Exception ex)
+        catch (DivideByZeroException ex)
         {
             // Fail-closed: Log error with telemetry and return fill values
-            _logger.LogError(ex, "[FEATURE-BUILDER] Feature computation failed for symbol {Symbol}. Returning fill values. Exception: {ExceptionType}", 
-                symbol, ex.GetType().Name);
+            _logger.LogError(ex, "[FEATURE-BUILDER] Division by zero in feature computation for {Symbol}. Returning fill values.", 
+                symbol);
+            
+            // Fill with default values as fallback
+            for (int i = 0; i < features.Length; i++)
+            {
+                features[i] = _spec.Columns[i].FillValue;
+            }
+            
+            return features;
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Fail-closed: Log error with telemetry and return fill values
+            _logger.LogError(ex, "[FEATURE-BUILDER] Invalid operation in feature computation for {Symbol}. Returning fill values.", 
+                symbol);
+            
+            // Fill with default values as fallback
+            for (int i = 0; i < features.Length; i++)
+            {
+                features[i] = _spec.Columns[i].FillValue;
+            }
+            
+            return features;
+        }
+        catch (ArgumentException ex)
+        {
+            // Fail-closed: Log error with telemetry and return fill values
+            _logger.LogError(ex, "[FEATURE-BUILDER] Invalid argument in feature computation for {Symbol}. Returning fill values.", 
+                symbol);
             
             // Fill with default values as fallback
             for (int i = 0; i < features.Length; i++)
@@ -330,9 +359,17 @@ public class FeatureBuilder
                 return NeutralOrderbookImbalance;
             }
         }
-        catch (Exception ex)
+        catch (TargetInvocationException ex)
         {
-            _logger.LogWarning(ex, "[FEATURE-BUILDER] Failed to compute orderbook imbalance: {ExceptionType}. Using fill value.", ex.GetType().Name);
+            _logger.LogWarning(ex, "[FEATURE-BUILDER] Reflection error computing orderbook imbalance. Using fill value.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "[FEATURE-BUILDER] Invalid operation computing orderbook imbalance. Using fill value.");
+        }
+        catch (InvalidCastException ex)
+        {
+            _logger.LogWarning(ex, "[FEATURE-BUILDER] Type cast error computing orderbook imbalance. Using fill value.");
         }
         
         return _spec.Columns[OrderbookImbalanceIndex].FillValue;
@@ -458,9 +495,14 @@ public class FeatureBuilder
             
             return adrPct;
         }
-        catch (Exception ex)
+        catch (DivideByZeroException ex)
         {
-            _logger.LogError(ex, "[FEATURE-BUILDER] ComputeAdrPct: Unexpected exception {ExceptionType}. Using fill value.", ex.GetType().Name);
+            _logger.LogError(ex, "[FEATURE-BUILDER] ComputeAdrPct: Division by zero. Using fill value.");
+            return _spec.Columns[AdrPctIndex].FillValue;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "[FEATURE-BUILDER] ComputeAdrPct: Invalid operation. Using fill value.");
             return _spec.Columns[AdrPctIndex].FillValue;
         }
     }
@@ -514,9 +556,14 @@ public class FeatureBuilder
                 _ => _spec.Columns[SessionFlagIndex].FillValue
             };
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "[FEATURE-BUILDER] Failed to compute session flag: {ExceptionType}. Using fill value.", ex.GetType().Name);
+            _logger.LogWarning(ex, "[FEATURE-BUILDER] Invalid operation computing session flag. Using fill value.");
+            return _spec.Columns[SessionFlagIndex].FillValue;
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "[FEATURE-BUILDER] Invalid argument computing session flag. Using fill value.");
             return _spec.Columns[SessionFlagIndex].FillValue;
         }
     }
@@ -558,10 +605,16 @@ public class FeatureBuilder
                 _ => _spec.Columns[SessionTypeIndex].FillValue
             };
         }
-        catch (Exception ex)
+        catch (AggregateException ex)
         {
-            _logger.LogWarning(ex, "[FEATURE-BUILDER] Failed to compute session type for symbol {Symbol}: {ExceptionType}. Using fill value.", 
-                symbol, ex.GetType().Name);
+            _logger.LogWarning(ex, "[FEATURE-BUILDER] Task error computing session type for {Symbol}. Using fill value.", 
+                symbol);
+            return _spec.Columns[SessionTypeIndex].FillValue;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "[FEATURE-BUILDER] Invalid operation computing session type for {Symbol}. Using fill value.", 
+                symbol);
             return _spec.Columns[SessionTypeIndex].FillValue;
         }
     }
@@ -595,10 +648,16 @@ public class FeatureBuilder
             
             return 0; // Neutral
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "[FEATURE-BUILDER] Failed to compute S7 regime for symbol {Symbol}: {ExceptionType}. Using fill value.", 
-                symbol, ex.GetType().Name);
+            _logger.LogWarning(ex, "[FEATURE-BUILDER] Invalid operation computing S7 regime for {Symbol}. Using fill value.", 
+                symbol);
+            return _spec.Columns[S7RegimeIndex].FillValue;
+        }
+        catch (KeyNotFoundException ex)
+        {
+            _logger.LogWarning(ex, "[FEATURE-BUILDER] Key not found computing S7 regime for {Symbol}. Using fill value.", 
+                symbol);
             return _spec.Columns[S7RegimeIndex].FillValue;
         }
     }

@@ -265,9 +265,13 @@ namespace BotCore.Execution
                     _activeExecutions.TryRemove(expiredId, out _);
                 }
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[CHILD-SCHEDULER] Error monitoring active executions");
+                _logger.LogError(ex, "[CHILD-SCHEDULER] Invalid operation monitoring active executions");
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogError(ex, "[CHILD-SCHEDULER] Key not found monitoring active executions");
             }
         }
 
