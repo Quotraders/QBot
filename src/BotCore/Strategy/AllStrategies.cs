@@ -204,23 +204,31 @@ namespace BotCore.Strategy
             // Dispatch to the specific strategy function based on def.Name (S1..S14)
             var env = new Env { atr = bars.Count > 0 ? (decimal?)Math.Abs(bars[^1].High - bars[^1].Low) : null, volz = VolZ(bars) };
             var levels = new Levels();
-            var riskEngine = risk as RiskEngine ?? new RiskEngine();
-
-            var map = new Dictionary<string, Func<string, Env, Levels, IList<Bar>, RiskEngine, List<Candidate>>>(StringComparer.OrdinalIgnoreCase)
+            var riskEngine = risk as RiskEngine;
+            var disposeRiskEngine = false;
+            if (riskEngine == null)
             {
-                ["S2"] = S2,
-                ["S3"] = S3,
-                ["S6"] = S6,
-                ["S11"] = S11,
-            };
+                riskEngine = new RiskEngine();
+                disposeRiskEngine = true;
+            }
 
-            if (!def.Enabled) return [];
-            if (!map.TryGetValue(def.Name, out var fn)) return [];
+            try
+            {
+                var map = new Dictionary<string, Func<string, Env, Levels, IList<Bar>, RiskEngine, List<Candidate>>>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["S2"] = S2,
+                    ["S3"] = S3,
+                    ["S6"] = S6,
+                    ["S11"] = S11,
+                };
 
-            // Apply S7 gate for gated strategies (S2, S3, S6, S11) before candidate generation
-            if (!StrategyGates.PassesS7Gate(s7Service, def.Name)) return [];
+                if (!def.Enabled) return [];
+                if (!map.TryGetValue(def.Name, out var fn)) return [];
 
-            var candidates = fn(symbol, env, levels, bars, riskEngine);
+                // Apply S7 gate for gated strategies (S2, S3, S6, S11) before candidate generation
+                if (!StrategyGates.PassesS7Gate(s7Service, def.Name)) return [];
+
+                var candidates = fn(symbol, env, levels, bars, riskEngine);
 
             // Family weighting
             var family = def.Family ?? "breakout";
@@ -291,6 +299,14 @@ namespace BotCore.Strategy
                 });
             }
             return signals;
+            }
+            finally
+            {
+                if (disposeRiskEngine)
+                {
+                    riskEngine?.Dispose();
+                }
+            }
         }
 
         // Deterministic combined candidate flow (no forced trade); config-aware with defs list

@@ -8,7 +8,7 @@ using System.Diagnostics;
 
 namespace BotCore.Risk
 {
-    public sealed class RiskEngine
+    public sealed class RiskEngine : IDisposable
     {
         public RiskConfig cfg { get; set; } = new RiskConfig();
         private readonly DrawdownProtectionSystem _drawdownProtection;
@@ -71,6 +71,11 @@ namespace BotCore.Risk
         public bool ShouldHaltWeek(decimal realizedPnlWeek) => cfg.MaxWeeklyDrawdown > 0 && -realizedPnlWeek >= cfg.MaxWeeklyDrawdown;
 
         public DrawdownAnalysis GetDrawdownAnalysis() => _drawdownProtection.AnalyzeDrawdownPattern();
+
+        public void Dispose()
+        {
+            _drawdownProtection?.Dispose();
+        }
     }
 
     public class Trade
@@ -157,7 +162,7 @@ namespace BotCore.Risk
         /// </summary>
         public bool IsTradingHalted => _tradingHalted;
         
-        private class DrawdownTracker
+        private sealed class DrawdownTracker
         {
             public string TrackerId { get; set; } = string.Empty;
             public decimal PeakValue { get; set; }
@@ -165,17 +170,16 @@ namespace BotCore.Risk
             public decimal DrawdownAmount { get; set; }
             public double DrawdownPercent { get; set; }
             public DateTime PeakTime { get; set; }
-            public DateTime DrawdownStart { get; set; }
+            public DateTime DrawdownStart { get; internal set; }
             public TimeSpan DrawdownDuration { get; set; }
             public int ConsecutiveLosses { get; set; }
             private readonly List<decimal> _lossSequence = new();
-            public IReadOnlyList<decimal> LossSequence => _lossSequence;
             
             internal void AddLoss(decimal loss) => _lossSequence.Add(loss);
             internal void ClearLossSequence() => _lossSequence.Clear();
         }
         
-        private class DrawdownAction
+        private sealed class DrawdownAction
         {
             public string ActionType { get; set; } = string.Empty;
             public decimal TriggerLevel { get; set; }

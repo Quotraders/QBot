@@ -516,7 +516,12 @@ namespace TopstepX.S6
                 {
                     RTHOpenPx = ToPx(bar.Open);
                     GapPts = RTHOpenPx - ToPx(PremarketLast);
-                    GapDir = GapPts > 0 ? 1 : (GapPts < 0 ? -1 : 0);
+                    if (GapPts > 0)
+                        GapDir = 1;
+                    else if (GapPts < 0)
+                        GapDir = -1;
+                    else
+                        GapDir = 0;
                     GapComputed = true;
                 }
 

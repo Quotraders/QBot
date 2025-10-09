@@ -746,7 +746,7 @@ namespace BotCore.Strategy
                     var stopAtrMult = (decimal)(sessionParams?.StopAtrMult ?? (double)S6RuntimeConfig.StopAtrMult);
                     var targetAtrMult = S6RuntimeConfig.TargetAtrMult; // Use RuntimeConfig for now, can be extended later
                     
-                    var lastBar = bars.Last();
+                    var lastBar = bars[bars.Count - 1];
                     var entry = lastBar.Close;
                     var atr = env.atr ?? CalculateATR(bars);
                     
@@ -856,7 +856,7 @@ namespace BotCore.Strategy
                     var stopAtrMult = (decimal)(sessionParams?.StopAtrMult ?? (double)S11RuntimeConfig.StopAtrMult);
                     var targetAtrMult = S11RuntimeConfig.TargetAtrMult; // Use RuntimeConfig for now, can be extended later
                     
-                    var lastBar = bars.Last();
+                    var lastBar = bars[bars.Count - 1];
                     var entry = lastBar.Close;
                     var atr = env.atr ?? CalculateATR(bars);
                     
@@ -965,7 +965,7 @@ namespace BotCore.Strategy
             if (bars.Count >= RecentVolumeBarCount)
             {
                 var recentAvgVol = bars.Skip(bars.Count - RecentVolumeBarCount).Average(b => b.Volume);
-                var lastVol = bars.Last().Volume;
+                var lastVol = bars[bars.Count - 1].Volume;
                 if (lastVol > recentAvgVol * (double)VolumeBoostThreshold) qScore += VolumeBoostAmount;
             }
             
