@@ -183,7 +183,7 @@ public class FilePositionStatePersistence : IPositionStatePersistence
         catch (Exception ex)
         {
             _logger.LogError(ex, "[PERSISTENCE] Failed to save position state");
-            throw;
+            throw new InvalidOperationException($"Failed to save position state to {_positionStateFile}", ex);
         }
     }
 
@@ -260,7 +260,7 @@ public class FilePositionStatePersistence : IPositionStatePersistence
         catch (Exception ex)
         {
             _logger.LogError(ex, "[PERSISTENCE] Failed to save risk state");
-            throw;
+            throw new InvalidOperationException($"Failed to save risk state to {_riskStateFile}", ex);
         }
     }
 
