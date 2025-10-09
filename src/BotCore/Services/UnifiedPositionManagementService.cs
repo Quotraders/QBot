@@ -374,9 +374,10 @@ namespace BotCore.Services
                         stopPrice,
                         targetPrice);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Silently ignore AI errors - don't disrupt position management
+                    // Log AI errors but don't disrupt position management
+                    _logger.LogDebug(ex, "[POSITION-MGMT] AI explanation failed for position {PositionId}", positionId);
                 }
             }
             
@@ -592,9 +593,10 @@ namespace BotCore.Services
                             
                             ExplainTimeBasedExitFireAndForget(state, holdDuration, currentPnL, marketRegime);
                         }
-                        catch
+                        catch (Exception ex)
                         {
-                            // Silently ignore AI errors
+                            // Log AI errors but don't disrupt position management
+                            _logger.LogDebug(ex, "[POSITION-MGMT] AI explanation failed for time-based exit");
                         }
                         
                         await RequestPositionCloseAsync(state, ExitReason.TimeLimit, cancellationToken).ConfigureAwait(false);
@@ -681,9 +683,10 @@ namespace BotCore.Services
                 
                 ExplainBreakevenProtectionFireAndForget(state, unrealizedPnL, profitTicks, breakevenStop, marketRegime);
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently ignore AI errors - don't disrupt position management
+                // Log AI errors but don't disrupt position management
+                _logger.LogDebug(ex, "[POSITION-MGMT] AI explanation failed for breakeven protection");
             }
         }
         
@@ -734,9 +737,10 @@ namespace BotCore.Services
                     
                     ExplainTrailingStopActivationFireAndForget(state, unrealizedPnL, profitTicks, newStopPrice, marketRegime);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Silently ignore AI errors - don't disrupt position management
+                    // Log AI errors but don't disrupt position management
+                    _logger.LogDebug(ex, "[POSITION-MGMT] AI explanation failed for trailing stop activation");
                 }
             }
         }
@@ -1084,9 +1088,10 @@ namespace BotCore.Services
                     var partialQuantity = Math.Floor(state.Quantity * FIRST_PARTIAL_EXIT_PERCENTAGE);
                     ExplainPartialExitFireAndForget(state, rMultiple, FIRST_PARTIAL_DISPLAY_PERCENT, partialQuantity, "First Target (1.5R)");
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Silently ignore AI errors
+                    // Log AI errors but don't disrupt position management
+                    _logger.LogDebug(ex, "[POSITION-MGMT] AI explanation failed for first partial exit");
                 }
                 
                 await RequestPartialCloseAsync(state, FIRST_PARTIAL_EXIT_PERCENTAGE, ExitReason.Partial, cancellationToken).ConfigureAwait(false);
@@ -1104,9 +1109,10 @@ namespace BotCore.Services
                     var partialQuantity = Math.Floor(state.Quantity * SECOND_PARTIAL_EXIT_PERCENTAGE);
                     ExplainPartialExitFireAndForget(state, rMultiple, SECOND_PARTIAL_DISPLAY_PERCENT, partialQuantity, "Second Target (2.5R)");
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Silently ignore AI errors
+                    // Log AI errors but don't disrupt position management
+                    _logger.LogDebug(ex, "[POSITION-MGMT] AI explanation failed for second partial exit");
                 }
                 
                 await RequestPartialCloseAsync(state, SECOND_PARTIAL_EXIT_PERCENTAGE, ExitReason.Partial, cancellationToken).ConfigureAwait(false);
@@ -1124,9 +1130,10 @@ namespace BotCore.Services
                     var partialQuantity = Math.Floor(state.Quantity * FINAL_PARTIAL_EXIT_PERCENTAGE);
                     ExplainPartialExitFireAndForget(state, rMultiple, FINAL_PARTIAL_DISPLAY_PERCENT, partialQuantity, "Runner Position (4.0R)");
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Silently ignore AI errors
+                    // Log AI errors but don't disrupt position management
+                    _logger.LogDebug(ex, "[POSITION-MGMT] AI explanation failed for final partial exit");
                 }
                 
                 await RequestPartialCloseAsync(state, FINAL_PARTIAL_EXIT_PERCENTAGE, ExitReason.Target, cancellationToken).ConfigureAwait(false);
