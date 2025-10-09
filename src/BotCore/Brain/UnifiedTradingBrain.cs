@@ -82,9 +82,9 @@ namespace BotCore.Brain
         
         // Commentary thresholds
         public const decimal LowConfidenceThreshold = 0.4m;          // Below this triggers waiting commentary
-        public const decimal HighConfidenceThreshold = 0.7m;         // Above this triggers confidence commentary
+        // HighConfidenceThreshold removed - now uses IMLConfigurationService.GetAIConfidenceThreshold()
         public const decimal StrategyConflictThreshold = 0.15m;       // Score difference threshold for conflict detection
-        public const decimal AlternativeStrategyConfidenceFactor = 0.7m; // Factor for alternative strategy scores
+        // AlternativeStrategyConfidenceFactor removed - now uses IMLConfigurationService.GetAIConfidenceThreshold()
         
         // Statistical calculation constants
         public const double TotalVariationNormalizationFactor = 0.5; // Factor for normalizing total variation distance
@@ -166,6 +166,7 @@ namespace BotCore.Brain
         private readonly IMLMemoryManager _memoryManager;
         private readonly StrategyMlModelManager _modelManager;
         private readonly NeuralUcbBandit _strategySelector;
+        private readonly IMLConfigurationService _mlConfigService;
         private readonly ConcurrentDictionary<string, MarketContext> _marketContexts = new();
         private readonly ConcurrentDictionary<string, TradingPerformance> _performance = new();
         private readonly CVaRPPO _cvarPPO; // Direct injection instead of loading from memory
@@ -281,6 +282,7 @@ namespace BotCore.Brain
             IMLMemoryManager memoryManager,
             StrategyMlModelManager modelManager,
             CVaRPPO cvarPPO,
+            IMLConfigurationService mlConfigService,
             IGate4Config? gate4Config = null,
             BotCore.Services.OllamaClient? ollamaClient = null,
             BotCore.Market.IEconomicEventManager? economicEventManager = null,
@@ -294,6 +296,7 @@ namespace BotCore.Brain
             _memoryManager = memoryManager;
             _modelManager = modelManager;
             _cvarPPO = cvarPPO; // Direct injection
+            _mlConfigService = mlConfigService ?? throw new ArgumentNullException(nameof(mlConfigService));
             _gate4Config = gate4Config ?? Gate4Config.LoadFromEnvironment();
             _ollamaClient = ollamaClient; // Optional AI conversation client
             _economicEventManager = economicEventManager; // Optional economic calendar (Phase 2)
@@ -517,8 +520,8 @@ namespace BotCore.Brain
                             _logger.LogInformation("💬 [BOT-COMMENTARY] {Commentary}", commentary);
                         }
                     }
-                    // Check for high confidence
-                    else if (optimalStrategy.Confidence > TopStepConfig.HighConfidenceThreshold)
+                    // Check for high confidence (using MLConfigurationService to replace hardcoded 0.7)
+                    else if (optimalStrategy.Confidence > (decimal)_mlConfigService.GetAIConfidenceThreshold())
                     {
                         var commentary = await ExplainConfidenceAsync(decision, context).ConfigureAwait(false);
                         if (!string.IsNullOrEmpty(commentary))
@@ -1220,10 +1223,12 @@ Reason closed: {reason}
                 {
                     // Get all strategy scores for explanation
                     var allScores = new Dictionary<string, decimal>();
+                    // Use MLConfigurationService for confidence factor (replaces hardcoded 0.7)
+                    var confidenceFactor = (decimal)_mlConfigService.GetAIConfidenceThreshold();
                     foreach (var strategy in availableStrategies)
                     {
                         // Use confidence as a proxy for score (actual UCB scores would be tracked separately)
-                        allScores[strategy] = strategy == selection.SelectedArm ? selection.Confidence : selection.Confidence * TopStepConfig.AlternativeStrategyConfidenceFactor;
+                        allScores[strategy] = strategy == selection.SelectedArm ? selection.Confidence : selection.Confidence * confidenceFactor;
                     }
                     
                     // Check for strategy conflicts (multiple strategies with similar scores)

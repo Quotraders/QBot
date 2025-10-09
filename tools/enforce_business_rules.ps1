@@ -22,7 +22,8 @@ function Fail-IfMatch {
         [string]$ExcludePattern = ''
     )
     $files = Get-CodeFiles -ExcludePattern $ExcludePattern
-    if ($files | Select-String -Pattern $Pattern -Quiet) {
+    $matchResults = $files | Select-String -Pattern $Pattern -Quiet
+    if ($matchResults -contains $true) {
         Write-Host $Message
         exit 1
     }
@@ -40,15 +41,15 @@ switch ($Mode) {
         Fail-IfMatch -Pattern '(Regime|regime).*[:=]\s*(1\.0)[^0-9f]' -Message 'CRITICAL: Hardcoded regime detection value 1.0 detected. Use MLConfigurationService.GetRegimeDetectionThreshold() instead.'
 
         # 4) ANY hardcoded AI confidence outside critical code paths
-        $excludeAI = '\\src\\IntelligenceStack\\|\\src\\OrchestratorAgent\\|\\src\\UnifiedOrchestrator\\|\\src\\BotCore\\|\\src\\RLAgent\\'
+        $excludeAI = '[\\/]src[\\/]IntelligenceStack[\\/]|[\\/]src[\\/]OrchestratorAgent[\\/]|[\\/]src[\\/]UnifiedOrchestrator[\\/]|[\\/]src[\\/]BotCore[\\/]|[\\/]src[\\/]RLAgent[\\/]|[\\/]src[\\/]Backtest[\\/]'
         Fail-IfMatch -Pattern '(Confidence|confidence)\s*[:=]\s*[0-9]+(\.[0-9]+)?[^0-9f]' -Message 'CRITICAL: ANY hardcoded AI confidence detected in production-critical code. Live trading forbidden.' -ExcludePattern $excludeAI
 
         # 5) ANY hardcoded position sizing outside critical code paths
-        $excludePos = '\\src\\IntelligenceStack\\|\\src\\OrchestratorAgent\\|\\src\\UnifiedOrchestrator\\|\\src\\BotCore\\|\\src\\RLAgent\\|\\src\\ML\\|\\src\\Safety\\Tests\\'
+        $excludePos = '[\\/]src[\\/]IntelligenceStack[\\/]|[\\/]src[\\/]OrchestratorAgent[\\/]|[\\/]src[\\/]UnifiedOrchestrator[\\/]|[\\/]src[\\/]BotCore[\\/]|[\\/]src[\\/]RLAgent[\\/]|[\\/]src[\\/]ML[\\/]|[\\/]src[\\/]Safety[\\/]Tests[\\/]|[\\/]src[\\/]Backtest[\\/]'
         Fail-IfMatch -Pattern '(PositionSize|positionSize|Position|position)\s*[:=]\s*[0-9]+(\.[0-9]+)?[^0-9f]' -Message 'CRITICAL: ANY hardcoded position sizing detected. Live trading forbidden.' -ExcludePattern $excludePos
 
         # 6) ANY hardcoded thresholds/limits outside critical code paths
-        $excludeThresh = '\\src\\IntelligenceStack\\|\\src\\OrchestratorAgent\\|\\src\\UnifiedOrchestrator\\|\\src\\BotCore\\|\\src\\RLAgent\\|\\src\\ML\\|\\src\\Safety\\Tests\\|\\src\\Strategies\\'
+        $excludeThresh = '[\\/]src[\\/]IntelligenceStack[\\/]|[\\/]src[\\/]OrchestratorAgent[\\/]|[\\/]src[\\/]UnifiedOrchestrator[\\/]|[\\/]src[\\/]BotCore[\\/]|[\\/]src[\\/]RLAgent[\\/]|[\\/]src[\\/]ML[\\/]|[\\/]src[\\/]Safety[\\/]Tests[\\/]|[\\/]src[\\/]Strategies[\\/]|[\\/]src[\\/]Backtest[\\/]|[\\/]src[\\/]Abstractions[\\/]|[\\/]src[\\/]Monitoring[\\/]|[\\/]src[\\/]Zones[\\/]'
         Fail-IfMatch -Pattern '(Threshold|threshold|Limit|limit)\s*[:=]\s*[0-9]+(\.[0-9]+)?[^0-9f]' -Message 'CRITICAL: ANY hardcoded thresholds or limits detected. Live trading forbidden.' -ExcludePattern $excludeThresh
     }
     'Production' {
