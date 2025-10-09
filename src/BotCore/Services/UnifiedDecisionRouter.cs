@@ -749,7 +749,7 @@ public class UnifiedDecisionRouter
         {
             "STRONG_BUY" or "BUY" => TradingAction.Buy,
             "STRONG_SELL" or "SELL" => TradingAction.Sell,
-            _ => enhanced.OriginalDecision.Strategy.Contains("BUY") ? TradingAction.Buy : TradingAction.Sell
+            _ => enhanced.OriginalDecision.Strategy.Contains("BUY", StringComparison.Ordinal) ? TradingAction.Buy : TradingAction.Sell
         };
         
         return new UnifiedTradingDecision
@@ -777,7 +777,7 @@ public class UnifiedDecisionRouter
         {
             PriceDirection.Up => TradingAction.Buy,
             PriceDirection.Down => TradingAction.Sell,
-            _ => brain.RecommendedStrategy.Contains("11") ? TradingAction.Sell : TradingAction.Buy // S11 is fade strategy
+            _ => brain.RecommendedStrategy.Contains("11", StringComparison.Ordinal) ? TradingAction.Sell : TradingAction.Buy // S11 is fade strategy
         };
         
         return new UnifiedTradingDecision

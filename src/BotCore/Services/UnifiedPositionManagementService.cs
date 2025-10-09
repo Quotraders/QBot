@@ -1643,8 +1643,8 @@ namespace BotCore.Services
         private static decimal GetRegimeBasedRMultiple(string strategy, string regime)
         {
             var regimeKey = regime.ToUpperInvariant();
-            var isTrending = regimeKey.Contains("TREND");
-            var isRanging = regimeKey.Contains("RANGE");
+            var isTrending = regimeKey.Contains("TREND", StringComparison.Ordinal);
+            var isRanging = regimeKey.Contains("RANGE", StringComparison.Ordinal);
             
             // Get environment variable for this strategy and regime
             string envVarName;
@@ -1890,8 +1890,8 @@ namespace BotCore.Services
             // Major flip detection: regime type changed
             var entryRegimeType = state.EntryRegime.ToUpperInvariant();
             var currentRegimeType = state.CurrentRegime.ToUpperInvariant();
-            var isTrendingToRanging = entryRegimeType.Contains("TREND") && currentRegimeType.Contains("RANGE");
-            var isRangingToVolatile = entryRegimeType.Contains("RANGE") && currentRegimeType.Contains("TRANSITION");
+            var isTrendingToRanging = entryRegimeType.Contains("TREND", StringComparison.Ordinal) && currentRegimeType.Contains("RANGE", StringComparison.Ordinal);
+            var isRangingToVolatile = entryRegimeType.Contains("RANGE", StringComparison.Ordinal) && currentRegimeType.Contains("TRANSITION", StringComparison.Ordinal);
             
             // Confidence drop detection
             var confidenceDrop = state.EntryRegimeConfidence - state.CurrentRegimeConfidence;
@@ -1905,7 +1905,7 @@ namespace BotCore.Services
                     if (isTrendingToRanging)
                         return true;
                     // Exit if trending confidence drops below threshold
-                    if (entryRegimeType.Contains("TREND") && state.CurrentRegimeConfidence < sensitivityThreshold)
+                    if (entryRegimeType.Contains("TREND", StringComparison.Ordinal) && state.CurrentRegimeConfidence < sensitivityThreshold)
                         return true;
                     break;
                     
