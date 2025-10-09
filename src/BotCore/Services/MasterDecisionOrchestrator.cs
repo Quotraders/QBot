@@ -1958,9 +1958,9 @@ public class BundleDecisionTrackingInfo
 }
 
 /// <summary>
-/// Gate 5: Trade result for canary monitoring
+/// Gate 5: Trade result for canary monitoring - used for JSON serialization
 /// </summary>
-internal sealed class Gate5TradeResult
+public sealed class Gate5TradeResult
 {
     public double PnL { get; set; }
     public DateTime Timestamp { get; set; }
