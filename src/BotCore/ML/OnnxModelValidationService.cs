@@ -5,6 +5,40 @@ using System.Collections.ObjectModel;
 namespace BotCore.ML;
 
 /// <summary>
+/// Validation result for an individual ONNX model
+/// </summary>
+public class ValidationResult
+{
+    public string ModelPath { get; set; } = string.Empty;
+    public bool IsValid { get; set; }
+    public string ErrorMessage { get; set; } = string.Empty;
+    public TimeSpan LoadTime { get; set; }
+    public long MemoryUsage { get; set; }
+    public int InputCount { get; set; }
+    public int OutputCount { get; set; }
+    public bool InferenceValidated { get; set; }
+    public DateTime ValidationTime { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
+/// Summary of validation results across all models
+/// </summary>
+public class ValidationSummary
+{
+    public int TotalModels { get; set; }
+    public int ValidModels { get; set; }
+    public int FailedModels { get; set; }
+    public double SuccessRate { get; set; }
+    public double TotalLoadTimeMs { get; set; }
+    public long TotalMemoryUsageMB { get; set; }
+    private readonly List<string> _failedModelPaths = new();
+    public IReadOnlyList<string> FailedModelPaths => _failedModelPaths;
+    public DateTime ValidationDate { get; set; }
+    
+    internal void AddFailedModelPath(string path) => _failedModelPaths.Add(path);
+}
+
+/// <summary>
 /// ONNX model startup validation service to ensure all models load properly at application startup
 /// Provides comprehensive testing and validation of ML model infrastructure
 /// </summary>
@@ -19,19 +53,6 @@ public sealed class OnnxModelValidationService
     private const int KilobytesToMegabytes = 1024;
     private const long GigabytesInBytes = 2L * 1024 * 1024 * 1024; // 2GB limit per model
     private const int MaxLoadTimeSeconds = 30; // Maximum acceptable load time
-
-    public class ValidationResult
-    {
-        public string ModelPath { get; set; } = string.Empty;
-        public bool IsValid { get; set; }
-        public string ErrorMessage { get; set; } = string.Empty;
-        public TimeSpan LoadTime { get; set; }
-        public long MemoryUsage { get; set; }
-        public int InputCount { get; set; }
-        public int OutputCount { get; set; }
-        public bool InferenceValidated { get; set; }
-        public DateTime ValidationTime { get; set; } = DateTime.UtcNow;
-    }
 
     public OnnxModelValidationService(ILogger<OnnxModelValidationService> logger, OnnxModelLoader modelLoader)
     {
@@ -248,21 +269,6 @@ public sealed class OnnxModelValidationService
         }
         
         return summary;
-    }
-
-    public class ValidationSummary
-    {
-        public int TotalModels { get; set; }
-        public int ValidModels { get; set; }
-        public int FailedModels { get; set; }
-        public double SuccessRate { get; set; }
-        public double TotalLoadTimeMs { get; set; }
-        public long TotalMemoryUsageMB { get; set; }
-        private readonly List<string> _failedModelPaths = new();
-        public IReadOnlyList<string> FailedModelPaths => _failedModelPaths;
-        public DateTime ValidationDate { get; set; }
-        
-        internal void AddFailedModelPath(string path) => _failedModelPaths.Add(path);
     }
 
     /// <summary>
