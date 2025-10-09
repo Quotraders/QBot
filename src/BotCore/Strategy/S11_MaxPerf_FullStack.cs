@@ -275,10 +275,10 @@ namespace TopstepX.S11
             double change = close - _lastClose;
             double gain = change > 0 ? change : 0;
             double loss = change < 0 ? -change : 0;
-            if (_avgGain == 0 && _avgLoss == 0) { _avgGain = gain; _avgLoss = loss; }
+            if (Math.Abs(_avgGain) < S11Constants.SmallEpsilon && Math.Abs(_avgLoss) < S11Constants.SmallEpsilon) { _avgGain = gain; _avgLoss = loss; }
             else { _avgGain = (_avgGain * (_n - 1) + gain) / _n; _avgLoss = (_avgLoss * (_n - 1) + loss) / _n; }
             _lastClose = close;
-            if (_avgLoss == 0) return S11Constants.RsiMaxValue;
+            if (Math.Abs(_avgLoss) < S11Constants.SmallEpsilon) return S11Constants.RsiMaxValue;
             double rs = _avgGain / _avgLoss;
             return S11Constants.RsiMaxValue - (S11Constants.RsiMaxValue / (1 + rs));
         }

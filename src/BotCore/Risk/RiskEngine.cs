@@ -30,6 +30,7 @@ namespace BotCore.Risk
 
         public static decimal ComputeRisk(decimal entry, decimal stop, decimal target, bool isLong)
         {
+            // Defensive validation: ensure risk calculation produces valid results
             var risk = isLong ? entry - stop : stop - entry;
             var reward = isLong ? target - entry : entry - target;
             if (risk <= 0 || reward < 0) return 0m;
@@ -45,6 +46,8 @@ namespace BotCore.Risk
         // NEW: Equity-% aware sizing helper (backwards-compatible)
         public (int Qty, decimal UsedRpt) ComputeSize(string symbol, decimal entry, decimal stop, decimal accountEquity)
         {
+            ArgumentNullException.ThrowIfNull(symbol);
+            
             var dist = Math.Abs(entry - stop);
             if (dist <= 0) return (0, 0);
             var pv = BotCore.Models.InstrumentMeta.PointValue(symbol);
