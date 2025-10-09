@@ -206,12 +206,12 @@ public class ProductionMonitoringService : IHealthCheck
             // Populate read-only collections
             foreach (var health in _healthMetrics.Values)
             {
-                metrics.HealthMetrics.Add(health);
+                metrics.HealthMetricsInternal.Add(health);
             }
             
             foreach (var performance in _performanceMetrics.Values)
             {
-                metrics.PerformanceMetrics.Add(performance);
+                metrics.PerformanceMetricsInternal.Add(performance);
             }
             
             metrics.GCCollections[Gen0GarbageCollection] = GC.CollectionCount(Gen0GarbageCollection);
@@ -407,12 +407,17 @@ public class SystemMetrics
 {
     public DateTime Timestamp { get; set; }
     public long MemoryUsageMB { get; set; }
+    private readonly List<HealthMetric> _healthMetrics = new();
+    private readonly List<PerformanceMetric> _performanceMetrics = new();
+    
     public double CpuTimeMs { get; set; }
     public double UptimeHours { get; set; }
     public int ThreadCount { get; set; }
     public Dictionary<int, long> GCCollections { get; } = new();
-    public List<HealthMetric> HealthMetrics { get; } = new();
-    public List<PerformanceMetric> PerformanceMetrics { get; } = new();
+    public IReadOnlyList<HealthMetric> HealthMetrics => _healthMetrics;
+    internal List<HealthMetric> HealthMetricsInternal => _healthMetrics;
+    public IReadOnlyList<PerformanceMetric> PerformanceMetrics => _performanceMetrics;
+    internal List<PerformanceMetric> PerformanceMetricsInternal => _performanceMetrics;
 }
 
 #endregion

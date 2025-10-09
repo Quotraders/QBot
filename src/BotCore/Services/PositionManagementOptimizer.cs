@@ -862,8 +862,7 @@ namespace BotCore.Services
             {
                 StrategyName = strategy,
                 ExportTimestamp = DateTime.UtcNow,
-                TotalTradesAnalyzed = outcomes.Count,
-                Parameters = new List<LearnedParameter>()
+                TotalTradesAnalyzed = outcomes.Count
             };
             
             if (outcomes.Count == 0)
@@ -883,7 +882,7 @@ namespace BotCore.Services
                 
                 if (bestBreakeven != null)
                 {
-                    exportData.Parameters.Add(new LearnedParameter
+                    exportData.ParametersInternal.Add(new LearnedParameter
                     {
                         ParameterName = "BreakevenAfterTicks",
                         CurrentConfiguredValue = "N/A",
@@ -908,7 +907,7 @@ namespace BotCore.Services
                 
                 if (bestTrailing != null)
                 {
-                    exportData.Parameters.Add(new LearnedParameter
+                    exportData.ParametersInternal.Add(new LearnedParameter
                     {
                         ParameterName = "TrailingStopMultiplier",
                         CurrentConfiguredValue = "N/A",
@@ -928,7 +927,7 @@ namespace BotCore.Services
                 var avgDuration = holdTimeOutcomes.Average(o => o.TradeDurationSeconds) / 60.0; // Convert to minutes
                 var recommendedMaxHold = (int)Math.Ceiling(avgDuration * 1.5); // 50% buffer
                 
-                exportData.Parameters.Add(new LearnedParameter
+                exportData.ParametersInternal.Add(new LearnedParameter
                 {
                     ParameterName = "MaxHoldTimeMinutes",
                     CurrentConfiguredValue = "N/A",
@@ -1283,10 +1282,13 @@ namespace BotCore.Services
     /// </summary>
     public sealed class StrategyLearnedParameters
     {
+        private readonly List<LearnedParameter> _parameters = new();
+        
         public string StrategyName { get; set; } = string.Empty;
         public DateTime ExportTimestamp { get; set; }
         public int TotalTradesAnalyzed { get; set; }
-        public List<LearnedParameter> Parameters { get; set; } = new();
+        public IReadOnlyList<LearnedParameter> Parameters => _parameters;
+        internal List<LearnedParameter> ParametersInternal => _parameters;
     }
     
     /// <summary>
