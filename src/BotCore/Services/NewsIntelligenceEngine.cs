@@ -169,11 +169,11 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
     private static string[] ExtractKeywords(List<NewsItem> newsData)
     {
         var keywordCounts = new Dictionary<string, int>();
-        var importantKeywords = new[] { "fed", "rate", "inflation", "gdp", "unemployment", "market", "economy", "trade", "policy" };
+        var importantKeywords = new[] { "FED", "RATE", "INFLATION", "GDP", "UNEMPLOYMENT", "MARKET", "ECONOMY", "TRADE", "POLICY" };
         
         foreach (var news in newsData)
         {
-            var text = (news.Title + " " + news.Description).ToLowerInvariant();
+            var text = (news.Title + " " + news.Description).ToUpperInvariant();
             foreach (var keyword in importantKeywords.Where(k => text.Contains(k, StringComparison.Ordinal)))
             {
                 keywordCounts[keyword] = keywordCounts.GetValueOrDefault(keyword, 0) + 1;
@@ -193,12 +193,12 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
     private static decimal AnalyzeTextSentiment(string text)
     {
         // Simple rule-based sentiment analysis
-        var positiveWords = new[] { "growth", "up", "rise", "gain", "positive", "strong", "boost" };
-        var negativeWords = new[] { "down", "fall", "decline", "loss", "negative", "weak", "crisis", "concern" };
+        var positiveWords = new[] { "GROWTH", "UP", "RISE", "GAIN", "POSITIVE", "STRONG", "BOOST" };
+        var negativeWords = new[] { "DOWN", "FALL", "DECLINE", "LOSS", "NEGATIVE", "WEAK", "CRISIS", "CONCERN" };
         
-        var lowerText = text.ToLowerInvariant();
-        var positiveCount = positiveWords.Count(word => lowerText.Contains(word, StringComparison.Ordinal));
-        var negativeCount = negativeWords.Count(word => lowerText.Contains(word, StringComparison.Ordinal));
+        var upperText = text.ToUpperInvariant();
+        var positiveCount = positiveWords.Count(word => upperText.Contains(word, StringComparison.Ordinal));
+        var negativeCount = negativeWords.Count(word => upperText.Contains(word, StringComparison.Ordinal));
         
         if (positiveCount == 0 && negativeCount == 0) return NeutralSentiment; // Neutral
         

@@ -15,6 +15,7 @@ namespace TradingBot.BotCore.Services
         private readonly ILogger<ConfigurationSnapshotService> _logger;
         private readonly Dictionary<string, ConfigSnapshot> _activeSnapshots = new();
         private readonly object _snapshotLock = new();
+        private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
 
         public ConfigurationSnapshotService(ILogger<ConfigurationSnapshotService> logger)
         {
@@ -151,7 +152,7 @@ namespace TradingBot.BotCore.Services
             }
 
             // Log as structured JSON for analysis
-            var json = JsonSerializer.Serialize(snapshot.Values, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(snapshot.Values, s_jsonOptions);
             _logger.LogInformation("📋 [CONFIG-SNAPSHOT] JSON: {Json}", json);
         }
     }

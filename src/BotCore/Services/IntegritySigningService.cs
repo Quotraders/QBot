@@ -18,6 +18,7 @@ namespace TradingBot.BotCore.Services
         private readonly ILogger<IntegritySigningService> _logger;
         private readonly RSA _signingKey;
         private readonly string _publicKeyPem;
+        private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
 
         // Cryptographic configuration constants
         private const int RsaKeySizeBits = 2048;              // RSA key size for signing
@@ -118,7 +119,7 @@ namespace TradingBot.BotCore.Services
                 }
 
                 // Create manifest content
-                var manifestJson = JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true });
+                var manifestJson = JsonSerializer.Serialize(manifest, s_jsonOptions);
                 manifest.ContentHash = CalculateContentHash(manifestJson);
                 
                 // Sign the manifest
@@ -164,7 +165,7 @@ namespace TradingBot.BotCore.Services
                 // Copy files from original manifest
                 tempManifest.ReplaceFiles(manifest.Files);
 
-                var manifestJson = JsonSerializer.Serialize(tempManifest, new JsonSerializerOptions { WriteIndented = true });
+                var manifestJson = JsonSerializer.Serialize(tempManifest, s_jsonOptions);
 
                 // Verify signature
                 if (!VerifySignature(manifestJson, manifest.Signature, manifest.PublicKey))
@@ -270,7 +271,7 @@ namespace TradingBot.BotCore.Services
                     ContentHash = CalculateContentHash(logContent)
                 };
 
-                var entryJson = JsonSerializer.Serialize(entry, new JsonSerializerOptions { WriteIndented = true });
+                var entryJson = JsonSerializer.Serialize(entry, s_jsonOptions);
                 entry.Signature = SignContent(entryJson);
                 entry.PublicKey = _publicKeyPem;
 
@@ -301,7 +302,7 @@ namespace TradingBot.BotCore.Services
                     ContentHash = logEntry.ContentHash
                 };
 
-                var entryJson = JsonSerializer.Serialize(tempEntry, new JsonSerializerOptions { WriteIndented = true });
+                var entryJson = JsonSerializer.Serialize(tempEntry, s_jsonOptions);
                 
                 // Verify content hash
                 var expectedHash = CalculateContentHash(logEntry.Content);
@@ -354,7 +355,7 @@ namespace TradingBot.BotCore.Services
                 // Use Replace method for immutable collection pattern
                 integrity.ReplaceMetadata(metadata);
 
-                var integrityJson = JsonSerializer.Serialize(integrity, new JsonSerializerOptions { WriteIndented = true });
+                var integrityJson = JsonSerializer.Serialize(integrity, s_jsonOptions);
                 integrity.Signature = SignContent(integrityJson);
                 integrity.PublicKey = _publicKeyPem;
 

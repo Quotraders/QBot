@@ -503,7 +503,7 @@ namespace BotCore.Services
             // Create environment for strategy evaluation
             return new Env
             {
-                atr = bars.Count > 0 ? (decimal?)Math.Abs(bars.Last().High - bars.Last().Low) : DefaultATRFallback,
+                atr = bars.Count > 0 ? (decimal?)Math.Abs(bars[^1].High - bars[^1].Low) : DefaultATRFallback,
                 volz = (decimal?)CalculateRecentVolatility(bars)
             };
         }
@@ -662,7 +662,7 @@ namespace BotCore.Services
         {
             if (bars.Count < period + 1) return 0.0;
 
-            var currentPrice = (double)bars.Last().Close;
+            var currentPrice = (double)bars[^1].Close;
             var previousPrice = (double)bars[bars.Count - period - 1].Close;
             
             return (currentPrice - previousPrice) / previousPrice;
@@ -714,7 +714,7 @@ namespace BotCore.Services
 
             var volumes = bars.TakeLast(VolumeProfileLookback).Select(b => (double)b.Volume).ToList();
             var avgVolume = volumes.Average();
-            var currentVolume = (double)bars.Last().Volume;
+            var currentVolume = (double)bars[^1].Volume;
             var volumeRatio = avgVolume > 0 ? currentVolume / avgVolume : DefaultConfidenceMultiplier;
 
             // Find high and low volume price levels
@@ -724,8 +724,8 @@ namespace BotCore.Services
                 .OrderByDescending(x => x.TotalVolume)
                 .ToList();
 
-            var highVolumeLevel = priceVolumePairs.FirstOrDefault()?.Price ?? bars.Last().Close;
-            var lowVolumeLevel = priceVolumePairs.LastOrDefault()?.Price ?? bars.Last().Close;
+            var highVolumeLevel = priceVolumePairs.Count > 0 ? priceVolumePairs[0].Price : bars[^1].Close;
+            var lowVolumeLevel = priceVolumePairs.Count > 0 ? priceVolumePairs[^1].Price : bars[^1].Close;
 
             return new VolumeProfileData
             {
@@ -788,7 +788,7 @@ namespace BotCore.Services
             }
             
             var atr = trueRanges.Average();
-            var currentPrice = bars.Last().Close;
+            var currentPrice = bars[^1].Close;
             
             return currentPrice > 0 ? atr / currentPrice : DefaultATRNormalized; // Normalized ATR
         }
@@ -806,7 +806,7 @@ namespace BotCore.Services
             
             var upperBand = sma + (BollingerStdDevMultiplier * stdDev);
             var lowerBand = sma - (BollingerStdDevMultiplier * stdDev);
-            var currentPrice = bars.Last().Close;
+            var currentPrice = bars[^1].Close;
             
             if (upperBand == lowerBand) return MiddleOfBands;
             
@@ -831,7 +831,7 @@ namespace BotCore.Services
                 totalVolume += bar.Volume;
             }
             
-            return totalVolume > 0 ? volumeWeightedSum / totalVolume : bars.Last().Close;
+            return totalVolume > 0 ? volumeWeightedSum / totalVolume : bars[^1].Close;
         }
 
         private static decimal CalculateMarketStress(IReadOnlyList<Bar> bars)
@@ -857,7 +857,7 @@ namespace BotCore.Services
             if (recent.Count < MinimumBarsForVolumeStress) return DefaultVolumeStress;
             
             var avgVolume = recent.Take(recent.Count - 1).Average(b => b.Volume);
-            var currentVolume = recent.Last().Volume;
+            var currentVolume = recent[^1].Volume;
             
             if (avgVolume == 0) return DefaultVolumeStress;
             
@@ -999,7 +999,7 @@ namespace BotCore.Services
         {
             ArgumentNullException.ThrowIfNull(symbol);
             
-            switch (symbol.ToUpper())
+            switch (symbol.ToUpperInvariant())
             {
                 case "ES":
                     _esBars = bars;

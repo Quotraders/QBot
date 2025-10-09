@@ -42,6 +42,9 @@ namespace TradingBot.BotCore.Services
             LoggerMessage.Define<string, string, string>(LogLevel.Error, new EventId(2004, "BacktestError"), 
                 "[TuningRunner:{Strategy}] Error during {Strategy} strategy backtesting for {Symbol}");
         
+        // Reusable JSON serialization options to avoid creating new instances
+        private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+
         // Trading analysis constants - configuration-driven values for backtesting and strategy tuning
         private const int MinimumRequiredBars = 120; // Minimum bars needed for reliable strategy analysis
         private const decimal BaseSigmaAdjustment = 0.3m; // Sigma variance adjustment for parameter grid generation
@@ -745,7 +748,7 @@ namespace TradingBot.BotCore.Services
                     }).ToList()
                 };
                 
-                var jsonContent = JsonSerializer.Serialize(resultsData, new JsonSerializerOptions { WriteIndented = true });
+                var jsonContent = JsonSerializer.Serialize(resultsData, s_jsonOptions);
                 await File.WriteAllTextAsync(filename, jsonContent, cancellationToken).ConfigureAwait(false);
                 
                 logger.LogInformation("[TuningRunner] Saved {Count} backtest results to {Filename}", results.Count, filename);

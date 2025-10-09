@@ -23,6 +23,7 @@ namespace TradingBot.BotCore.Services
         private readonly string _configurationPath = "state/setup/symbol-session-configs.json";
         private readonly SafeHoldDecisionPolicy? _neutralBandService;
         private readonly ILogger<TradingBotSymbolSessionManager> _logger;
+        private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
 
         // Trading Session Multipliers
         private const decimal RegularHoursMultiplier = 1.0m;
@@ -398,7 +399,7 @@ namespace TradingBot.BotCore.Services
                     Directory.CreateDirectory(directory);
                 }
 
-                var jsonContent = JsonSerializer.Serialize(_configurations, new JsonSerializerOptions { WriteIndented = true });
+                var jsonContent = JsonSerializer.Serialize(_configurations, s_jsonOptions);
                 await File.WriteAllTextAsync(_configurationPath, jsonContent, cancellationToken).ConfigureAwait(false);
                 
                 _logger.LogDebug("Saved {Count} configurations to {Path}", _configurations.Count, _configurationPath);

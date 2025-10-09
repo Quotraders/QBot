@@ -232,8 +232,8 @@ namespace BotCore.Services
             
             // Check if position management commentary is enabled (default: true for transparency)
             // Set BOT_POSITION_COMMENTARY_ENABLED=false to disable if too verbose
-            var commentarySetting = Environment.GetEnvironmentVariable("BOT_POSITION_COMMENTARY_ENABLED")?.ToLowerInvariant();
-            _commentaryEnabled = commentarySetting != "false"; // Enabled by default, must explicitly disable
+            var commentarySetting = Environment.GetEnvironmentVariable("BOT_POSITION_COMMENTARY_ENABLED")?.ToUpperInvariant();
+            _commentaryEnabled = commentarySetting != "FALSE"; // Enabled by default, must explicitly disable
             
             if (_commentaryEnabled && _ollamaClient != null)
             {
@@ -241,7 +241,7 @@ namespace BotCore.Services
             }
             
             // Load dynamic targeting configuration (Feature 1)
-            _dynamicTargetsEnabled = Environment.GetEnvironmentVariable("BOT_DYNAMIC_TARGETS_ENABLED")?.ToLowerInvariant() == "true";
+            _dynamicTargetsEnabled = Environment.GetEnvironmentVariable("BOT_DYNAMIC_TARGETS_ENABLED")?.ToUpperInvariant() == "TRUE";
             _regimeCheckIntervalSeconds = int.TryParse(Environment.GetEnvironmentVariable("BOT_REGIME_CHECK_INTERVAL_SECONDS"), out var regimeInterval) ? regimeInterval : DEFAULT_REGIME_CHECK_INTERVAL_SECONDS;
             _targetAdjustmentThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("BOT_TARGET_ADJUSTMENT_THRESHOLD"), out var threshold) ? threshold : DEFAULT_TARGET_ADJUSTMENT_THRESHOLD;
             
@@ -252,8 +252,8 @@ namespace BotCore.Services
             }
             
             // Load MAE/MFE learning configuration (Feature 2)
-            _maeLearningEnabled = Environment.GetEnvironmentVariable("BOT_MAE_LEARNING_ENABLED")?.ToLowerInvariant() == "true";
-            _mfeLearningEnabled = Environment.GetEnvironmentVariable("BOT_MFE_LEARNING_ENABLED")?.ToLowerInvariant() == "true";
+            _maeLearningEnabled = Environment.GetEnvironmentVariable("BOT_MAE_LEARNING_ENABLED")?.ToUpperInvariant() == "TRUE";
+            _mfeLearningEnabled = Environment.GetEnvironmentVariable("BOT_MFE_LEARNING_ENABLED")?.ToUpperInvariant() == "TRUE";
             
             if (_maeLearningEnabled || _mfeLearningEnabled)
             {
@@ -262,8 +262,8 @@ namespace BotCore.Services
             }
             
             // Load regime monitoring configuration (Feature 3)
-            _regimeMonitoringEnabled = Environment.GetEnvironmentVariable("BOT_REGIME_MONITORING_ENABLED")?.ToLowerInvariant() == "true";
-            _regimeFlipExitEnabled = Environment.GetEnvironmentVariable("BOT_REGIME_FLIP_EXIT_ENABLED")?.ToLowerInvariant() == "true";
+            _regimeMonitoringEnabled = Environment.GetEnvironmentVariable("BOT_REGIME_MONITORING_ENABLED")?.ToUpperInvariant() == "TRUE";
+            _regimeFlipExitEnabled = Environment.GetEnvironmentVariable("BOT_REGIME_FLIP_EXIT_ENABLED")?.ToUpperInvariant() == "TRUE";
             _regimeConfidenceDropThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("BOT_REGIME_CONFIDENCE_DROP_THRESHOLD"), out var dropThreshold) ? dropThreshold : DEFAULT_REGIME_CONFIDENCE_DROP_THRESHOLD;
             
             if (_regimeMonitoringEnabled)
@@ -273,7 +273,7 @@ namespace BotCore.Services
             }
             
             // Load confidence-based adjustment configuration (Feature 4)
-            _confidenceAdjustmentEnabled = Environment.GetEnvironmentVariable("BOT_CONFIDENCE_ADJUSTMENT_ENABLED")?.ToLowerInvariant() == "true";
+            _confidenceAdjustmentEnabled = Environment.GetEnvironmentVariable("BOT_CONFIDENCE_ADJUSTMENT_ENABLED")?.ToUpperInvariant() == "TRUE";
             _confidenceVeryHighThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_VERY_HIGH_THRESHOLD"), out var vhThreshold) ? vhThreshold : DEFAULT_CONFIDENCE_VERY_HIGH_THRESHOLD;
             _confidenceHighThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_HIGH_THRESHOLD"), out var hThreshold) ? hThreshold : DEFAULT_CONFIDENCE_HIGH_THRESHOLD;
             _confidenceMediumThreshold = decimal.TryParse(Environment.GetEnvironmentVariable("CONFIDENCE_MEDIUM_THRESHOLD"), out var mThreshold) ? mThreshold : DEFAULT_CONFIDENCE_MEDIUM_THRESHOLD;
@@ -286,7 +286,7 @@ namespace BotCore.Services
             }
             
             // Load progressive tightening configuration (Feature 5)
-            _progressiveTighteningEnabled = Environment.GetEnvironmentVariable("BOT_PROGRESSIVE_TIGHTENING_ENABLED")?.ToLowerInvariant() == "true";
+            _progressiveTighteningEnabled = Environment.GetEnvironmentVariable("BOT_PROGRESSIVE_TIGHTENING_ENABLED")?.ToUpperInvariant() == "TRUE";
             _progressiveTighteningCheckIntervalSeconds = int.TryParse(Environment.GetEnvironmentVariable("BOT_PROGRESSIVE_TIGHTENING_CHECK_INTERVAL_SECONDS"), out var ptInterval) ? ptInterval : DEFAULT_PROGRESSIVE_TIGHTENING_INTERVAL_SECONDS;
             
             if (_progressiveTighteningEnabled)

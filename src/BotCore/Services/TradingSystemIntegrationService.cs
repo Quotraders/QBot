@@ -538,8 +538,8 @@ namespace TopstepX.Bot.Core.Services
                     type = GetOrderTypeValue(request.OrderType), // ProjectX: 1=Limit, 2=Market, 4=Stop
                     side = GetSideValue(request.Side),         // ProjectX: 0=Bid(buy), 1=Ask(sell)
                     size = request.Quantity,                   // ProjectX expects integer size
-                    limitPrice = request.OrderType.ToUpper() == "LIMIT" ? entryPrice : (decimal?)null,
-                    stopPrice = request.OrderType.ToUpper() == "STOP" ? entryPrice : (decimal?)null,
+                    limitPrice = request.OrderType.ToUpperInvariant() == "LIMIT" ? entryPrice : (decimal?)null,
+                    stopPrice = request.OrderType.ToUpperInvariant() == "STOP" ? entryPrice : (decimal?)null,
                     customTag = customTag
                 };
 
@@ -593,7 +593,7 @@ namespace TopstepX.Bot.Core.Services
         /// </summary>
         private static int GetOrderTypeValue(string orderType)
         {
-            return orderType.ToUpper() switch
+            return orderType.ToUpperInvariant() switch
             {
                 "LIMIT" => OrderTypeLimitValue,
                 "MARKET" => OrderTypeMarketValue,
@@ -609,7 +609,7 @@ namespace TopstepX.Bot.Core.Services
         /// </summary>
         private static int GetSideValue(string side)
         {
-            return side.ToUpper() switch
+            return side.ToUpperInvariant() switch
             {
                 "BUY" => 0,
                 "SELL" => 1,
@@ -1908,10 +1908,10 @@ namespace TopstepX.Bot.Core.Services
             var score = 0.0;
 
             // Environment-specific thresholds
-            var environment = _readinessConfig.Environment.Name.ToLower();
-            var minBars = environment == "dev" ? _readinessConfig.Environment.Dev.MinBarsSeen : _readinessConfig.MinBarsSeen;
-            var minSeeded = environment == "dev" ? _readinessConfig.Environment.Dev.MinSeededBars : _readinessConfig.MinSeededBars;
-            var minLiveTicks = environment == "dev" ? _readinessConfig.Environment.Dev.MinLiveTicks : _readinessConfig.MinLiveTicks;
+            var environment = _readinessConfig.Environment.Name.ToUpperInvariant();
+            var minBars = environment == "DEV" ? _readinessConfig.Environment.Dev.MinBarsSeen : _readinessConfig.MinBarsSeen;
+            var minSeeded = environment == "DEV" ? _readinessConfig.Environment.Dev.MinSeededBars : _readinessConfig.MinSeededBars;
+            var minLiveTicks = environment == "DEV" ? _readinessConfig.Environment.Dev.MinLiveTicks : _readinessConfig.MinLiveTicks;
 
             // Progressive validation logic
             switch (context.State)
