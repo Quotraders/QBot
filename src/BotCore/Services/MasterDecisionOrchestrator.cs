@@ -185,7 +185,7 @@ public class MasterDecisionOrchestrator : BackgroundService
         catch (Exception ex)
         {
             _logger.LogCritical(ex, "💥 [MASTER-ORCHESTRATOR] Critical error in master orchestrator");
-            throw;
+            throw new InvalidOperationException("Critical error in master orchestrator execution loop", ex);
         }
         finally
         {
@@ -226,7 +226,7 @@ public class MasterDecisionOrchestrator : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ [MASTER-ORCHESTRATOR] System initialization failed");
-            throw;
+            throw new InvalidOperationException("Failed to initialize master orchestrator systems", ex);
         }
     }
     
@@ -251,7 +251,7 @@ public class MasterDecisionOrchestrator : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ [CONTINUOUS-LEARNING] Failed to start learning systems");
-            throw;
+            throw new InvalidOperationException("Failed to start continuous learning systems", ex);
         }
     }
     
@@ -502,7 +502,7 @@ public class MasterDecisionOrchestrator : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ [FORCE-UPDATE] Failed to force model update");
-            throw;
+            throw new InvalidOperationException("Failed to force model update", ex);
         }
     }
     

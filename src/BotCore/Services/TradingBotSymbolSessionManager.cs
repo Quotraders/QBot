@@ -370,7 +370,7 @@ namespace TradingBot.BotCore.Services
             catch (OperationCanceledException ex)
             {
                 _logger.LogDebug(ex, "Configuration loading was cancelled");
-                throw;
+                throw new InvalidOperationException($"Configuration loading was cancelled at path: {_configurationPath}", ex);
             }
             catch (FileNotFoundException ex)
             {
