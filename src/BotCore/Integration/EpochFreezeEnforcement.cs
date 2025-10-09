@@ -127,7 +127,7 @@ public sealed class EpochFreezeEnforcement
             {
                 if (!_activeEpochs.TryGetValue(positionId, out snapshot))
                 {
-                    validationResult.Violations.Add(new FreezeViolation
+                    validationResult.AddViolation(new FreezeViolation
                     {
                         ViolationType = "MissingSnapshot",
                         Description = $"No epoch snapshot found for position {positionId}",
@@ -186,7 +186,7 @@ public sealed class EpochFreezeEnforcement
         }
         catch (ArgumentException ex)
         {
-            validationResult.Violations.Add(new FreezeViolation
+            validationResult.AddViolation(new FreezeViolation
             {
                 ViolationType = "ValidationError",
                 Description = $"Invalid argument during validation: {ex.Message}",
@@ -198,7 +198,7 @@ public sealed class EpochFreezeEnforcement
         }
         catch (InvalidOperationException ex)
         {
-            validationResult.Violations.Add(new FreezeViolation
+            validationResult.AddViolation(new FreezeViolation
             {
                 ViolationType = "ValidationError",
                 Description = $"Invalid operation during validation: {ex.Message}",
@@ -333,7 +333,7 @@ public sealed class EpochFreezeEnforcement
             var zoneFeatureSource = _serviceProvider.GetService<Zones.IZoneFeatureSource>();
             if (zoneFeatureSource == null)
             {
-                validationResult.Violations.Add(new FreezeViolation
+                validationResult.AddViolation(new FreezeViolation
                 {
                     ViolationType = "ServiceUnavailable",
                     Description = "Zone feature source not available for validation",
@@ -354,7 +354,7 @@ public sealed class EpochFreezeEnforcement
                 
                 if (priceDifference > toleranceTicks)
                 {
-                    validationResult.Violations.Add(new FreezeViolation
+                    validationResult.AddViolation(new FreezeViolation
                     {
                         ViolationType = "ZoneAnchorDrift",
                         Description = $"Demand zone anchor drifted by {priceDifference:F2} (tolerance: {toleranceTicks:F2})",
@@ -374,7 +374,7 @@ public sealed class EpochFreezeEnforcement
                 
                 if (priceDifference > toleranceTicks)
                 {
-                    validationResult.Violations.Add(new FreezeViolation
+                    validationResult.AddViolation(new FreezeViolation
                     {
                         ViolationType = "ZoneAnchorDrift",
                         Description = $"Supply zone anchor drifted by {priceDifference:F2} (tolerance: {toleranceTicks:F2})",
@@ -389,7 +389,7 @@ public sealed class EpochFreezeEnforcement
         }
         catch (InvalidOperationException ex)
         {
-            validationResult.Violations.Add(new FreezeViolation
+            validationResult.AddViolation(new FreezeViolation
             {
                 ViolationType = "ValidationError",
                 Description = $"Invalid operation validating zone anchors: {ex.Message}",
@@ -398,7 +398,7 @@ public sealed class EpochFreezeEnforcement
         }
         catch (ArgumentException ex)
         {
-            validationResult.Violations.Add(new FreezeViolation
+            validationResult.AddViolation(new FreezeViolation
             {
                 ViolationType = "ValidationError",
                 Description = $"Invalid argument validating zone anchors: {ex.Message}",
@@ -418,7 +418,7 @@ public sealed class EpochFreezeEnforcement
         var slDifference = Math.Abs(request.CurrentStopLoss - snapshot.BracketSettings.StopLossPrice);
         if (slDifference > tolerance)
         {
-            validationResult.Violations.Add(new FreezeViolation
+            validationResult.AddViolation(new FreezeViolation
             {
                 ViolationType = "StopLossDrift",
                 Description = $"Stop loss drifted by {slDifference:F2} (tolerance: {tolerance:F2})",
@@ -432,7 +432,7 @@ public sealed class EpochFreezeEnforcement
         var tpDifference = Math.Abs(request.CurrentTakeProfit - snapshot.BracketSettings.TakeProfitPrice);
         if (tpDifference > tolerance)
         {
-            validationResult.Violations.Add(new FreezeViolation
+            validationResult.AddViolation(new FreezeViolation
             {
                 ViolationType = "TakeProfitDrift",
                 Description = $"Take profit drifted by {tpDifference:F2} (tolerance: {tolerance:F2})",
@@ -690,11 +690,19 @@ public sealed class EpochValidationRequest
 /// </summary>
 public sealed class EpochFreezeValidationResult
 {
+    private readonly System.Collections.Generic.List<FreezeViolation> _violations = new();
+    
     public string PositionId { get; set; } = string.Empty;
     public DateTime ValidationTime { get; set; }
     public bool IsValid { get; set; }
-    public List<FreezeViolation> Violations { get; init; } = new();
+    public System.Collections.Generic.IReadOnlyList<FreezeViolation> Violations => _violations;
     public string? Note { get; set; }
+    
+    public void AddViolation(FreezeViolation violation)
+    {
+        ArgumentNullException.ThrowIfNull(violation);
+        _violations.Add(violation);
+    }
 }
 
 /// <summary>

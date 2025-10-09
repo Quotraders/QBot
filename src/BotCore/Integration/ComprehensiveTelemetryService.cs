@@ -366,8 +366,8 @@ public sealed class PatternTelemetryData
 {
     public double BullScore { get; set; }
     public double BearScore { get; set; }
-    public List<PatternSignalData> PatternSignals { get; init; } = new();
-    public List<PatternReliabilityData> PatternReliabilities { get; init; } = new();
+    public System.Collections.Generic.IReadOnlyList<PatternSignalData> PatternSignals { get; init; } = System.Array.Empty<PatternSignalData>();
+    public System.Collections.Generic.IReadOnlyList<PatternReliabilityData> PatternReliabilities { get; init; } = System.Array.Empty<PatternReliabilityData>();
 }
 
 /// <summary>
@@ -389,7 +389,7 @@ public sealed class FusionRiskTelemetryData
     public double DecisionConfidence { get; set; }
     public int FeatureCount { get; set; }
     public int FeatureMissingCount { get; set; }
-    public List<RiskRejectionData> RiskRejections { get; init; } = new();
+    public System.Collections.Generic.IReadOnlyList<RiskRejectionData> RiskRejections { get; init; } = System.Array.Empty<RiskRejectionData>();
 }
 
 /// <summary>
