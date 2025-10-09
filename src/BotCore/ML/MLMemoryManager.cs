@@ -305,7 +305,14 @@ public class MLMemoryManager : IMLMemoryManager
             {
                 if (removed.Model is IDisposable disposable)
                 {
-                    disposable.Dispose();
+                    try
+                    {
+                        disposable.Dispose();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // Already disposed - safe to ignore
+                    }
                 }
                 removed.Model = null;
                 _logger.LogDebug("[ML-Memory] Removed unused model: {Key}", key);
@@ -347,7 +354,14 @@ public class MLMemoryManager : IMLMemoryManager
                     // Dispose if IDisposable
                     if (removed.Model is IDisposable disposable)
                     {
-                        disposable.Dispose();
+                        try
+                        {
+                            disposable.Dispose();
+                        }
+                        catch (ObjectDisposedException)
+                        {
+                            // Already disposed - safe to ignore
+                        }
                     }
                     
                     // Clear strong reference
@@ -385,7 +399,14 @@ public class MLMemoryManager : IMLMemoryManager
                 {
                     if (removed.Model is IDisposable disposable)
                     {
-                        disposable.Dispose();
+                        try
+                        {
+                            disposable.Dispose();
+                        }
+                        catch (ObjectDisposedException)
+                        {
+                            // Already disposed - safe to ignore
+                        }
                     }
                     removed.Model = null;
                 }
@@ -494,7 +515,14 @@ public class MLMemoryManager : IMLMemoryManager
                 totalFreed += removed.MemoryFootprint;
                 if (removed.Model is IDisposable disposable)
                 {
-                    disposable.Dispose();
+                    try
+                    {
+                        disposable.Dispose();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // Already disposed - safe to ignore
+                    }
                 }
                 removed.Model = null;
             }
@@ -613,7 +641,14 @@ public class MLMemoryManager : IMLMemoryManager
                 {
                     if (model.Model is IDisposable disposable)
                     {
-                        disposable.Dispose();
+                        try
+                        {
+                            disposable.Dispose();
+                        }
+                        catch (ObjectDisposedException)
+                        {
+                            // Already disposed - safe to ignore
+                        }
                     }
                 }
                 

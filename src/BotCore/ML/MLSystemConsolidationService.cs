@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using System.Globalization;
+using System.Text;
 
 namespace BotCore.ML;
 
@@ -322,17 +323,16 @@ public sealed class MLSystemConsolidationService
     {
         var plan = await AnalyzeDuplicateSystemsAsync().ConfigureAwait(false);
         
-        var report = $@"
-=== ML System Consolidation Report ===
-Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}
-
-ANALYSIS SUMMARY:
-- Duplicates Found: {plan.DuplicatesFound}
-- Conflicts Found: {plan.ConflictsFound}
-- Actions Planned: {_consolidationActions.Count}
-
-RECOMMENDED ACTIONS:
-";
+        var sb = new StringBuilder();
+        sb.AppendLine("=== ML System Consolidation Report ===");
+        sb.AppendLine($"Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
+        sb.AppendLine();
+        sb.AppendLine("ANALYSIS SUMMARY:");
+        sb.AppendLine($"- Duplicates Found: {plan.DuplicatesFound}");
+        sb.AppendLine($"- Conflicts Found: {plan.ConflictsFound}");
+        sb.AppendLine($"- Actions Planned: {_consolidationActions.Count}");
+        sb.AppendLine();
+        sb.AppendLine("RECOMMENDED ACTIONS:");
 
         foreach (var action in _consolidationActions)
         {
@@ -344,36 +344,34 @@ RECOMMENDED ACTIONS:
                 _ => "⏳"
             };
 
-            report += $"{statusIcon} {action.Action}\n";
-            report += $"   Source: {action.SourcePath}\n";
-            report += $"   Target: {action.TargetPath}\n";
-            report += $"   Reason: {action.Reason}\n";
+            sb.AppendLine($"{statusIcon} {action.Action}");
+            sb.AppendLine($"   Source: {action.SourcePath}");
+            sb.AppendLine($"   Target: {action.TargetPath}");
+            sb.AppendLine($"   Reason: {action.Reason}");
             
             if (!string.IsNullOrEmpty(action.ErrorMessage))
             {
-                report += $"   Error: {action.ErrorMessage}\n";
+                sb.AppendLine($"   Error: {action.ErrorMessage}");
             }
             
-            report += "\n";
+            sb.AppendLine();
         }
 
-        report += @"
-CONSOLIDATION STRATEGY:
-1. Keep BotCore/ML as the primary ML implementation directory
-2. Remove duplicate MLMemoryManager from Enhanced/MLRLSystem.cs
-3. Migrate any unique functionality from Enhanced to BotCore
-4. Update references to use consolidated implementations
-5. Remove or deprecate Enhanced ML duplicates
-
-NEXT STEPS:
-1. Review this report
-2. Execute consolidation with dryRun=false
-3. Update dependency injection registrations
-4. Run tests to ensure functionality is preserved
-5. Clean up unused Enhanced ML code
-";
+        sb.AppendLine("CONSOLIDATION STRATEGY:");
+        sb.AppendLine("1. Keep BotCore/ML as the primary ML implementation directory");
+        sb.AppendLine("2. Remove duplicate MLMemoryManager from Enhanced/MLRLSystem.cs");
+        sb.AppendLine("3. Migrate any unique functionality from Enhanced to BotCore");
+        sb.AppendLine("4. Update references to use consolidated implementations");
+        sb.AppendLine("5. Remove or deprecate Enhanced ML duplicates");
+        sb.AppendLine();
+        sb.AppendLine("NEXT STEPS:");
+        sb.AppendLine("1. Review this report");
+        sb.AppendLine("2. Execute consolidation with dryRun=false");
+        sb.AppendLine("3. Update dependency injection registrations");
+        sb.AppendLine("4. Run tests to ensure functionality is preserved");
+        sb.AppendLine("5. Clean up unused Enhanced ML code");
 
         _logger.LogInformation("[ML-Consolidation] Consolidation report generated");
-        return report;
+        return sb.ToString();
     }
 }

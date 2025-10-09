@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.ML.OnnxRuntime;
 using System.Collections.ObjectModel;
+using System.Text;
 
 namespace BotCore.ML;
 
@@ -279,49 +280,50 @@ public sealed class OnnxModelValidationService
         var success = await ValidateAllModelsAsync().ConfigureAwait(false);
         var summary = GetValidationSummary();
 
-        var report = $@"
-=== ONNX Model Validation Report ===
-Generated: {summary.ValidationDate:yyyy-MM-dd HH:mm:ss}
-
-SUMMARY:
-- Total Models: {summary.TotalModels}
-- Valid Models: {summary.ValidModels}
-- Failed Models: {summary.FailedModels}
-- Success Rate: {summary.SuccessRate:P1}
-- Total Load Time: {summary.TotalLoadTimeMs:F0}ms
-- Total Memory Usage: {summary.TotalMemoryUsageMB}MB
-
-STATUS: {(success ? "✅ ALL MODELS VALID" : "❌ SOME MODELS FAILED")}
-";
+        var sb = new StringBuilder();
+        sb.AppendLine("=== ONNX Model Validation Report ===");
+        sb.AppendLine($"Generated: {summary.ValidationDate:yyyy-MM-dd HH:mm:ss}");
+        sb.AppendLine();
+        sb.AppendLine("SUMMARY:");
+        sb.AppendLine($"- Total Models: {summary.TotalModels}");
+        sb.AppendLine($"- Valid Models: {summary.ValidModels}");
+        sb.AppendLine($"- Failed Models: {summary.FailedModels}");
+        sb.AppendLine($"- Success Rate: {summary.SuccessRate:P1}");
+        sb.AppendLine($"- Total Load Time: {summary.TotalLoadTimeMs:F0}ms");
+        sb.AppendLine($"- Total Memory Usage: {summary.TotalMemoryUsageMB}MB");
+        sb.AppendLine();
+        sb.AppendLine($"STATUS: {(success ? "✅ ALL MODELS VALID" : "❌ SOME MODELS FAILED")}");
 
         if (summary.FailedModels > 0)
         {
-            report += "\nFAILED MODELS:\n";
+            sb.AppendLine();
+            sb.AppendLine("FAILED MODELS:");
             foreach (var failedPath in summary.FailedModelPaths)
             {
                 if (_validationResults.TryGetValue(failedPath, out var result))
                 {
-                    report += $"- {failedPath}: {result.ErrorMessage}\n";
+                    sb.AppendLine($"- {failedPath}: {result.ErrorMessage}");
                 }
             }
         }
 
-        report += "\nDETAILED RESULTS:\n";
+        sb.AppendLine();
+        sb.AppendLine("DETAILED RESULTS:");
         foreach (var result in _validationResults.Values.OrderBy(r => r.ModelPath))
         {
             var status = result.IsValid ? "✅" : "❌";
-            report += $"{status} {Path.GetFileName(result.ModelPath)} " +
-                     $"({result.LoadTime.TotalMilliseconds:F0}ms, " +
-                     $"{result.MemoryUsage / KilobytesToMegabytes / KilobytesToMegabytes}MB, " +
-                     $"{result.InputCount}→{result.OutputCount})\n";
+            sb.AppendLine($"{status} {Path.GetFileName(result.ModelPath)} " +
+                         $"({result.LoadTime.TotalMilliseconds:F0}ms, " +
+                         $"{result.MemoryUsage / KilobytesToMegabytes / KilobytesToMegabytes}MB, " +
+                         $"{result.InputCount}→{result.OutputCount})");
             
             if (!result.IsValid)
             {
-                report += $"   Error: {result.ErrorMessage}\n";
+                sb.AppendLine($"   Error: {result.ErrorMessage}");
             }
         }
 
         _logger.LogInformation("[ONNX-Validation] Validation report generated");
-        return report;
+        return sb.ToString();
     }
 }
