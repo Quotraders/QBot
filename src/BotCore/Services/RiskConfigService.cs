@@ -64,12 +64,12 @@ namespace TradingBot.BotCore.Services
         public double GetCvarTargetRMultiple() => 
             _config.GetValue("Risk:CvarTargetRMultiple", DefaultCvarTargetRMultiple);
 
-        public double GetRegimeDrawdownMultiplier(string regimeType) => regimeType?.ToLower(CultureInfo.InvariantCulture) switch
+        public double GetRegimeDrawdownMultiplier(string regimeType) => regimeType?.ToUpperInvariant() switch
         {
-            "bull" => _config.GetValue("Risk:RegimeMultipliers:Bull", DefaultBullRegimeMultiplier),
-            "bear" => _config.GetValue("Risk:RegimeMultipliers:Bear", DefaultBearRegimeMultiplier),
-            "sideways" => _config.GetValue("Risk:RegimeMultipliers:Sideways", DefaultSidewaysRegimeMultiplier),
-            "volatile" => _config.GetValue("Risk:RegimeMultipliers:Volatile", DefaultVolatileRegimeMultiplier),
+            "BULL" => _config.GetValue("Risk:RegimeMultipliers:Bull", DefaultBullRegimeMultiplier),
+            "BEAR" => _config.GetValue("Risk:RegimeMultipliers:Bear", DefaultBearRegimeMultiplier),
+            "SIDEWAYS" => _config.GetValue("Risk:RegimeMultipliers:Sideways", DefaultSidewaysRegimeMultiplier),
+            "VOLATILE" => _config.GetValue("Risk:RegimeMultipliers:Volatile", DefaultVolatileRegimeMultiplier),
             _ => _config.GetValue("Risk:RegimeMultipliers:Default", DefaultRegimeMultiplier)
         };
 

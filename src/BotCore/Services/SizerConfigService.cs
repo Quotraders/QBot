@@ -48,13 +48,13 @@ namespace TradingBot.BotCore.Services
         public double GetCqlAlpha() => 
             _config.GetValue("Sizer:CQL:Alpha", DefaultCqlAlpha);
 
-        public double GetMetaCostWeight(string costType) => costType?.ToLower(CultureInfo.InvariantCulture) switch
+        public double GetMetaCostWeight(string costType) => costType?.ToUpperInvariant() switch
         {
-            "execution" => _config.GetValue("Sizer:MetaCost:ExecutionWeight", DefaultExecutionWeight),
-            "market_impact" => _config.GetValue("Sizer:MetaCost:MarketImpactWeight", DefaultMarketImpactWeight),
-            "opportunity" => _config.GetValue("Sizer:MetaCost:OpportunityWeight", DefaultOpportunityWeight),
-            "timing" => _config.GetValue("Sizer:MetaCost:TimingWeight", DefaultTimingWeight),
-            "volatility" => _config.GetValue("Sizer:MetaCost:VolatilityWeight", DefaultVolatilityWeight),
+            "EXECUTION" => _config.GetValue("Sizer:MetaCost:ExecutionWeight", DefaultExecutionWeight),
+            "MARKET_IMPACT" => _config.GetValue("Sizer:MetaCost:MarketImpactWeight", DefaultMarketImpactWeight),
+            "OPPORTUNITY" => _config.GetValue("Sizer:MetaCost:OpportunityWeight", DefaultOpportunityWeight),
+            "TIMING" => _config.GetValue("Sizer:MetaCost:TimingWeight", DefaultTimingWeight),
+            "VOLATILITY" => _config.GetValue("Sizer:MetaCost:VolatilityWeight", DefaultVolatilityWeight),
             _ => _config.GetValue("Sizer:MetaCost:DefaultWeight", DefaultMetaCostWeight)
         };
 
