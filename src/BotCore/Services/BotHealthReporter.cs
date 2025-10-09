@@ -64,7 +64,7 @@ public class BotHealthReporter
     /// <summary>
     /// Generate a summary report for multiple components
     /// </summary>
-    public Task<string> GenerateSummaryReportAsync(
+    public static Task<string> GenerateSummaryReportAsync(
         IEnumerable<(string ComponentName, HealthCheckResult Result)> healthResults,
         CancellationToken cancellationToken = default)
     {

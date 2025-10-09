@@ -656,7 +656,7 @@ namespace BotCore.Services
         /// <summary>
         /// VOLATILITY SCALING: Determine volatility regime based on ATR
         /// </summary>
-        private VolatilityRegime DetermineVolatilityRegime(decimal atr)
+        private static VolatilityRegime DetermineVolatilityRegime(decimal atr)
         {
             if (atr <= 0)
             {
