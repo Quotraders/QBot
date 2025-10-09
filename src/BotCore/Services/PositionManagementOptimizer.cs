@@ -656,7 +656,7 @@ namespace BotCore.Services
         /// <summary>
         /// VOLATILITY SCALING: Determine volatility regime based on ATR
         /// </summary>
-        private VolatilityRegime DetermineVolatilityRegime(decimal atr)
+        private static VolatilityRegime DetermineVolatilityRegime(decimal atr)
         {
             if (atr <= 0)
             {
@@ -1075,7 +1075,7 @@ namespace BotCore.Services
         /// <summary>
         /// CONFIDENCE INTERVALS: Calculate statistical confidence metrics for a parameter
         /// </summary>
-        private ConfidenceMetrics CalculateConfidenceMetrics(List<decimal> values, decimal confidencePercentage = 0.95m)
+        private static ConfidenceMetrics CalculateConfidenceMetrics(List<decimal> values, decimal confidencePercentage = 0.95m)
         {
             if (values.Count == 0)
             {
@@ -1179,7 +1179,7 @@ namespace BotCore.Services
         /// <summary>
         /// CONFIDENCE INTERVALS: Format confidence metrics for logging
         /// </summary>
-        private string FormatConfidenceMetrics(ConfidenceMetrics metrics, string parameterName, string unit = "")
+        private static string FormatConfidenceMetrics(ConfidenceMetrics metrics, string parameterName, string unit = "")
         {
             var levelStr = metrics.Level switch
             {

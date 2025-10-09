@@ -1112,6 +1112,9 @@ namespace BotCore.Services
             string entryOrderType = "LIMIT",
             CancellationToken cancellationToken = default)
         {
+            if (side is null) throw new ArgumentNullException(nameof(side));
+            if (entryOrderType is null) throw new ArgumentNullException(nameof(entryOrderType));
+            
             // PHASE 5: Check if bracket orders are enabled
             if (!_enableBracketOrders)
             {

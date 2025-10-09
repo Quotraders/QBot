@@ -116,7 +116,7 @@ public class CloudModelDownloader : ICloudModelDownloader
         _logger.LogInformation("✓ Model deployed");
     }
 
-    private void CleanupStaging(string path)
+    private static void CleanupStaging(string path)
     {
         try { if (File.Exists(path)) File.Delete(path); } catch { }
     }

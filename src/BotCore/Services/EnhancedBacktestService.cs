@@ -316,7 +316,7 @@ namespace BotCore.Services
         /// <summary>
         /// Create market conditions based on timestamp and symbol
         /// </summary>
-        private MarketConditions CreateMarketConditions(DateTime timestamp, string symbol)
+        private static MarketConditions CreateMarketConditions(DateTime timestamp, string symbol)
         {
             // Simplified market conditions simulation
             // In production, this would use actual historical market data
