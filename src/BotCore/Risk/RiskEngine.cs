@@ -272,10 +272,17 @@ namespace BotCore.Risk
             }
             
             // Calculate drawdown
+            var previousDrawdown = tracker.DrawdownAmount;
             tracker.DrawdownAmount = tracker.PeakValue - currentBalance;
             tracker.DrawdownPercent = tracker.PeakValue > 0 
                 ? (double)(tracker.DrawdownAmount / tracker.PeakValue) * PercentageConversionFactor 
                 : 0;
+            
+            // Set DrawdownStart when drawdown begins (transitions from 0 to > 0)
+            if (previousDrawdown <= 0 && tracker.DrawdownAmount > 0)
+            {
+                tracker.DrawdownStart = DateTime.UtcNow;
+            }
             
             // Track consecutive losses
             if (lastTrade != null && lastTrade.PnL < 0)
