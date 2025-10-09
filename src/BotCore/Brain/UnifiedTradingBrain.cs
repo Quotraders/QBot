@@ -621,9 +621,17 @@ namespace BotCore.Brain
                         _logger.LogTrace("📸 [SNAPSHOT] Captured market snapshot for {Symbol}: {Strategy} {Direction}", 
                             symbol, decision.RecommendedStrategy, decision.PriceDirection);
                     }
-                    catch (Exception ex)
+                    catch (InvalidOperationException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [SNAPSHOT] Failed to capture market snapshot");
+                        _logger.LogWarning(ex, "⚠️ [SNAPSHOT] Failed to capture market snapshot - invalid operation");
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [SNAPSHOT] Failed to capture market snapshot - invalid argument");
+                    }
+                    catch (IOException ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [SNAPSHOT] Failed to capture market snapshot - I/O error");
                     }
                 }
 
@@ -820,9 +828,17 @@ namespace BotCore.Brain
                             _logger.LogTrace("📊 [PARAM-TRACKING] Tracked parameter update for {Strategy}: old={OldReward:F3}, new={NewReward:F3}", 
                                 strategy, reward, crossLearningReward);
                         }
-                        catch (Exception ex)
+                        catch (InvalidOperationException ex)
                         {
-                            _logger.LogWarning(ex, "⚠️ [PARAM-TRACKING] Failed to track parameter change");
+                            _logger.LogWarning(ex, "⚠️ [PARAM-TRACKING] Failed to track parameter change - invalid operation");
+                        }
+                        catch (IOException ex)
+                        {
+                            _logger.LogWarning(ex, "⚠️ [PARAM-TRACKING] Failed to track parameter change - I/O error");
+                        }
+                        catch (UnauthorizedAccessException ex)
+                        {
+                            _logger.LogWarning(ex, "⚠️ [PARAM-TRACKING] Failed to track parameter change - access denied");
                         }
                     }
                     
@@ -895,9 +911,19 @@ namespace BotCore.Brain
                        $"Trend: {trend}, Active Strategies: {activeStrategies}, Position: {positionInfo}, " +
                        $"Decisions Today: {DecisionsToday}";
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-CONTEXT] Error gathering current context");
+                _logger.LogError(ex, "❌ [BOT-CONTEXT] Error gathering current context - invalid operation");
+                return "Context unavailable";
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-CONTEXT] Error gathering current context - invalid argument");
+                return "Context unavailable";
+            }
+            catch (NullReferenceException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-CONTEXT] Error gathering current context - null reference");
                 return "Context unavailable";
             }
         }
@@ -953,9 +979,17 @@ namespace BotCore.Brain
                             _logger.LogWarning("⚠️ [RISK-COMMENTARY] Skipping - missing price or ATR data");
                         }
                     }
-                    catch (Exception ex)
+                    catch (InvalidOperationException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary");
+                        _logger.LogWarning(ex, "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary - invalid operation");
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary - HTTP request failed");
+                    }
+                    catch (TaskCanceledException ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary - task cancelled");
                     }
                 }
                 
@@ -1048,9 +1082,17 @@ namespace BotCore.Brain
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (InvalidOperationException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions");
+                        _logger.LogWarning(ex, "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions - invalid operation");
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions - invalid argument");
+                    }
+                    catch (KeyNotFoundException ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions - key not found");
                     }
                 }
                 
@@ -1070,9 +1112,24 @@ Current context: {currentContext}
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-THINKING] Error during AI thinking");
+                _logger.LogError(ex, "❌ [BOT-THINKING] Error during AI thinking - invalid operation");
+                return string.Empty;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-THINKING] Error during AI thinking - HTTP request failed");
+                return string.Empty;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-THINKING] Error during AI thinking - task cancelled");
+                return string.Empty;
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-THINKING] Error during AI thinking - invalid argument");
                 return string.Empty;
             }
         }
@@ -1137,9 +1194,17 @@ Current context: {currentContext}
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (InvalidOperationException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary");
+                        _logger.LogWarning(ex, "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary - invalid operation");
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary - HTTP request failed");
+                    }
+                    catch (TaskCanceledException ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary - task cancelled");
                     }
                 }
                 
@@ -1156,9 +1221,24 @@ Reason closed: {reason}
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-REFLECTION] Error during AI reflection");
+                _logger.LogError(ex, "❌ [BOT-REFLECTION] Error during AI reflection - invalid operation");
+                return string.Empty;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-REFLECTION] Error during AI reflection - HTTP request failed");
+                return string.Empty;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-REFLECTION] Error during AI reflection - task cancelled");
+                return string.Empty;
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-REFLECTION] Error during AI reflection - invalid argument");
                 return string.Empty;
             }
         }
@@ -1441,9 +1521,31 @@ Reason closed: {reason}
                     TimeHorizon = TimeSpan.FromMinutes(30)
                 });
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "LSTM prediction failed, using fallback");
+                _logger.LogWarning(ex, "LSTM prediction failed - invalid operation, using fallback");
+                return Task.FromResult(new PricePrediction
+                {
+                    Direction = PriceDirection.Sideways,
+                    Probability = TopStepConfig.NeutralProbability,
+                    ExpectedMove = TopStepConfig.FallbackExpectedMove,
+                    TimeHorizon = TimeSpan.FromMinutes(30)
+                });
+            }
+            catch (OnnxRuntimeException ex)
+            {
+                _logger.LogWarning(ex, "LSTM prediction failed - ONNX runtime error, using fallback");
+                return Task.FromResult(new PricePrediction
+                {
+                    Direction = PriceDirection.Sideways,
+                    Probability = TopStepConfig.NeutralProbability,
+                    ExpectedMove = TopStepConfig.FallbackExpectedMove,
+                    TimeHorizon = TimeSpan.FromMinutes(30)
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "LSTM prediction failed - invalid argument, using fallback");
                 return Task.FromResult(new PricePrediction
                 {
                     Direction = PriceDirection.Sideways,
@@ -1566,9 +1668,19 @@ Reason closed: {reason}
                     _logger.LogInformation("🎯 [CVAR-PPO] Action={Action}, Prob={Prob:F3}, Value={Value:F3}, CVaR={CVaR:F3}, Contracts={Contracts}", 
                         actionResult.Action, actionResult.ActionProbability, actionResult.ValueEstimate, actionResult.CVaREstimate, contracts);
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "CVaR-PPO position sizing failed, using TopStep compliance sizing");
+                    _logger.LogError(ex, "CVaR-PPO position sizing failed - invalid operation, using TopStep compliance sizing");
+                    // contracts remains unchanged - use TopStep compliance sizing
+                }
+                catch (ArgumentException ex)
+                {
+                    _logger.LogError(ex, "CVaR-PPO position sizing failed - invalid argument, using TopStep compliance sizing");
+                    // contracts remains unchanged - use TopStep compliance sizing
+                }
+                catch (OnnxRuntimeException ex)
+                {
+                    _logger.LogError(ex, "CVaR-PPO position sizing failed - ONNX runtime error, using TopStep compliance sizing");
                     // contracts remains unchanged - use TopStep compliance sizing
                 }
             }
