@@ -243,13 +243,13 @@ public class ProductionGuardrailTester
             if (validR.HasValue && !invalidR.HasValue && !negativeR.HasValue)
             {
                 _logger.LogInformation("✅ [TEST] Risk validation test PASSED (valid: {Valid}, zero: {Zero}, negative: {Negative})",
-                    validR?.ToString("0.00") ?? "null", invalidR?.ToString("0.00") ?? "null", negativeR?.ToString("0.00") ?? "null");
+                    validR?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) ?? "null", invalidR?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) ?? "null", negativeR?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) ?? "null");
                 return true;
             }
             else
             {
                 _logger.LogError("❌ [TEST] Risk validation test FAILED (valid: {Valid}, zero: {Zero}, negative: {Negative})",
-                    validR?.ToString("0.00") ?? "null", invalidR?.ToString("0.00") ?? "null", negativeR?.ToString("0.00") ?? "null");
+                    validR?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) ?? "null", invalidR?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) ?? "null", negativeR?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) ?? "null");
                 return false;
             }
         }

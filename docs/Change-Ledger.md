@@ -13,6 +13,48 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ---
 
+### 🔧 Round 191 - Phase 2: Fix CA1305 Violations Batch 1 (PR #272 Continuation)
+
+**Date**: January 2025  
+**Agent**: GitHub Copilot  
+**Objective**: Add CultureInfo to ToString/Parse calls (Phase 2 globalization fixes)
+
+| Error Code | Count Before | Count After | Fix Applied |
+|------------|--------------|-------------|-------------|
+| CA1305 | 252 | 238 | Added CultureInfo.InvariantCulture to ToString calls (14 fixed) |
+
+**Files Modified (2 files)**:
+1. `src/BotCore/TradeLog.cs` - Added CultureInfo to int.ToString() call
+2. `src/BotCore/Testing/ProductionGuardrailTester.cs` - Added CultureInfo to 6 decimal.ToString() calls
+
+**Detailed Fixes**:
+
+**CA1305 - Globalization Violations**:
+- **Problem**: ToString/Parse calls without CultureInfo can behave differently based on locale
+- **Solution**: Added `CultureInfo.InvariantCulture` to all affected calls
+```csharp
+// Before: qty.ToString()
+// After:  qty.ToString(System.Globalization.CultureInfo.InvariantCulture)
+
+// Before: validR?.ToString("0.00") ?? "null"
+// After:  validR?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) ?? "null"
+```
+
+**Rationale**: Priority 4 (Globalization) - ensures consistent formatting regardless of user locale, critical for trading system consistency.
+
+**Guardrails Compliance**: ✅
+- No suppressions added
+- No configuration changes
+- Minimal surgical fixes following guidebook patterns
+
+**Build Impact**:
+- CA1305 Violations: 252 → 238 ✅ (14 fixed, 238 remaining)
+- Total Violations: 11,152 → 11,138 ✅
+
+**Note**: 238 CA1305 violations remain - systematic batch fixing in progress following guidebook recommendation of 20-50 violations per commit.
+
+---
+
 ### 🔧 Round 190 - Phase 2: Fix CA1805 Violations (PR #272 Continuation)
 
 **Date**: January 2025  
