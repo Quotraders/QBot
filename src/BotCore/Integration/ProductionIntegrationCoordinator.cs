@@ -254,9 +254,13 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
             {
                 break;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Error in continuous monitoring loop");
+                _logger.LogWarning(ex, "Invalid operation in continuous monitoring loop");
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogWarning(ex, "Timeout in continuous monitoring loop");
             }
         }
     }
@@ -291,9 +295,13 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
                 _logger.LogWarning("Unified bar pipeline test: FAILED - {Error}", pipelineResult.Error);
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Error testing unified bar pipeline");
+            _logger.LogWarning(ex, "Invalid operation testing unified bar pipeline");
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument testing unified bar pipeline");
         }
     }
     
@@ -325,9 +333,13 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
             _logger.LogDebug("Feature resolution test: {SuccessCount}/{TotalCount} features resolved successfully", 
                 successCount, testFeatures.Length);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Error testing feature resolution");
+            _logger.LogWarning(ex, "Invalid operation testing feature resolution");
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument testing feature resolution");
         }
     }
     
@@ -367,9 +379,13 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
             
             _logger.LogDebug("Telemetry emission test: Zone and pattern telemetry emitted successfully");
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Error testing telemetry emission");
+            _logger.LogWarning(ex, "Invalid operation testing telemetry emission");
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument testing telemetry emission");
         }
     }
     
@@ -393,9 +409,13 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
                 await metricsService.RecordCounterAsync("integration.operational_heartbeat", 1, tags, cancellationToken).ConfigureAwait(false);
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogTrace(ex, "Error emitting operational telemetry");
+            _logger.LogTrace(ex, "Invalid operation emitting operational telemetry");
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogTrace(ex, "Timeout emitting operational telemetry");
         }
     }
     
@@ -420,9 +440,13 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
                 shadowModeStats?.ActiveShadowStrategies ?? 0,
                 telemetryHealth?.IsHealthy ?? false ? "Healthy" : "Degraded");
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Error in periodic health check");
+            _logger.LogWarning(ex, "Invalid operation in periodic health check");
+        }
+        catch (NullReferenceException ex)
+        {
+            _logger.LogWarning(ex, "Null reference in periodic health check");
         }
     }
     

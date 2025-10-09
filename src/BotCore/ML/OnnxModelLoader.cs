@@ -59,8 +59,8 @@ public sealed class OnnxModelLoader : IDisposable
     private const int FeatureIndexRangingRegime = 7;
     private const int FeatureIndexVolatileRegime = 8;
 
-    public event Action<ModelHotReloadEvent>? ModelReloaded;
-    public event Action<ModelHealthEvent>? ModelHealthChanged;
+    public event EventHandler<ModelHotReloadEvent>? ModelReloaded;
+    public event EventHandler<ModelHealthEvent>? ModelHealthChanged;
 
     public OnnxModelLoader(
         ILogger<OnnxModelLoader> logger, 
@@ -144,7 +144,7 @@ public sealed class OnnxModelLoader : IDisposable
                 modelPath, loadResult.Metadata?.Version ?? "unknown");
                 
             // Emit model reload event
-            ModelReloaded?.Invoke(new ModelHotReloadEvent
+            ModelReloaded?.Invoke(this, new ModelHotReloadEvent
             {
                 ModelKey = modelKey,
                 ModelPath = modelPath,
@@ -348,7 +348,7 @@ public sealed class OnnxModelLoader : IDisposable
             var inferenceDuration = DateTime.UtcNow - startTime;
 
             // Validate outputs
-            var outputCount = results.Count();
+            var outputCount = results.Count;
             if (outputCount == 0)
             {
                 return Task.FromResult(new HealthProbeResult 
@@ -457,7 +457,7 @@ public sealed class OnnxModelLoader : IDisposable
             foreach (var metadataFile in metadataFiles)
             {
                 var lastWriteTime = File.GetLastWriteTimeUtc(metadataFile);
-                var modelName = Path.GetFileNameWithoutExtension(metadataFile).Replace("_latest", "");
+                var modelName = Path.GetFileNameWithoutExtension(metadataFile).Replace("_latest", "", StringComparison.Ordinal);
                 
                 // Check if this metadata file has been updated since last check
                 var cacheKey = $"registry_{modelName}_lastcheck";
@@ -565,7 +565,7 @@ public sealed class OnnxModelLoader : IDisposable
                     modelFile, loadResult.Metadata?.Version ?? "unknown");
                 
                 // Emit reload event
-                ModelReloaded?.Invoke(new ModelHotReloadEvent
+                ModelReloaded?.Invoke(this, new ModelHotReloadEvent
                 {
                     ModelKey = modelKey,
                     ModelPath = modelFile,
@@ -579,7 +579,7 @@ public sealed class OnnxModelLoader : IDisposable
                 _logger.LogError("[ONNX-Loader] ❌ Hot-reload failed - model failed health probe: {ModelFile}", modelFile);
                 
                 // Emit health event
-                ModelHealthChanged?.Invoke(new ModelHealthEvent
+                ModelHealthChanged?.Invoke(this, new ModelHealthEvent
                 {
                     ModelKey = modelKey,
                     ModelPath = modelFile,
@@ -593,7 +593,7 @@ public sealed class OnnxModelLoader : IDisposable
         {
             _logger.LogError(ex, "[ONNX-Loader] ❌ Hot-reload error: {ModelFile}", modelFile);
             
-            ModelHealthChanged?.Invoke(new ModelHealthEvent
+            ModelHealthChanged?.Invoke(this, new ModelHealthEvent
             {
                 ModelKey = modelKey,
                 ModelPath = modelFile,
@@ -980,7 +980,7 @@ public sealed class OnnxModelLoader : IDisposable
                 .OrderByDescending(v => v)
                 .ToList();
 
-            if (!versions.Any())
+            if (versions.Count == 0)
             {
                 return null;
             }
@@ -1325,7 +1325,7 @@ public class HealthProbeResult
 /// <summary>
 /// Event for model hot-reload notifications
 /// </summary>
-public class ModelHotReloadEvent
+public class ModelHotReloadEvent : EventArgs
 {
     public string ModelKey { get; set; } = string.Empty;
     public string ModelPath { get; set; } = string.Empty;
@@ -1337,7 +1337,7 @@ public class ModelHotReloadEvent
 /// <summary>
 /// Event for model health status changes
 /// </summary>
-public class ModelHealthEvent
+public class ModelHealthEvent : EventArgs
 {
     public string ModelKey { get; set; } = string.Empty;
     public string ModelPath { get; set; } = string.Empty;

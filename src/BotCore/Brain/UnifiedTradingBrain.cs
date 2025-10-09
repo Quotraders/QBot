@@ -8,6 +8,7 @@ using BotCore.Bandits;
 using BotCore.Brain.Models;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Text.Json;
 using TradingBot.RLAgent; // For CVaRPPO and ActionResult
 using Microsoft.ML.OnnxRuntime;
@@ -431,9 +432,9 @@ namespace BotCore.Brain
                         e.Impact >= BotCore.Market.EventImpact.High && 
                         e.AffectedSymbols.Contains(symbol)).ToList();
                     
-                    if (highImpactEvents.Any())
+                    if (highImpactEvents.Count > 0)
                     {
-                        var nextEvent = highImpactEvents.First();
+                        var nextEvent = highImpactEvents[0];
                         var minutesUntil = (nextEvent.ScheduledTime - DateTime.UtcNow).TotalMinutes;
                         _logger.LogWarning("📅 [CALENDAR-BLOCK] High-impact event '{Event}' in {Minutes:F0} minutes - blocking trades", 
                             nextEvent.Name, minutesUntil);
@@ -769,8 +770,8 @@ namespace BotCore.Brain
                             _parameterTracker.RecordChange(
                                 strategyName: strategy,
                                 parameterName: "StrategyWeight",
-                                oldValue: reward.ToString("F3"),
-                                newValue: crossLearningReward.ToString("F3"),
+                                oldValue: reward.ToString("F3", CultureInfo.InvariantCulture),
+                                newValue: crossLearningReward.ToString("F3", CultureInfo.InvariantCulture),
                                 reason: reason,
                                 outcomePnl: reward,
                                 wasCorrect: wasCorrect
@@ -822,7 +823,7 @@ namespace BotCore.Brain
                 
                 // Get current market trend
                 var trend = "Unknown";
-                if (_marketContexts.Any())
+                if (!_marketContexts.IsEmpty)
                 {
                     var latestContext = _marketContexts.Values.LastOrDefault();
                     if (latestContext != null)
@@ -1283,7 +1284,7 @@ Reason closed: {reason}
                 var recentBars = bars.TakeLast(5).ToList();
                 if (recentBars.Count >= 2)
                 {
-                    var priceChange = recentBars.Last().Close - recentBars.First().Close;
+                    var priceChange = recentBars[recentBars.Count - 1].Close - recentBars[0].Close;
                     var direction = priceChange > 0 ? PriceDirection.Up : PriceDirection.Down;
                     var probability = Math.Min(0.75m, 0.5m + Math.Abs(priceChange) / (context.Atr ?? 10));
                     
@@ -1305,7 +1306,7 @@ Reason closed: {reason}
                 var ema50 = CalculateEMA(bars, 50);
                 var rsi = CalculateRSI(bars, 14);
                 
-                var isUptrend = ema20 > ema50 && bars.Last().Close > ema20;
+                var isUptrend = ema20 > ema50 && bars[bars.Count - 1].Close > ema20;
                 var isOversold = rsi < 30;
                 var isOverbought = rsi > 70;
                 
@@ -1749,7 +1750,7 @@ Reason closed: {reason}
                 .ToList();
                 
             // Fallback to time-based if no intersection
-            if (!availableStrategies.Any())
+            if (availableStrategies.Count == 0)
             {
                 availableStrategies = timeBasedStrategies.ToList();
             }
@@ -1858,7 +1859,7 @@ Reason closed: {reason}
             if (bars.Count < TopStepConfig.MinBarsPeriod) return 0;
             
             var recent = bars.TakeLast(TopStepConfig.MinBarsPeriod).ToList();
-            var slope = (recent.Last().Close - recent.First().Close) / recent.Count;
+            var slope = (recent[recent.Count - 1].Close - recent[0].Close) / recent.Count;
             return Math.Abs(slope) / (recent.Average(b => Math.Abs(b.High - b.Low)));
         }
 
@@ -1866,7 +1867,7 @@ Reason closed: {reason}
         {
             if (bars.Count < TopStepConfig.MinBarsExtended) return TopStepConfig.NeutralProbability;
             
-            var currentVol = Math.Abs(bars.Last().High - bars.Last().Low);
+            var currentVol = Math.Abs(bars[bars.Count - 1].High - bars[bars.Count - 1].Low);
             var historicalVols = bars.TakeLast(TopStepConfig.MinBarsExtended).Select(b => Math.Abs(b.High - b.Low)).OrderBy(v => v).ToList();
             
             var rank = historicalVols.Count(v => v < currentVol) / (decimal)historicalVols.Count;
@@ -1878,7 +1879,7 @@ Reason closed: {reason}
             if (bars.Count < 5) return 0;
             
             var recent = bars.TakeLast(5).ToList();
-            return (recent.Last().Close - recent.First().Close) / recent.First().Close;
+            return (recent[recent.Count - 1].Close - recent[0].Close) / recent[0].Close;
         }
 
         private async Task UpdateUnifiedLearningAsync(CancellationToken cancellationToken)
@@ -2451,7 +2452,7 @@ Reason closed: {reason}
             }
         }
 
-        private float[] RunInference(InferenceSession session, float[] inputVector)
+        private static float[] RunInference(InferenceSession session, float[] inputVector)
         {
             var inputName = session.InputMetadata.Keys.First();
             
@@ -2464,7 +2465,7 @@ Reason closed: {reason}
             return output;
         }
 
-        private double CalculateTotalVariationDistance(List<float[]> predictions1, List<float[]> predictions2)
+        private static double CalculateTotalVariationDistance(List<float[]> predictions1, List<float[]> predictions2)
         {
             double totalVariation = 0.0;
             int count = 0;
@@ -2484,7 +2485,7 @@ Reason closed: {reason}
             return count > 0 ? (totalVariation / count) * TopStepConfig.TotalVariationNormalizationFactor : 0.0;
         }
 
-        private double CalculateKLDivergence(List<float[]> predictions1, List<float[]> predictions2, double minProb)
+        private static double CalculateKLDivergence(List<float[]> predictions1, List<float[]> predictions2, double minProb)
         {
             double klDivergence = 0.0;
             int count = 0;
@@ -2759,7 +2760,7 @@ Reason closed: {reason}
             }
         }
 
-        private string GetCurrentModelPath()
+        private static string GetCurrentModelPath()
         {
             var modelDir = Path.Combine("models", "current");
             Directory.CreateDirectory(modelDir);
@@ -2772,7 +2773,7 @@ Reason closed: {reason}
             var backupDir = Path.Combine("models", "backup");
             Directory.CreateDirectory(backupDir);
             
-            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
             var backupPath = Path.Combine(backupDir, $"unified_brain_{timestamp}.onnx");
 
             if (File.Exists(currentModelPath))
@@ -2826,7 +2827,7 @@ Reason closed: {reason}
             }
         }
 
-        private string GetModelVersion(string modelPath)
+        private static string GetModelVersion(string modelPath)
         {
             if (!File.Exists(modelPath))
             {
@@ -2834,7 +2835,7 @@ Reason closed: {reason}
             }
 
             var fileInfo = new FileInfo(modelPath);
-            var timestamp = fileInfo.LastWriteTimeUtc.ToString("yyyyMMdd_HHmmss");
+            var timestamp = fileInfo.LastWriteTimeUtc.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
             var size = fileInfo.Length;
             
             return $"{timestamp}_{size}";
