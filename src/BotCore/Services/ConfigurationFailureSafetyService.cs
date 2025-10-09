@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using Microsoft.Extensions.Logging;
 using TradingBot.Abstractions;
 
@@ -83,7 +84,7 @@ namespace TradingBot.BotCore.Services
             try
             {
                 // Write to critical alert file
-                var alertPath = "CRITICAL_ALERT_CONFIG_" + DateTime.UtcNow.ToString("yyyyMMdd_HHmmss") + ".txt";
+                var alertPath = "CRITICAL_ALERT_CONFIG_" + DateTime.UtcNow.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture) + ".txt";
                 System.IO.File.WriteAllText(alertPath, $"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC - {alertMessage}\n{ex}");
                 
                 _logger.LogCritical("🚨 [CONFIG-SAFETY] CRITICAL ALERT RAISED: {AlertPath}", alertPath);

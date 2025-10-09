@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Threading;
@@ -77,7 +78,7 @@ namespace TradingBot.BotCore.Services
         public async Task PerformBackupAsync()
         {
             var backupStart = DateTime.UtcNow;
-            var backupTimestamp = backupStart.ToString("yyyyMMdd_HHmmss");
+            var backupTimestamp = backupStart.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
             
             try
             {
