@@ -22,7 +22,8 @@ function Fail-IfMatch {
         [string]$ExcludePattern = ''
     )
     $files = Get-CodeFiles -ExcludePattern $ExcludePattern
-    if ($files | Select-String -Pattern $Pattern -Quiet) {
+    $matchResults = $files | Select-String -Pattern $Pattern -Quiet
+    if ($matchResults -contains $true) {
         Write-Host $Message
         exit 1
     }
