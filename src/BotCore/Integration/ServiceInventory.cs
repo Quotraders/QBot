@@ -128,9 +128,19 @@ public sealed class ServiceInventory
             var service = _serviceProvider.GetService(serviceType);
             return service != null;
         }
-        catch
+        catch (TypeLoadException)
         {
-            // Service not registered or type not found
+            // Type could not be loaded
+            return false;
+        }
+        catch (TargetInvocationException)
+        {
+            // Error during service instantiation
+            return false;
+        }
+        catch (ArgumentException)
+        {
+            // Invalid type name
             return false;
         }
     }

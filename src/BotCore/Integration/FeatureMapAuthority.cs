@@ -290,14 +290,34 @@ public sealed class FeatureMapAuthority
             
             return result;
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
             Interlocked.Increment(ref _resolverErrors);
             result.Error = ex.Message;
             result.CompletedAt = DateTime.UtcNow;
             result.ResolutionTimeMs = (result.CompletedAt - result.RequestedAt).TotalMilliseconds;
             
-            _logger.LogError(ex, "Error resolving feature {FeatureKey} for {Symbol}", featureKey, symbol);
+            _logger.LogError(ex, "Invalid operation resolving feature {FeatureKey} for {Symbol}", featureKey, symbol);
+            return result;
+        }
+        catch (KeyNotFoundException ex)
+        {
+            Interlocked.Increment(ref _resolverErrors);
+            result.Error = ex.Message;
+            result.CompletedAt = DateTime.UtcNow;
+            result.ResolutionTimeMs = (result.CompletedAt - result.RequestedAt).TotalMilliseconds;
+            
+            _logger.LogError(ex, "Feature key not found: {FeatureKey} for {Symbol}", featureKey, symbol);
+            return result;
+        }
+        catch (TimeoutException ex)
+        {
+            Interlocked.Increment(ref _resolverErrors);
+            result.Error = ex.Message;
+            result.CompletedAt = DateTime.UtcNow;
+            result.ResolutionTimeMs = (result.CompletedAt - result.RequestedAt).TotalMilliseconds;
+            
+            _logger.LogError(ex, "Timeout resolving feature {FeatureKey} for {Symbol}", featureKey, symbol);
             return result;
         }
     }
@@ -340,9 +360,13 @@ public sealed class FeatureMapAuthority
                 
                 _logger.LogError("🚨 FUSION FEATURE MISSING: {FeatureKey} - emitted telemetry", featureKey);
             }
-            catch (Exception ex)
+            catch (TargetInvocationException ex)
             {
-                _logger.LogWarning(ex, "Error emitting fusion.feature_missing telemetry for {FeatureKey}", featureKey);
+                _logger.LogWarning(ex, "Reflection error emitting fusion.feature_missing telemetry for {FeatureKey}", featureKey);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Invalid operation emitting fusion.feature_missing telemetry for {FeatureKey}", featureKey);
             }
         }
     }
