@@ -215,7 +215,7 @@ namespace BotCore.Services
                 return 0;
 
             var latencyConfig = _config.LatencyConfig;
-            var baseLatency = latencyConfig.CalculateLatency(_random);
+            var baseLatency = latencyConfig.CalculateLatency();
             
             // Market stress multiplier
             var stressMultiplier = 1.0 + (1.0 - conditions.LiquidityScore) * 0.5;
