@@ -251,9 +251,13 @@ namespace BotCore.Features
                     };
                 }
             }
-            catch (Exception)
+            catch (IndexOutOfRangeException)
             {
-                // Swallow parsing errors and return empty
+                // Invalid contract ID format - return empty
+            }
+            catch (ArgumentException)
+            {
+                // Invalid string manipulation - return empty
             }
             return string.Empty;
         }

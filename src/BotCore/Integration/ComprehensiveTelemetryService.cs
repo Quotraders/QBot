@@ -96,9 +96,13 @@ public sealed class ComprehensiveTelemetryService
             
             _logger.LogTrace("Zone telemetry emitted for {Symbol}: {ZoneCount} zones, {TotalTests} tests", symbol, data.ZoneCount, data.TotalTests);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Error emitting zone telemetry for {Symbol}", symbol);
+            _logger.LogWarning(ex, "Invalid operation emitting zone telemetry for {Symbol}", symbol);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument emitting zone telemetry for {Symbol}", symbol);
         }
     }
     
@@ -121,9 +125,13 @@ public sealed class ComprehensiveTelemetryService
             _logger.LogTrace("Pattern telemetry emitted for {Symbol}: Bull {BullScore:F2}, Bear {BearScore:F2}, {SignalCount} signals",
                 symbol, data.BullScore, data.BearScore, data.PatternSignals.Count);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Error emitting pattern telemetry for {Symbol}", symbol);
+            _logger.LogWarning(ex, "Invalid operation emitting pattern telemetry for {Symbol}", symbol);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument emitting pattern telemetry for {Symbol}", symbol);
         }
     }
     
@@ -151,9 +159,13 @@ public sealed class ComprehensiveTelemetryService
             _logger.LogTrace("Fusion/Risk telemetry emitted: Confidence {Confidence:F2}, Features {FeatureCount}, Rejections {RejectionCount}",
                 data.DecisionConfidence, data.FeatureCount, data.RiskRejections.Count);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Error emitting fusion/risk telemetry");
+            _logger.LogWarning(ex, "Invalid operation emitting fusion/risk telemetry");
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument emitting fusion/risk telemetry");
         }
     }
     
@@ -183,9 +195,13 @@ public sealed class ComprehensiveTelemetryService
             _logger.LogDebug("Decision/Order telemetry emitted: {DecisionType} for {Symbol} (Config: {ConfigSnapshotId})",
                 data.DecisionType, data.Symbol, _currentConfigSnapshotId);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Error emitting decision/order telemetry for {Symbol}", data.Symbol);
+            _logger.LogWarning(ex, "Invalid operation emitting decision/order telemetry for {Symbol}", data.Symbol);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument emitting decision/order telemetry for {Symbol}", data.Symbol);
         }
     }
     
@@ -218,9 +234,13 @@ public sealed class ComprehensiveTelemetryService
             
             _logger.LogWarning("🚨 FAIL-CLOSED triggered: {Component} - {Reason}", component, reason);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Error emitting fail-closed telemetry for {Component}", component);
+            _logger.LogError(ex, "Invalid operation emitting fail-closed telemetry for {Component}", component);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogError(ex, "Invalid argument emitting fail-closed telemetry for {Component}", component);
         }
     }
     
@@ -271,9 +291,13 @@ public sealed class ComprehensiveTelemetryService
             _logger.LogTrace("Performance/Execution telemetry emitted: Decision {DecisionLatency}ms, Order {OrderLatency}ms",
                 data.DecisionLatencyMs, data.OrderLatencyMs);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Error emitting performance/execution telemetry");
+            _logger.LogWarning(ex, "Invalid operation emitting performance/execution telemetry");
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid argument emitting performance/execution telemetry");
         }
     }
     
