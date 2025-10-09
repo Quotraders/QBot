@@ -330,8 +330,8 @@ namespace TradingBot.BotCore.Services
                 Content = JsonContent.Create(new
                 {
                     contractId,
-                    startDate = startDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                    endDate = endDate.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    startDate = startDate.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture),
+                    endDate = endDate.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture),
                     barSize = "1min"
                 })
             };
@@ -723,7 +723,7 @@ namespace TradingBot.BotCore.Services
                 var backtestDirectory = "state/backtest";
                 Directory.CreateDirectory(backtestDirectory);
                 
-                var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+                var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
                 var filename = Path.Combine(backtestDirectory, $"{strategyId}_{symbolRoot}_{timestamp}.json");
                 
                 var resultsData = new

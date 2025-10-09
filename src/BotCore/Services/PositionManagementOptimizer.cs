@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -318,8 +319,8 @@ namespace BotCore.Services
                     _changeTracker.RecordChange(
                         strategyName: $"{strategy}-{symbol}",
                         parameterName: $"BreakevenAfterTicks_{regime}_{session}",
-                        oldValue: current.BreakevenTicks.ToString(),
-                        newValue: best.BreakevenTicks.ToString(),
+                        oldValue: current.BreakevenTicks.ToString(CultureInfo.InvariantCulture),
+                        newValue: best.BreakevenTicks.ToString(CultureInfo.InvariantCulture),
                         reason: $"ML/RL learning ({regime}/{session}): Better PnL ({best.AvgPnL:F2} vs {current.AvgPnL:F2}), Win rate {best.WinRate:P0} | {confidenceStr}",
                         outcomePnl: (decimal)best.AvgPnL,
                         wasCorrect: true,
@@ -400,8 +401,8 @@ namespace BotCore.Services
                     _changeTracker.RecordChange(
                         strategyName: $"{strategy}-{symbol}",
                         parameterName: $"TrailMultiplier_{regime}_{session}",
-                        oldValue: current.TrailMultiplier.ToString("F1"),
-                        newValue: best.TrailMultiplier.ToString("F1"),
+                        oldValue: current.TrailMultiplier.ToString("F1", CultureInfo.InvariantCulture),
+                        newValue: best.TrailMultiplier.ToString("F1", CultureInfo.InvariantCulture),
                         reason: $"ML/RL learning ({regime}/{session}): Better PnL ({best.AvgPnL:F2} vs {current.AvgPnL:F2}), Lower opportunity cost | {confidenceStr}",
                         outcomePnl: (decimal)best.AvgPnL,
                         wasCorrect: true,
@@ -449,7 +450,7 @@ namespace BotCore.Services
                 var winningTrades = regimeOutcomes.Where(o => o.TargetHit).ToList();
                 var timedOutTrades = regimeOutcomes.Where(o => o.TimedOut).ToList();
                 
-                if (winningTrades.Any() && timedOutTrades.Any())
+                if (winningTrades.Count > 0 && timedOutTrades.Count > 0)
                 {
                     var avgWinningDuration = winningTrades.Average(o => o.MaxHoldMinutes);
                     var avgTimedOutDuration = timedOutTrades.Average(o => o.MaxHoldMinutes);
@@ -468,8 +469,8 @@ namespace BotCore.Services
                         _changeTracker.RecordChange(
                             strategyName: $"{strategy}-{symbol}",
                             parameterName: $"MaxHoldMinutes_{regimeName}",
-                            oldValue: avgTimedOutDuration.ToString("F0"),
-                            newValue: recommendedTimeout.ToString(),
+                            oldValue: avgTimedOutDuration.ToString("F0", CultureInfo.InvariantCulture),
+                            newValue: recommendedTimeout.ToString(CultureInfo.InvariantCulture),
                             reason: $"ML/RL learning: Timed out trades had {avgTimedOutOpCost:F1} ticks opportunity cost",
                             outcomePnl: null,
                             wasCorrect: null,
@@ -583,7 +584,7 @@ namespace BotCore.Services
                 .Where(giveback => giveback > 0) // Only where we gave back profit
                 .ToList();
             
-            if (!givebacks.Any())
+            if (givebacks.Count == 0)
             {
                 return null; // No giveback patterns
             }
@@ -656,7 +657,7 @@ namespace BotCore.Services
         /// <summary>
         /// VOLATILITY SCALING: Determine volatility regime based on ATR
         /// </summary>
-        private VolatilityRegime DetermineVolatilityRegime(decimal atr)
+        private static VolatilityRegime DetermineVolatilityRegime(decimal atr)
         {
             if (atr <= 0)
             {
@@ -1075,7 +1076,7 @@ namespace BotCore.Services
         /// <summary>
         /// CONFIDENCE INTERVALS: Calculate statistical confidence metrics for a parameter
         /// </summary>
-        private ConfidenceMetrics CalculateConfidenceMetrics(List<decimal> values, decimal confidencePercentage = 0.95m)
+        private static ConfidenceMetrics CalculateConfidenceMetrics(List<decimal> values, decimal confidencePercentage = 0.95m)
         {
             if (values.Count == 0)
             {
@@ -1179,7 +1180,7 @@ namespace BotCore.Services
         /// <summary>
         /// CONFIDENCE INTERVALS: Format confidence metrics for logging
         /// </summary>
-        private string FormatConfidenceMetrics(ConfidenceMetrics metrics, string parameterName, string unit = "")
+        private static string FormatConfidenceMetrics(ConfidenceMetrics metrics, string parameterName, string unit = "")
         {
             var levelStr = metrics.Level switch
             {

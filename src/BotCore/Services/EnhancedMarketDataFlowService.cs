@@ -449,7 +449,7 @@ namespace BotCore.Services
                     }
                 }
 
-                if (staleSymbols.Any())
+                if (staleSymbols.Count > 0)
                 {
                     _logger.LogWarning("[HEARTBEAT] ⚠️ Market data stale for {Count} symbols after {Timeout}s: {Symbols}", 
                         staleSymbols.Count, _config.HealthMonitoring.HeartbeatTimeoutSeconds, string.Join(", ", staleSymbols));
@@ -534,7 +534,7 @@ namespace BotCore.Services
                     .Select(m => m.Symbol)
                     .ToList();
 
-                if (unhealthySymbols.Any())
+                if (unhealthySymbols.Count > 0)
                 {
                     await RequestSnapshotDataAsync(unhealthySymbols).ConfigureAwait(false);
                 }

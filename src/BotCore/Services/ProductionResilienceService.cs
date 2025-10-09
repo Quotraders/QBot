@@ -216,8 +216,8 @@ public class ProductionResilienceService
     {
         // Extract status code from HTTP exception message if available
         var message = httpEx.Message;
-        return message.Contains("500") || message.Contains("502") || message.Contains("503") || 
-               message.Contains("504") || message.Contains("408") || message.Contains("429");
+        return message.Contains("500", StringComparison.Ordinal) || message.Contains("502", StringComparison.Ordinal) || message.Contains("503", StringComparison.Ordinal) || 
+               message.Contains("504", StringComparison.Ordinal) || message.Contains("408", StringComparison.Ordinal) || message.Contains("429", StringComparison.Ordinal);
     }
 
     private TimeSpan CalculateExponentialBackoff(int attempt)

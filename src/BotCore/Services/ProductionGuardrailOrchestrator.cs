@@ -110,7 +110,7 @@ public class ProductionGuardrailOrchestrator : IHostedService
         foreach (var variable in variables)
         {
             var value = Environment.GetEnvironmentVariable(variable);
-            if (variable.Contains("API_KEY") || variable.Contains("PASSWORD"))
+            if (variable.Contains("API_KEY", StringComparison.Ordinal) || variable.Contains("PASSWORD", StringComparison.Ordinal))
             {
                 // Mask sensitive values
                 value = string.IsNullOrEmpty(value) ? "NOT_SET" : "***MASKED***";

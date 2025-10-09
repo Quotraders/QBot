@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using System;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -41,7 +42,7 @@ namespace BotCore.Services
             var session = DetermineMarketSession(easternTime, symbol);
             
             _logger.LogTrace("Market session for {Symbol} at {Time} ET: {Session}", 
-                symbol, easternTime.ToString("HH:mm:ss"), session);
+                symbol, easternTime.ToString("HH:mm:ss", CultureInfo.InvariantCulture), session);
                 
             return session;
         }
@@ -71,7 +72,7 @@ namespace BotCore.Services
             var result = Math.Max(0.0, minutesSinceOpen);
             
             _logger.LogTrace("Minutes since open for {Symbol}: {Minutes:F1} (ET: {Time})", 
-                symbol, result, easternTime.ToString("HH:mm:ss"));
+                symbol, result, easternTime.ToString("HH:mm:ss", CultureInfo.InvariantCulture));
                 
             return result;
         }
@@ -101,7 +102,7 @@ namespace BotCore.Services
             var result = Math.Max(0.0, minutesUntilClose);
             
             _logger.LogTrace("Minutes until close for {Symbol}: {Minutes:F1} (ET: {Time})", 
-                symbol, result, easternTime.ToString("HH:mm:ss"));
+                symbol, result, easternTime.ToString("HH:mm:ss", CultureInfo.InvariantCulture));
                 
             return result;
         }

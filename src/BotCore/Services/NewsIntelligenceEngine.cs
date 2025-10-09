@@ -93,7 +93,7 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
             
             // Get news from multiple sources
             var newsData = await FetchNewsFromSourcesAsync().ConfigureAwait(false);
-            if (newsData == null || !newsData.Any())
+            if (newsData == null || newsData.Count == 0)
             {
                 _logger.LogWarning("No news data available");
                 return null;
@@ -143,7 +143,7 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
                 }
             }
             
-            return newsItems.Any() ? newsItems : null;
+            return newsItems.Count > 0 ? newsItems : null;
         }
         catch (Exception ex)
         {
@@ -163,7 +163,7 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
             sentiments.Add(sentiment);
         }
         
-        return Task.FromResult(sentiments.Any() ? sentiments.Average() : NeutralSentiment);
+        return Task.FromResult(sentiments.Count > 0 ? sentiments.Average() : NeutralSentiment);
     }
     
     private static string[] ExtractKeywords(List<NewsItem> newsData)
@@ -174,7 +174,7 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
         foreach (var news in newsData)
         {
             var text = (news.Title + " " + news.Description).ToLowerInvariant();
-            foreach (var keyword in importantKeywords.Where(k => text.Contains(k)))
+            foreach (var keyword in importantKeywords.Where(k => text.Contains(k, StringComparison.Ordinal)))
             {
                 keywordCounts[keyword] = keywordCounts.GetValueOrDefault(keyword, 0) + 1;
             }
@@ -197,8 +197,8 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
         var negativeWords = new[] { "down", "fall", "decline", "loss", "negative", "weak", "crisis", "concern" };
         
         var lowerText = text.ToLowerInvariant();
-        var positiveCount = positiveWords.Count(word => lowerText.Contains(word));
-        var negativeCount = negativeWords.Count(word => lowerText.Contains(word));
+        var positiveCount = positiveWords.Count(word => lowerText.Contains(word, StringComparison.Ordinal));
+        var negativeCount = negativeWords.Count(word => lowerText.Contains(word, StringComparison.Ordinal));
         
         if (positiveCount == 0 && negativeCount == 0) return NeutralSentiment; // Neutral
         
@@ -252,12 +252,12 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
             }
             
             // Symbol-specific sentiment patterns
-            if (symbol.Contains("ES"))
+            if (symbol.Contains("ES", StringComparison.Ordinal))
             {
                 // ES typically follows broader market sentiment
                 baseSentiment += (decimal)(Math.Sin(currentTime.Minute * (double)MinuteBasedSentimentMultiplier) * (double)EsSentimentVolatility);
             }
-            else if (symbol.Contains("NQ"))
+            else if (symbol.Contains("NQ", StringComparison.Ordinal))
             {
                 // NQ more volatile, tech-focused sentiment
                 baseSentiment += (decimal)(Math.Cos(currentTime.Minute * (double)MinuteBasedSentimentMultiplier) * (double)NqSentimentVolatility);

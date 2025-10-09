@@ -65,7 +65,7 @@ public class ProductionConfigurationService : IValidateOptions<ProductionTrading
         if (options.Security.EnableEncryption && string.IsNullOrWhiteSpace(options.Security.EncryptionKey))
             errors.Add("Security.EncryptionKey is required when EnableEncryption is true");
 
-        if (errors.Any())
+        if (errors.Count > 0)
         {
             var errorMessage = string.Join(", ", errors);
             _logger.LogError("❌ [CONFIG] Configuration validation failed: {Errors}", errorMessage);

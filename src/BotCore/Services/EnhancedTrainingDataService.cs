@@ -347,7 +347,7 @@ namespace BotCore
             var features = trade.Features ?? new List<decimal>();
             for (int i = 0; i < ExportFeatureCount; i++)
             {
-                values.Add(i < features.Count ? features[i].ToString("F6") : "0");
+                values.Add(i < features.Count ? features[i].ToString("F6", CultureInfo.InvariantCulture) : "0");
             }
 
             return string.Join(",", values);

@@ -67,19 +67,19 @@ public class SecurityService : ISecurityService
         {
             try
             {
-                if (pattern.ToString().Contains("bearer"))
+                if (pattern.ToString().Contains("bearer", StringComparison.OrdinalIgnoreCase))
                 {
                     result = pattern.Replace(result, "$1[REDACTED]");
                 }
-                else if (pattern.ToString().Contains(@"(\d{4})(\d{4,})(\d{4})"))
+                else if (pattern.ToString().Contains(@"(\d{4})(\d{4,})(\d{4})", StringComparison.Ordinal))
                 {
                     result = pattern.Replace(result, "$1****$3");
                 }
-                else if (pattern.ToString().Contains("@"))
+                else if (pattern.ToString().Contains("@", StringComparison.Ordinal))
                 {
                     result = pattern.Replace(result, "$1@[REDACTED]");
                 }
-                else if (pattern.ToString().Contains("Authorization"))
+                else if (pattern.ToString().Contains("Authorization", StringComparison.Ordinal))
                 {
                     result = pattern.Replace(result, "$1: [REDACTED]");
                 }
@@ -254,13 +254,13 @@ public class SecurityService : ISecurityService
                 var name = adapter.Name.ToUpperInvariant();
                 var description = adapter.Description.ToUpperInvariant();
 
-                if (vpnIndicators.Any(indicator => name.Contains(indicator) || description.Contains(indicator)))
+                if (vpnIndicators.Any(indicator => name.Contains(indicator, StringComparison.Ordinal) || description.Contains(indicator, StringComparison.Ordinal)))
                 {
                     suspiciousAdapters.Add($"{adapter.Name} ({adapter.Description})");
                 }
             }
 
-            if (suspiciousAdapters.Any())
+            if (suspiciousAdapters.Count > 0)
             {
                 return (true, $"VPN adapters detected: {string.Join(", ", suspiciousAdapters)}");
             }
@@ -283,7 +283,7 @@ public class SecurityService : ISecurityService
             var computerName = Environment.MachineName.ToUpperInvariant();
             var vmNames = new[] { "VM", "VPS", "CLOUD", "AWS", "AZURE", "GCP", "DIGITALOCEAN", "VULTR" };
             
-            if (vmNames.Any(vm => computerName.Contains(vm)))
+            if (vmNames.Any(vm => computerName.Contains(vm, StringComparison.Ordinal)))
             {
                 vmIndicators.Add($"VM-like computer name: {computerName}");
             }
@@ -297,7 +297,7 @@ public class SecurityService : ISecurityService
                 try
                 {
                     var processName = process.ProcessName.ToUpperInvariant();
-                    if (vmProcesses.Any(vm => processName.Contains(vm)))
+                    if (vmProcesses.Any(vm => processName.Contains(vm, StringComparison.Ordinal)))
                     {
                         vmIndicators.Add($"VM process detected: {process.ProcessName}");
                     }
@@ -332,7 +332,7 @@ public class SecurityService : ISecurityService
                 }
             }
 
-            if (vmIndicators.Any())
+            if (vmIndicators.Count > 0)
             {
                 return (true, string.Join("; ", vmIndicators));
             }
@@ -372,12 +372,12 @@ public class SecurityService : ISecurityService
             var userDomain = Environment.UserDomainName;
             var remoteDomains = new[] { "AWS", "AZURE", "GCP", "CLOUD", "VPS" };
             
-            if (remoteDomains.Any(domain => userDomain.ToUpperInvariant().Contains(domain)))
+            if (remoteDomains.Any(domain => userDomain.ToUpperInvariant().Contains(domain, StringComparison.Ordinal)))
             {
                 remoteIndicators.Add($"Remote domain: {userDomain}");
             }
 
-            if (remoteIndicators.Any())
+            if (remoteIndicators.Count > 0)
             {
                 return (true, string.Join("; ", remoteIndicators));
             }

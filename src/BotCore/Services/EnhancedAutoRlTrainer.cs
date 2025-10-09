@@ -261,9 +261,9 @@ namespace BotCore
             // Extract key metrics from training output
             foreach (var line in outputLines.TakeLast(TrainingLogTailLines))
             {
-                if (line.Contains("Final average return") ||
-                    line.Contains("CVaR") ||
-                    line.Contains("Training complete"))
+                if (line.Contains("Final average return", StringComparison.Ordinal) ||
+                    line.Contains("CVaR", StringComparison.Ordinal) ||
+                    line.Contains("Training complete", StringComparison.Ordinal))
                 {
                     _logger.LogInformation("[Training Summary] {Line}", line);
                 }

@@ -249,7 +249,7 @@ public class ProductionMonitoringService : IHealthCheck
             {
                 var modelMetrics = _performanceMetrics.Where(kvp => kvp.Key.StartsWith("model_")).ToList();
                 
-                if (!modelMetrics.Any())
+                if (modelMetrics.Count == 0)
                 {
                     return Task.FromResult((false, "No model metrics available"));
                 }
@@ -261,7 +261,7 @@ public class ProductionMonitoringService : IHealthCheck
                     return accuracy < _config.Performance.AccuracyThreshold && metric.TotalPredictions >= _config.Performance.MinTradesForEvaluation;
                 }).ToList();
 
-                if (unhealthyModels.Any())
+                if (unhealthyModels.Count > 0)
                 {
                     var unhealthyNames = string.Join(", ", unhealthyModels.Select(kvp => kvp.Value.Name));
                     return Task.FromResult((false, $"Models below threshold: {unhealthyNames}"));
@@ -332,7 +332,7 @@ public class ProductionMonitoringService : IHealthCheck
             {
                 var tradingMetrics = _performanceMetrics.Where(kvp => kvp.Key.StartsWith("trading_")).ToList();
                 
-                if (!tradingMetrics.Any())
+                if (tradingMetrics.Count == 0)
                 {
                     return (true, "No trading activity yet");
                 }
@@ -340,7 +340,7 @@ public class ProductionMonitoringService : IHealthCheck
                 var recentMetrics = tradingMetrics.Where(kvp => 
                     DateTime.UtcNow - kvp.Value.LastUpdated < _config.Performance.EvaluationWindow).ToList();
 
-                if (!recentMetrics.Any())
+                if (recentMetrics.Count == 0)
                 {
                     return (false, "No recent trading activity");
                 }

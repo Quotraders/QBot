@@ -155,7 +155,7 @@ public sealed class ComponentHealthMonitoringService : BackgroundService
         var message = $"❌ {component.Name}: {healthResult.Status} - {healthResult.Description}";
         
         // Add relevant metrics to the message
-        if (healthResult.Metrics.Any())
+        if (healthResult.Metrics.Count > 0)
         {
             var metricsStr = string.Join(", ", healthResult.Metrics.Take(3).Select(kvp => $"{kvp.Key}={kvp.Value}"));
             message += $" ({metricsStr})";
@@ -200,7 +200,7 @@ Explain in one sentence what this means for my operation and what action should 
         var message = $"⚠️ {component.Name}: {healthResult.Status} - {healthResult.Description}";
         
         // Add relevant metrics
-        if (healthResult.Metrics.Any())
+        if (healthResult.Metrics.Count > 0)
         {
             var metricsStr = string.Join(", ", healthResult.Metrics.Take(3).Select(kvp => $"{kvp.Key}={kvp.Value}"));
             message += $" ({metricsStr})";

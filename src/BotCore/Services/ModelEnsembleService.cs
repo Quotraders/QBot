@@ -455,7 +455,7 @@ public class ModelEnsembleService
     /// </summary>
     private StrategyPrediction BlendStrategyPredictions(List<StrategyPrediction> predictions)
     {
-        if (!predictions.Any())
+        if (predictions.Count == 0)
         {
             return new StrategyPrediction { SelectedStrategy = "S3", Confidence = FallbackConfidenceScore }; // Default fallback
         }
@@ -496,7 +496,7 @@ public class ModelEnsembleService
     /// </summary>
     private PriceDirectionPrediction BlendPricePredictions(List<PriceDirectionPrediction> predictions)
     {
-        if (!predictions.Any())
+        if (predictions.Count == 0)
         {
             return new PriceDirectionPrediction { Direction = "Sideways", Probability = FallbackConfidenceScore };
         }
@@ -548,7 +548,7 @@ public class ModelEnsembleService
     /// </summary>
     private static ActionResult BlendCVaRActions(List<ActionResult> actions)
     {
-        if (!actions.Any())
+        if (actions.Count == 0)
         {
             return CreateFallbackAction();
         }

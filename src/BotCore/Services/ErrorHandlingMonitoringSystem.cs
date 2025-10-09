@@ -185,7 +185,7 @@ namespace TopstepX.Bot.Core.Services
         
         private static string GenerateErrorId(string component, Exception exception)
         {
-            var baseString = $"{component}_{exception.GetType().Name}_{exception.Message?.GetHashCode()}";
+            var baseString = $"{component}_{exception.GetType().Name}_{exception.Message?.GetHashCode(StringComparison.Ordinal)}";
             return Convert.ToHexString(System.Text.Encoding.UTF8.GetBytes(baseString))[..ErrorIdLength];
         }
         
@@ -311,7 +311,7 @@ namespace TopstepX.Bot.Core.Services
                 }
                 
                 // Calculate success rate
-                var totalChecks = health.ErrorCount + (health.Metrics.TryGetValue("SuccessCount", out var successCountValue) ? Convert.ToInt32(successCountValue) : 1);
+                var totalChecks = health.ErrorCount + (health.Metrics.TryGetValue("SuccessCount", out var successCountValue) ? Convert.ToInt32(successCountValue, CultureInfo.InvariantCulture) : 1);
                 health.SuccessRate = Math.Max(0, MaxSuccessRate - (health.ErrorCount * MaxSuccessRate / totalChecks));
                 
                 _logger.LogDebug("📊 Component health updated: {Component} - {Status} (Success Rate: {SuccessRate:F1}%)", 
@@ -328,7 +328,7 @@ namespace TopstepX.Bot.Core.Services
             {
                 ["SuccessCount"] = (_componentHealth.TryGetValue(componentName, out var health) && 
                                   health.Metrics.TryGetValue("SuccessCount", out var successValue)) ? 
-                                  Convert.ToInt32(successValue) + 1 : 1
+                                  Convert.ToInt32(successValue, CultureInfo.InvariantCulture) + 1 : 1
             };
             
             if (responseTimeMs > 0)

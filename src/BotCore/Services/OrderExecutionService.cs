@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -937,7 +938,7 @@ namespace BotCore.Services
         /// </summary>
         private void UpdatePositionFromFill(FillEventData fillData)
         {
-            var timestamp = fillData.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            var timestamp = fillData.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
             
             // Check if this is an existing position
             if (_symbolToPositionId.TryGetValue(fillData.Symbol, out var positionId) &&
@@ -1112,6 +1113,9 @@ namespace BotCore.Services
             string entryOrderType = "LIMIT",
             CancellationToken cancellationToken = default)
         {
+            if (side is null) throw new ArgumentNullException(nameof(side));
+            if (entryOrderType is null) throw new ArgumentNullException(nameof(entryOrderType));
+            
             // PHASE 5: Check if bracket orders are enabled
             if (!_enableBracketOrders)
             {
@@ -1220,7 +1224,7 @@ namespace BotCore.Services
             {
                 _logger.LogInformation(
                     "🧊 [ICEBERG] Placing iceberg order for {Symbol}: {Side} {Total} total, {Display} per chunk @ {Price}",
-                    symbol, side, totalQuantity, displayQuantity, limitPrice?.ToString("F2") ?? "MARKET");
+                    symbol, side, totalQuantity, displayQuantity, limitPrice?.ToString("F2", CultureInfo.InvariantCulture) ?? "MARKET");
                 
                 // Validate parameters
                 if (displayQuantity >= totalQuantity)

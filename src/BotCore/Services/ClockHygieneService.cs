@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using Microsoft.Extensions.Logging;
 
 namespace TradingBot.BotCore.Services
@@ -203,7 +204,7 @@ namespace TradingBot.BotCore.Services
         /// </summary>
         public static string ToUtcString(this DateTime dateTime)
         {
-            return dateTime.ToString("yyyy-MM-dd HH:mm:ss.fff UTC");
+            return dateTime.ToString("yyyy-MM-dd HH:mm:ss.fff UTC", CultureInfo.InvariantCulture);
         }
 
         /// <summary>

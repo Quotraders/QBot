@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using System.Globalization;
 using System.Net.Http;
 using System.Text.Json;
 using System.IO.Compression;
@@ -59,7 +60,7 @@ public class CloudModelSynchronizationService : BackgroundService
         _repositoryOwner = configuration["GitHub:Owner"] ?? "c-trading-bo";
         _repositoryName = configuration["GitHub:Repository"] ?? "trading-bot-c-";
         _modelsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "models");
-        _syncInterval = TimeSpan.FromMinutes(int.Parse(configuration["CloudSync:IntervalMinutes"] ?? "15"));
+        _syncInterval = TimeSpan.FromMinutes(int.Parse(configuration["CloudSync:IntervalMinutes"] ?? "15", CultureInfo.InvariantCulture));
         
         // Configure HTTP client for GitHub API with proper headers
         _httpClient.DefaultRequestHeaders.Clear();
