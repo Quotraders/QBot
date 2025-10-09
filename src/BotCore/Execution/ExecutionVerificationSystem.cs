@@ -173,9 +173,19 @@ namespace BotCore.Execution
 
                 return isVerified;
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "Error verifying order execution for {OrderId}", orderId);
+                _logger.LogError(ex, "HTTP error verifying order execution for {OrderId}", orderId);
+                return false;
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogError(ex, "Timeout verifying order execution for {OrderId}", orderId);
+                return false;
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Invalid operation verifying order execution for {OrderId}", orderId);
                 return false;
             }
         }
@@ -266,9 +276,13 @@ namespace BotCore.Execution
                     }
                 }
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "Error during pending orders reconciliation");
+                _logger.LogError(ex, "Invalid operation during pending orders reconciliation");
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "Task cancelled during pending orders reconciliation");
             }
         }
 
@@ -289,9 +303,19 @@ namespace BotCore.Execution
                     LastUpdate = DateTime.UtcNow
                 };
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "Failed to get order status from TopstepX for order {OrderId}", orderId);
+                _logger.LogError(ex, "HTTP error getting order status from TopstepX for {OrderId}", orderId);
+                return null;
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogError(ex, "Timeout getting order status from TopstepX for {OrderId}", orderId);
+                return null;
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Invalid operation getting order status from TopstepX for {OrderId}", orderId);
                 return null;
             }
         }
@@ -319,9 +343,19 @@ namespace BotCore.Execution
                     }
                 };
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "Failed to get fill events from TopstepX for order {OrderId}", orderId);
+                _logger.LogError(ex, "HTTP error getting fill events from TopstepX for {OrderId}", orderId);
+                return null;
+            }
+            catch (TimeoutException ex)
+            {
+                _logger.LogError(ex, "Timeout getting fill events from TopstepX for {OrderId}", orderId);
+                return null;
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Invalid operation getting fill events from TopstepX for {OrderId}", orderId);
                 return null;
             }
         }

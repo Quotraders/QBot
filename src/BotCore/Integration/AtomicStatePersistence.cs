@@ -494,9 +494,13 @@ public sealed class AtomicStatePersistence : IDisposable
                 _logger.LogTrace("Periodic persistence check completed");
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Error in periodic persistence callback");
+            _logger.LogWarning(ex, "Invalid operation in periodic persistence callback");
+        }
+        catch (IOException ex)
+        {
+            _logger.LogWarning(ex, "IO error in periodic persistence callback");
         }
     }
     

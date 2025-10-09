@@ -91,7 +91,7 @@ public sealed class MLSystemConsolidationService
         {
             var content = await File.ReadAllTextAsync(enhancedMLFile).ConfigureAwait(false);
             
-            if (content.Contains("public class MLMemoryManager"))
+            if (content.Contains("public class MLMemoryManager", StringComparison.Ordinal))
             {
                 _consolidationActions.Add(new ConsolidationAction
                 {
@@ -105,7 +105,7 @@ public sealed class MLSystemConsolidationService
             }
 
             // Check for other duplicate ML components
-            if (content.Contains("class MLModelManager") || content.Contains("class ModelManager"))
+            if (content.Contains("class MLModelManager", StringComparison.Ordinal) || content.Contains("class ModelManager", StringComparison.Ordinal))
             {
                 _consolidationActions.Add(new ConsolidationAction
                 {
@@ -265,7 +265,7 @@ public sealed class MLSystemConsolidationService
         {
             var line = lines[i];
             
-            if (line.Trim().Contains("public class MLMemoryManager") && !inMLMemoryManager)
+            if (line.Trim().Contains("public class MLMemoryManager", StringComparison.Ordinal) && !inMLMemoryManager)
             {
                 mlMemoryManagerStart = i;
                 inMLMemoryManager = true;

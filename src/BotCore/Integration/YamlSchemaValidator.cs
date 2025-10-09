@@ -154,9 +154,14 @@ public sealed class YamlSchemaValidator
                     return result;
                 }
             }
-            catch (Exception ex)
+            catch (YamlDotNet.Core.YamlException ex)
             {
                 result.Errors.Add($"YAML parsing error: {ex.Message}");
+                return result;
+            }
+            catch (InvalidOperationException ex)
+            {
+                result.Errors.Add($"YAML deserialization error: {ex.Message}");
                 return result;
             }
             
@@ -178,13 +183,22 @@ public sealed class YamlSchemaValidator
             
             return result;
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
             result.ValidationCompleted = DateTime.UtcNow;
             result.ValidationTimeMs = (result.ValidationCompleted - result.ValidationStarted).TotalMilliseconds;
-            result.Errors.Add($"Validation exception: {ex.Message}");
+            result.Errors.Add($"IO error: {ex.Message}");
             
-            _logger.LogError(ex, "Error validating YAML file: {FilePath}", filePath);
+            _logger.LogError(ex, "IO error validating YAML file: {FilePath}", filePath);
+            return result;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            result.ValidationCompleted = DateTime.UtcNow;
+            result.ValidationTimeMs = (result.ValidationCompleted - result.ValidationStarted).TotalMilliseconds;
+            result.Errors.Add($"Access denied: {ex.Message}");
+            
+            _logger.LogError(ex, "Access denied validating YAML file: {FilePath}", filePath);
             return result;
         }
     }
@@ -234,13 +248,22 @@ public sealed class YamlSchemaValidator
                 
             return result;
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
             result.ValidationCompleted = DateTime.UtcNow;
             result.ValidationTimeMs = (result.ValidationCompleted - result.ValidationStarted).TotalMilliseconds;
-            result.DirectoryError = ex.Message;
+            result.DirectoryError = $"IO error: {ex.Message}";
             
-            _logger.LogError(ex, "Error validating directory: {DirectoryPath}", directoryPath);
+            _logger.LogError(ex, "IO error validating directory: {DirectoryPath}", directoryPath);
+            return result;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            result.ValidationCompleted = DateTime.UtcNow;
+            result.ValidationTimeMs = (result.ValidationCompleted - result.ValidationStarted).TotalMilliseconds;
+            result.DirectoryError = $"Access denied: {ex.Message}";
+            
+            _logger.LogError(ex, "Access denied validating directory: {DirectoryPath}", directoryPath);
             return result;
         }
     }
@@ -314,9 +337,17 @@ public sealed class YamlSchemaValidator
                         result.Errors.Add($"Field validation failed: {fieldName} = {fieldValue}");
                     }
                 }
-                catch (Exception ex)
+                catch (ArgumentException ex)
                 {
-                    result.Errors.Add($"Field validation error for {fieldName}: {ex.Message}");
+                    result.Errors.Add($"Field validation argument error for {fieldName}: {ex.Message}");
+                }
+                catch (FormatException ex)
+                {
+                    result.Errors.Add($"Field validation format error for {fieldName}: {ex.Message}");
+                }
+                catch (InvalidOperationException ex)
+                {
+                    result.Errors.Add($"Field validation operation error for {fieldName}: {ex.Message}");
                 }
             }
         }
