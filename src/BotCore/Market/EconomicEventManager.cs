@@ -352,11 +352,10 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
                         continue;
                     
                     // Parse date and time
-                    if (!DateTime.TryParse($"{dateStr} {timeStr}", out var scheduledTime))
+                    if (!DateTime.TryParse($"{dateStr} {timeStr}", out var scheduledTime) &&
+                        !DateTime.TryParse(dateStr, out scheduledTime))
                     {
-                        // Try just the date
-                        if (!DateTime.TryParse(dateStr, out scheduledTime))
-                            continue;
+                        continue;
                     }
                     
                     // Convert impact string to EventImpact enum

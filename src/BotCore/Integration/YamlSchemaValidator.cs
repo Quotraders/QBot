@@ -388,7 +388,7 @@ public sealed class YamlSchemaValidator
     /// <summary>
     /// Validate WHEN clause in strategy definition
     /// </summary>
-    private bool ValidateWhenClause(object value)
+    private static bool ValidateWhenClause(object value)
     {
         if (value is not Dictionary<object, object> whenDict)
             return false;
@@ -415,7 +415,7 @@ public sealed class YamlSchemaValidator
     /// <summary>
     /// Validate THEN clause in strategy definition
     /// </summary>
-    private bool ValidateThenClause(object value)
+    private static bool ValidateThenClause(object value)
     {
         if (value is not Dictionary<object, object> thenDict)
             return false;
@@ -439,7 +439,7 @@ public sealed class YamlSchemaValidator
     /// <summary>
     /// Validate pattern conditions
     /// </summary>
-    private bool ValidatePatternConditions(object value)
+    private static bool ValidatePatternConditions(object value)
     {
         if (value is not List<object> conditions)
             return false;

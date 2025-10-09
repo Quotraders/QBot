@@ -104,7 +104,7 @@ public sealed class DecisionFusionCoordinator
             
             // Get Knowledge Graph recommendation
             var knowledgeRecommendations = await _graph.EvaluateAsync(symbol, DateTime.UtcNow, cancellationToken).ConfigureAwait(false);
-            var knowledgeRec = knowledgeRecommendations.FirstOrDefault();
+            var knowledgeRec = knowledgeRecommendations.Count > 0 ? knowledgeRecommendations[0] : null;
             
             // Get UCB prediction
             var (ucbStrategy, ucbIntent, ucbScore) = await _ucb.PredictAsync(symbol, cancellationToken).ConfigureAwait(false);

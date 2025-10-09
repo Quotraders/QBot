@@ -333,11 +333,7 @@ public sealed class FeatureMapAuthority
         
         lock (_reportingLock)
         {
-            if (!_reportedMissingFeatures.Contains(featureKey))
-            {
-                _reportedMissingFeatures.Add(featureKey);
-                shouldEmit = true;
-            }
+            shouldEmit = _reportedMissingFeatures.Add(featureKey);
         }
         
         if (shouldEmit)

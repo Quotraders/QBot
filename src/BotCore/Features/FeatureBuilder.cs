@@ -426,11 +426,12 @@ public class FeatureBuilder
             {
                 // Use date only (ignores time) to group by trading day
                 var tradingDate = bar.Start.Date;
-                if (!barsByDate.ContainsKey(tradingDate))
+                if (!barsByDate.TryGetValue(tradingDate, out var dayBars))
                 {
-                    barsByDate[tradingDate] = new List<Bar>();
+                    dayBars = new List<Bar>();
+                    barsByDate[tradingDate] = dayBars;
                 }
-                barsByDate[tradingDate].Add(bar);
+                dayBars.Add(bar);
             }
             
             // Get the last N trading days
