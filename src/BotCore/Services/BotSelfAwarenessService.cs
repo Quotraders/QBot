@@ -147,7 +147,7 @@ public sealed class BotSelfAwarenessService : BackgroundService
         var healthChanges = DetectHealthChanges(healthResults);
         
         // Step 3: Report health changes immediately
-        if (healthChanges.Any())
+        if (healthChanges.Count > 0)
         {
             await ReportHealthChangesAsync(healthChanges, cancellationToken).ConfigureAwait(false);
         }

@@ -449,7 +449,7 @@ namespace BotCore.Services
                 var winningTrades = regimeOutcomes.Where(o => o.TargetHit).ToList();
                 var timedOutTrades = regimeOutcomes.Where(o => o.TimedOut).ToList();
                 
-                if (winningTrades.Any() && timedOutTrades.Any())
+                if (winningTrades.Count > 0 && timedOutTrades.Count > 0)
                 {
                     var avgWinningDuration = winningTrades.Average(o => o.MaxHoldMinutes);
                     var avgTimedOutDuration = timedOutTrades.Average(o => o.MaxHoldMinutes);
@@ -583,7 +583,7 @@ namespace BotCore.Services
                 .Where(giveback => giveback > 0) // Only where we gave back profit
                 .ToList();
             
-            if (!givebacks.Any())
+            if (givebacks.Count == 0)
             {
                 return null; // No giveback patterns
             }

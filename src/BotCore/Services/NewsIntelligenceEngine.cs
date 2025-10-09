@@ -93,7 +93,7 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
             
             // Get news from multiple sources
             var newsData = await FetchNewsFromSourcesAsync().ConfigureAwait(false);
-            if (newsData == null || !newsData.Any())
+            if (newsData == null || newsData.Count == 0)
             {
                 _logger.LogWarning("No news data available");
                 return null;
@@ -143,7 +143,7 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
                 }
             }
             
-            return newsItems.Any() ? newsItems : null;
+            return newsItems.Count > 0 ? newsItems : null;
         }
         catch (Exception ex)
         {
@@ -163,7 +163,7 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
             sentiments.Add(sentiment);
         }
         
-        return Task.FromResult(sentiments.Any() ? sentiments.Average() : NeutralSentiment);
+        return Task.FromResult(sentiments.Count > 0 ? sentiments.Average() : NeutralSentiment);
     }
     
     private static string[] ExtractKeywords(List<NewsItem> newsData)

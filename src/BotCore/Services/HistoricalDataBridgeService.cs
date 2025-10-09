@@ -92,7 +92,7 @@ namespace BotCore.Services
                     // Get recent historical bars - FIXED: Request sufficient bars for trading strategies (not just seeding)
                     var historicalBars = await GetRecentHistoricalBarsAsync(contractId, Math.Max(_config.MinSeededBars + 2, 200)).ConfigureAwait(false);
                     
-                    if (historicalBars.Any())
+                    if (historicalBars.Count > 0)
                     {
                         totalSeeded += historicalBars.Count;
                         successCount++;
@@ -144,7 +144,7 @@ namespace BotCore.Services
             {
                 // PRIMARY: Try SDK adapter for historical data
                 var sdkAdapterBars = await TryGetSdkAdapterBarsAsync(contractId, barCount).ConfigureAwait(false);
-                if (sdkAdapterBars.Any())
+                if (sdkAdapterBars.Count > 0)
                 {
                     _logger.LogDebug("[HISTORICAL-BRIDGE] Retrieved {BarCount} bars from SDK adapter for {ContractId}", 
                         sdkAdapterBars.Count, contractId);
@@ -153,7 +153,7 @@ namespace BotCore.Services
 
                 // FALLBACK 1: Try TopstepX historical API
                 var topstepXBars = await TryGetTopstepXBarsAsync(contractId, barCount).ConfigureAwait(false);
-                if (topstepXBars.Any())
+                if (topstepXBars.Count > 0)
                 {
                     _logger.LogDebug("[HISTORICAL-BRIDGE] Retrieved {BarCount} bars from TopstepX API for {ContractId}", 
                         topstepXBars.Count, contractId);
@@ -162,7 +162,7 @@ namespace BotCore.Services
 
                 // FALLBACK 2: Use correlation manager's data sources
                 var correlationBars = await TryGetCorrelationManagerBarsAsync(contractId, barCount).ConfigureAwait(false);
-                if (correlationBars.Any())
+                if (correlationBars.Count > 0)
                 {
                     _logger.LogDebug("[HISTORICAL-BRIDGE] Retrieved {BarCount} bars from correlation manager for {ContractId}", 
                         correlationBars.Count, contractId);
@@ -201,7 +201,7 @@ namespace BotCore.Services
             try
             {
                 var bars = await GetRecentHistoricalBarsAsync(contractId, 5).ConfigureAwait(false);
-                if (!bars.Any()) return false;
+                if (bars.Count == 0) return false;
 
                 var mostRecentBar = bars.OrderByDescending(b => b.Ts).First();
                 var dataAge = DateTime.UtcNow - DateTime.UnixEpoch.AddMilliseconds(mostRecentBar.Ts);

@@ -1025,7 +1025,7 @@ public class AutonomousDecisionEngine : BackgroundService
         {
             var strategyTrades = _recentTrades.Where(t => t.Strategy == strategy).ToList();
             
-            if (strategyTrades.Any())
+            if (strategyTrades.Count > 0)
             {
                 var metrics = _strategyMetrics[strategy];
                 metrics.TotalTrades = strategyTrades.Count;

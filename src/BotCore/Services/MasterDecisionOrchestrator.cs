@@ -1669,14 +1669,14 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
             .Where(p => DateTime.UtcNow - p.LastUpdated < TimeSpan.FromHours(1))
             .ToList();
             
-        if (!recentPerformance.Any()) return true; // No recent decisions is okay
+        if (recentPerformance.Count == 0) return true; // No recent decisions is okay
         
         // Check if any source has very poor performance
         var poorPerformers = recentPerformance
             .Where(p => p.TotalDecisions >= 10 && p.WinRate < 0.3m)
             .ToList();
             
-        return !poorPerformers.Any();
+        return poorPerformers.Count == 0;
     }
     
     private async Task TriggerRecoveryActionsAsync(CancellationToken cancellationToken)

@@ -780,7 +780,7 @@ public class StrategyPerformanceAnalyzer
             reasons.Add("strong recent performance");
         }
         
-        return reasons.Any() ? string.Join(", ", reasons) : "general performance metrics";
+        return reasons.Count > 0 ? string.Join(", ", reasons) : "general performance metrics";
     }
     
     private List<StrategyOptimization> AnalyzeTimeBasedOptimizations(string strategy)
@@ -792,7 +792,7 @@ public class StrategyPerformanceAnalyzer
             .GroupBy(t => t.EntryTime.Hour)
             .ToDictionary(g => g.Key, g => g.Sum(t => t.PnL));
         
-        if (hourlyPerformance.Any())
+        if (hourlyPerformance.Count > 0)
         {
             var bestHour = hourlyPerformance.OrderByDescending(kvp => kvp.Value).First();
             var worstHour = hourlyPerformance.OrderBy(kvp => kvp.Value).First();
@@ -822,7 +822,7 @@ public class StrategyPerformanceAnalyzer
             .GroupBy(t => t.AnalyzerMarketRegime)
             .ToDictionary(g => g.Key, g => g.Sum(t => t.PnL));
         
-        if (regimePerformance.Any())
+        if (regimePerformance.Count > 0)
         {
             var bestRegime = regimePerformance.OrderByDescending(kvp => kvp.Value).First();
             var worstRegime = regimePerformance.OrderBy(kvp => kvp.Value).First();
@@ -889,7 +889,7 @@ public class StrategyPerformanceAnalyzer
             .GroupBy(t => t.AnalyzerMarketRegime)
             .ToDictionary(g => g.Key, g => g.Sum(t => t.PnL));
         
-        return regimePerformance.Any() 
+        return regimePerformance.Count > 0 
             ? regimePerformance.OrderByDescending(kvp => kvp.Value).First().Key
             : AnalyzerMarketRegime.Unknown;
     }
@@ -900,7 +900,7 @@ public class StrategyPerformanceAnalyzer
             .GroupBy(t => t.AnalyzerMarketRegime)
             .ToDictionary(g => g.Key, g => g.Sum(t => t.PnL));
         
-        return regimePerformance.Any()
+        return regimePerformance.Count > 0
             ? regimePerformance.OrderBy(kvp => kvp.Value).First().Key
             : AnalyzerMarketRegime.Unknown;
     }
@@ -911,7 +911,7 @@ public class StrategyPerformanceAnalyzer
             .GroupBy(t => t.EntryTime.Hour)
             .ToDictionary(g => g.Key, g => g.Sum(t => t.PnL));
         
-        return hourlyPerformance.Any()
+        return hourlyPerformance.Count > 0
             ? hourlyPerformance.OrderByDescending(kvp => kvp.Value).First().Key
             : DefaultBestTradingHour;
     }
@@ -922,7 +922,7 @@ public class StrategyPerformanceAnalyzer
             .GroupBy(t => t.EntryTime.Hour)
             .ToDictionary(g => g.Key, g => g.Sum(t => t.PnL));
         
-        return hourlyPerformance.Any()
+        return hourlyPerformance.Count > 0
             ? hourlyPerformance.OrderBy(kvp => kvp.Value).First().Key
             : DefaultWorstTradingHour;
     }

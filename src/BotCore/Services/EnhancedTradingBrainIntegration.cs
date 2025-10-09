@@ -444,7 +444,7 @@ public class EnhancedTradingBrainIntegration
             reasons.Add($"CVaR adjustment: {action.CVaREstimate:F2}");
         }
         
-        return reasons.Any() ? string.Join(", ", reasons) : "Ensemble enhancement applied";
+        return reasons.Count > 0 ? string.Join(", ", reasons) : "Ensemble enhancement applied";
     }
 
     /// <summary>

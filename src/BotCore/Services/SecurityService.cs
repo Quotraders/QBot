@@ -260,7 +260,7 @@ public class SecurityService : ISecurityService
                 }
             }
 
-            if (suspiciousAdapters.Any())
+            if (suspiciousAdapters.Count > 0)
             {
                 return (true, $"VPN adapters detected: {string.Join(", ", suspiciousAdapters)}");
             }
@@ -332,7 +332,7 @@ public class SecurityService : ISecurityService
                 }
             }
 
-            if (vmIndicators.Any())
+            if (vmIndicators.Count > 0)
             {
                 return (true, string.Join("; ", vmIndicators));
             }
@@ -377,7 +377,7 @@ public class SecurityService : ISecurityService
                 remoteIndicators.Add($"Remote domain: {userDomain}");
             }
 
-            if (remoteIndicators.Any())
+            if (remoteIndicators.Count > 0)
             {
                 return (true, string.Join("; ", remoteIndicators));
             }

@@ -114,7 +114,7 @@ namespace BotCore.Services
                 }
 
                 // Compare with previous versions if required
-                if (_config.RequireVersionDifference && registry.Versions.Any())
+                if (_config.RequireVersionDifference && registry.Versions.Count > 0)
                 {
                     var isSignificantlyDifferent = await ValidateSignificantDifferenceAsync(modelPath, registry).ConfigureAwait(false);
                     if (!isSignificantlyDifferent)
@@ -125,7 +125,7 @@ namespace BotCore.Services
                 }
 
                 // If all validations pass
-                if (!result.ValidationErrors.Any() && result.IntegrityValid)
+                if (result.ValidationErrors.Count == 0 && result.IntegrityValid)
                 {
                     result.IsValid = true;
                     
