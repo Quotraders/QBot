@@ -302,7 +302,7 @@ namespace BotCore.Services
             }
         }
         
-        private string CalculateBreakSeverity(decimal pressure, int touchCount)
+        private static string CalculateBreakSeverity(decimal pressure, int touchCount)
         {
             // Higher pressure + more touches = more severe break
             if (pressure > StrongBreakStrengthThreshold && touchCount >= MinTouchesForCritical)
@@ -354,7 +354,7 @@ namespace BotCore.Services
             await Task.CompletedTask;
         }
         
-        private decimal CalculateCurrentPrice(BotCore.Models.Position position)
+        private static decimal CalculateCurrentPrice(BotCore.Models.Position position)
         {
             // Calculate current market price from unrealized P&L
             // Formula: currentPrice = (unrealizedPnL / netQuantity) + avgPrice
