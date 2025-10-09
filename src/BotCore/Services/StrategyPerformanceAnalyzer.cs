@@ -69,15 +69,10 @@ public class StrategyPerformanceAnalyzer
     private const decimal MaxProfitFactorFallback = 99m;
     
     // Performance thresholds for scoring
-    private const decimal VeryLowThreshold = 0.2m;
     private const decimal LowThreshold = 0.3m;
     private const decimal ModerateThreshold = 0.5m;
     private const decimal HighThreshold = 0.6m;
     private const decimal VeryHighThreshold = 0.8m;
-    
-    // PnL thresholds for performance categorization
-    private const decimal SmallProfitThreshold = 200m;
-    private const decimal MediumProfitThreshold = 500m;
     
     // Strategy suitability and optimization thresholds
     private const decimal StrongRecentPerformanceThreshold = 0.7m;
@@ -96,12 +91,8 @@ public class StrategyPerformanceAnalyzer
     private const int TrendAnalysisFirstHalfSize = 5;
     private const decimal TrendImprovementThreshold = 0.1m;        // 10% improvement to be considered improving
     private const decimal TrendDecliningThreshold = -0.1m;         // -10% to be considered declining
-    private const decimal LargeProfitThreshold = 1000m;
-    private const decimal SmallLossThreshold = 200m;
-    private const decimal MediumLossThreshold = 400m;
     
     // Sample size requirements
-    private const int MinSampleSizeForMediumConfidence = 10;
     private const int MinTradesForRecentAnalysis = 5;
     private const int MinTradesForConsistencyAnalysis = 10;
     private const int RecentTradesForScore = 20;
@@ -145,8 +136,6 @@ public class StrategyPerformanceAnalyzer
     // Time window constants for strategy optimization (in hours)
     private const int MorningSessionStartHour = 9;
     private const int MorningSessionStartMinute = 30;
-    private const int AfternoonSessionStartHour = 12;
-    private const int AfternoonSessionEndHour = 15;
     private const int AfternoonExtendedEndHour = 15;
     private const int AfternoonExtendedEndMinute = 30;
     private const int MarketCloseHour = 16;

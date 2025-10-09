@@ -464,16 +464,11 @@ public sealed class EpochFreezeEnforcement
     }
     
     /// <summary>
-    /// Get tick size for symbol
+    /// Get tick size for symbol (all supported symbols use standard futures tick size)
     /// </summary>
     private static double GetTickSize(string symbol)
     {
-        return symbol switch
-        {
-            "ES" => StandardFuturesTickSize,
-            "NQ" => StandardFuturesTickSize,
-            _ => StandardFuturesTickSize
-        };
+        return StandardFuturesTickSize;
     }
     
     /// <summary>
