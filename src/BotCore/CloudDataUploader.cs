@@ -224,7 +224,7 @@ namespace BotCore
         {
             // For now, create a simple CSV format that can be easily converted to parquet
             // In a full implementation, you'd use a proper parquet library
-            var csvPath = parquetPath.Replace(".parquet", ".csv");
+            var csvPath = parquetPath.Replace(".parquet", ".csv", StringComparison.Ordinal);
 
             var lines = await File.ReadAllLinesAsync(jsonlPath).ConfigureAwait(false);
             if (lines.Length == 0) return;
@@ -249,7 +249,7 @@ namespace BotCore
                         {
                             return prop.ValueKind switch
                             {
-                                JsonValueKind.String => $"\"{prop.GetString()?.Replace("\"", "\"\"")}\"",
+                                JsonValueKind.String => $"\"{prop.GetString()?.Replace("\"", "\"\"", StringComparison.Ordinal)}\"",
                                 JsonValueKind.Number => prop.GetRawText(),
                                 JsonValueKind.True => "true",
                                 JsonValueKind.False => "false",

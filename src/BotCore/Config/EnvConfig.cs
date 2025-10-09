@@ -70,7 +70,7 @@ public static class EnvConfig
                         if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith('#'))
                             continue;
 
-                        var separatorIndex = trimmed.IndexOf('=');
+                        var separatorIndex = trimmed.IndexOf('=', StringComparison.Ordinal);
                         if (separatorIndex > 0)
                         {
                             var key = trimmed[..separatorIndex].Trim();
