@@ -1824,7 +1824,7 @@ public class ContinuousLearningManager
         return Task.CompletedTask;
     }
     
-    public Task ProcessLearningEventsAsync(List<LearningEvent> events, CancellationToken cancellationToken)
+    public Task ProcessLearningEventsAsync(IReadOnlyList<LearningEvent> events, CancellationToken cancellationToken)
     {
         _ = _logger; // Placeholder implementation - will be implemented in future phase
         return Task.CompletedTask;
