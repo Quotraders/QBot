@@ -202,19 +202,17 @@ namespace BotCore.Features
             {
                 var serviceType = service.GetType();
                 var events = serviceType.GetEvents();
-                bool hookedAnyEvent = false;
+                var barEvents = events.Where(e => e.Name.Contains("Bar", StringComparison.OrdinalIgnoreCase)).ToList();
                 
-                foreach (var eventInfo in events)
+                foreach (var eventInfo in barEvents)
                 {
-                    if (eventInfo.Name.Contains("Bar", StringComparison.OrdinalIgnoreCase))
-                    {
-                        _logger.LogInformation("[BAR-DISPATCHER] Found potential bar event: {EventName} on {ServiceType}", 
-                            eventInfo.Name, serviceType.Name);
-                        // Could implement dynamic event hooking here if needed
-                        hookedAnyEvent = true;
-                        // For now, just log that we found it - actual event hooking would require more complex reflection
-                    }
+                    _logger.LogInformation("[BAR-DISPATCHER] Found potential bar event: {EventName} on {ServiceType}", 
+                        eventInfo.Name, serviceType.Name);
+                    // Could implement dynamic event hooking here if needed
+                    // For now, just log that we found it - actual event hooking would require more complex reflection
                 }
+                
+                bool hookedAnyEvent = barEvents.Count > 0;
                 
                 if (!hookedAnyEvent && _config.EnableExplicitHolds)
                 {

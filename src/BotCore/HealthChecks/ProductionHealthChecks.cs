@@ -713,16 +713,7 @@ public class SecurityHealthCheck : IHealthCheck
 
             // Check file permissions on sensitive files
             var sensitiveFiles = new[] { "appsettings.json", "appsettings.Production.json", ".env" };
-            var secureFiles = 0;
-            
-            foreach (var file in sensitiveFiles)
-            {
-                if (File.Exists(file))
-                {
-                    // Basic check - file should exist
-                    secureFiles++;
-                }
-            }
+            var secureFiles = sensitiveFiles.Count(File.Exists);
 
             data["sensitiveFilesFound"] = secureFiles;
 

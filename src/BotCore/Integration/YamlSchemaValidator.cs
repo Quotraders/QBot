@@ -448,13 +448,7 @@ public sealed class YamlSchemaValidator
             return false;
             
         // Each condition should be a valid condition object
-        foreach (var condition in conditions)
-        {
-            if (condition is not Dictionary<object, object>)
-                return false;
-        }
-        
-        return true;
+        return conditions.All(condition => condition is Dictionary<object, object>);
     }
     
     /// <summary>
