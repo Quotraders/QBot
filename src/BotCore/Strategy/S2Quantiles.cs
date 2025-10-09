@@ -32,6 +32,6 @@ namespace BotCore.Strategy
             }
         }
 
-        private static string Key(string sym, DateTime nowLocal) => sym + ":" + nowLocal.Hour.ToString();
+        private static string Key(string sym, DateTime nowLocal) => sym + ":" + nowLocal.Hour.ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
 }

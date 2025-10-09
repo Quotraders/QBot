@@ -716,7 +716,7 @@ namespace BotCore.Strategy
                     TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time"));
                 var timeOfDay = etTime.TimeOfDay;
                 
-                if (timeOfDay >= TimeSpan.Parse("09:28") && timeOfDay <= TimeSpan.Parse("10:00") && 
+                if (timeOfDay >= TimeSpan.Parse("09:28", System.Globalization.CultureInfo.InvariantCulture) && timeOfDay <= TimeSpan.Parse("10:00", System.Globalization.CultureInfo.InvariantCulture) && 
                     bars?.Count > 0 && currentPosition.qty == 0) // Only if no existing position
                 {
                     // Use loaded parameters with fallback to RuntimeConfig
@@ -826,7 +826,7 @@ namespace BotCore.Strategy
                     TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time"));
                 var timeOfDay = etTime.TimeOfDay;
                 
-                if (timeOfDay >= TimeSpan.Parse("13:30") && timeOfDay <= TimeSpan.Parse("15:30") && 
+                if (timeOfDay >= TimeSpan.Parse("13:30", System.Globalization.CultureInfo.InvariantCulture) && timeOfDay <= TimeSpan.Parse("15:30", System.Globalization.CultureInfo.InvariantCulture) && 
                     bars?.Count > 0 && currentPosition.qty == 0) // Only if no existing position
                 {
                     // Use loaded parameters with fallback to RuntimeConfig
