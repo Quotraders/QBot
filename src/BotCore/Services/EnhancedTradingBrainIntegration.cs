@@ -754,9 +754,9 @@ public class EnhancedTradingBrainIntegration
     private RiskEngine CreateSampleRisk()
     {
         var riskEngine = new RiskEngine();
-        riskEngine.cfg.risk_per_trade = DefaultBarCount; // $100 risk per trade
-        riskEngine.cfg.max_daily_drawdown = DefaultBarVolume;
-        riskEngine.cfg.max_open_positions = 1;
+        riskEngine.cfg.RiskPerTrade = DefaultBarCount; // $100 risk per trade
+        riskEngine.cfg.MaxDailyDrawdown = DefaultBarVolume;
+        riskEngine.cfg.MaxOpenPositions = 1;
         return riskEngine;
     }
 

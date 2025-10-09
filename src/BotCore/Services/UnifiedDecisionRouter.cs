@@ -700,9 +700,9 @@ public class UnifiedDecisionRouter
     private static RiskEngine CreateRiskEngine()
     {
         var riskEngine = new RiskEngine();
-        riskEngine.cfg.risk_per_trade = DEFAULT_RISK_PER_TRADE;
-        riskEngine.cfg.max_daily_drawdown = DEFAULT_MAX_DAILY_DRAWDOWN;
-        riskEngine.cfg.max_open_positions = DEFAULT_MAX_OPEN_POSITIONS;
+        riskEngine.cfg.RiskPerTrade = DEFAULT_RISK_PER_TRADE;
+        riskEngine.cfg.MaxDailyDrawdown = DEFAULT_MAX_DAILY_DRAWDOWN;
+        riskEngine.cfg.MaxOpenPositions = DEFAULT_MAX_OPEN_POSITIONS;
         return riskEngine;
     }
     

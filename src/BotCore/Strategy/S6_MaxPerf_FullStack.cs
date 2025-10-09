@@ -306,8 +306,8 @@ namespace TopstepX.S6
         public int RvolLookbackDays { get; set; } = 20;
 
         // failed breakout
-        public int FailBreakPenetrationTicks_ES { get; set; } = 3;
-        public int FailBreakPenetrationTicks_NQ { get; set; } = 4;
+        public int FailBreakPenetrationTicksES { get; set; } = 3;
+        public int FailBreakPenetrationTicksNQ { get; set; } = 4;
     }
 
     // --- STRATEGY ---
@@ -631,7 +631,7 @@ namespace TopstepX.S6
 
             public bool FailedBreakout(bool failedAboveONH)
             {
-                int pen = Instr==Instrument.ES? C.FailBreakPenetrationTicks_ES : C.FailBreakPenetrationTicks_NQ;
+                int pen = Instr==Instrument.ES? C.FailBreakPenetrationTicksES : C.FailBreakPenetrationTicksNQ;
                 if (Min1.Count < 3) 
                 {
                     return false; 

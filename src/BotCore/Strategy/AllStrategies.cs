@@ -1141,7 +1141,7 @@ namespace BotCore.Strategy
             var dist = Math.Max(Math.Abs(entry - stop), tick); // ≥ 1 tick
             // Prefer equity-% aware sizing if configured; pass 0 equity to fallback to fixed RPT when not provided
             var (Qty, _) = risk.ComputeSize(symbol, entry, stop, 0m);
-            var qty = Qty > 0 ? Qty : (int)RiskEngine.size_for(risk.cfg.risk_per_trade, dist, pv);
+            var qty = Qty > 0 ? Qty : (int)RiskEngine.size_for(risk.cfg.RiskPerTrade, dist, pv);
             if (qty <= 0) return;
 
             var expR = rr_quality(entry, stop, t1);
