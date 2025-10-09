@@ -1378,7 +1378,7 @@ Reason closed: {reason}
             };
 
             // Confidence-based sizing (UCB approach)
-            var confidence = Math.Max((decimal)strategy.Confidence, (decimal)prediction.Probability);
+            var confidence = Math.Max(strategy.Confidence, prediction.Probability);
             if (confidence < (decimal)TopStepConfig.ConfidenceThreshold)
             {
                 _logger.LogDebug("🎯 [CONFIDENCE] Below threshold {Threshold:P1}, confidence: {Confidence:P1}", 
@@ -1476,8 +1476,8 @@ Reason closed: {reason}
                     context.Symbol,
                     context.CurrentPrice,
                     context.Atr ?? TopStepConfig.DefaultAtrLookback,
-                    (decimal)strategy.Confidence,
-                    (decimal)prediction.Probability,
+                    strategy.Confidence,
+                    prediction.Probability,
                     new List<Bar>()
                 ).ConfigureAwait(false);
                 
@@ -1611,7 +1611,7 @@ Reason closed: {reason}
                         contractId = candidate.contractId,
                         Score = candidate.Score,
                         // Add AI confidence to quality score
-                        QScore = candidate.QScore * (decimal)strategySelection.Confidence * (decimal)prediction.Probability
+                        QScore = candidate.QScore * strategySelection.Confidence * prediction.Probability
                     };
                     
                     enhancedCandidates.Add(enhancedCandidate);
