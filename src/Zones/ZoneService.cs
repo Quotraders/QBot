@@ -395,7 +395,6 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
     private static decimal EstimateBreakoutScore(SymbolState s, decimal px, Zone opp, decimal atr)
     {
         const int lookbackBars = 20;
-        const decimal defaultVdc = 1.0m;
         const int baselineAtrPeriod = 50;
         const decimal maxDistanceAtr = 3.0m;
         const decimal maxTestsForScore = 5.0m;
@@ -433,14 +432,18 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
         // Higher volatility = zones more fragile, price moves faster
         // Lower volatility = zones more stable, harder to break
         
-        if (currentAtr <= 0) return 1.0m;
+        const decimal defaultVolatilityRatio = 1.0m;
+        const int minBarsForBaseline = 2;
+        const int baselineStartOffset = 1;
+        
+        if (currentAtr <= 0) return defaultVolatilityRatio;
         
         // Calculate baseline volatility using longer-period ATR
         int availableBars = Math.Min(baselinePeriod, s.Bars.Count);
-        if (availableBars < 2) return 1.0m;
+        if (availableBars < minBarsForBaseline) return defaultVolatilityRatio;
         
         decimal sumTrueRange = 0m;
-        for (int i = 1; i < availableBars; i++)
+        for (int i = baselineStartOffset; i < availableBars; i++)
         {
             var current = s.Bars[s.Bars.Count - 1 - i];
             var previous = s.Bars[s.Bars.Count - i];
@@ -456,7 +459,7 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
         
         var baselineAtr = sumTrueRange / (availableBars - 1);
         
-        if (baselineAtr <= 0) return 1.0m;
+        if (baselineAtr <= 0) return defaultVolatilityRatio;
         
         // Calculate volatility ratio
         var volatilityRatio = currentAtr / baselineAtr;
