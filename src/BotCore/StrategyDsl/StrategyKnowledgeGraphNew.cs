@@ -482,7 +482,7 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
                         return featureValue <= threshold;
                 }
             }
-            else if (expression.Contains('>'))
+            else if (expression.Contains('>', StringComparison.Ordinal))
             {
                 var parts = expression.Split('>', StringSplitOptions.TrimEntries);
                 if (parts.Length == 2)

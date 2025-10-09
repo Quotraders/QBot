@@ -305,8 +305,8 @@ namespace BotCore.Configuration
         /// </summary>
         public int GenerateNewSeed()
         {
-            var random = new Random(BaseSeed + DateTime.UtcNow.DayOfYear);
-            return random.Next(BaseSeed, BaseSeed + MaxSeedRange);
+            // Use Random.Shared for non-cryptographic random number generation
+            return Random.Shared.Next(BaseSeed, BaseSeed + MaxSeedRange);
         }
     }
 
