@@ -8,7 +8,7 @@ using System.Diagnostics;
 
 namespace BotCore.Risk
 {
-    public sealed class RiskEngine
+    public sealed class RiskEngine : IDisposable
     {
         public RiskConfig cfg { get; set; } = new RiskConfig();
         private readonly DrawdownProtectionSystem _drawdownProtection;
@@ -71,6 +71,11 @@ namespace BotCore.Risk
         public bool ShouldHaltWeek(decimal realizedPnlWeek) => cfg.MaxWeeklyDrawdown > 0 && -realizedPnlWeek >= cfg.MaxWeeklyDrawdown;
 
         public DrawdownAnalysis GetDrawdownAnalysis() => _drawdownProtection.AnalyzeDrawdownPattern();
+
+        public void Dispose()
+        {
+            _drawdownProtection?.Dispose();
+        }
     }
 
     public class Trade

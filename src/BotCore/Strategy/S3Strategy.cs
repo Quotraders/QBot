@@ -264,7 +264,7 @@ namespace BotCore.Strategy
 
             // Segment state and cooldown
             var st = _segState.GetOrAdd(symbol, _ => new SegmentState());
-            st.UpdateIfNewSegment(segStartIdx, last.Start, boxHi, boxLo);
+            st.UpdateIfNewSegment(segStartIdx);
             if (cfg.OnePerSegment && st.FilledThisSegment) return lst;
             if (st.OnCooldown(last.Start, cfg.SegmentCooldownMinutes)) return lst;
 
@@ -379,7 +379,7 @@ namespace BotCore.Strategy
                 var expF = ExpectedExpansionFactor(bars, Math.Max(60, cfg.PreSqueezeLookback), boxW, cfg.ExpansionQuantile);
                 var (t1, _) = Targets(cfg, r, entry, boxW, true, expF);
                 AllStrategies.add_cand(lst, "S3", symbol, "BUY", entry, isl, t1, env, risk);
-                st.MarkFilled(segStartIdx, Side.BUY, last.Start);
+                st.MarkFilled(segStartIdx, last.Start);
                 RegisterAttempt(symbol, session, Side.BUY);
             }
 
@@ -407,7 +407,7 @@ namespace BotCore.Strategy
                 var (t1, _) = Targets(cfg, r, entry, boxW, false, expF);
                 AllStrategies.add_cand(lst, "S3", symbol, "SELL", entry, ish, t1, env, risk,
                     tag: $"rank={widthRank:F2} run={squeezeRun} nrOK={hasNrCluster} slope5={slope5:F3} barq={barq:F2}");
-                st.MarkFilled(segStartIdx, Side.SELL, last.Start);
+                st.MarkFilled(segStartIdx, last.Start);
                 RegisterAttempt(symbol, session, Side.SELL);
             }
 
@@ -779,7 +779,7 @@ namespace BotCore.Strategy
             public bool IsInvalid;
             public int LastBreakBarIndex = -1;
 
-            public void UpdateIfNewSegment(int segId, DateTime nowLocal, decimal hi, decimal lo)
+            public void UpdateIfNewSegment(int segId)
             {
                 if (segId != SegmentId)
                 {
@@ -787,7 +787,7 @@ namespace BotCore.Strategy
                     FilledThisSegment = false; IsInvalid = false; LastBreakBarIndex = -1;
                 }
             }
-            public void MarkFilled(int segId, Side side, DateTime nowLocal)
+            public void MarkFilled(int segId, DateTime nowLocal)
             {
                 if (segId == SegmentId) { FilledThisSegment = true; LastFillLocal = nowLocal; }
             }
