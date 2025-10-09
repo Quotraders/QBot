@@ -698,8 +698,10 @@ namespace TopstepX.S11
         // --- DIVERGENCE (optional, same as S6) ---
         public void UpdateDivergence()
         {
-            if (_es.Min1.Count < 2 || _nq.Min1.Count < 2) return;
-            // Divergence calculation would go here if needed for S11 logic
+            if (_es.Min1.Count >= 2 && _nq.Min1.Count >= 2)
+            {
+                // Divergence calculation would go here if needed for S11 logic
+            }
         }
     }
 }

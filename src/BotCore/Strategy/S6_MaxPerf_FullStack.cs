@@ -426,8 +426,14 @@ namespace TopstepX.S6
 
             if (regime == Mode.Reversal)
             {
-                if (side == Side.Buy && s.ExpectedR(false, avgPx) >= _cfg.FlipMinR) { _router.ClosePosition(positionId); TryEnterReversal(s); }
-                else if (side == Side.Sell && s.ExpectedR(true, avgPx) >= _cfg.FlipMinR) { _router.ClosePosition(positionId); TryEnterReversal(s); }
+                bool shouldFlip = (side == Side.Buy && s.ExpectedR(false, avgPx) >= _cfg.FlipMinR) 
+                               || (side == Side.Sell && s.ExpectedR(true, avgPx) >= _cfg.FlipMinR);
+                
+                if (shouldFlip)
+                {
+                    _router.ClosePosition(positionId);
+                    TryEnterReversal(s);
+                }
             }
 
             double r = s.RealizedR(side, avgPx);

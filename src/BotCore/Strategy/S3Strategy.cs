@@ -948,12 +948,10 @@ namespace BotCore.Strategy
                             return [.. list];
                         }
                         var peers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                        if (s3.TryGetProperty("rs_filter", out var rsNode) && rsNode.ValueKind == JsonValueKind.Object)
+                        if (s3.TryGetProperty("rs_filter", out var rsNode) && rsNode.ValueKind == JsonValueKind.Object
+                            && rsNode.TryGetProperty("peers", out var pe) && pe.ValueKind == JsonValueKind.Object)
                         {
-                            if (rsNode.TryGetProperty("peers", out var pe) && pe.ValueKind == JsonValueKind.Object)
-                            {
-                                foreach (var kv in pe.EnumerateObject()) peers[kv.Name] = kv.Value.GetString() ?? "";
-                            }
+                            foreach (var kv in pe.EnumerateObject()) peers[kv.Name] = kv.Value.GetString() ?? "";
                         }
                         var newsMins = new[] { 0, 30 };
                         if (s3.TryGetProperty("news_block", out var nbNode) && nbNode.ValueKind == JsonValueKind.Object && nbNode.TryGetProperty("on_minutes", out var onm))
@@ -1081,13 +1079,11 @@ namespace BotCore.Strategy
                         // Simple approach: write json to a temp file and reuse parsing path is overkill; instead re-map a subset
                         var s3 = arr[0];
                         var peers = cfg.Peers;
-                        if (s3.TryGetProperty("rs_filter", out var rsNode) && rsNode.ValueKind == JsonValueKind.Object)
+                        if (s3.TryGetProperty("rs_filter", out var rsNode) && rsNode.ValueKind == JsonValueKind.Object
+                            && rsNode.TryGetProperty("peers", out var pe) && pe.ValueKind == JsonValueKind.Object)
                         {
-                            if (rsNode.TryGetProperty("peers", out var pe) && pe.ValueKind == JsonValueKind.Object)
-                            {
-                                peers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                                foreach (var kv in pe.EnumerateObject()) peers[kv.Name] = kv.Value.GetString() ?? "";
-                            }
+                            peers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                            foreach (var kv in pe.EnumerateObject()) peers[kv.Name] = kv.Value.GetString() ?? "";
                         }
                         _instance = new S3RuntimeConfig
                         {

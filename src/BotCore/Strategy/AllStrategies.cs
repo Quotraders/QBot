@@ -853,7 +853,7 @@ namespace BotCore.Strategy
 
             // Curfew: optional no-new window (Patch C)
             if (S2RuntimeConfig.CurfewEnabled && !string.IsNullOrWhiteSpace(S2RuntimeConfig.CurfewNoNewHHMM) && 
-                TimeSpan.TryParse(S2RuntimeConfig.CurfewNoNewHHMM, out var tNoNew))
+                TimeSpan.TryParse(S2RuntimeConfig.CurfewNoNewHHMM, System.Globalization.CultureInfo.InvariantCulture, out var tNoNew))
             {
                 var tNow = nowLocal.TimeOfDay;
                 // Only apply before U.S. open; we don't flatten here (router handles flattening if needed)
