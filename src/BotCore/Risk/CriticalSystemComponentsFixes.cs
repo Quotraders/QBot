@@ -65,9 +65,14 @@ namespace BotCore.Risk
                     _logger.LogInformation("[CRITICAL-SYSTEM] System health monitoring cancelled");
                     break;
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "[CRITICAL-SYSTEM] Error in system health monitoring");
+                    _logger.LogError(ex, "[CRITICAL-SYSTEM] Invalid operation in system health monitoring");
+                    await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
+                }
+                catch (System.ComponentModel.Win32Exception ex)
+                {
+                    _logger.LogError(ex, "[CRITICAL-SYSTEM] System API error in health monitoring");
                     await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
                 }
             }
@@ -100,9 +105,14 @@ namespace BotCore.Risk
                     _logger.LogInformation("[CRITICAL-SYSTEM] Memory pressure monitoring cancelled");
                     break;
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "[CRITICAL-SYSTEM] Error in memory pressure monitoring");
+                    _logger.LogError(ex, "[CRITICAL-SYSTEM] Invalid operation in memory pressure monitoring");
+                    await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken).ConfigureAwait(false);
+                }
+                catch (OutOfMemoryException ex)
+                {
+                    _logger.LogCritical(ex, "[CRITICAL-SYSTEM] Out of memory during monitoring");
                     await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken).ConfigureAwait(false);
                 }
             }
@@ -130,9 +140,14 @@ namespace BotCore.Risk
                     _logger.LogInformation("[CRITICAL-SYSTEM] Performance metrics monitoring cancelled");
                     break;
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "[CRITICAL-SYSTEM] Error in performance metrics monitoring");
+                    _logger.LogError(ex, "[CRITICAL-SYSTEM] Invalid operation in performance metrics monitoring");
+                    await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
+                }
+                catch (System.ComponentModel.Win32Exception ex)
+                {
+                    _logger.LogError(ex, "[CRITICAL-SYSTEM] System API error in performance monitoring");
                     await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
                 }
             }

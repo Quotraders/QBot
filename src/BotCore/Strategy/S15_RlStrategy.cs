@@ -243,10 +243,20 @@ public static class S15RlStrategy
             
             File.AppendAllLines(logFile, new[] { logEntry });
         }
-        catch (Exception ex)
+        catch (System.IO.IOException ex)
         {
-            // Silently fail - don't disrupt trading for logging issues
-            Console.WriteLine($"[S15-RL] Shadow logging failed: {ex.Message}");
+            // File I/O failed - don't disrupt trading for logging issues
+            Console.WriteLine($"[S15-RL] Shadow logging I/O failed: {ex.Message}");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            // File access denied - don't disrupt trading for logging issues
+            Console.WriteLine($"[S15-RL] Shadow logging access denied: {ex.Message}");
+        }
+        catch (System.Security.SecurityException ex)
+        {
+            // Security exception - don't disrupt trading for logging issues
+            Console.WriteLine($"[S15-RL] Shadow logging security error: {ex.Message}");
         }
     }
 }
