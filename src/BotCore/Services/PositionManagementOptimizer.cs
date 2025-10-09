@@ -510,7 +510,7 @@ namespace BotCore.Services
         /// </summary>
         public decimal? GetOptimalEarlyExitThreshold(string strategy, string regime = "ALL")
         {
-            var maeEnabled = Environment.GetEnvironmentVariable("BOT_MAE_LEARNING_ENABLED")?.ToUpperInvariant() == "TRUE";
+            var maeEnabled = Environment.GetEnvironmentVariable("BOT_MAE_LEARNING_ENABLED")?.ToLowerInvariant() == "true";
             if (!maeEnabled)
             {
                 return null; // Feature disabled
@@ -557,7 +557,7 @@ namespace BotCore.Services
         /// </summary>
         public decimal? GetOptimalTrailingDistance(string strategy, string regime = "ALL")
         {
-            var mfeEnabled = Environment.GetEnvironmentVariable("BOT_MFE_LEARNING_ENABLED")?.ToUpperInvariant() == "TRUE";
+            var mfeEnabled = Environment.GetEnvironmentVariable("BOT_MFE_LEARNING_ENABLED")?.ToLowerInvariant() == "true";
             if (!mfeEnabled)
             {
                 return null; // Feature disabled
@@ -1286,7 +1286,7 @@ namespace BotCore.Services
         public string StrategyName { get; set; } = string.Empty;
         public DateTime ExportTimestamp { get; set; }
         public int TotalTradesAnalyzed { get; set; }
-        public IReadOnlyList<LearnedParameter> Parameters { get; init; } = new List<LearnedParameter>();
+        public List<LearnedParameter> Parameters { get; set; } = new();
     }
     
     /// <summary>

@@ -1908,10 +1908,10 @@ namespace TopstepX.Bot.Core.Services
             var score = 0.0;
 
             // Environment-specific thresholds
-            var environment = _readinessConfig.Environment.Name.ToLower();
-            var minBars = environment == "dev" ? _readinessConfig.Environment.Dev.MinBarsSeen : _readinessConfig.MinBarsSeen;
-            var minSeeded = environment == "dev" ? _readinessConfig.Environment.Dev.MinSeededBars : _readinessConfig.MinSeededBars;
-            var minLiveTicks = environment == "dev" ? _readinessConfig.Environment.Dev.MinLiveTicks : _readinessConfig.MinLiveTicks;
+            var environment = _readinessConfig.Environment.Name.ToUpperInvariant();
+            var minBars = environment == "DEV" ? _readinessConfig.Environment.Dev.MinBarsSeen : _readinessConfig.MinBarsSeen;
+            var minSeeded = environment == "DEV" ? _readinessConfig.Environment.Dev.MinSeededBars : _readinessConfig.MinSeededBars;
+            var minLiveTicks = environment == "DEV" ? _readinessConfig.Environment.Dev.MinLiveTicks : _readinessConfig.MinLiveTicks;
 
             // Progressive validation logic
             switch (context.State)

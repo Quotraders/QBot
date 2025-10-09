@@ -299,5 +299,5 @@ public class PerformanceMetrics
     public double WinRate { get; set; }
     public double Sharpe { get; set; }
     public double MeanPnL { get; set; }
-    public IReadOnlyList<double> PnLs { get; init; } = new List<double>();
+    public List<double> PnLs { get; set; } = new();
 }

@@ -196,7 +196,7 @@ public class UnifiedModelPathResolver
     /// <summary>
     /// Get all available models in the model directory
     /// </summary>
-    public IReadOnlyList<AvailableModel> DiscoverAvailableModels()
+    public List<AvailableModel> DiscoverAvailableModels()
     {
         var models = new List<AvailableModel>();
         

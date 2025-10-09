@@ -91,7 +91,7 @@ namespace BotCore.Services
                 _logger.LogDebug("[CONTRACT-ROLLOVER] Getting front month contract for {BaseSymbol}", baseSymbol);
 
                 // Check configured mapping first
-                if (_config.FrontMonthMapping.TryGetValue(baseSymbol.ToUpper(), out var configuredContract))
+                if (_config.FrontMonthMapping.TryGetValue(baseSymbol.ToUpperInvariant(), out var configuredContract))
                 {
                     // Verify the configured contract is still valid
                     if (await IsContractActiveAsync(configuredContract).ConfigureAwait(false))
@@ -286,7 +286,7 @@ namespace BotCore.Services
             {
                 var activeContracts = new List<ContractInfo>();
 
-                if (!_contractSpecs.TryGetValue(baseSymbol.ToUpper(), out var spec))
+                if (!_contractSpecs.TryGetValue(baseSymbol.ToUpperInvariant(), out var spec))
                 {
                     _logger.LogWarning("[CONTRACT-LIST] Unknown base symbol: {BaseSymbol}", baseSymbol);
                     return activeContracts;
@@ -407,7 +407,7 @@ namespace BotCore.Services
         /// </summary>
         private string CalculateFrontMonthContract(string baseSymbol)
         {
-            if (!_contractSpecs.TryGetValue(baseSymbol.ToUpper(), out var spec))
+            if (!_contractSpecs.TryGetValue(baseSymbol.ToUpperInvariant(), out var spec))
             {
                 throw new ArgumentException($"Unknown base symbol: {baseSymbol}");
             }

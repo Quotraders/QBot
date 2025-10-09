@@ -125,7 +125,7 @@ public class EnhancedTradingBrainIntegration
     public async Task<EnhancedTradingDecision> MakeEnhancedDecisionAsync(
         string symbol,
         Dictionary<string, object> marketContext,
-        IReadOnlyList<string> availableStrategies,
+        List<string> availableStrategies,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(marketContext);

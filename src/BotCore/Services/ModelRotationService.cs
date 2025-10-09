@@ -369,8 +369,8 @@ namespace BotCore.Services
         public string Version { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public double DriftScore { get; set; }
-        public Dictionary<string, ModelInfo> Models { get; init; } = new();
-        public Dictionary<string, RegimeArtifacts> RegimeArtifacts { get; init; } = new();
+        public Dictionary<string, ModelInfo> Models { get; set; } = new();
+        public Dictionary<string, RegimeArtifacts> RegimeArtifacts { get; set; } = new();
 
         public void Validate()
         {

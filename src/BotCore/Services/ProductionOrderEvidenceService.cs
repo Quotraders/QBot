@@ -141,7 +141,7 @@ public class OrderEvidenceResult
     public string? OrderId { get; set; }
     public string CustomTag { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; }
-    public IReadOnlyList<string> EvidenceTypes { get; } = new List<string>();
+    public List<string> EvidenceTypes { get; } = new();
     public int TotalEvidenceCount { get; set; }
     public bool HasSufficientEvidence { get; set; }
     public decimal? FillPrice { get; set; }

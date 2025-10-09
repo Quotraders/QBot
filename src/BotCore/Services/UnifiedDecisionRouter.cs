@@ -845,7 +845,7 @@ public class UnifiedTradingDecision
     public decimal Quantity { get; set; }
     public string Strategy { get; set; } = string.Empty;
     public string DecisionSource { get; set; } = string.Empty;
-    public Dictionary<string, object> Reasoning { get; init; } = new();
+    public Dictionary<string, object> Reasoning { get; set; } = new();
     public DateTime Timestamp { get; set; }
     public double ProcessingTimeMs { get; set; }
 }
@@ -856,7 +856,7 @@ public class MarketAnalysis
 {
     public bool IsUptrend { get; set; }
     public decimal Strength { get; set; }
-    public IReadOnlyList<string> Signals { get; } = new List<string>();
+    public List<string> Signals { get; } = new();
 }
 
 public class DecisionOutcome
@@ -878,7 +878,7 @@ public class DecisionOutcome
 
 public class DecisionRouterStats
 {
-    public IReadOnlyList<SourceStats> SourceStats { get; } = new List<SourceStats>();
+    public List<SourceStats> SourceStats { get; } = new();
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 }
 

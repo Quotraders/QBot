@@ -409,8 +409,8 @@ public class SystemMetrics
     public double UptimeHours { get; set; }
     public int ThreadCount { get; set; }
     public Dictionary<int, long> GCCollections { get; } = new();
-    public IReadOnlyList<HealthMetric> HealthMetrics { get; } = new List<HealthMetric>();
-    public IReadOnlyList<PerformanceMetric> PerformanceMetrics { get; } = new List<PerformanceMetric>();
+    public List<HealthMetric> HealthMetrics { get; } = new();
+    public List<PerformanceMetric> PerformanceMetrics { get; } = new();
 }
 
 #endregion

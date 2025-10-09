@@ -951,7 +951,7 @@ public class StrategyPerformanceAnalyzer
 public class StrategyAnalysis
 {
     public string StrategyName { get; set; } = "";
-    public IReadOnlyList<AnalyzerTradeOutcome> AllTrades { get; } = new List<AnalyzerTradeOutcome>();
+    public List<AnalyzerTradeOutcome> AllTrades { get; } = new();
     public decimal TotalPnL { get; set; }
     public decimal WinRate { get; set; }
     public decimal ProfitFactor { get; set; }

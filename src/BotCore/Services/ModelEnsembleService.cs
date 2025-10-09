@@ -637,7 +637,7 @@ public class ModelEnsembleService
 
     private static EnsemblePrediction CreateFallbackStrategyPrediction(IReadOnlyList<string> availableStrategies)
     {
-        var fallbackStrategy = availableStrategies.FirstOrDefault() ?? "S3";
+        var fallbackStrategy = availableStrategies.Count > 0 ? availableStrategies[0] : "S3";
         
         return new EnsemblePrediction
         {
