@@ -257,7 +257,7 @@ namespace TradingBot.BotCore.Services
                         var line = lines[i].Trim();
                         
                         // Check for pragma suppressions
-                        if (line.StartsWith("#pragma warning disable"))
+                        if (line.StartsWith("#pragma warning disable", StringComparison.Ordinal))
                         {
                             var ruleId = ExtractRuleFromPragma(line);
                             if (!HasLedgerEntry(ruleId, file, i + 1))

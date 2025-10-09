@@ -249,7 +249,7 @@ public class ProductionMonitoringService : IHealthCheck
         {
             lock (_metricsLock)
             {
-                var modelMetrics = _performanceMetrics.Where(kvp => kvp.Key.StartsWith("model_")).ToList();
+                var modelMetrics = _performanceMetrics.Where(kvp => kvp.Key.StartsWith("model_", StringComparison.Ordinal)).ToList();
                 
                 if (modelMetrics.Count == 0)
                 {
@@ -332,7 +332,7 @@ public class ProductionMonitoringService : IHealthCheck
         {
             lock (_metricsLock)
             {
-                var tradingMetrics = _performanceMetrics.Where(kvp => kvp.Key.StartsWith("trading_")).ToList();
+                var tradingMetrics = _performanceMetrics.Where(kvp => kvp.Key.StartsWith("trading_", StringComparison.Ordinal)).ToList();
                 
                 if (tradingMetrics.Count == 0)
                 {

@@ -793,7 +793,7 @@ public class MasterDecisionOrchestrator : BackgroundService
             context.Volume = volume;
             
         // Add technical indicators from metadata
-        foreach (var kvp in metadata.Where(m => m.Key.StartsWith("tech_")))
+        foreach (var kvp in metadata.Where(m => m.Key.StartsWith("tech_", StringComparison.Ordinal)))
         {
             if (kvp.Value is double techValue)
             {

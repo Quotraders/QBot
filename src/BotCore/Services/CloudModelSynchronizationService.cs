@@ -304,13 +304,13 @@ public class CloudModelSynchronizationService : BackgroundService
             
             foreach (var entry in archive.Entries)
             {
-                if (entry.Name.EndsWith(".onnx") || entry.Name.EndsWith(".pkl") || entry.Name.EndsWith(".json"))
+                if (entry.Name.EndsWith(".onnx", StringComparison.Ordinal) || entry.Name.EndsWith(".pkl", StringComparison.Ordinal) || entry.Name.EndsWith(".json", StringComparison.Ordinal))
                 {
                     var targetPath = DetermineModelPath(artifact.Name, entry.Name);
                     await ExtractAndSaveFileAsync(entry, targetPath, cancellationToken).ConfigureAwait(false);
                     
                     // Track ONNX model path for hot-swap
-                    if (entry.Name.EndsWith(".onnx"))
+                    if (entry.Name.EndsWith(".onnx", StringComparison.Ordinal))
                     {
                         onnxModelPath = targetPath;
                     }
