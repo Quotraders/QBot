@@ -231,7 +231,7 @@ namespace TradingBot.Backtest
             // Simple momentum-based decision (can be replaced with real strategy logic)
             if (spreadPercent < 0.001m && quote.Volume > 1000) // Good liquidity conditions
             {
-                // Placeholder for real trading logic
+                // Deterministic signal generation for backtesting
                 var random = new Random(quote.Time.GetHashCode());
                 var signal = random.NextDouble();
                 

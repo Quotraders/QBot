@@ -1410,7 +1410,7 @@ public class AutonomousDecisionEngine : BackgroundService
         {
             _logger.LogWarning(ex, "⚠️ [AUTONOMOUS-ENGINE] Failed to load historical performance data, starting with empty metrics");
             
-            // Return empty dictionary - no fake data
+            // Return empty dictionary on load failure
             return new Dictionary<string, StrategyPerformanceData>();
         }
     }

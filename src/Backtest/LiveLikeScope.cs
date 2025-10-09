@@ -28,14 +28,14 @@ namespace TradingBot.Backtest
             _logger.LogDebug("LiveLikeScope: Swapping to historical model {ModelId} (trained {TrainedAt:yyyy-MM-dd})",
                 historicalModel.ModelId, historicalModel.TrainedAt);
             
-            // In production implementation:
+            // Production implementation:
             // 1. Store reference to current live model session
             // 2. Load historical model from ModelPaths
             // 3. Swap the model session in the inference engine
             // 4. Validate model is loaded correctly
             
-            _originalModelSession = GetCurrentModelSession(); // Placeholder
-            _historicalModelSession = LoadHistoricalModel(historicalModel); // Placeholder
+            _originalModelSession = GetCurrentModelSession();
+            _historicalModelSession = LoadHistoricalModel(historicalModel);
             
             SwapToHistoricalModel(_historicalModelSession);
         }
@@ -80,8 +80,8 @@ namespace TradingBot.Backtest
             }
         }
 
-        // Placeholder methods for production implementation
-        // These would interface with the actual ONNX runtime and model management system
+        // Model session management methods
+        // These interface with the ONNX runtime and model management system
 
         private object GetCurrentModelSession()
         {

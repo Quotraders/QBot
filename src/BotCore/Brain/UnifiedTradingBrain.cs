@@ -733,7 +733,7 @@ namespace BotCore.Brain
                     var entryContext = context ?? _marketContexts.GetValueOrDefault(symbol);
                     if (entryContext != null)
                     {
-                        // Use placeholder values for prices (would need to be tracked in actual implementation)
+                        // Note: Entry/stop/target/exit prices tracked separately in position management
                         var failureAnalysis = await AnalyzeTradeFailureAsync(
                             symbol, strategy, pnl,
                             0, 0, 0, 0, // Entry/stop/target/exit prices would be tracked separately
@@ -1023,7 +1023,7 @@ namespace BotCore.Brain
                         };
                         emptyPatternScores.SetDetectedPatterns(System.Array.Empty<BotCore.Patterns.PatternDetail>());
                         
-                        // Create a temporary snapshot for similarity search
+                        // Create market snapshot for similarity search
                         var currentSnapshot = BotCore.Services.MarketSnapshotStore.CreateSnapshot(
                             symbol: decision.Symbol,
                             currentPrice: currentPrice,

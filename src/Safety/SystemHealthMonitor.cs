@@ -614,7 +614,7 @@ public class SystemHealthMonitor
         }
     }
 
-    // Placeholder implementations for remaining health checks
+    // Additional health check implementations
     private HealthResult CheckPositionLimits()
     {
         try

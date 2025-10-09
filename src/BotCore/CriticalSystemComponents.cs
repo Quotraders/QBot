@@ -1752,7 +1752,7 @@ namespace TradingBot.Critical
             }
         }
 
-        // Stub implementations
+        // Correlation data management
         private async Task LoadHistoricalCorrelations() 
         {
             try

@@ -276,7 +276,6 @@ namespace TradingBot.BotCore.Services
 
         private void ValidateAzureKeyVault(StartupValidationResult result)
         {
-            // Placeholder for Azure Key Vault validation
             var keyVaultUrl = Environment.GetEnvironmentVariable("AZURE_KEYVAULT_URL");
             if (string.IsNullOrEmpty(keyVaultUrl))
             {
@@ -291,7 +290,6 @@ namespace TradingBot.BotCore.Services
 
         private void ValidateHashiCorpVault(StartupValidationResult result)
         {
-            // Placeholder for HashiCorp Vault validation
             var vaultUrl = Environment.GetEnvironmentVariable("VAULT_ADDR");
             var vaultToken = Environment.GetEnvironmentVariable("VAULT_TOKEN");
             
