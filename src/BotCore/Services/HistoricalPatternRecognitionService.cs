@@ -20,7 +20,7 @@ public sealed class HistoricalMatch
 /// </summary>
 public sealed class HistoricalPatternAnalysis
 {
-    public List<HistoricalMatch> Matches { get; set; } = new();
+    public System.Collections.Generic.IReadOnlyList<HistoricalMatch> Matches { get; init; } = System.Array.Empty<HistoricalMatch>();
     public int WinCount { get; set; }
     public int LossCount { get; set; }
     public decimal AveragePnl { get; set; }
