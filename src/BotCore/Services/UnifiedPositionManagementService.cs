@@ -332,6 +332,10 @@ namespace BotCore.Services
             BracketMode bracketMode,
             decimal entryConfidence = 0.75m)
         {
+            // Save original values before confidence adjustments
+            var originalStop = stopPrice;
+            var originalTarget = targetPrice;
+            
             // FEATURE 4: Apply confidence-based adjustments to stop and target
             if (_confidenceAdjustmentEnabled)
             {

@@ -30,8 +30,8 @@ public class S15ShadowLearningService : BackgroundService
     private const double CANARY_TRAFFIC_PERCENTAGE = 0.05;  // 5% traffic for canary
     private const int MaxRecentDecisionsToKeep = 100; // Keep last 100 decisions when resetting
     
-    private int _totalShadowDecisions = 0;
-    private bool _isPromotedToCanary = false;
+    private int _totalShadowDecisions;
+    private bool _isPromotedToCanary;
 
     public S15ShadowLearningService(ILogger<S15ShadowLearningService> logger)
     {

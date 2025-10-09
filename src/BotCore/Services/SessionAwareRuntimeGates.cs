@@ -181,8 +181,8 @@ public class SessionAwareRuntimeGates
     /// </summary>
     private static bool InRange(string hhmm, string hhmm2, DateTime et)
     {
-        var (h1, m1) = (int.Parse(hhmm[TimeStringHourStartIndex..TimeStringHourLength]), int.Parse(hhmm[TimeStringMinuteStartIndex..(TimeStringMinuteStartIndex + TimeStringMinuteLength)]));
-        var (h2, m2) = (int.Parse(hhmm2[TimeStringHourStartIndex..TimeStringHourLength]), int.Parse(hhmm2[TimeStringMinuteStartIndex..(TimeStringMinuteStartIndex + TimeStringMinuteLength)]));
+        var (h1, m1) = (int.Parse(hhmm[TimeStringHourStartIndex..TimeStringHourLength], System.Globalization.CultureInfo.InvariantCulture), int.Parse(hhmm[TimeStringMinuteStartIndex..(TimeStringMinuteStartIndex + TimeStringMinuteLength)], System.Globalization.CultureInfo.InvariantCulture));
+        var (h2, m2) = (int.Parse(hhmm2[TimeStringHourStartIndex..TimeStringHourLength], System.Globalization.CultureInfo.InvariantCulture), int.Parse(hhmm2[TimeStringMinuteStartIndex..(TimeStringMinuteStartIndex + TimeStringMinuteLength)], System.Globalization.CultureInfo.InvariantCulture));
         var a = new TimeSpan(h1, m1, 0);
         var b = new TimeSpan(h2, m2, 0);
         var t = et.TimeOfDay;
@@ -211,11 +211,11 @@ public class SessionAwareRuntimeGates
             return true;
             
         // Friday after 17:00 ET
-        if (dayOfWeek == DayOfWeek.Friday && timeOfDay >= TimeSpan.Parse(_sessionConfig.MaintenanceBreak.Start))
+        if (dayOfWeek == DayOfWeek.Friday && timeOfDay >= TimeSpan.Parse(_sessionConfig.MaintenanceBreak.Start, System.Globalization.CultureInfo.InvariantCulture))
             return true;
             
         // Sunday before 18:00 ET
-        if (dayOfWeek == DayOfWeek.Sunday && timeOfDay < TimeSpan.Parse(_sessionConfig.MaintenanceBreak.End))
+        if (dayOfWeek == DayOfWeek.Sunday && timeOfDay < TimeSpan.Parse(_sessionConfig.MaintenanceBreak.End, System.Globalization.CultureInfo.InvariantCulture))
             return true;
             
         return false;
@@ -232,7 +232,7 @@ public class SessionAwareRuntimeGates
         if (et.DayOfWeek != DayOfWeek.Sunday)
             return false;
             
-        var reopenTime = TimeSpan.Parse(_sessionConfig.MaintenanceBreak.End); // 18:00
+        var reopenTime = TimeSpan.Parse(_sessionConfig.MaintenanceBreak.End, System.Globalization.CultureInfo.InvariantCulture); // 18:00
         var curbEndTime = reopenTime.Add(TimeSpan.FromMinutes(_sessionConfig.SundayReopen.CurbMins));
         
         return et.TimeOfDay >= reopenTime && et.TimeOfDay < curbEndTime;
@@ -251,7 +251,7 @@ public class SessionAwareRuntimeGates
         var dayOfWeek = et.DayOfWeek;
         if (dayOfWeek >= DayOfWeek.Monday && dayOfWeek <= DayOfWeek.Thursday)
         {
-            var reopenTime = TimeSpan.Parse(_sessionConfig.MaintenanceBreak.End); // 18:00
+            var reopenTime = TimeSpan.Parse(_sessionConfig.MaintenanceBreak.End, System.Globalization.CultureInfo.InvariantCulture); // 18:00
             var curbEndTime = reopenTime.Add(TimeSpan.FromMinutes(_sessionConfig.ETH.CurbFirstMins));
             
             return et.TimeOfDay >= reopenTime && et.TimeOfDay < curbEndTime;
@@ -297,7 +297,7 @@ public class SessionAwareRuntimeGates
         if (!IsWithinReopenCurbWindow(et))
             return null;
         
-        var reopenTime = TimeSpan.Parse(_sessionConfig.MaintenanceBreak.End); // 18:00
+        var reopenTime = TimeSpan.Parse(_sessionConfig.MaintenanceBreak.End, System.Globalization.CultureInfo.InvariantCulture); // 18:00
         
         // Check ETH curb
         if (IsEthFirstMinsCurb(et))
@@ -325,10 +325,10 @@ public class SessionAwareRuntimeGates
         var today = et.Date;
         
         // Check upcoming session changes today
-        var rthStart = TimeSpan.Parse(_sessionConfig.RTH.Start);
-        var rthEnd = TimeSpan.Parse(_sessionConfig.RTH.End);
-        var maintenanceStart = TimeSpan.Parse(_sessionConfig.MaintenanceBreak.Start);
-        var maintenanceEnd = TimeSpan.Parse(_sessionConfig.MaintenanceBreak.End);
+        var rthStart = TimeSpan.Parse(_sessionConfig.RTH.Start, System.Globalization.CultureInfo.InvariantCulture);
+        var rthEnd = TimeSpan.Parse(_sessionConfig.RTH.End, System.Globalization.CultureInfo.InvariantCulture);
+        var maintenanceStart = TimeSpan.Parse(_sessionConfig.MaintenanceBreak.Start, System.Globalization.CultureInfo.InvariantCulture);
+        var maintenanceEnd = TimeSpan.Parse(_sessionConfig.MaintenanceBreak.End, System.Globalization.CultureInfo.InvariantCulture);
         
         if (timeOfDay < rthStart)
             return today.Add(rthStart);

@@ -101,7 +101,7 @@ namespace BotCore
             => TargetNewLog(log, sym, Fpx(sym, t1), null);
 
         public static void Exit(ILogger log, string sym, int qty, decimal px, int pos, decimal rPnL, string tag)
-            => ExitLog(log, sym, qty.ToString(), Fpx(sym, px), null);
+            => ExitLog(log, sym, qty.ToString(System.Globalization.CultureInfo.InvariantCulture), Fpx(sym, px), null);
 
         public static void Position(ILogger log, string sym, int pos, decimal avg, decimal mark, decimal uPnL, decimal rPnL)
             => LogChange(log, $"pos/{sym}",
