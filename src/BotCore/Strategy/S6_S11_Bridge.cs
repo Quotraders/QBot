@@ -82,7 +82,7 @@ namespace BotCore.Strategy
             }
             catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogError("PlaceMarket cancelled for {Instrument} {Side} {Qty}", instr, side, qty);
+                _logger.LogError(ex, "PlaceMarket cancelled for {Instrument} {Side} {Qty}", instr, side, qty);
                 throw new TimeoutException($"Order placement cancelled for {instr}");
             }
         }
@@ -158,7 +158,7 @@ namespace BotCore.Strategy
             }
             catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogError("PlaceMarket cancelled for {Instrument} {Side} {Qty}", instr, side, qty);
+                _logger.LogError(ex, "PlaceMarket cancelled for {Instrument} {Side} {Qty}", instr, side, qty);
                 throw new TimeoutException($"Order placement cancelled for {instr}");
             }
         }
@@ -333,7 +333,7 @@ namespace BotCore.Strategy
             }
             catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogError("ModifyStop cancelled for position {PositionId}", positionId);
+                _logger.LogError(ex, "ModifyStop cancelled for position {PositionId}", positionId);
                 throw new TimeoutException($"Stop modification cancelled for position {positionId}");
             }
         }
@@ -393,7 +393,7 @@ namespace BotCore.Strategy
             }
             catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogError("ClosePosition cancelled for position {PositionId}", positionId);
+                _logger.LogError(ex, "ClosePosition cancelled for position {PositionId}", positionId);
                 throw new TimeoutException($"Position close cancelled for position {positionId}");
             }
         }
@@ -705,7 +705,7 @@ namespace BotCore.Strategy
             try
             {
                 // Determine instrument
-                var instrument = symbol.Contains("ES") ? TopstepX.S6.Instrument.ES : TopstepX.S6.Instrument.NQ;
+                var instrument = symbol.Contains("ES", StringComparison.OrdinalIgnoreCase) ? TopstepX.S6.Instrument.ES : TopstepX.S6.Instrument.NQ;
 
                 // Get position to determine if we can place orders
                 var currentPosition = _router?.GetPosition(instrument) ?? (TopstepX.S6.Side.Flat, 0, 0.0, DateTimeOffset.UtcNow, string.Empty);
@@ -721,7 +721,7 @@ namespace BotCore.Strategy
                 {
                     // Use loaded parameters with fallback to RuntimeConfig
                     var minAtr = S6RuntimeConfig.MinAtr;
-                    var stopAtrMult = sessionParams?.StopAtrMult ?? (double)S6RuntimeConfig.StopAtrMult;
+                    var stopAtrMult = (decimal)(sessionParams?.StopAtrMult ?? (double)S6RuntimeConfig.StopAtrMult);
                     var targetAtrMult = S6RuntimeConfig.TargetAtrMult; // Use RuntimeConfig for now, can be extended later
                     
                     var lastBar = bars.Last();
@@ -730,8 +730,8 @@ namespace BotCore.Strategy
                     
                     if (atr > minAtr)
                     {
-                        var stop = entry - atr * (decimal)stopAtrMult;
-                        var target = entry + atr * (decimal)targetAtrMult;
+                        var stop = entry - atr * stopAtrMult;
+                        var target = entry + atr * targetAtrMult;
                         
                         var candidate = new Candidate
                         {
@@ -815,7 +815,7 @@ namespace BotCore.Strategy
             try
             {
                 // Determine instrument
-                var instrument = symbol.Contains("ES") ? TopstepX.S11.Instrument.ES : TopstepX.S11.Instrument.NQ;
+                var instrument = symbol.Contains("ES", StringComparison.OrdinalIgnoreCase) ? TopstepX.S11.Instrument.ES : TopstepX.S11.Instrument.NQ;
 
                 // Get position to determine if we can place orders
                 var currentPosition = _router?.GetPosition(instrument) ?? (TopstepX.S11.Side.Flat, 0, 0.0, DateTimeOffset.UtcNow, string.Empty);
@@ -831,7 +831,7 @@ namespace BotCore.Strategy
                 {
                     // Use loaded parameters with fallback to RuntimeConfig
                     var minAtr = S11RuntimeConfig.MinAtr;
-                    var stopAtrMult = sessionParams?.StopAtrMult ?? (double)S11RuntimeConfig.StopAtrMult;
+                    var stopAtrMult = (decimal)(sessionParams?.StopAtrMult ?? (double)S11RuntimeConfig.StopAtrMult);
                     var targetAtrMult = S11RuntimeConfig.TargetAtrMult; // Use RuntimeConfig for now, can be extended later
                     
                     var lastBar = bars.Last();
@@ -840,8 +840,8 @@ namespace BotCore.Strategy
                     
                     if (atr > minAtr)
                     {
-                        var stop = entry + atr * (decimal)stopAtrMult;
-                        var target = entry - atr * (decimal)targetAtrMult;
+                        var stop = entry + atr * stopAtrMult;
+                        var target = entry - atr * targetAtrMult;
                         
                         var candidate = new Candidate
                         {

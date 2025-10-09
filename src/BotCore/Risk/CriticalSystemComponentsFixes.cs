@@ -60,9 +60,9 @@ namespace BotCore.Risk
 
                     await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException)
+                catch (OperationCanceledException ex)
                 {
-                    _logger.LogInformation("[CRITICAL-SYSTEM] System health monitoring cancelled");
+                    _logger.LogInformation(ex, "[CRITICAL-SYSTEM] System health monitoring cancelled");
                     break;
                 }
                 catch (InvalidOperationException ex)
@@ -100,9 +100,9 @@ namespace BotCore.Risk
 
                     await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException)
+                catch (OperationCanceledException ex)
                 {
-                    _logger.LogInformation("[CRITICAL-SYSTEM] Memory pressure monitoring cancelled");
+                    _logger.LogInformation(ex, "[CRITICAL-SYSTEM] Memory pressure monitoring cancelled");
                     break;
                 }
                 catch (InvalidOperationException ex)
@@ -135,9 +135,9 @@ namespace BotCore.Risk
 
                     await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException)
+                catch (OperationCanceledException ex)
                 {
-                    _logger.LogInformation("[CRITICAL-SYSTEM] Performance metrics monitoring cancelled");
+                    _logger.LogInformation(ex, "[CRITICAL-SYSTEM] Performance metrics monitoring cancelled");
                     break;
                 }
                 catch (InvalidOperationException ex)
