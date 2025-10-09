@@ -8,8 +8,9 @@ using System.Diagnostics;
 
 namespace BotCore.Risk
 {
-    public sealed class RiskEngine
+    public sealed class RiskEngine : IDisposable
     {
+        private bool _disposed;
         public RiskConfig cfg { get; set; } = new RiskConfig();
         private readonly DrawdownProtectionSystem _drawdownProtection;
 
@@ -36,7 +37,7 @@ namespace BotCore.Risk
             return reward / risk;
         }
 
-        public static decimal size_for(decimal riskPerTrade, decimal dist, decimal pointValue)
+        public static decimal SizeFor(decimal riskPerTrade, decimal dist, decimal pointValue)
         {
             if (dist <= 0 || pointValue <= 0) return 0m;
             return Math.Floor(riskPerTrade / (dist * pointValue));
@@ -51,23 +52,44 @@ namespace BotCore.Risk
             if (pv <= 0) return (0, 0);
 
             // If equity% configured and equity provided, use it, else fall back to fixed RPT
-            var usePct = cfg.risk_pct_of_equity > 0m && accountEquity > 0m;
-            var rpt = usePct ? Math.Round(accountEquity * cfg.risk_pct_of_equity, 2) : cfg.risk_per_trade;
+            var usePct = cfg.RiskPctOfEquity > 0m && accountEquity > 0m;
+            var rpt = usePct ? Math.Round(accountEquity * cfg.RiskPctOfEquity, 2) : cfg.RiskPerTrade;
             var raw = (int)System.Math.Floor((double)(rpt / (dist * pv)));
             var lot = BotCore.Models.InstrumentMeta.LotStep(symbol);
             var qty = System.Math.Max(0, raw - (raw % System.Math.Max(1, lot)));
             
             // Apply drawdown protection multiplier
-            var sizeMultiplier = _drawdownProtection.GetPositionSizeMultiplier();
+            var sizeMultiplier = _drawdownProtection.PositionSizeMultiplier;
             qty = (int)(qty * sizeMultiplier);
             
             return (qty, rpt);
         }
 
-        public bool ShouldHaltDay(decimal realizedPnlToday) => cfg.max_daily_drawdown > 0 && -realizedPnlToday >= cfg.max_daily_drawdown;
-        public bool ShouldHaltWeek(decimal realizedPnlWeek) => cfg.max_weekly_drawdown > 0 && -realizedPnlWeek >= cfg.max_weekly_drawdown;
+        public bool ShouldHaltDay(decimal realizedPnlToday) => cfg.MaxDailyDrawdown > 0 && -realizedPnlToday >= cfg.MaxDailyDrawdown;
+        public bool ShouldHaltWeek(decimal realizedPnlWeek) => cfg.MaxWeeklyDrawdown > 0 && -realizedPnlWeek >= cfg.MaxWeeklyDrawdown;
 
         public DrawdownAnalysis GetDrawdownAnalysis() => _drawdownProtection.AnalyzeDrawdownPattern();
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (disposing)
+            {
+                _drawdownProtection?.Dispose();
+            }
+
+            _disposed = true;
+        }
     }
 
     public class Trade
@@ -104,8 +126,9 @@ namespace BotCore.Risk
     // COMPONENT 9: DRAWDOWN CURVE BREAKER
     // ================================================================================
 
-    public class DrawdownProtectionSystem
+    public sealed class DrawdownProtectionSystem : IDisposable
     {
+        private bool _disposed;
         private readonly ConcurrentDictionary<string, DrawdownTracker> _trackers = new();
         private readonly Timer _drawdownMonitor;
         private decimal _dailyStartBalance;
@@ -153,7 +176,7 @@ namespace BotCore.Risk
         /// </summary>
         public bool IsTradingHalted => _tradingHalted;
         
-        public class DrawdownTracker
+        internal sealed class DrawdownTracker
         {
             public string TrackerId { get; set; } = string.Empty;
             public decimal PeakValue { get; set; }
@@ -171,7 +194,7 @@ namespace BotCore.Risk
             internal void ClearLossSequence() => _lossSequence.Clear();
         }
         
-        public class DrawdownAction
+        internal sealed class DrawdownAction
         {
             public string ActionType { get; set; } = string.Empty;
             public decimal TriggerLevel { get; set; }
@@ -407,7 +430,7 @@ namespace BotCore.Risk
             return Task.CompletedTask;
         }
 
-        public decimal GetPositionSizeMultiplier() => _positionSizeMultiplier;
+        public decimal PositionSizeMultiplier => _positionSizeMultiplier;
         
         private static Task SwitchToConservativeMode()
         {
@@ -505,5 +528,26 @@ namespace BotCore.Risk
         private static void LogWarning(string message) => Console.WriteLine($"[DrawdownProtection] WARNING: {message}");
         private static void LogCritical(string message) => Console.WriteLine($"[DrawdownProtection] CRITICAL: {message}");
         private static void LogInfo(string message) => Console.WriteLine($"[DrawdownProtection] INFO: {message}");
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (disposing)
+            {
+                _drawdownMonitor?.Dispose();
+            }
+
+            _disposed = true;
+        }
     }
 }

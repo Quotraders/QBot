@@ -142,6 +142,12 @@ namespace TopstepX.S11
             return obj is DepthLadder other && Equals(other);
         }
 
+        public bool Equals(DepthLadder other)
+        {
+            return BestBid == other.BestBid && BestAsk == other.BestAsk && 
+                   BidSize.Equals(other.BidSize) && AskSize.Equals(other.AskSize);
+        }
+
         public override int GetHashCode()
         {
             return HashCode.Combine(BestBid, BestAsk, BidSize, AskSize);
@@ -155,12 +161,6 @@ namespace TopstepX.S11
         public static bool operator !=(DepthLadder left, DepthLadder right)
         {
             return !(left == right);
-        }
-
-        public bool Equals(DepthLadder other)
-        {
-            return BestBid == other.BestBid && BestAsk == other.BestAsk && 
-                   BidSize.Equals(other.BidSize) && AskSize.Equals(other.AskSize);
         }
     }
 
@@ -275,10 +275,10 @@ namespace TopstepX.S11
             double change = close - _lastClose;
             double gain = change > 0 ? change : 0;
             double loss = change < 0 ? -change : 0;
-            if (_avgGain == 0 && _avgLoss == 0) { _avgGain = gain; _avgLoss = loss; }
+            if (Math.Abs(_avgGain) < S11Constants.SmallEpsilon && Math.Abs(_avgLoss) < S11Constants.SmallEpsilon) { _avgGain = gain; _avgLoss = loss; }
             else { _avgGain = (_avgGain * (_n - 1) + gain) / _n; _avgLoss = (_avgLoss * (_n - 1) + loss) / _n; }
             _lastClose = close;
-            if (_avgLoss == 0) return S11Constants.RsiMaxValue;
+            if (Math.Abs(_avgLoss) < S11Constants.SmallEpsilon) return S11Constants.RsiMaxValue;
             double rs = _avgGain / _avgLoss;
             return S11Constants.RsiMaxValue - (S11Constants.RsiMaxValue / (1 + rs));
         }
@@ -698,8 +698,10 @@ namespace TopstepX.S11
         // --- DIVERGENCE (optional, same as S6) ---
         public void UpdateDivergence()
         {
-            if (_es.Min1.Count < 2 || _nq.Min1.Count < 2) return;
-            // Divergence calculation would go here if needed for S11 logic
+            if (_es.Min1.Count >= 2 && _nq.Min1.Count >= 2)
+            {
+                // Divergence calculation would go here if needed for S11 logic
+            }
         }
     }
 }
