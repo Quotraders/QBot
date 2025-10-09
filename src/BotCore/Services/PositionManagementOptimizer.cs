@@ -1102,29 +1102,14 @@ namespace BotCore.Services
             };
             
             // Use t-distribution for small samples, z-distribution for large
-            decimal criticalValue;
-            if (n < SmallSampleThreshold)
+            // Currently using same values for both distributions (simplified implementation)
+            decimal criticalValue = confidencePercentage switch
             {
-                // Simplified t-values for common confidence levels
-                criticalValue = confidencePercentage switch
-                {
-                    ConfidenceLevel80Percent => TValueFor80Percent,
-                    ConfidenceLevel90Percent => TValueFor90Percent,
-                    ConfidenceLevel95Percent => TValueFor95Percent,
-                    _ => DefaultTValue
-                };
-            }
-            else
-            {
-                // Z-values for large samples
-                criticalValue = confidencePercentage switch
-                {
-                    ConfidenceLevel80Percent => TValueFor80Percent,
-                    ConfidenceLevel90Percent => TValueFor90Percent,
-                    ConfidenceLevel95Percent => TValueFor95Percent,
-                    _ => DefaultTValue
-                };
-            }
+                ConfidenceLevel80Percent => TValueFor80Percent,
+                ConfidenceLevel90Percent => TValueFor90Percent,
+                ConfidenceLevel95Percent => TValueFor95Percent,
+                _ => DefaultTValue
+            };
             
             var marginOfError = criticalValue * stdError;
             

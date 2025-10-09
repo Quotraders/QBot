@@ -195,7 +195,7 @@ namespace BotCore.Configuration
                 _ => 0.62m // Default commission for standard futures
             };
 
-            var multiplier = RoundTurnCommission ? 2 : (isEntry ? 1 : 1);
+            var multiplier = RoundTurnCommission ? 2 : 1;
             return commissionPerContract * quantity * multiplier;
         }
     }

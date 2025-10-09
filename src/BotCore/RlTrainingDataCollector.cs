@@ -230,9 +230,8 @@ namespace BotCore
             ArgumentNullException.ThrowIfNull(symbol);
             ArgumentNullException.ThrowIfNull(strategy);
             
-            // Symbol-specific defaults
-            var isES = symbol.Equals("ES", StringComparison.OrdinalIgnoreCase);
-            var defaultSpread = isES ? 0.25m : 0.25m; // Both ES and NQ have 0.25 tick size
+            // Symbol-specific defaults - currently same for all symbols
+            var defaultSpread = 0.25m; // Standard tick size for ES and NQ
 
             return new FeatureSnapshot
             {
