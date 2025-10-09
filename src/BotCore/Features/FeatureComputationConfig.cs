@@ -94,36 +94,36 @@ public class FeatureComputationConfig
     public void Validate()
     {
         if (RsiPeriod < MIN_PERIOD || RsiPeriod > MAX_PERIOD)
-            throw new ArgumentOutOfRangeException(nameof(RsiPeriod), $"Must be between {MIN_PERIOD} and {MAX_PERIOD}");
+            throw new ArgumentException($"RsiPeriod must be between {MIN_PERIOD} and {MAX_PERIOD}");
         
         if (AtrPeriod < MIN_PERIOD || AtrPeriod > MAX_PERIOD)
-            throw new ArgumentOutOfRangeException(nameof(AtrPeriod), $"Must be between {MIN_PERIOD} and {MAX_PERIOD}");
+            throw new ArgumentException($"AtrPeriod must be between {MIN_PERIOD} and {MAX_PERIOD}");
         
         if (BollingerPeriod < MIN_PERIOD || BollingerPeriod > MAX_PERIOD)
-            throw new ArgumentOutOfRangeException(nameof(BollingerPeriod), $"Must be between {MIN_PERIOD} and {MAX_PERIOD}");
+            throw new ArgumentException($"BollingerPeriod must be between {MIN_PERIOD} and {MAX_PERIOD}");
         
         if (VwapBars < MIN_BAR_COUNT || VwapBars > MAX_BAR_COUNT)
-            throw new ArgumentOutOfRangeException(nameof(VwapBars), $"Must be between {MIN_BAR_COUNT} and {MAX_BAR_COUNT}");
+            throw new ArgumentException($"VwapBars must be between {MIN_BAR_COUNT} and {MAX_BAR_COUNT}");
         
         if (AdrDays < MIN_BAR_COUNT || AdrDays > MAX_PERIOD)
-            throw new ArgumentOutOfRangeException(nameof(AdrDays), $"Must be between {MIN_BAR_COUNT} and {MAX_PERIOD}");
+            throw new ArgumentException($"AdrDays must be between {MIN_BAR_COUNT} and {MAX_PERIOD}");
         
         if (MinutesPerDay < MIN_MINUTES_PER_DAY || MinutesPerDay > MAX_MINUTES_PER_DAY)
-            throw new ArgumentOutOfRangeException(nameof(MinutesPerDay), $"Must be between {MIN_MINUTES_PER_DAY} and {MAX_MINUTES_PER_DAY}");
+            throw new ArgumentException($"MinutesPerDay must be between {MIN_MINUTES_PER_DAY} and {MAX_MINUTES_PER_DAY}");
         
         if (CurrentRangeBars < MIN_BAR_COUNT || CurrentRangeBars > MAX_BAR_COUNT)
-            throw new ArgumentOutOfRangeException(nameof(CurrentRangeBars), $"Must be between {MIN_BAR_COUNT} and {MAX_BAR_COUNT}");
+            throw new ArgumentException($"CurrentRangeBars must be between {MIN_BAR_COUNT} and {MAX_BAR_COUNT}");
         
         if (HoursPerDay != HOURS_PER_DAY)
-            throw new ArgumentOutOfRangeException(nameof(HoursPerDay), $"Must be {HOURS_PER_DAY}");
+            throw new ArgumentException($"HoursPerDay must be {HOURS_PER_DAY}");
         
         if (S7ZScoreThresholdBullish < MIN_ZSCORE_THRESHOLD || S7ZScoreThresholdBullish > MAX_ZSCORE_THRESHOLD)
-            throw new ArgumentOutOfRangeException(nameof(S7ZScoreThresholdBullish), $"Must be between {MIN_ZSCORE_THRESHOLD} and {MAX_ZSCORE_THRESHOLD}");
+            throw new ArgumentException($"S7ZScoreThresholdBullish must be between {MIN_ZSCORE_THRESHOLD} and {MAX_ZSCORE_THRESHOLD}");
         
         if (S7ZScoreThresholdBearish > MAX_ZSCORE_THRESHOLD_BEARISH || S7ZScoreThresholdBearish < MIN_ZSCORE_THRESHOLD_BEARISH)
-            throw new ArgumentOutOfRangeException(nameof(S7ZScoreThresholdBearish), $"Must be between {MIN_ZSCORE_THRESHOLD_BEARISH} and {MAX_ZSCORE_THRESHOLD_BEARISH}");
+            throw new ArgumentException($"S7ZScoreThresholdBearish must be between {MIN_ZSCORE_THRESHOLD_BEARISH} and {MAX_ZSCORE_THRESHOLD_BEARISH}");
         
         if (S7CoherenceThreshold < MIN_COHERENCE_THRESHOLD || S7CoherenceThreshold > MAX_COHERENCE_THRESHOLD)
-            throw new ArgumentOutOfRangeException(nameof(S7CoherenceThreshold), $"Must be between {MIN_COHERENCE_THRESHOLD} and {MAX_COHERENCE_THRESHOLD}");
+            throw new ArgumentException($"S7CoherenceThreshold must be between {MIN_COHERENCE_THRESHOLD} and {MAX_COHERENCE_THRESHOLD}");
     }
 }
