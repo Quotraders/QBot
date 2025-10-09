@@ -71,7 +71,12 @@ namespace BotCore.Models
         /// <summary>
         /// FEATURE 3: List of regime changes during trade lifetime
         /// </summary>
-        public System.Collections.Generic.List<RegimeChangeRecord> RegimeChanges { get; set; } = new();
+        private readonly System.Collections.Generic.List<RegimeChangeRecord> _regimeChanges = new();
+        
+        /// <summary>
+        /// FEATURE 3: Read-only view of regime changes during trade lifetime
+        /// </summary>
+        public System.Collections.Generic.IReadOnlyList<RegimeChangeRecord> RegimeChanges => _regimeChanges;
         
         /// <summary>
         /// FEATURE 4: Entry confidence from AutonomousDecisionEngine (0.0-1.0)
@@ -158,7 +163,12 @@ namespace BotCore.Models
         /// <summary>
         /// MAE CORRELATION: Time-stamped MAE snapshots for correlation analysis
         /// </summary>
-        public System.Collections.Generic.List<MaeSnapshot> MaeSnapshots { get; set; } = new();
+        private readonly System.Collections.Generic.List<MaeSnapshot> _maeSnapshots = new();
+        
+        /// <summary>
+        /// MAE CORRELATION: Read-only view of MAE snapshots for correlation analysis
+        /// </summary>
+        public System.Collections.Generic.IReadOnlyList<MaeSnapshot> MaeSnapshots => _maeSnapshots;
         
         /// <summary>
         /// Check if a dynamic property exists
@@ -182,6 +192,24 @@ namespace BotCore.Models
         public void SetProperty(string key, object value)
         {
             _dynamicProperties[key] = value;
+        }
+        
+        /// <summary>
+        /// Add a regime change record to the position state
+        /// </summary>
+        public void AddRegimeChange(RegimeChangeRecord record)
+        {
+            ArgumentNullException.ThrowIfNull(record);
+            _regimeChanges.Add(record);
+        }
+        
+        /// <summary>
+        /// Add an MAE snapshot to the position state
+        /// </summary>
+        public void AddMaeSnapshot(MaeSnapshot snapshot)
+        {
+            ArgumentNullException.ThrowIfNull(snapshot);
+            _maeSnapshots.Add(snapshot);
         }
     }
     
