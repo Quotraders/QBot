@@ -142,6 +142,12 @@ namespace TopstepX.S11
             return obj is DepthLadder other && Equals(other);
         }
 
+        public bool Equals(DepthLadder other)
+        {
+            return BestBid == other.BestBid && BestAsk == other.BestAsk && 
+                   BidSize.Equals(other.BidSize) && AskSize.Equals(other.AskSize);
+        }
+
         public override int GetHashCode()
         {
             return HashCode.Combine(BestBid, BestAsk, BidSize, AskSize);
@@ -155,12 +161,6 @@ namespace TopstepX.S11
         public static bool operator !=(DepthLadder left, DepthLadder right)
         {
             return !(left == right);
-        }
-
-        public bool Equals(DepthLadder other)
-        {
-            return BestBid == other.BestBid && BestAsk == other.BestAsk && 
-                   BidSize.Equals(other.BidSize) && AskSize.Equals(other.AskSize);
         }
     }
 

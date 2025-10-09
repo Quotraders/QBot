@@ -76,6 +76,12 @@ namespace TopstepX.S6
             return obj is Bar1M other && Equals(other);
         }
 
+        public bool Equals(Bar1M other)
+        {
+            return TimeET == other.TimeET && Open == other.Open && High == other.High && 
+                   Low == other.Low && Close == other.Close && Volume.Equals(other.Volume);
+        }
+
         public override int GetHashCode()
         {
             return HashCode.Combine(TimeET, Open, High, Low, Close, Volume);
@@ -89,12 +95,6 @@ namespace TopstepX.S6
         public static bool operator !=(Bar1M left, Bar1M right)
         {
             return !(left == right);
-        }
-
-        public bool Equals(Bar1M other)
-        {
-            return TimeET == other.TimeET && Open == other.Open && High == other.High && 
-                   Low == other.Low && Close == other.Close && Volume.Equals(other.Volume);
         }
     }
 
@@ -142,6 +142,12 @@ namespace TopstepX.S6
             return obj is DepthLadder other && Equals(other);
         }
 
+        public bool Equals(DepthLadder other)
+        {
+            return TimeET == other.TimeET && BestBid == other.BestBid && BestAsk == other.BestAsk && 
+                   BidSize.Equals(other.BidSize) && AskSize.Equals(other.AskSize);
+        }
+
         public override int GetHashCode()
         {
             return HashCode.Combine(TimeET, BestBid, BestAsk, BidSize, AskSize);
@@ -155,12 +161,6 @@ namespace TopstepX.S6
         public static bool operator !=(DepthLadder left, DepthLadder right)
         {
             return !(left == right);
-        }
-
-        public bool Equals(DepthLadder other)
-        {
-            return TimeET == other.TimeET && BestBid == other.BestBid && BestAsk == other.BestAsk && 
-                   BidSize.Equals(other.BidSize) && AskSize.Equals(other.AskSize);
         }
     }
 

@@ -195,28 +195,6 @@ namespace BotCore.Strategy
             return cands;
         }
 
-        private static bool ShouldRunStrategyAtTime(string strategyId, int hour)
-        {
-            // Time-based strategy performance thresholds - only active strategies S2, S3, S6, S11
-            var performanceThresholds = new Dictionary<string, Dictionary<int, double>>
-            {
-                ["S2"] = new() { [0] = 0.85, [3] = 0.82, [12] = 0.88, [19] = 0.83, [23] = 0.87 },
-                ["S3"] = new() { [3] = 0.90, [9] = 0.92, [10] = 0.85, [14] = 0.80 },
-                ["S6"] = new() { [9] = 0.95 }, // Only during opening
-                ["S11"] = new() { [13] = 0.91, [14] = 0.88, [15] = 0.85, [16] = 0.82 }
-            };
-
-            if (!performanceThresholds.TryGetValue(strategyId, out var hourPerformance))
-                return true; // Allow strategies without specific time restrictions
-
-            // Find closest hour performance
-            var closestHour = hourPerformance.Keys.OrderBy(h => Math.Abs(h - hour)).FirstOrDefault();
-            var performance = hourPerformance.TryGetValue(closestHour, out var perf) ? (decimal)perf : DefaultPerformanceThreshold;
-
-            // Only run strategy if performance is above threshold
-            return performance > PerformanceFilterThreshold;
-        }
-
         // Config-aware method for StrategyAgent
         public static List<Signal> generate_candidates(string symbol, TradingProfileConfig cfg, StrategyDef def, List<Bar> bars, object risk, BotCore.Models.MarketSnapshot snap, TradingBot.Abstractions.IS7Service? s7Service = null)
         {
@@ -433,6 +411,28 @@ namespace BotCore.Strategy
                 });
             }
             return signals;
+        }
+
+        private static bool ShouldRunStrategyAtTime(string strategyId, int hour)
+        {
+            // Time-based strategy performance thresholds - only active strategies S2, S3, S6, S11
+            var performanceThresholds = new Dictionary<string, Dictionary<int, double>>
+            {
+                ["S2"] = new() { [0] = 0.85, [3] = 0.82, [12] = 0.88, [19] = 0.83, [23] = 0.87 },
+                ["S3"] = new() { [3] = 0.90, [9] = 0.92, [10] = 0.85, [14] = 0.80 },
+                ["S6"] = new() { [9] = 0.95 }, // Only during opening
+                ["S11"] = new() { [13] = 0.91, [14] = 0.88, [15] = 0.85, [16] = 0.82 }
+            };
+
+            if (!performanceThresholds.TryGetValue(strategyId, out var hourPerformance))
+                return true; // Allow strategies without specific time restrictions
+
+            // Find closest hour performance
+            var closestHour = hourPerformance.Keys.OrderBy(h => Math.Abs(h - hour)).FirstOrDefault();
+            var performance = hourPerformance.TryGetValue(closestHour, out var perf) ? (decimal)perf : DefaultPerformanceThreshold;
+
+            // Only run strategy if performance is above threshold
+            return performance > PerformanceFilterThreshold;
         }
 
         // S1–S14 strategies
