@@ -332,6 +332,8 @@ namespace BotCore.Services
             BracketMode bracketMode,
             decimal entryConfidence = 0.75m)
         {
+            ArgumentNullException.ThrowIfNull(bracketMode);
+            
             // Save original values before confidence adjustments
             var originalStop = stopPrice;
             var originalTarget = targetPrice;
@@ -746,7 +748,7 @@ namespace BotCore.Services
         /// <summary>
         /// Check if position should be closed due to time limit
         /// </summary>
-        private bool ShouldExitOnTime(PositionManagementState state)
+        private static bool ShouldExitOnTime(PositionManagementState state)
         {
             if (state.MaxHoldMinutes <= 0)
                 return false; // No time limit
@@ -759,7 +761,7 @@ namespace BotCore.Services
         /// Update max favorable and adverse excursion tracking
         /// MAE CORRELATION: Also tracks time-stamped MAE snapshots
         /// </summary>
-        private void UpdateMaxExcursion(PositionManagementState state, decimal currentPrice)
+        private static void UpdateMaxExcursion(PositionManagementState state, decimal currentPrice)
         {
             var isLong = state.Quantity > 0;
             
@@ -1232,7 +1234,7 @@ namespace BotCore.Services
         /// Estimate current volatility (simplified for PHASE 4)
         /// In production, would use actual ATR from market data
         /// </summary>
-        private decimal EstimateCurrentVolatility(PositionManagementState state)
+        private static decimal EstimateCurrentVolatility(PositionManagementState state)
         {
             // Simplified: use max excursion range as volatility proxy
             var range = Math.Abs(state.MaxFavorablePrice - state.MaxAdversePrice);
@@ -1242,7 +1244,7 @@ namespace BotCore.Services
         /// <summary>
         /// MAE CORRELATION: Get MAE value at specific elapsed time from snapshots
         /// </summary>
-        private decimal GetMaeAtTime(PositionManagementState state, int targetSeconds)
+        private static decimal GetMaeAtTime(PositionManagementState state, int targetSeconds)
         {
             if (state.MaeSnapshots.Count == 0)
             {
@@ -1261,7 +1263,7 @@ namespace BotCore.Services
         /// Estimate average volatility (simplified for PHASE 4)
         /// In production, would use historical ATR
         /// </summary>
-        private decimal EstimateAverageVolatility(PositionManagementState state)
+        private static decimal EstimateAverageVolatility(PositionManagementState state)
         {
             // Simplified: use entry-based range estimation
             var tickSize = GetTickSize(state.Symbol);
@@ -1337,6 +1339,8 @@ namespace BotCore.Services
         /// </summary>
         public async void OnZoneBreak(ZoneBreakEvent breakEvent)
         {
+            ArgumentNullException.ThrowIfNull(breakEvent);
+            
             try
             {
                 // Find positions for this symbol
@@ -1636,7 +1640,7 @@ namespace BotCore.Services
         /// <summary>
         /// Get regime-based R-multiple for a strategy
         /// </summary>
-        private decimal GetRegimeBasedRMultiple(string strategy, string regime)
+        private static decimal GetRegimeBasedRMultiple(string strategy, string regime)
         {
             var regimeKey = regime.ToUpperInvariant();
             var isTrending = regimeKey.Contains("TREND");
@@ -1939,7 +1943,7 @@ namespace BotCore.Services
         /// <summary>
         /// Get strategy-specific regime flip sensitivity threshold
         /// </summary>
-        private decimal GetRegimeFlipSensitivity(string strategy)
+        private static decimal GetRegimeFlipSensitivity(string strategy)
         {
             var envVarName = $"{strategy}_REGIME_FLIP_SENSITIVITY";
             var envValue = Environment.GetEnvironmentVariable(envVarName);
@@ -2217,7 +2221,7 @@ namespace BotCore.Services
         /// <summary>
         /// Get progressive tightening schedule for a strategy
         /// </summary>
-        private List<ProgressiveTighteningThreshold> GetProgressiveTighteningSchedule(string strategy)
+        private static List<ProgressiveTighteningThreshold> GetProgressiveTighteningSchedule(string strategy)
         {
             return strategy switch
             {

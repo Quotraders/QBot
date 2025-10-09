@@ -870,6 +870,8 @@ namespace BotCore.Services
         /// </summary>
         public async void OnOrderFillReceived(FillEventData fillData)
         {
+            ArgumentNullException.ThrowIfNull(fillData);
+            
             try
             {
                 _logger.LogInformation("📥 [FILL-EVENT] Received fill notification: {OrderId} {Symbol} {Qty} @ {Price}",
@@ -1027,6 +1029,9 @@ namespace BotCore.Services
             string orderType2,
             CancellationToken cancellationToken = default)
         {
+            ArgumentNullException.ThrowIfNull(orderType1);
+            ArgumentNullException.ThrowIfNull(orderType2);
+            
             // PHASE 5: Check if OCO orders are enabled
             if (!_enableOcoOrders)
             {

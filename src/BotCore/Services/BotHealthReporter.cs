@@ -88,7 +88,7 @@ public class BotHealthReporter
 
         // List unhealthy components
         var unhealthyComponents = results.Where(r => r.Result.Status == "Unhealthy").ToList();
-        if (unhealthyComponents.Any())
+        if (unhealthyComponents.Count > 0)
         {
             sb.AppendLine();
             sb.AppendLine("❌ UNHEALTHY COMPONENTS:");
@@ -100,7 +100,7 @@ public class BotHealthReporter
 
         // List degraded components
         var degradedComponents = results.Where(r => r.Result.Status == "Degraded").ToList();
-        if (degradedComponents.Any())
+        if (degradedComponents.Count > 0)
         {
             sb.AppendLine();
             sb.AppendLine("⚠️ DEGRADED COMPONENTS:");
@@ -194,7 +194,7 @@ public class BotHealthReporter
         prompt.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"Status: {healthResult.Status}");
         prompt.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"Issue: {healthResult.Description}");
 
-        if (healthResult.Metrics.Any())
+        if (healthResult.Metrics.Count > 0)
         {
             prompt.AppendLine("Metrics:");
             foreach (var metric in healthResult.Metrics)
@@ -219,7 +219,7 @@ public class BotHealthReporter
         prompt.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"Status: {healthResult.Status}");
         prompt.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"Issue: {healthResult.Description}");
 
-        if (healthResult.Metrics.Any())
+        if (healthResult.Metrics.Count > 0)
         {
             prompt.AppendLine("Metrics:");
             foreach (var metric in healthResult.Metrics)

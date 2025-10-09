@@ -273,7 +273,7 @@ namespace BotCore.Services
             }
 
             // Select best signal
-            if (signals.Any())
+            if (signals.Count > 0)
             {
                 var bestSignal = signals.OrderByDescending(s => s.Score).First();
 
@@ -409,7 +409,7 @@ namespace BotCore.Services
             }
         }
 
-        private MarketRegime ClassifyRegime(decimal prediction, decimal[] features)
+        private static MarketRegime ClassifyRegime(decimal prediction, decimal[] features)
         {
             var volatility = (double)features[0];
             var trend = (double)features[1];
@@ -431,7 +431,7 @@ namespace BotCore.Services
             };
         }
 
-        private MarketRegime GetRegimeFallback(decimal[] features)
+        private static MarketRegime GetRegimeFallback(decimal[] features)
         {
             var volatility = (double)features[0];
             var trend = (double)features[1];
@@ -445,7 +445,7 @@ namespace BotCore.Services
             };
         }
 
-        private double CalculateRecentVolatility(IReadOnlyList<Bar> bars)
+        private static double CalculateRecentVolatility(IReadOnlyList<Bar> bars)
         {
             if (bars.Count < MinimumBarsForVolatility) return DefaultVolatilityFallback;
 
@@ -461,7 +461,7 @@ namespace BotCore.Services
             return Math.Sqrt(variance) * Math.Sqrt(AnnualizationFactor); // Annualized volatility proxy
         }
 
-        private double CalculateTrend(IReadOnlyList<Bar> bars)
+        private static double CalculateTrend(IReadOnlyList<Bar> bars)
         {
             if (bars.Count < MinimumBarsForTrend) return DefaultTrendFallback;
 
@@ -498,7 +498,7 @@ namespace BotCore.Services
             }
         }
 
-        private Env CreateEnvironment(IReadOnlyList<Bar> bars)
+        private static Env CreateEnvironment(IReadOnlyList<Bar> bars)
         {
             // Create environment for strategy evaluation
             return new Env
@@ -508,13 +508,13 @@ namespace BotCore.Services
             };
         }
 
-        private Levels CreateLevels()
+        private static Levels CreateLevels()
         {
             // Create levels for strategy evaluation - Levels class is empty, just return new instance
             return new Levels();
         }
 
-        private BotCore.Models.Signal? ConvertToSignal(Candidate candidate, string strategyId)
+        private static BotCore.Models.Signal? ConvertToSignal(Candidate candidate, string strategyId)
         {
             if (candidate == null) return null;
 
@@ -536,7 +536,7 @@ namespace BotCore.Services
             };
         }
 
-        private bool ShouldCheckCorrelation(string instrument)
+        private static bool ShouldCheckCorrelation(string instrument)
         {
             return instrument == "ES" || instrument == "NQ";
         }
@@ -588,7 +588,7 @@ namespace BotCore.Services
         /// <summary>
         /// Calculate returns (percentage changes) from price series
         /// </summary>
-        private double[] CalculateReturns(double[] prices)
+        private static double[] CalculateReturns(double[] prices)
         {
             if (prices.Length < 2) return Array.Empty<double>();
             
@@ -606,7 +606,7 @@ namespace BotCore.Services
         /// <summary>
         /// Calculate Pearson correlation coefficient between two return series
         /// </summary>
-        private double CalculatePearsonCorrelation(double[] series1, double[] series2)
+        private static double CalculatePearsonCorrelation(double[] series1, double[] series2)
         {
             if (series1.Length != series2.Length || series1.Length == 0)
                 return FallbackCorrelation; // Fallback
@@ -658,7 +658,7 @@ namespace BotCore.Services
         // SOPHISTICATED TECHNICAL ANALYSIS METHODS FOR PRODUCTION
         // ================================================================================
 
-        private double CalculateMomentum(IReadOnlyList<Bar> bars, int period)
+        private static double CalculateMomentum(IReadOnlyList<Bar> bars, int period)
         {
             if (bars.Count < period + 1) return 0.0;
 
@@ -668,7 +668,7 @@ namespace BotCore.Services
             return (currentPrice - previousPrice) / previousPrice;
         }
 
-        private double CalculateRSI(IReadOnlyList<Bar> bars, int period)
+        private static double CalculateRSI(IReadOnlyList<Bar> bars, int period)
         {
             if (bars.Count < period + 1) return NeutralRSIValue; // Neutral RSI
 
@@ -699,7 +699,7 @@ namespace BotCore.Services
             return MaxRSIValue - (MaxRSIValue / (1 + rs));
         }
 
-        private VolumeProfileData CalculateVolumeProfile(IReadOnlyList<Bar> bars)
+        private static VolumeProfileData CalculateVolumeProfile(IReadOnlyList<Bar> bars)
         {
             if (bars.Count < MinimumBarsForVolumeProfile)
             {
@@ -736,7 +736,7 @@ namespace BotCore.Services
             };
         }
 
-        private decimal CalculateOrderBookImbalance(TradingBot.Abstractions.MarketData data)
+        private static decimal CalculateOrderBookImbalance(TradingBot.Abstractions.MarketData data)
         {
             // Use Bid/Ask prices to estimate imbalance since TradingBot.Abstractions.MarketData doesn't have sizes
             if (data.Bid == 0 && data.Ask == 0) return 0m;
@@ -768,7 +768,7 @@ namespace BotCore.Services
             return (decimal)Math.Max(0, timeToClose.TotalHours / HoursInDay); // Normalized to 0-1
         }
 
-        private decimal CalculateATRNormalized(IReadOnlyList<Bar> bars)
+        private static decimal CalculateATRNormalized(IReadOnlyList<Bar> bars)
         {
             if (bars.Count < ATRPeriod) return DefaultATRNormalized; // Default 1% ATR
 
@@ -793,7 +793,7 @@ namespace BotCore.Services
             return currentPrice > 0 ? atr / currentPrice : DefaultATRNormalized; // Normalized ATR
         }
 
-        private decimal CalculateBollingerPosition(IReadOnlyList<Bar> bars)
+        private static decimal CalculateBollingerPosition(IReadOnlyList<Bar> bars)
         {
             if (bars.Count < BollingerBandsPeriod) return MiddleOfBands; // Middle of bands
 
@@ -814,7 +814,7 @@ namespace BotCore.Services
             return Math.Max(0, Math.Min(1, (currentPrice - lowerBand) / (upperBand - lowerBand)));
         }
 
-        private decimal CalculateVWAP(IReadOnlyList<Bar> bars)
+        private static decimal CalculateVWAP(IReadOnlyList<Bar> bars)
         {
             if (bars.Count == 0) return 0m;
 
@@ -852,7 +852,7 @@ namespace BotCore.Services
             return Math.Max(0, Math.Min(1, combinedStress));
         }
 
-        private decimal CalculateVolumeStress(IReadOnlyList<Bar> recent)
+        private static decimal CalculateVolumeStress(IReadOnlyList<Bar> recent)
         {
             if (recent.Count < MinimumBarsForVolumeStress) return DefaultVolumeStress;
             
@@ -867,7 +867,7 @@ namespace BotCore.Services
             return Math.Max(0, Math.Min(1, (volumeRatio - (decimal)DefaultConfidenceMultiplier) / VolumeStressNormalizationFactor));
         }
 
-        private decimal CalculateGapStress(IReadOnlyList<Bar> recent)
+        private static decimal CalculateGapStress(IReadOnlyList<Bar> recent)
         {
             if (recent.Count < MinimumBarsForGapAnalysis) return 0m;
             
@@ -885,7 +885,7 @@ namespace BotCore.Services
                 }
             }
             
-            if (!gaps.Any()) return 0m;
+            if (gaps.Count == 0) return 0m;
             
             var avgGap = gaps.Average();
             
@@ -893,7 +893,7 @@ namespace BotCore.Services
             return Math.Max(0, Math.Min(1, avgGap / GapStressThreshold));
         }
 
-        private decimal CalculateTrendStress(IReadOnlyList<Bar> recent)
+        private static decimal CalculateTrendStress(IReadOnlyList<Bar> recent)
         {
             if (recent.Count < MinimumBarsForTrendStress) return DefaultTrendStress;
             
@@ -911,7 +911,7 @@ namespace BotCore.Services
                 }
             }
             
-            if (!priceChanges.Any()) return DefaultTrendStress;
+            if (priceChanges.Count == 0) return DefaultTrendStress;
             
             var avgChange = priceChanges.Average();
             
@@ -919,7 +919,7 @@ namespace BotCore.Services
             return Math.Max(0, Math.Min(1, avgChange / TrendStressNormalizationFactor)); // 1% baseline
         }
 
-        private decimal[] CreateDefaultFeatures()
+        private static decimal[] CreateDefaultFeatures()
         {
             // Return default feature set when insufficient data
             return new decimal[]

@@ -126,6 +126,8 @@ public sealed class HistoricalPatternRecognitionService
     /// </summary>
     public async Task<string> ExplainSimilarConditionsAsync(HistoricalPatternAnalysis analysis)
     {
+        ArgumentNullException.ThrowIfNull(analysis);
+        
         if (_ollamaClient == null || analysis.Matches.Count == 0)
         {
             return string.Empty;

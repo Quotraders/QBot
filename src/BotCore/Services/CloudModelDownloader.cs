@@ -27,6 +27,8 @@ public class CloudModelDownloader : ICloudModelDownloader
 
     public CloudModelDownloader(ILogger<CloudModelDownloader> logger, IHttpClientFactory httpClientFactory)
     {
+        ArgumentNullException.ThrowIfNull(httpClientFactory);
+        
         _logger = logger;
         _httpClient = httpClientFactory.CreateClient("CloudModelDownloader");
         _httpClient.Timeout = TimeSpan.FromMinutes(10);

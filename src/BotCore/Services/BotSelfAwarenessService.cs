@@ -55,6 +55,8 @@ public sealed class BotSelfAwarenessService : BackgroundService
         _healthCheckService = healthCheckService;
         _alertService = alertService;
         
+        ArgumentNullException.ThrowIfNull(configuration);
+        
         // Read configuration
         _selfAwarenessEnabled = configuration["BOT_SELF_AWARENESS_ENABLED"]?.ToLowerInvariant() == "true";
         

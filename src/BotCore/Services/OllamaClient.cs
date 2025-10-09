@@ -23,6 +23,8 @@ public sealed class OllamaClient : IDisposable
 
     public OllamaClient(ILogger<OllamaClient> logger, IConfiguration configuration)
     {
+        ArgumentNullException.ThrowIfNull(configuration);
+        
         _logger = logger;
 
         // Read configuration with defaults

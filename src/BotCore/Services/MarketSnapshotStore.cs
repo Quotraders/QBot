@@ -160,6 +160,9 @@ public sealed class MarketSnapshotStore
         decimal confidence,
         int size)
     {
+        ArgumentNullException.ThrowIfNull(zoneSnapshot);
+        ArgumentNullException.ThrowIfNull(patternScores);
+        
         return new TradingMarketSnapshot
         {
             Timestamp = DateTime.UtcNow,
