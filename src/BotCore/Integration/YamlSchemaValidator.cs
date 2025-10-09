@@ -210,60 +210,88 @@ public sealed class YamlSchemaValidator
         if (string.IsNullOrWhiteSpace(directoryPath))
             throw new ArgumentException("Directory path cannot be null or empty", nameof(directoryPath));
             
-        var result = new YamlDirectoryValidationResult
-        {
-            DirectoryPath = directoryPath,
-            SearchPattern = searchPattern,
-            ValidationStarted = DateTime.UtcNow,
-            FileResults = new List<YamlValidationResult>()
-        };
+        var validationStarted = DateTime.UtcNow;
+        var fileResults = new List<YamlValidationResult>();
+        string? directoryError = null;
         
         try
         {
             if (!Directory.Exists(directoryPath))
             {
-                result.DirectoryError = $"Directory not found: {directoryPath}";
-                return result;
+                directoryError = $"Directory not found: {directoryPath}";
             }
-            
-            var yamlFiles = Directory.GetFiles(directoryPath, searchPattern, SearchOption.AllDirectories);
-            _logger.LogInformation("Found {FileCount} YAML files in {DirectoryPath}", yamlFiles.Length, directoryPath);
-            
-            foreach (var filePath in yamlFiles)
+            else
             {
-                var fileResult = await ValidateYamlFileAsync(filePath).ConfigureAwait(false);
-                result.FileResults.Add(fileResult);
+                var yamlFiles = Directory.GetFiles(directoryPath, searchPattern, SearchOption.AllDirectories);
+                _logger.LogInformation("Found {FileCount} YAML files in {DirectoryPath}", yamlFiles.Length, directoryPath);
+                
+                foreach (var filePath in yamlFiles)
+                {
+                    var fileResult = await ValidateYamlFileAsync(filePath).ConfigureAwait(false);
+                    fileResults.Add(fileResult);
+                }
             }
             
-            result.ValidationCompleted = DateTime.UtcNow;
-            result.ValidationTimeMs = (result.ValidationCompleted - result.ValidationStarted).TotalMilliseconds;
-            result.TotalFiles = result.FileResults.Count;
-            result.ValidFiles = result.FileResults.Count(r => r.IsValid);
-            result.InvalidFiles = result.TotalFiles - result.ValidFiles;
-            result.IsAllValid = result.InvalidFiles == 0;
+            var validationCompleted = DateTime.UtcNow;
+            var validationTimeMs = (validationCompleted - validationStarted).TotalMilliseconds;
+            var totalFiles = fileResults.Count;
+            var validFiles = fileResults.Count(r => r.IsValid);
+            var invalidFiles = totalFiles - validFiles;
+            var isAllValid = invalidFiles == 0;
             
             _logger.LogInformation("Directory validation completed: {ValidFiles}/{TotalFiles} valid files in {DirectoryPath}",
-                result.ValidFiles, result.TotalFiles, directoryPath);
+                validFiles, totalFiles, directoryPath);
                 
-            return result;
+            return new YamlDirectoryValidationResult
+            {
+                DirectoryPath = directoryPath,
+                SearchPattern = searchPattern,
+                ValidationStarted = validationStarted,
+                ValidationCompleted = validationCompleted,
+                ValidationTimeMs = validationTimeMs,
+                TotalFiles = totalFiles,
+                ValidFiles = validFiles,
+                InvalidFiles = invalidFiles,
+                IsAllValid = isAllValid,
+                DirectoryError = directoryError,
+                FileResults = fileResults
+            };
         }
         catch (IOException ex)
         {
-            result.ValidationCompleted = DateTime.UtcNow;
-            result.ValidationTimeMs = (result.ValidationCompleted - result.ValidationStarted).TotalMilliseconds;
-            result.DirectoryError = $"IO error: {ex.Message}";
+            var validationCompleted = DateTime.UtcNow;
+            var validationTimeMs = (validationCompleted - validationStarted).TotalMilliseconds;
             
             _logger.LogError(ex, "IO error validating directory: {DirectoryPath}", directoryPath);
-            return result;
+            
+            return new YamlDirectoryValidationResult
+            {
+                DirectoryPath = directoryPath,
+                SearchPattern = searchPattern,
+                ValidationStarted = validationStarted,
+                ValidationCompleted = validationCompleted,
+                ValidationTimeMs = validationTimeMs,
+                DirectoryError = $"IO error: {ex.Message}",
+                FileResults = fileResults
+            };
         }
         catch (UnauthorizedAccessException ex)
         {
-            result.ValidationCompleted = DateTime.UtcNow;
-            result.ValidationTimeMs = (result.ValidationCompleted - result.ValidationStarted).TotalMilliseconds;
-            result.DirectoryError = $"Access denied: {ex.Message}";
+            var validationCompleted = DateTime.UtcNow;
+            var validationTimeMs = (validationCompleted - validationStarted).TotalMilliseconds;
             
             _logger.LogError(ex, "Access denied validating directory: {DirectoryPath}", directoryPath);
-            return result;
+            
+            return new YamlDirectoryValidationResult
+            {
+                DirectoryPath = directoryPath,
+                SearchPattern = searchPattern,
+                ValidationStarted = validationStarted,
+                ValidationCompleted = validationCompleted,
+                ValidationTimeMs = validationTimeMs,
+                DirectoryError = $"Access denied: {ex.Message}",
+                FileResults = fileResults
+            };
         }
     }
     
@@ -420,13 +448,7 @@ public sealed class YamlSchemaValidator
             return false;
             
         // Each condition should be a valid condition object
-        foreach (var condition in conditions)
-        {
-            if (condition is not Dictionary<object, object>)
-                return false;
-        }
-        
-        return true;
+        return conditions.All(condition => condition is Dictionary<object, object>);
     }
     
     /// <summary>
@@ -531,8 +553,8 @@ public sealed class YamlSchemaValidator
 public sealed class YamlSchemaDefinition
 {
     public string Name { get; set; } = string.Empty;
-    public string[] RequiredFields { get; set; } = Array.Empty<string>();
-    public string[] OptionalFields { get; set; } = Array.Empty<string>();
+    public IReadOnlyList<string> RequiredFields { get; set; } = Array.Empty<string>();
+    public IReadOnlyList<string> OptionalFields { get; set; } = Array.Empty<string>();
     public Dictionary<string, Func<object, bool>> FieldValidators { get; init; } = new();
 }
 
@@ -580,5 +602,5 @@ public sealed class YamlDirectoryValidationResult
     public int InvalidFiles { get; set; }
     public bool IsAllValid { get; set; }
     public string? DirectoryError { get; set; }
-    public List<YamlValidationResult> FileResults { get; init; } = new();
+    public IReadOnlyList<YamlValidationResult> FileResults { get; init; } = new List<YamlValidationResult>();
 }

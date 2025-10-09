@@ -113,6 +113,7 @@ public class ProductionHealthCheckEndpoint : IHealthCheckEndpoint
 {
     private readonly HealthCheckService _healthCheckService;
     private readonly ILogger<ProductionHealthCheckEndpoint> _logger;
+    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
 
     public ProductionHealthCheckEndpoint(
         HealthCheckService healthCheckService,
@@ -168,12 +169,12 @@ public class ProductionHealthCheckEndpoint : IHealthCheckEndpoint
                     })
             };
 
-            return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+            return JsonSerializer.Serialize(result, s_jsonOptions);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to generate health report");
-            return JsonSerializer.Serialize(new { status = "Unhealthy", error = ex.Message });
+            return JsonSerializer.Serialize(new { status = "Unhealthy", error = ex.Message }, s_jsonOptions);
         }
     }
 }
@@ -208,9 +209,8 @@ public class TopstepXApiHealthCheck : IHealthCheck
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             
             // Check API endpoint availability
-            using var response = await _httpClient.GetAsync(
-                $"{_config.Value.ApiBaseUrl}/api/health", 
-                cancellationToken).ConfigureAwait(false);
+            var healthUri = new Uri($"{_config.Value.ApiBaseUrl}/api/health");
+            using var response = await _httpClient.GetAsync(healthUri, cancellationToken).ConfigureAwait(false);
 
             stopwatch.Stop();
 
@@ -321,7 +321,8 @@ public class TopstepXSignalRHealthCheck : IHealthCheck
     {
         try
         {
-            using var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+            var uri = new Uri(url);
+            using var response = await httpClient.GetAsync(uri, cancellationToken).ConfigureAwait(false);
             return (response.IsSuccessStatusCode, $"Status: {response.StatusCode}");
         }
         catch (HttpRequestException ex)
@@ -713,16 +714,7 @@ public class SecurityHealthCheck : IHealthCheck
 
             // Check file permissions on sensitive files
             var sensitiveFiles = new[] { "appsettings.json", "appsettings.Production.json", ".env" };
-            var secureFiles = 0;
-            
-            foreach (var file in sensitiveFiles)
-            {
-                if (File.Exists(file))
-                {
-                    // Basic check - file should exist
-                    secureFiles++;
-                }
-            }
+            var secureFiles = sensitiveFiles.Count(File.Exists);
 
             data["sensitiveFilesFound"] = secureFiles;
 

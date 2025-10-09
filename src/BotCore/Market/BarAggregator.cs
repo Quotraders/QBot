@@ -25,7 +25,11 @@ namespace BotCore.Market
 
         public void Seed(string cid, IEnumerable<Bar> bars)
         {
-            var list = _history.TryGetValue(cid, out var lst) ? lst : (_history[cid] = new List<Bar>(512));
+            if (!_history.TryGetValue(cid, out var list))
+            {
+                list = new List<Bar>(512);
+                _history[cid] = list;
+            }
             list.Clear();
             list.AddRange(bars);
             Trim(list);
@@ -69,7 +73,11 @@ namespace BotCore.Market
 
         void AddHistory(string cid, Bar bar)
         {
-            var list = _history.TryGetValue(cid, out var lst) ? lst : (_history[cid] = new List<Bar>(512));
+            if (!_history.TryGetValue(cid, out var list))
+            {
+                list = new List<Bar>(512);
+                _history[cid] = list;
+            }
             list.Add(bar);
             Trim(list);
         }

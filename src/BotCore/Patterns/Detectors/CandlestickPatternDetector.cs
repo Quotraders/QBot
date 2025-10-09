@@ -351,7 +351,7 @@ public class CandlestickPatternDetector : IPatternDetector
         if (range == 0) return 0.0;
         
         var bodyRatio = bodySize / range;
-        return bodyRatio > MinSpinningTopBodyRatio && bodyRatio < MaxSpinningTopBodyRatio ? (double)SpinningTopConfidence : 0.0;
+        return bodyRatio > MinSpinningTopBodyRatio && bodyRatio < MaxSpinningTopBodyRatio ? SpinningTopConfidence : 0.0;
     }
 
     private static double DetectThreeConsecutive(IReadOnlyList<Bar> bars, bool bullish)

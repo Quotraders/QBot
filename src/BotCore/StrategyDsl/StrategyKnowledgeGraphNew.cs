@@ -191,7 +191,7 @@ public sealed class ProductionFeatureProbe : IFeatureProbe
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(TimeSpan.FromSeconds(5));
             
-            var patternScores = await _patternEngine.GetCurrentScoresAsync(symbol).ConfigureAwait(false);
+            var patternScores = await _patternEngine.GetCurrentScoresAsync(symbol, cts.Token).ConfigureAwait(false);
             var score = bullish ? patternScores.BullScore : patternScores.BearScore;
             
             _logger.LogTrace("Pattern score from PatternEngine for {Symbol}, bullish={Bullish}: {Score}", 
@@ -611,7 +611,7 @@ public sealed class ProductionRegimeService : IRegimeService
         try
         {
             // Get current regime from detector
-            var regimeState = await _regimeDetector.DetectCurrentRegimeAsync().ConfigureAwait(false);
+            var regimeState = await _regimeDetector.DetectCurrentRegimeAsync(cancellationToken).ConfigureAwait(false);
 
             if (regimeState != null)
             {

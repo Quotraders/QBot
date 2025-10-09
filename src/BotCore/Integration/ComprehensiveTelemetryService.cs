@@ -184,12 +184,9 @@ public sealed class ComprehensiveTelemetryService
             // Emit decision metrics
             
             // Telemetry replaced with logging
-            if (!string.IsNullOrEmpty(data.OrderId))
+            if (!string.IsNullOrEmpty(data.OrderId) && data.ExecutionLatencyMs.HasValue)
             {
-                if (data.ExecutionLatencyMs.HasValue)
-                {
-                    // Telemetry replaced with logging
-}
+                // Telemetry replaced with logging
             }
             
             _logger.LogDebug("Decision/Order telemetry emitted: {DecisionType} for {Symbol} (Config: {ConfigSnapshotId})",

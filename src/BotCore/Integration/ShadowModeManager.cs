@@ -70,7 +70,6 @@ public sealed class ShadowModeManager
             {
                 StrategyName = registration.StrategyName,
                 StartTime = DateTime.UtcNow,
-                Trades = new List<ShadowTrade>(),
                 DailyStats = new Dictionary<DateTime, DailyPerformanceStats>()
             };
             
@@ -208,7 +207,7 @@ public sealed class ShadowModeManager
             // Add trade to tracker
             lock (_shadowLock)
             {
-                tracker.Trades.Add(shadowTrade);
+                tracker.AddTrade(shadowTrade);
                 
                 // Update daily stats
                 var tradeDate = outcome.ExitTime.Date;
@@ -404,7 +403,7 @@ public sealed class ShadowModeManager
                 throw new InvalidOperationException($"Shadow strategy not found: {strategyName}");
             }
             
-            var trades = tracker.Trades.ToList();
+            var trades = tracker.Trades;
             var winRate = trades.Count > 0 ? (double)trades.Count(t => t.IsWinner) / trades.Count : 0;
             var totalPnL = trades.Sum(t => t.PnL);
             var avgPnL = trades.Count > 0 ? trades.Average(t => t.PnL) : 0;
@@ -436,7 +435,7 @@ public sealed class ShadowModeManager
     /// <summary>
     /// Calculate Sharpe ratio for trades
     /// </summary>
-    private static double CalculateSharpeRatio(List<ShadowTrade> trades)
+    private static double CalculateSharpeRatio(IReadOnlyList<ShadowTrade> trades)
     {
         if (trades.Count < 2)
             return 0;
@@ -451,7 +450,7 @@ public sealed class ShadowModeManager
     /// <summary>
     /// Calculate maximum drawdown
     /// </summary>
-    private static double CalculateMaxDrawdown(List<ShadowTrade> trades)
+    private static double CalculateMaxDrawdown(IReadOnlyList<ShadowTrade> trades)
     {
         if (trades.Count == 0)
             return 0;
@@ -729,10 +728,14 @@ public sealed class PromotionMetrics
 /// </summary>
 public sealed class ShadowPerformanceTracker
 {
+    private readonly List<ShadowTrade> _trades = new();
+    
     public string StrategyName { get; set; } = string.Empty;
     public DateTime StartTime { get; set; }
-    public List<ShadowTrade> Trades { get; init; } = new();
+    public IReadOnlyList<ShadowTrade> Trades => _trades;
     public Dictionary<DateTime, DailyPerformanceStats> DailyStats { get; init; } = new();
+    
+    internal void AddTrade(ShadowTrade trade) => _trades.Add(trade);
 }
 
 /// <summary>
