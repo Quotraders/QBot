@@ -67,19 +67,19 @@ public class SecurityService : ISecurityService
         {
             try
             {
-                if (pattern.ToString().Contains("bearer"))
+                if (pattern.ToString().Contains("bearer", StringComparison.OrdinalIgnoreCase))
                 {
                     result = pattern.Replace(result, "$1[REDACTED]");
                 }
-                else if (pattern.ToString().Contains(@"(\d{4})(\d{4,})(\d{4})"))
+                else if (pattern.ToString().Contains(@"(\d{4})(\d{4,})(\d{4})", StringComparison.Ordinal))
                 {
                     result = pattern.Replace(result, "$1****$3");
                 }
-                else if (pattern.ToString().Contains("@"))
+                else if (pattern.ToString().Contains("@", StringComparison.Ordinal))
                 {
                     result = pattern.Replace(result, "$1@[REDACTED]");
                 }
-                else if (pattern.ToString().Contains("Authorization"))
+                else if (pattern.ToString().Contains("Authorization", StringComparison.Ordinal))
                 {
                     result = pattern.Replace(result, "$1: [REDACTED]");
                 }
