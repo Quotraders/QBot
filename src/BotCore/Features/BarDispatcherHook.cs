@@ -122,7 +122,7 @@ namespace BotCore.Features
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[BAR-DISPATCHER] [AUDIT-VIOLATION] Failed to hook into BarPyramid - FAIL-CLOSED + TELEMETRY");
-                throw;
+                throw new InvalidOperationException("Failed to hook into BarPyramid aggregator - bar processing unavailable", ex);
             }
         }
 

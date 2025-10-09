@@ -163,11 +163,20 @@ namespace BotCore.Services
 
         public void Dispose()
         {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
             if (!_disposed)
             {
-                if (_marketDataService != null)
+                if (disposing)
                 {
-                    _marketDataService.OnMarketDataReceived -= OnMarketDataReceived;
+                    if (_marketDataService != null)
+                    {
+                        _marketDataService.OnMarketDataReceived -= OnMarketDataReceived;
+                    }
                 }
                 _disposed = true;
             }

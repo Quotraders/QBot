@@ -150,7 +150,6 @@ namespace BotCore.Services
         private const decimal MAJOR_CONFIDENCE_DROP_THRESHOLD_S3 = 0.30m;  // S3 confidence collapse threshold
         private const decimal MAJOR_CONFIDENCE_DROP_THRESHOLD_S11 = 0.40m; // S11 severe confidence collapse threshold
         private const decimal GENERAL_CONFIDENCE_DROP_THRESHOLD = 0.75m;   // General rule for profitable exits
-        private const decimal HIGH_CONFIDENCE_EXIT_THRESHOLD = 0.8m;       // High confidence for priority exits
         
         // Progressive tightening time thresholds (in minutes) - Strategy S2
         private const int S2_TIER1_MINUTES = 15;
@@ -174,7 +173,6 @@ namespace BotCore.Services
         private const int S11_TIER1_MINUTES = 20;
         private const int S11_TIER2_MINUTES = 40;
         private const int S11_TIER3_MINUTES = 60;
-        private const int S11_TIER4_MINUTES = 120;
         
         // Progressive tightening R-multiple requirements
         private const decimal TIER2_R_MULTIPLE_REQUIREMENT = 1.0m;  // Tier 2 exit threshold
@@ -337,10 +335,6 @@ namespace BotCore.Services
             // FEATURE 4: Apply confidence-based adjustments to stop and target
             if (_confidenceAdjustmentEnabled)
             {
-                var originalStop = stopPrice;
-                var originalTarget = targetPrice;
-                var originalQuantity = quantity;
-                
                 var adjustedValues = ApplyConfidenceAdjustments(entryPrice, stopPrice, targetPrice, quantity, entryConfidence, symbol);
                 stopPrice = adjustedValues.adjustedStop;
                 targetPrice = adjustedValues.adjustedTarget;
@@ -2081,7 +2075,6 @@ namespace BotCore.Services
                 return; // No tier change
             }
             
-            var previousTier = state.ProgressiveTighteningTier;
             state.ProgressiveTighteningTier = newTier;
             
             // Get current tier requirements
@@ -2467,51 +2460,6 @@ Explain in 2-3 sentences why I closed this stale position that wasn't moving any
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "❌ [POSITION-AI] Error generating time exit commentary");
-                }
-            });
-        }
-        
-        /// <summary>
-        /// Fire-and-forget: Explain volatility-based stop adjustment in background
-        /// </summary>
-        private void ExplainVolatilityAdjustmentFireAndForget(
-            PositionManagementState state,
-            decimal volRatio,
-            decimal oldStopDistance,
-            decimal newStopDistance,
-            string adjustmentReason)
-        {
-            if (!_commentaryEnabled || _ollamaClient == null)
-                return;
-            
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    var isLong = state.Quantity > 0;
-                    var direction = isLong ? "LONG" : "SHORT";
-                    var adjustmentType = volRatio > 1.5m ? "widened" : "tightened";
-                    var adjustmentPct = Math.Abs((newStopDistance - oldStopDistance) / oldStopDistance) * 100;
-                    
-                    var prompt = $@"I am a trading bot. I just adjusted my stop based on volatility:
-
-Position: {direction} {state.Symbol} at {state.EntryPrice:F2}
-Volatility Ratio: {volRatio:F2}x (current ATR vs average)
-Stop Distance: {adjustmentType} by {adjustmentPct:F0}%
-Old Distance: {oldStopDistance:F2} → New Distance: {newStopDistance:F2}
-Reason: {adjustmentReason}
-
-Explain in 2-3 sentences why this volatility-adaptive stop adjustment makes sense in current market conditions. Speak as ME (the bot).";
-
-                    var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
-                    if (!string.IsNullOrEmpty(response))
-                    {
-                        _logger.LogInformation("🤖💭 [POSITION-AI] Volatility Adjustment: {Commentary}", response);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "❌ [POSITION-AI] Error generating volatility commentary");
                 }
             });
         }

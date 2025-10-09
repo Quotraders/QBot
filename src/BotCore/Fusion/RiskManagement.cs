@@ -240,7 +240,7 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
         {
             _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Account equity assessment failed - fail-closed: cannot proceed, Duration={Duration}ms", 
                 operationId, (DateTime.UtcNow - startTime).TotalMilliseconds);
-            throw; // Fail-closed: propagate error instead of returning default
+            throw new InvalidOperationException($"Account equity assessment failed for operation {operationId} - system fail-closed", ex);
         }
     }
 }
