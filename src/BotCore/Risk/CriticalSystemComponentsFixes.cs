@@ -177,7 +177,7 @@ namespace BotCore.Risk
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[CRITICAL-SYSTEM] Database connectivity check failed");
-                throw;
+                throw new InvalidOperationException("[CRITICAL-SYSTEM] Database connectivity check failed. See inner exception for details.", ex);
             }
         }
 
@@ -192,7 +192,7 @@ namespace BotCore.Risk
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[CRITICAL-SYSTEM] API endpoints health check failed");
-                throw;
+                throw new InvalidOperationException("[CRITICAL-SYSTEM] API endpoints health check failed. See inner exception for details.", ex);
             }
         }
 
@@ -225,17 +225,18 @@ namespace BotCore.Risk
             return (workerThreads, completionPortThreads);
         }
 
-        public override Task StopAsync(CancellationToken cancellationToken)
+        public override async Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("[CRITICAL-SYSTEM] Stopping critical system monitoring");
-            _cancellationTokenSource.Cancel();
-            return base.StopAsync(cancellationToken);
+            await _cancellationTokenSource.CancelAsync().ConfigureAwait(false);
+            await base.StopAsync(cancellationToken).ConfigureAwait(false);
         }
 
         public override void Dispose()
         {
             _cancellationTokenSource?.Dispose();
             base.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

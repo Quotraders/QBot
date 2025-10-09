@@ -107,7 +107,7 @@ namespace BotCore.Risk
     // COMPONENT 9: DRAWDOWN CURVE BREAKER
     // ================================================================================
 
-    public class DrawdownProtectionSystem
+    public class DrawdownProtectionSystem : IDisposable
     {
         private readonly ConcurrentDictionary<string, DrawdownTracker> _trackers = new();
         private readonly Timer _drawdownMonitor;
@@ -115,6 +115,7 @@ namespace BotCore.Risk
         private int _consecutiveLosses;
         private bool _tradingHalted;
         private decimal _positionSizeMultiplier = DefaultPositionSizeMultiplier;
+        private bool _disposed;
 
         // Risk management threshold constants
         private const decimal ReduceSize25TriggerLevel = 250m;        // $250 drawdown - reduce size by 25%
@@ -156,7 +157,7 @@ namespace BotCore.Risk
         /// </summary>
         public bool IsTradingHalted => _tradingHalted;
         
-        public class DrawdownTracker
+        private class DrawdownTracker
         {
             public string TrackerId { get; set; } = string.Empty;
             public decimal PeakValue { get; set; }
@@ -174,7 +175,7 @@ namespace BotCore.Risk
             internal void ClearLossSequence() => _lossSequence.Clear();
         }
         
-        public class DrawdownAction
+        private class DrawdownAction
         {
             public string ActionType { get; set; } = string.Empty;
             public decimal TriggerLevel { get; set; }
@@ -508,5 +509,26 @@ namespace BotCore.Risk
         private static void LogWarning(string message) => Console.WriteLine($"[DrawdownProtection] WARNING: {message}");
         private static void LogCritical(string message) => Console.WriteLine($"[DrawdownProtection] CRITICAL: {message}");
         private static void LogInfo(string message) => Console.WriteLine($"[DrawdownProtection] INFO: {message}");
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (disposing)
+            {
+                _drawdownMonitor?.Dispose();
+            }
+
+            _disposed = true;
+        }
     }
 }

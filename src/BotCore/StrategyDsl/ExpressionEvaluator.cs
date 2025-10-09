@@ -204,7 +204,7 @@ public class ExpressionEvaluator
             var innerResult = EvaluateExpression(innerExpression);
             
             // Replace the parenthetical expression with its result
-            var replacedExpression = expression.Replace(innerMatch.Value, innerResult.ToString().ToLower(CultureInfo.InvariantCulture), StringComparison.Ordinal);
+            var replacedExpression = expression.Replace(innerMatch.Value, innerResult.ToString().ToUpperInvariant(), StringComparison.Ordinal);
             return EvaluateExpression(replacedExpression);
         }
 
@@ -315,19 +315,17 @@ public class ExpressionEvaluator
         }
 
         // Handle time comparisons
-        if (featureName.Contains("time", StringComparison.Ordinal) && TimeSpan.TryParse(valueStr, out var timeValue))
+        if (featureName.Contains("time", StringComparison.Ordinal) && TimeSpan.TryParse(valueStr, out var timeValue) && TimeSpan.TryParse(featureValue.ToString(), out var featureTime))
         {
-            if (TimeSpan.TryParse(featureValue.ToString(), out var featureTime))
+            return operatorStr switch
             {
-                return operatorStr switch
-                {
-                    ">=" => featureTime >= timeValue,
-                    "<=" => featureTime <= timeValue,
-                    ">" => featureTime > timeValue,
-                    "<" => featureTime < timeValue,
-                    "==" => featureTime == timeValue,
-                    "!=" => featureTime != timeValue,
-                    _ => false
+                ">=" => featureTime >= timeValue,
+                "<=" => featureTime <= timeValue,
+                ">" => featureTime > timeValue,
+                "<" => featureTime < timeValue,
+                "==" => featureTime == timeValue,
+                "!=" => featureTime != timeValue,
+                _ => false
                 };
             }
         }
