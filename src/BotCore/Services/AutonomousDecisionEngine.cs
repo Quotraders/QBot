@@ -488,7 +488,13 @@ public class AutonomousDecisionEngine : BackgroundService
         var winRate = metrics.WinningTrades / (decimal)metrics.TotalTrades;
         var avgWin = metrics.WinningTrades > 0 ? metrics.TotalProfit / metrics.WinningTrades : 0;
         var avgLoss = metrics.LosingTrades > 0 ? metrics.TotalLoss / metrics.LosingTrades : 0;
-        var profitFactor = avgLoss != 0 ? avgWin / Math.Abs(avgLoss) : winRate > 0 ? 2 : 0;
+        var profitFactor = CalculateProfitFactor(avgWin, avgLoss, winRate);
+        
+        static decimal CalculateProfitFactor(decimal avgWinAmount, decimal avgLossAmount, decimal winRatio)
+        {
+            if (avgLossAmount != 0) return avgWinAmount / Math.Abs(avgLossAmount);
+            return winRatio > 0 ? 2 : 0;
+        }
         
         // Combined profitability score
         var winRateScore = winRate;

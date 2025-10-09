@@ -55,10 +55,16 @@ public class ExecutionAnalyzer
                 Quantity = quantity,
                 Slippage = Math.Round(slippage, 4),
                 SlippagePercent = Math.Round(slippagePercent, 4),
-                Quality = slippagePercent < 0.02m ? "excellent" :
-                         slippagePercent < 0.05m ? "good" :
-                         slippagePercent < 0.1m ? "fair" : "poor"
+                Quality = DetermineQuality(slippagePercent)
             };
+
+            string DetermineQuality(decimal slippagePct)
+            {
+                if (slippagePct < 0.02m) return "excellent";
+                if (slippagePct < 0.05m) return "good";
+                if (slippagePct < 0.1m) return "fair";
+                return "poor";
+            }
 
             _logger.LogInformation("[EXEC_QUALITY] {Symbol} {Strategy} slippage={SlippagePercent:P2} quality={Quality}",
                 symbol, strategy, slippagePercent / PercentToDecimalConversion, fillQuality.Quality);
@@ -148,11 +154,23 @@ public class ExecutionAnalyzer
                 Successful = successful,
                 Confidence = Math.Round(confidence, 3),
                 Details = details,
-                OutcomeQuality = successful && confidence > 0.7m ? "high_confidence_success" :
-                                successful && confidence > 0.4m ? "medium_confidence_success" :
-                                successful ? "low_confidence_success" :
-                                confidence > 0.7m ? "high_confidence_failure" : "failed"
+                OutcomeQuality = DetermineOutcomeQuality(successful, confidence)
             };
+
+            string DetermineOutcomeQuality(bool isSuccessful, decimal conf)
+            {
+                if (isSuccessful)
+                {
+                    if (conf > 0.7m) return "high_confidence_success";
+                    if (conf > 0.4m) return "medium_confidence_success";
+                    return "low_confidence_success";
+                }
+                else
+                {
+                    if (conf > 0.7m) return "high_confidence_failure";
+                    return "failed";
+                }
+            }
 
             _logger.LogInformation("[PATTERN_OUTCOME] {Symbol} {PatternType} success={Successful} conf={Confidence:P1}",
                 symbol, patternType, successful, confidence);
