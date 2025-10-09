@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -318,8 +319,8 @@ namespace BotCore.Services
                     _changeTracker.RecordChange(
                         strategyName: $"{strategy}-{symbol}",
                         parameterName: $"BreakevenAfterTicks_{regime}_{session}",
-                        oldValue: current.BreakevenTicks.ToString(),
-                        newValue: best.BreakevenTicks.ToString(),
+                        oldValue: current.BreakevenTicks.ToString(CultureInfo.InvariantCulture),
+                        newValue: best.BreakevenTicks.ToString(CultureInfo.InvariantCulture),
                         reason: $"ML/RL learning ({regime}/{session}): Better PnL ({best.AvgPnL:F2} vs {current.AvgPnL:F2}), Win rate {best.WinRate:P0} | {confidenceStr}",
                         outcomePnl: (decimal)best.AvgPnL,
                         wasCorrect: true,
@@ -400,8 +401,8 @@ namespace BotCore.Services
                     _changeTracker.RecordChange(
                         strategyName: $"{strategy}-{symbol}",
                         parameterName: $"TrailMultiplier_{regime}_{session}",
-                        oldValue: current.TrailMultiplier.ToString("F1"),
-                        newValue: best.TrailMultiplier.ToString("F1"),
+                        oldValue: current.TrailMultiplier.ToString("F1", CultureInfo.InvariantCulture),
+                        newValue: best.TrailMultiplier.ToString("F1", CultureInfo.InvariantCulture),
                         reason: $"ML/RL learning ({regime}/{session}): Better PnL ({best.AvgPnL:F2} vs {current.AvgPnL:F2}), Lower opportunity cost | {confidenceStr}",
                         outcomePnl: (decimal)best.AvgPnL,
                         wasCorrect: true,
@@ -468,8 +469,8 @@ namespace BotCore.Services
                         _changeTracker.RecordChange(
                             strategyName: $"{strategy}-{symbol}",
                             parameterName: $"MaxHoldMinutes_{regimeName}",
-                            oldValue: avgTimedOutDuration.ToString("F0"),
-                            newValue: recommendedTimeout.ToString(),
+                            oldValue: avgTimedOutDuration.ToString("F0", CultureInfo.InvariantCulture),
+                            newValue: recommendedTimeout.ToString(CultureInfo.InvariantCulture),
                             reason: $"ML/RL learning: Timed out trades had {avgTimedOutOpCost:F1} ticks opportunity cost",
                             outcomePnl: null,
                             wasCorrect: null,

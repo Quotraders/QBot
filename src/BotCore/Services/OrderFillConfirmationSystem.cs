@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -163,7 +164,7 @@ namespace TopstepX.Bot.Core.Services
                 // FIXED: Use ProjectX API specification exactly
                 var orderPayload = new
                 {
-                    accountId = long.Parse(accountId),
+                    accountId = long.Parse(accountId, CultureInfo.InvariantCulture),
                     contractId = request.Symbol,               // ProjectX uses contractId, not symbol
                     type = GetOrderTypeValue(request.OrderType), // ProjectX: 1=Limit, 2=Market, 4=Stop
                     side = GetSideValue(request.Side),         // ProjectX: 0=Bid(buy), 1=Ask(sell)
@@ -332,8 +333,8 @@ namespace TopstepX.Bot.Core.Services
                     // FIXED: Use ProjectX API specification - POST to /api/Order/cancel with body
                     var cancelPayload = new
                     {
-                        accountId = long.Parse(accountId),
-                        orderId = long.Parse(trackingRecord.GatewayOrderId)
+                        accountId = long.Parse(accountId, CultureInfo.InvariantCulture),
+                        orderId = long.Parse(trackingRecord.GatewayOrderId, CultureInfo.InvariantCulture)
                     };
                     
                     var json = JsonSerializer.Serialize(cancelPayload);
