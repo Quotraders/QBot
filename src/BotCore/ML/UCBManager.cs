@@ -47,14 +47,14 @@ namespace BotCore.ML
                     nq_price = data.NQPrice,
                     es_volume = data.ESVolume,
                     nq_volume = data.NQVolume,
-                    es_atr = Math.Clamp(data.ES_ATR, 0.25m, 100m), // Sanity bounds
-                    nq_atr = Math.Clamp(data.NQ_ATR, 0.5m, 100m),  // Sanity bounds
+                    es_atr = Math.Clamp(data.ESAtr, 0.25m, 100m), // Sanity bounds
+                    nq_atr = Math.Clamp(data.NQAtr, 0.5m, 100m),  // Sanity bounds
                     vix = Math.Clamp(data.VIX, 5m, 100m),           // Sanity bounds
                     tick = Math.Clamp(data.TICK, -3000, 3000),      // Sanity bounds
                     add = Math.Clamp(data.ADD, -2000, 2000),        // Sanity bounds
                     correlation = Math.Clamp(data.Correlation, -1m, 1m), // Correlation bounds
-                    rsi_es = Math.Clamp(data.RSI_ES, 0m, 100m),
-                    rsi_nq = Math.Clamp(data.RSI_NQ, 0m, 100m),
+                    rsi_es = Math.Clamp(data.RsiES, 0m, 100m),
+                    rsi_nq = Math.Clamp(data.RsiNQ, 0m, 100m),
                     instrument = data.PrimaryInstrument?.ToUpper() ?? "ES" // Default to ES
                 };
 
@@ -187,14 +187,14 @@ namespace BotCore.ML
         public decimal NQPrice { get; set; }
         public long ESVolume { get; set; }
         public long NQVolume { get; set; }
-        public decimal ES_ATR { get; set; }
-        public decimal NQ_ATR { get; set; }
+        public decimal ESAtr { get; set; }
+        public decimal NQAtr { get; set; }
         public decimal VIX { get; set; }
         public int TICK { get; set; }
         public int ADD { get; set; }
         public decimal Correlation { get; set; }
-        public decimal RSI_ES { get; set; }
-        public decimal RSI_NQ { get; set; }
+        public decimal RsiES { get; set; }
+        public decimal RsiNQ { get; set; }
         public string? PrimaryInstrument { get; set; } = "ES";
     }
 }
