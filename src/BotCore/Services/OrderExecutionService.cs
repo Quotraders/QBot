@@ -379,8 +379,15 @@ namespace BotCore.Services
             {
                 _logger.LogError(ex, "Error placing market order for {Symbol}", symbol);
                 
-                // PHASE 1: Record rejection in metrics
+                // PHASE 1: Record rejection in metrics and raise event
                 _metrics?.RecordOrderRejected(symbol, ex.Message);
+                OrderRejected?.Invoke(this, new OrderRejectedEventArgs
+                {
+                    OrderId = string.Empty,
+                    Symbol = symbol,
+                    Reason = ex.Message,
+                    Timestamp = DateTime.UtcNow
+                });
                 
                 return Task.FromResult(string.Empty);
             }
