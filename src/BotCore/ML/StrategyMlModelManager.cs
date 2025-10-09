@@ -409,7 +409,7 @@ namespace BotCore.ML
                 // Volume validation
                 if (bars.Any())
                 {
-                    var latest = bars.Last();
+                    var latest = bars[bars.Count - 1];
                     if (latest.Volume < MinimumVolume) return false; // Very low volume
                 }
 
@@ -464,7 +464,8 @@ namespace BotCore.ML
 
                             // Run real ML quality prediction
                             using var results = session.Run(inputs);
-                            var mlQualityScore = results.FirstOrDefault()?.AsEnumerable<float>()?.FirstOrDefault() ?? 0.8f;
+                            var resultsList = results.ToList();
+                            var mlQualityScore = resultsList.Count > 0 ? resultsList[0].AsEnumerable<float>().FirstOrDefault() : 0.8f;
                             
                             decimal finalScore = Math.Clamp((decimal)mlQualityScore, 0.1m, 1.0m);
 
