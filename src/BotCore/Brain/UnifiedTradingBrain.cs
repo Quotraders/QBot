@@ -1838,9 +1838,23 @@ Reason closed: {reason}
                 
                 return Task.FromResult(enhancedCandidates);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BRAIN-ENHANCE] Error generating enhanced candidates");
+                _logger.LogError(ex, "❌ [BRAIN-ENHANCE] Error generating enhanced candidates - invalid operation");
+                
+                // Fallback to original AllStrategies logic
+                return Task.FromResult(AllStrategies.generate_candidates(symbol, env, levels, bars, risk));
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "❌ [BRAIN-ENHANCE] Error generating enhanced candidates - invalid argument");
+                
+                // Fallback to original AllStrategies logic
+                return Task.FromResult(AllStrategies.generate_candidates(symbol, env, levels, bars, risk));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogError(ex, "❌ [BRAIN-ENHANCE] Error generating enhanced candidates - key not found");
                 
                 // Fallback to original AllStrategies logic
                 return Task.FromResult(AllStrategies.generate_candidates(symbol, env, levels, bars, risk));
@@ -2116,9 +2130,21 @@ Reason closed: {reason}
                 
                 _logger.LogInformation("✅ [UNIFIED-LEARNING] Completed unified learning update");
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Failed to update unified learning");
+                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Failed to update unified learning - invalid operation");
+            }
+            catch (IOException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Failed to update unified learning - I/O error");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Failed to update unified learning - access denied");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Failed to update unified learning - invalid argument");
             }
         }
         
@@ -2497,9 +2523,24 @@ Reason closed: {reason}
                 _logger.LogInformation("=== GATE 4 PASSED - Model validated for hot-reload ===");
                 return (true, "All validation checks passed");
             }
-            catch (Exception ex)
+            catch (FileNotFoundException ex)
             {
-                _logger.LogError(ex, "✗ GATE 4 FAILED: Exception during model validation");
+                _logger.LogError(ex, "✗ GATE 4 FAILED: Model file not found during validation");
+                return (false, $"Validation exception: {ex.Message}");
+            }
+            catch (OnnxRuntimeException ex)
+            {
+                _logger.LogError(ex, "✗ GATE 4 FAILED: ONNX runtime error during model validation");
+                return (false, $"Validation exception: {ex.Message}");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "✗ GATE 4 FAILED: Invalid operation during model validation");
+                return (false, $"Validation exception: {ex.Message}");
+            }
+            catch (IOException ex)
+            {
+                _logger.LogError(ex, "✗ GATE 4 FAILED: I/O error during model validation");
                 return (false, $"Validation exception: {ex.Message}");
             }
         }
@@ -2537,9 +2578,24 @@ Reason closed: {reason}
                 _logger.LogInformation("  Model file size: {Size} bytes", fileInfo.Length);
                 return true;
             }
-            catch (Exception ex)
+            catch (FileNotFoundException ex)
             {
-                _logger.LogError(ex, "Feature specification validation failed");
+                _logger.LogError(ex, "Feature specification validation failed - file not found");
+                return false;
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "Feature specification validation failed - invalid JSON");
+                return false;
+            }
+            catch (IOException ex)
+            {
+                _logger.LogError(ex, "Feature specification validation failed - I/O error");
+                return false;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogError(ex, "Feature specification validation failed - access denied");
                 return false;
             }
         }
@@ -2563,9 +2619,17 @@ Reason closed: {reason}
                     }
                 }
             }
-            catch (Exception ex)
+            catch (FileNotFoundException ex)
             {
-                _logger.LogWarning(ex, "Failed to load cached sanity test vectors - generating new ones");
+                _logger.LogWarning(ex, "Failed to load cached sanity test vectors - file not found, generating new ones");
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Failed to load cached sanity test vectors - invalid JSON, generating new ones");
+            }
+            catch (IOException ex)
+            {
+                _logger.LogWarning(ex, "Failed to load cached sanity test vectors - I/O error, generating new ones");
             }
 
             // Generate deterministic test vectors
@@ -2598,9 +2662,17 @@ Reason closed: {reason}
                 File.WriteAllText(cachePath, json);
                 _logger.LogInformation("  Cached {Count} sanity test vectors for future use", count);
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                _logger.LogWarning(ex, "Failed to cache sanity test vectors");
+                _logger.LogWarning(ex, "Failed to cache sanity test vectors - I/O error");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Failed to cache sanity test vectors - access denied");
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Failed to cache sanity test vectors - JSON serialization error");
             }
 
             return vectors;
@@ -2657,9 +2729,19 @@ Reason closed: {reason}
 
                 return (true, totalVariation);
             }
-            catch (Exception ex)
+            catch (OnnxRuntimeException ex)
             {
-                _logger.LogError(ex, "Distribution comparison failed");
+                _logger.LogError(ex, "Distribution comparison failed - ONNX runtime error");
+                return (false, 1.0);
+            }
+            catch (FileNotFoundException ex)
+            {
+                _logger.LogError(ex, "Distribution comparison failed - model file not found");
+                return (false, 1.0);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Distribution comparison failed - invalid operation");
                 return (false, 1.0);
             }
             finally
@@ -2767,9 +2849,19 @@ Reason closed: {reason}
                 _logger.LogInformation("  Validated model outputs - no NaN/Infinity detected");
                 return true;
             }
-            catch (Exception ex)
+            catch (OnnxRuntimeException ex)
             {
-                _logger.LogError(ex, "Model output validation failed");
+                _logger.LogError(ex, "Model output validation failed - ONNX runtime error");
+                return false;
+            }
+            catch (FileNotFoundException ex)
+            {
+                _logger.LogError(ex, "Model output validation failed - model file not found");
+                return false;
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Model output validation failed - invalid operation");
                 return false;
             }
             finally
@@ -2810,9 +2902,19 @@ Reason closed: {reason}
 
                 return (drawdownRatio <= maxDrawdownMultiplier, drawdownRatio);
             }
-            catch (Exception ex)
+            catch (OnnxRuntimeException ex)
             {
-                _logger.LogError(ex, "Historical simulation failed");
+                _logger.LogError(ex, "Historical simulation failed - ONNX runtime error");
+                return (false, double.MaxValue);
+            }
+            catch (FileNotFoundException ex)
+            {
+                _logger.LogError(ex, "Historical simulation failed - model file not found");
+                return (false, double.MaxValue);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Historical simulation failed - invalid operation");
                 return (false, double.MaxValue);
             }
             finally
@@ -2839,9 +2941,17 @@ Reason closed: {reason}
                     }
                 }
             }
-            catch (Exception ex)
+            catch (FileNotFoundException ex)
             {
-                _logger.LogWarning(ex, "Failed to load cached historical data");
+                _logger.LogWarning(ex, "Failed to load cached historical data - file not found");
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Failed to load cached historical data - invalid JSON");
+            }
+            catch (IOException ex)
+            {
+                _logger.LogWarning(ex, "Failed to load cached historical data - I/O error");
             }
 
             var historicalData = new List<float[]>();
@@ -2862,9 +2972,17 @@ Reason closed: {reason}
                 var json = JsonSerializer.Serialize(historicalData, CachedJsonOptions);
                 await File.WriteAllTextAsync(dataPath, json, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                _logger.LogWarning(ex, "Failed to cache historical data");
+                _logger.LogWarning(ex, "Failed to cache historical data - I/O error");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Failed to cache historical data - access denied");
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Failed to cache historical data - JSON serialization error");
             }
 
             return historicalData;
