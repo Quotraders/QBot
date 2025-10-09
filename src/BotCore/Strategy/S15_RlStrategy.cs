@@ -184,7 +184,7 @@ public static class S15RlStrategy
                 qty = DefaultQty,
                 atr_ok = true,
                 vol_z = env.volz,
-                Score = (decimal)confidence * 100, // Use confidence as score
+                Score = confidence * 100, // Use confidence as score
                 QScore = confidence // Quality score for session gating
             };
 
@@ -216,7 +216,7 @@ public static class S15RlStrategy
                 qty = DefaultQty,
                 atr_ok = true,
                 vol_z = env.volz,
-                Score = (decimal)confidence * 100, // Use confidence as score
+                Score = confidence * 100, // Use confidence as score
                 QScore = confidence // Quality score for session gating
             };
 
