@@ -62,6 +62,127 @@ public sealed class OnnxModelLoader : IDisposable
     public event EventHandler<ModelHotReloadEventArgs>? ModelReloaded;
     public event EventHandler<ModelHealthEventArgs>? ModelHealthChanged;
 
+    // Structured logging delegates
+    private static readonly Action<ILogger, string, string, Exception?> LogLoaderInitialized =
+        LoggerMessage.Define<string, string>(LogLevel.Information, new EventId(1, nameof(LogLoaderInitialized)),
+            "[ONNX-Loader] Initialized with models directory: {ModelsDir}, registry: {RegistryPath}, hot-reload enabled");
+
+    private static readonly Action<ILogger, Exception?> LogModelPathEmpty =
+        LoggerMessage.Define(LogLevel.Error, new EventId(2, nameof(LogModelPathEmpty)),
+            "[ONNX-Loader] Model path is null or empty");
+
+    private static readonly Action<ILogger, string, Exception?> LogModelReused =
+        LoggerMessage.Define<string>(LogLevel.Debug, new EventId(3, nameof(LogModelReused)),
+            "[ONNX-Loader] Reusing cached model: {ModelPath}");
+
+    private static readonly Action<ILogger, string, string, Exception?> LogModelLoaded =
+        LoggerMessage.Define<string, string>(LogLevel.Information, new EventId(4, nameof(LogModelLoaded)),
+            "[ONNX-Loader] Model successfully loaded: {ModelPath} (version: {Version})");
+
+    private static readonly Action<ILogger, string, Exception?> LogLoadingAttempt =
+        LoggerMessage.Define<string>(LogLevel.Information, new EventId(5, nameof(LogLoadingAttempt)),
+            "[ONNX-Loader] Attempting to load model: {ModelPath}");
+
+    private static readonly Action<ILogger, string, string, Exception?> LogFallbackLoaded =
+        LoggerMessage.Define<string, string>(LogLevel.Warning, new EventId(6, nameof(LogFallbackLoaded)),
+            "[ONNX-Loader] Loaded fallback model: {FallbackPath} (original: {OriginalPath})");
+
+    private static readonly Action<ILogger, string, Exception?> LogLoadAttemptFailed =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(7, nameof(LogLoadAttemptFailed)),
+            "[ONNX-Loader] Failed to load model candidate: {ModelPath}");
+
+    private static readonly Action<ILogger, string, Exception?> LogAllAttemptsFailed =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8, nameof(LogAllAttemptsFailed)),
+            "[ONNX-Loader] All model loading attempts failed for: {ModelPath}");
+
+    private static readonly Action<ILogger, string, Exception?> LogFallbackError =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(9, nameof(LogFallbackError)),
+            "[ONNX-Loader] Error finding fallback candidates for: {ModelPath}");
+
+    private static readonly Action<ILogger, double, int, int, Exception?> LogModelLoadSuccess =
+        LoggerMessage.Define<double, int, int>(LogLevel.Information, new EventId(10, nameof(LogModelLoadSuccess)),
+            "[ONNX-Loader] Model loaded in {Duration}ms: {InputCount} inputs, {OutputCount} outputs");
+
+    private static readonly Action<ILogger, string, string, Exception?> LogHealthProbeFailed =
+        LoggerMessage.Define<string, string>(LogLevel.Error, new EventId(11, nameof(LogHealthProbeFailed)),
+            "[ONNX-Loader] Model failed health probe: {ModelPath} - {Error}");
+
+    private static readonly Action<ILogger, string, Exception?> LogHealthProbePassed =
+        LoggerMessage.Define<string>(LogLevel.Information, new EventId(12, nameof(LogHealthProbePassed)),
+            "[ONNX-Loader] Model passed health probe: {ModelPath}");
+
+    private static readonly Action<ILogger, string, Exception?> LogModelLoadError =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(13, nameof(LogModelLoadError)),
+            "[ONNX-Loader] Error loading model: {ModelPath}");
+
+    private static readonly Action<ILogger, Exception?> LogRunningHealthProbe =
+        LoggerMessage.Define(LogLevel.Debug, new EventId(14, nameof(LogRunningHealthProbe)),
+            "[ONNX-Loader] Running health probe...");
+
+    private static readonly Action<ILogger, double, int, Exception?> LogHealthProbeSuccess =
+        LoggerMessage.Define<double, int>(LogLevel.Debug, new EventId(15, nameof(LogHealthProbeSuccess)),
+            "[ONNX-Loader] Health probe passed in {Duration}ms with {OutputCount} outputs");
+
+    private static readonly Action<ILogger, Exception?> LogCheckingUpdates =
+        LoggerMessage.Define(LogLevel.Debug, new EventId(16, nameof(LogCheckingUpdates)),
+            "[ONNX-Loader] Checking for model updates...");
+
+    private static readonly Action<ILogger, string, string, string, Exception?> LogModelUpdateDetected =
+        LoggerMessage.Define<string, string, string>(LogLevel.Information, new EventId(17, nameof(LogModelUpdateDetected)),
+            "[ONNX-Loader] Detected model update: {ModelFile} (v{OldVersion} → v{NewVersion})");
+
+    private static readonly Action<ILogger, Exception?> LogHotReloadError =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(18, nameof(LogHotReloadError)),
+            "[ONNX-Loader] Error during hot-reload check");
+
+    private static readonly Action<ILogger, string, string, Exception?> LogRegistryUpdate =
+        LoggerMessage.Define<string, string>(LogLevel.Information, new EventId(19, nameof(LogRegistryUpdate)),
+            "[HOT_RELOAD] Registry update detected: {MetadataFile} (modified: {LastWrite})");
+
+    private static readonly Action<ILogger, Exception?> LogRegistryCheckError =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(20, nameof(LogRegistryCheckError)),
+            "[HOT_RELOAD] Error checking data/registry updates");
+
+    private static readonly Action<ILogger, string, string, Exception?> LogSacUpdate =
+        LoggerMessage.Define<string, string>(LogLevel.Information, new EventId(21, nameof(LogSacUpdate)),
+            "[HOT_RELOAD] SAC model update detected: {SACFile} (modified: {LastWrite})");
+
+    private static readonly Action<ILogger, Exception?> LogSacCheckError =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(22, nameof(LogSacCheckError)),
+            "[HOT_RELOAD] Error checking data/rl/sac updates");
+
+    private static readonly Action<ILogger, string, Exception?> LogHotReloading =
+        LoggerMessage.Define<string>(LogLevel.Information, new EventId(23, nameof(LogHotReloading)),
+            "[ONNX-Loader] Hot-reloading model: {ModelFile}");
+
+    private static readonly Action<ILogger, string, string, Exception?> LogHotReloadSuccess =
+        LoggerMessage.Define<string, string>(LogLevel.Information, new EventId(24, nameof(LogHotReloadSuccess)),
+            "[ONNX-Loader] ✅ Hot-reload successful: {ModelFile} (version: {Version})");
+
+    private static readonly Action<ILogger, string, Exception?> LogHotReloadHealthFailed =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(25, nameof(LogHotReloadHealthFailed)),
+            "[ONNX-Loader] ❌ Hot-reload failed - model failed health probe: {ModelFile}");
+
+    private static readonly Action<ILogger, string, Exception?> LogHotReloadException =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(26, nameof(LogHotReloadException)),
+            "[ONNX-Loader] ❌ Hot-reload error: {ModelFile}");
+
+    private static readonly Action<ILogger, string, Exception?> LogMetadataError =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(27, nameof(LogMetadataError)),
+            "[ONNX-Loader] Error getting model metadata: {ModelPath}");
+
+    private static readonly Action<ILogger, string, Exception?> LogUnsupportedInputType =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(28, nameof(LogUnsupportedInputType)),
+            "[ONNX-Loader] Unsupported input type for health probe: {Type}");
+
+    private static readonly Action<ILogger, string, Exception?> LogCannedInputError =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(29, nameof(LogCannedInputError)),
+            "[ONNX-Loader] Error creating canned input for {InputName}");
+
+    private static readonly Action<ILogger, string, Exception?> LogModelUnloaded =
+        LoggerMessage.Define<string>(LogLevel.Information, new EventId(30, nameof(LogModelUnloaded)),
+            "[ONNX-Loader] Model unloaded: {ModelKey}");
+
     public OnnxModelLoader(
         ILogger<OnnxModelLoader> logger, 
         string modelsDirectory = "models",
@@ -101,8 +222,7 @@ public sealed class OnnxModelLoader : IDisposable
         var hotReloadInterval = TimeSpan.FromSeconds(60);
         _hotReloadTimer = TimerHelper.CreateAsyncTimerWithImmediateStart(CheckForModelUpdates, hotReloadInterval);
 
-        _logger.LogInformation("[ONNX-Loader] Initialized with models directory: {ModelsDir}, registry: {RegistryPath}, hot-reload enabled", 
-            _modelsDirectory, _registryPath);
+        LogLoaderInitialized(_logger, _modelsDirectory, _registryPath, null);
     }
 
     /// <summary>
@@ -113,7 +233,7 @@ public sealed class OnnxModelLoader : IDisposable
     {
         if (string.IsNullOrEmpty(modelPath))
         {
-            _logger.LogError("[ONNX-Loader] Model path is null or empty");
+            LogModelPathEmpty(_logger, null);
             return null;
         }
 
@@ -126,7 +246,7 @@ public sealed class OnnxModelLoader : IDisposable
             var currentMetadata = await GetModelMetadataAsync(modelPath).ConfigureAwait(false);
             if (currentMetadata != null && currentMetadata.Checksum == existingMetadata.Checksum)
             {
-                _logger.LogDebug("[ONNX-Loader] Reusing cached model: {ModelPath}", modelPath);
+                LogModelReused(_logger, modelPath, null);
                 return existingSession;
             }
         }
@@ -168,26 +288,25 @@ public sealed class OnnxModelLoader : IDisposable
         {
             try
             {
-                _logger.LogInformation("[ONNX-Loader] Attempting to load model: {ModelPath}", candidate);
+                LogLoadingAttempt(_logger, candidate, null);
                 
                 var result = await LoadSingleModelAsync(candidate, validateInference).ConfigureAwait(false);
                 if (result.Session != null && result.IsHealthy)
                 {
                     if (candidate != modelPath)
                     {
-                        _logger.LogWarning("[ONNX-Loader] Loaded fallback model: {FallbackPath} (original: {OriginalPath})", 
-                            candidate, modelPath);
+                        LogFallbackLoaded(_logger, candidate, modelPath, null);
                     }
                     return result;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "[ONNX-Loader] Failed to load model candidate: {ModelPath}", candidate);
+                LogLoadAttemptFailed(_logger, candidate, ex);
             }
         }
         
-        _logger.LogError("[ONNX-Loader] All model loading attempts failed for: {ModelPath}", modelPath);
+        LogAllAttemptsFailed(_logger, modelPath, null);
         return new ModelLoadResult { Session = null, IsHealthy = false };
     }
 
@@ -240,7 +359,7 @@ public sealed class OnnxModelLoader : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "[ONNX-Loader] Error finding fallback candidates for: {ModelPath}", modelPath);
+            LogFallbackError(_logger, modelPath, ex);
         }
         
         return candidates.Distinct().ToList();
@@ -291,7 +410,7 @@ public sealed class OnnxModelLoader : IDisposable
                 }
             }
 
-            _logger.LogInformation("[ONNX-Loader] Model passed health probe: {ModelPath}", modelPath);
+            LogHealthProbePassed(_logger, modelPath, null);
             
             return new ModelLoadResult 
             { 
@@ -302,7 +421,7 @@ public sealed class OnnxModelLoader : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ONNX-Loader] Error loading model: {ModelPath}", modelPath);
+            LogModelLoadError(_logger, modelPath, ex);
             return new ModelLoadResult { Session = null, IsHealthy = false };
         }
     }
@@ -314,7 +433,7 @@ public sealed class OnnxModelLoader : IDisposable
     {
         try
         {
-            _logger.LogDebug("[ONNX-Loader] Running health probe...");
+            LogRunningHealthProbe(_logger, null);
             
             var inputMetadata = session.InputMetadata;
             var inputs = new List<NamedOnnxValue>();
@@ -402,7 +521,7 @@ public sealed class OnnxModelLoader : IDisposable
     {
         try
         {
-            _logger.LogDebug("[ONNX-Loader] Checking for model updates...");
+            LogCheckingUpdates(_logger, null);
             
             // 4️⃣ Enable Model Hot-Reload: Poll data/registry and data/rl/sac every 60s
             await CheckDataRegistryUpdatesAsync().ConfigureAwait(false);
@@ -436,7 +555,7 @@ public sealed class OnnxModelLoader : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "[ONNX-Loader] Error during hot-reload check");
+            LogHotReloadError(_logger, ex);
         }
     }
 
@@ -484,7 +603,7 @@ public sealed class OnnxModelLoader : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "[HOT_RELOAD] Error checking data/registry updates");
+            LogRegistryCheckError(_logger, ex);
         }
     }
 
@@ -534,7 +653,7 @@ public sealed class OnnxModelLoader : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "[HOT_RELOAD] Error checking data/rl/sac updates");
+            LogSacCheckError(_logger, ex);
         }
     }
 
@@ -545,7 +664,7 @@ public sealed class OnnxModelLoader : IDisposable
     {
         try
         {
-            _logger.LogInformation("[ONNX-Loader] Hot-reloading model: {ModelFile}", modelFile);
+            LogHotReloading(_logger, modelFile, null);
             
             // Load new model with health probe
             var loadResult = await LoadSingleModelAsync(modelFile, true).ConfigureAwait(false);
@@ -577,7 +696,7 @@ public sealed class OnnxModelLoader : IDisposable
             }
             else
             {
-                _logger.LogError("[ONNX-Loader] ❌ Hot-reload failed - model failed health probe: {ModelFile}", modelFile);
+                LogHotReloadHealthFailed(_logger, modelFile, null);
                 
                 // Emit health event
                 ModelHealthChanged?.Invoke(this, new ModelHealthEventArgs
@@ -592,7 +711,7 @@ public sealed class OnnxModelLoader : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ONNX-Loader] ❌ Hot-reload error: {ModelFile}", modelFile);
+            LogHotReloadException(_logger, modelFile, ex);
             
             ModelHealthChanged?.Invoke(this, new ModelHealthEventArgs
             {
@@ -666,7 +785,7 @@ public sealed class OnnxModelLoader : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "[ONNX-Loader] Error getting model metadata: {ModelPath}", modelPath);
+            LogMetadataError(_logger, modelPath, ex);
             return null;
         }
     }
@@ -762,13 +881,13 @@ public sealed class OnnxModelLoader : IDisposable
             }
             else
             {
-                _logger.LogWarning("[ONNX-Loader] Unsupported input type for health probe: {Type}", elementType);
+                LogUnsupportedInputType(_logger, elementType.ToString(), null);
                 return null;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ONNX-Loader] Error creating canned input for {InputName}", inputName);
+            LogCannedInputError(_logger, inputName, ex);
             return null;
         }
     }
@@ -809,7 +928,7 @@ public sealed class OnnxModelLoader : IDisposable
         
         if (unloaded)
         {
-            _logger.LogInformation("[ONNX-Loader] Model unloaded: {ModelKey}", modelKey);
+            LogModelUnloaded(_logger, modelKey, null);
         }
         
         return unloaded;
