@@ -701,7 +701,7 @@ public class AutonomousDecisionEngine : BackgroundService
     /// <param name="direction">Trade direction (Buy/Sell)</param>
     /// <param name="errorReason">Output parameter with error description if validation fails</param>
     /// <returns>True if trade risk is valid, false otherwise</returns>
-    private bool ValidateTradeRisk(decimal entryPrice, decimal stopPrice, decimal targetPrice, string direction, out string errorReason)
+    private static bool ValidateTradeRisk(decimal entryPrice, decimal stopPrice, decimal targetPrice, string direction, out string errorReason)
     {
         // Calculate risk (distance from entry to stop)
         decimal risk = Math.Abs(entryPrice - stopPrice);
