@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.ML.OnnxRuntime;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Text;
 
 namespace BotCore.ML;

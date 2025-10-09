@@ -2465,7 +2465,8 @@ Reason closed: {reason}
             var inputs = new List<NamedOnnxValue> { NamedOnnxValue.CreateFromTensor(inputName, inputTensor) };
             
             using var results = session.Run(inputs);
-            var output = results.First().AsEnumerable<float>().ToArray();
+            var resultsList = results.ToList();
+            var output = resultsList[0].AsEnumerable<float>().ToArray();
             
             return output;
         }

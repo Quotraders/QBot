@@ -375,6 +375,7 @@ public sealed class OnnxModelLoader : IDisposable
             return new ModelLoadResult { Session = null, IsHealthy = false };
         }
 
+        InferenceSession? session = null;
         try
         {
             var startTime = DateTime.UtcNow;
@@ -383,7 +384,7 @@ public sealed class OnnxModelLoader : IDisposable
             var metadata = await GetModelMetadataAsync(modelPath).ConfigureAwait(false);
             
             // Load the ONNX model
-            var session = new InferenceSession(modelPath, _sessionOptions);
+            session = new InferenceSession(modelPath, _sessionOptions);
             
             var loadDuration = DateTime.UtcNow - startTime;
             
@@ -412,15 +413,18 @@ public sealed class OnnxModelLoader : IDisposable
 
             LogHealthProbePassed(_logger, modelPath, null);
             
-            return new ModelLoadResult 
+            var result = new ModelLoadResult 
             { 
                 Session = session, 
                 Metadata = metadata, 
                 IsHealthy = isHealthy 
             };
+            session = null; // Transfer ownership to result
+            return result;
         }
         catch (Exception ex)
         {
+            session?.Dispose();
             LogModelLoadError(_logger, modelPath, ex);
             return new ModelLoadResult { Session = null, IsHealthy = false };
         }
@@ -1113,7 +1117,7 @@ public sealed class OnnxModelLoader : IDisposable
                 return null;
             }
 
-            var latestVersion = versions.First();
+            var latestVersion = versions[0];
             var metadataPath = Path.Combine(modelDir, latestVersion, "metadata.json");
             
             if (!File.Exists(metadataPath))
