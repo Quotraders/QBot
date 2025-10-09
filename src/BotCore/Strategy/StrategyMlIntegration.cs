@@ -174,14 +174,14 @@ namespace BotCore.Strategy
             decimal ema9 = bars.Count >= 9 ? CalculateEma(bars, 9) : price;
             decimal ema20 = bars.Count >= 20 ? CalculateEma(bars, 20) : price;
             decimal ema50 = bars.Count >= 50 ? CalculateEma(bars, 50) : price;
-            decimal volume = bars.Any() ? bars.Last().Volume : 1000m;
+            decimal volume = bars.Count > 0 ? bars[bars.Count - 1].Volume : 1000m;
             decimal atr = bars.Count >= 14 ? CalculateAtr(bars, 14) : 1m;
 
             var features = MultiStrategyRlCollector.CreateEmaCrossFeatures(signalId, symbol, price, ema9, ema20, ema50, volume, atr);
 
-            if (bars.Any())
+            if (bars.Count > 0)
             {
-                var latest = bars.Last();
+                var latest = bars[bars.Count - 1];
                 features.Volume = latest.Volume;
                 features.Price = latest.Close;
                 features.DailyRange = latest.High - latest.Low;
@@ -213,13 +213,13 @@ namespace BotCore.Strategy
                 vwap = bars.Sum(b => b.Close * b.Volume) / bars.Sum(b => b.Volume);
             }
 
-            decimal volume = bars.Any() ? bars.Last().Volume : 1000m;
+            decimal volume = bars.Count > 0 ? bars[bars.Count - 1].Volume : 1000m;
 
             var features = MultiStrategyRlCollector.CreateMeanReversionFeatures(signalId, symbol, price, rsi, bbUpper, bbLower, vwap, volume);
 
-            if (bars.Any())
+            if (bars.Count > 0)
             {
-                var latest = bars.Last();
+                var latest = bars[bars.Count - 1];
                 features.Volume = latest.Volume;
                 features.Price = latest.Close;
                 features.DistanceFromVwap = (price - vwap) / Math.Max(vwap, MinimumPriceForRatio);
@@ -240,16 +240,16 @@ namespace BotCore.Strategy
                 var recent = bars.TakeLast(BreakoutLookbackPeriod).ToList();
                 highBreakout = recent.Max(b => b.High);
                 lowBreakout = recent.Min(b => b.Low);
-                volume = bars.Last().Volume;
+                volume = bars[bars.Count - 1].Volume;
                 avgVolume = (decimal)recent.Average(b => b.Volume);
                 consolidationTime = BreakoutLookbackPeriod; // Simplified
             }
 
             var features = MultiStrategyRlCollector.CreateBreakoutFeatures(signalId, symbol, price, highBreakout, lowBreakout, volume, avgVolume, consolidationTime);
 
-            if (bars.Any())
+            if (bars.Count > 0)
             {
-                var latest = bars.Last();
+                var latest = bars[bars.Count - 1];
                 features.Volume = latest.Volume;
                 features.Price = latest.Close;
             }
@@ -264,14 +264,14 @@ namespace BotCore.Strategy
         {
             decimal priorPrice = bars.Count >= 2 ? bars[bars.Count - 2].Close : price;
             decimal rsi = bars.Count >= 14 ? CalculateRsi(bars, 14) : 50m;
-            decimal volume = bars.Any() ? bars.Last().Volume : 1000m;
+            decimal volume = bars.Count > 0 ? bars[bars.Count - 1].Volume : 1000m;
             decimal atr = bars.Count >= 14 ? CalculateAtr(bars, 14) : 1m;
 
             var features = MultiStrategyRlCollector.CreateMomentumFeatures(signalId, symbol, price, priorPrice, rsi, volume, atr);
 
-            if (bars.Any())
+            if (bars.Count > 0)
             {
-                var latest = bars.Last();
+                var latest = bars[bars.Count - 1];
                 features.Volume = latest.Volume;
                 features.Price = latest.Close;
 
@@ -290,9 +290,9 @@ namespace BotCore.Strategy
         {
             var features = MultiStrategyRlCollector.CreateBaseFeatures(signalId, symbol, strategyType, price);
 
-            if (bars.Any())
+            if (bars.Count > 0)
             {
-                var latest = bars.Last();
+                var latest = bars[bars.Count - 1];
                 features.Volume = latest.Volume;
                 features.Price = latest.Close;
                 features.DailyRange = latest.High - latest.Low;
@@ -307,7 +307,7 @@ namespace BotCore.Strategy
 
         private static decimal CalculateEma(IList<Bar> bars, int period)
         {
-            if (bars.Count < period) return bars.Last().Close;
+            if (bars.Count < period) return bars[bars.Count - 1].Close;
 
             var multiplier = 2m / (period + 1);
             var ema = bars[0].Close;
