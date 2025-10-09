@@ -331,7 +331,7 @@ public class ExpressionEvaluator
         // Handle numeric comparisons
         if (double.TryParse(valueStr, out var numericValue))
         {
-            var featureNumericValue = Convert.ToDouble(featureValue);
+            var featureNumericValue = Convert.ToDouble(featureValue, System.Globalization.CultureInfo.InvariantCulture);
             
             return operatorStr switch
             {

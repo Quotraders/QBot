@@ -48,7 +48,7 @@ public static class SessionAwareRuntimeGatesTest
         Console.WriteLine($"  Is RTH: {status.IsRth}");
         Console.WriteLine($"  Is ETH: {status.IsEth}");
         Console.WriteLine($"  Eastern Time: {status.EasternTime:yyyy-MM-dd HH:mm:ss} ET");
-        Console.WriteLine($"  Next Change: {status.NextSessionChange?.ToString("yyyy-MM-dd HH:mm:ss") ?? "N/A"}");
+        Console.WriteLine($"  Next Change: {status.NextSessionChange?.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) ?? "N/A"}");
         
         // Test trading permission
         var tradingAllowed = await sessionGates.IsTradingAllowedAsync("ES").ConfigureAwait(false);

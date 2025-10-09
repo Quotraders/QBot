@@ -43,7 +43,7 @@ namespace BotCore
 
             // Check for model updates every 2 hours using TimerHelper
             var pollInterval = TimeSpan.FromSeconds(
-                int.Parse(Environment.GetEnvironmentVariable("MODEL_POLL_SEC") ?? "7200"));
+                int.Parse(Environment.GetEnvironmentVariable("MODEL_POLL_SEC") ?? "7200", System.Globalization.CultureInfo.InvariantCulture));
 
             _timer = TimerHelper.CreateAsyncTimerWithImmediateStart(CheckForModelUpdates, pollInterval);
             LoggingHelper.LogServiceStarted(_log, "CloudRlTrainerEnhanced", pollInterval, "checking manifest");
