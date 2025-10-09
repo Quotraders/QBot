@@ -197,6 +197,9 @@ namespace BotCore.Brain
         private readonly List<TradingDecision> _decisionHistory = new();
         private DateTime _lastModelUpdate = DateTime.MinValue;
         
+        // Cached JsonSerializerOptions for performance
+        private static readonly JsonSerializerOptions CachedJsonOptions = new() { WriteIndented = true };
+        
         // Unified Trading Brain Constants
         // Learning system constants
         private const int MinDecisionsForLearningUpdate = 50;        // Minimum decisions for learning update
@@ -2382,7 +2385,7 @@ Reason closed: {reason}
             try
             {
                 Directory.CreateDirectory(cacheDir);
-                var json = JsonSerializer.Serialize(vectors, new JsonSerializerOptions { WriteIndented = true });
+                var json = JsonSerializer.Serialize(vectors, CachedJsonOptions);
                 File.WriteAllText(cachePath, json);
                 _logger.LogInformation("  Cached {Count} sanity test vectors for future use", count);
             }
@@ -2647,7 +2650,7 @@ Reason closed: {reason}
             try
             {
                 Directory.CreateDirectory(dataDir);
-                var json = JsonSerializer.Serialize(historicalData, new JsonSerializerOptions { WriteIndented = true });
+                var json = JsonSerializer.Serialize(historicalData, CachedJsonOptions);
                 await File.WriteAllTextAsync(dataPath, json, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
@@ -2712,7 +2715,7 @@ Reason closed: {reason}
             };
 
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            var json = JsonSerializer.Serialize(spec, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(spec, CachedJsonOptions);
             await File.WriteAllTextAsync(path, json, cancellationToken).ConfigureAwait(false);
             _logger.LogInformation("Created default feature specification at {Path}", path);
         }
@@ -2884,9 +2887,9 @@ Reason closed: {reason}
                 Directory.CreateDirectory(Path.GetDirectoryName(dataPath)!);
                 
                 await File.WriteAllTextAsync(dataPath, JsonSerializer.Serialize(unifiedTrainingData, 
-                    new JsonSerializerOptions { WriteIndented = true }), cancellationToken).ConfigureAwait(false);
+                    CachedJsonOptions), cancellationToken).ConfigureAwait(false);
                 await File.WriteAllTextAsync(perfPath, JsonSerializer.Serialize(strategyPerformanceData, 
-                    new JsonSerializerOptions { WriteIndented = true }), cancellationToken).ConfigureAwait(false);
+                    CachedJsonOptions), cancellationToken).ConfigureAwait(false);
                 
                 _logger.LogInformation("✅ [UNIFIED-RETRAIN] Training data exported: {Count} decisions, {StrategyCount} strategies", 
                     unifiedTrainingData.Count(), _strategyPerformance.Count);
@@ -3293,7 +3296,7 @@ Explain in 1-2 sentences what I learned and how it will improve my future tradin
                 {
                     var statsPath = Path.Combine("logs", $"brain_stats_{DateTime.Now:yyyyMMdd}.json");
                     Directory.CreateDirectory(Path.GetDirectoryName(statsPath)!);
-                    File.WriteAllText(statsPath, JsonSerializer.Serialize(stats, new JsonSerializerOptions { WriteIndented = true }));
+                    File.WriteAllText(statsPath, JsonSerializer.Serialize(stats, CachedJsonOptions));
                     _logger.LogInformation("📊 [UNIFIED-BRAIN] Statistics saved: {Decisions} decisions, {WinRate:P1} win rate",
                         DecisionsToday, WinRateToday);
                 }
