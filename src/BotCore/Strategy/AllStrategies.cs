@@ -94,7 +94,7 @@ namespace BotCore.Strategy
                 env.volz ??= 0m;
             }
             var attemptCaps = HighWinRateProfile.AttemptCaps;
-            bool noAttemptCaps = (Environment.GetEnvironmentVariable("NO_ATTEMPT_CAPS") ?? "0").Trim().ToLowerInvariant() is "1" or "true" or "yes";
+            bool noAttemptCaps = (Environment.GetEnvironmentVariable("NO_ATTEMPT_CAPS") ?? "0").Trim().ToUpperInvariant() is "1" or "TRUE" or "YES";
 
             // Get current session and allowed strategies
             var currentTimeSpan = currentTime.TimeOfDay;
