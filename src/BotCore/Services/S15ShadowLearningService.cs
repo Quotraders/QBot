@@ -17,6 +17,8 @@ namespace BotCore.Services;
 /// </summary>
 public class S15ShadowLearningService : BackgroundService
 {
+    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+
     private readonly ILogger<S15ShadowLearningService> _logger;
     private readonly ConcurrentQueue<ShadowDecision> _shadowDecisions = new();
     
@@ -272,10 +274,7 @@ public class S15ShadowLearningService : BackgroundService
         var configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config", "s15_promotion.json");
         Directory.CreateDirectory(Path.GetDirectoryName(configPath) ?? ".");
         
-        await File.WriteAllTextAsync(configPath, JsonSerializer.Serialize(promotionConfig, new JsonSerializerOptions
-        {
-            WriteIndented = true
-        }));
+        await File.WriteAllTextAsync(configPath, JsonSerializer.Serialize(promotionConfig, s_jsonOptions));
         
         _logger.LogInformation("✓ S15 promoted to canary mode with {Pct:P1} traffic", CANARY_TRAFFIC_PERCENTAGE);
         _logger.LogInformation("  Config written to: {Path}", configPath);

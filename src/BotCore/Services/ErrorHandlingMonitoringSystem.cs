@@ -76,6 +76,8 @@ namespace TopstepX.Bot.Core.Services
     /// </summary>
     public class ErrorHandlingMonitoringSystem : IDisposable
     {
+        private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+
         private readonly ILogger<ErrorHandlingMonitoringSystem> _logger;
         private readonly ConcurrentDictionary<string, ErrorRecord> _recentErrors = new();
         private readonly ConcurrentDictionary<string, ComponentHealth> _componentHealth = new();
@@ -207,7 +209,7 @@ namespace TopstepX.Bot.Core.Services
                     MachineName = Environment.MachineName
                 };
                 
-                var json = JsonSerializer.Serialize(errorLogEntry, new JsonSerializerOptions { WriteIndented = true });
+                var json = JsonSerializer.Serialize(errorLogEntry, s_jsonOptions);
                 var fileName = $"error_{DateTime.UtcNow:yyyyMMdd}_{errorId}.json";
                 var filePath = Path.Combine(_errorLogPath, fileName);
                 
@@ -459,7 +461,7 @@ namespace TopstepX.Bot.Core.Services
                 var reportPath = Path.Combine(Directory.GetCurrentDirectory(), "logs", $"health_report_{DateTime.UtcNow:yyyyMMdd_HHmm}.json");
                 Directory.CreateDirectory(Path.GetDirectoryName(reportPath)!);
                 
-                var json = JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true });
+                var json = JsonSerializer.Serialize(report, s_jsonOptions);
                 File.WriteAllText(reportPath, json);
                 
                 _logger.LogInformation("📋 Health report generated: {ReportPath} | Health Score: {HealthScore:F1}%", 

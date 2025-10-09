@@ -31,6 +31,8 @@ namespace BotCore.Services
     /// </summary>
     public class ModelVersionVerificationService : IModelVersionVerificationService
     {
+        private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+
         // Model validation constants
         private const int HashDisplayLength = 8; // Characters to show from hash
         private const int HeaderByteLength = 8; // Protobuf header length
@@ -225,7 +227,7 @@ namespace BotCore.Services
                 if (!_config.TrainingMetadataLogging)
                     return;
 
-                var metadataJson = JsonSerializer.Serialize(metadata, new JsonSerializerOptions { WriteIndented = true });
+                var metadataJson = JsonSerializer.Serialize(metadata, s_jsonOptions);
                 var logPath = Path.Combine(_config.ModelRegistry.BaseDirectory, $"training_metadata_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json");
                 
                 await File.WriteAllTextAsync(logPath, metadataJson).ConfigureAwait(false);
@@ -419,7 +421,7 @@ namespace BotCore.Services
         {
             try
             {
-                var json = JsonSerializer.Serialize(registry, new JsonSerializerOptions { WriteIndented = true });
+                var json = JsonSerializer.Serialize(registry, s_jsonOptions);
                 await File.WriteAllTextAsync(_versionRegistryPath, json).ConfigureAwait(false);
             }
             catch (Exception ex)

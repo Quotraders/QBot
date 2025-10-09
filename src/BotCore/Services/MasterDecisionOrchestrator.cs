@@ -34,6 +34,8 @@ namespace BotCore.Services;
 /// </summary>
 public class MasterDecisionOrchestrator : BackgroundService
 {
+    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+
     // Trading reward calculation constants
     private const decimal MaxTimeRewardMagnitude = 0.1m;    // Maximum time-based reward/penalty
     private const double HoursInDay = 24.0;                 // Hours in a day for time calculations
@@ -1454,10 +1456,7 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
             };
 
             var manifestPath = Path.Combine(backupDir, "manifest.json");
-            var manifestJson = JsonSerializer.Serialize(manifest, new JsonSerializerOptions 
-            { 
-                WriteIndented = true 
-            });
+            var manifestJson = JsonSerializer.Serialize(manifest, s_jsonOptions);
             await File.WriteAllTextAsync(manifestPath, manifestJson, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -1729,7 +1728,7 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
             var reportPath = Path.Combine("reports", $"performance_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json");
             Directory.CreateDirectory(Path.GetDirectoryName(reportPath)!);
             
-            var json = JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(report, s_jsonOptions);
             await File.WriteAllTextAsync(reportPath, json, cancellationToken).ConfigureAwait(false);
             
             _logger.LogInformation("📊 [PERFORMANCE-REPORT] Generated detailed report: {ReportPath}", reportPath);

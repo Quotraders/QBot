@@ -18,6 +18,8 @@ namespace BotCore.Services
     /// </summary>
     public sealed class ModelRotationService : IHostedService, IDisposable
     {
+        private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+
         private readonly ILogger<ModelRotationService> _logger;
         private readonly ModelRotationConfiguration _config;
         private readonly RegimeDetectionService _regimeService;
@@ -282,7 +284,7 @@ namespace BotCore.Services
                     Timestamp = DateTime.UtcNow
                 };
 
-                var selectedJson = JsonSerializer.Serialize(selectedState, new JsonSerializerOptions { WriteIndented = true });
+                var selectedJson = JsonSerializer.Serialize(selectedState, s_jsonOptions);
                 
                 // Atomic write using temp file + move
                 var tempFile = _config.SelectedPath + ".tmp";

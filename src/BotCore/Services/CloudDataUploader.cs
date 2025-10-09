@@ -17,6 +17,12 @@ public interface ICloudDataUploader
 /// </summary>
 public class CloudDataUploader : ICloudDataUploader
 {
+    private static readonly JsonSerializerOptions s_jsonOptionsCamelCase = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = false
+    };
+
     private readonly ILogger<CloudDataUploader> _logger;
 
     public CloudDataUploader(ILogger<CloudDataUploader> logger)
@@ -31,11 +37,7 @@ public class CloudDataUploader : ICloudDataUploader
             _logger.LogInformation("Uploading trade data to cloud storage");
             
             // Serialize trade data to JSON
-            var json = System.Text.Json.JsonSerializer.Serialize(tradeData, new JsonSerializerOptions 
-            { 
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                WriteIndented = false
-            });
+            var json = System.Text.Json.JsonSerializer.Serialize(tradeData, s_jsonOptionsCamelCase);
             
             // Upload to cloud storage (Azure Blob, AWS S3, etc.)
             using var httpClient = new HttpClient();
@@ -69,11 +71,7 @@ public class CloudDataUploader : ICloudDataUploader
             _logger.LogInformation("Uploading market data to cloud storage");
             
             // Serialize market data to JSON
-            var json = System.Text.Json.JsonSerializer.Serialize(marketData, new JsonSerializerOptions 
-            { 
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                WriteIndented = false
-            });
+            var json = System.Text.Json.JsonSerializer.Serialize(marketData, s_jsonOptionsCamelCase);
             
             // Compress data for efficient upload
             var compressedData = CompressData(json);

@@ -16,6 +16,13 @@ namespace BotCore.Services;
 /// </summary>
 public class CloudModelSynchronizationService : BackgroundService
 {
+    private static readonly JsonSerializerOptions s_jsonOptionsSnakeCase = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+    };
+    
+    private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
+
     // Version display constants
     private const int GitShaDisplayLength = 8; // Number of git SHA characters to display
     
@@ -216,10 +223,7 @@ public class CloudModelSynchronizationService : BackgroundService
             }
             
             var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            var result = JsonSerializer.Deserialize<GitHubWorkflowRunsResponse>(content, new JsonSerializerOptions 
-            { 
-                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower 
-            });
+            var result = JsonSerializer.Deserialize<GitHubWorkflowRunsResponse>(content, s_jsonOptionsSnakeCase);
             
             // Filter for ML training workflows
             var mlWorkflows = result?.WorkflowRuns?.Where(r => 
@@ -254,10 +258,7 @@ public class CloudModelSynchronizationService : BackgroundService
             }
             
             var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            var result = JsonSerializer.Deserialize<GitHubArtifactsResponse>(content, new JsonSerializerOptions 
-            { 
-                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower 
-            });
+            var result = JsonSerializer.Deserialize<GitHubArtifactsResponse>(content, s_jsonOptionsSnakeCase);
             
             return result?.Artifacts ?? System.Array.Empty<Artifact>();
         }
@@ -602,7 +603,7 @@ public class CloudModelSynchronizationService : BackgroundService
                 registry.AddModel(model);
             }
             
-            var json = JsonSerializer.Serialize(registry, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(registry, s_jsonOptions);
             await File.WriteAllTextAsync(registryPath, json, cancellationToken).ConfigureAwait(false);
             
             _logger.LogDebug("🌐 [CLOUD-SYNC] Model registry updated with {Count} models", _currentModels.Count);
