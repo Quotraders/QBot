@@ -204,7 +204,7 @@ public class ExpressionEvaluator
             var innerResult = EvaluateExpression(innerExpression);
             
             // Replace the parenthetical expression with its result
-            var replacedExpression = expression.Replace(innerMatch.Value, innerResult.ToString().ToLower(CultureInfo.InvariantCulture), StringComparison.Ordinal);
+            var replacedExpression = expression.Replace(innerMatch.Value, innerResult.ToString().ToUpperInvariant(), StringComparison.Ordinal);
             return EvaluateExpression(replacedExpression);
         }
 

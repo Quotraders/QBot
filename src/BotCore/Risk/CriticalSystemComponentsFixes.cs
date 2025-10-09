@@ -177,7 +177,7 @@ namespace BotCore.Risk
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[CRITICAL-SYSTEM] Database connectivity check failed");
-                throw;
+                throw new InvalidOperationException("[CRITICAL-SYSTEM] Database connectivity check failed. See inner exception for details.", ex);
             }
         }
 
@@ -192,7 +192,7 @@ namespace BotCore.Risk
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[CRITICAL-SYSTEM] API endpoints health check failed");
-                throw;
+                throw new InvalidOperationException("[CRITICAL-SYSTEM] API endpoints health check failed. See inner exception for details.", ex);
             }
         }
 

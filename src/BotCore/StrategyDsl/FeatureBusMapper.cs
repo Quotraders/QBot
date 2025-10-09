@@ -326,19 +326,19 @@ public class FeatureBusMapper
     private static object? GetDefaultValueForIdentifier(string identifier)
     {
         // Provide sensible defaults for common identifiers when values are missing
-        return identifier.ToLower(CultureInfo.InvariantCulture) switch
+        return identifier.ToUpperInvariant() switch
         {
-            var id when id.Contains("time_of_day", StringComparison.Ordinal) => TimeSpan.FromHours(12), // Noon
-            var id when id.Contains("_score", StringComparison.Ordinal) => 0.0,
-            var id when id.Contains("distance", StringComparison.Ordinal) => 1.0,
-            var id when id.Contains("ratio", StringComparison.Ordinal) => 1.0,
-            var id when id.Contains("count", StringComparison.Ordinal) => 0,
-            var id when id.Contains("minutes", StringComparison.Ordinal) => DefaultMinutesValue,
-            var id when id.Contains("strength", StringComparison.Ordinal) => DefaultStrengthValue,
-            var id when id.EndsWith("_confirmed", StringComparison.Ordinal) || id.EndsWith("_ready", StringComparison.Ordinal) => false,
-            var id when id.Contains("alignment", StringComparison.Ordinal) => "neutral",
-            var id when id.Contains("direction", StringComparison.Ordinal) => "neutral",
-            var id when id.Contains("regime", StringComparison.Ordinal) => "Range",
+            var id when id.Contains("TIME_OF_DAY", StringComparison.Ordinal) => TimeSpan.FromHours(12), // Noon
+            var id when id.Contains("_SCORE", StringComparison.Ordinal) => 0.0,
+            var id when id.Contains("DISTANCE", StringComparison.Ordinal) => 1.0,
+            var id when id.Contains("RATIO", StringComparison.Ordinal) => 1.0,
+            var id when id.Contains("COUNT", StringComparison.Ordinal) => 0,
+            var id when id.Contains("MINUTES", StringComparison.Ordinal) => DefaultMinutesValue,
+            var id when id.Contains("STRENGTH", StringComparison.Ordinal) => DefaultStrengthValue,
+            var id when id.EndsWith("_CONFIRMED", StringComparison.Ordinal) || id.EndsWith("_READY", StringComparison.Ordinal) => false,
+            var id when id.Contains("ALIGNMENT", StringComparison.Ordinal) => "neutral",
+            var id when id.Contains("DIRECTION", StringComparison.Ordinal) => "neutral",
+            var id when id.Contains("REGIME", StringComparison.Ordinal) => "Range",
             _ => null
         };
     }

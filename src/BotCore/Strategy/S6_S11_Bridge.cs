@@ -113,7 +113,7 @@ namespace BotCore.Strategy
             }
             catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogWarning("GetPosition cancelled for {Instrument}", instr);
+                _logger.LogWarning(ex, "GetPosition cancelled for {Instrument}", instr);
                 return (TopstepX.S6.Side.Flat, 0, 0, DateTimeOffset.MinValue, string.Empty);
             }
         }
@@ -189,7 +189,7 @@ namespace BotCore.Strategy
             }
             catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogWarning("GetPosition cancelled for {Instrument}", instr);
+                _logger.LogWarning(ex, "GetPosition cancelled for {Instrument}", instr);
                 return (TopstepX.S11.Side.Flat, 0, 0, DateTimeOffset.MinValue, string.Empty);
             }
         }
@@ -458,7 +458,7 @@ namespace BotCore.Strategy
             }
             catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogWarning("GetPositions cancelled");
+                _logger.LogWarning(ex, "GetPositions cancelled");
                 return new List<(object Side, int Qty, double AvgPx, DateTime OpenedAt)>();
             }
         }
