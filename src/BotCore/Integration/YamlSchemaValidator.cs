@@ -110,23 +110,21 @@ public sealed class YamlSchemaValidator
         {
             FilePath = filePath,
             ValidationStarted = DateTime.UtcNow,
-            IsValid = false,
-            Errors = new List<string>(),
-            Warnings = new List<string>()
+            IsValid = false
         };
         
         try
         {
             if (!File.Exists(filePath))
             {
-                result.Errors.Add($"File not found: {filePath}");
+                result.AddError($"File not found: {filePath}");
                 return result;
             }
             
             var yamlContent = await File.ReadAllTextAsync(filePath).ConfigureAwait(false);
             if (string.IsNullOrWhiteSpace(yamlContent))
             {
-                result.Errors.Add("YAML file is empty");
+                result.AddError("YAML file is empty");
                 return result;
             }
             
@@ -134,13 +132,13 @@ public sealed class YamlSchemaValidator
             var schemaType = DetermineSchemaType(filePath);
             if (schemaType == null)
             {
-                result.Errors.Add($"Cannot determine schema type for file: {filePath}");
+                result.AddError($"Cannot determine schema type for file: {filePath}");
                 return result;
             }
             
             if (!_schemas.TryGetValue(schemaType, out var schema))
             {
-                result.Errors.Add($"No schema definition found for type: {schemaType}");
+                result.AddError($"No schema definition found for type: {schemaType}");
                 return result;
             }
             
@@ -151,18 +149,18 @@ public sealed class YamlSchemaValidator
                 yamlObject = _yamlDeserializer.Deserialize(yamlContent);
                 if (yamlObject == null)
                 {
-                    result.Errors.Add("YAML parsing error: Deserializer returned null");
+                    result.AddError("YAML parsing error: Deserializer returned null");
                     return result;
                 }
             }
             catch (YamlDotNet.Core.YamlException ex)
             {
-                result.Errors.Add($"YAML parsing error: {ex.Message}");
+                result.AddError($"YAML parsing error: {ex.Message}");
                 return result;
             }
             catch (InvalidOperationException ex)
             {
-                result.Errors.Add($"YAML deserialization error: {ex.Message}");
+                result.AddError($"YAML deserialization error: {ex.Message}");
                 return result;
             }
             
@@ -188,7 +186,7 @@ public sealed class YamlSchemaValidator
         {
             result.ValidationCompleted = DateTime.UtcNow;
             result.ValidationTimeMs = (result.ValidationCompleted - result.ValidationStarted).TotalMilliseconds;
-            result.Errors.Add($"IO error: {ex.Message}");
+            result.AddError($"IO error: {ex.Message}");
             
             _logger.LogError(ex, "IO error validating YAML file: {FilePath}", filePath);
             return result;
@@ -197,7 +195,7 @@ public sealed class YamlSchemaValidator
         {
             result.ValidationCompleted = DateTime.UtcNow;
             result.ValidationTimeMs = (result.ValidationCompleted - result.ValidationStarted).TotalMilliseconds;
-            result.Errors.Add($"Access denied: {ex.Message}");
+            result.AddError($"Access denied: {ex.Message}");
             
             _logger.LogError(ex, "Access denied validating YAML file: {FilePath}", filePath);
             return result;
@@ -297,7 +295,7 @@ public sealed class YamlSchemaValidator
     {
         if (yamlObject is not Dictionary<object, object> yamlDict)
         {
-            result.Errors.Add("YAML root must be an object/dictionary");
+            result.AddError("YAML root must be an object/dictionary");
             return;
         }
         
@@ -311,7 +309,7 @@ public sealed class YamlSchemaValidator
         {
             if (!stringDict.ContainsKey(requiredField))
             {
-                result.Errors.Add($"Required field missing: {requiredField}");
+                result.AddError($"Required field missing: {requiredField}");
             }
         }
         
@@ -324,7 +322,7 @@ public sealed class YamlSchemaValidator
             // Check if field is known
             if (!schema.RequiredFields.Contains(fieldName) && !schema.OptionalFields.Contains(fieldName))
             {
-                result.Warnings.Add($"Unknown field: {fieldName}");
+                result.AddWarning($"Unknown field: {fieldName}");
                 continue;
             }
             
@@ -335,20 +333,20 @@ public sealed class YamlSchemaValidator
                 {
                     if (!validator(fieldValue))
                     {
-                        result.Errors.Add($"Field validation failed: {fieldName} = {fieldValue}");
+                        result.AddError($"Field validation failed: {fieldName} = {fieldValue}");
                     }
                 }
                 catch (ArgumentException ex)
                 {
-                    result.Errors.Add($"Field validation argument error for {fieldName}: {ex.Message}");
+                    result.AddError($"Field validation argument error for {fieldName}: {ex.Message}");
                 }
                 catch (FormatException ex)
                 {
-                    result.Errors.Add($"Field validation format error for {fieldName}: {ex.Message}");
+                    result.AddError($"Field validation format error for {fieldName}: {ex.Message}");
                 }
                 catch (InvalidOperationException ex)
                 {
-                    result.Errors.Add($"Field validation operation error for {fieldName}: {ex.Message}");
+                    result.AddError($"Field validation operation error for {fieldName}: {ex.Message}");
                 }
             }
         }
@@ -543,13 +541,28 @@ public sealed class YamlSchemaDefinition
 /// </summary>
 public sealed class YamlValidationResult
 {
+    private readonly System.Collections.Generic.List<string> _errors = new();
+    private readonly System.Collections.Generic.List<string> _warnings = new();
+    
     public string FilePath { get; set; } = string.Empty;
     public DateTime ValidationStarted { get; set; }
     public DateTime ValidationCompleted { get; set; }
     public double ValidationTimeMs { get; set; }
     public bool IsValid { get; set; }
-    public List<string> Errors { get; set; } = new();
-    public List<string> Warnings { get; set; } = new();
+    public System.Collections.Generic.IReadOnlyList<string> Errors => _errors;
+    public System.Collections.Generic.IReadOnlyList<string> Warnings => _warnings;
+    
+    public void AddError(string error)
+    {
+        ArgumentNullException.ThrowIfNull(error);
+        _errors.Add(error);
+    }
+    
+    public void AddWarning(string warning)
+    {
+        ArgumentNullException.ThrowIfNull(warning);
+        _warnings.Add(warning);
+    }
 }
 
 /// <summary>

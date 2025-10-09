@@ -118,13 +118,14 @@ public class PatternEngine : IComponentHealth
             if (recentBars == null || recentBars.Count == 0)
             {
                 _logger.LogWarning("No recent bars available for pattern analysis of {Symbol}, using neutral scores", symbol);
-                return new PatternScoresWithDetails
+                var neutralResult = new PatternScoresWithDetails
                 {
                     BullScore = NEUTRAL_SCORE,
                     BearScore = NEUTRAL_SCORE,
-                    OverallConfidence = 0.0,
-                    DetectedPatterns = new List<PatternDetail>()
+                    OverallConfidence = 0.0
                 };
+                neutralResult.SetDetectedPatterns(System.Array.Empty<PatternDetail>());
+                return neutralResult;
             }
 
             // Use the existing synchronous GetScores method with real bar data
@@ -135,9 +136,9 @@ public class PatternEngine : IComponentHealth
             {
                 BullScore = patternScores.BullScore,
                 BearScore = patternScores.BearScore,
-                OverallConfidence = CalculateOverallConfidence(patternScores),
-                DetectedPatterns = ConvertPatternFlagsToDetails(patternScores.PatternFlags)
+                OverallConfidence = CalculateOverallConfidence(patternScores)
             };
+            detailsResult.SetDetectedPatterns(ConvertPatternFlagsToDetails(patternScores.PatternFlags));
             
             // Publish pattern scores to feature bus
             var timestamp = DateTime.UtcNow;
@@ -152,13 +153,14 @@ public class PatternEngine : IComponentHealth
             _logger.LogError(ex, "Invalid operation getting pattern scores for {Symbol}", symbol);
             
             // Return neutral scores on error
-            return new PatternScoresWithDetails
+            var errorResult = new PatternScoresWithDetails
             {
                 BullScore = NEUTRAL_SCORE,
                 BearScore = NEUTRAL_SCORE,
-                OverallConfidence = 0.0,
-                DetectedPatterns = new List<PatternDetail>()
+                OverallConfidence = 0.0
             };
+            errorResult.SetDetectedPatterns(System.Array.Empty<PatternDetail>());
+            return errorResult;
         }
     }
 
@@ -169,7 +171,7 @@ public class PatternEngine : IComponentHealth
         foreach (var result in results)
         {
             // Add to pattern flags
-            scores.PatternFlags[result.PatternName] = result.Result.Score;
+            scores.SetPatternFlag(result.PatternName, result.Result.Score);
             
             // Aggregate directional scores
             if (result.Result.Direction > 0) // Bullish
@@ -274,7 +276,7 @@ public class PatternEngine : IComponentHealth
     /// <summary>
     /// Convert pattern flags dictionary to detailed pattern list
     /// </summary>
-    private static List<PatternDetail> ConvertPatternFlagsToDetails(Dictionary<string, double> patternFlags)
+    private static List<PatternDetail> ConvertPatternFlagsToDetails(System.Collections.Generic.IReadOnlyDictionary<string, double> patternFlags)
     {
         var details = new List<PatternDetail>();
         
@@ -352,10 +354,21 @@ public class PatternScores
     /// </summary>
     public double BearScore { get; set; }
     
+    private readonly Dictionary<string, double> _patternFlags = new();
+    
     /// <summary>
     /// Individual pattern flags (pattern name -> score)
     /// </summary>
-    public Dictionary<string, double> PatternFlags { get; set; } = new();
+    public System.Collections.Generic.IReadOnlyDictionary<string, double> PatternFlags => _patternFlags;
+    
+    /// <summary>
+    /// Set a pattern flag score
+    /// </summary>
+    public void SetPatternFlag(string patternName, double score)
+    {
+        ArgumentNullException.ThrowIfNull(patternName);
+        _patternFlags[patternName] = score;
+    }
 }
 
 /// <summary>
@@ -378,10 +391,22 @@ public sealed class PatternScoresWithDetails
     /// </summary>
     public double OverallConfidence { get; set; }
     
+    private readonly List<PatternDetail> _detectedPatterns = new();
+    
     /// <summary>
     /// Detailed information about detected patterns
     /// </summary>
-    public List<PatternDetail> DetectedPatterns { get; set; } = new();
+    public System.Collections.Generic.IReadOnlyList<PatternDetail> DetectedPatterns => _detectedPatterns;
+    
+    /// <summary>
+    /// Set the detected patterns list
+    /// </summary>
+    public void SetDetectedPatterns(System.Collections.Generic.IEnumerable<PatternDetail> patterns)
+    {
+        ArgumentNullException.ThrowIfNull(patterns);
+        _detectedPatterns.Clear();
+        _detectedPatterns.AddRange(patterns);
+    }
 }
 
 /// <summary>

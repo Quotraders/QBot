@@ -792,7 +792,7 @@ namespace BotCore.Services
             // Record snapshot at key intervals (1min, 2min, 5min, 10min)
             if (ShouldRecordMaeSnapshot(state, elapsedSeconds))
             {
-                state.MaeSnapshots.Add(new MaeSnapshot
+                state.AddMaeSnapshot(new MaeSnapshot
                 {
                     Timestamp = DateTime.UtcNow,
                     MaeValue = Math.Abs(currentMae),
@@ -1839,7 +1839,7 @@ namespace BotCore.Services
                     ToConfidence = state.CurrentRegimeConfidence,
                     PnLAtChange = pnl
                 };
-                state.RegimeChanges.Add(regimeChange);
+                state.AddRegimeChange(regimeChange);
                 
                 // Check if we should exit based on regime flip
                 var shouldExit = ShouldExitOnRegimeFlip(state, pnl);

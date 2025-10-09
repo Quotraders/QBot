@@ -59,8 +59,6 @@ namespace BotCore.Services
                     var result = new FeatureDriftResult
                     {
                         AllowTrading = true,
-                        DriftViolations = new List<string>(),
-                        MissingFeatures = new List<string>(),
                         CheckTimestamp = DateTime.UtcNow
                     };
 
@@ -97,13 +95,13 @@ namespace BotCore.Services
                 _logger.LogError(ex, "[FEATURE-DRIFT] [AUDIT-VIOLATION] Drift check failed - FAIL-CLOSED + TELEMETRY");
                 
                 // Fail-closed: return do not allow trading on drift check failure
-                return new FeatureDriftResult
+                var failureResult = new FeatureDriftResult
                 {
                     AllowTrading = false,
-                    DriftViolations = new List<string> { "DRIFT_CHECK_FAILURE" },
-                    MissingFeatures = new List<string>(),
                     CheckTimestamp = DateTime.UtcNow
                 };
+                failureResult.AddDriftViolation("DRIFT_CHECK_FAILURE");
+                return failureResult;
             }
         }
 
@@ -136,7 +134,6 @@ namespace BotCore.Services
                 {
                     FeatureName = featureName,
                     BaselineStatistics = statistics,
-                    RecentValues = new List<double>(),
                     LastDriftCheck = DateTime.UtcNow,
                     DriftScore = 0.0,
                     IsBaselineSet = true
@@ -177,20 +174,24 @@ namespace BotCore.Services
             try
             {
                 _featureDriftStates.AddOrUpdate(featureName,
-                    new FeatureDriftState
+                    (key) =>
                     {
-                        FeatureName = featureName,
-                        RecentValues = new List<double> { value },
-                        LastUpdate = DateTime.UtcNow
+                        var state = new FeatureDriftState
+                        {
+                            FeatureName = featureName,
+                            LastUpdate = DateTime.UtcNow
+                        };
+                        state.AddRecentValue(value);
+                        return state;
                     },
                     (key, existing) =>
                     {
-                        existing.RecentValues.Add(value);
+                        existing.AddRecentValue(value);
                         existing.LastUpdate = DateTime.UtcNow;
 
                         // Keep only recent values within window (cutoffTime calculated for reference)
                         _ = DateTime.UtcNow.AddMinutes(-_config.DriftWindowMinutes); // Reserved for future time-based filtering
-                        existing.RecentValues = existing.RecentValues.TakeLast(_config.MaxRecentValues).ToList();
+                        existing.SetRecentValues(existing.RecentValues.TakeLast(_config.MaxRecentValues));
 
                         return existing;
                     });
@@ -207,7 +208,7 @@ namespace BotCore.Services
             {
                 if (!currentFeatures.ContainsKey(criticalFeature))
                 {
-                    result.MissingFeatures.Add(criticalFeature);
+                    result.AddMissingFeature(criticalFeature);
                     _logger.LogError("[FEATURE-DRIFT] [AUDIT-VIOLATION] Missing critical feature: {FeatureName} - KILL SWITCH TRIGGER", 
                         criticalFeature);
                 }
@@ -240,7 +241,7 @@ namespace BotCore.Services
                         // Check drift thresholds
                         if (ksStatistic > _config.KSThreshold || psiStatistic > _config.PSIThreshold)
                         {
-                            result.DriftViolations.Add(feature.Key);
+                            result.AddDriftViolation(feature.Key);
                             
                             _logger.LogWarning("[FEATURE-DRIFT] [AUDIT-VIOLATION] Drift detected for {FeatureName}: KS={KS:F4}, PSI={PSI:F4} - DRIFT VIOLATION", 
                                 feature.Key, ksStatistic, psiStatistic);
@@ -250,7 +251,7 @@ namespace BotCore.Services
             }
         }
 
-        private static FeatureStatistics CalculateFeatureStatistics(List<double> values)
+        private static FeatureStatistics CalculateFeatureStatistics(System.Collections.Generic.IReadOnlyList<double> values)
         {
             if (values.Count == 0)
                 return new FeatureStatistics();
@@ -328,7 +329,7 @@ namespace BotCore.Services
         public int MinDriftDataPoints { get; set; }
         public int MaxRecentValues { get; set; }
         public int DriftWindowMinutes { get; set; }
-        public List<string> CriticalFeatures { get; set; } = new();
+        public System.Collections.Generic.IReadOnlyList<string> CriticalFeatures { get; init; } = System.Array.Empty<string>();
 
         /// <summary>
         /// Validates configuration values with fail-closed behavior
@@ -351,13 +352,27 @@ namespace BotCore.Services
     /// </summary>
     public sealed class FeatureDriftState
     {
+        private readonly System.Collections.Generic.List<double> _recentValues = new();
+        
         public string FeatureName { get; set; } = string.Empty;
         public FeatureStatistics BaselineStatistics { get; set; } = new();
-        public List<double> RecentValues { get; set; } = new();
+        public System.Collections.Generic.IReadOnlyList<double> RecentValues => _recentValues;
         public DateTime LastUpdate { get; set; }
         public DateTime LastDriftCheck { get; set; }
         public double DriftScore { get; set; }
         public bool IsBaselineSet { get; set; }
+        
+        public void AddRecentValue(double value)
+        {
+            _recentValues.Add(value);
+        }
+        
+        public void SetRecentValues(System.Collections.Generic.IEnumerable<double> values)
+        {
+            ArgumentNullException.ThrowIfNull(values);
+            _recentValues.Clear();
+            _recentValues.AddRange(values);
+        }
     }
 
     /// <summary>
@@ -378,10 +393,25 @@ namespace BotCore.Services
     /// </summary>
     public sealed class FeatureDriftResult
     {
+        private readonly System.Collections.Generic.List<string> _driftViolations = new();
+        private readonly System.Collections.Generic.List<string> _missingFeatures = new();
+        
         public bool AllowTrading { get; set; } = true;
-        public List<string> DriftViolations { get; set; } = new();
-        public List<string> MissingFeatures { get; set; } = new();
+        public System.Collections.Generic.IReadOnlyList<string> DriftViolations => _driftViolations;
+        public System.Collections.Generic.IReadOnlyList<string> MissingFeatures => _missingFeatures;
         public DateTime CheckTimestamp { get; set; }
+        
+        public void AddDriftViolation(string violation)
+        {
+            ArgumentNullException.ThrowIfNull(violation);
+            _driftViolations.Add(violation);
+        }
+        
+        public void AddMissingFeature(string feature)
+        {
+            ArgumentNullException.ThrowIfNull(feature);
+            _missingFeatures.Add(feature);
+        }
     }
 
     /// <summary>

@@ -149,7 +149,7 @@ namespace BotCore.Calibration
         public string Regime { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public int DataPointCount { get; set; }
-        public List<CalibrationPoint> CalibrationPoints { get; set; } = new();
+        public System.Collections.Generic.IReadOnlyList<CalibrationPoint> CalibrationPoints { get; init; } = System.Array.Empty<CalibrationPoint>();
 
         public void Validate()
         {

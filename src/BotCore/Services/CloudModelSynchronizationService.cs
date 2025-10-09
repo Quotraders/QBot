@@ -241,7 +241,7 @@ public class CloudModelSynchronizationService : BackgroundService
     /// <summary>
     /// Get artifacts for a specific workflow run
     /// </summary>
-    private async Task<List<Artifact>> GetWorkflowArtifactsAsync(long runId, CancellationToken cancellationToken)
+    private async Task<System.Collections.Generic.IReadOnlyList<Artifact>> GetWorkflowArtifactsAsync(long runId, CancellationToken cancellationToken)
     {
         try
         {
@@ -250,7 +250,7 @@ public class CloudModelSynchronizationService : BackgroundService
             
             if (!response.IsSuccessStatusCode)
             {
-                return new List<Artifact>();
+                return System.Array.Empty<Artifact>();
             }
             
             var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
@@ -259,12 +259,12 @@ public class CloudModelSynchronizationService : BackgroundService
                 PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower 
             });
             
-            return result?.Artifacts ?? new List<Artifact>();
+            return result?.Artifacts ?? System.Array.Empty<Artifact>();
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "🌐 [CLOUD-SYNC] Failed to get artifacts for run {RunId}", runId);
-            return new List<Artifact>();
+            return System.Array.Empty<Artifact>();
         }
     }
 
@@ -599,7 +599,7 @@ public class CloudModelSynchronizationService : BackgroundService
             // Add models to the collection property
             foreach (var model in _currentModels.Values)
             {
-                registry.Models.Add(model);
+                registry.AddModel(model);
             }
             
             var json = JsonSerializer.Serialize(registry, new JsonSerializerOptions { WriteIndented = true });
@@ -648,14 +648,22 @@ public class ModelInfo
 
 public class ModelRegistry
 {
+    private readonly System.Collections.Generic.List<ModelInfo> _models = new();
+    
     public DateTime LastUpdated { get; set; }
-    public List<ModelInfo> Models { get; } = new();
+    public System.Collections.Generic.IReadOnlyList<ModelInfo> Models => _models;
     public int TotalModels { get; set; }
+    
+    public void AddModel(ModelInfo model)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        _models.Add(model);
+    }
 }
 
 public class GitHubWorkflowRunsResponse
 {
-    public List<WorkflowRun> WorkflowRuns { get; } = new();
+    public System.Collections.Generic.IReadOnlyList<WorkflowRun> WorkflowRuns { get; init; } = System.Array.Empty<WorkflowRun>();
 }
 
 public class WorkflowRun
@@ -672,7 +680,7 @@ public class WorkflowRun
 
 public class GitHubArtifactsResponse
 {
-    public List<Artifact> Artifacts { get; } = new();
+    public System.Collections.Generic.IReadOnlyList<Artifact> Artifacts { get; init; } = System.Array.Empty<Artifact>();
 }
 
 public class Artifact

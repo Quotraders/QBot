@@ -33,7 +33,7 @@ public sealed class TradingMarketSnapshot
     public double BullScore { get; set; }
     public double BearScore { get; set; }
     public double OverallConfidence { get; set; }
-    public List<string> DetectedPatterns { get; set; } = new();
+    public System.Collections.Generic.IReadOnlyList<string> DetectedPatterns { get; init; } = System.Array.Empty<string>();
     
     // Decision
     public string Strategy { get; set; } = string.Empty;
@@ -186,7 +186,7 @@ public sealed class MarketSnapshotStore
             OverallConfidence = patternScores.OverallConfidence,
             DetectedPatterns = patternScores.DetectedPatterns
                 .Select(p => p.Name)
-                .ToList(),
+                .ToArray(),
             
             // Decision
             Strategy = strategy,

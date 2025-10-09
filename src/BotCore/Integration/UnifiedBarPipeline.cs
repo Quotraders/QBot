@@ -65,8 +65,7 @@ public sealed class UnifiedBarPipeline
             Symbol = symbol,
             Bar = bar,
             ProcessingStarted = DateTime.UtcNow,
-            Success = false,
-            PipelineSteps = new List<PipelineStepResult>()
+            Success = false
         };
         
         try
@@ -75,7 +74,7 @@ public sealed class UnifiedBarPipeline
             
             // Step 1: ZoneService.OnBar
             var zoneServiceResult = await ProcessZoneServiceOnBarAsync(symbol, bar, cancellationToken).ConfigureAwait(false);
-            processingResult.PipelineSteps.Add(zoneServiceResult);
+            processingResult.AddPipelineStep(zoneServiceResult);
             
             if (!zoneServiceResult.Success)
             {
@@ -85,7 +84,7 @@ public sealed class UnifiedBarPipeline
             
             // Step 2: PatternEngine.OnBar
             var patternEngineResult = await ProcessPatternEngineOnBarAsync(symbol, bar, cancellationToken).ConfigureAwait(false);
-            processingResult.PipelineSteps.Add(patternEngineResult);
+            processingResult.AddPipelineStep(patternEngineResult);
             
             if (!patternEngineResult.Success)
             {
@@ -95,7 +94,7 @@ public sealed class UnifiedBarPipeline
             
             // Step 3: DslEngine.Evaluate
             var dslEngineResult = await ProcessDslEngineEvaluateAsync(symbol, bar, cancellationToken).ConfigureAwait(false);
-            processingResult.PipelineSteps.Add(dslEngineResult);
+            processingResult.AddPipelineStep(dslEngineResult);
             
             if (!dslEngineResult.Success)
             {
@@ -105,7 +104,7 @@ public sealed class UnifiedBarPipeline
             
             // Step 4: FeatureBus.Publish (pattern signals injection)
             var featureBusResult = await ProcessFeatureBusPublishAsync(symbol, bar, patternEngineResult, cancellationToken).ConfigureAwait(false);
-            processingResult.PipelineSteps.Add(featureBusResult);
+            processingResult.AddPipelineStep(featureBusResult);
             
             // Final success determination
             processingResult.Success = featureBusResult.Success;
@@ -402,11 +401,19 @@ public sealed class UnifiedBarProcessingResult
     public string Symbol { get; set; } = string.Empty;
     public Bar Bar { get; set; } = null!;
     public DateTime ProcessingStarted { get; set; }
+    private readonly System.Collections.Generic.List<PipelineStepResult> _pipelineSteps = new();
+    
     public DateTime ProcessingCompleted { get; set; }
     public double ProcessingTimeMs { get; set; }
     public bool Success { get; set; }
     public string? Error { get; set; }
-    public List<PipelineStepResult> PipelineSteps { get; set; } = new();
+    public System.Collections.Generic.IReadOnlyList<PipelineStepResult> PipelineSteps => _pipelineSteps;
+    
+    public void AddPipelineStep(PipelineStepResult step)
+    {
+        ArgumentNullException.ThrowIfNull(step);
+        _pipelineSteps.Add(step);
+    }
 }
 
 /// <summary>

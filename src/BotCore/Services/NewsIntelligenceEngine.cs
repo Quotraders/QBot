@@ -24,7 +24,7 @@ public class NewsItem
 
 public class NewsApiResponse
 {
-    public List<NewsItem> Articles { get; set; } = new List<NewsItem>();
+    public System.Collections.Generic.IReadOnlyList<NewsItem> Articles { get; init; } = System.Array.Empty<NewsItem>();
 }
 
 /// <summary>
