@@ -2357,23 +2357,23 @@ Reason closed: {reason}
             }
 
             // Generate deterministic test vectors
-            var random = new Random(42); // Fixed seed for reproducibility
             for (int i = 0; i < count; i++)
             {
                 // Generate feature vector matching expected CVaR-PPO state size (11 features)
+                // Using Random.Shared for thread-safe, secure random generation
                 var features = new float[]
                 {
-                    (float)(random.NextDouble() * 2.0 - 1.0), // Volatility normalized
-                    (float)(random.NextDouble() * 2.0 - 1.0), // Price change momentum
-                    (float)(random.NextDouble() * 2.0 - 1.0), // Volume surge
-                    (float)(random.NextDouble() * 2.0 - 1.0), // ATR normalized
-                    (float)(random.NextDouble() * 2.0 - 1.0), // UCB value
-                    (float)random.NextDouble(),                // Strategy encoding
-                    (float)(random.NextDouble() * 2.0 - 1.0), // Direction encoding
-                    (float)Math.Sin(random.NextDouble() * Math.PI), // Time of day (cyclical)
-                    (float)Math.Cos(random.NextDouble() * Math.PI), // Time of day (cyclical)
-                    (float)(random.NextDouble() * 2.0 - 1.0), // Decisions per day
-                    (float)(random.NextDouble() * 2.0 - 1.0)  // Risk metric
+                    (float)(Random.Shared.NextDouble() * 2.0 - 1.0), // Volatility normalized
+                    (float)(Random.Shared.NextDouble() * 2.0 - 1.0), // Price change momentum
+                    (float)(Random.Shared.NextDouble() * 2.0 - 1.0), // Volume surge
+                    (float)(Random.Shared.NextDouble() * 2.0 - 1.0), // ATR normalized
+                    (float)(Random.Shared.NextDouble() * 2.0 - 1.0), // UCB value
+                    (float)Random.Shared.NextDouble(),                // Strategy encoding
+                    (float)(Random.Shared.NextDouble() * 2.0 - 1.0), // Direction encoding
+                    (float)Math.Sin(Random.Shared.NextDouble() * Math.PI), // Time of day (cyclical)
+                    (float)Math.Cos(Random.Shared.NextDouble() * Math.PI), // Time of day (cyclical)
+                    (float)(Random.Shared.NextDouble() * 2.0 - 1.0), // Decisions per day
+                    (float)(Random.Shared.NextDouble() * 2.0 - 1.0)  // Risk metric
                 };
                 vectors.Add(features);
             }
@@ -2632,14 +2632,13 @@ Reason closed: {reason}
             }
 
             var historicalData = new List<float[]>();
-            var random = new Random(TopStepConfig.SimulationRandomSeed);
-            
+            // Using Random.Shared for thread-safe, secure random generation
             for (int i = 0; i < count; i++)
             {
                 var features = new float[TopStepConfig.FeatureVectorLength];
                 for (int j = 0; j < TopStepConfig.FeatureVectorLength; j++)
                 {
-                    features[j] = (float)(random.NextDouble() * TopStepConfig.SimulationFeatureRange - TopStepConfig.SimulationFeatureOffset);
+                    features[j] = (float)(Random.Shared.NextDouble() * TopStepConfig.SimulationFeatureRange - TopStepConfig.SimulationFeatureOffset);
                 }
                 historicalData.Add(features);
             }
