@@ -1140,7 +1140,7 @@ namespace BotCore.Services
                 state.SetProperty("FinalPartialExecuted", true);
             }
             
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
         }
         
         /// <summary>
@@ -1227,7 +1227,7 @@ namespace BotCore.Services
                 _logger.LogWarning(ex, "⚠️ [POSITION-MGMT] Error applying volatility-adaptive stop for {PositionId}", state.PositionId);
             }
             
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
         }
         
         /// <summary>

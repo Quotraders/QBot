@@ -329,7 +329,7 @@ namespace BotCore.Services
                 }
             }
             
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
         }
         
         /// <summary>
@@ -411,7 +411,7 @@ namespace BotCore.Services
                 }
             }
             
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
         }
         
         /// <summary>
@@ -480,7 +480,7 @@ namespace BotCore.Services
                 }
             }
             
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
         }
         
         /// <summary>

@@ -167,7 +167,7 @@ namespace BotCore.Services
             state.LastCheckedPrice = currentPrice;
             state.LastCheckedTime = DateTime.UtcNow;
             
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
         }
         
         private void CheckZoneForBreak(
@@ -351,7 +351,7 @@ namespace BotCore.Services
                 }
             }
             
-            await Task.CompletedTask;
+            await Task.CompletedTask.ConfigureAwait(false);
         }
         
         private static decimal CalculateCurrentPrice(BotCore.Models.Position position)

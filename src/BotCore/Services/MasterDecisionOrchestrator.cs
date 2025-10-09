@@ -908,13 +908,13 @@ public class MasterDecisionOrchestrator : BackgroundService
 
         if (isCatastrophic)
         {
-            await CreateKillFileAsync(cancellationToken);
+            await CreateKillFileAsync(cancellationToken).ConfigureAwait(false);
             _logger.LogError("🚨 [GATE-5] CATASTROPHIC FAILURE - kill.txt created, live trading stopped");
         }
 
         if (shouldRollback)
         {
-            await ExecuteCanaryRollbackAsync(currentMetrics, cancellationToken);
+            await ExecuteCanaryRollbackAsync(currentMetrics, cancellationToken).ConfigureAwait(false);
         }
         else if (_canaryTradesCompleted >= minTrades && elapsedMinutes >= minMinutes)
         {
@@ -1006,7 +1006,7 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
                 $"Canary monitoring triggered emergency stop\n" +
                 $"Win Rate: {CalculateCanaryMetrics().WinRate:F2}%\n" +
                 $"Drawdown: ${CalculateCanaryMetrics().MaxDrawdown:F2}\n",
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
             
             _logger.LogCritical("🚨 [GATE-5] kill.txt created at {Path}", killFilePath);
         }

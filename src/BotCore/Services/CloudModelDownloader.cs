@@ -41,10 +41,10 @@ public class CloudModelDownloader : ICloudModelDownloader
         try
         {
             // 1. Download to staging
-            if (!await DownloadToStagingAsync(modelName, stagingPath, cancellationToken)) return false;
+            if (!await DownloadToStagingAsync(modelName, stagingPath, cancellationToken).ConfigureAwait(false)) return false;
             
             // 2. Verify hash
-            if (!await VerifyHashAsync(stagingPath, modelName, cancellationToken))
+            if (!await VerifyHashAsync(stagingPath, modelName, cancellationToken).ConfigureAwait(false))
             {
                 CleanupStaging(stagingPath);
                 return false;
@@ -75,12 +75,12 @@ public class CloudModelDownloader : ICloudModelDownloader
     private async Task<bool> DownloadToStagingAsync(string modelName, string stagingPath, CancellationToken ct)
     {
         var endpoint = Environment.GetEnvironmentVariable("CLOUD_MODEL_ENDPOINT") ?? "https://api.github.com/repos";
-        var response = await _httpClient.GetAsync($"{endpoint}/{modelName}", ct);
+        var response = await _httpClient.GetAsync($"{endpoint}/{modelName}", ct).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode) return false;
         
         Directory.CreateDirectory(Path.GetDirectoryName(stagingPath) ?? ".");
         using var fs = new FileStream(stagingPath, FileMode.Create);
-        await response.Content.CopyToAsync(fs, ct);
+        await response.Content.CopyToAsync(fs, ct).ConfigureAwait(false);
         return true;
     }
 
@@ -90,7 +90,7 @@ public class CloudModelDownloader : ICloudModelDownloader
         {
             using var sha = SHA256.Create();
             using var fs = File.OpenRead(path);
-            _ = await sha.ComputeHashAsync(fs, ct);
+            _ = await sha.ComputeHashAsync(fs, ct).ConfigureAwait(false);
             _logger.LogInformation("✓ Hash verified");
             return true;
         }
