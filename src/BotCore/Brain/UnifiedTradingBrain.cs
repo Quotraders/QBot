@@ -2049,7 +2049,7 @@ Reason closed: {reason}
                 _strategyOptimalConditions[strategy] = conditions;
             }
             
-            var condition = conditions.FirstOrDefault(c => c.ConditionName == conditionName);
+            var condition = conditions.Find(c => c.ConditionName == conditionName);
             if (condition == null)
             {
                 condition = new BotCore.Brain.Models.MarketCondition

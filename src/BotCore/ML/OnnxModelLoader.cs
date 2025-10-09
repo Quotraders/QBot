@@ -59,8 +59,8 @@ public sealed class OnnxModelLoader : IDisposable
     private const int FeatureIndexRangingRegime = 7;
     private const int FeatureIndexVolatileRegime = 8;
 
-    public event EventHandler<ModelHotReloadEvent>? ModelReloaded;
-    public event EventHandler<ModelHealthEvent>? ModelHealthChanged;
+    public event EventHandler<ModelHotReloadEventArgs>? ModelReloaded;
+    public event EventHandler<ModelHealthEventArgs>? ModelHealthChanged;
 
     public OnnxModelLoader(
         ILogger<OnnxModelLoader> logger, 
@@ -144,7 +144,7 @@ public sealed class OnnxModelLoader : IDisposable
                 modelPath, loadResult.Metadata?.Version ?? "unknown");
                 
             // Emit model reload event
-            ModelReloaded?.Invoke(this, new ModelHotReloadEvent
+            ModelReloaded?.Invoke(this, new ModelHotReloadEventArgs
             {
                 ModelKey = modelKey,
                 ModelPath = modelPath,
@@ -363,7 +363,8 @@ public sealed class OnnxModelLoader : IDisposable
             {
                 if (result.Value is Microsoft.ML.OnnxRuntime.Tensors.Tensor<float> tensor)
                 {
-                    var hasNaN = tensor.ToArray().Any(f => float.IsNaN(f) || float.IsInfinity(f));
+                    var tensorArray = tensor.ToArray();
+                    var hasNaN = Array.Exists(tensorArray, f => float.IsNaN(f) || float.IsInfinity(f));
                     if (hasNaN)
                     {
                         return Task.FromResult(new HealthProbeResult 
@@ -565,7 +566,7 @@ public sealed class OnnxModelLoader : IDisposable
                     modelFile, loadResult.Metadata?.Version ?? "unknown");
                 
                 // Emit reload event
-                ModelReloaded?.Invoke(this, new ModelHotReloadEvent
+                ModelReloaded?.Invoke(this, new ModelHotReloadEventArgs
                 {
                     ModelKey = modelKey,
                     ModelPath = modelFile,
@@ -579,7 +580,7 @@ public sealed class OnnxModelLoader : IDisposable
                 _logger.LogError("[ONNX-Loader] ❌ Hot-reload failed - model failed health probe: {ModelFile}", modelFile);
                 
                 // Emit health event
-                ModelHealthChanged?.Invoke(this, new ModelHealthEvent
+                ModelHealthChanged?.Invoke(this, new ModelHealthEventArgs
                 {
                     ModelKey = modelKey,
                     ModelPath = modelFile,
@@ -593,7 +594,7 @@ public sealed class OnnxModelLoader : IDisposable
         {
             _logger.LogError(ex, "[ONNX-Loader] ❌ Hot-reload error: {ModelFile}", modelFile);
             
-            ModelHealthChanged?.Invoke(this, new ModelHealthEvent
+            ModelHealthChanged?.Invoke(this, new ModelHealthEventArgs
             {
                 ModelKey = modelKey,
                 ModelPath = modelFile,
@@ -930,7 +931,15 @@ public sealed class OnnxModelLoader : IDisposable
                 // Cleanup temp file on error
                 if (File.Exists(tempModelPath))
                 {
-                    try { File.Delete(tempModelPath); } catch { }
+                    try 
+                    { 
+                        File.Delete(tempModelPath); 
+                    } 
+                    catch (Exception cleanupEx)
+                    {
+                        // Ignore cleanup errors - temp file deletion is best-effort
+                        _logger.LogDebug(cleanupEx, "[ONNX-Loader] Failed to cleanup temp file: {TempPath}", tempModelPath);
+                    }
                 }
                 throw;
             }
@@ -1325,7 +1334,7 @@ public class HealthProbeResult
 /// <summary>
 /// Event for model hot-reload notifications
 /// </summary>
-public class ModelHotReloadEvent : EventArgs
+public class ModelHotReloadEventArgs : EventArgs
 {
     public string ModelKey { get; set; } = string.Empty;
     public string ModelPath { get; set; } = string.Empty;
@@ -1337,7 +1346,7 @@ public class ModelHotReloadEvent : EventArgs
 /// <summary>
 /// Event for model health status changes
 /// </summary>
-public class ModelHealthEvent : EventArgs
+public class ModelHealthEventArgs : EventArgs
 {
     public string ModelKey { get; set; } = string.Empty;
     public string ModelPath { get; set; } = string.Empty;

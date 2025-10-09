@@ -15,6 +15,7 @@ namespace BotCore.ML
     /// </summary>
     public class UcbManager : IDisposable
     {
+        private const string DefaultUcbServiceUrl = "http://localhost:8001";
         private readonly HttpClient _http;
         private readonly ILogger<UcbManager> _logger;
         private static readonly JsonSerializerSettings JsonCfg = new()
@@ -26,7 +27,7 @@ namespace BotCore.ML
         public UcbManager(ILogger<UcbManager> logger)
         {
             _logger = logger;
-            var ucbUrl = Environment.GetEnvironmentVariable("UCB_SERVICE_URL") ?? "http://localhost:8001";
+            var ucbUrl = Environment.GetEnvironmentVariable("UCB_SERVICE_URL") ?? DefaultUcbServiceUrl;
             _http = new HttpClient 
             { 
                 BaseAddress = new Uri(ucbUrl),
