@@ -48,6 +48,7 @@ namespace TradingBot.Backtest
         private readonly IExecutionSimulator _executionSimulator;
         private readonly IMetricSink _metricSink;
         private readonly IModelRegistry _modelRegistry;
+        private readonly IMLConfigurationService _mlConfigService;
 
         public BacktestHarnessService(
             ILogger<BacktestHarnessService> logger,
@@ -55,7 +56,8 @@ namespace TradingBot.Backtest
             IHistoricalDataProvider dataProvider,
             IExecutionSimulator executionSimulator,
             IMetricSink metricSink,
-            IModelRegistry modelRegistry)
+            IModelRegistry modelRegistry,
+            IMLConfigurationService mlConfigService)
         {
             _logger = logger;
             _options = options.Value;
@@ -63,6 +65,7 @@ namespace TradingBot.Backtest
             _executionSimulator = executionSimulator;
             _metricSink = metricSink;
             _modelRegistry = modelRegistry;
+            _mlConfigService = mlConfigService ?? throw new ArgumentNullException(nameof(mlConfigService));
         }
 
         /// <summary>
@@ -218,7 +221,7 @@ namespace TradingBot.Backtest
             
             // For now, create a basic decision framework
             var decision = TradingAction.Hold;
-            var confidence = 0.5m;
+            var confidence = (decimal)_mlConfigService.GetMinimumConfidence(); // Use minimum confidence for hold/neutral decisions
             var rationale = "Hold - no clear signal";
 
             // Basic decision logic based on quote data
@@ -235,13 +238,13 @@ namespace TradingBot.Backtest
                 if (signal > 0.6)
                 {
                     decision = TradingAction.Buy;
-                    confidence = 0.70m;
+                    confidence = (decimal)_mlConfigService.GetAIConfidenceThreshold();
                     rationale = "Buy signal - favorable conditions";
                 }
                 else if (signal < 0.4)
                 {
                     decision = TradingAction.Sell;
-                    confidence = 0.70m;
+                    confidence = (decimal)_mlConfigService.GetAIConfidenceThreshold();
                     rationale = "Sell signal - favorable conditions";
                 }
             }
