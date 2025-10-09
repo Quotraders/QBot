@@ -481,12 +481,10 @@ namespace TopstepX.S6
 
                 // build 5m aggregate at minute 4/9/14...
                 int mod5 = bar.TimeET.Minute % 5;
-                if (mod5 == IndicatorConstants.FiveMinuteAggregationTrigger)
+                if (mod5 == IndicatorConstants.FiveMinuteAggregationTrigger && Min1.Count >= IndicatorConstants.FiveMinuteBarsToAggregate)
                 {
                     // aggregate last 5 1m bars
-                    if (Min1.Count >= IndicatorConstants.FiveMinuteBarsToAggregate)
-                    {
-                        var b4 = Min1.Last(IndicatorConstants.PreviousBar4Index); var b3 = Min1.Last(IndicatorConstants.PreviousBar3Index); var b2 = Min1.Last(IndicatorConstants.PreviousBar2Index); var b1 = Min1.Last(IndicatorConstants.PreviousBar1Index); var b0 = Min1.Last(IndicatorConstants.CurrentBarIndex);
+                    var b4 = Min1.Last(IndicatorConstants.PreviousBar4Index); var b3 = Min1.Last(IndicatorConstants.PreviousBar3Index); var b2 = Min1.Last(IndicatorConstants.PreviousBar2Index); var b1 = Min1.Last(IndicatorConstants.PreviousBar1Index); var b0 = Min1.Last(IndicatorConstants.CurrentBarIndex);
                         long o = b4.Open; long h = Math.Max(Math.Max(Math.Max(Math.Max(b4.High,b3.High),b2.High),b1.High),b0.High);
                         long l = Math.Min(Math.Min(Math.Min(Math.Min(b4.Low, b3.Low), b2.Low), b1.Low), b0.Low);
                         long c = b0.Close; double v = b4.Volume + b3.Volume + b2.Volume + b1.Volume + b0.Volume;
