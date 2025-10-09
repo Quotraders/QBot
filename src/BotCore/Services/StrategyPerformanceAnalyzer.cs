@@ -189,7 +189,7 @@ public class StrategyPerformanceAnalyzer
             // Update trade data
             foreach (var trade in trades)
             {
-                analysis.AllTrades.Add(trade);
+                analysis.AllTradesInternal.Add(trade);
                 
                 // Update regime-based performance
                 if (!_regimePerformance.TryGetValue(trade.AnalyzerMarketRegime, out var regimeDict))
@@ -547,7 +547,7 @@ public class StrategyPerformanceAnalyzer
         analysis.ProfitFactor = totalLosses > 0 ? totalWins / totalLosses : totalWins > 0 ? MaxProfitFactorFallback : 0m;
         
         // Max drawdown
-        analysis.MaxDrawdown = CalculateMaxDrawdown(trades);
+        analysis.MaxDrawdown = CalculateMaxDrawdown(analysis.AllTradesInternal);
         
         // Overall score calculation
         analysis.OverallScore = CalculateOverallScore(analysis);
@@ -950,8 +950,11 @@ public class StrategyPerformanceAnalyzer
 // Supporting classes and enums for strategy analysis
 public class StrategyAnalysis
 {
+    private readonly List<AnalyzerTradeOutcome> _allTrades = new();
+    
     public string StrategyName { get; set; } = "";
-    public List<AnalyzerTradeOutcome> AllTrades { get; } = new();
+    public IReadOnlyList<AnalyzerTradeOutcome> AllTrades => _allTrades;
+    internal List<AnalyzerTradeOutcome> AllTradesInternal => _allTrades;
     public decimal TotalPnL { get; set; }
     public decimal WinRate { get; set; }
     public decimal ProfitFactor { get; set; }

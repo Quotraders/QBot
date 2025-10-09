@@ -1721,7 +1721,7 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
             // Add performance data to the collection property
             foreach (var performance in _performanceTracking.Values)
             {
-                report.SourcePerformance.Add(performance);
+                report.SourcePerformanceInternal.Add(performance);
             }
             
             // Save report
@@ -1980,9 +1980,12 @@ public class MasterOrchestratorStatus
 
 public class PerformanceReport
 {
+    private readonly List<DecisionPerformance> _sourcePerformance = new();
+    
     public DateTime Timestamp { get; set; }
     public OverallStats OverallStats { get; set; } = new();
-    public List<DecisionPerformance> SourcePerformance { get; } = new();
+    public IReadOnlyList<DecisionPerformance> SourcePerformance => _sourcePerformance;
+    internal List<DecisionPerformance> SourcePerformanceInternal => _sourcePerformance;
 }
 
 public class OverallStats

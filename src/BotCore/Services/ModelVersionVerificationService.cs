@@ -80,7 +80,7 @@ namespace BotCore.Services
                 if (!File.Exists(modelPath))
                 {
                     result.IsValid = false;
-                    result.ValidationErrors.Add("Model file does not exist");
+                    result.ValidationErrorsInternal.Add("Model file does not exist");
                     return result;
                 }
 
@@ -97,7 +97,7 @@ namespace BotCore.Services
                 {
                     result.IsValid = false;
                     result.IsDuplicate = true;
-                    result.ValidationErrors.Add($"Duplicate model detected. Identical to version {existingVersion.Version} created at {existingVersion.CreatedAt}");
+                    result.ValidationErrorsInternal.Add($"Duplicate model detected. Identical to version {existingVersion.Version} created at {existingVersion.CreatedAt}");
                     
                     _logger.LogWarning("[MODEL-VERSION] Duplicate model detected: {ModelPath} matches {ExistingVersion}",
                         modelPath, existingVersion.Version);
@@ -112,22 +112,22 @@ namespace BotCore.Services
                 result.IntegrityValid = await ValidateModelIntegrityAsync(modelPath).ConfigureAwait(false);
                 if (!result.IntegrityValid)
                 {
-                    result.ValidationErrors.Add("Model integrity validation failed");
+                    result.ValidationErrorsInternal.Add("Model integrity validation failed");
                 }
 
                 // Compare with previous versions if required
-                if (_config.RequireVersionDifference && registry.Versions.Count > 0)
+                if (_config.RequireVersionDifference && registry.VersionsInternal.Count > 0)
                 {
                     var isSignificantlyDifferent = await ValidateSignificantDifferenceAsync(modelPath, registry).ConfigureAwait(false);
                     if (!isSignificantlyDifferent)
                     {
                         result.IsValid = false;
-                        result.ValidationErrors.Add($"Model does not meet minimum difference threshold of {_config.MinWeightChangePct}%");
+                        result.ValidationErrorsInternal.Add($"Model does not meet minimum difference threshold of {_config.MinWeightChangePct}%");
                     }
                 }
 
                 // If all validations pass
-                if (result.ValidationErrors.Count == 0 && result.IntegrityValid)
+                if (result.ValidationErrorsInternal.Count == 0 && result.IntegrityValid)
                 {
                     result.IsValid = true;
                     
@@ -143,7 +143,7 @@ namespace BotCore.Services
                     };
 
                     // Add to registry
-                    registry.Versions.Add(versionInfo);
+                    registry.VersionsInternal.Add(versionInfo);
                     registry.LastUpdated = DateTime.UtcNow;
 
                     // Backup model if configured
@@ -177,7 +177,7 @@ namespace BotCore.Services
                     ModelPath = modelPath,
                     IsValid = false
                 };
-                errorResult.ValidationErrors.Add($"Verification error: {ex.Message}");
+                errorResult.ValidationErrorsInternal.Add($"Verification error: {ex.Message}");
                 return errorResult;
             }
         }
@@ -437,16 +437,16 @@ namespace BotCore.Services
         {
             try
             {
-                if (registry.Versions.Count > _config.ModelRegistry.MaxVersionHistory)
+                if (registry.VersionsInternal.Count > _config.ModelRegistry.MaxVersionHistory)
                 {
-                    var versionsToRemove = registry.Versions
+                    var versionsToRemove = registry.VersionsInternal
                         .OrderBy(v => v.CreatedAt)
-                        .Take(registry.Versions.Count - _config.ModelRegistry.MaxVersionHistory)
+                        .Take(registry.VersionsInternal.Count - _config.ModelRegistry.MaxVersionHistory)
                         .ToList();
 
                     foreach (var version in versionsToRemove)
                     {
-                        registry.Versions.Remove(version);
+                        registry.VersionsInternal.Remove(version);
                         _logger.LogInformation("[REGISTRY] Removed old version from registry: {Version}", version.Version);
                     }
                 }
@@ -515,11 +515,14 @@ namespace BotCore.Services
     {
         public string ModelPath { get; set; } = string.Empty;
         public string Version { get; set; } = string.Empty;
+        private readonly List<string> _validationErrors = new();
+        
         public string ModelHash { get; set; } = string.Empty;
         public bool IsValid { get; set; }
         public bool IsDuplicate { get; set; }
         public bool IntegrityValid { get; set; }
-        public List<string> ValidationErrors { get; } = new();
+        public IReadOnlyList<string> ValidationErrors => _validationErrors;
+        internal List<string> ValidationErrorsInternal => _validationErrors;
         public ModelMetadata? Metadata { get; set; }
         public DateTime VerificationTime { get; set; }
     }
@@ -542,7 +545,10 @@ namespace BotCore.Services
     /// </summary>
     public class ModelVersionRegistry
     {
-        public List<ModelVersionInfo> Versions { get; } = new();
+        private readonly List<ModelVersionInfo> _versions = new();
+        
+        public IReadOnlyList<ModelVersionInfo> Versions => _versions;
+        internal List<ModelVersionInfo> VersionsInternal => _versions;
         public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
         public string RegistryVersion { get; set; } = "1.0";
     }

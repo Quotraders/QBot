@@ -370,7 +370,7 @@ namespace BotCore.Services
         /// <summary>
         /// Get all zone break events for a symbol (for testing/monitoring)
         /// </summary>
-        public List<ZoneBreakEvent> GetRecentBreaks(string symbol, TimeSpan lookback)
+        public IReadOnlyList<ZoneBreakEvent> GetRecentBreaks(string symbol, TimeSpan lookback)
         {
             var cutoff = DateTime.UtcNow - lookback;
             var events = new List<ZoneBreakEvent>();
