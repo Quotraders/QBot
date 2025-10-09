@@ -959,7 +959,14 @@ public class NightlyParameterTuner
             TrainingWindow = TimeSpan.FromDays(7),
             FeaturesVersion = "v1.0",
             Metrics = result.BestMetrics,
-            ModelData = new byte[1024] // Mock model data
+            // Model serialization: When actual training is implemented in EvaluateParametersAsync,
+            // this should serialize the trained model using the appropriate method:
+            // - For ONNX: Export model to ONNX format and read bytes (File.ReadAllBytes(onnxPath))
+            // - For PyTorch: Use torch.save(model.state_dict(), path) and read bytes
+            // - For TensorFlow: Export as SavedModel, zip directory, and read bytes
+            // - For ML.NET: Use mlContext.Model.Save() to memory stream (memoryStream.ToArray())
+            // Current implementation uses simulated evaluation without actual model training
+            ModelData = new byte[1024] // Placeholder for model bytes - requires actual training implementation
         };
         
         // Populate metadata dictionary

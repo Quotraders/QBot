@@ -395,7 +395,7 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
     private static decimal EstimateBreakoutScore(SymbolState s, decimal px, Zone opp, decimal atr)
     {
         const int lookbackBars = 20;
-        const decimal defaultVdc = 1.0m;
+        const int baselineAtrPeriod = 50;
         const decimal maxDistanceAtr = 3.0m;
         const decimal maxTestsForScore = 5.0m;
         const decimal momentumWeight = 1.5m;
@@ -403,12 +403,14 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
         const decimal testsWeight = 0.5m;
         const decimal distanceWeight = 1.0m;
         const decimal logisticBias = 0.5m;
+        const decimal minVolatilityRatio = 0.5m;
+        const decimal maxVolatilityRatio = 2.0m;
         
         int k = Math.Min(lookbackBars, s.Bars.Count - 1);
         if (k <= MinHistoryBars) return InitialZonePressure;
         
         var momentum = CalculateMomentum(s, k, atr);
-        var volatilityRatio = defaultVdc; // Placeholder for actual VDC calculation
+        var volatilityRatio = CalculateVolatilityRatio(s, atr, baselineAtrPeriod, minVolatilityRatio, maxVolatilityRatio);
         var distance = CalculateNormalizedDistance(px, opp, atr, maxDistanceAtr);
         var testsFactor = CalculateTestsFactor(opp, maxTestsForScore);
         
@@ -421,6 +423,49 @@ public sealed class ZoneServiceProduction : IZoneService, IZoneFeatureSource
         var last = s.Bars[s.Bars.Count - 1];
         var prev = s.Bars[s.Bars.Count - 1 - lookback];
         return (last.C - prev.C) / atr;
+    }
+
+    private static decimal CalculateVolatilityRatio(SymbolState s, decimal currentAtr, int baselinePeriod, decimal minRatio, decimal maxRatio)
+    {
+        // VDC = Volatility Dynamic Component
+        // Measures how current volatility compares to baseline
+        // Higher volatility = zones more fragile, price moves faster
+        // Lower volatility = zones more stable, harder to break
+        
+        const decimal defaultVolatilityRatio = 1.0m;
+        const int minBarsForBaseline = 2;
+        const int baselineStartOffset = 1;
+        
+        if (currentAtr <= 0) return defaultVolatilityRatio;
+        
+        // Calculate baseline volatility using longer-period ATR
+        int availableBars = Math.Min(baselinePeriod, s.Bars.Count);
+        if (availableBars < minBarsForBaseline) return defaultVolatilityRatio;
+        
+        decimal sumTrueRange = 0m;
+        for (int i = baselineStartOffset; i < availableBars; i++)
+        {
+            var current = s.Bars[s.Bars.Count - 1 - i];
+            var previous = s.Bars[s.Bars.Count - i];
+            var tr = Math.Max(
+                current.H - current.L,
+                Math.Max(
+                    Math.Abs(current.H - previous.C),
+                    Math.Abs(current.L - previous.C)
+                )
+            );
+            sumTrueRange += tr;
+        }
+        
+        var baselineAtr = sumTrueRange / (availableBars - 1);
+        
+        if (baselineAtr <= 0) return defaultVolatilityRatio;
+        
+        // Calculate volatility ratio
+        var volatilityRatio = currentAtr / baselineAtr;
+        
+        // Clamp ratio to reasonable bounds
+        return Math.Clamp(volatilityRatio, minRatio, maxRatio);
     }
 
     private static decimal CalculateNormalizedDistance(decimal price, Zone zone, decimal atr, decimal maxDistance)
