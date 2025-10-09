@@ -128,7 +128,13 @@ public class BatchedOnnxInferenceService : IDisposable
 
             LogHardwareDetection(_logger, string.Join(", ", providers), null);
         }
-        catch (Exception ex)
+        catch (OnnxRuntimeException ex)
+        {
+            LogHardwareDetectionFailed(_logger, ex);
+            _gpuAvailable = false;
+            _quantizedModelsSupported = false;
+        }
+        catch (InvalidOperationException ex)
         {
             LogHardwareDetectionFailed(_logger, ex);
             _gpuAvailable = false;
@@ -193,7 +199,15 @@ public class BatchedOnnxInferenceService : IDisposable
                 await ProcessModelBatchAsync(group.Key, group.ToList()).ConfigureAwait(false);
             }
         }
-        catch (Exception ex)
+        catch (OnnxRuntimeException ex)
+        {
+            LogBatchProcessingError(_logger, ex);
+        }
+        catch (InvalidOperationException ex)
+        {
+            LogBatchProcessingError(_logger, ex);
+        }
+        catch (ArgumentException ex)
         {
             LogBatchProcessingError(_logger, ex);
         }
@@ -225,7 +239,17 @@ public class BatchedOnnxInferenceService : IDisposable
                 await ProcessSingleBatchAsync(session, batchRequests).ConfigureAwait(false);
             }
         }
-        catch (Exception ex)
+        catch (OnnxRuntimeException ex)
+        {
+            LogModelBatchError(_logger, ex);
+            FailRequests(requests, ex);
+        }
+        catch (InvalidOperationException ex)
+        {
+            LogModelBatchError(_logger, ex);
+            FailRequests(requests, ex);
+        }
+        catch (ArgumentException ex)
         {
             LogModelBatchError(_logger, ex);
             FailRequests(requests, ex);
@@ -239,8 +263,6 @@ public class BatchedOnnxInferenceService : IDisposable
     {
         try
         {
-            var startTime = DateTime.UtcNow;
-
             // Prepare batch input
             var batchSize = batchRequests.Count;
             var featureSize = batchRequests[0].Features.Length;
@@ -279,13 +301,20 @@ public class BatchedOnnxInferenceService : IDisposable
 
                     batchRequests[i].CompletionSource.SetResult(result);
                 }
-                catch (Exception ex)
+                catch (IndexOutOfRangeException ex)
+                {
+                    batchRequests[i].CompletionSource.SetException(ex);
+                }
+                catch (ArgumentException ex)
+                {
+                    batchRequests[i].CompletionSource.SetException(ex);
+                }
+                catch (InvalidOperationException ex)
                 {
                     batchRequests[i].CompletionSource.SetException(ex);
                 }
             }
 
-            var duration = DateTime.UtcNow - startTime;
             LogBatchProcessed(_logger, batchSize, null);
 
             // Dispose outputs
@@ -294,7 +323,22 @@ public class BatchedOnnxInferenceService : IDisposable
                 output.Dispose();
             }
         }
-        catch (Exception ex)
+        catch (OnnxRuntimeException ex)
+        {
+            LogBatchProcessingException(_logger, ex);
+            FailRequests(batchRequests, ex);
+        }
+        catch (IndexOutOfRangeException ex)
+        {
+            LogBatchProcessingException(_logger, ex);
+            FailRequests(batchRequests, ex);
+        }
+        catch (InvalidOperationException ex)
+        {
+            LogBatchProcessingException(_logger, ex);
+            FailRequests(batchRequests, ex);
+        }
+        catch (ArgumentException ex)
         {
             LogBatchProcessingException(_logger, ex);
             FailRequests(batchRequests, ex);
@@ -309,7 +353,7 @@ public class BatchedOnnxInferenceService : IDisposable
             {
                 request.CompletionSource.SetException(exception);
             }
-            catch
+            catch (InvalidOperationException)
             {
                 // Ignore if already completed
             }
