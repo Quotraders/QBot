@@ -338,45 +338,45 @@ public sealed class OnnxModelValidationService
         var summary = GetValidationSummary();
 
         var sb = new StringBuilder();
-        sb.AppendLine("=== ONNX Model Validation Report ===");
-        sb.AppendLine($"Generated: {summary.ValidationDate:yyyy-MM-dd HH:mm:ss}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"=== ONNX Model Validation Report ===");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"Generated: {summary.ValidationDate:yyyy-MM-dd HH:mm:ss}");
         sb.AppendLine();
-        sb.AppendLine("SUMMARY:");
-        sb.AppendLine($"- Total Models: {summary.TotalModels}");
-        sb.AppendLine($"- Valid Models: {summary.ValidModels}");
-        sb.AppendLine($"- Failed Models: {summary.FailedModels}");
-        sb.AppendLine($"- Success Rate: {summary.SuccessRate:P1}");
-        sb.AppendLine($"- Total Load Time: {summary.TotalLoadTimeMs:F0}ms");
-        sb.AppendLine($"- Total Memory Usage: {summary.TotalMemoryUsageMB}MB");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"SUMMARY:");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"- Total Models: {summary.TotalModels}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"- Valid Models: {summary.ValidModels}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"- Failed Models: {summary.FailedModels}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"- Success Rate: {summary.SuccessRate:P1}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"- Total Load Time: {summary.TotalLoadTimeMs:F0}ms");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"- Total Memory Usage: {summary.TotalMemoryUsageMB}MB");
         sb.AppendLine();
-        sb.AppendLine($"STATUS: {(success ? "✅ ALL MODELS VALID" : "❌ SOME MODELS FAILED")}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"STATUS: {(success ? "✅ ALL MODELS VALID" : "❌ SOME MODELS FAILED")}");
 
         if (summary.FailedModels > 0)
         {
             sb.AppendLine();
-            sb.AppendLine("FAILED MODELS:");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"FAILED MODELS:");
             foreach (var failedPath in summary.FailedModelPaths)
             {
                 if (_validationResults.TryGetValue(failedPath, out var result))
                 {
-                    sb.AppendLine($"- {failedPath}: {result.ErrorMessage}");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"- {failedPath}: {result.ErrorMessage}");
                 }
             }
         }
 
         sb.AppendLine();
-        sb.AppendLine("DETAILED RESULTS:");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"DETAILED RESULTS:");
         foreach (var result in _validationResults.Values.OrderBy(r => r.ModelPath))
         {
             var status = result.IsValid ? "✅" : "❌";
-            sb.AppendLine($"{status} {Path.GetFileName(result.ModelPath)} " +
+            sb.AppendLine(CultureInfo.InvariantCulture, $"{status} {Path.GetFileName(result.ModelPath)} " +
                          $"({result.LoadTime.TotalMilliseconds:F0}ms, " +
                          $"{result.MemoryUsage / KilobytesToMegabytes / KilobytesToMegabytes}MB, " +
                          $"{result.InputCount}→{result.OutputCount})");
             
             if (!result.IsValid)
             {
-                sb.AppendLine($"   Error: {result.ErrorMessage}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"   Error: {result.ErrorMessage}");
             }
         }
 

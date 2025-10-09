@@ -2217,7 +2217,7 @@ Reason closed: {reason}
 
                 // Check 1: Feature specification compatibility
                 _logger.LogInformation("[1/4] Validating feature specification compatibility...");
-                var featureCheckPassed = await ValidateFeatureSpecificationAsync(newModelPath, cancellationToken);
+                var featureCheckPassed = await ValidateFeatureSpecificationAsync(newModelPath, cancellationToken).ConfigureAwait(false);
                 if (!featureCheckPassed)
                 {
                     var reason = "Feature specification mismatch - new model expects different input features";
@@ -2236,7 +2236,7 @@ Reason closed: {reason}
                 if (File.Exists(currentModelPath))
                 {
                     var (distributionValid, divergence) = await ComparePredictionDistributionsAsync(
-                        currentModelPath, newModelPath, sanityTestVectors, cancellationToken);
+                        currentModelPath, newModelPath, sanityTestVectors, cancellationToken).ConfigureAwait(false);
                     
                     if (!distributionValid)
                     {
@@ -2253,7 +2253,7 @@ Reason closed: {reason}
 
                 // Check 4: NaN/Infinity validation
                 _logger.LogInformation("[4/4] Validating model outputs for NaN/Infinity...");
-                var outputValidationPassed = await ValidateModelOutputsAsync(newModelPath, sanityTestVectors, cancellationToken);
+                var outputValidationPassed = await ValidateModelOutputsAsync(newModelPath, sanityTestVectors, cancellationToken).ConfigureAwait(false);
                 if (!outputValidationPassed)
                 {
                     var reason = "Model produces NaN or Infinity values - unstable model";
@@ -2267,7 +2267,7 @@ Reason closed: {reason}
                 {
                     _logger.LogInformation("[5/5] Running historical replay simulation...");
                     var (simulationPassed, drawdownRatio) = await RunHistoricalSimulationAsync(
-                        currentModelPath, newModelPath, cancellationToken);
+                        currentModelPath, newModelPath, cancellationToken).ConfigureAwait(false);
                     
                     if (!simulationPassed)
                     {
@@ -2301,10 +2301,10 @@ Reason closed: {reason}
                 if (!File.Exists(featureSpecPath))
                 {
                     _logger.LogWarning("Feature specification not found - creating default");
-                    await CreateDefaultFeatureSpecificationAsync(featureSpecPath, cancellationToken);
+                    await CreateDefaultFeatureSpecificationAsync(featureSpecPath, cancellationToken).ConfigureAwait(false);
                 }
 
-                var featureSpec = await File.ReadAllTextAsync(featureSpecPath, cancellationToken);
+                var featureSpec = await File.ReadAllTextAsync(featureSpecPath, cancellationToken).ConfigureAwait(false);
                 _ = JsonSerializer.Deserialize<Dictionary<string, object>>(featureSpec);
                 
                 // For now, we'll validate that the model file exists and is a valid ONNX file
@@ -2417,8 +2417,8 @@ Reason closed: {reason}
 
                 foreach (var vector in testVectors)
                 {
-                    var currentOutput = await Task.Run(() => RunInference(currentSession, vector), cancellationToken);
-                    var newOutput = await Task.Run(() => RunInference(newSession, vector), cancellationToken);
+                    var currentOutput = await Task.Run(() => RunInference(currentSession, vector), cancellationToken).ConfigureAwait(false);
+                    var newOutput = await Task.Run(() => RunInference(newSession, vector), cancellationToken).ConfigureAwait(false);
                     
                     currentPredictions.Add(currentOutput);
                     newPredictions.Add(newOutput);
@@ -2539,7 +2539,7 @@ Reason closed: {reason}
 
                 foreach (var vector in testVectors)
                 {
-                    var output = await Task.Run(() => RunInference(session, vector), cancellationToken);
+                    var output = await Task.Run(() => RunInference(session, vector), cancellationToken).ConfigureAwait(false);
                     
                     foreach (var value in output)
                     {
@@ -2578,7 +2578,7 @@ Reason closed: {reason}
                 var simulationBars = _gate4Config.SimulationBars;
                 var maxDrawdownMultiplier = _gate4Config.MaxDrawdownMultiplier;
                 
-                var historicalData = await LoadHistoricalDataAsync(simulationBars, cancellationToken);
+                var historicalData = await LoadHistoricalDataAsync(simulationBars, cancellationToken).ConfigureAwait(false);
                 if (historicalData.Count < TopStepConfig.MinHistoricalBarsForSimulation)
                 {
                     _logger.LogWarning("  Insufficient historical data for simulation - using available {Count} bars", historicalData.Count);
@@ -2587,8 +2587,8 @@ Reason closed: {reason}
                 currentSession = new InferenceSession(currentModelPath);
                 newSession = new InferenceSession(newModelPath);
 
-                var currentMaxDrawdown = await SimulateDrawdownAsync(currentSession, historicalData, cancellationToken);
-                var newMaxDrawdown = await SimulateDrawdownAsync(newSession, historicalData, cancellationToken);
+                var currentMaxDrawdown = await SimulateDrawdownAsync(currentSession, historicalData, cancellationToken).ConfigureAwait(false);
+                var newMaxDrawdown = await SimulateDrawdownAsync(newSession, historicalData, cancellationToken).ConfigureAwait(false);
 
                 var drawdownRatio = currentMaxDrawdown > 0 ? newMaxDrawdown / currentMaxDrawdown : 1.0;
 
@@ -2618,7 +2618,7 @@ Reason closed: {reason}
             {
                 if (File.Exists(dataPath))
                 {
-                    var json = await File.ReadAllTextAsync(dataPath, cancellationToken);
+                    var json = await File.ReadAllTextAsync(dataPath, cancellationToken).ConfigureAwait(false);
                     var data = JsonSerializer.Deserialize<List<float[]>>(json);
                     if (data != null && data.Count > 0)
                     {
@@ -2647,7 +2647,7 @@ Reason closed: {reason}
             {
                 Directory.CreateDirectory(dataDir);
                 var json = JsonSerializer.Serialize(historicalData, new JsonSerializerOptions { WriteIndented = true });
-                await File.WriteAllTextAsync(dataPath, json, cancellationToken);
+                await File.WriteAllTextAsync(dataPath, json, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -2668,7 +2668,7 @@ Reason closed: {reason}
 
             foreach (var data in historicalData)
             {
-                var prediction = await Task.Run(() => RunInference(session, data), cancellationToken);
+                var prediction = await Task.Run(() => RunInference(session, data), cancellationToken).ConfigureAwait(false);
                 
                 var simulatedReturn = prediction.Length > 0 ? prediction[0] * 0.01 : 0.0;
                 equity += simulatedReturn;
@@ -2712,7 +2712,7 @@ Reason closed: {reason}
 
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             var json = JsonSerializer.Serialize(spec, new JsonSerializerOptions { WriteIndented = true });
-            await File.WriteAllTextAsync(path, json, cancellationToken);
+            await File.WriteAllTextAsync(path, json, cancellationToken).ConfigureAwait(false);
             _logger.LogInformation("Created default feature specification at {Path}", path);
         }
 
@@ -2730,7 +2730,7 @@ Reason closed: {reason}
                 _logger.LogInformation("🔄 [MODEL-RELOAD] Starting model reload: {NewModel}", newModelPath);
 
                 var (isValid, reason) = await ValidateModelForReloadAsync(
-                    newModelPath, currentModelPath, cancellationToken);
+                    newModelPath, currentModelPath, cancellationToken).ConfigureAwait(false);
 
                 if (!isValid)
                 {
@@ -2742,7 +2742,7 @@ Reason closed: {reason}
                 _logger.LogInformation("💾 [MODEL-RELOAD] Backup created: {BackupPath}", backupPath);
 
                 var (swapSuccess, oldVersion, newVersion) = await AtomicModelSwapAsync(
-                    currentModelPath, newModelPath, cancellationToken);
+                    currentModelPath, newModelPath, cancellationToken).ConfigureAwait(false);
 
                 if (!swapSuccess)
                 {

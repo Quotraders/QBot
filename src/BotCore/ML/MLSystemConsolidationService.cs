@@ -412,15 +412,15 @@ public sealed class MLSystemConsolidationService
         var plan = await AnalyzeDuplicateSystemsAsync().ConfigureAwait(false);
         
         var sb = new StringBuilder();
-        sb.AppendLine("=== ML System Consolidation Report ===");
-        sb.AppendLine($"Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"=== ML System Consolidation Report ===");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
         sb.AppendLine();
-        sb.AppendLine("ANALYSIS SUMMARY:");
-        sb.AppendLine($"- Duplicates Found: {plan.DuplicatesFound}");
-        sb.AppendLine($"- Conflicts Found: {plan.ConflictsFound}");
-        sb.AppendLine($"- Actions Planned: {_consolidationActions.Count}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"ANALYSIS SUMMARY:");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"- Duplicates Found: {plan.DuplicatesFound}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"- Conflicts Found: {plan.ConflictsFound}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"- Actions Planned: {_consolidationActions.Count}");
         sb.AppendLine();
-        sb.AppendLine("RECOMMENDED ACTIONS:");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"RECOMMENDED ACTIONS:");
 
         foreach (var action in _consolidationActions)
         {
@@ -432,32 +432,32 @@ public sealed class MLSystemConsolidationService
                 _ => "⏳"
             };
 
-            sb.AppendLine($"{statusIcon} {action.Action}");
-            sb.AppendLine($"   Source: {action.SourcePath}");
-            sb.AppendLine($"   Target: {action.TargetPath}");
-            sb.AppendLine($"   Reason: {action.Reason}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"{statusIcon} {action.Action}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"   Source: {action.SourcePath}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"   Target: {action.TargetPath}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"   Reason: {action.Reason}");
             
             if (!string.IsNullOrEmpty(action.ErrorMessage))
             {
-                sb.AppendLine($"   Error: {action.ErrorMessage}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"   Error: {action.ErrorMessage}");
             }
             
             sb.AppendLine();
         }
 
-        sb.AppendLine("CONSOLIDATION STRATEGY:");
-        sb.AppendLine("1. Keep BotCore/ML as the primary ML implementation directory");
-        sb.AppendLine("2. Remove duplicate MLMemoryManager from Enhanced/MLRLSystem.cs");
-        sb.AppendLine("3. Migrate any unique functionality from Enhanced to BotCore");
-        sb.AppendLine("4. Update references to use consolidated implementations");
-        sb.AppendLine("5. Remove or deprecate Enhanced ML duplicates");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"CONSOLIDATION STRATEGY:");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"1. Keep BotCore/ML as the primary ML implementation directory");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"2. Remove duplicate MLMemoryManager from Enhanced/MLRLSystem.cs");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"3. Migrate any unique functionality from Enhanced to BotCore");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"4. Update references to use consolidated implementations");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"5. Remove or deprecate Enhanced ML duplicates");
         sb.AppendLine();
-        sb.AppendLine("NEXT STEPS:");
-        sb.AppendLine("1. Review this report");
-        sb.AppendLine("2. Execute consolidation with dryRun=false");
-        sb.AppendLine("3. Update dependency injection registrations");
-        sb.AppendLine("4. Run tests to ensure functionality is preserved");
-        sb.AppendLine("5. Clean up unused Enhanced ML code");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"NEXT STEPS:");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"1. Review this report");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"2. Execute consolidation with dryRun=false");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"3. Update dependency injection registrations");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"4. Run tests to ensure functionality is preserved");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"5. Clean up unused Enhanced ML code");
 
         LogReportGenerated(_logger, null);
         return sb.ToString();
