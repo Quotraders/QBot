@@ -962,6 +962,7 @@ namespace BotCore.Strategy
                                 var node = kvp.Value;
                                 int? maxSpread = null; decimal? wre = null; int? nrb_override = null; decimal? qMinClose = null; decimal? qMaxOpp = null;
                                 if (node.ValueKind == JsonValueKind.Object)
+                                {
                                     if (node.TryGetProperty("max_spread_ticks", out var p1o) && p1o.TryGetInt32(out var i1o)) maxSpread = i1o;
                                     if (node.TryGetProperty("width_rank_enter", out var p2o) && p2o.TryGetDecimal(out var d2o)) wre = d2o;
                                     if (node.TryGetProperty("nr_cluster_min_bars", out var p3o) && p3o.TryGetInt32(out var i3o)) nrb_override = i3o;
