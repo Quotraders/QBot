@@ -365,7 +365,15 @@ public sealed class OnnxModelLoader : IDisposable
                 }
             }
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            LogFallbackError(_logger, modelPath, ex);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            LogFallbackError(_logger, modelPath, ex);
+        }
+        catch (ArgumentException ex)
         {
             LogFallbackError(_logger, modelPath, ex);
         }
@@ -593,7 +601,15 @@ public sealed class OnnxModelLoader : IDisposable
                 }
             }
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            LogHotReloadError(_logger, ex);
+        }
+        catch (InvalidOperationException ex)
+        {
+            LogHotReloadError(_logger, ex);
+        }
+        catch (ArgumentException ex)
         {
             LogHotReloadError(_logger, ex);
         }
@@ -641,7 +657,15 @@ public sealed class OnnxModelLoader : IDisposable
                 }
             }
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            LogRegistryCheckError(_logger, ex);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            LogRegistryCheckError(_logger, ex);
+        }
+        catch (ArgumentException ex)
         {
             LogRegistryCheckError(_logger, ex);
         }
@@ -691,7 +715,15 @@ public sealed class OnnxModelLoader : IDisposable
                 }
             }
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            LogSacCheckError(_logger, ex);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            LogSacCheckError(_logger, ex);
+        }
+        catch (ArgumentException ex)
         {
             LogSacCheckError(_logger, ex);
         }
