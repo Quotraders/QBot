@@ -562,9 +562,9 @@ namespace BotCore.Brain
                         {
                             BullScore = 0.0,
                             BearScore = 0.0,
-                            OverallConfidence = 0.0,
-                            DetectedPatterns = new List<BotCore.Patterns.PatternDetail>()
+                            OverallConfidence = 0.0
                         };
+                        emptyPatternScores.SetDetectedPatterns(System.Array.Empty<BotCore.Patterns.PatternDetail>());
                         
                         var snapshot = BotCore.Services.MarketSnapshotStore.CreateSnapshot(
                             symbol: decision.Symbol,
@@ -947,9 +947,9 @@ namespace BotCore.Brain
                         {
                             BullScore = 0.0,
                             BearScore = 0.0,
-                            OverallConfidence = 0.0,
-                            DetectedPatterns = new List<BotCore.Patterns.PatternDetail>()
+                            OverallConfidence = 0.0
                         };
+                        emptyPatternScores.SetDetectedPatterns(System.Array.Empty<BotCore.Patterns.PatternDetail>());
                         
                         // Create a temporary snapshot for similarity search
                         var currentSnapshot = BotCore.Services.MarketSnapshotStore.CreateSnapshot(

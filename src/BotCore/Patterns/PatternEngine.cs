@@ -276,7 +276,7 @@ public class PatternEngine : IComponentHealth
     /// <summary>
     /// Convert pattern flags dictionary to detailed pattern list
     /// </summary>
-    private static List<PatternDetail> ConvertPatternFlagsToDetails(Dictionary<string, double> patternFlags)
+    private static List<PatternDetail> ConvertPatternFlagsToDetails(System.Collections.Generic.IReadOnlyDictionary<string, double> patternFlags)
     {
         var details = new List<PatternDetail>();
         

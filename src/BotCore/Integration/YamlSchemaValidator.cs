@@ -110,9 +110,7 @@ public sealed class YamlSchemaValidator
         {
             FilePath = filePath,
             ValidationStarted = DateTime.UtcNow,
-            IsValid = false,
-            Errors = new List<string>(),
-            Warnings = new List<string>()
+            IsValid = false
         };
         
         try

@@ -115,8 +115,7 @@ public sealed class EpochFreezeEnforcement
         {
             PositionId = positionId,
             ValidationTime = DateTime.UtcNow,
-            IsValid = false,
-            Violations = new List<FreezeViolation>()
+            IsValid = false
         };
         
         try
