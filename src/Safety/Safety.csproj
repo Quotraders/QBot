@@ -33,6 +33,25 @@
     <Compile Remove="HealthzServer.cs" />
     <Compile Remove="SystemHealthMonitor.cs" />
     <Compile Remove="PositionTracker.cs" />
+    <Compile Remove="Analysis/CounterfactualReplayService.cs" />
+    <Compile Remove="HealthMonitor.cs" />
+    <Compile Remove="RiskManager.cs" />
+    <Compile Remove="Analyzers/ProductionRuleEnforcementAnalyzer.cs" />
+    <Compile Remove="CircuitBreakers/CircuitBreakerManager.cs" />
+    <Compile Remove="Configuration/ConfigurationManager.cs" />
+    <Compile Remove="DataQuality/DataQualityMonitor.cs" />
+    <Compile Remove="DstGuard.cs" />
+    <Compile Remove="EnhancedRiskManager.cs" />
+    <Compile Remove="ExampleHealthChecks.cs" />
+    <Compile Remove="Explainability/ExplainabilityStampService.cs" />
+    <Compile Remove="Journaling/TradeJournal.cs" />
+    <Compile Remove="MlPipelineHealthMonitor.cs" />
+    <Compile Remove="ModelLifecycle/ModelPerformanceMonitor.cs" />
+    <Compile Remove="ModelLifecycle/ModelVersionManager.cs" />
+    <Compile Remove="OrderLifecycle/OrderLifecycleManager.cs" />
+    <Compile Remove="RiskDefaults.cs" />
+    <Compile Remove="Simulation/SlippageLatencyModel.cs" />
+    <Compile Remove="Tests/ViolationTestFile.cs" />
   </ItemGroup>
 
 

@@ -521,21 +521,8 @@ public class UniversalAutoDiscoveryHealthCheck : IHealthCheck
     private void DiscoverFromPatterns(Dictionary<string, ComponentInfo> components)
     {
         // Pattern-based discovery for known component patterns
-        var patterns = new Dictionary<string, string>
-        {
-            { ".*MetaLabeler.*", "ML Pipeline" },
-            { ".*Bandit.*", "ML Pipeline" },
-            { ".*Bayesian.*", "ML Pipeline" },
-            { ".*Strategy.*", "Trading System" },
-            { ".*Health.*", "Infrastructure" },
-            { ".*Router.*", "Trading System" },
-            { ".*Hub.*", "Infrastructure" },
-            { ".*Risk.*", "Risk Management" },
-            { ".*Data.*", "Data Pipeline" }
-        };
-
-        // This would scan code files for pattern matches
-        // Implementation would involve reading source files and matching patterns
+        // Future implementation would scan code files for pattern matches
+        // Currently a placeholder - discovery is handled by other methods
     }
 
     private void DiscoverFromInterfaces(Dictionary<string, ComponentInfo> components)

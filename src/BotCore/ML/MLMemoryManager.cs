@@ -49,7 +49,6 @@ public class MLMemoryManager : IMLMemoryManager
     private const double EMERGENCY_THRESHOLD = 0.95;   // 95% - Throw exception, cannot continue
     
     // Byte conversion constants
-    private const double BYTES_TO_KB = 1024.0;
     private const double BYTES_TO_MB = 1024.0 * 1024.0;
     
     // GC notification thresholds
@@ -61,8 +60,6 @@ public class MLMemoryManager : IMLMemoryManager
     private const int CLEANUP_WAIT_SECONDS = 10;
     private const int CLEANUP_DELAY_MS = 500;
     private const int POST_GC_DELAY_MS = 1000;
-    private const int CRITICAL_CLEANUP_DELAY_MS = 50;
-    private const int MODEL_INACTIVITY_MINUTES = 90;
     private const int UNUSED_MODEL_TIMEOUT_MINUTES = 30;
     private const int LONG_UNUSED_MODEL_TIMEOUT_HOURS = 2;
     private const int MEMORY_LEAK_DETECTION_HOURS = 1;

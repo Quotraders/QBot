@@ -49,25 +49,11 @@ namespace BotCore.Services
         // Learning parameters
         private const int OptimizationIntervalSeconds = 60; // Run optimization every minute
         private const int MinSamplesForLearning = 10; // Need at least 10 samples to learn
-        private const decimal LearningRate = 0.1m; // How quickly to adjust parameters
         private const int ExportIntervalHours = 24; // Export learned parameters every 24 hours
-        
-        // Parameter ranges for learning
-        private static readonly int[] BreakevenTickOptions = { 4, 6, 8, 10, 12, 16 };
-        private static readonly decimal[] TrailMultiplierOptions = { 0.8m, 1.0m, 1.2m, 1.5m, 1.8m, 2.0m };
-        private static readonly int[] TimeExitMinutesOptions = { 15, 30, 45, 60, 90, 120 };
         
         // VOLATILITY SCALING: ATR thresholds for regime detection (in ticks)
         private const decimal LowVolatilityThreshold = 3m;   // ATR < 3 ticks
         private const decimal HighVolatilityThreshold = 6m;  // ATR > 6 ticks
-        
-        // VOLATILITY SCALING: Parameter scaling factors per regime
-        private static readonly Dictionary<VolatilityRegime, decimal> VolatilityScalingFactors = new()
-        {
-            { VolatilityRegime.Low, 0.75m },      // Tighten by 25% in low volatility
-            { VolatilityRegime.Normal, 1.0m },    // Standard parameters
-            { VolatilityRegime.High, 1.25m }      // Widen by 25% in high volatility
-        };
         
         // SESSION-SPECIFIC LEARNING: Rolling window of ATR values per symbol (for volatility regime detection)
         private readonly ConcurrentDictionary<string, System.Collections.Generic.Queue<decimal>> _atrHistory = new();
@@ -718,33 +704,6 @@ namespace BotCore.Services
         /// <summary>
         /// VOLATILITY SCALING: Get average ATR for a symbol from recent history
         /// </summary>
-        private decimal GetAverageAtr(string symbol)
-        {
-            if (!_atrHistory.TryGetValue(symbol, out var history))
-            {
-                return 0m;
-            }
-            
-            lock (history)
-            {
-                if (history.Count == 0)
-                {
-                    return 0m;
-                }
-                
-                return history.Average();
-            }
-        }
-        
-        /// <summary>
-        /// VOLATILITY SCALING: Scale a parameter value based on volatility regime
-        /// </summary>
-        private decimal ScaleParameterByVolatility(decimal baseValue, VolatilityRegime regime)
-        {
-            var scaleFactor = VolatilityScalingFactors[regime];
-            return baseValue * scaleFactor;
-        }
-        
         /// <summary>
         /// VOLATILITY SCALING: Get optimal parameters for given strategy, symbol, and current market conditions
         /// </summary>

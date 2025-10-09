@@ -775,14 +775,14 @@ namespace TradingBot.BotCore.Services
         /// <summary>
         /// Bar data model for backtesting - used by System.Text.Json for deserialization
         /// </summary>
-        private sealed class BarData
+        internal sealed class BarData
         {
-            public DateTime Timestamp { get; set; }
-            public decimal Open { get; set; }
-            public decimal High { get; set; }
-            public decimal Low { get; set; }
-            public decimal Close { get; set; }
-            public long Volume { get; set; }
+            public DateTime Timestamp { get; init; }
+            public decimal Open { get; init; }
+            public decimal High { get; init; }
+            public decimal Low { get; init; }
+            public decimal Close { get; init; }
+            public long Volume { get; init; }
         }
     }
 }
