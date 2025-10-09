@@ -179,15 +179,18 @@ public class ExpressionEvaluator
         });
     }
 
+    private static readonly string[] AndSeparator = new[] { " AND " };
+    private static readonly string[] OrSeparator = new[] { " OR " };
+
     private bool EvaluateLogicalAnd(string expression)
     {
-        var parts = expression.Split(new[] { " AND " }, StringSplitOptions.RemoveEmptyEntries);
+        var parts = expression.Split(AndSeparator, StringSplitOptions.RemoveEmptyEntries);
         return parts.All(part => EvaluateExpression(part.Trim()));
     }
 
     private bool EvaluateLogicalOr(string expression)
     {
-        var parts = expression.Split(new[] { " OR " }, StringSplitOptions.RemoveEmptyEntries);
+        var parts = expression.Split(OrSeparator, StringSplitOptions.RemoveEmptyEntries);
         return parts.Any(part => EvaluateExpression(part.Trim()));
     }
 

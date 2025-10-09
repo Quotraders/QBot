@@ -15,6 +15,15 @@ namespace BotCore.HealthChecks;
 /// </summary>
 public static class ProductionHealthCheckExtensions
 {
+    private static readonly string[] ExternalApiTopstepTags = new[] { "external", "api", "topstepx" };
+    private static readonly string[] ExternalSignalRTopstepTags = new[] { "external", "signalr", "topstepx" };
+    private static readonly string[] DatabaseSqliteTags = new[] { "database", "sqlite" };
+    private static readonly string[] InfrastructureDiskTags = new[] { "infrastructure", "disk" };
+    private static readonly string[] InfrastructureMemoryTags = new[] { "infrastructure", "memory" };
+    private static readonly string[] MlModelsTags = new[] { "ml", "models" };
+    private static readonly string[] ConfigurationTags = new[] { "configuration" };
+    private static readonly string[] SecurityCredentialsTags = new[] { "security", "credentials" };
+
     /// <summary>
     /// Add comprehensive production health checks for all external dependencies
     /// </summary>
@@ -28,49 +37,49 @@ public static class ProductionHealthCheckExtensions
         healthChecksBuilder.AddCheck<TopstepXApiHealthCheck>(
             "topstepx-api",
             HealthStatus.Degraded,
-            new[] { "external", "api", "topstepx" });
+            ExternalApiTopstepTags);
 
         // TopstepX SignalR hubs health check
         healthChecksBuilder.AddCheck<TopstepXSignalRHealthCheck>(
             "topstepx-signalr",
             HealthStatus.Degraded,
-            new[] { "external", "signalr", "topstepx" });
+            ExternalSignalRTopstepTags);
 
         // Database health check
         healthChecksBuilder.AddCheck<DatabaseHealthCheck>(
             "database",
             HealthStatus.Unhealthy,
-            new[] { "database", "sqlite" });
+            DatabaseSqliteTags);
 
         // Disk space health check
         healthChecksBuilder.AddCheck<DiskSpaceHealthCheck>(
             "disk-space",
             HealthStatus.Degraded,
-            new[] { "infrastructure", "disk" });
+            InfrastructureDiskTags);
 
         // Memory health check
         healthChecksBuilder.AddCheck<MemoryHealthCheck>(
             "memory",
             HealthStatus.Degraded,
-            new[] { "infrastructure", "memory" });
+            InfrastructureMemoryTags);
 
         // ML model health check
         healthChecksBuilder.AddCheck<MLModelHealthCheck>(
             "ml-models",
             HealthStatus.Degraded,
-            new[] { "ml", "models" });
+            MlModelsTags);
 
         // Configuration health check
         healthChecksBuilder.AddCheck<ConfigurationHealthCheck>(
             "configuration",
             HealthStatus.Unhealthy,
-            new[] { "configuration" });
+            ConfigurationTags);
 
         // Security health check
         healthChecksBuilder.AddCheck<SecurityHealthCheck>(
             "security",
             HealthStatus.Unhealthy,
-            new[] { "security", "credentials" });
+            SecurityCredentialsTags);
 
         // Add health check publisher for monitoring
         services.AddHostedService<HealthCheckPublisherService>();
