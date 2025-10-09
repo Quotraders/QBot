@@ -54,11 +54,7 @@ public sealed class OnnxRlPolicy : IRlPolicy, IDisposable
     public int PredictAction(decimal[] features)
     {
         ArgumentNullException.ThrowIfNull(features);
-
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(OnnxRlPolicy));
-        }
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
         try
         {
@@ -133,11 +129,7 @@ public sealed class OnnxRlPolicy : IRlPolicy, IDisposable
     public decimal GetConfidence(decimal[] features)
     {
         ArgumentNullException.ThrowIfNull(features);
-
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(OnnxRlPolicy));
-        }
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
         try
         {

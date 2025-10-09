@@ -21,7 +21,7 @@ namespace BotCore.Strategy
     /// Production-ready bridge router implementing full-stack IOrderRouter interface
     /// with complete TopstepX SDK integration, health checks, and audit trails
     /// </summary>
-    public class BridgeOrderRouter : TopstepX.S6.IOrderRouter, TopstepX.S11.IOrderRouter
+    public class BridgeOrderRouter : TopstepX.S6.IOrderRouter, TopstepX.S11.IOrderRouter, IDisposable
     {        
         // Instrument specifications constants (using decimal for precision in price calculations)
         private const decimal EsTickSize = 0.25m;               // ES futures tick size
@@ -37,6 +37,7 @@ namespace BotCore.Strategy
         private readonly Dictionary<string, TradingBot.Abstractions.Position> _positionCache;
         private readonly SemaphoreSlim _positionCacheLock;
         private readonly string _configSnapshotId;
+        private bool _disposed;
         
         public BridgeOrderRouter(RiskEngine risk, IOrderService orderService, ILogger<BridgeOrderRouter> logger, 
             IServiceProvider serviceProvider)
@@ -629,6 +630,27 @@ namespace BotCore.Strategy
             {
                 _positionCacheLock.Release();
             }
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (disposing)
+            {
+                _positionCacheLock?.Dispose();
+            }
+
+            _disposed = true;
         }
 
         #endregion
