@@ -1102,7 +1102,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                                     .Where(p => bullish ? p.IsBullish : p.IsBearish)
                                     .ToList();
                                 
-                                if (relevantPatterns.Any())
+                                if (relevantPatterns.Count > 0)
                                 {
                                     var avgConfidence = relevantPatterns.Average(p => p.Confidence);
                                     

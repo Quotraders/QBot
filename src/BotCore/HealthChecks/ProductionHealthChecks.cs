@@ -704,8 +704,8 @@ public class SecurityHealthCheck : IHealthCheck
             // Check for hardcoded secrets in environment
             var suspiciousVars = Environment.GetEnvironmentVariables()
                 .Cast<System.Collections.DictionaryEntry>()
-                .Where(kv => kv.Key?.ToString()?.ToLower(System.Globalization.CultureInfo.InvariantCulture).Contains("password", StringComparison.OrdinalIgnoreCase) == true || 
-                           kv.Key?.ToString()?.ToLower(System.Globalization.CultureInfo.InvariantCulture).Contains("secret", StringComparison.OrdinalIgnoreCase) == true)
+                .Where(kv => kv.Key?.ToString()?.ToUpperInvariant().Contains("PASSWORD", StringComparison.OrdinalIgnoreCase) == true || 
+                           kv.Key?.ToString()?.ToUpperInvariant().Contains("SECRET", StringComparison.OrdinalIgnoreCase) == true)
                 .Select(kv => kv.Key?.ToString() ?? string.Empty)
                 .ToList();
 

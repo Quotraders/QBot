@@ -31,6 +31,10 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
     private static readonly TimeSpan CRITICAL_EVENT_BUFFER = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan HIGH_EVENT_BUFFER = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan MEDIUM_EVENT_BUFFER = TimeSpan.FromMinutes(5);
+    
+    // Symbol arrays for affected instruments
+    private static readonly string[] MajorUsdInstruments = new[] { "ES", "NQ", "YM", "RTY", "EURUSD", "GBPUSD", "USDJPY" };
+    private static readonly string[] HighImpactUsdInstruments = new[] { "DXY", "GC", "SI", "CL" };
 
     public event EventHandler<EconomicEventAlert>? OnHighImpactEventApproaching;
     public event EventHandler<TradingRestriction>? OnTradingRestrictionChanged;
@@ -140,7 +144,7 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
             e.Impact >= EventImpact.Critical ||
             IsSymbolAffectedByEvent(symbol, e)).ToList();
 
-        if (relevantEvents.Any())
+        if (relevantEvents.Count > 0)
         {
             _logger.LogWarning("[EconomicEventManager] {Count} relevant events found for {Symbol} in next {TimeSpan}", 
                 relevantEvents.Count, symbol, lookAhead);
@@ -356,11 +360,11 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
                     }
                     
                     // Convert impact string to EventImpact enum
-                    var impact = impactStr?.ToLowerInvariant() switch
+                    var impact = impactStr?.ToUpperInvariant() switch
                     {
-                        "high" => EventImpact.High,
-                        "medium" => EventImpact.Medium,
-                        "low" => EventImpact.Low,
+                        "HIGH" => EventImpact.High,
+                        "MEDIUM" => EventImpact.Medium,
+                        "LOW" => EventImpact.Low,
                         _ => EventImpact.Low
                     };
                     
@@ -464,11 +468,11 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
         // Major USD-based instruments
         if (currency == "USD")
         {
-            symbols.AddRange(new[] { "ES", "NQ", "YM", "RTY", "EURUSD", "GBPUSD", "USDJPY" });
+            symbols.AddRange(MajorUsdInstruments);
 
             if (impact >= EventImpact.High)
             {
-                symbols.AddRange(new[] { "DXY", "GC", "SI", "CL" }); // Dollar index, gold, silver, oil
+                symbols.AddRange(HighImpactUsdInstruments); // Dollar index, gold, silver, oil
             }
         }
 
