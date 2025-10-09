@@ -10,6 +10,7 @@ using Microsoft.ML.OnnxRuntime;
 using TradingBot.Backtest;
 using TradingBot.UnifiedOrchestrator.Interfaces;
 using TradingBot.UnifiedOrchestrator.Models;
+using TradingBot.UnifiedOrchestrator.Services;
 
 namespace TradingBot.UnifiedOrchestrator.Promotion;
 
@@ -22,14 +23,14 @@ internal class ShadowTester : IShadowTester
     private readonly ILogger<ShadowTester> _logger;
     private readonly IModelRegistry _modelRegistry;
     private readonly IModelRouterFactory _routerFactory;
-    private readonly IHistoricalDataProvider? _historicalDataProvider;
+    private readonly IHistoricalDataResolver? _historicalDataProvider;
     private readonly ConcurrentDictionary<string, ShadowTest> _activeTests = new();
 
     public ShadowTester(
         ILogger<ShadowTester> logger,
         IModelRegistry modelRegistry,
         IModelRouterFactory routerFactory,
-        IHistoricalDataProvider? historicalDataProvider = null)
+        IHistoricalDataResolver? historicalDataProvider = null)
     {
         _logger = logger;
         _modelRegistry = modelRegistry;
