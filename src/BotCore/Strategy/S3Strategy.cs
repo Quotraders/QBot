@@ -154,13 +154,10 @@ namespace BotCore.Strategy
             var newsBlockAfterMin = sessionParams?.NewsBlockAfterMin ?? cfg.NewsBlockAfterMin;
 
             // News block (bypass in backtest)
-            if (!BtBypass("news"))
+            if (!BtBypass("news") && InNewsWindow(last.Start, cfg.NewsOnMinutes, newsBlockBeforeMin, newsBlockAfterMin))
             {
-                if (InNewsWindow(last.Start, cfg.NewsOnMinutes, newsBlockBeforeMin, newsBlockAfterMin))
-                {
-                    Reject("news_window");
-                    return lst;
-                }
+                Reject("news_window");
+                return lst;
             }
 
             // Volume gate
@@ -197,13 +194,10 @@ namespace BotCore.Strategy
             }
 
             // VolZ regime gate if available
-            if (env.volz.HasValue)
+            if (env.volz.HasValue && (env.volz.Value < cfg.VolZMin || env.volz.Value > cfg.VolZMax))
             {
-                if (env.volz.Value < cfg.VolZMin || env.volz.Value > cfg.VolZMax)
-                {
-                    Reject("volz_regime");
-                    return lst;
-                }
+                Reject("volz_regime");
+                return lst;
             }
 
             // Indicator bases on TF1 (1m)
@@ -954,9 +948,9 @@ namespace BotCore.Strategy
                             }
                         }
                         var newsMins = new[] { 0, 30 };
-                        if (s3.TryGetProperty("news_block", out var nbNode) && nbNode.ValueKind == JsonValueKind.Object)
+                        if (s3.TryGetProperty("news_block", out var nbNode) && nbNode.ValueKind == JsonValueKind.Object && nbNode.TryGetProperty("on_minutes", out var onm))
                         {
-                            if (nbNode.TryGetProperty("on_minutes", out var onm)) newsMins = GetIntArray(onm);
+                            newsMins = GetIntArray(onm);
                         }
                         // Parse instrument_overrides
                         if (s3.TryGetProperty("instrument_overrides", out var ios) && ios.ValueKind == JsonValueKind.Object)

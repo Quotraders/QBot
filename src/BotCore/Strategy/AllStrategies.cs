@@ -144,12 +144,10 @@ namespace BotCore.Strategy
             // ================================================================================
             
             // Add S15_RL candidates if policy and feature builder are available
-            if (rlPolicy != null && featureBuilder != null && allowedStrategies.Contains("S15_RL"))
+            // S15_RL is S7-gated like S2, S3, S6, S11
+            if (rlPolicy != null && featureBuilder != null && allowedStrategies.Contains("S15_RL") && StrategyGates.PassesS7Gate(s7Service, "S15_RL"))
             {
-                // S15_RL is S7-gated like S2, S3, S6, S11
-                if (StrategyGates.PassesS7Gate(s7Service, "S15_RL"))
-                {
-                    try
+                try
                     {
                         // Determine current position (0 for now, would come from position tracking)
                         var currentPos = 0;
@@ -189,32 +187,9 @@ namespace BotCore.Strategy
                         // S15_RL state error (e.g., ONNX model not loaded)
                         Console.WriteLine($"⚠️ [S15-RL] Operation failed: {ex.Message}");
                     }
-                }
             }
             
             return cands;
-        }
-
-        private static bool ShouldRunStrategyAtTime(string strategyId, int hour)
-        {
-            // Time-based strategy performance thresholds - only active strategies S2, S3, S6, S11
-            var performanceThresholds = new Dictionary<string, Dictionary<int, double>>
-            {
-                ["S2"] = new() { [0] = 0.85, [3] = 0.82, [12] = 0.88, [19] = 0.83, [23] = 0.87 },
-                ["S3"] = new() { [3] = 0.90, [9] = 0.92, [10] = 0.85, [14] = 0.80 },
-                ["S6"] = new() { [9] = 0.95 }, // Only during opening
-                ["S11"] = new() { [13] = 0.91, [14] = 0.88, [15] = 0.85, [16] = 0.82 }
-            };
-
-            if (!performanceThresholds.TryGetValue(strategyId, out var hourPerformance))
-                return true; // Allow strategies without specific time restrictions
-
-            // Find closest hour performance
-            var closestHour = hourPerformance.Keys.OrderBy(h => Math.Abs(h - hour)).FirstOrDefault();
-            var performance = hourPerformance.TryGetValue(closestHour, out var perf) ? (decimal)perf : DefaultPerformanceThreshold;
-
-            // Only run strategy if performance is above threshold
-            return performance > PerformanceFilterThreshold;
         }
 
         // Config-aware method for StrategyAgent
@@ -433,6 +408,28 @@ namespace BotCore.Strategy
                 });
             }
             return signals;
+        }
+
+        private static bool ShouldRunStrategyAtTime(string strategyId, int hour)
+        {
+            // Time-based strategy performance thresholds - only active strategies S2, S3, S6, S11
+            var performanceThresholds = new Dictionary<string, Dictionary<int, double>>
+            {
+                ["S2"] = new() { [0] = 0.85, [3] = 0.82, [12] = 0.88, [19] = 0.83, [23] = 0.87 },
+                ["S3"] = new() { [3] = 0.90, [9] = 0.92, [10] = 0.85, [14] = 0.80 },
+                ["S6"] = new() { [9] = 0.95 }, // Only during opening
+                ["S11"] = new() { [13] = 0.91, [14] = 0.88, [15] = 0.85, [16] = 0.82 }
+            };
+
+            if (!performanceThresholds.TryGetValue(strategyId, out var hourPerformance))
+                return true; // Allow strategies without specific time restrictions
+
+            // Find closest hour performance
+            var closestHour = hourPerformance.Keys.OrderBy(h => Math.Abs(h - hour)).FirstOrDefault();
+            var performance = hourPerformance.TryGetValue(closestHour, out var perf) ? (decimal)perf : DefaultPerformanceThreshold;
+
+            // Only run strategy if performance is above threshold
+            return performance > PerformanceFilterThreshold;
         }
 
         // S1–S14 strategies
@@ -837,14 +834,12 @@ namespace BotCore.Strategy
             }
 
             // Curfew: optional no-new window (Patch C)
-            if (S2RuntimeConfig.CurfewEnabled && !string.IsNullOrWhiteSpace(S2RuntimeConfig.CurfewNoNewHHMM))
+            if (S2RuntimeConfig.CurfewEnabled && !string.IsNullOrWhiteSpace(S2RuntimeConfig.CurfewNoNewHHMM) && 
+                TimeSpan.TryParse(S2RuntimeConfig.CurfewNoNewHHMM, out var tNoNew))
             {
-                if (TimeSpan.TryParse(S2RuntimeConfig.CurfewNoNewHHMM, out var tNoNew))
-                {
-                    var tNow = nowLocal.TimeOfDay;
-                    // Only apply before U.S. open; we don't flatten here (router handles flattening if needed)
-                    if (tNow >= tNoNew && tNow < new TimeSpan(9, 30, 0)) return lst;
-                }
+                var tNow = nowLocal.TimeOfDay;
+                // Only apply before U.S. open; we don't flatten here (router handles flattening if needed)
+                if (tNow >= tNoNew && tNow < new TimeSpan(9, 30, 0)) return lst;
             }
 
             // Trend day detection proxy: EMA20 slope over last 5 bars + VWAP streak
@@ -990,11 +985,10 @@ namespace BotCore.Strategy
                 }
             }
             // SHORT: fade above VWAP
-            else if ((z >= dynSigma || a >= baseAtr) && imb <= LowImbalanceThreshold && pivotOKShort && roomShort && decel)
+            else if ((z >= dynSigma || a >= baseAtr) && imb <= LowImbalanceThreshold && pivotOKShort && roomShort && decel && 
+                     (BearConfirm(bars) || rejectUp))
             {
-                if (BearConfirm(bars) || rejectUp)
-                {
-                    var entry = px;
+                var entry = px;
                     var up3 = vwap + 3m * sigma;
                     var swing = bars.Skip(Math.Max(0, bars.Count - S2RuntimeConfig.ConfirmLookback)).Max(b => b.High);
                     var stop = Math.Max(swing, up3);
@@ -1016,7 +1010,6 @@ namespace BotCore.Strategy
                     }
                     if (entry - t1 < MinTargetRatioLong * r) t1 = entry - TargetAdjustmentRatio * r;
                     add_cand(lst, "S2", symbol, "SELL", entry, stop, t1, env, risk, null, bars);
-                }
             }
             return lst;
         }
@@ -1141,7 +1134,7 @@ namespace BotCore.Strategy
             var dist = Math.Max(Math.Abs(entry - stop), tick); // ≥ 1 tick
             // Prefer equity-% aware sizing if configured; pass 0 equity to fallback to fixed RPT when not provided
             var (Qty, _) = risk.ComputeSize(symbol, entry, stop, 0m);
-            var qty = Qty > 0 ? Qty : (int)RiskEngine.size_for(risk.cfg.risk_per_trade, dist, pv);
+            var qty = Qty > 0 ? Qty : (int)RiskEngine.size_for(risk.cfg.RiskPerTrade, dist, pv);
             if (qty <= 0) return;
 
             var expR = rr_quality(entry, stop, t1);
