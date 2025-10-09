@@ -424,7 +424,7 @@ namespace BotCore.Brain
             try
             {
                 // PHASE 2: Check economic calendar before trading
-                var calendarCheckEnabled = Environment.GetEnvironmentVariable("BOT_CALENDAR_CHECK_ENABLED")?.ToLowerInvariant() == "true";
+                var calendarCheckEnabled = Environment.GetEnvironmentVariable("BOT_CALENDAR_CHECK_ENABLED")?.ToUpperInvariant() == "TRUE";
                 if (calendarCheckEnabled && _economicEventManager != null)
                 {
                     // Check if symbol trading should be restricted
@@ -1094,7 +1094,19 @@ Current context: {currentContext}
             {
                 var result = wasCorrect ? "WIN" : "LOSS";
                 var durationMinutes = (int)holdTime.TotalMinutes;
-                var reason = pnl > 0 ? "target hit" : pnl < 0 ? "stop hit" : "timeout";
+                string reason;
+                if (pnl > 0)
+                {
+                    reason = "target hit";
+                }
+                else if (pnl < 0)
+                {
+                    reason = "stop hit";
+                }
+                else
+                {
+                    reason = "timeout";
+                }
                 
                 // Hook 3: Add learning commentary (if enabled)
                 string learningContext = string.Empty;
@@ -1222,8 +1234,20 @@ Reason closed: {reason}
             if (_metaClassifier == null || !IsInitialized)
             {
                 // Fallback: use volatility-based regime detection
-                return Task.FromResult(context.Volatility > WeakTrendThreshold ? MarketRegime.HighVolatility :
-                       context.Volatility < LowVolatilityThreshold ? MarketRegime.LowVolatility : MarketRegime.Normal);
+                MarketRegime regime;
+                if (context.Volatility > WeakTrendThreshold)
+                {
+                    regime = MarketRegime.HighVolatility;
+                }
+                else if (context.Volatility < LowVolatilityThreshold)
+                {
+                    regime = MarketRegime.LowVolatility;
+                }
+                else
+                {
+                    regime = MarketRegime.Normal;
+                }
+                return Task.FromResult(regime);
             }
 
             try
@@ -1483,7 +1507,7 @@ Reason closed: {reason}
                 context.Volatility,
                 context.VolumeRatio,
                 context.TrendStrength
-            }).ConfigureAwait(false) : 0.5m;
+            }, cancellationToken).ConfigureAwait(false) : 0.5m;
             
             var confidenceMultiplier = modelConfidence;
 
