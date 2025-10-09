@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
@@ -24,6 +25,85 @@ namespace BotCore.ML
             MissingMemberHandling = MissingMemberHandling.Ignore
         };
 
+        // Structured logging delegates
+        private static readonly Action<ILogger, string, Exception?> LogUcbManagerInitialized =
+            LoggerMessage.Define<string>(
+                LogLevel.Information,
+                new EventId(1, nameof(LogUcbManagerInitialized)),
+                "🎯 UCB Manager initialized with service URL: {UcbUrl}");
+
+        private static readonly Action<ILogger, string, double, int, double, Exception?> LogUcbRecommendation =
+            LoggerMessage.Define<string, double, int, double>(
+                LogLevel.Information,
+                new EventId(2, nameof(LogUcbRecommendation)),
+                "🧠 [UCB] {Strategy} | Confidence: {Confidence:P1} | Size: {Size} | Risk: {Risk:C}");
+
+        private static readonly Action<ILogger, Exception?> LogUcbTimeout =
+            LoggerMessage.Define(
+                LogLevel.Error,
+                new EventId(3, nameof(LogUcbTimeout)),
+                "⏰ [UCB] Timeout calling Python service - check if FastAPI is running");
+
+        private static readonly Action<ILogger, Exception?> LogUcbHttpError =
+            LoggerMessage.Define(
+                LogLevel.Error,
+                new EventId(4, nameof(LogUcbHttpError)),
+                "🔌 [UCB] HTTP error calling Python service");
+
+        private static readonly Action<ILogger, Exception?> LogUcbUnexpectedError =
+            LoggerMessage.Define(
+                LogLevel.Error,
+                new EventId(5, nameof(LogUcbUnexpectedError)),
+                "❌ [UCB] Unexpected error getting recommendation");
+
+        private static readonly Action<ILogger, string, decimal, Exception?> LogPnlUpdated =
+            LoggerMessage.Define<string, decimal>(
+                LogLevel.Information,
+                new EventId(6, nameof(LogPnlUpdated)),
+                "💰 [UCB] Updated P&L for {Strategy}: {PnL:C}");
+
+        private static readonly Action<ILogger, Exception?> LogPnlUpdateTimeout =
+            LoggerMessage.Define(
+                LogLevel.Warning,
+                new EventId(7, nameof(LogPnlUpdateTimeout)),
+                "⏰ [UCB] Timeout updating P&L - continuing without update");
+
+        private static readonly Action<ILogger, Exception?> LogPnlUpdateHttpError =
+            LoggerMessage.Define(
+                LogLevel.Warning,
+                new EventId(8, nameof(LogPnlUpdateHttpError)),
+                "⚠️ [UCB] HTTP error updating P&L - continuing");
+
+        private static readonly Action<ILogger, Exception?> LogPnlUpdateCancelled =
+            LoggerMessage.Define(
+                LogLevel.Warning,
+                new EventId(9, nameof(LogPnlUpdateCancelled)),
+                "⚠️ [UCB] Cancelled updating P&L - continuing");
+
+        private static readonly Action<ILogger, Exception?> LogDailyResetCompleted =
+            LoggerMessage.Define(
+                LogLevel.Information,
+                new EventId(10, nameof(LogDailyResetCompleted)),
+                "🌅 [UCB] Daily stats reset completed");
+
+        private static readonly Action<ILogger, Exception?> LogDailyResetTimeout =
+            LoggerMessage.Define(
+                LogLevel.Warning,
+                new EventId(11, nameof(LogDailyResetTimeout)),
+                "⏰ [UCB] Timeout resetting daily stats");
+
+        private static readonly Action<ILogger, Exception?> LogDailyResetHttpError =
+            LoggerMessage.Define(
+                LogLevel.Warning,
+                new EventId(12, nameof(LogDailyResetHttpError)),
+                "⚠️ [UCB] HTTP error resetting daily stats");
+
+        private static readonly Action<ILogger, Exception?> LogDailyResetCancelled =
+            LoggerMessage.Define(
+                LogLevel.Warning,
+                new EventId(13, nameof(LogDailyResetCancelled)),
+                "⚠️ [UCB] Cancelled resetting daily stats");
+
         public UcbManager(ILogger<UcbManager> logger)
         {
             _logger = logger;
@@ -33,7 +113,7 @@ namespace BotCore.ML
                 BaseAddress = new Uri(ucbUrl),
                 Timeout = TimeSpan.FromSeconds(5) // Fast failure if Python service stalls
             };
-            _logger.LogInformation("🎯 UCB Manager initialized with service URL: {UcbUrl}", ucbUrl);
+            LogUcbManagerInitialized(_logger, ucbUrl, null);
         }
 
         public async Task<UcbRecommendation> GetRecommendationAsync(MarketData data, CancellationToken ct = default)
@@ -56,40 +136,39 @@ namespace BotCore.ML
                     correlation = Math.Clamp(data.Correlation, -1m, 1m), // Correlation bounds
                     rsi_es = Math.Clamp(data.RsiES, 0m, 100m),
                     rsi_nq = Math.Clamp(data.RsiNQ, 0m, 100m),
-                    instrument = data.PrimaryInstrument?.ToUpper() ?? "ES" // Default to ES
+                    instrument = data.PrimaryInstrument?.ToUpper(CultureInfo.InvariantCulture) ?? "ES" // Default to ES
                 };
 
-                var content = new StringContent(
+                using var content = new StringContent(
                     JsonConvert.SerializeObject(marketJson, JsonCfg), 
                     Encoding.UTF8, 
                     "application/json"
                 );
                 
-                using var resp = await _http.PostAsync("ucb/recommend", content, ct).ConfigureAwait(false);
+                using var resp = await _http.PostAsync(new Uri("ucb/recommend", UriKind.Relative), content, ct).ConfigureAwait(false);
                 resp.EnsureSuccessStatusCode();
                 var text = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
 
                 var rec = JsonConvert.DeserializeObject<UcbRecommendation>(text, JsonCfg);
                 if (rec == null) throw new InvalidOperationException("Null UcbRecommendation");
                 
-                _logger.LogInformation("🧠 [UCB] {Strategy} | Confidence: {Confidence:P1} | Size: {Size} | Risk: {Risk:C}", 
-                    rec.Strategy ?? "NONE", rec.Confidence ?? 0, rec.PositionSize, rec.RiskAmount ?? 0);
+                LogUcbRecommendation(_logger, rec.Strategy ?? "NONE", rec.Confidence ?? 0, rec.PositionSize, rec.RiskAmount ?? 0, null);
                 
                 return rec;
             }
             catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
             {
-                _logger.LogError("⏰ [UCB] Timeout calling Python service - check if FastAPI is running");
+                LogUcbTimeout(_logger, null);
                 throw new TimeoutException("UCB service timeout", ex);
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "🔌 [UCB] HTTP error calling Python service");
+                LogUcbHttpError(_logger, ex);
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ [UCB] Unexpected error getting recommendation");
+                LogUcbUnexpectedError(_logger, ex);
                 throw;
             }
         }
@@ -99,28 +178,28 @@ namespace BotCore.ML
             try
             {
                 var body = new { strategy, pnl };
-                var content = new StringContent(
+                using var content = new StringContent(
                     JsonConvert.SerializeObject(body, JsonCfg), 
                     Encoding.UTF8, 
                     "application/json"
                 );
                 
-                using var resp = await _http.PostAsync("ucb/update_pnl", content, ct).ConfigureAwait(false);
+                using var resp = await _http.PostAsync(new Uri("ucb/update_pnl", UriKind.Relative), content, ct).ConfigureAwait(false);
                 resp.EnsureSuccessStatusCode();
                 
-                _logger.LogInformation("💰 [UCB] Updated P&L for {Strategy}: {PnL:C}", strategy, pnl);
+                LogPnlUpdated(_logger, strategy, pnl, null);
             }
             catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
             {
-                _logger.LogWarning("⏰ [UCB] Timeout updating P&L - continuing without update");
+                LogPnlUpdateTimeout(_logger, null);
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogWarning(ex, "⚠️ [UCB] HTTP error updating P&L - continuing");
+                LogPnlUpdateHttpError(_logger, ex);
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogWarning(ex, "⚠️ [UCB] Cancelled updating P&L - continuing");
+                LogPnlUpdateCancelled(_logger, ex);
             }
         }
 
@@ -128,22 +207,23 @@ namespace BotCore.ML
         {
             try
             {
-                using var resp = await _http.PostAsync("ucb/reset_daily", new StringContent(""), ct).ConfigureAwait(false);
+                using var content = new StringContent("");
+                using var resp = await _http.PostAsync(new Uri("ucb/reset_daily", UriKind.Relative), content, ct).ConfigureAwait(false);
                 resp.EnsureSuccessStatusCode();
                 
-                _logger.LogInformation("🌅 [UCB] Daily stats reset completed");
+                LogDailyResetCompleted(_logger, null);
             }
             catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
             {
-                _logger.LogWarning("⏰ [UCB] Timeout resetting daily stats");
+                LogDailyResetTimeout(_logger, null);
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogWarning(ex, "⚠️ [UCB] HTTP error resetting daily stats");
+                LogDailyResetHttpError(_logger, ex);
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogWarning(ex, "⚠️ [UCB] Cancelled resetting daily stats");
+                LogDailyResetCancelled(_logger, ex);
             }
         }
 
