@@ -157,7 +157,7 @@ namespace BotCore.Risk
         /// </summary>
         public bool IsTradingHalted => _tradingHalted;
         
-        public class DrawdownTracker
+        private class DrawdownTracker
         {
             public string TrackerId { get; set; } = string.Empty;
             public decimal PeakValue { get; set; }
@@ -175,7 +175,7 @@ namespace BotCore.Risk
             internal void ClearLossSequence() => _lossSequence.Clear();
         }
         
-        public class DrawdownAction
+        private class DrawdownAction
         {
             public string ActionType { get; set; } = string.Empty;
             public decimal TriggerLevel { get; set; }
