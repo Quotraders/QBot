@@ -326,8 +326,7 @@ public class ExpressionEvaluator
                 "==" => featureTime == timeValue,
                 "!=" => featureTime != timeValue,
                 _ => false
-                };
-            }
+            };
         }
 
         // Handle numeric comparisons
