@@ -538,8 +538,8 @@ namespace TopstepX.Bot.Core.Services
                     type = GetOrderTypeValue(request.OrderType), // ProjectX: 1=Limit, 2=Market, 4=Stop
                     side = GetSideValue(request.Side),         // ProjectX: 0=Bid(buy), 1=Ask(sell)
                     size = request.Quantity,                   // ProjectX expects integer size
-                    limitPrice = request.OrderType.ToUpperInvariant() == "LIMIT" ? entryPrice : (decimal?)null,
-                    stopPrice = request.OrderType.ToUpperInvariant() == "STOP" ? entryPrice : (decimal?)null,
+                    limitPrice = request.OrderType.Equals("LIMIT", StringComparison.OrdinalIgnoreCase) ? entryPrice : (decimal?)null,
+                    stopPrice = request.OrderType.Equals("STOP", StringComparison.OrdinalIgnoreCase) ? entryPrice : (decimal?)null,
                     customTag = customTag
                 };
 
