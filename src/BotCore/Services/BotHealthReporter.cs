@@ -79,12 +79,12 @@ public class BotHealthReporter
         var sb = new StringBuilder();
         sb.AppendLine("═══════════════════════════════════════");
         sb.AppendLine("Bot Self-Awareness Status Report");
-        sb.AppendLine($"Time: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
+        sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"Time: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
         sb.AppendLine("═══════════════════════════════════════");
-        sb.AppendLine($"Total Components: {totalComponents}");
-        sb.AppendLine($"✅ Healthy: {healthyCount}");
-        sb.AppendLine($"⚠️ Degraded: {degradedCount}");
-        sb.AppendLine($"❌ Unhealthy: {unhealthyCount}");
+        sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"Total Components: {totalComponents}");
+        sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"✅ Healthy: {healthyCount}");
+        sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"⚠️ Degraded: {degradedCount}");
+        sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"❌ Unhealthy: {unhealthyCount}");
 
         // List unhealthy components
         var unhealthyComponents = results.Where(r => r.Result.Status == "Unhealthy").ToList();
@@ -94,7 +94,7 @@ public class BotHealthReporter
             sb.AppendLine("❌ UNHEALTHY COMPONENTS:");
             foreach (var (componentName, result) in unhealthyComponents)
             {
-                sb.AppendLine($"  - {componentName}: {result.Description}");
+                sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"  - {componentName}: {result.Description}");
             }
         }
 
@@ -106,7 +106,7 @@ public class BotHealthReporter
             sb.AppendLine("⚠️ DEGRADED COMPONENTS:");
             foreach (var (componentName, result) in degradedComponents)
             {
-                sb.AppendLine($"  - {componentName}: {result.Description}");
+                sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"  - {componentName}: {result.Description}");
             }
         }
 
@@ -170,7 +170,7 @@ public class BotHealthReporter
     private static string GenerateBasicExplanation(string componentName, HealthCheckResult healthResult)
     {
         var explanation = new StringBuilder();
-        explanation.Append($"My {componentName} is {healthResult.Status.ToLowerInvariant()}. ");
+        explanation.Append(System.Globalization.CultureInfo.InvariantCulture, $"My {componentName} is {healthResult.Status.ToLowerInvariant()}. ");
 
         if (healthResult.Status == "Unhealthy")
         {
@@ -190,9 +190,9 @@ public class BotHealthReporter
     {
         var prompt = new StringBuilder();
         prompt.AppendLine("I am a trading bot reporting on my system health.");
-        prompt.AppendLine($"Component: {componentName}");
-        prompt.AppendLine($"Status: {healthResult.Status}");
-        prompt.AppendLine($"Issue: {healthResult.Description}");
+        prompt.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"Component: {componentName}");
+        prompt.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"Status: {healthResult.Status}");
+        prompt.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"Issue: {healthResult.Description}");
 
         if (healthResult.Metrics.Any())
         {
@@ -215,9 +215,9 @@ public class BotHealthReporter
     {
         var prompt = new StringBuilder();
         prompt.AppendLine("I am a trading bot explaining a system health issue.");
-        prompt.AppendLine($"Component: {componentName}");
-        prompt.AppendLine($"Status: {healthResult.Status}");
-        prompt.AppendLine($"Issue: {healthResult.Description}");
+        prompt.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"Component: {componentName}");
+        prompt.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"Status: {healthResult.Status}");
+        prompt.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"Issue: {healthResult.Description}");
 
         if (healthResult.Metrics.Any())
         {
