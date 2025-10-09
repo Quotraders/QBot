@@ -97,7 +97,8 @@ public class AutonomousDecisionEngine : BackgroundService
     
     // Autonomous configuration
     private const decimal MinRiskPerTrade = 0.005m; // 0.5%
-    private const decimal MaxRiskPerTrade = 0.015m; // 1.5%
+    private const decimal MaxRiskPerTrade = 0.015m; // 1.5%
+    private const decimal MinimumRMultiple = 1.0m; // Minimum reward-to-risk ratio (1:1)
     private const decimal DailyProfitTarget = 300m; // Target $300 daily profit
     private const decimal PercentageConversionFactor = 100m; // Convert decimal to percentage
     private const decimal DefaultConfidenceThreshold = 0.5m; // Default confidence threshold for trading decisions
@@ -784,9 +785,9 @@ public class AutonomousDecisionEngine : BackgroundService
         
         // Calculate R-multiple (reward-to-risk ratio)
         decimal rMultiple = reward / risk;
-        if (rMultiple < 1.0m)
+        if (rMultiple < MinimumRMultiple)
         {
-            errorReason = $"Invalid R-multiple: {rMultiple:F2} is less than 1.0 (risk exceeds reward)";
+            errorReason = $"Invalid R-multiple: {rMultiple:F2} is less than {MinimumRMultiple} (risk exceeds reward)";
             return false;
         }
         

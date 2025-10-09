@@ -42,6 +42,9 @@ namespace BotCore.Services
         private readonly Timer? _reconciliationTimer;
         private const int ReconciliationIntervalSeconds = 60;
         
+        // PHASE 4: Execution quality thresholds
+        private const int MinimumOrdersForQualityCheck = 5; // Minimum orders before checking execution quality
+        
         // PHASE 5: Advanced order types tracking
         private readonly ConcurrentDictionary<string, OcoOrderPair> _ocoOrders = new();
         private readonly ConcurrentDictionary<string, BracketOrderGroup> _bracketOrders = new();
@@ -659,7 +662,7 @@ namespace BotCore.Services
             alertMessage = string.Empty;
             var summary = _metrics?.GetMetricsSummary(symbol);
             
-            if (summary == null || summary.TotalOrders < 5)
+            if (summary == null || summary.TotalOrders < MinimumOrdersForQualityCheck)
             {
                 return true; // Not enough data yet
             }
