@@ -27,26 +27,17 @@ namespace TradingBot.BotCore.Services
         /// <summary>
         /// Get current UTC time - ONLY method allowed for wall clock time
         /// </summary>
-        public static DateTime GetUtcNow()
-        {
-            return DateTime.UtcNow;
-        }
+        public static DateTime UtcNow => DateTime.UtcNow;
 
         /// <summary>
         /// Get monotonic time elapsed since service start - use for durations and intervals
         /// </summary>
-        public TimeSpan GetMonotonicTime()
-        {
-            return _monotonicTimer.Elapsed;
-        }
+        public TimeSpan MonotonicTime => _monotonicTimer.Elapsed;
 
         /// <summary>
         /// Get high-precision monotonic timestamp in ticks - use for performance measurement
         /// </summary>
-        public long GetMonotonicTicks()
-        {
-            return _monotonicTimer.ElapsedTicks;
-        }
+        public long MonotonicTicks => _monotonicTimer.ElapsedTicks;
 
         /// <summary>
         /// Convert monotonic time to approximate UTC time (for logging only)
@@ -63,9 +54,9 @@ namespace TradingBot.BotCore.Services
         {
             return new TradingTimestamp
             {
-                UtcTime = GetUtcNow(),
-                MonotonicTime = GetMonotonicTime(),
-                MonotonicTicks = GetMonotonicTicks()
+                UtcTime = UtcNow,
+                MonotonicTime = MonotonicTime,
+                MonotonicTicks = MonotonicTicks
             };
         }
 
@@ -191,12 +182,12 @@ namespace TradingBot.BotCore.Services
     {
         /// <summary>
         /// BANNED: This method should never be called in production code
-        /// Use ClockHygieneService.GetUtcNow() instead
+        /// Use ClockHygieneService.UtcNow instead
         /// </summary>
-        [Obsolete("DateTime.Now is banned in production code. Use ClockHygieneService.GetUtcNow() instead.", true)]
+        [Obsolete("DateTime.Now is banned in production code. Use ClockHygieneService.UtcNow instead.", true)]
         public static DateTime GetLocalNow()
         {
-            throw new InvalidOperationException("DateTime.Now is banned in production code. Use ClockHygieneService.GetUtcNow() instead.");
+            throw new InvalidOperationException("DateTime.Now is banned in production code. Use ClockHygieneService.UtcNow instead.");
         }
 
         /// <summary>
