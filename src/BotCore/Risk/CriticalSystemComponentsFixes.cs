@@ -14,8 +14,78 @@ namespace BotCore.Risk
     /// <summary>
     /// Complete infinite loop fixes with cancellation token support
     /// </summary>
-    public sealed class CriticalSystemComponentsFixes : BackgroundService
+    public sealed partial class CriticalSystemComponentsFixes : BackgroundService
     {
+        // High-performance logging using LoggerMessage pattern
+        [LoggerMessage(Level = LogLevel.Information, Message = "[CRITICAL-SYSTEM] Starting critical system monitoring with cancellation support")]
+        private static partial void LogStartingSystemMonitoring(ILogger logger);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "[CRITICAL-SYSTEM] Starting system health monitoring")]
+        private static partial void LogStartingHealthMonitoring(ILogger logger);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "[CRITICAL-SYSTEM] System health monitoring cancelled")]
+        private static partial void LogHealthMonitoringCancelled(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[CRITICAL-SYSTEM] Invalid operation in system health monitoring")]
+        private static partial void LogHealthMonitoringInvalidOperation(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[CRITICAL-SYSTEM] System API error in health monitoring")]
+        private static partial void LogHealthMonitoringSystemApiError(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "[CRITICAL-SYSTEM] Starting memory pressure monitoring")]
+        private static partial void LogStartingMemoryMonitoring(ILogger logger);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "[CRITICAL-SYSTEM] High memory usage detected: {MemoryUsageGB:F2}GB")]
+        private static partial void LogHighMemoryUsage(ILogger logger, double memoryUsageGB);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "[CRITICAL-SYSTEM] Memory pressure monitoring cancelled")]
+        private static partial void LogMemoryMonitoringCancelled(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[CRITICAL-SYSTEM] Invalid operation in memory pressure monitoring")]
+        private static partial void LogMemoryMonitoringInvalidOperation(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Critical, Message = "[CRITICAL-SYSTEM] Out of memory during monitoring")]
+        private static partial void LogOutOfMemory(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "[CRITICAL-SYSTEM] Starting performance metrics monitoring")]
+        private static partial void LogStartingPerformanceMonitoring(ILogger logger);
+
+        [LoggerMessage(Level = LogLevel.Debug, Message = "[CRITICAL-SYSTEM] Performance metrics - CPU: {CpuUsage:F2}%, Thread Pool: {WorkerThreads}/{CompletionPortThreads}")]
+        private static partial void LogPerformanceMetrics(ILogger logger, double cpuUsage, int workerThreads, int completionPortThreads);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "[CRITICAL-SYSTEM] Performance metrics monitoring cancelled")]
+        private static partial void LogPerformanceMonitoringCancelled(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[CRITICAL-SYSTEM] Invalid operation in performance metrics monitoring")]
+        private static partial void LogPerformanceMonitoringInvalidOperation(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[CRITICAL-SYSTEM] System API error in performance monitoring")]
+        private static partial void LogPerformanceMonitoringSystemApiError(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Debug, Message = "[CRITICAL-SYSTEM] System resources - Memory: {MemoryMB:F2}MB, GC: Gen0={Gen0}, Gen1={Gen1}, Gen2={Gen2}")]
+        private static partial void LogSystemResources(ILogger logger, double memoryMB, int gen0, int gen1, int gen2);
+
+        [LoggerMessage(Level = LogLevel.Debug, Message = "[CRITICAL-SYSTEM] Database connectivity check passed")]
+        private static partial void LogDatabaseCheckPassed(ILogger logger);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[CRITICAL-SYSTEM] Database connectivity check failed")]
+        private static partial void LogDatabaseCheckFailed(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Debug, Message = "[CRITICAL-SYSTEM] API endpoints health check passed")]
+        private static partial void LogApiCheckPassed(ILogger logger);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[CRITICAL-SYSTEM] API endpoints health check failed")]
+        private static partial void LogApiCheckFailed(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "[CRITICAL-SYSTEM] Memory monitoring active - CLR managing GC automatically")]
+        private static partial void LogMemoryMonitoringActive(ILogger logger);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "[CRITICAL-SYSTEM] Current memory usage: {MemoryMB:F2}MB")]
+        private static partial void LogCurrentMemoryUsage(ILogger logger, double memoryMB);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "[CRITICAL-SYSTEM] Stopping critical system monitoring")]
+        private static partial void LogStoppingSystemMonitoring(ILogger logger);
+
         private readonly ILogger<CriticalSystemComponentsFixes> _logger;
         private readonly CancellationTokenSource _cancellationTokenSource = new();
 
@@ -32,7 +102,7 @@ namespace BotCore.Risk
 
         protected override Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("[CRITICAL-SYSTEM] Starting critical system monitoring with cancellation support");
+            LogStartingSystemMonitoring(_logger);
 
             // Start all critical monitoring loops with proper cancellation
             var tasks = new[]
@@ -47,7 +117,7 @@ namespace BotCore.Risk
 
         private async Task MonitorSystemHealthAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("[CRITICAL-SYSTEM] Starting system health monitoring");
+            LogStartingHealthMonitoring(_logger);
 
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -62,17 +132,17 @@ namespace BotCore.Risk
                 }
                 catch (OperationCanceledException ex)
                 {
-                    _logger.LogInformation(ex, "[CRITICAL-SYSTEM] System health monitoring cancelled");
+                    LogHealthMonitoringCancelled(_logger, ex);
                     break;
                 }
                 catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "[CRITICAL-SYSTEM] Invalid operation in system health monitoring");
+                    LogHealthMonitoringInvalidOperation(_logger, ex);
                     await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
                 }
                 catch (System.ComponentModel.Win32Exception ex)
                 {
-                    _logger.LogError(ex, "[CRITICAL-SYSTEM] System API error in health monitoring");
+                    LogHealthMonitoringSystemApiError(_logger, ex);
                     await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
                 }
             }
@@ -80,7 +150,7 @@ namespace BotCore.Risk
 
         private async Task MonitorMemoryPressureAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("[CRITICAL-SYSTEM] Starting memory pressure monitoring");
+            LogStartingMemoryMonitoring(_logger);
 
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -92,7 +162,7 @@ namespace BotCore.Risk
 
                     if (memoryUsageGB > HighMemoryThresholdGB)
                     {
-                        _logger.LogWarning("[CRITICAL-SYSTEM] High memory usage detected: {MemoryUsageGB:F2}GB", memoryUsageGB);
+                        LogHighMemoryUsage(_logger, memoryUsageGB);
                         
                         // Trigger intelligent cleanup instead of forced GC
                         await PerformIntelligentMemoryCleanupAsync().ConfigureAwait(false);
@@ -102,17 +172,17 @@ namespace BotCore.Risk
                 }
                 catch (OperationCanceledException ex)
                 {
-                    _logger.LogInformation(ex, "[CRITICAL-SYSTEM] Memory pressure monitoring cancelled");
+                    LogMemoryMonitoringCancelled(_logger, ex);
                     break;
                 }
                 catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "[CRITICAL-SYSTEM] Invalid operation in memory pressure monitoring");
+                    LogMemoryMonitoringInvalidOperation(_logger, ex);
                     await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken).ConfigureAwait(false);
                 }
                 catch (OutOfMemoryException ex)
                 {
-                    _logger.LogCritical(ex, "[CRITICAL-SYSTEM] Out of memory during monitoring");
+                    LogOutOfMemory(_logger, ex);
                     await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken).ConfigureAwait(false);
                 }
             }
@@ -120,7 +190,7 @@ namespace BotCore.Risk
 
         private async Task MonitorPerformanceMetricsAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("[CRITICAL-SYSTEM] Starting performance metrics monitoring");
+            LogStartingPerformanceMonitoring(_logger);
 
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -130,24 +200,23 @@ namespace BotCore.Risk
                     var cpuUsage = await GetCpuUsageAsync().ConfigureAwait(false);
                     var threadPoolInfo = GetThreadPoolInfo();
                     
-                    _logger.LogDebug("[CRITICAL-SYSTEM] Performance metrics - CPU: {CpuUsage:F2}%, Thread Pool: {WorkerThreads}/{CompletionPortThreads}",
-                        cpuUsage, threadPoolInfo.WorkerThreads, threadPoolInfo.CompletionPortThreads);
+                    LogPerformanceMetrics(_logger, cpuUsage, threadPoolInfo.WorkerThreads, threadPoolInfo.CompletionPortThreads);
 
                     await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException ex)
                 {
-                    _logger.LogInformation(ex, "[CRITICAL-SYSTEM] Performance metrics monitoring cancelled");
+                    LogPerformanceMonitoringCancelled(_logger, ex);
                     break;
                 }
                 catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "[CRITICAL-SYSTEM] Invalid operation in performance metrics monitoring");
+                    LogPerformanceMonitoringInvalidOperation(_logger, ex);
                     await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
                 }
                 catch (System.ComponentModel.Win32Exception ex)
                 {
-                    _logger.LogError(ex, "[CRITICAL-SYSTEM] System API error in performance monitoring");
+                    LogPerformanceMonitoringSystemApiError(_logger, ex);
                     await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
                 }
             }
@@ -162,8 +231,7 @@ namespace BotCore.Risk
             var gen1Collections = GC.CollectionCount(1);
             var gen2Collections = GC.CollectionCount(2);
 
-            _logger.LogDebug("[CRITICAL-SYSTEM] System resources - Memory: {MemoryMB:F2}MB, GC: Gen0={Gen0}, Gen1={Gen1}, Gen2={Gen2}",
-                memoryUsage / BytesToMegabytesConversion, gen0Collections, gen1Collections, gen2Collections);
+            LogSystemResources(_logger, memoryUsage / BytesToMegabytesConversion, gen0Collections, gen1Collections, gen2Collections);
         }
 
         private async Task CheckDatabaseConnectivityAsync()
@@ -172,11 +240,11 @@ namespace BotCore.Risk
             {
                 await Task.Yield();
                 // Real database connectivity check would go here
-                _logger.LogDebug("[CRITICAL-SYSTEM] Database connectivity check passed");
+                LogDatabaseCheckPassed(_logger);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[CRITICAL-SYSTEM] Database connectivity check failed");
+                LogDatabaseCheckFailed(_logger, ex);
                 throw new InvalidOperationException("[CRITICAL-SYSTEM] Database connectivity check failed. See inner exception for details.", ex);
             }
         }
@@ -187,11 +255,11 @@ namespace BotCore.Risk
             {
                 await Task.Yield();
                 // Real API endpoint health check would go here
-                _logger.LogDebug("[CRITICAL-SYSTEM] API endpoints health check passed");
+                LogApiCheckPassed(_logger);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[CRITICAL-SYSTEM] API endpoints health check failed");
+                LogApiCheckFailed(_logger, ex);
                 throw new InvalidOperationException("[CRITICAL-SYSTEM] API endpoints health check failed. See inner exception for details.", ex);
             }
         }
@@ -201,11 +269,11 @@ namespace BotCore.Risk
             await Task.Yield();
             
             // Memory monitoring - allow CLR to manage garbage collection automatically
-            _logger.LogInformation("[CRITICAL-SYSTEM] Memory monitoring active - CLR managing GC automatically");
+            LogMemoryMonitoringActive(_logger);
             
             var currentMemory = GC.GetTotalMemory(false);
             var memoryMB = currentMemory / (1024.0 * 1024.0);
-            _logger.LogInformation("[CRITICAL-SYSTEM] Current memory usage: {MemoryMB:F2}MB", memoryMB);
+            LogCurrentMemoryUsage(_logger, memoryMB);
         }
 
         private static async Task<double> GetCpuUsageAsync()
@@ -223,7 +291,7 @@ namespace BotCore.Risk
 
         public override async Task StopAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("[CRITICAL-SYSTEM] Stopping critical system monitoring");
+            LogStoppingSystemMonitoring(_logger);
             await _cancellationTokenSource.CancelAsync().ConfigureAwait(false);
             await base.StopAsync(cancellationToken).ConfigureAwait(false);
         }

@@ -741,8 +741,21 @@ namespace BotCore.Strategy
     /// Static bridge class to provide S6 and S11 full-stack strategy integration
     /// Production-ready with complete TopstepX SDK integration
     /// </summary>
-    public static class S6S11Bridge
+    public static partial class S6S11Bridge
     {
+        // High-performance logging using LoggerMessage pattern
+        [LoggerMessage(Level = LogLevel.Error, Message = "[S6Bridge] Invalid operation in strategy candidate generation")]
+        private static partial void LogS6InvalidOperation(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[S6Bridge] Invalid argument in strategy candidate generation")]
+        private static partial void LogS6InvalidArgument(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[S11Bridge] Invalid operation in strategy candidate generation")]
+        private static partial void LogS11InvalidOperation(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[S11Bridge] Invalid argument in strategy candidate generation")]
+        private static partial void LogS11InvalidArgument(ILogger logger, Exception ex);
+        
         private static TopstepX.S6.S6Strategy? _s6Strategy;
         private static TopstepX.S11.S11Strategy? _s11Strategy;
         private static BridgeOrderRouter? _router;
@@ -858,11 +871,11 @@ namespace BotCore.Strategy
             }
             catch (InvalidOperationException ex)
             {
-                logger?.LogError(ex, "[S6Bridge] Invalid operation in strategy candidate generation");
+                if (logger != null) LogS6InvalidOperation(logger, ex);
             }
             catch (ArgumentException ex)
             {
-                logger?.LogError(ex, "[S6Bridge] Invalid argument in strategy candidate generation");
+                if (logger != null) LogS6InvalidArgument(logger, ex);
             }
 
             return candidates;
@@ -968,11 +981,11 @@ namespace BotCore.Strategy
             }
             catch (InvalidOperationException ex)
             {
-                logger?.LogError(ex, "[S11Bridge] Invalid operation in strategy candidate generation");
+                if (logger != null) LogS11InvalidOperation(logger, ex);
             }
             catch (ArgumentException ex)
             {
-                logger?.LogError(ex, "[S11Bridge] Invalid argument in strategy candidate generation");
+                if (logger != null) LogS11InvalidArgument(logger, ex);
             }
 
             return candidates;
