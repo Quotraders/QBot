@@ -207,6 +207,62 @@ public sealed class OnnxModelLoader : IDisposable
         LoggerMessage.Define<string, string>(LogLevel.Information, new EventId(36, nameof(LogRegistryUpdateNew)),
             "[HOT_RELOAD] Registry update detected: {MetadataFile} (modified: {LastWrite})");
 
+    private static readonly Action<ILogger, string, string, Exception?> LogModelDeployedWithBackup =
+        LoggerMessage.Define<string, string>(LogLevel.Debug, new EventId(37, nameof(LogModelDeployedWithBackup)),
+            "[ONNX-Registry] Model deployed atomically with backup: {Model}, backup: {Backup}");
+
+    private static readonly Action<ILogger, string, Exception?> LogModelDeployedAtomic =
+        LoggerMessage.Define<string>(LogLevel.Debug, new EventId(38, nameof(LogModelDeployedAtomic)),
+            "[ONNX-Registry] Model deployed atomically: {Model}");
+
+    private static readonly Action<ILogger, Exception?> LogDeployFailedIO =
+        LoggerMessage.Define(LogLevel.Error, new EventId(39, nameof(LogDeployFailedIO)),
+            "[ONNX-Registry] Failed to deploy model atomically - I/O error");
+
+    private static readonly Action<ILogger, Exception?> LogMetadataSaveError =
+        LoggerMessage.Define(LogLevel.Error, new EventId(40, nameof(LogMetadataSaveError)),
+            "[ONNX-Registry] Failed to save metadata file");
+
+    private static readonly Action<ILogger, string, Exception?> LogModelRegistered =
+        LoggerMessage.Define<string>(LogLevel.Information, new EventId(41, nameof(LogModelRegistered)),
+            "[ONNX-Registry] Model registered successfully: {ModelName}");
+
+    private static readonly Action<ILogger, Exception?> LogRegistrationFailedIO =
+        LoggerMessage.Define(LogLevel.Error, new EventId(42, nameof(LogRegistrationFailedIO)),
+            "[ONNX-Registry] Model registration failed - I/O error");
+
+    private static readonly Action<ILogger, Exception?> LogRegistrationFailedUnauthorized =
+        LoggerMessage.Define(LogLevel.Error, new EventId(43, nameof(LogRegistrationFailedUnauthorized)),
+            "[ONNX-Registry] Model registration failed - access denied");
+
+    private static readonly Action<ILogger, Exception?> LogRegistrationFailedJson =
+        LoggerMessage.Define(LogLevel.Error, new EventId(44, nameof(LogRegistrationFailedJson)),
+            "[ONNX-Registry] Model registration failed - JSON error");
+
+    private static readonly Action<ILogger, Exception?> LogRegistrationFailedInvalid =
+        LoggerMessage.Define(LogLevel.Error, new EventId(45, nameof(LogRegistrationFailedInvalid)),
+            "[ONNX-Registry] Model registration failed - invalid operation");
+
+    private static readonly Action<ILogger, string, Exception?> LogUnregistrationSuccess =
+        LoggerMessage.Define<string>(LogLevel.Information, new EventId(46, nameof(LogUnregistrationSuccess)),
+            "[ONNX-Registry] Model unregistered successfully: {ModelName}");
+
+    private static readonly Action<ILogger, Exception?> LogUnregistrationFailedIO =
+        LoggerMessage.Define(LogLevel.Error, new EventId(47, nameof(LogUnregistrationFailedIO)),
+            "[ONNX-Registry] Model unregistration failed - I/O error");
+
+    private static readonly Action<ILogger, Exception?> LogUnregistrationFailedUnauthorized =
+        LoggerMessage.Define(LogLevel.Error, new EventId(48, nameof(LogUnregistrationFailedUnauthorized)),
+            "[ONNX-Registry] Model unregistration failed - access denied");
+
+    private static readonly Action<ILogger, Exception?> LogUnregistrationFailedJson =
+        LoggerMessage.Define(LogLevel.Error, new EventId(49, nameof(LogUnregistrationFailedJson)),
+            "[ONNX-Registry] Model unregistration failed - JSON error");
+
+    private static readonly Action<ILogger, Exception?> LogUnregistrationFailedInvalid =
+        LoggerMessage.Define(LogLevel.Error, new EventId(50, nameof(LogUnregistrationFailedInvalid)),
+            "[ONNX-Registry] Model unregistration failed - invalid operation");
+
     public OnnxModelLoader(
         ILogger<OnnxModelLoader> logger, 
         string modelsDirectory = "models",
@@ -1176,18 +1232,17 @@ public sealed class OnnxModelLoader : IDisposable
                 {
                     var backupPath = registryModelPath + ".backup";
                     File.Replace(tempModelPath, registryModelPath, backupPath);
-                    _logger.LogDebug("[ONNX-Registry] Model deployed atomically with backup: {Model}, backup: {Backup}", 
-                        Path.GetFileName(registryModelPath), Path.GetFileName(backupPath));
+                    LogModelDeployedWithBackup(_logger, Path.GetFileName(registryModelPath), Path.GetFileName(backupPath), null);
                 }
                 else
                 {
                     File.Move(tempModelPath, registryModelPath);
-                    _logger.LogDebug("[ONNX-Registry] Model deployed atomically: {Model}", Path.GetFileName(registryModelPath));
+                    LogModelDeployedAtomic(_logger, Path.GetFileName(registryModelPath), null);
                 }
             }
             catch (IOException ex)
             {
-                _logger.LogError(ex, "[ONNX-Registry] Failed to deploy model atomically - I/O error");
+                LogDeployFailedIO(_logger, ex);
                 // Cleanup temp file on error
                 if (File.Exists(tempModelPath))
                 {
