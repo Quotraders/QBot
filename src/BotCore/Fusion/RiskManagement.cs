@@ -45,6 +45,83 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ProductionRiskManager> _logger;
+    
+    // CA1848: LoggerMessage delegates for high-performance logging
+    private static readonly Action<ILogger, string, DateTime, Exception?> LogRiskAssessmentInitiated =
+        LoggerMessage.Define<string, DateTime>(LogLevel.Debug, new EventId(8200, nameof(LogRiskAssessmentInitiated)),
+            "🔍 [AUDIT-{OperationId}] Risk assessment initiated at {Timestamp}");
+    
+    private static readonly Action<ILogger, string, double, Exception?> LogMaxRiskOutOfBounds =
+        LoggerMessage.Define<string, double>(LogLevel.Error, new EventId(8201, nameof(LogMaxRiskOutOfBounds)),
+            "🚨 [AUDIT-{OperationId}] Risk:MaximumRiskLevel configuration out of bounds {MaxRisk} - using 1.0");
+    
+    private static readonly Action<ILogger, string, double, Exception?> LogRiskBreachDetected =
+        LoggerMessage.Define<string, double>(LogLevel.Warning, new EventId(8202, nameof(LogRiskBreachDetected)),
+            "🚨 [AUDIT-{OperationId}] Risk breach detected - returning maximum risk {MaxRisk:P2} (fail-closed)");
+    
+    private static readonly Action<ILogger, string, Exception?> LogConfigServiceUnavailable =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8203, nameof(LogConfigServiceUnavailable)),
+            "🚨 [AUDIT-{OperationId}] Configuration service unavailable - fail-closed: returning hold");
+    
+    private static readonly Action<ILogger, string, Exception?> LogRiskConfigMissing =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8204, nameof(LogRiskConfigMissing)),
+            "🚨 [AUDIT-{OperationId}] Risk configuration missing - fail-closed: returning hold");
+    
+    private static readonly Action<ILogger, string, double, double, double, Exception?> LogRiskConfigOutOfBounds =
+        LoggerMessage.Define<string, double, double, double>(LogLevel.Error, new EventId(8205, nameof(LogRiskConfigOutOfBounds)),
+            "🚨 [AUDIT-{OperationId}] Risk configuration out of bounds {Risk} (min: {Min}, max: {Max}) - fail-closed: returning hold");
+    
+    private static readonly Action<ILogger, string, double, long, Exception?> LogRiskAssessmentSuccessful =
+        LoggerMessage.Define<string, double, long>(LogLevel.Debug, new EventId(8206, nameof(LogRiskAssessmentSuccessful)),
+            "🔍 [AUDIT-{OperationId}] Risk assessment successful: Risk={Risk:P2}, Duration={Duration}ms");
+    
+    private static readonly Action<ILogger, string, Exception?> LogRiskInvalidOperation =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8207, nameof(LogRiskInvalidOperation)),
+            "🚨 [AUDIT-{OperationId}] Risk assessment invalid operation - fail-closed: returning hold");
+    
+    private static readonly Action<ILogger, string, Exception?> LogRiskTimeout =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8208, nameof(LogRiskTimeout)),
+            "🚨 [AUDIT-{OperationId}] Risk assessment timeout - fail-closed: returning hold");
+    
+    private static readonly Action<ILogger, string, Exception?> LogNoRiskService =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8209, nameof(LogNoRiskService)),
+            "🚨 [AUDIT-{OperationId}] No risk management service available - fail-closed: returning hold");
+    
+    private static readonly Action<ILogger, string, long, Exception?> LogRiskServiceInvalidOperation =
+        LoggerMessage.Define<string, long>(LogLevel.Error, new EventId(8210, nameof(LogRiskServiceInvalidOperation)),
+            "🚨 [AUDIT-{OperationId}] Risk service invalid operation - fail-closed: returning hold, Duration={Duration}ms");
+    
+    private static readonly Action<ILogger, string, long, Exception?> LogRiskServiceBadArgument =
+        LoggerMessage.Define<string, long>(LogLevel.Error, new EventId(8211, nameof(LogRiskServiceBadArgument)),
+            "🚨 [AUDIT-{OperationId}] Risk service bad argument - fail-closed: returning hold, Duration={Duration}ms");
+    
+    private static readonly Action<ILogger, string, long, Exception?> LogRiskServiceHttpFailure =
+        LoggerMessage.Define<string, long>(LogLevel.Error, new EventId(8212, nameof(LogRiskServiceHttpFailure)),
+            "🚨 [AUDIT-{OperationId}] Risk service HTTP failure - fail-closed: returning hold, Duration={Duration}ms");
+    
+    private static readonly Action<ILogger, string, DateTime, Exception?> LogEquityAssessmentInitiated =
+        LoggerMessage.Define<string, DateTime>(LogLevel.Debug, new EventId(8213, nameof(LogEquityAssessmentInitiated)),
+            "🔍 [AUDIT-{OperationId}] Account equity assessment initiated at {Timestamp}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogConfigServiceUnavailableForEquity =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8214, nameof(LogConfigServiceUnavailableForEquity)),
+            "🚨 [AUDIT-{OperationId}] Configuration service unavailable - fail-closed: cannot determine account equity");
+    
+    private static readonly Action<ILogger, string, Exception?> LogEquityConfigMissing =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8215, nameof(LogEquityConfigMissing)),
+            "🚨 [AUDIT-{OperationId}] Account equity configuration missing - fail-closed");
+    
+    private static readonly Action<ILogger, string, double, double, double, Exception?> LogEquityConfigOutOfBounds =
+        LoggerMessage.Define<string, double, double, double>(LogLevel.Error, new EventId(8216, nameof(LogEquityConfigOutOfBounds)),
+            "🚨 [AUDIT-{OperationId}] Account equity configuration out of bounds {Equity:C} (min: {Min:C}, max: {Max:C}) - fail-closed");
+    
+    private static readonly Action<ILogger, string, double, long, Exception?> LogEquityFromConfig =
+        LoggerMessage.Define<string, double, long>(LogLevel.Debug, new EventId(8217, nameof(LogEquityFromConfig)),
+            "🔍 [AUDIT-{OperationId}] Account equity from config: {Equity:C}, Duration={Duration}ms");
+    
+    private static readonly Action<ILogger, string, long, Exception?> LogEquityAssessmentFailed =
+        LoggerMessage.Define<string, long>(LogLevel.Error, new EventId(8218, nameof(LogEquityAssessmentFailed)),
+            "🚨 [AUDIT-{OperationId}] Account equity assessment failed - fail-closed: cannot proceed, Duration={Duration}ms");
 
     public ProductionRiskManager(IServiceProvider serviceProvider, ILogger<ProductionRiskManager> logger)
     {
@@ -60,7 +137,7 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
         try
         {
             // Audit log: Risk assessment initiated
-            _logger.LogDebug("🔍 [AUDIT-{OperationId}] Risk assessment initiated at {Timestamp}", operationId, startTime);
+            LogRiskAssessmentInitiated(_logger, operationId, startTime, null);
             
             // Use basic risk manager from abstractions - fail-closed approach
             var basicRiskManager = _serviceProvider.GetService<IRiskManager>();
@@ -78,11 +155,11 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
                         // Validate configuration bounds
                         if (maxRisk < 0.0 || maxRisk > 1.0)
                         {
-                            _logger.LogError("🚨 [AUDIT-{OperationId}] Risk:MaximumRiskLevel configuration out of bounds {MaxRisk} - using 1.0", operationId, maxRisk);
+                            LogMaxRiskOutOfBounds(_logger, operationId, maxRisk, null);
                             maxRisk = 1.0;
                         }
                         
-                        _logger.LogWarning("🚨 [AUDIT-{OperationId}] Risk breach detected - returning maximum risk {MaxRisk:P2} (fail-closed)", operationId, maxRisk);
+                        LogRiskBreachDetected(_logger, operationId, maxRisk, null);
                         return Task.FromResult(maxRisk);
                     }
                     
@@ -90,7 +167,7 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
                     var configuration = _serviceProvider.GetService<IConfiguration>();
                     if (configuration == null)
                     {
-                        _logger.LogError("🚨 [AUDIT-{OperationId}] Configuration service unavailable - fail-closed: returning hold", operationId);
+                        LogConfigServiceUnavailable(_logger, operationId, null);
                         var holdRisk = GetConfiguredHoldRiskLevel(_serviceProvider);
                         return Task.FromResult(holdRisk);
                     }
@@ -99,7 +176,7 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
                     var configuredRisk = configuration.GetValue<double?>("Risk:NormalRiskLevel");
                     if (!configuredRisk.HasValue)
                     {
-                        _logger.LogError("🚨 [AUDIT-{OperationId}] Risk configuration missing - fail-closed: returning hold", operationId);
+                        LogRiskConfigMissing(_logger, operationId, null);
                         var holdRisk = GetConfiguredHoldRiskLevel(_serviceProvider);
                         return Task.FromResult(holdRisk);
                     }
@@ -110,53 +187,48 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
                     
                     if (configuredRisk.Value < minRiskLevel || configuredRisk.Value > maxRiskLevel)
                     {
-                        _logger.LogError("🚨 [AUDIT-{OperationId}] Risk configuration out of bounds {Risk} (min: {Min}, max: {Max}) - fail-closed: returning hold", 
-                            operationId, configuredRisk.Value, minRiskLevel, maxRiskLevel);
+                        LogRiskConfigOutOfBounds(_logger, operationId, configuredRisk.Value, minRiskLevel, maxRiskLevel, null);
                         var holdRisk = GetConfiguredHoldRiskLevel(_serviceProvider);
                         return Task.FromResult(holdRisk);
                     }
                     
-                    _logger.LogDebug("🔍 [AUDIT-{OperationId}] Risk assessment successful: Risk={Risk:P2}, Duration={Duration}ms", 
-                        operationId, configuredRisk.Value, (DateTime.UtcNow - startTime).TotalMilliseconds);
+                    LogRiskAssessmentSuccessful(_logger, operationId, configuredRisk.Value, (long)(DateTime.UtcNow - startTime).TotalMilliseconds, null);
                     return Task.FromResult(configuredRisk.Value);
                 }
                 catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk assessment invalid operation - fail-closed: returning hold", operationId);
+                    LogRiskInvalidOperation(_logger, operationId, ex);
                     var holdRisk = GetConfiguredHoldRiskLevel(_serviceProvider);
                     return Task.FromResult(holdRisk);
                 }
                 catch (TimeoutException ex)
                 {
-                    _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk assessment timeout - fail-closed: returning hold", operationId);
+                    LogRiskTimeout(_logger, operationId, ex);
                     var holdRisk = GetConfiguredHoldRiskLevel(_serviceProvider);
                     return Task.FromResult(holdRisk);
                 }
             }
             
             // No risk manager available - fail-closed
-            _logger.LogError("🚨 [AUDIT-{OperationId}] No risk management service available - fail-closed: returning hold", operationId);
+            LogNoRiskService(_logger, operationId, null);
             var holdRiskFallback = GetConfiguredHoldRiskLevel(_serviceProvider);
             return Task.FromResult(holdRiskFallback);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk service invalid operation - fail-closed: returning hold, Duration={Duration}ms", 
-                operationId, (DateTime.UtcNow - startTime).TotalMilliseconds);
+            LogRiskServiceInvalidOperation(_logger, operationId, (long)(DateTime.UtcNow - startTime).TotalMilliseconds, ex);
             var holdRiskException = GetConfiguredHoldRiskLevel(_serviceProvider);
             return Task.FromResult(holdRiskException);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk service bad argument - fail-closed: returning hold, Duration={Duration}ms", 
-                operationId, (DateTime.UtcNow - startTime).TotalMilliseconds);
+            LogRiskServiceBadArgument(_logger, operationId, (long)(DateTime.UtcNow - startTime).TotalMilliseconds, ex);
             var holdRiskException = GetConfiguredHoldRiskLevel(_serviceProvider);
             return Task.FromResult(holdRiskException);
         }
         catch (System.Net.Http.HttpRequestException ex)
         {
-            _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Risk service HTTP failure - fail-closed: returning hold, Duration={Duration}ms", 
-                operationId, (DateTime.UtcNow - startTime).TotalMilliseconds);
+            LogRiskServiceHttpFailure(_logger, operationId, (long)(DateTime.UtcNow - startTime).TotalMilliseconds, ex);
             var holdRiskException = GetConfiguredHoldRiskLevel(_serviceProvider);
             return Task.FromResult(holdRiskException);
         }
@@ -203,13 +275,13 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
         try
         {
             // Audit log: Account equity assessment initiated
-            _logger.LogDebug("🔍 [AUDIT-{OperationId}] Account equity assessment initiated at {Timestamp}", operationId, startTime);
+            LogEquityAssessmentInitiated(_logger, operationId, startTime, null);
             
             // Get configuration service - required for account equity
             var configuration = _serviceProvider.GetService<IConfiguration>();
             if (configuration == null)
             {
-                _logger.LogError("🚨 [AUDIT-{OperationId}] Configuration service unavailable - fail-closed: cannot determine account equity", operationId);
+                LogConfigServiceUnavailableForEquity(_logger, operationId, null);
                 throw new InvalidOperationException("Account equity unavailable - configuration service missing (fail-closed)");
             }
             
@@ -217,7 +289,7 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
             var startingEquity = configuration.GetValue<double?>("Account:StartingEquity");
             if (!startingEquity.HasValue)
             {
-                _logger.LogError("🚨 [AUDIT-{OperationId}] Account equity configuration missing - fail-closed", operationId);
+                LogEquityConfigMissing(_logger, operationId, null);
                 throw new InvalidOperationException("Account equity unavailable - configuration missing (fail-closed)");
             }
             
@@ -227,19 +299,16 @@ public sealed class ProductionRiskManager : IRiskManagerForFusion
             
             if (startingEquity.Value <= minEquity || startingEquity.Value > maxEquity)
             {
-                _logger.LogError("🚨 [AUDIT-{OperationId}] Account equity configuration out of bounds {Equity:C} (min: {Min:C}, max: {Max:C}) - fail-closed", 
-                    operationId, startingEquity.Value, minEquity, maxEquity);
+                LogEquityConfigOutOfBounds(_logger, operationId, startingEquity.Value, minEquity, maxEquity, null);
                 throw new InvalidOperationException($"Account equity out of bounds: {startingEquity.Value:C} (min: {minEquity:C}, max: {maxEquity:C}) (fail-closed)");
             }
             
-            _logger.LogDebug("🔍 [AUDIT-{OperationId}] Account equity from config: {Equity:C}, Duration={Duration}ms", 
-                operationId, startingEquity.Value, (DateTime.UtcNow - startTime).TotalMilliseconds);
+            LogEquityFromConfig(_logger, operationId, startingEquity.Value, (long)(DateTime.UtcNow - startTime).TotalMilliseconds, null);
             return Task.FromResult(startingEquity.Value);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "🚨 [AUDIT-{OperationId}] Account equity assessment failed - fail-closed: cannot proceed, Duration={Duration}ms", 
-                operationId, (DateTime.UtcNow - startTime).TotalMilliseconds);
+            LogEquityAssessmentFailed(_logger, operationId, (long)(DateTime.UtcNow - startTime).TotalMilliseconds, ex);
             throw new InvalidOperationException($"Account equity assessment failed for operation {operationId} - system fail-closed", ex);
         }
     }
