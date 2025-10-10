@@ -15,12 +15,12 @@
 ---
 
 ## ✅ Progress Summary - New Continuation Session
-- **Errors Fixed This Session:** 127 violations (90 previous + 37 new: 4 S109 + 6 S2139 + 5 CA1307/CA1311 + 22 S6605)
+- **Errors Fixed This Session:** 125 violations (90 previous + 35 new: 4 S109 + 6 S2139 + 3 CA1307/CA1311 + 22 S6605)
 - **Files Modified This Session:** 34 unique files (22 previous + 12 new)
-- **Commits Pushed:** 6 batches (19, 20, 21, 22 previous + 23, 24 new)
+- **Commits Pushed:** 7 batches (19, 20, 21, 22 previous + 23, 24, 25 new)
 - **Starting Violation Count:** 4,714 (Services folder only, based on current build)
-- **Current Violation Count:** 4,668 (down from 4,714 start)
-- **Net Reduction:** -46 violations (1.0% reduction this sub-session)
+- **Current Violation Count:** 4,670 (down from 4,714 start)
+- **Net Reduction:** -44 violations (0.9% reduction this sub-session)
 - **Phase 1 Status:** ✅ 0 CS compiler errors in Services scope
 - **Session Focus:** Magic numbers, exception rethrow, globalization, performance (Any→Exists), type optimization
 
@@ -41,18 +41,29 @@
 - Benefit: Better performance - Exists is optimized for collections, avoids LINQ overhead
 - Result: 4,690 → 4,668 (-22 violations)
 
-### Batch 23: CA1307 + CA1311 - Globalization (5 fixes - COMPLETE ✅)
+### Batch 25: CS Error Fixes - Critical Phase 1 Correction (COMPLETE ✅)
+- Fixed CS compiler errors introduced in Batch 23 globalization changes
+- Files fixed:
+  1. SuppressionLedgerService.cs - Reverted IndexOf overload (char + startIndex + StringComparison not available)
+  2. SecurityService.cs - Fixed Array.Exists syntax (was missing array parameter)
+- Issue: `IndexOf(char, int, StringComparison)` overload doesn't exist in .NET
+- Solution: Reverted to `IndexOf(char)` and `IndexOf(char, int)` without StringComparison
+- Phase 1 Compliance: ✅ 0 CS errors in Services folder maintained
+- Result: 4,668 → 4,670 (+2 analyzer violations to maintain CS error-free build)
+
+### Batch 23: CA1307 + CA1311 - Globalization (3 net fixes - COMPLETE ✅)
 - Added StringComparison.Ordinal to string operations
 - Added CultureInfo.InvariantCulture to ToUpper calls
 - Files fixed:
-  1. SuppressionLedgerService.cs - 3 fixes (IndexOf with StringComparison)
+  1. SuppressionLedgerService.cs - 1 fix (IndexOf with StringComparison on colon check)
   2. IntelligenceService.cs - 1 fix (Replace with StringComparison)
   3. EnhancedBacktestService.cs - 1 fix (ToUpper with InvariantCulture)
   4. ContractRolloverService.cs - 1 fix (ToUpper with InvariantCulture)
-- Pattern: `string.IndexOf(char)` → `string.IndexOf(char, StringComparison.Ordinal)`
+- Pattern: `string.Replace(string, string)` → `string.Replace(string, string, StringComparison.Ordinal)`
 - Pattern: `string.ToUpper()` → `string.ToUpper(CultureInfo.InvariantCulture)`
+- Note: Some IndexOf fixes reverted in Batch 25 to maintain CS error-free build
 - Benefit: Explicit culture handling prevents globalization bugs
-- Result: Part of S109+S2139+CA1307/CA1311 batch fixing 15 violations total
+- Result: Part of combined batch, net 3 CA1307/CA1311 fixes after CS corrections
 
 ### Batch 23: S109 + S2139 - Magic Numbers & Exception Rethrow (10 fixes - COMPLETE ✅)
 - S109: Extracted magic number 3 to named constant `MaxMetricsToDisplay`
