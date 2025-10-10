@@ -340,7 +340,7 @@ namespace TradingBot.BotCore.Services
                 if (end > start)
                 {
                     var categoryAndRule = suppressLine.Substring(start + 1, end - start - 1);
-                    var colonIndex = categoryAndRule.IndexOf(':');
+                    var colonIndex = categoryAndRule.IndexOf(':', StringComparison.Ordinal);
                     return colonIndex > 0 ? categoryAndRule.Substring(0, colonIndex) : categoryAndRule;
                 }
             }

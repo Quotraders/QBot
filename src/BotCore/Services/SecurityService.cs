@@ -120,7 +120,7 @@ public class SecurityService : ISecurityService
             var envDetected = CheckEnvironmentIndicators();
             detectionResults.Add(("ENV", envDetected.IsRemote, envDetected.Details));
 
-            var anyRemoteDetected = detectionResults.Any(r => r.Detected);
+            var anyRemoteDetected = detectionResults.Exists(r => r.Detected);
 
             // Log detection results
             var detectionData = new
@@ -254,7 +254,7 @@ public class SecurityService : ISecurityService
                 var name = adapter.Name.ToUpperInvariant();
                 var description = adapter.Description.ToUpperInvariant();
 
-                if (vpnIndicators.Any(indicator => name.Contains(indicator, StringComparison.Ordinal) || description.Contains(indicator, StringComparison.Ordinal)))
+                if (Array.Exists(vpnIndicators, indicator => name.Contains(indicator, StringComparison.Ordinal) || description.Contains(indicator, StringComparison.Ordinal)))
                 {
                     suspiciousAdapters.Add($"{adapter.Name} ({adapter.Description})");
                 }
@@ -283,7 +283,7 @@ public class SecurityService : ISecurityService
             var computerName = Environment.MachineName.ToUpperInvariant();
             var vmNames = new[] { "VM", "VPS", "CLOUD", "AWS", "AZURE", "GCP", "DIGITALOCEAN", "VULTR" };
             
-            if (vmNames.Any(vm => computerName.Contains(vm, StringComparison.Ordinal)))
+            if (Array.Exists(vmNames, vm => computerName.Contains(vm, StringComparison.Ordinal)))
             {
                 vmIndicators.Add($"VM-like computer name: {computerName}");
             }
@@ -297,7 +297,7 @@ public class SecurityService : ISecurityService
                 try
                 {
                     var processNameUpper = processName.ToUpperInvariant();
-                    if (vmProcesses.Any(vm => processNameUpper.Contains(vm, StringComparison.Ordinal)))
+                    if (Array.Exists(vmProcesses, vm => processNameUpper.Contains(vm, StringComparison.Ordinal)))
                     {
                         vmIndicators.Add($"VM process detected: {processName}");
                     }
@@ -372,7 +372,7 @@ public class SecurityService : ISecurityService
             var userDomain = Environment.UserDomainName;
             var remoteDomains = new[] { "AWS", "AZURE", "GCP", "CLOUD", "VPS" };
             
-            if (remoteDomains.Any(domain => userDomain.ToUpperInvariant().Contains(domain, StringComparison.Ordinal)))
+            if (Array.Exists(remoteDomains, domain => userDomain.ToUpperInvariant().Contains(domain, StringComparison.Ordinal)))
             {
                 remoteIndicators.Add($"Remote domain: {userDomain}");
             }

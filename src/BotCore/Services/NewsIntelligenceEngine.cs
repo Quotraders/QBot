@@ -295,7 +295,7 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
             if (_ollamaClient == null)
             {
                 var impactfulKeywords = new[] { "fed", "rate", "inflation", "gdp", "unemployment", "war", "crisis", "tariff", "trump" };
-                return impactfulKeywords.Any(keyword => 
+                return Array.Exists(impactfulKeywords, keyword => 
                     newsText.Contains(keyword, StringComparison.OrdinalIgnoreCase));
             }
             
@@ -312,7 +312,7 @@ Answer YES or NO and briefly explain why.";
             {
                 // Fall back to keyword matching if AI fails
                 var impactfulKeywords = new[] { "fed", "rate", "inflation", "gdp", "unemployment", "war", "crisis", "tariff", "trump" };
-                return impactfulKeywords.Any(keyword => 
+                return Array.Exists(impactfulKeywords, keyword => 
                     newsText.Contains(keyword, StringComparison.OrdinalIgnoreCase));
             }
             

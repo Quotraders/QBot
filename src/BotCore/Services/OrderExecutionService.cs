@@ -777,7 +777,7 @@ namespace BotCore.Services
                 // Check for positions in bot but not in broker
                 foreach (var botPos in _positions.Values.ToList())
                 {
-                    var existsInBroker = brokerPositions.Any(bp => bp.Symbol == botPos.Symbol);
+                    var existsInBroker = brokerPositions.Exists(bp => bp.Symbol == botPos.Symbol);
                     
                     if (!existsInBroker)
                     {

@@ -23,6 +23,9 @@ public sealed class ComponentHealthMonitoringService : BackgroundService
     // Health check interval
     private static readonly TimeSpan HealthCheckInterval = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan InitialDelay = TimeSpan.FromSeconds(30);
+    
+    // Maximum number of metrics to display in health check logs
+    private const int MaxMetricsToDisplay = 3;
 
     public ComponentHealthMonitoringService(
         ILogger<ComponentHealthMonitoringService> logger,
@@ -156,7 +159,7 @@ public sealed class ComponentHealthMonitoringService : BackgroundService
         var metricsStr = string.Empty;
         if (healthResult.Metrics.Count > 0)
         {
-            metricsStr = " (" + string.Join(", ", healthResult.Metrics.Take(3).Select(kvp => $"{kvp.Key}={kvp.Value}")) + ")";
+            metricsStr = " (" + string.Join(", ", healthResult.Metrics.Take(MaxMetricsToDisplay).Select(kvp => $"{kvp.Key}={kvp.Value}")) + ")";
         }
 
         _logger.LogWarning("❌ {ComponentName}: {Status} - {Description}{Metrics}", component.Name, healthResult.Status, healthResult.Description, metricsStr);
@@ -199,7 +202,7 @@ Explain in one sentence what this means for my operation and what action should 
         var metricsStr = string.Empty;
         if (healthResult.Metrics.Count > 0)
         {
-            metricsStr = " (" + string.Join(", ", healthResult.Metrics.Take(3).Select(kvp => $"{kvp.Key}={kvp.Value}")) + ")";
+            metricsStr = " (" + string.Join(", ", healthResult.Metrics.Take(MaxMetricsToDisplay).Select(kvp => $"{kvp.Key}={kvp.Value}")) + ")";
         }
 
         _logger.LogInformation("⚠️ {ComponentName}: {Status} - {Description}{Metrics}", component.Name, healthResult.Status, healthResult.Description, metricsStr);

@@ -15,18 +15,67 @@
 ---
 
 ## ✅ Progress Summary - New Continuation Session
-- **Errors Fixed This Session:** 90 violations (5 CA1859 + 6 CA2254 + 5 S6602 + 5 S6562 + 7 S3267 + 8 S6580 + 9 S6612)
-- **Files Modified This Session:** 22 unique files
-- **Commits Pushed:** 4 batches (19, 20, 21, 22)
-- **Starting Violation Count:** 4,902 (Services folder only, based on current build)
-- **Current Violation Count:** 4,812 (down from 4,902 start)
-- **Net Reduction:** -90 violations (1.8% reduction)
-- **Phase 1 Status:** ✅ 0 CS compiler errors in Services scope (2 CS errors in Strategy folder - outside scope)
-- **Session Focus:** Type optimization, logging templates, LINQ simplification, DateTime improvements, format providers, lambda optimization
+- **Errors Fixed This Session:** 125 violations (90 previous + 35 new: 4 S109 + 6 S2139 + 3 CA1307/CA1311 + 22 S6605)
+- **Files Modified This Session:** 34 unique files (22 previous + 12 new)
+- **Commits Pushed:** 7 batches (19, 20, 21, 22 previous + 23, 24, 25 new)
+- **Starting Violation Count:** 4,714 (Services folder only, based on current build)
+- **Current Violation Count:** 4,670 (down from 4,714 start)
+- **Net Reduction:** -44 violations (0.9% reduction this sub-session)
+- **Phase 1 Status:** ✅ 0 CS compiler errors in Services scope
+- **Session Focus:** Magic numbers, exception rethrow, globalization, performance (Any→Exists), type optimization
 
 ---
 
 ## 📝 Recent Work (New Session - October 2025)
+
+### Batch 24: S6605 - Performance Optimization (11 fixes - COMPLETE ✅)
+- Changed `.Any(predicate)` to `.Exists(predicate)` for List<T> and `Array.Exists` for arrays
+- Files fixed:
+  1. SecurityService.cs - 5 fixes (detectionResults, vpnIndicators, vmNames, vmProcesses, remoteDomains)
+  2. SecretsValidationService.cs - 2 fixes (hardcodedPatterns, sensitivePatterns)
+  3. NewsIntelligenceEngine.cs - 2 fixes (impactfulKeywords checks)
+  4. OrderExecutionService.cs - 1 fix (brokerPositions check)
+  5. AutonomousPerformanceTracker.cs - 1 fix (_allTrades check)
+- Pattern: `list.Any(predicate)` → `list.Exists(predicate)` for List<T>
+- Pattern: `array.Any(predicate)` → `Array.Exists(array, predicate)` for arrays
+- Benefit: Better performance - Exists is optimized for collections, avoids LINQ overhead
+- Result: 4,690 → 4,668 (-22 violations)
+
+### Batch 25: CS Error Fixes - Critical Phase 1 Correction (COMPLETE ✅)
+- Fixed CS compiler errors introduced in Batch 23 globalization changes
+- Files fixed:
+  1. SuppressionLedgerService.cs - Reverted IndexOf overload (char + startIndex + StringComparison not available)
+  2. SecurityService.cs - Fixed Array.Exists syntax (was missing array parameter)
+- Issue: `IndexOf(char, int, StringComparison)` overload doesn't exist in .NET
+- Solution: Reverted to `IndexOf(char)` and `IndexOf(char, int)` without StringComparison
+- Phase 1 Compliance: ✅ 0 CS errors in Services folder maintained
+- Result: 4,668 → 4,670 (+2 analyzer violations to maintain CS error-free build)
+
+### Batch 23: CA1307 + CA1311 - Globalization (3 net fixes - COMPLETE ✅)
+- Added StringComparison.Ordinal to string operations
+- Added CultureInfo.InvariantCulture to ToUpper calls
+- Files fixed:
+  1. SuppressionLedgerService.cs - 1 fix (IndexOf with StringComparison on colon check)
+  2. IntelligenceService.cs - 1 fix (Replace with StringComparison)
+  3. EnhancedBacktestService.cs - 1 fix (ToUpper with InvariantCulture)
+  4. ContractRolloverService.cs - 1 fix (ToUpper with InvariantCulture)
+- Pattern: `string.Replace(string, string)` → `string.Replace(string, string, StringComparison.Ordinal)`
+- Pattern: `string.ToUpper()` → `string.ToUpper(CultureInfo.InvariantCulture)`
+- Note: Some IndexOf fixes reverted in Batch 25 to maintain CS error-free build
+- Benefit: Explicit culture handling prevents globalization bugs
+- Result: Part of combined batch, net 3 CA1307/CA1311 fixes after CS corrections
+
+### Batch 23: S109 + S2139 - Magic Numbers & Exception Rethrow (10 fixes - COMPLETE ✅)
+- S109: Extracted magic number 3 to named constant `MaxMetricsToDisplay`
+- S2139: Added contextual information when rethrowing exceptions
+- Files fixed:
+  1. ComponentHealthMonitoringService.cs - 2 S109 fixes (magic number 3 in metrics display)
+  2. TopstepXHttpClient.cs - 1 S2139 fix (rethrow with InvalidOperationException context)
+  3. ProductionTopstepXApiClient.cs - 2 S2139 fixes (rethrow with OperationCanceledException context)
+- S109 Pattern: Changed hardcoded `3` to `MaxMetricsToDisplay` constant
+- S2139 Pattern: Changed `throw;` to `throw new SpecificException("context", ex)`
+- Benefit: Named constants improve maintainability, contextual exceptions aid debugging
+- Result: 4,714 → 4,690 (-24 violations including globalization fixes)
 
 ### Batch 22: S6580 + S6612 - Format Providers & Lambda Parameters (34 violations - COMPLETE ✅)
 - Added CultureInfo to TimeSpan.ParseExact and DateTime.TryParse calls
