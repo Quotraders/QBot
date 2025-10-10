@@ -346,7 +346,7 @@ public class UnifiedDecisionRouter
             var env = ConvertToEnv(marketContext);
             var levels = ConvertToLevels(marketContext);
             var bars = ConvertToBars(marketContext);
-            var risk = CreateRiskEngine();
+            using var risk = CreateRiskEngine();
             
             var brainDecision = await _unifiedBrain.MakeIntelligentDecisionAsync(
                 symbol, env, levels, bars, risk, cancellationToken).ConfigureAwait(false);

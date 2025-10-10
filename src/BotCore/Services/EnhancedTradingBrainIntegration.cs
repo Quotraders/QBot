@@ -138,7 +138,7 @@ public class EnhancedTradingBrainIntegration
             var env = CreateSampleEnv();
             var levels = CreateSampleLevels();
             var bars = CreateSampleBars();
-            var risk = CreateSampleRisk();
+            using var risk = CreateSampleRisk();
             
             var originalBrainDecision = await _tradingBrain.MakeIntelligentDecisionAsync(
                 symbol, env, levels, bars, risk, cancellationToken).ConfigureAwait(false);
@@ -205,7 +205,7 @@ public class EnhancedTradingBrainIntegration
                 var env = CreateSampleEnv();
                 var levels = CreateSampleLevels();
                 var bars = CreateSampleBars();
-                var risk = CreateSampleRisk();
+                using var risk = CreateSampleRisk();
                 
                 var originalBrainDecision = await _tradingBrain.MakeIntelligentDecisionAsync(
                     symbol, env, levels, bars, risk, cancellationToken).ConfigureAwait(false);

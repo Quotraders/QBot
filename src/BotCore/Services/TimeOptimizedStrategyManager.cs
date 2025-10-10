@@ -499,7 +499,7 @@ namespace BotCore.Services
             {
                 var env = CreateEnvironment(bars);
                 var levels = CreateLevels();
-                var riskEngine = new BotCore.Risk.RiskEngine();
+                using var riskEngine = new BotCore.Risk.RiskEngine();
 
                 return AllStrategies.generate_candidates(instrument, env, levels, bars.ToList(), riskEngine)
                     .Where(c => c.strategy_id == strategyId)
