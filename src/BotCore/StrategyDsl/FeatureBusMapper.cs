@@ -15,6 +15,19 @@ public class FeatureBusMapper
     private const int DefaultMinutesValue = 60;                // Default minutes for time-based features
     private const double DefaultStrengthValue = 0.5;           // Default strength/confidence value
 
+    // LoggerMessage delegates for performance
+    private static readonly Action<ILogger, int, Exception?> LogMappingsInitialized =
+        LoggerMessage.Define<int>(
+            LogLevel.Debug,
+            new EventId(7001, nameof(LogMappingsInitialized)),
+            "Initialized {Count} feature bus mappings");
+
+    private static readonly Action<ILogger, string, string, Exception?> LogCustomMappingAdded =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Debug,
+            new EventId(7002, nameof(LogCustomMappingAdded)),
+            "Added custom mapping: {DSL} -> {FeatureBus}");
+
     public FeatureBusMapper(ILogger<FeatureBusMapper> logger)
     {
         _logger = logger;
@@ -184,7 +197,7 @@ public class FeatureBusMapper
         _keyMappings["price_rejection.strength"] = "rejection.strength";
         _keyMappings["price_rejection.direction"] = "rejection.direction";
 
-        _logger.LogDebug("Initialized {Count} feature bus mappings", _keyMappings.Count);
+        LogMappingsInitialized(_logger, _keyMappings.Count, null);
     }
 
     /// <summary>
@@ -302,7 +315,7 @@ public class FeatureBusMapper
     public void AddMapping(string dslIdentifier, string featureBusKey)
     {
         _keyMappings[dslIdentifier] = featureBusKey;
-        _logger.LogDebug("Added custom mapping: {DSL} -> {FeatureBus}", dslIdentifier, featureBusKey);
+        LogCustomMappingAdded(_logger, dslIdentifier, featureBusKey, null);
     }
 
     /// <summary>
