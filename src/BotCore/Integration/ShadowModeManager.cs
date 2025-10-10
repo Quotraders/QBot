@@ -32,14 +32,110 @@ public sealed class ShadowModeManager
     private long _shadowPromotions;
     private long _shadowDemotions;
     
+    // LoggerMessage delegates for CA1848 performance compliance
+    private static readonly Action<ILogger, int, double, bool, Exception?> LogShadowModeInitialized =
+        LoggerMessage.Define<int, double, bool>(
+            LogLevel.Information,
+            new EventId(6500, nameof(LogShadowModeInitialized)),
+            "Shadow mode manager initialized - Min trades: {MinTrades}, Win rate threshold: {WinRate:P2}, Auto-promotion: {AutoPromotion}");
+    
+    private static readonly Action<ILogger, string, bool, int, double, Exception?> LogShadowStrategyRegistered =
+        LoggerMessage.Define<string, bool, int, double>(
+            LogLevel.Information,
+            new EventId(6501, nameof(LogShadowStrategyRegistered)),
+            "Shadow strategy registered: {StrategyName} - Auto-promotion: {AutoPromotion}, Min trades: {MinTrades}, Win rate threshold: {WinRate:P2}");
+    
+    private static readonly Action<ILogger, string, string, string, decimal, double, Exception?> LogShadowPickProcessed =
+        LoggerMessage.Define<string, string, string, decimal, double>(
+            LogLevel.Debug,
+            new EventId(6502, nameof(LogShadowPickProcessed)),
+            "Shadow pick processed: {StrategyName} - {Direction} {Symbol} @ {EntryPrice} (Confidence: {Confidence:P2})");
+    
+    private static readonly Action<ILogger, string, Exception> LogShadowPickProcessingFailed =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(6503, nameof(LogShadowPickProcessingFailed)),
+            "Invalid argument processing shadow pick for strategy: {StrategyName}");
+    
+    private static readonly Action<ILogger, string, Exception> LogShadowPickInvalidOperation =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(6504, nameof(LogShadowPickInvalidOperation)),
+            "Invalid operation processing shadow pick for strategy: {StrategyName}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogPerformanceTrackerNotFound =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(6505, nameof(LogPerformanceTrackerNotFound)),
+            "Performance tracker not found for shadow strategy: {StrategyName}");
+    
+    private static readonly Action<ILogger, string, string, string, string, decimal, string, Exception?> LogShadowTradeRecorded =
+        LoggerMessage.Define<string, string, string, string, decimal, string>(
+            LogLevel.Debug,
+            new EventId(6506, nameof(LogShadowTradeRecorded)),
+            "Shadow trade recorded: {StrategyName} - {TradeId} {Direction} {Symbol} PnL: {PnL:C} ({ExitReason})");
+    
+    private static readonly Action<ILogger, string, Exception> LogShadowTradeRecordingFailed =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(6507, nameof(LogShadowTradeRecordingFailed)),
+            "Invalid argument recording shadow trade for strategy: {StrategyName}");
+    
+    private static readonly Action<ILogger, string, Exception> LogShadowTradeInvalidOperation =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(6508, nameof(LogShadowTradeInvalidOperation)),
+            "Invalid operation recording shadow trade for strategy: {StrategyName}");
+    
+    private static readonly Action<ILogger, string, Exception> LogShadowTradeDivisionByZero =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(6509, nameof(LogShadowTradeDivisionByZero)),
+            "Division by zero recording shadow trade for strategy: {StrategyName}");
+    
+    private static readonly Action<ILogger, string, double, double, decimal, double, Exception?> LogNotYetEligibleForPromotion =
+        LoggerMessage.Define<string, double, double, decimal, double>(
+            LogLevel.Debug,
+            new EventId(6510, nameof(LogNotYetEligibleForPromotion)),
+            "Shadow strategy {StrategyName} not yet eligible for promotion - Win rate: {WinRate:P2} (req: {RequiredWinRate:P2}), Avg PnL: {AvgPnL:C}, Sharpe: {Sharpe:F2}");
+    
+    private static readonly Action<ILogger, string, Exception> LogAutoPromotionCheckFailed =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(6511, nameof(LogAutoPromotionCheckFailed)),
+            "Invalid operation checking auto-promotion eligibility for strategy: {StrategyName}");
+    
+    private static readonly Action<ILogger, string, Exception> LogAutoPromotionCheckInvalidArgument =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(6512, nameof(LogAutoPromotionCheckInvalidArgument)),
+            "Invalid argument checking auto-promotion eligibility for strategy: {StrategyName}");
+    
+    private static readonly Action<ILogger, string, Exception> LogAutoPromotionCheckDivisionByZero =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(6513, nameof(LogAutoPromotionCheckDivisionByZero)),
+            "Division by zero checking auto-promotion eligibility for strategy: {StrategyName}");
+    
+    private static readonly Action<ILogger, string, double, int, decimal, double, Exception?> LogStrategyPromoted =
+        LoggerMessage.Define<string, double, int, decimal, double>(
+            LogLevel.Information,
+            new EventId(6514, nameof(LogStrategyPromoted)),
+            "🎉 Shadow strategy PROMOTED to live trading: {StrategyName} - Win rate: {WinRate:P2}, Trades: {TotalTrades}, Total PnL: {TotalPnL:C}, Sharpe: {Sharpe:F2}");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogStrategyDemoted =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Warning,
+            new EventId(6515, nameof(LogStrategyDemoted)),
+            "Shadow strategy DEMOTED back to shadow mode: {StrategyName} - Reason: {Reason}");
+    
     public ShadowModeManager(ILogger<ShadowModeManager> logger, IServiceProvider serviceProvider, ShadowModeConfig? config = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         ArgumentNullException.ThrowIfNull(serviceProvider);
         _config = config ?? new ShadowModeConfig();
         
-        _logger.LogInformation("Shadow mode manager initialized - Min trades: {MinTrades}, Win rate threshold: {WinRate:P2}, Auto-promotion: {AutoPromotion}",
-            _config.MinShadowTrades, _config.PromotionWinRateThreshold, _config.AutoPromotionEnabled);
+        LogShadowModeInitialized(_logger, _config.MinShadowTrades, _config.PromotionWinRateThreshold, _config.AutoPromotionEnabled, null);
     }
     
     /// <summary>
@@ -82,8 +178,7 @@ public sealed class ShadowModeManager
             // Emit registration telemetry
             await EmitShadowRegistrationTelemetryAsync(shadowStrategy, cancellationToken).ConfigureAwait(false);
             
-        _logger.LogInformation("Shadow strategy registered: {StrategyName} - Auto-promotion: {AutoPromotion}, Min trades: {MinTrades}, Win rate threshold: {WinRate:P2}",
-            registration.StrategyName, shadowStrategy.AutoPromotionEnabled, shadowStrategy.MinTradesForPromotion, shadowStrategy.WinRateThreshold);
+        LogShadowStrategyRegistered(_logger, registration.StrategyName, shadowStrategy.AutoPromotionEnabled, shadowStrategy.MinTradesForPromotion, shadowStrategy.WinRateThreshold, null);
     }
     
     /// <summary>
@@ -146,21 +241,20 @@ public sealed class ShadowModeManager
             result.ShadowPick = shadowPick;
             result.RouterAction = ShadowRouterAction.Hold; // Always hold for shadow strategies
             
-            _logger.LogDebug("Shadow pick processed: {StrategyName} - {Direction} {Symbol} @ {EntryPrice} (Confidence: {Confidence:P2})",
-                strategyName, request.Direction, request.Symbol, request.EntryPrice, request.Confidence);
+            LogShadowPickProcessed(_logger, strategyName, request.Direction, request.Symbol, request.EntryPrice, request.Confidence, null);
                 
             return result;
         }
         catch (ArgumentException ex)
         {
             result.Error = ex.Message;
-            _logger.LogError(ex, "Invalid argument processing shadow pick for strategy: {StrategyName}", strategyName);
+            LogShadowPickProcessingFailed(_logger, strategyName, ex);
             return result;
         }
         catch (InvalidOperationException ex)
         {
             result.Error = ex.Message;
-            _logger.LogError(ex, "Invalid operation processing shadow pick for strategy: {StrategyName}", strategyName);
+            LogShadowPickInvalidOperation(_logger, strategyName, ex);
             return result;
         }
     }
@@ -181,7 +275,7 @@ public sealed class ShadowModeManager
             {
                 if (!_performanceTrackers.TryGetValue(strategyName, out tracker))
                 {
-                    _logger.LogWarning("Performance tracker not found for shadow strategy: {StrategyName}", strategyName);
+                    LogPerformanceTrackerNotFound(_logger, strategyName, null);
                     return;
                 }
             }
@@ -231,20 +325,19 @@ public sealed class ShadowModeManager
             // Emit trade telemetry
             await EmitShadowTradeTelemetryAsync(shadowTrade, cancellationToken).ConfigureAwait(false);
             
-            _logger.LogDebug("Shadow trade recorded: {StrategyName} - {TradeId} {Direction} {Symbol} PnL: {PnL:C} ({ExitReason})",
-                strategyName, outcome.TradeId, outcome.Direction, outcome.Symbol, outcome.PnL, outcome.ExitReason);
+            LogShadowTradeRecorded(_logger, strategyName, outcome.TradeId, outcome.Direction, outcome.Symbol, outcome.PnL, outcome.ExitReason, null);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "Invalid argument recording shadow trade for strategy: {StrategyName}", strategyName);
+            LogShadowTradeRecordingFailed(_logger, strategyName, ex);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Invalid operation recording shadow trade for strategy: {StrategyName}", strategyName);
+            LogShadowTradeInvalidOperation(_logger, strategyName, ex);
         }
         catch (DivideByZeroException ex)
         {
-            _logger.LogError(ex, "Division by zero recording shadow trade for strategy: {StrategyName}", strategyName);
+            LogShadowTradeDivisionByZero(_logger, strategyName, ex);
         }
     }
     
@@ -301,21 +394,20 @@ public sealed class ShadowModeManager
             }
             else
             {
-                _logger.LogDebug("Shadow strategy {StrategyName} not yet eligible for promotion - Win rate: {WinRate:P2} (req: {RequiredWinRate:P2}), Avg PnL: {AvgPnL:C}, Sharpe: {Sharpe:F2}",
-                    strategyName, winRate, shadowStrategy.WinRateThreshold, avgPnL, sharpeRatio);
+                LogNotYetEligibleForPromotion(_logger, strategyName, winRate, shadowStrategy.WinRateThreshold, avgPnL, sharpeRatio, null);
             }
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Invalid operation checking auto-promotion eligibility for strategy: {StrategyName}", strategyName);
+            LogAutoPromotionCheckFailed(_logger, strategyName, ex);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "Invalid argument checking auto-promotion eligibility for strategy: {StrategyName}", strategyName);
+            LogAutoPromotionCheckInvalidArgument(_logger, strategyName, ex);
         }
         catch (DivideByZeroException ex)
         {
-            _logger.LogError(ex, "Division by zero checking auto-promotion eligibility for strategy: {StrategyName}", strategyName);
+            LogAutoPromotionCheckDivisionByZero(_logger, strategyName, ex);
         }
     }
     
@@ -349,8 +441,7 @@ public sealed class ShadowModeManager
             // Emit promotion telemetry
             await EmitShadowPromotionTelemetryAsync(shadowStrategy, metrics, cancellationToken).ConfigureAwait(false);
             
-        _logger.LogInformation("🎉 Shadow strategy PROMOTED to live trading: {StrategyName} - Win rate: {WinRate:P2}, Trades: {TotalTrades}, Total PnL: {TotalPnL:C}, Sharpe: {Sharpe:F2}",
-            strategyName, metrics.WinRate, metrics.TotalTrades, metrics.TotalPnL, metrics.SharpeRatio);
+        LogStrategyPromoted(_logger, strategyName, metrics.WinRate, metrics.TotalTrades, metrics.TotalPnL, metrics.SharpeRatio, null);
     }
     
     /// <summary>
@@ -384,7 +475,7 @@ public sealed class ShadowModeManager
             // Emit demotion telemetry
             await EmitShadowDemotionTelemetryAsync(shadowStrategy, reason, cancellationToken).ConfigureAwait(false);
             
-        _logger.LogWarning("Shadow strategy DEMOTED back to shadow mode: {StrategyName} - Reason: {Reason}", strategyName, reason);
+        LogStrategyDemoted(_logger, strategyName, reason, null);
     }
     
     /// <summary>
