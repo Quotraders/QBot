@@ -304,6 +304,7 @@ namespace BotCore.Services
             _fileWatcher?.Dispose();
             _emergencyStopSource?.Dispose();
             base.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

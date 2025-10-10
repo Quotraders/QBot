@@ -333,10 +333,10 @@ namespace TradingBot.BotCore.Services
         private static string ExtractRuleFromSuppressMessage(string suppressLine)
         {
             // Extract rule ID from [SuppressMessage("Category", "CA1234:...")]
-            var start = suppressLine.IndexOf('"');
+            var start = suppressLine.IndexOf('"', StringComparison.Ordinal);
             if (start >= 0)
             {
-                var end = suppressLine.IndexOf('"', start + 1);
+                var end = suppressLine.IndexOf('"', start + 1, StringComparison.Ordinal);
                 if (end > start)
                 {
                     var categoryAndRule = suppressLine.Substring(start + 1, end - start - 1);

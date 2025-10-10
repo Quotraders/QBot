@@ -412,9 +412,18 @@ namespace TradingBot.BotCore.Services
             }
         }
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _signingKey?.Dispose();
+            }
+        }
+
         public void Dispose()
         {
-            _signingKey?.Dispose();
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 
