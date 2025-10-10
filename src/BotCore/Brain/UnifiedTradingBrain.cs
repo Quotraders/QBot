@@ -576,6 +576,94 @@ namespace BotCore.Brain
             LoggerMessage.Define<double, double, double, double, int>(LogLevel.Information, new EventId(72, nameof(LogCvarPpoAction)),
                 "🎯 [CVAR-PPO] Action={Action}, Prob={Prob:F3}, Value={Value:F3}, CVaR={CVaR:F3}, Contracts={Contracts}");
 
+        // CVaR-PPO error logging delegates (EventId 73-75)
+        private static readonly Action<ILogger, Exception?> LogCvarPpoInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(73, nameof(LogCvarPpoInvalidOperation)),
+                "CVaR-PPO position sizing failed - invalid operation, using TopStep compliance sizing");
+
+        private static readonly Action<ILogger, Exception?> LogCvarPpoInvalidArgument =
+            LoggerMessage.Define(LogLevel.Error, new EventId(74, nameof(LogCvarPpoInvalidArgument)),
+                "CVaR-PPO position sizing failed - invalid argument, using TopStep compliance sizing");
+
+        private static readonly Action<ILogger, Exception?> LogCvarPpoOnnxError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(75, nameof(LogCvarPpoOnnxError)),
+                "CVaR-PPO position sizing failed - ONNX runtime error, using TopStep compliance sizing");
+
+        // Position sizing logging delegates (EventId 76-77)
+        private static readonly Action<ILogger, double, Exception?> LogLegacyRlMultiplier =
+            LoggerMessage.Define<double>(LogLevel.Debug, new EventId(76, nameof(LogLegacyRlMultiplier)),
+                "📊 [LEGACY-RL] Using fallback RL multiplier: {Multiplier:F2}");
+
+        private static readonly Action<ILogger, string, double, decimal, int, decimal, Exception?> LogPositionSize =
+            LoggerMessage.Define<string, double, decimal, int, decimal>(LogLevel.Debug, new EventId(77, nameof(LogPositionSize)),
+                "📊 [POSITION-SIZE] {Symbol}: Confidence={Confidence:P1}, Drawdown={Drawdown:C}, Contracts={Contracts}, RiskAmount={Risk:C}");
+
+        // P&L tracking logging delegates (EventId 78-79)
+        private static readonly Action<ILogger, string, decimal, decimal, decimal, decimal, Exception?> LogPnlUpdate =
+            LoggerMessage.Define<string, decimal, decimal, decimal, decimal>(LogLevel.Information, new EventId(78, nameof(LogPnlUpdate)),
+                "💰 [PNL-UPDATE] Strategy={Strategy}, PnL={PnL:C}, DailyPnL={DailyPnL:C}, Drawdown={Drawdown:C}, Balance={Balance:C}");
+
+        private static readonly Action<ILogger, Exception?> LogDailyReset =
+            LoggerMessage.Define(LogLevel.Information, new EventId(79, nameof(LogDailyReset)),
+                "🌅 [DAILY-RESET] Daily P&L and drawdown reset for new trading day");
+
+        // Brain enhance logging delegates (EventId 80-83)
+        private static readonly Action<ILogger, string, int, string, Exception?> LogBrainEnhanceGenerated =
+            LoggerMessage.Define<string, int, string>(LogLevel.Debug, new EventId(80, nameof(LogBrainEnhanceGenerated)),
+                "🎯 [BRAIN-ENHANCE] {Symbol}: Generated {Count} AI-enhanced candidates from {Strategy}");
+
+        private static readonly Action<ILogger, Exception?> LogBrainEnhanceInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(81, nameof(LogBrainEnhanceInvalidOperation)),
+                "❌ [BRAIN-ENHANCE] Error generating enhanced candidates - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogBrainEnhanceInvalidArgument =
+            LoggerMessage.Define(LogLevel.Error, new EventId(82, nameof(LogBrainEnhanceInvalidArgument)),
+                "❌ [BRAIN-ENHANCE] Error generating enhanced candidates - invalid argument");
+
+        private static readonly Action<ILogger, Exception?> LogBrainEnhanceKeyNotFound =
+            LoggerMessage.Define(LogLevel.Error, new EventId(83, nameof(LogBrainEnhanceKeyNotFound)),
+                "❌ [BRAIN-ENHANCE] Error generating enhanced candidates - key not found");
+
+        // Strategy selection logging delegate (EventId 84)
+        private static readonly Action<ILogger, int, string, string, Exception?> LogStrategySelection =
+            LoggerMessage.Define<int, string, string>(LogLevel.Debug, new EventId(84, nameof(LogStrategySelection)),
+                "🧠 [STRATEGY-SELECTION] Hour={Hour}, Regime={Regime}, Available={Strategies}");
+
+        // Unified learning logging delegates (EventId 85-89)
+        private static readonly Action<ILogger, Exception?> LogUnifiedLearningStarting =
+            LoggerMessage.Define(LogLevel.Information, new EventId(85, nameof(LogUnifiedLearningStarting)),
+                "🔄 [UNIFIED-LEARNING] Starting unified learning update across all strategies...");
+
+        private static readonly Action<ILogger, Exception?> LogUnifiedLearningCompleted =
+            LoggerMessage.Define(LogLevel.Information, new EventId(86, nameof(LogUnifiedLearningCompleted)),
+                "✅ [UNIFIED-LEARNING] Completed unified learning update");
+
+        private static readonly Action<ILogger, Exception?> LogUnifiedLearningInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(87, nameof(LogUnifiedLearningInvalidOperation)),
+                "❌ [UNIFIED-LEARNING] Failed to update unified learning - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogUnifiedLearningIoError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(88, nameof(LogUnifiedLearningIoError)),
+                "❌ [UNIFIED-LEARNING] Failed to update unified learning - I/O error");
+
+        private static readonly Action<ILogger, Exception?> LogUnifiedLearningAccessDenied =
+            LoggerMessage.Define(LogLevel.Error, new EventId(89, nameof(LogUnifiedLearningAccessDenied)),
+                "❌ [UNIFIED-LEARNING] Failed to update unified learning - access denied");
+
+        private static readonly Action<ILogger, Exception?> LogUnifiedLearningInvalidArgument =
+            LoggerMessage.Define(LogLevel.Error, new EventId(90, nameof(LogUnifiedLearningInvalidArgument)),
+                "❌ [UNIFIED-LEARNING] Failed to update unified learning - invalid argument");
+
+        // Condition update logging delegate (EventId 91)
+        private static readonly Action<ILogger, int, string, Exception?> LogConditionUpdate =
+            LoggerMessage.Define<int, string>(LogLevel.Debug, new EventId(91, nameof(LogConditionUpdate)),
+                "🔄 [CONDITION-UPDATE] Removed {Count} unsuccessful conditions from {Strategy}");
+
+        // Cross-pollination logging delegate (EventId 92)
+        private static readonly Action<ILogger, int, string, Exception?> LogCrossPollination =
+            LoggerMessage.Define<int, string>(LogLevel.Information, new EventId(92, nameof(LogCrossPollination)),
+                "🌱 [CROSS-POLLINATION] Shared {Count} successful patterns from {BestStrategy} to other strategies");
+
         public UnifiedTradingBrain(
             ILogger<UnifiedTradingBrain> logger,
             IMLMemoryManager memoryManager,
@@ -1967,17 +2055,17 @@ Reason closed: {reason}
                 }
                 catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "CVaR-PPO position sizing failed - invalid operation, using TopStep compliance sizing");
+                    LogCvarPpoInvalidOperation(_logger, ex);
                     // contracts remains unchanged - use TopStep compliance sizing
                 }
                 catch (ArgumentException ex)
                 {
-                    _logger.LogError(ex, "CVaR-PPO position sizing failed - invalid argument, using TopStep compliance sizing");
+                    LogCvarPpoInvalidArgument(_logger, ex);
                     // contracts remains unchanged - use TopStep compliance sizing
                 }
                 catch (OnnxRuntimeException ex)
                 {
-                    _logger.LogError(ex, "CVaR-PPO position sizing failed - ONNX runtime error, using TopStep compliance sizing");
+                    LogCvarPpoOnnxError(_logger, ex);
                     // contracts remains unchanged - use TopStep compliance sizing
                 }
             }
@@ -1995,12 +2083,10 @@ Reason closed: {reason}
                 ).ConfigureAwait(false);
                 
                 contracts = (int)(contracts * Math.Clamp(rlMultiplier, TopStepConfig.MinRlMultiplier, TopStepConfig.MaxRlMultiplier));
-                _logger.LogDebug("📊 [LEGACY-RL] Using fallback RL multiplier: {Multiplier:F2}", rlMultiplier);
+                LogLegacyRlMultiplier(_logger, rlMultiplier, null);
             }
 
-            _logger.LogDebug("📊 [POSITION-SIZE] {Symbol}: Confidence={Confidence:P1}, Drawdown={Drawdown:C}, " +
-                "Contracts={Contracts}, RiskAmount={Risk:C}", 
-                instrument, confidence, _currentDrawdown, contracts, riskAmount);
+            LogPositionSize(_logger, instrument, (double)confidence, _currentDrawdown, contracts, riskAmount, null);
 
             return contracts; // Return actual contract count, not multiplier
         }
@@ -2045,9 +2131,7 @@ Reason closed: {reason}
             if (_dailyPnl < 0)
                 _currentDrawdown = Math.Max(_currentDrawdown, Math.Abs(_dailyPnl));
             
-            _logger.LogInformation("💰 [PNL-UPDATE] Strategy={Strategy}, PnL={PnL:C}, DailyPnL={DailyPnL:C}, " +
-                "Drawdown={Drawdown:C}, Balance={Balance:C}", 
-                strategy, pnl, _dailyPnl, _currentDrawdown, _accountBalance);
+            LogPnlUpdate(_logger, strategy, pnl, _dailyPnl, _currentDrawdown, _accountBalance, null);
         }
 
         /// <summary>
@@ -2059,7 +2143,7 @@ Reason closed: {reason}
             _currentDrawdown = 0;
             _lastResetDate = DateTime.UtcNow.Date;
             
-            _logger.LogInformation("🌅 [DAILY-RESET] Daily P&L and drawdown reset for new trading day");
+            LogDailyReset(_logger, null);
         }
 
         private void CheckAndResetDaily()
@@ -2130,28 +2214,27 @@ Reason closed: {reason}
                     enhancedCandidates.Add(enhancedCandidate);
                 }
                 
-                _logger.LogDebug("🎯 [BRAIN-ENHANCE] {Symbol}: Generated {Count} AI-enhanced candidates from {Strategy}",
-                    symbol, enhancedCandidates.Count, strategySelection.SelectedStrategy);
+                LogBrainEnhanceGenerated(_logger, symbol, enhancedCandidates.Count, strategySelection.SelectedStrategy, null);
                 
                 return Task.FromResult<IReadOnlyList<Candidate>>(enhancedCandidates);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BRAIN-ENHANCE] Error generating enhanced candidates - invalid operation");
+                LogBrainEnhanceInvalidOperation(_logger, ex);
                 
                 // Fallback to original AllStrategies logic
                 return Task.FromResult(AllStrategies.generate_candidates(symbol, env, levels, bars, risk));
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "❌ [BRAIN-ENHANCE] Error generating enhanced candidates - invalid argument");
+                LogBrainEnhanceInvalidArgument(_logger, ex);
                 
                 // Fallback to original AllStrategies logic
                 return Task.FromResult(AllStrategies.generate_candidates(symbol, env, levels, bars, risk));
             }
             catch (KeyNotFoundException ex)
             {
-                _logger.LogError(ex, "❌ [BRAIN-ENHANCE] Error generating enhanced candidates - key not found");
+                LogBrainEnhanceKeyNotFound(_logger, ex);
                 
                 // Fallback to original AllStrategies logic
                 return Task.FromResult(AllStrategies.generate_candidates(symbol, env, levels, bars, risk));
@@ -2282,8 +2365,7 @@ Reason closed: {reason}
                 availableStrategies = timeBasedStrategies.ToList();
             }
             
-            _logger.LogDebug("🧠 [STRATEGY-SELECTION] Hour={Hour}, Regime={Regime}, Available={Strategies}", 
-                hour, regime, string.Join(",", availableStrategies));
+            LogStrategySelection(_logger, hour, regime, string.Join(",", availableStrategies), null);
             
             return availableStrategies;
         }
@@ -2414,7 +2496,7 @@ Reason closed: {reason}
             _ = cancellationToken; // Reserved for future async operations
             try
             {
-                _logger.LogInformation("🔄 [UNIFIED-LEARNING] Starting unified learning update across all strategies...");
+                LogUnifiedLearningStarting(_logger, null);
                 
                 // Analyze performance patterns across all strategies
                 var performanceAnalysis = AnalyzeStrategyPerformance();
@@ -2425,23 +2507,23 @@ Reason closed: {reason}
                 // Cross-pollinate successful patterns between strategies
                 await CrossPollinateStrategyPatternsAsync().ConfigureAwait(false);
                 
-                _logger.LogInformation("✅ [UNIFIED-LEARNING] Completed unified learning update");
+                LogUnifiedLearningCompleted(_logger, null);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Failed to update unified learning - invalid operation");
+                LogUnifiedLearningInvalidOperation(_logger, ex);
             }
             catch (IOException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Failed to update unified learning - I/O error");
+                LogUnifiedLearningIoError(_logger, ex);
             }
             catch (UnauthorizedAccessException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Failed to update unified learning - access denied");
+                LogUnifiedLearningAccessDenied(_logger, ex);
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Failed to update unified learning - invalid argument");
+                LogUnifiedLearningInvalidArgument(_logger, ex);
             }
         }
         
@@ -2489,8 +2571,7 @@ Reason closed: {reason}
                             conditions.Remove(condition);
                         }
                         
-                        _logger.LogDebug("🔄 [CONDITION-UPDATE] Removed {Count} unsuccessful conditions from {Strategy}", 
-                            unsuccessfulConditions.Count, strategy);
+                        LogConditionUpdate(_logger, unsuccessfulConditions.Count, strategy, null);
                     }
                 }
                 else if (metrics.WinRate > TopStepConfig.HighPerformanceWinRateThreshold) // High performing strategy
@@ -2536,8 +2617,7 @@ Reason closed: {reason}
                 }
             }
             
-            _logger.LogInformation("🌱 [CROSS-POLLINATION] Shared {Count} successful patterns from {BestStrategy} to other strategies", 
-                successfulConditions.Count, bestStrategy);
+            LogCrossPollination(_logger, successfulConditions.Count, bestStrategy, null);
         }
         
         private void UpdateStrategyPerformance(string strategy, MarketContext context, bool wasCorrect, decimal pnl, TimeSpan holdTime)
