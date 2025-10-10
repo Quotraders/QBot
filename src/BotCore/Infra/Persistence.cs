@@ -8,6 +8,9 @@ namespace BotCore.Infra
     public static class Persistence
     {
         static readonly string Dir = Path.Combine(AppContext.BaseDirectory, "state");
+        
+        // Cached JsonSerializerOptions for performance (CA1869 compliance)
+        private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };
 
         public static void Save<T>(string name, T obj)
         {
@@ -15,7 +18,7 @@ namespace BotCore.Infra
             {
                 Directory.CreateDirectory(Dir);
                 var path = Path.Combine(Dir, $"{name}.json");
-                var json = JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = false });
+                var json = JsonSerializer.Serialize(obj, JsonOptions);
                 File.WriteAllText(path, json);
             }
             catch (IOException)

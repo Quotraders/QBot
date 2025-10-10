@@ -13,6 +13,58 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ---
 
+### 🔧 Round 211 - Phase 2: CA1869 Cache JsonSerializerOptions (Priority 5)
+
+**Date**: 2025-10-10  
+**Agent**: GitHub Copilot Agent  
+**Branch**: copilot/fix-compiler-errors-and-violations  
+**Scope**: CA1869 violations - Cache JsonSerializerOptions instances (Async/Dispose/Security - Priority 5)  
+**Objective**: Fix CA1869 violations by caching JsonSerializerOptions for performance
+
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| **CA1869 Violations** | 32 | 22 | ✅ -10 (-31%) |
+| **CS Compiler Errors** | 0 | 0 | ✅ Maintained |
+| **Files Modified** | - | 2 | Minimal scope |
+| **Build Status** | SUCCESS | SUCCESS | ✅ Green |
+
+**Fixes Applied**:
+
+1. **Config/ParamStore.cs (4 violations fixed)**
+   - Added static cached `JsonSerializerOptions JsonOptions` field
+   - Pattern: `new JsonSerializerOptions { WriteIndented = true }` → `JsonOptions`
+   - Lines fixed: 101, 175, 239, 305
+   - Impact: Eliminates allocation overhead in S2/S3/S6/S11 parameter serialization
+
+2. **Infra/Persistence.cs (1 violation fixed)**
+   - Added static cached `JsonSerializerOptions JsonOptions` field  
+   - Pattern: `new JsonSerializerOptions { WriteIndented = false }` → `JsonOptions`
+   - Line fixed: 18
+   - Impact: Eliminates allocation overhead in generic persistence layer
+
+**Performance Impact**:
+- JsonSerializerOptions creation is expensive (~100 allocations per instance)
+- Caching eliminates repeated allocations in hot paths (parameter saves)
+- Following guidebook pattern: "Reuse a single JsonSerializerOptions instance"
+
+**Verification**:
+```bash
+$ dotnet build TopstepX.Bot.sln -v quiet 2>&1 | grep "error CA1869" | wc -l
+22
+$ dotnet build TopstepX.Bot.sln -v quiet 2>&1 | grep "error CS" | wc -l
+0
+```
+
+**Guardrails Maintained**:
+- ✅ No suppressions added
+- ✅ No config changes
+- ✅ Performance improvement (lower GC pressure)
+- ✅ Zero CS compiler errors maintained
+
+**Next Steps**: Continue CA1869 fixes in remaining 6 files (22 violations)
+
+---
+
 ### 🔧 Round 210 - Phase 2 Start: CA1034 Nested Type Visibility (Priority 2)
 
 **Date**: 2025-10-10  

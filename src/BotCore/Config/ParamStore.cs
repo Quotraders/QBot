@@ -12,6 +12,9 @@ public static class ParamStore
     private const string EvtSave = "save";
     private const string EvtApply = "apply";
 
+    // Cached JsonSerializerOptions for performance (CA1869 compliance)
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+
     private static string ParamsDir()
         => Path.Combine(AppContext.BaseDirectory, "state", "params");
 
@@ -98,7 +101,7 @@ public static class ParamStore
             Directory.CreateDirectory(ParamsDir());
             var exp = DateTime.UtcNow.Add(ttl);
             var payload = new S2Override(root.ToUpperInvariant(), exp, extra);
-            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(payload, JsonOptions);
             File.WriteAllText(S2Path(root), json);
             AppendHistory(EvtSave, "S2", root, exp, new { keys = extra.Keys });
         }
@@ -172,7 +175,7 @@ public static class ParamStore
             Directory.CreateDirectory(ParamsDir());
             var exp = DateTime.UtcNow.Add(ttl);
             var payload = new S3Override(root.ToUpperInvariant(), exp, jsonConfig);
-            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(payload, JsonOptions);
             File.WriteAllText(S3Path(root), json);
             AppendHistory(EvtSave, "S3", root, exp, new { length = jsonConfig?.Length ?? 0 });
         }
@@ -236,7 +239,7 @@ public static class ParamStore
             Directory.CreateDirectory(ParamsDir());
             var exp = DateTime.UtcNow.Add(ttl);
             var payload = new S6Override(root.ToUpperInvariant(), exp, extra);
-            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(payload, JsonOptions);
             File.WriteAllText(S6Path(root), json);
             AppendHistory(EvtSave, "S6", root, exp, new { keys = extra.Keys });
         }
@@ -302,7 +305,7 @@ public static class ParamStore
             Directory.CreateDirectory(ParamsDir());
             var exp = DateTime.UtcNow.Add(ttl);
             var payload = new S11Override(root.ToUpperInvariant(), exp, extra);
-            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(payload, JsonOptions);
             File.WriteAllText(S11Path(root), json);
             AppendHistory(EvtSave, "S11", root, exp, new { keys = extra.Keys });
         }
