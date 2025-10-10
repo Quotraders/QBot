@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using BotCore.Services;
+using BotCore.Risk;
 
 namespace BotCore.Extensions;
 
@@ -82,6 +83,9 @@ public static class ProductionGuardrailExtensions
         // Register orchestrator as hosted service
         services.AddHostedService<ProductionGuardrailOrchestrator>(provider =>
             provider.GetRequiredService<ProductionGuardrailOrchestrator>());
+        
+        // Register critical system components monitoring service
+        services.AddHostedService<CriticalSystemComponentsFixes>();
 
         return services;
     }

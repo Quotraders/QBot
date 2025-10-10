@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -276,11 +277,53 @@ namespace BotCore.Risk
             LogCurrentMemoryUsage(_logger, memoryMB);
         }
 
+        private static DateTime _lastCpuCheck = DateTime.MinValue;
+        private static TimeSpan _lastTotalProcessorTime = TimeSpan.Zero;
+        private static double _lastCpuUsage = 0.0;
+        
         private static async Task<double> GetCpuUsageAsync()
         {
             await Task.Yield();
-            // Real CPU usage calculation would go here
-            return PlaceholderCpuUsagePercent;
+            
+            try
+            {
+                using var currentProcess = Process.GetCurrentProcess();
+                var now = DateTime.UtcNow;
+                var currentTotalProcessorTime = currentProcess.TotalProcessorTime;
+                
+                // First call - initialize baseline
+                if (_lastCpuCheck == DateTime.MinValue)
+                {
+                    _lastCpuCheck = now;
+                    _lastTotalProcessorTime = currentTotalProcessorTime;
+                    return 0.0;
+                }
+                
+                // Calculate CPU usage since last check
+                var timeDelta = (now - _lastCpuCheck).TotalMilliseconds;
+                var cpuDelta = (currentTotalProcessorTime - _lastTotalProcessorTime).TotalMilliseconds;
+                
+                // Avoid division by zero
+                if (timeDelta <= 0)
+                {
+                    return _lastCpuUsage;
+                }
+                
+                // Calculate percentage (multiply by 100 for percentage, divide by processor count for per-core)
+                var cpuUsagePercent = (cpuDelta / timeDelta) * 100.0 / Environment.ProcessorCount;
+                
+                // Update last values for next calculation
+                _lastCpuCheck = now;
+                _lastTotalProcessorTime = currentTotalProcessorTime;
+                _lastCpuUsage = cpuUsagePercent;
+                
+                return Math.Max(0.0, Math.Min(100.0, cpuUsagePercent)); // Clamp between 0-100%
+            }
+            catch (InvalidOperationException)
+            {
+                // Process may have exited or access denied
+                return _lastCpuUsage;
+            }
         }
 
         private static (int WorkerThreads, int CompletionPortThreads) GetThreadPoolInfo()

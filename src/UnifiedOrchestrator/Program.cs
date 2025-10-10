@@ -889,8 +889,10 @@ Please check the configuration and ensure all required services are registered.
         // ITopstepXAdapterService already registered above
         
         // Register REAL sophisticated orchestrators (NO DUPLICATES)
-        services.AddSingleton<TradingBot.Abstractions.IIntelligenceOrchestrator, IntelligenceOrchestratorService>();  
-        services.AddSingleton<TradingBot.Abstractions.IDataOrchestrator, DataOrchestratorService>();
+        // DISABLED: IntelligenceOrchestratorService - FAKE random trading decisions (real one exists in IntelligenceStack)
+        // services.AddSingleton<TradingBot.Abstractions.IIntelligenceOrchestrator, IntelligenceOrchestratorService>();  
+        // DISABLED: DataOrchestratorService - FAKE hardcoded market data (real data comes from elsewhere)
+        // services.AddSingleton<TradingBot.Abstractions.IDataOrchestrator, DataOrchestratorService>();
         
         // Register UnifiedOrchestratorService as singleton and hosted service (SINGLE REGISTRATION)
         services.AddSingleton<UnifiedOrchestratorService>();
@@ -1176,6 +1178,9 @@ Please check the configuration and ensure all required services are registered.
         // Register production readiness services including IHistoricalDataBridgeService and IEnhancedMarketDataFlowService
         services.AddProductionReadinessServices(configuration);
         services.AddDefaultTradingReadinessConfiguration();
+        
+        // Register production guardrails including CriticalSystemComponentsFixes
+        services.AddProductionGuardrails();
         
         // ================================================================================
         // BAR INFRASTRUCTURE - Register BarPyramid and underlying BarAggregators
@@ -1856,9 +1861,10 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<BotCore.ModelUpdaterService>();
         
         // Register advanced orchestrator services that will be coordinated by MasterOrchestrator
-        services.AddSingleton<IntelligenceOrchestratorService>();
-        services.AddSingleton<DataOrchestratorService>();
-        services.AddSingleton<WorkflowSchedulerService>();
+        // DISABLED: Fake prototype services - shadowing real implementations
+        // services.AddSingleton<IntelligenceOrchestratorService>();
+        // services.AddSingleton<DataOrchestratorService>();
+        // services.AddSingleton<WorkflowSchedulerService>();
         // WorkflowOrchestrationManager already registered above
         // AdvancedSystemIntegrationService already registered above
 
@@ -1893,9 +1899,10 @@ Please check the configuration and ensure all required services are registered.
         }
         
         // Register distributed orchestrator components for sophisticated system
-        // IIntelligenceOrchestrator already registered above
-        // IDataOrchestrator already registered above
-        services.AddSingleton<TradingBot.Abstractions.IWorkflowScheduler, WorkflowSchedulerService>();
+        // IIntelligenceOrchestrator already registered above (now disabled - fake service)
+        // IDataOrchestrator already registered above (now disabled - fake service)
+        // DISABLED: WorkflowSchedulerService - Empty shell, does nothing, just logs
+        // services.AddSingleton<TradingBot.Abstractions.IWorkflowScheduler, WorkflowSchedulerService>();
         
         // Register Cloud Data Integration - Links 27 GitHub workflows to trading decisions
         services.AddSingleton<TradingBot.Abstractions.ICloudDataIntegration, CloudDataIntegrationService>();
@@ -1910,8 +1917,8 @@ Please check the configuration and ensure all required services are registered.
         // Register comprehensive observability and monitoring (ENABLED - compatibility fixed)
         services.AddProductionObservability();
         
-        // Register production verification service to validate configuration
-        services.AddHostedService<ProductionVerificationService>();
+        // DISABLED: ProductionVerificationService - Just logs warnings about missing database
+        // services.AddHostedService<ProductionVerificationService>();
         
         // Register intelligence stack verification service for runtime proof
         services.AddIntelligenceStackVerification();
