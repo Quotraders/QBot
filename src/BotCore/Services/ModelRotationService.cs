@@ -135,7 +135,6 @@ namespace BotCore.Services
                     EmitRotationTelemetry(newRegime);
 
                     _logger.LogInformation("[MODEL-ROTATION] Model rotation completed successfully: {NewRegime}", newRegime);
-                    return;
                 }
                 catch (Exception ex)
                 {

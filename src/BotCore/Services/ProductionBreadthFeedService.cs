@@ -68,13 +68,13 @@ namespace TradingBot.BotCore.Services
                 }
                 else
                 {
-                    _logger?.LogError("[BREADTH-AUDIT-VIOLATION] Infrastructure check failed - TRIGGERING HOLD + TELEMETRY");
+                    _logger.LogError("[BREADTH-AUDIT-VIOLATION] Infrastructure check failed - TRIGGERING HOLD + TELEMETRY");
                     return false;
                 }
             }
             catch (InvalidOperationException ex)
             {
-                _logger?.LogError(ex, "[BREADTH-AUDIT-VIOLATION] Infrastructure availability check failed - TRIGGERING HOLD + TELEMETRY");
+                _logger.LogError(ex, "[BREADTH-AUDIT-VIOLATION] Infrastructure availability check failed - TRIGGERING HOLD + TELEMETRY");
                 return false;
             }
         }
