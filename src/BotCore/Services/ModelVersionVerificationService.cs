@@ -346,7 +346,7 @@ namespace BotCore.Services
         {
             using var sha256 = SHA256.Create();
             using var stream = File.OpenRead(modelPath);
-            var hash = await Task.Run(() => sha256.ComputeHash(stream)).ConfigureAwait(false);
+            var hash = await sha256.ComputeHashAsync(stream).ConfigureAwait(false);
             return Convert.ToHexString(hash);
         }
 

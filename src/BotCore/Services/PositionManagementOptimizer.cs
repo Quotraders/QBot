@@ -255,7 +255,7 @@ namespace BotCore.Services
         /// MULTI-SYMBOL LEARNING: Analyzes separately per symbol (ES vs NQ)
         /// Analyzes: "Triggered BE at 8 ticks → stopped out, would have hit target"
         /// </summary>
-        private async Task OptimizeBreakevenParameterAsync(string strategy, string symbol, CancellationToken cancellationToken)
+        private Task OptimizeBreakevenParameterAsync(string strategy, string symbol, CancellationToken cancellationToken)
         {
             // Group by volatility regime and session for regime-specific learning
             // MULTI-SYMBOL: Filter by both strategy AND symbol
@@ -328,7 +328,7 @@ namespace BotCore.Services
                 }
             }
             
-            await Task.CompletedTask.ConfigureAwait(false);
+            return Task.CompletedTask;
         }
         
         /// <summary>
@@ -337,7 +337,7 @@ namespace BotCore.Services
         /// MULTI-SYMBOL LEARNING: Analyzes separately per symbol (ES vs NQ)
         /// Analyzes: "Trailing at 1.0x ATR → stopped out early, left $200 on table"
         /// </summary>
-        private async Task OptimizeTrailingParameterAsync(string strategy, string symbol, CancellationToken cancellationToken)
+        private Task OptimizeTrailingParameterAsync(string strategy, string symbol, CancellationToken cancellationToken)
         {
             // Group by volatility regime and session for regime-specific learning
             // MULTI-SYMBOL: Filter by both strategy AND symbol
@@ -410,7 +410,7 @@ namespace BotCore.Services
                 }
             }
             
-            await Task.CompletedTask.ConfigureAwait(false);
+            return Task.CompletedTask;
         }
         
         /// <summary>

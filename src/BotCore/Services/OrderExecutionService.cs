@@ -79,7 +79,7 @@ namespace BotCore.Services
             
             // PHASE 3: Start reconciliation timer (every 60 seconds)
             _reconciliationTimer = new Timer(
-                ReconcilePositionsWithBroker,
+                _ => ReconcilePositionsWithBrokerAsync().ConfigureAwait(false),
                 null,
                 TimeSpan.FromSeconds(ReconciliationIntervalSeconds),
                 TimeSpan.FromSeconds(ReconciliationIntervalSeconds)
@@ -707,7 +707,7 @@ namespace BotCore.Services
         /// PHASE 3 Step 5: Periodic reconciliation - Compare bot state with broker reality
         /// Runs every 60 seconds as a background task
         /// </summary>
-        private async void ReconcilePositionsWithBroker(object? state)
+        private async Task ReconcilePositionsWithBrokerAsync()
         {
             try
             {
@@ -869,7 +869,7 @@ namespace BotCore.Services
         /// Notify subscribers that an order was filled
         /// Called by TopstepXAdapterService when fill events are received
         /// </summary>
-        public async void OnOrderFillReceived(FillEventData fillData)
+        public async Task OnOrderFillReceived(FillEventData fillData)
         {
             ArgumentNullException.ThrowIfNull(fillData);
             
