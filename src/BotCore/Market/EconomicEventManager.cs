@@ -376,7 +376,7 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
                     
                     var economicEvent = new EconomicEvent
                     {
-                        Name = eventName ?? "Unknown Event",
+                        Name = eventName, // eventName is never null here (checked at line 351)
                         ScheduledTime = scheduledTime.ToUniversalTime(),
                         Impact = impact,
                         Currency = currency ?? "USD",

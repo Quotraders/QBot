@@ -195,74 +195,71 @@ public sealed class DecisionFusionCoordinator
             }
 
             // Apply PPO position sizing if available
-            if (finalRec != null)
+            try
             {
-                try
+                // Base position size configuration loaded for future use
+                double baseSize;
+                if (finalRec.Intent == StrategyIntent.Buy)
                 {
-                    // Base position size configuration loaded for future use
-                    double baseSize;
-                    if (finalRec.Intent == StrategyIntent.Buy)
-                    {
-                        baseSize = GetConfigValue("Fusion:BuyBaseSize", 1.0);
-                    }
-                    else if (finalRec.Intent == StrategyIntent.Sell)
-                    {
-                        baseSize = GetConfigValue("Fusion:SellBaseSize", -1.0);
-                    }
-                    else
-                    {
-                        baseSize = GetConfigValue("Fusion:NeutralBaseSize", 0.0);
-                    }
-                    _ = baseSize; // Suppress unused variable warning
-                    
-                    // Get risk from real risk management service with fallback handling
-                    var riskManager = _serviceProvider.GetService<IRiskManagerForFusion>();
-                    double actualRisk;
-                    
-                    if (riskManager != null)
-                    {
-                        try
-                        {
-                            actualRisk = await riskManager.GetCurrentRiskAsync(cancellationToken).ConfigureAwait(false);
-                        }
-                        catch (Exception riskEx)
-                        {
-                            _logger.LogWarning(riskEx, "Risk manager unavailable for PPO sizing, using confidence-based risk");
-                            actualRisk = GetConfigValue("Risk:ConfidenceBasedRisk", 1.0) - finalRec.Confidence; // Fallback to confidence-based risk from config
-                        }
-                    }
-                    else
-                    {
-                        _logger.LogTrace("No risk manager service available, using confidence-based risk calculation");
-                        actualRisk = GetConfigValue("Risk:ConfidenceBasedRisk", 1.0) - finalRec.Confidence; // Higher confidence = lower risk from config
-                    }
-                    
-                    var adjustedSize = await _ppo.PredictSizeAsync(symbol, finalRec.Intent, actualRisk, cancellationToken).ConfigureAwait(false);
-                    
-                    // Log PPO sizing information since StrategyRecommendation is immutable
-                    _logger.LogDebug("PPO position sizing for {Symbol}: original_risk={Risk:P2}, adjusted_size={Size:F4}, strategy={Strategy}", 
-                        symbol, actualRisk, adjustedSize, finalRec.StrategyName);
-                    
-                    _logger.LogDebug("Applied PPO sizing for {Symbol}: adjusted_size={AdjustedSize}, fusion_score={Score:F3}",
-                        symbol, adjustedSize, combinedScore);
+                    baseSize = GetConfigValue("Fusion:BuyBaseSize", 1.0);
                 }
-                catch (Exception ex)
+                else if (finalRec.Intent == StrategyIntent.Sell)
                 {
-                    _logger.LogWarning(ex, "Failed to apply PPO sizing for {Symbol}, using original recommendation", symbol);
+                    baseSize = GetConfigValue("Fusion:SellBaseSize", -1.0);
                 }
+                else
+                {
+                    baseSize = GetConfigValue("Fusion:NeutralBaseSize", 0.0);
+                }
+                _ = baseSize; // Suppress unused variable warning
+                
+                // Get risk from real risk management service with fallback handling
+                var riskManager = _serviceProvider.GetService<IRiskManagerForFusion>();
+                double actualRisk;
+                
+                if (riskManager != null)
+                {
+                    try
+                    {
+                        actualRisk = await riskManager.GetCurrentRiskAsync(cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception riskEx)
+                    {
+                        _logger.LogWarning(riskEx, "Risk manager unavailable for PPO sizing, using confidence-based risk");
+                        actualRisk = GetConfigValue("Risk:ConfidenceBasedRisk", 1.0) - finalRec.Confidence; // Fallback to confidence-based risk from config
+                    }
+                }
+                else
+                {
+                    _logger.LogTrace("No risk manager service available, using confidence-based risk calculation");
+                    actualRisk = GetConfigValue("Risk:ConfidenceBasedRisk", 1.0) - finalRec.Confidence; // Higher confidence = lower risk from config
+                }
+                
+                var adjustedSize = await _ppo.PredictSizeAsync(symbol, finalRec.Intent, actualRisk, cancellationToken).ConfigureAwait(false);
+                
+                // Log PPO sizing information since StrategyRecommendation is immutable
+                _logger.LogDebug("PPO position sizing for {Symbol}: original_risk={Risk:P2}, adjusted_size={Size:F4}, strategy={Strategy}", 
+                    symbol, actualRisk, adjustedSize, finalRec.StrategyName);
+                
+                _logger.LogDebug("Applied PPO sizing for {Symbol}: adjusted_size={AdjustedSize}, fusion_score={Score:F3}",
+                    symbol, adjustedSize, combinedScore);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to apply PPO sizing for {Symbol}, using original recommendation", symbol);
             }
 
             // Record fusion metrics using logging since RecordGaugeAsync doesn't exist
             _logger.LogInformation("📊 Fusion combined score: {Score:F3} for symbol {Symbol}, strategy {Strategy}", 
-                combinedScore, symbol, finalRec?.StrategyName ?? "hold");
+                combinedScore, symbol, finalRec.StrategyName);
                 
             _logger.LogInformation("📊 Fusion recommendation count for symbol {Symbol}, decision {Decision}", 
-                symbol, finalRec?.Intent.ToString() ?? "hold");
+                symbol, finalRec.Intent.ToString());
 
             // Audit log: Final decision with comprehensive details
             _logger.LogInformation("🔍 [AUDIT-{DecisionId}] Decision completed for {Symbol}: Strategy={Strategy}, Intent={Intent}, Confidence={Confidence:F3}, " +
                 "Score={Score:F3}, Duration={Duration}ms", 
-                decisionId, symbol, finalRec?.StrategyName ?? "unknown", finalRec?.Intent.ToString() ?? "unknown", finalRec?.Confidence ?? 0.0, 
+                decisionId, symbol, finalRec.StrategyName, finalRec.Intent.ToString(), finalRec.Confidence, 
                 combinedScore, (DateTime.UtcNow - startTime).TotalMilliseconds);
 
             return finalRec;

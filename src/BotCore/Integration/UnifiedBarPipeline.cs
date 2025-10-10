@@ -301,12 +301,8 @@ public sealed class UnifiedBarPipeline
                 throw new InvalidOperationException("Pattern engine data must be available for feature bus publishing");
             }
             
-            // Publish pattern signals to feature bus
+            // Publish pattern signals to feature bus (Data is already validated as non-null above)
             var patternData = patternEngineResult.Data as dynamic;
-            if (patternData == null)
-            {
-                throw new InvalidOperationException("Pattern engine data must be valid for feature bus publishing");
-            }
             
             featureBus.Publish(symbol, bar.Start, "pattern.bull_score", patternData.BullScore);
             featureBus.Publish(symbol, bar.Start, "pattern.bear_score", patternData.BearScore);
