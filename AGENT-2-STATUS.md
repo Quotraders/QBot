@@ -16,14 +16,14 @@
 
 ## ✅ Progress Summary - Continuation Session 4
 - **CS Errors Fixed:** 0 (maintained ✅)
-- **Analyzer Violations Fixed:** 58 violations (18 + 36 + 4 so far)
-- **Files Modified This Session:** 13 files
-- **Commits Pushed:** 2 batches + in progress
+- **Analyzer Violations Fixed:** 68 violations (18 + 36 + 4 + 4 + 6)
+- **Files Modified This Session:** 16 files
+- **Commits Pushed:** 4 batches + in progress
 - **Starting Violation Count:** 4,580 (Services folder, fresh session)
-- **Current Violation Count:** 4,522 (-58 violations)
-- **Net Reduction:** 1.3% reduction this session
+- **Current Violation Count:** 4,512 (-68 violations)
+- **Net Reduction:** 1.5% reduction this session
 - **Phase 1 Status:** ✅ 0 CS compiler errors in Services scope (MAINTAINED)
-- **Session Focus:** Performance optimizations, code quality improvements, anti-pattern removal
+- **Session Focus:** Performance optimizations, code quality improvements, anti-pattern removal, naming compliance
 
 ---
 
@@ -56,6 +56,18 @@
   - MarketConditionAnalyzer.cs - trendStrength already decimal
   - EnhancedTradingBrainIntegration.cs - decision.Confidence already double
 - **CA1508** (0) - Dead code (skipped - false positives in retry logic)
+
+### Batch 39: LINQ Simplification (4 violations) ✅ COMPLETE
+- **S3267** (2) - Simplified LINQ expressions
+  - ModelEnsembleService.cs - Changed Select().Where() to Values.Where()
+  - SecretsValidationService.cs - Extracted Select() for rule names
+
+### Batch 40: Identifier Naming (6 violations) ✅ COMPLETE
+- **CA1707** (3) - Removed underscores from constant names
+  - ProductionPriceService.cs - ES_TICK → EsTick
+  - ProductionPriceService.cs - MES_TICK → MesTick
+  - ProductionPriceService.cs - DEFAULT_TICK → DefaultTick
+  - Updated all usages in same file
 
 ---
 
