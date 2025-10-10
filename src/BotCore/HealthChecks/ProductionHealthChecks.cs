@@ -115,6 +115,19 @@ public class ProductionHealthCheckEndpoint : IHealthCheckEndpoint
     private readonly ILogger<ProductionHealthCheckEndpoint> _logger;
     private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
 
+    // LoggerMessage delegates for CA1848 performance compliance
+    private static readonly Action<ILogger, Exception> LogHealthCheckStatusFailed =
+        LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(6301, nameof(LogHealthCheckStatusFailed)),
+            "Failed to get health check status");
+    
+    private static readonly Action<ILogger, Exception> LogHealthReportFailed =
+        LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(6302, nameof(LogHealthReportFailed)),
+            "Failed to generate health report");
+
     public ProductionHealthCheckEndpoint(
         HealthCheckService healthCheckService,
         ILogger<ProductionHealthCheckEndpoint> logger)
@@ -142,7 +155,7 @@ public class ProductionHealthCheckEndpoint : IHealthCheckEndpoint
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get health check status");
+            LogHealthCheckStatusFailed(_logger, ex);
             return HealthCheckResult.Unhealthy("Health check service failed");
         }
     }
@@ -173,7 +186,7 @@ public class ProductionHealthCheckEndpoint : IHealthCheckEndpoint
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to generate health report");
+            LogHealthReportFailed(_logger, ex);
             return JsonSerializer.Serialize(new { status = "Unhealthy", error = ex.Message }, s_jsonOptions);
         }
     }
@@ -189,6 +202,13 @@ public class TopstepXApiHealthCheck : IHealthCheck
     private readonly HttpClient _httpClient;
     private readonly ILogger<TopstepXApiHealthCheck> _logger;
     private readonly IOptions<TopstepXConfiguration> _config;
+
+    // LoggerMessage delegate for CA1848 performance compliance
+    private static readonly Action<ILogger, Exception> LogApiHealthCheckFailed =
+        LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(6303, nameof(LogApiHealthCheckFailed)),
+            "TopstepX API health check failed");
 
     public TopstepXApiHealthCheck(
         HttpClient httpClient,
@@ -246,7 +266,7 @@ public class TopstepXApiHealthCheck : IHealthCheck
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "TopstepX API health check failed");
+            LogApiHealthCheckFailed(_logger, ex);
             return HealthCheckResult.Unhealthy(
                 $"TopstepX API error: {ex.Message}",
                 ex);
@@ -261,6 +281,13 @@ public class TopstepXSignalRHealthCheck : IHealthCheck
 {
     private readonly ILogger<TopstepXSignalRHealthCheck> _logger;
     private readonly IOptions<TopstepXConfiguration> _config;
+
+    // LoggerMessage delegate for CA1848 performance compliance
+    private static readonly Action<ILogger, Exception> LogSignalRHealthCheckFailed =
+        LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(6304, nameof(LogSignalRHealthCheckFailed)),
+            "SignalR health check failed");
 
     public TopstepXSignalRHealthCheck(
         ILogger<TopstepXSignalRHealthCheck> logger,
@@ -304,12 +331,12 @@ public class TopstepXSignalRHealthCheck : IHealthCheck
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogWarning(ex, "SignalR health check failed");
+            LogSignalRHealthCheckFailed(_logger, ex);
             return HealthCheckResult.Unhealthy($"SignalR health check error: {ex.Message}", ex);
         }
         catch (TaskCanceledException ex)
         {
-            _logger.LogWarning(ex, "SignalR health check failed");
+            LogSignalRHealthCheckFailed(_logger, ex);
             return HealthCheckResult.Unhealthy($"SignalR health check error: {ex.Message}", ex);
         }
     }
@@ -342,6 +369,13 @@ public class TopstepXSignalRHealthCheck : IHealthCheck
 public class DatabaseHealthCheck : IHealthCheck
 {
     private readonly ILogger<DatabaseHealthCheck> _logger;
+
+    // LoggerMessage delegate for CA1848 performance compliance
+    private static readonly Action<ILogger, Exception> LogDatabaseHealthCheckFailed =
+        LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(6305, nameof(LogDatabaseHealthCheckFailed)),
+            "Database health check failed");
 
     public DatabaseHealthCheck(ILogger<DatabaseHealthCheck> logger)
     {
@@ -385,7 +419,7 @@ public class DatabaseHealthCheck : IHealthCheck
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Database health check failed");
+            LogDatabaseHealthCheckFailed(_logger, ex);
             return HealthCheckResult.Unhealthy($"Database error: {ex.Message}", ex);
         }
     }
@@ -397,6 +431,13 @@ public class DatabaseHealthCheck : IHealthCheck
 public class DiskSpaceHealthCheck : IHealthCheck
 {
     private readonly ILogger<DiskSpaceHealthCheck> _logger;
+
+    // LoggerMessage delegate for CA1848 performance compliance
+    private static readonly Action<ILogger, Exception> LogDiskSpaceHealthCheckFailed =
+        LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(6306, nameof(LogDiskSpaceHealthCheckFailed)),
+            "Disk space health check failed");
 
     public DiskSpaceHealthCheck(ILogger<DiskSpaceHealthCheck> logger)
     {
@@ -442,12 +483,12 @@ public class DiskSpaceHealthCheck : IHealthCheck
         }
         catch (IOException ex)
         {
-            _logger.LogWarning(ex, "Disk space health check failed");
+            LogDiskSpaceHealthCheckFailed(_logger, ex);
             return Task.FromResult(HealthCheckResult.Unhealthy($"Disk space check error: {ex.Message}", ex));
         }
         catch (UnauthorizedAccessException ex)
         {
-            _logger.LogWarning(ex, "Disk space health check failed");
+            LogDiskSpaceHealthCheckFailed(_logger, ex);
             return Task.FromResult(HealthCheckResult.Unhealthy($"Disk space check error: {ex.Message}", ex));
         }
     }
@@ -459,6 +500,13 @@ public class DiskSpaceHealthCheck : IHealthCheck
 public class MemoryHealthCheck : IHealthCheck
 {
     private readonly ILogger<MemoryHealthCheck> _logger;
+
+    // LoggerMessage delegate for CA1848 performance compliance
+    private static readonly Action<ILogger, Exception> LogMemoryHealthCheckFailed =
+        LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(6307, nameof(LogMemoryHealthCheckFailed)),
+            "Memory health check failed");
 
     public MemoryHealthCheck(ILogger<MemoryHealthCheck> logger)
     {
@@ -508,7 +556,7 @@ public class MemoryHealthCheck : IHealthCheck
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Memory health check failed");
+            LogMemoryHealthCheckFailed(_logger, ex);
             return HealthCheckResult.Unhealthy($"Memory check error: {ex.Message}", ex);
         }
     }
@@ -520,6 +568,13 @@ public class MemoryHealthCheck : IHealthCheck
 public class MLModelHealthCheck : IHealthCheck
 {
     private readonly ILogger<MLModelHealthCheck> _logger;
+
+    // LoggerMessage delegate for CA1848 performance compliance
+    private static readonly Action<ILogger, Exception> LogMLModelHealthCheckFailed =
+        LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(6308, nameof(LogMLModelHealthCheckFailed)),
+            "ML model health check failed");
 
     public MLModelHealthCheck(ILogger<MLModelHealthCheck> logger)
     {
@@ -585,7 +640,7 @@ public class MLModelHealthCheck : IHealthCheck
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "ML model health check failed");
+            LogMLModelHealthCheckFailed(_logger, ex);
             return HealthCheckResult.Unhealthy($"ML model check error: {ex.Message}", ex);
         }
     }
@@ -597,6 +652,13 @@ public class MLModelHealthCheck : IHealthCheck
 public class ConfigurationHealthCheck : IHealthCheck
 {
     private readonly ILogger<ConfigurationHealthCheck> _logger;
+
+    // LoggerMessage delegate for CA1848 performance compliance
+    private static readonly Action<ILogger, Exception> LogConfigurationHealthCheckFailed =
+        LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(6309, nameof(LogConfigurationHealthCheckFailed)),
+            "Configuration health check failed");
 
     public ConfigurationHealthCheck(ILogger<ConfigurationHealthCheck> logger)
     {
@@ -659,7 +721,7 @@ public class ConfigurationHealthCheck : IHealthCheck
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Configuration health check failed");
+            LogConfigurationHealthCheckFailed(_logger, ex);
             return Task.FromResult(HealthCheckResult.Unhealthy($"Configuration check error: {ex.Message}", ex));
         }
     }
@@ -671,6 +733,13 @@ public class ConfigurationHealthCheck : IHealthCheck
 public class SecurityHealthCheck : IHealthCheck
 {
     private readonly ILogger<SecurityHealthCheck> _logger;
+
+    // LoggerMessage delegate for CA1848 performance compliance
+    private static readonly Action<ILogger, Exception> LogSecurityHealthCheckFailed =
+        LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(6310, nameof(LogSecurityHealthCheckFailed)),
+            "Security health check failed");
 
     public SecurityHealthCheck(ILogger<SecurityHealthCheck> logger)
     {
@@ -726,7 +795,7 @@ public class SecurityHealthCheck : IHealthCheck
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Security health check failed");
+            LogSecurityHealthCheckFailed(_logger, ex);
             return Task.FromResult(HealthCheckResult.Unhealthy($"Security check error: {ex.Message}", ex));
         }
     }
@@ -742,6 +811,25 @@ public class HealthCheckPublisherService : BackgroundService
     private readonly HealthCheckService _healthCheckService;
     private readonly ILogger<HealthCheckPublisherService> _logger;
     private readonly IOptions<HealthCheckConfiguration> _config;
+
+    // LoggerMessage delegates for CA1848 performance compliance
+    private static readonly Action<ILogger, string, HealthStatus, double, Exception?> LogOverallHealthStatus =
+        LoggerMessage.Define<string, HealthStatus, double>(
+            LogLevel.Information,
+            new EventId(6311, nameof(LogOverallHealthStatus)),
+            "{Status} [HEALTH] Overall status: {OverallStatus}, Duration: {Duration}ms");
+    
+    private static readonly Action<ILogger, string, string, string, Exception?> LogIndividualCheckStatus =
+        LoggerMessage.Define<string, string, string>(
+            LogLevel.Warning,
+            new EventId(6312, nameof(LogIndividualCheckStatus)),
+            "{Status} [HEALTH] {CheckName}: {Description}");
+    
+    private static readonly Action<ILogger, Exception> LogHealthCheckPublisherError =
+        LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(6313, nameof(LogHealthCheckPublisherError)),
+            "❌ [HEALTH] Health check publisher error");
 
     public HealthCheckPublisherService(
         HealthCheckService healthCheckService,
@@ -770,8 +858,7 @@ public class HealthCheckPublisherService : BackgroundService
                     _ => "❓"
                 };
 
-                _logger.LogInformation("{Status} [HEALTH] Overall status: {OverallStatus}, Duration: {Duration}ms", 
-                    status, report.Status, report.TotalDuration.TotalMilliseconds);
+                LogOverallHealthStatus(_logger, status, report.Status, report.TotalDuration.TotalMilliseconds, null);
 
                 // Log individual check results
                 foreach (var (name, result) in report.Entries)
@@ -785,8 +872,7 @@ public class HealthCheckPublisherService : BackgroundService
                             _ => "❓"
                         };
 
-                        _logger.LogWarning("{Status} [HEALTH] {CheckName}: {Description}", 
-                            checkStatus, name, result.Description);
+                        LogIndividualCheckStatus(_logger, checkStatus, name, result.Description, null);
                     }
                 }
 
@@ -799,7 +885,7 @@ public class HealthCheckPublisherService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ [HEALTH] Health check publisher error");
+                LogHealthCheckPublisherError(_logger, ex);
                 await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken).ConfigureAwait(false);
             }
         }

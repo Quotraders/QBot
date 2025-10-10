@@ -10,6 +10,61 @@ namespace BotCore.Extensions;
 /// </summary>
 public static class ProductionGuardrailExtensions
 {
+    // LoggerMessage delegates for CA1848 performance compliance
+    private static readonly Action<ILogger, Exception?> LogValidatingGuardrails =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(6001, nameof(LogValidatingGuardrails)),
+            "🔍 [SETUP] Validating production guardrail setup...");
+    
+    private static readonly Action<ILogger, Exception?> LogGuardrailsValidated =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(6002, nameof(LogGuardrailsValidated)),
+            "✅ [SETUP] Production guardrails validated successfully");
+    
+    private static readonly Action<ILogger, Exception?> LogKillSwitchActive =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(6003, nameof(LogKillSwitchActive)),
+            "  • Kill switch monitoring: ACTIVE");
+    
+    private static readonly Action<ILogger, Exception?> LogOrderEvidenceActive =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(6004, nameof(LogOrderEvidenceActive)),
+            "  • Order evidence validation: ACTIVE");
+    
+    private static readonly Action<ILogger, Exception?> LogPriceValidationActive =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(6005, nameof(LogPriceValidationActive)),
+            "  • Price validation (ES/MES 0.25 tick): ACTIVE");
+    
+    private static readonly Action<ILogger, Exception?> LogRiskValidationActive =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(6006, nameof(LogRiskValidationActive)),
+            "  • Risk validation (reject ≤ 0): ACTIVE");
+    
+    private static readonly Action<ILogger, string, Exception?> LogCurrentMode =
+        LoggerMessage.Define<string>(
+            LogLevel.Information,
+            new EventId(6007, nameof(LogCurrentMode)),
+            "  • Current mode: {Mode}");
+    
+    private static readonly Action<ILogger, Exception?> LogKillSwitchTriggered =
+        LoggerMessage.Define(
+            LogLevel.Critical,
+            new EventId(6008, nameof(LogKillSwitchTriggered)),
+            "🔴 [SETUP] KILL SWITCH ACTIVE - All execution disabled");
+    
+    private static readonly Action<ILogger, Exception> LogGuardrailValidationFailed =
+        LoggerMessage.Define(
+            LogLevel.Critical,
+            new EventId(6009, nameof(LogGuardrailValidationFailed)),
+            "❌ [SETUP] Production guardrail validation FAILED");
+
     /// <summary>
     /// Add all production guardrail services following agent rules
     /// </summary>
@@ -37,7 +92,10 @@ public static class ProductionGuardrailExtensions
     /// </summary>
     public static void ValidateProductionGuardrails(this IServiceProvider serviceProvider, ILogger? logger = null)
     {
-        logger?.LogInformation("🔍 [SETUP] Validating production guardrail setup...");
+        if (logger != null)
+        {
+            LogValidatingGuardrails(logger, null);
+        }
 
         try
         {
@@ -66,21 +124,27 @@ public static class ProductionGuardrailExtensions
             var isDryRun = ProductionKillSwitchService.IsDryRunMode();
             var killSwitchActive = ProductionKillSwitchService.IsKillSwitchActive();
 
-            logger?.LogInformation("✅ [SETUP] Production guardrails validated successfully");
-            logger?.LogInformation("  • Kill switch monitoring: ACTIVE");
-            logger?.LogInformation("  • Order evidence validation: ACTIVE");
-            logger?.LogInformation("  • Price validation (ES/MES 0.25 tick): ACTIVE");
-            logger?.LogInformation("  • Risk validation (reject ≤ 0): ACTIVE");
-            logger?.LogInformation("  • Current mode: {Mode}", isDryRun ? "DRY_RUN" : "LIVE");
-            
-            if (killSwitchActive)
+            if (logger != null)
             {
-                logger?.LogCritical("🔴 [SETUP] KILL SWITCH ACTIVE - All execution disabled");
+                LogGuardrailsValidated(logger, null);
+                LogKillSwitchActive(logger, null);
+                LogOrderEvidenceActive(logger, null);
+                LogPriceValidationActive(logger, null);
+                LogRiskValidationActive(logger, null);
+                LogCurrentMode(logger, isDryRun ? "DRY_RUN" : "LIVE", null);
+                
+                if (killSwitchActive)
+                {
+                    LogKillSwitchTriggered(logger, null);
+                }
             }
         }
         catch (Exception ex)
         {
-            logger?.LogCritical(ex, "❌ [SETUP] Production guardrail validation FAILED");
+            if (logger != null)
+            {
+                LogGuardrailValidationFailed(logger, ex);
+            }
             throw new InvalidOperationException("Production guardrail validation failed - cannot proceed with startup", ex);
         }
     }

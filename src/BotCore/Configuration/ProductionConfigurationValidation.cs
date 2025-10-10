@@ -674,6 +674,37 @@ public class ConfigurationValidationStartupService : IHostedService
     private readonly ILogger<ConfigurationValidationStartupService> _logger;
     private readonly IServiceProvider _serviceProvider;
 
+    // LoggerMessage delegates for CA1848 performance compliance
+    private static readonly Action<ILogger, Exception?> LogStartingValidation =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(6101, nameof(LogStartingValidation)),
+            "🔧 [CONFIG] Starting production configuration validation...");
+    
+    private static readonly Action<ILogger, Exception?> LogAllValidated =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(6102, nameof(LogAllValidated)),
+            "✅ [CONFIG] All production configuration validated successfully");
+    
+    private static readonly Action<ILogger, Exception> LogValidationFailed =
+        LoggerMessage.Define(
+            LogLevel.Critical,
+            new EventId(6103, nameof(LogValidationFailed)),
+            "❌ [CONFIG] Configuration validation failed - stopping application");
+    
+    private static readonly Action<ILogger, string, Exception?> LogSectionValidated =
+        LoggerMessage.Define<string>(
+            LogLevel.Information,
+            new EventId(6104, nameof(LogSectionValidated)),
+            "✅ [CONFIG] {Section} configuration validated");
+    
+    private static readonly Action<ILogger, string, string, Exception> LogSectionValidationFailed =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Error,
+            new EventId(6105, nameof(LogSectionValidationFailed)),
+            "❌ [CONFIG] {Section} validation failed: {Failures}");
+
     public ConfigurationValidationStartupService(
         ILogger<ConfigurationValidationStartupService> logger,
         IServiceProvider serviceProvider)
@@ -684,7 +715,7 @@ public class ConfigurationValidationStartupService : IHostedService
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("🔧 [CONFIG] Starting production configuration validation...");
+        LogStartingValidation(_logger, null);
 
         try
         {
@@ -696,12 +727,12 @@ public class ConfigurationValidationStartupService : IHostedService
             ValidateConfiguration<ObservabilityConfiguration>("Observability");
             ValidateConfiguration<HealthCheckConfiguration>("HealthChecks");
 
-            _logger.LogInformation("✅ [CONFIG] All production configuration validated successfully");
+            LogAllValidated(_logger, null);
             return Task.CompletedTask;
         }
         catch (Exception ex)
         {
-            _logger.LogCritical(ex, "❌ [CONFIG] Configuration validation failed - stopping application");
+            LogValidationFailed(_logger, ex);
             throw new InvalidOperationException("Production configuration validation failed - application cannot start with invalid configuration", ex);
         }
     }
@@ -717,12 +748,11 @@ public class ConfigurationValidationStartupService : IHostedService
         {
             var options = _serviceProvider.GetRequiredService<IOptions<T>>();
             _ = options.Value; // This triggers validation
-            _logger.LogInformation("✅ [CONFIG] {Section} configuration validated", sectionName);
+            LogSectionValidated(_logger, sectionName, null);
         }
         catch (OptionsValidationException ex)
         {
-            _logger.LogError(ex, "❌ [CONFIG] {Section} validation failed: {Failures}", 
-                sectionName, string.Join("; ", ex.Failures));
+            LogSectionValidationFailed(_logger, sectionName, string.Join("; ", ex.Failures), ex);
             throw;
         }
     }
