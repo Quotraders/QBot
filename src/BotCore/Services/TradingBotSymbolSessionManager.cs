@@ -64,9 +64,9 @@ namespace TradingBot.BotCore.Services
         /// <summary>
         /// Initialize with async configuration loading
         /// </summary>
-        public async Task InitializeAsync(CancellationToken cancellationToken = default)
+        public Task InitializeAsync(CancellationToken cancellationToken = default)
         {
-            await LoadConfigurationsFromFileAsync(cancellationToken).ConfigureAwait(false);
+            return LoadConfigurationsFromFileAsync(cancellationToken);
         }
 
         /// <summary>
@@ -114,7 +114,7 @@ namespace TradingBot.BotCore.Services
         /// <summary>
         /// Updates configuration for specific symbol-session combination with validation
         /// </summary>
-        public async Task UpdateConfigurationAsync(
+        public Task UpdateConfigurationAsync(
             string symbol, 
             MarketSession sessionType, 
             SymbolSessionConfiguration configuration, 
@@ -130,7 +130,7 @@ namespace TradingBot.BotCore.Services
             
             _logger.LogInformation("Updated configuration for {Symbol}-{Session}", symbol, sessionType);
             
-            await SaveConfigurationsToFileAsync(cancellationToken).ConfigureAwait(false);
+            return SaveConfigurationsToFileAsync(cancellationToken);
         }
 
         /// <summary>

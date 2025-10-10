@@ -325,7 +325,7 @@ namespace BotCore.Services
                 try
                 {
                     // Notify position management service of zone break
-                    positionMgmt.OnZoneBreak(breakEvent);
+                    await positionMgmt.OnZoneBreak(breakEvent).ConfigureAwait(false);
                     
                     _logger.LogInformation("📢 [ZONE-BREAK] Notified position management of {Type} event for {Symbol}",
                         breakEvent.BreakType, breakEvent.Symbol);

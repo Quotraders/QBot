@@ -1335,7 +1335,7 @@ namespace BotCore.Services
         /// PHASE 2: Handle zone break events from ZoneBreakMonitoringService
         /// Adjusts stops based on broken zones - broken supply becomes support, broken demand becomes resistance
         /// </summary>
-        public async void OnZoneBreak(ZoneBreakEvent breakEvent)
+        public async Task OnZoneBreak(ZoneBreakEvent breakEvent)
         {
             ArgumentNullException.ThrowIfNull(breakEvent);
             
