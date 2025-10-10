@@ -75,7 +75,7 @@ public class SecurityService : ISecurityService
                 {
                     result = pattern.Replace(result, "$1****$3");
                 }
-                else if (pattern.ToString().Contains("@", StringComparison.Ordinal))
+                else if (pattern.ToString().Contains('@'))
                 {
                     result = pattern.Replace(result, "$1@[REDACTED]");
                 }

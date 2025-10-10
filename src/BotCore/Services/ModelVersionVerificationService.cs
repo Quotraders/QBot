@@ -247,24 +247,24 @@ namespace BotCore.Services
         /// <summary>
         /// Validate model file integrity
         /// </summary>
-        public Task<bool> ValidateModelIntegrityAsync(string modelPath)
+        public async Task<bool> ValidateModelIntegrityAsync(string modelPath)
         {
             ArgumentNullException.ThrowIfNull(modelPath);
             
             try
             {
                 if (!_config.ModelHashValidation)
-                    return Task.FromResult(true);
+                    return true;
 
                 if (!File.Exists(modelPath))
-                    return Task.FromResult(false);
+                    return false;
 
                 // Basic file validation
                 var fileInfo = new FileInfo(modelPath);
                 if (fileInfo.Length == 0)
                 {
                     _logger.LogWarning("[MODEL-INTEGRITY] Model file is empty: {ModelPath}", modelPath);
-                    return Task.FromResult(false);
+                    return false;
                 }
 
                 // For ONNX models, verify file format
@@ -272,23 +272,23 @@ namespace BotCore.Services
                 {
                     var header = new byte[HeaderByteLength];
                     using var fs = File.OpenRead(modelPath);
-                    fs.ReadExactly(header, 0, HeaderByteLength);
+                    await fs.ReadExactlyAsync(header, 0, HeaderByteLength).ConfigureAwait(false);
                     
                     // ONNX files should start with protobuf magic bytes or model structure
                     // This is a simplified check - in production you might use ONNX runtime validation
                     if (header[0] == ProtobufMagicByte1 || header[0] == ProtobufMagicByte2) // Common protobuf prefixes
                     {
-                        return Task.FromResult(true);
+                        return true;
                     }
                 }
 
                 // For other model types, just verify it's not corrupted
-                return Task.FromResult(fileInfo.Length > MinimumModelSizeBytes); // Minimum reasonable model size
+                return fileInfo.Length > MinimumModelSizeBytes; // Minimum reasonable model size
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[MODEL-INTEGRITY] Error validating model integrity for {ModelPath}", modelPath);
-                return Task.FromResult(false);
+                return false;
             }
         }
 
