@@ -66,7 +66,40 @@ These issues are in **live trading code paths** and could cause **financial loss
 
 These issues are in production code but have **lower immediate risk**:
 
-### 1.4 FeatureDemonstrationService - UNNECESSARY OVERHEAD
+### 2.1 Placeholder Contract Rollover and Learning Managers
+**Location:** `src/BotCore/Services/MasterDecisionOrchestrator.cs:1809-1882`  
+**Affects Production?** ✅ **YES** - Used in MasterDecisionOrchestrator  
+**Financial Risk?** 🟡 **MEDIUM** - Contract rollovers won't work  
+**Must Fix?** 🟡 **SHOULD**
+
+**Why This Matters:**
+- ContractRolloverManager is instantiated in production orchestrator
+- All methods return Task.CompletedTask without doing anything
+- Bot won't handle contract rollovers (Z25 → H26 transitions)
+- Could trade expired contracts if not manually switched
+- Learning system monitoring is completely non-functional
+
+**Remediation:** Implement actual rollover logic or remove placeholder classes
+
+---
+
+### 2.2 Hardcoded CPU Usage in Health Monitoring
+**Location:** `src/BotCore/Risk/CriticalSystemComponentsFixes.cs:96,283`  
+**Affects Production?** ✅ **YES** - Used in system health checks  
+**Financial Risk?** 🟢 **LOW** - Cannot detect performance problems  
+**Must Fix?** 🟡 **SHOULD**
+
+**Why This Matters:**
+- Always returns 15% CPU usage regardless of actual usage
+- Cannot detect high CPU usage that might slow down trading
+- Health monitoring provides false information
+- Could miss performance degradation before it impacts trading
+
+**Remediation:** Implement real CPU monitoring using Process.GetCurrentProcess()
+
+---
+
+### 2.3 FeatureDemonstrationService - UNNECESSARY OVERHEAD
 **Location:** `src/UnifiedOrchestrator/Program.cs:1323`  
 **Affects Production?** 🟡 **MINOR** - Adds overhead, not core functionality  
 **Financial Risk?** ❌ **NONE** - Cosmetic/operational only  
@@ -228,7 +261,7 @@ These are **NOT issues** and do not need fixing:
 | Category | Count | Must Fix? | Priority |
 |----------|-------|-----------|----------|
 | **Production-Critical** | 3 issues | ✅ YES | 🔴 P0 |
-| **Production-Relevant** | 3 issues | 🟠 RECOMMENDED | 🟠 P1 |
+| **Production-Relevant** | 5 issues | 🟠 RECOMMENDED | 🟠 P1-P2 |
 | **Non-Production (Excluded)** | 20+ issues | 🟡 OPTIONAL | 🟡 P2 |
 | **Acceptable/False Positives** | 450+ patterns | ❌ NO | ✅ OK |
 | **Low Priority Cleanup** | 5+ items | 🟢 NICE TO HAVE | 🟢 P3 |

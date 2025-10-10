@@ -67,7 +67,39 @@ dotnet add src/UnifiedOrchestrator package MathNet.Numerics
 
 ## 🟡 MEDIUM PRIORITY (Review Next Sprint)
 
-### 5. Review Simulation Delays in Production Code
+### 5. Placeholder Contract Rollover and Learning Managers
+**Files:** `src/BotCore/Services/MasterDecisionOrchestrator.cs:1809-1882`  
+**Issue:** ContractRolloverManager and LearningSystemMonitor have all methods as placeholders
+
+**Impact:** 
+- Contract rollover won't work (bot won't switch from expiring to new contracts)
+- Learning system monitoring is non-functional
+
+**Action:** Implement actual rollover logic or document as future feature  
+**Time:** 8-16 hours | **Priority:** P2 🟡
+
+---
+
+### 6. Hardcoded CPU Usage in Health Monitoring
+**File:** `src/BotCore/Risk/CriticalSystemComponentsFixes.cs:96,283`  
+**Issue:** Always returns 15% CPU usage, can't detect performance problems
+
+**Action:** Implement real CPU monitoring using Process.GetCurrentProcess()  
+**Time:** 1-2 hours | **Priority:** P2 🟡
+
+---
+
+### 7. Placeholder Model Data in NightlyParameterTuner
+**File:** `src/IntelligenceStack/NightlyParameterTuner.cs:969`  
+**Issue:** Model registration uses empty byte array instead of actual model
+
+**Note:** IntelligenceStack is training code (excluded directory)  
+**Action:** Implement actual model serialization for PyTorch/TensorFlow/ML.NET  
+**Time:** 4 hours | **Priority:** P2 🟡 (Low impact - training code)
+
+---
+
+### 8. Review Simulation Delays in Production Code
 **Files:** 12 instances in BotCore services  
 **Issue:** Comments say "Simulate" - unclear if placeholder or intentional
 
@@ -137,7 +169,7 @@ rm -rf scripts/
 |----------|-------|--------|
 | **CRITICAL Issues** | 1 | 🔴 Blocking |
 | **HIGH Issues** | 4 | 🟠 This week |
-| **MEDIUM Issues** | 20+ | 🟡 Next sprint |
+| **MEDIUM Issues** | 23+ | 🟡 Next sprint |
 | **LOW Issues** | 5+ | 🟢 Cleanup |
 | **False Positives** | 450+ | ✅ Verified OK |
 

@@ -17,7 +17,7 @@ This comprehensive audit examined **every file and folder** in the trading bot r
 ### Key Statistics
 - **CRITICAL Issues:** 1 (Stub WalkForwardValidationService with fake data)
 - **HIGH Issues:** 4 (Weak RNG, Demo services, API simulation)
-- **MEDIUM Issues:** 20+ (Simulation delays, synthetic data generation)
+- **MEDIUM Issues:** 23+ (Simulation delays, placeholder managers, hardcoded values, synthetic data)
 - **LOW Issues:** 5+ (Unused files, cleanup needed)
 
 ### Production Readiness Status
@@ -250,7 +250,158 @@ testContext.CurrentPrice += (decimal)(new Random().NextDouble() - 0.5) * 2;
 
 ## 🟡 MEDIUM PRIORITY FINDINGS (Review & Document)
 
-### 6. IntelligenceStack: Synthetic Data Generation in HistoricalTrainerWithCV
+### 6. MasterDecisionOrchestrator: Placeholder Learning and Rollover Managers
+
+**Files:** 
+- `src/BotCore/Services/MasterDecisionOrchestrator.cs:1809-1882`
+
+**Severity:** 🟡 **MEDIUM**  
+**Relevance:** ⚠️ **PRODUCTION-CRITICAL** (Used in production orchestrator)
+
+**Issue:**
+Two manager classes have explicit placeholder implementations with comments stating "will be implemented in future phase":
+
+```csharp
+// LearningSystemMonitor - Lines 1809-1849
+public Task InitializeAsync(CancellationToken cancellationToken)
+{
+    _ = _logger; // Placeholder implementation - will be implemented in future phase
+    return Task.CompletedTask;
+}
+
+public Task StartLearningAsync(CancellationToken cancellationToken)
+{
+    _ = _logger; // Placeholder for StartLearningAsync - will be implemented in future phase
+    return Task.CompletedTask;
+}
+// ... 5 more placeholder methods
+
+// ContractRolloverManager - Lines 1865-1881
+public Task StartMonitoringAsync(CancellationToken cancellationToken)
+{
+    _ = _logger; // Placeholder for StartMonitoringAsync - will be implemented in future phase
+    return Task.CompletedTask;
+}
+// ... 2 more placeholder methods
+```
+
+**Context:**
+- `ContractRolloverManager` is instantiated in `MasterDecisionOrchestrator` constructor (line 134)
+- Used for contract rollover (Z25 → H26 transitions)
+- All methods return `Task.CompletedTask` without doing anything
+
+**Impact:**
+- **Contract rollover** won't work (bot won't switch from expiring to new contracts)
+- **Learning system monitoring** is not functional
+- Features appear to exist but do nothing
+
+**Required Action:**
+```bash
+# Option 1: Implement the functionality
+# - Add real contract rollover logic
+# - Add real learning system monitoring
+
+# Option 2: Document as future feature
+# - Add clear warnings in logs when instantiated
+# - Update documentation to list as "planned feature"
+
+# Option 3: Remove placeholder classes until implemented
+# - Comment out or remove the classes
+# - Remove instantiation from MasterDecisionOrchestrator
+```
+
+**Risk:** 🟡 **MEDIUM** - Bot won't handle contract rollovers, could trade expired contracts
+
+---
+
+### 7. CriticalSystemComponentsFixes: Hardcoded CPU Usage
+
+**File:** `src/BotCore/Risk/CriticalSystemComponentsFixes.cs:96,283`  
+**Severity:** 🟡 **MEDIUM**  
+**Relevance:** ⚠️ **PRODUCTION-RELEVANT**
+
+**Issue:**
+```csharp
+private const double PlaceholderCpuUsagePercent = 15.0;
+
+private static async Task<double> GetCpuUsageAsync()
+{
+    await Task.Yield();
+    // Real CPU usage calculation would go here
+    return PlaceholderCpuUsagePercent; // ALWAYS RETURNS 15%
+}
+```
+
+**Context:**
+- Used in system health monitoring
+- Always reports 15% CPU usage regardless of actual usage
+- Could hide performance problems
+
+**Impact:**
+- Cannot detect high CPU usage issues
+- Health monitoring provides false information
+- Could miss performance degradation
+
+**Required Action:**
+```csharp
+// Implement real CPU monitoring using Process.GetCurrentProcess()
+private static async Task<double> GetCpuUsageAsync()
+{
+    var process = Process.GetCurrentProcess();
+    var startTime = DateTime.UtcNow;
+    var startCpuUsage = process.TotalProcessorTime;
+    
+    await Task.Delay(500); // Sample period
+    
+    var endTime = DateTime.UtcNow;
+    var endCpuUsage = process.TotalProcessorTime;
+    
+    var cpuUsedMs = (endCpuUsage - startCpuUsage).TotalMilliseconds;
+    var totalMs = (endTime - startTime).TotalMilliseconds;
+    var cpuUsageTotal = cpuUsedMs / (Environment.ProcessorCount * totalMs);
+    
+    return cpuUsageTotal * 100;
+}
+```
+
+**Risk:** 🟡 **MEDIUM** - Cannot detect performance problems
+
+---
+
+### 8. NightlyParameterTuner: Placeholder Model Data
+
+**File:** `src/IntelligenceStack/NightlyParameterTuner.cs:969`  
+**Severity:** 🟡 **MEDIUM**  
+**Relevance:** ❌ **NON-PRODUCTION** (IntelligenceStack, training code)
+
+**Issue:**
+```csharp
+ModelData = new byte[1024] // Placeholder for model bytes - requires actual training implementation
+```
+
+**Context:**
+- In `NightlyParameterTuner` which is ML training infrastructure
+- IntelligenceStack is excluded from production rules
+- Used for offline model tuning, not live trading
+
+**Impact:**
+- Model registration won't have actual trained model bytes
+- If tuned models are deployed, they won't work
+- Training pipeline is incomplete
+
+**Required Action:**
+```csharp
+// Implement actual model serialization:
+// - For PyTorch: torch.save(model.state_dict(), path) and read bytes
+// - For TensorFlow: Export as SavedModel, zip, read bytes
+// - For ML.NET: mlContext.Model.Save() to memory stream
+```
+
+**Risk:** 🟢 **LOW** - IntelligenceStack is training code, not used in live trading
+
+---
+
+### 9. IntelligenceStack: Synthetic Data Generation in HistoricalTrainerWithCV
 
 **File:** `src/IntelligenceStack/HistoricalTrainerWithCV.cs`  
 **Lines:** 601-629  
@@ -889,7 +1040,7 @@ PRODUCTION VIOLATION: Placeholder code comments detected. All code must be produ
 
 ## 🏁 CONCLUSION
 
-This comprehensive audit identified **1 critical** and **4 high-priority** issues that **must be resolved** before production deployment. The good news:
+This comprehensive audit identified **1 critical**, **4 high-priority**, and **3 additional medium-priority** issues. The good news:
 
 ✅ **Most code is production-ready:**
 - Core trading logic is solid
@@ -897,13 +1048,18 @@ This comprehensive audit identified **1 critical** and **4 high-priority** issue
 - Risk management is comprehensive
 - Most services are properly implemented
 
-🔴 **Critical blockers:**
+🔴 **Critical blockers (P0-P1):**
 - 1 stub file with fake performance data (easy fix: delete it)
 - 3 instances of weak RNG in validation (needs proper implementation)
 - 1 demo service running in production (easy fix: remove registration)
 - 1 API simulation instead of real integration (needs implementation or disable)
 
-**Estimated time to production-ready:** ~20 hours of focused work
+🟡 **Additional medium-priority issues (P2):**
+- Placeholder ContractRolloverManager (won't handle contract rollovers)
+- Placeholder LearningSystemMonitor (learning monitoring not functional)
+- Hardcoded CPU usage (always returns 15%, hides performance issues)
+
+**Estimated time to production-ready:** ~20-25 hours of focused work (including new findings)
 
 **Primary concern:** The WalkForwardValidationService stub is the most dangerous - it could lead to catastrophic trading decisions if ever accidentally used. **Delete immediately.**
 
