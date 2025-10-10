@@ -183,6 +183,86 @@ public sealed class OnnxModelLoader : IDisposable
         LoggerMessage.Define<string>(LogLevel.Information, new EventId(30, nameof(LogModelUnloaded)),
             "[ONNX-Loader] Model unloaded: {ModelKey}");
 
+    private static readonly Action<ILogger, int, Exception?> LogDisposingModels =
+        LoggerMessage.Define<int>(LogLevel.Information, new EventId(31, nameof(LogDisposingModels)),
+            "[ONNX-Loader] Disposing {ModelCount} loaded models");
+
+    private static readonly Action<ILogger, Exception?> LogSessionAlreadyDisposed =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(32, nameof(LogSessionAlreadyDisposed)),
+            "[ONNX-Loader] Model session already disposed");
+
+    private static readonly Action<ILogger, Exception?> LogSessionDisposeError =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(33, nameof(LogSessionDisposeError)),
+            "[ONNX-Loader] Error disposing model session - invalid operation");
+
+    private static readonly Action<ILogger, Exception?> LogDisposedSuccessfully =
+        LoggerMessage.Define(LogLevel.Information, new EventId(34, nameof(LogDisposedSuccessfully)),
+            "[ONNX-Loader] Disposed successfully");
+
+    private static readonly Action<ILogger, string, string, string, Exception?> LogModelUpdateDetectedNew =
+        LoggerMessage.Define<string, string, string>(LogLevel.Information, new EventId(35, nameof(LogModelUpdateDetectedNew)),
+            "[ONNX-Loader] Detected model update: {ModelFile} (v{OldVersion} → v{NewVersion})");
+
+    private static readonly Action<ILogger, string, string, Exception?> LogRegistryUpdateNew =
+        LoggerMessage.Define<string, string>(LogLevel.Information, new EventId(36, nameof(LogRegistryUpdateNew)),
+            "[HOT_RELOAD] Registry update detected: {MetadataFile} (modified: {LastWrite})");
+
+    private static readonly Action<ILogger, string, string, Exception?> LogModelDeployedWithBackup =
+        LoggerMessage.Define<string, string>(LogLevel.Debug, new EventId(37, nameof(LogModelDeployedWithBackup)),
+            "[ONNX-Registry] Model deployed atomically with backup: {Model}, backup: {Backup}");
+
+    private static readonly Action<ILogger, string, Exception?> LogModelDeployedAtomic =
+        LoggerMessage.Define<string>(LogLevel.Debug, new EventId(38, nameof(LogModelDeployedAtomic)),
+            "[ONNX-Registry] Model deployed atomically: {Model}");
+
+    private static readonly Action<ILogger, Exception?> LogDeployFailedIO =
+        LoggerMessage.Define(LogLevel.Error, new EventId(39, nameof(LogDeployFailedIO)),
+            "[ONNX-Registry] Failed to deploy model atomically - I/O error");
+
+    private static readonly Action<ILogger, Exception?> LogMetadataSaveError =
+        LoggerMessage.Define(LogLevel.Error, new EventId(40, nameof(LogMetadataSaveError)),
+            "[ONNX-Registry] Failed to save metadata file");
+
+    private static readonly Action<ILogger, string, Exception?> LogModelRegistered =
+        LoggerMessage.Define<string>(LogLevel.Information, new EventId(41, nameof(LogModelRegistered)),
+            "[ONNX-Registry] Model registered successfully: {ModelName}");
+
+    private static readonly Action<ILogger, Exception?> LogRegistrationFailedIO =
+        LoggerMessage.Define(LogLevel.Error, new EventId(42, nameof(LogRegistrationFailedIO)),
+            "[ONNX-Registry] Model registration failed - I/O error");
+
+    private static readonly Action<ILogger, Exception?> LogRegistrationFailedUnauthorized =
+        LoggerMessage.Define(LogLevel.Error, new EventId(43, nameof(LogRegistrationFailedUnauthorized)),
+            "[ONNX-Registry] Model registration failed - access denied");
+
+    private static readonly Action<ILogger, Exception?> LogRegistrationFailedJson =
+        LoggerMessage.Define(LogLevel.Error, new EventId(44, nameof(LogRegistrationFailedJson)),
+            "[ONNX-Registry] Model registration failed - JSON error");
+
+    private static readonly Action<ILogger, Exception?> LogRegistrationFailedInvalid =
+        LoggerMessage.Define(LogLevel.Error, new EventId(45, nameof(LogRegistrationFailedInvalid)),
+            "[ONNX-Registry] Model registration failed - invalid operation");
+
+    private static readonly Action<ILogger, string, Exception?> LogUnregistrationSuccess =
+        LoggerMessage.Define<string>(LogLevel.Information, new EventId(46, nameof(LogUnregistrationSuccess)),
+            "[ONNX-Registry] Model unregistered successfully: {ModelName}");
+
+    private static readonly Action<ILogger, Exception?> LogUnregistrationFailedIO =
+        LoggerMessage.Define(LogLevel.Error, new EventId(47, nameof(LogUnregistrationFailedIO)),
+            "[ONNX-Registry] Model unregistration failed - I/O error");
+
+    private static readonly Action<ILogger, Exception?> LogUnregistrationFailedUnauthorized =
+        LoggerMessage.Define(LogLevel.Error, new EventId(48, nameof(LogUnregistrationFailedUnauthorized)),
+            "[ONNX-Registry] Model unregistration failed - access denied");
+
+    private static readonly Action<ILogger, Exception?> LogUnregistrationFailedJson =
+        LoggerMessage.Define(LogLevel.Error, new EventId(49, nameof(LogUnregistrationFailedJson)),
+            "[ONNX-Registry] Model unregistration failed - JSON error");
+
+    private static readonly Action<ILogger, Exception?> LogUnregistrationFailedInvalid =
+        LoggerMessage.Define(LogLevel.Error, new EventId(50, nameof(LogUnregistrationFailedInvalid)),
+            "[ONNX-Registry] Model unregistration failed - invalid operation");
+
     public OnnxModelLoader(
         ILogger<OnnxModelLoader> logger, 
         string modelsDirectory = "models",
@@ -260,8 +340,7 @@ public sealed class OnnxModelLoader : IDisposable
             _loadedSessions[modelKey] = loadResult.Session;
             _modelMetadata[modelKey] = loadResult.Metadata!;
             
-            _logger.LogInformation("[ONNX-Loader] Model successfully loaded: {ModelPath} (version: {Version})", 
-                modelPath, loadResult.Metadata?.Version ?? "unknown");
+            LogModelLoaded(_logger, modelPath, loadResult.Metadata?.Version ?? "unknown", null);
                 
             // Emit model reload event
             ModelReloaded?.Invoke(this, new ModelHotReloadEventArgs
@@ -408,8 +487,7 @@ public sealed class OnnxModelLoader : IDisposable
             var inputInfo = session.InputMetadata;
             var outputInfo = session.OutputMetadata;
             
-            _logger.LogInformation("[ONNX-Loader] Model loaded in {Duration}ms: {InputCount} inputs, {OutputCount} outputs", 
-                loadDuration.TotalMilliseconds, inputInfo.Count, outputInfo.Count);
+            LogModelLoadSuccess(_logger, loadDuration.TotalMilliseconds, inputInfo.Count, outputInfo.Count, null);
             
             // Health probe: smoke-predict on canned feature row
             var isHealthy = true;
@@ -420,8 +498,7 @@ public sealed class OnnxModelLoader : IDisposable
                 
                 if (!isHealthy)
                 {
-                    _logger.LogError("[ONNX-Loader] Model failed health probe: {ModelPath} - {Error}", 
-                        modelPath, healthProbeResult.ErrorMessage);
+                    LogHealthProbeFailed(_logger, modelPath, healthProbeResult.ErrorMessage, null);
                     // Dispose will happen in finally block
                     return new ModelLoadResult { Session = null, IsHealthy = false };
                 }
@@ -529,8 +606,7 @@ public sealed class OnnxModelLoader : IDisposable
                 }
             }
 
-            _logger.LogDebug("[ONNX-Loader] Health probe passed in {Duration}ms with {OutputCount} outputs", 
-                inferenceDuration.TotalMilliseconds, outputCount);
+            LogHealthProbeSuccess(_logger, inferenceDuration.TotalMilliseconds, outputCount, null);
 
             return Task.FromResult(new HealthProbeResult 
             { 
@@ -594,8 +670,7 @@ public sealed class OnnxModelLoader : IDisposable
                     if (newMetadata != null && 
                         (newMetadata.SemVer > currentMetadata.SemVer || newMetadata.Checksum != currentMetadata.Checksum))
                     {
-                        _logger.LogInformation("[ONNX-Loader] Detected model update: {ModelFile} (v{OldVersion} → v{NewVersion})", 
-                            modelFile, currentMetadata.Version, newMetadata.Version);
+                        LogModelUpdateDetectedNew(_logger, modelFile, currentMetadata.Version, newMetadata.Version, null);
                         
                         // Hot-reload the model
                         await HotReloadModelAsync(modelFile, modelKey).ConfigureAwait(false);
@@ -642,8 +717,7 @@ public sealed class OnnxModelLoader : IDisposable
                 if (!_modelMetadata.TryGetValue(cacheKey, out var metadata) || 
                     metadata.LoadedAt < lastWriteTime)
                 {
-                    _logger.LogInformation("[HOT_RELOAD] Registry update detected: {MetadataFile} (modified: {LastWrite})", 
-                        Path.GetFileName(metadataFile), lastWriteTime);
+                    LogRegistryUpdateNew(_logger, Path.GetFileName(metadataFile), lastWriteTime, null);
                     
                     // Read and parse metadata to trigger model reload if needed
                     var content = await File.ReadAllTextAsync(metadataFile).ConfigureAwait(false);
@@ -701,8 +775,7 @@ public sealed class OnnxModelLoader : IDisposable
                 if (!_modelMetadata.TryGetValue(cacheKey, out var sacMetadata) || 
                     sacMetadata.LoadedAt < lastWriteTime)
                 {
-                    _logger.LogInformation("[HOT_RELOAD] SAC model update detected: {SACFile} (modified: {LastWrite})", 
-                        Path.GetFileName(sacFile), lastWriteTime);
+                    LogSacUpdate(_logger, Path.GetFileName(sacFile), lastWriteTime, null);
                     
                     // Trigger SAC model reload in Python side
                     await TriggerSacModelReloadAsync(sacFile).ConfigureAwait(false);
@@ -755,8 +828,7 @@ public sealed class OnnxModelLoader : IDisposable
                 _loadedSessions[modelKey] = loadResult.Session;
                 _modelMetadata[modelKey] = loadResult.Metadata!;
                 
-                _logger.LogInformation("[ONNX-Loader] ✅ Hot-reload successful: {ModelFile} (version: {Version})", 
-                    modelFile, loadResult.Metadata?.Version ?? "unknown");
+                LogHotReloadSuccess(_logger, modelFile, loadResult.Metadata?.Version ?? "unknown", null);
                 
                 // Emit reload event
                 ModelReloaded?.Invoke(this, new ModelHotReloadEventArgs
@@ -1081,7 +1153,7 @@ public sealed class OnnxModelLoader : IDisposable
     {
         if (!_disposed)
         {
-            _logger.LogInformation("[ONNX-Loader] Disposing {ModelCount} loaded models", _loadedSessions.Count);
+            LogDisposingModels(_logger, _loadedSessions.Count, null);
             
             // Stop hot-reload timer
             _hotReloadTimer?.Dispose();
@@ -1095,11 +1167,11 @@ public sealed class OnnxModelLoader : IDisposable
                 }
                 catch (ObjectDisposedException ex)
                 {
-                    _logger.LogWarning(ex, "[ONNX-Loader] Model session already disposed");
+                    LogSessionAlreadyDisposed(_logger, ex);
                 }
                 catch (InvalidOperationException ex)
                 {
-                    _logger.LogWarning(ex, "[ONNX-Loader] Error disposing model session - invalid operation");
+                    LogSessionDisposeError(_logger, ex);
                 }
             }
             
@@ -1108,7 +1180,7 @@ public sealed class OnnxModelLoader : IDisposable
             _sessionOptions.Dispose();
             
             _disposed = true;
-            _logger.LogInformation("[ONNX-Loader] Disposed successfully");
+            LogDisposedSuccessfully(_logger, null);
         }
     }
 
@@ -1160,18 +1232,17 @@ public sealed class OnnxModelLoader : IDisposable
                 {
                     var backupPath = registryModelPath + ".backup";
                     File.Replace(tempModelPath, registryModelPath, backupPath);
-                    _logger.LogDebug("[ONNX-Registry] Model deployed atomically with backup: {Model}, backup: {Backup}", 
-                        Path.GetFileName(registryModelPath), Path.GetFileName(backupPath));
+                    LogModelDeployedWithBackup(_logger, Path.GetFileName(registryModelPath), Path.GetFileName(backupPath), null);
                 }
                 else
                 {
                     File.Move(tempModelPath, registryModelPath);
-                    _logger.LogDebug("[ONNX-Registry] Model deployed atomically: {Model}", Path.GetFileName(registryModelPath));
+                    LogModelDeployedAtomic(_logger, Path.GetFileName(registryModelPath), null);
                 }
             }
             catch (IOException ex)
             {
-                _logger.LogError(ex, "[ONNX-Registry] Failed to deploy model atomically - I/O error");
+                LogDeployFailedIO(_logger, ex);
                 // Cleanup temp file on error
                 if (File.Exists(tempModelPath))
                 {

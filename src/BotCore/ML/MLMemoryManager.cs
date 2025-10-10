@@ -478,6 +478,18 @@ public class MLMemoryManager : IMLMemoryManager
     }
     
     /// <summary>
+    /// Safely dispose a model if it implements IDisposable
+    /// </summary>
+    private static void DisposeModelSafely(ModelVersion modelVersion)
+    {
+        if (modelVersion.Model is IDisposable disposable)
+        {
+            disposable.Dispose();
+            modelVersion.Model = null;
+        }
+    }
+    
+    /// <summary>
     /// Perform intelligent cleanup based on usage patterns instead of forced GC
     /// </summary>
     private async Task PerformIntelligentCleanupAsync()
@@ -497,11 +509,7 @@ public class MLMemoryManager : IMLMemoryManager
             var key = $"{model.ModelId}_{model.Version}";
             if (_activeModels.TryRemove(key, out var removed))
             {
-                if (removed.Model is IDisposable disposable)
-                {
-                    disposable.Dispose();
-                }
-                removed.Model = null;
+                DisposeModelSafely(removed);
                 LogUnusedModelRemoved(_logger, key, null);
             }
         }
@@ -537,15 +545,7 @@ public class MLMemoryManager : IMLMemoryManager
                 var key = $"{version.ModelId}_{version.Version}";
                 if (_activeModels.TryRemove(key, out var removed))
                 {
-                    // Dispose if IDisposable
-                    if (removed.Model is IDisposable disposable)
-                    {
-                        disposable.Dispose();
-                    }
-                    
-                    // Clear strong reference
-                    removed.Model = null;
-                    
+                    DisposeModelSafely(removed);
                     LogOldVersionRemoved(_logger, key, null);
                 }
             }
@@ -576,11 +576,7 @@ public class MLMemoryManager : IMLMemoryManager
                 var key = $"{model.ModelId}_{model.Version}";
                 if (_activeModels.TryRemove(key, out var removed))
                 {
-                    if (removed.Model is IDisposable disposable)
-                    {
-                        disposable.Dispose();
-                    }
-                    removed.Model = null;
+                    DisposeModelSafely(removed);
                 }
             }
             
@@ -701,11 +697,7 @@ public class MLMemoryManager : IMLMemoryManager
             if (_activeModels.TryRemove(key, out var removed))
             {
                 totalFreed += removed.MemoryFootprint;
-                if (removed.Model is IDisposable disposable)
-                {
-                    disposable.Dispose();
-                }
-                removed.Model = null;
+                DisposeModelSafely(removed);
             }
         }
         
@@ -808,10 +800,7 @@ public class MLMemoryManager : IMLMemoryManager
                 // Cleanup all models
                 foreach (var model in _activeModels.Values)
                 {
-                    if (model.Model is IDisposable disposable)
-                    {
-                        disposable.Dispose();
-                    }
+                    DisposeModelSafely(model);
                 }
                 
                 _activeModels.Clear();
