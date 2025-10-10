@@ -656,10 +656,10 @@ public class EnhancedTradingBrainIntegration
     {
         // Create state vector for CVaR-PPO using available properties
         return new double[] { 
-            (double)decision.Confidence, // Decision confidence
-            (double)marketContext.CurrentPrice, // Current price
-            (double)marketContext.Volume, // Market volume
-            (double)marketContext.Volatility, // Volatility
+            decision.Confidence, // Decision confidence (already double)
+            (double)marketContext.CurrentPrice, // Current price (decimal to double)
+            (double)marketContext.Volume, // Market volume (decimal to double)
+            (double)marketContext.Volatility, // Volatility (decimal to double)
             // Use strategy as action encoding instead of Action property (which doesn't exist)
             GetStrategyActionEncoding(decision.StrategyId) // Strategy-based encoding
         };
