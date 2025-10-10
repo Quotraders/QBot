@@ -453,14 +453,14 @@ namespace BotCore
             return Convert.ToHexString(hashBytes).ToUpperInvariant();
         }
 
-        public class ModelManifest
+        internal class ModelManifest
         {
             public string Version { get; set; } = "";
             public DateTime Timestamp { get; set; }
             public Dictionary<string, ModelInfo> Models { get; } = new();
         }
 
-        public class ModelInfo
+        internal class ModelInfo
         {
             public string Url { get; set; } = "";
             public string Checksum { get; set; } = "";

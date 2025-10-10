@@ -287,7 +287,7 @@ namespace BotCore
         /// <summary>
         /// Enhanced model manifest structure for cloud-based model updates
         /// </summary>
-        public class EnhancedModelManifest
+        internal class EnhancedModelManifest
         {
             public string Version { get; set; } = "";
             public DateTime Timestamp { get; set; }
@@ -298,7 +298,7 @@ namespace BotCore
         /// <summary>
         /// Enhanced model information with comprehensive metadata
         /// </summary>
-        public class EnhancedModelInfo
+        internal class EnhancedModelInfo
         {
             public string Url { get; set; } = "";
             public string Checksum { get; set; } = "";

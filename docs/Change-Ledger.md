@@ -13,6 +13,66 @@ This ledger documents all fixes made during the analyzer compliance initiative i
 
 ---
 
+### 🔧 Round 210 - Phase 2 Start: CA1034 Nested Type Visibility (Priority 2)
+
+**Date**: 2025-10-10  
+**Agent**: GitHub Copilot Agent  
+**Branch**: copilot/fix-compiler-errors-and-violations  
+**Scope**: CA1034 violations - Nested type visibility (API & Encapsulation - Priority 2)  
+**Objective**: Fix CA1034 violations where safe to make types internal
+
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| **CA1034 Violations** | 40 | 24 | ✅ -16 (-40%) |
+| **CS Compiler Errors** | 0 | 0 | ✅ Maintained |
+| **Files Modified** | - | 6 | Minimal scope |
+| **Build Status** | SUCCESS | SUCCESS | ✅ Green |
+
+**Fixes Applied**:
+
+1. **ApiClient.cs (3 nested types)**
+   - `ContractDto`, `AvailableResp`, `SearchResp`
+   - Changed: `public sealed record` → `internal sealed record`
+   - Rationale: Used only for JSON deserialization, no external API exposure needed
+
+2. **Infrastructure/HttpClientConfiguration.cs (1 nested type)**
+   - `TokenResponse`
+   - Changed: `public sealed class` → `internal sealed class`
+   - Rationale: Internal token management, not part of public API
+
+3. **ModelUpdaterService.cs (2 nested types)**
+   - `ModelManifest`, `ModelInfo`
+   - Changed: `public class` → `internal class`
+   - Rationale: Internal model update mechanism, not exposed in public API
+
+4. **CloudRlTrainerEnhanced.cs (2 nested types)**
+   - `EnhancedModelManifest`, `EnhancedModelInfo`
+   - Changed: `public class` → `internal class`
+   - Rationale: Internal training infrastructure, not public API
+
+**Types NOT Changed (24 remaining CA1034 violations)**:
+- Types used in public method signatures (would break API)
+- Examples: `MultiStrategyRlCollector.ComprehensiveFeatures`, `ProfitObjective.Weights`, `StrategyDiagnostics.Report`
+- Proper fix: Move types out of parent class (more invasive, deferred per minimal-change directive)
+
+**Verification**:
+```bash
+$ dotnet build TopstepX.Bot.sln -v quiet 2>&1 | grep "error CA1034" | wc -l
+24
+$ dotnet build TopstepX.Bot.sln -v quiet 2>&1 | grep "error CS" | wc -l
+0
+```
+
+**Guardrails Maintained**:
+- ✅ No suppressions added
+- ✅ No config changes
+- ✅ No public API breakage
+- ✅ Zero CS compiler errors maintained
+
+**Next Steps**: Continue Phase 2 - Focus on easier high-impact violations (CA1003, CA1869, etc.)
+
+---
+
 ### 🔧 Round 209 - Phase 1 Continuation: Fix Remaining CS Compiler Errors
 
 **Date**: 2025-10-10  
