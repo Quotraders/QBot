@@ -1781,7 +1781,7 @@ Reason closed: {reason}
         /// Generate enhanced candidates that integrate with AllStrategies.cs
         /// This replaces the manual candidate generation
         /// </summary>
-        private Task<List<Candidate>> GenerateEnhancedCandidatesAsync(
+        private Task<IReadOnlyList<Candidate>> GenerateEnhancedCandidatesAsync(
             string symbol,
             Env env,
             Levels levels,
@@ -1836,7 +1836,7 @@ Reason closed: {reason}
                 _logger.LogDebug("🎯 [BRAIN-ENHANCE] {Symbol}: Generated {Count} AI-enhanced candidates from {Strategy}",
                     symbol, enhancedCandidates.Count, strategySelection.SelectedStrategy);
                 
-                return Task.FromResult(enhancedCandidates);
+                return Task.FromResult<IReadOnlyList<Candidate>>(enhancedCandidates);
             }
             catch (InvalidOperationException ex)
             {
@@ -1991,7 +1991,7 @@ Reason closed: {reason}
             return availableStrategies;
         }
 
-        private static Func<string, Env, Levels, IList<Bar>, RiskEngine, List<Candidate>> GetStrategyFunction(string strategy)
+        private static Func<string, Env, Levels, IList<Bar>, RiskEngine, IReadOnlyList<Candidate>> GetStrategyFunction(string strategy)
         {
             // Map to ACTIVE strategy functions in AllStrategies.cs (only S2, S3, S6, S11)
             return strategy switch

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -340,10 +341,10 @@ public class EnhancedBayesianPriors : IBayesianPriors
     private static decimal SampleGamma(decimal shape, CancellationToken cancellationToken = default)
     {
         // Simple gamma sampling using acceptance-rejection
-        // Use Random.Shared for non-cryptographic random number generation
+        // Use cryptographically secure random number generator to satisfy CA5394
         if (shape < 1m)
         {
-            return SampleGamma(shape + 1m, cancellationToken) * (decimal)Math.Pow(Random.Shared.NextDouble(), 1.0 / (double)shape);
+            return SampleGamma(shape + 1m, cancellationToken) * (decimal)Math.Pow(GetRandomDouble(), 1.0 / (double)shape);
         }
 
         var d = shape - 1m / 3m;
@@ -351,8 +352,8 @@ public class EnhancedBayesianPriors : IBayesianPriors
 
         while (!cancellationToken.IsCancellationRequested)
         {
-            var x = (decimal)Random.Shared.NextDouble();
-            var y = (decimal)Random.Shared.NextDouble();
+            var x = (decimal)GetRandomDouble();
+            var y = (decimal)GetRandomDouble();
 
             var z = (decimal)Math.Sqrt(-2.0 * Math.Log((double)x)) * (decimal)Math.Cos(2.0 * Math.PI * (double)y);
             var v = (1m + c * z) * (1m + c * z) * (1m + c * z);
@@ -365,6 +366,15 @@ public class EnhancedBayesianPriors : IBayesianPriors
         
         // Fallback if cancellation was requested
         return d; // Return a reasonable default value
+    }
+
+    /// <summary>
+    /// Generate a random double using cryptographically secure random number generator
+    /// </summary>
+    private static double GetRandomDouble()
+    {
+        // Generate a random integer and convert to double in range [0, 1)
+        return (double)RandomNumberGenerator.GetInt32(0, int.MaxValue) / int.MaxValue;
     }
 
     private void InitializeHierarchicalStructure()

@@ -70,7 +70,7 @@ namespace BotCore.Strategy
         public string PlaceMarket(TopstepX.S6.Instrument instr, TopstepX.S6.Side side, int qty, string tag)
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-            var task = PlaceMarketOrderInternalAsync(instr.ToString(), ConvertS6Side(side), qty, tag, cts.Token);
+            var task = PlaceMarketOrderInternalAsync(instr.ToString(), ConvertS6Side(side), qty, tag);
             
             try
             {
@@ -99,7 +99,7 @@ namespace BotCore.Strategy
         public (TopstepX.S6.Side side, int qty, double avgPx, DateTimeOffset openedAt, string positionId) GetPosition(TopstepX.S6.Instrument instr)
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            var task = GetPositionInternalAsync(instr.ToString(), cts.Token);
+            var task = GetPositionInternalAsync(instr.ToString());
             
             try
             {
@@ -146,7 +146,7 @@ namespace BotCore.Strategy
         public string PlaceMarket(TopstepX.S11.Instrument instr, TopstepX.S11.Side side, int qty, string tag)
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-            var task = PlaceMarketOrderInternalAsync(instr.ToString(), ConvertS11Side(side), qty, tag, cts.Token);
+            var task = PlaceMarketOrderInternalAsync(instr.ToString(), ConvertS11Side(side), qty, tag);
             
             try
             {
@@ -175,7 +175,7 @@ namespace BotCore.Strategy
         public (TopstepX.S11.Side side, int qty, double avgPx, DateTimeOffset openedAt, string positionId) GetPosition(TopstepX.S11.Instrument instr)
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            var task = GetPositionInternalAsync(instr.ToString(), cts.Token);
+            var task = GetPositionInternalAsync(instr.ToString());
             
             try
             {
@@ -216,7 +216,7 @@ namespace BotCore.Strategy
         /// </summary>
         public async Task<string> PlaceMarketAsync(string instrument, string side, int qty, string tag, CancellationToken cancellationToken = default)
         {
-            return await PlaceMarketOrderInternalAsync(instrument, side, qty, tag, cancellationToken).ConfigureAwait(false);
+            return await PlaceMarketOrderInternalAsync(instrument, side, qty, tag).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -224,15 +224,15 @@ namespace BotCore.Strategy
         /// </summary>
         public async Task<TradingBot.Abstractions.Position?> GetPositionAsync(string instrument, CancellationToken cancellationToken = default)
         {
-            return await GetPositionInternalAsync(instrument, cancellationToken).ConfigureAwait(false);
+            return await GetPositionInternalAsync(instrument).ConfigureAwait(false);
         }
 
         /// <summary>
         /// Gets all positions asynchronously - recommended for async callers
         /// </summary>
-        public async Task<List<(object Side, int Qty, double AvgPx, DateTime OpenedAt)>> GetPositionsAsync(CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<(object Side, int Qty, double AvgPx, DateTime OpenedAt)>> GetPositionsAsync(CancellationToken cancellationToken = default)
         {
-            return await GetPositionsInternalAsync(cancellationToken).ConfigureAwait(false);
+            return await GetPositionsInternalAsync().ConfigureAwait(false);
         }
 
         /// <summary>
@@ -240,7 +240,7 @@ namespace BotCore.Strategy
         /// </summary>
         public async Task ModifyStopAsync(string positionId, decimal stopPrice, CancellationToken cancellationToken = default)
         {
-            await ModifyStopOrderInternalAsync(positionId, stopPrice, cancellationToken).ConfigureAwait(false);
+            await ModifyStopOrderInternalAsync(positionId, stopPrice).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -248,14 +248,14 @@ namespace BotCore.Strategy
         /// </summary>
         public async Task ClosePositionAsync(string positionId, CancellationToken cancellationToken = default)
         {
-            await ClosePositionInternalAsync(positionId, cancellationToken).ConfigureAwait(false);
+            await ClosePositionInternalAsync(positionId).ConfigureAwait(false);
         }
 
         #endregion
 
         #region Production Order Management Implementation
 
-        private async Task<string> PlaceMarketOrderInternalAsync(string instrument, string side, int qty, string tag, CancellationToken cancellationToken = default)
+        private async Task<string> PlaceMarketOrderInternalAsync(string instrument, string side, int qty, string tag)
         {
             try
             {
@@ -322,7 +322,7 @@ namespace BotCore.Strategy
         public void ModifyStop(string positionId, double stopPrice)
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-            var task = ModifyStopOrderInternalAsync(positionId, (decimal)stopPrice, cts.Token);
+            var task = ModifyStopOrderInternalAsync(positionId, (decimal)stopPrice);
             
             try
             {
@@ -339,7 +339,7 @@ namespace BotCore.Strategy
             }
         }
 
-        private async Task ModifyStopOrderInternalAsync(string positionId, decimal stopPrice, CancellationToken cancellationToken = default)
+        private async Task ModifyStopOrderInternalAsync(string positionId, decimal stopPrice)
         {
             try
             {
@@ -382,7 +382,7 @@ namespace BotCore.Strategy
         public void ClosePosition(string positionId)
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-            var task = ClosePositionInternalAsync(positionId, cts.Token);
+            var task = ClosePositionInternalAsync(positionId);
             
             try
             {
@@ -399,7 +399,7 @@ namespace BotCore.Strategy
             }
         }
 
-        private async Task ClosePositionInternalAsync(string positionId, CancellationToken cancellationToken = default)
+        private async Task ClosePositionInternalAsync(string positionId)
         {
             try
             {
@@ -443,10 +443,10 @@ namespace BotCore.Strategy
         /// Uses bounded timeout to execute async work.
         /// For async callers, use GetPositionsInternalAsync directly.
         /// </remarks>
-        public List<(object Side, int Qty, double AvgPx, DateTime OpenedAt)> GetPositions()
+        public IReadOnlyList<(object Side, int Qty, double AvgPx, DateTime OpenedAt)> GetPositions()
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            var task = GetPositionsInternalAsync(cts.Token);
+            var task = GetPositionsInternalAsync();
             
             try
             {
@@ -464,7 +464,7 @@ namespace BotCore.Strategy
             }
         }
 
-        private async Task<List<(object Side, int Qty, double AvgPx, DateTime OpenedAt)>> GetPositionsInternalAsync(CancellationToken cancellationToken = default)
+        private async Task<IReadOnlyList<(object Side, int Qty, double AvgPx, DateTime OpenedAt)>> GetPositionsInternalAsync()
         {
             try
             {
@@ -492,7 +492,7 @@ namespace BotCore.Strategy
             }
         }
 
-        private async Task<TradingBot.Abstractions.Position?> GetPositionInternalAsync(string instrument, CancellationToken cancellationToken = default)
+        private async Task<TradingBot.Abstractions.Position?> GetPositionInternalAsync(string instrument)
         {
             try
             {
@@ -680,7 +680,7 @@ namespace BotCore.Strategy
         /// <summary>
         /// Get S6 strategy candidates using full production implementation
         /// </summary>
-        public static List<Candidate> GetS6Candidates(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk, 
+        public static IReadOnlyList<Candidate> GetS6Candidates(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk, 
             IOrderService orderService, ILogger<BridgeOrderRouter> logger, IServiceProvider serviceProvider)
         {
             ArgumentNullException.ThrowIfNull(symbol);
@@ -790,7 +790,7 @@ namespace BotCore.Strategy
         /// <summary>
         /// Get S11 strategy candidates using full production implementation  
         /// </summary>
-        public static List<Candidate> GetS11Candidates(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk,
+        public static IReadOnlyList<Candidate> GetS11Candidates(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk,
             IOrderService orderService, ILogger<BridgeOrderRouter> logger, IServiceProvider serviceProvider)
         {
             ArgumentNullException.ThrowIfNull(symbol);

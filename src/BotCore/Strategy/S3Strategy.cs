@@ -12,7 +12,7 @@ namespace BotCore.Strategy
 {
     public static class S3Strategy
     {
-        private static readonly ILogger? _logger = null; // Logger field for S3Strategy - initialized externally
+        private static readonly ILogger? _logger; // Logger field for S3Strategy - initialized externally
         
         private static bool BtBypass(string gate)
         {
@@ -72,7 +72,7 @@ namespace BotCore.Strategy
         public static void ResetDebugCounters() => _rejects.Clear();
         public static IReadOnlyDictionary<string, int> GetDebugCounters() => new Dictionary<string, int>(_rejects);
 
-        public static List<Candidate> S3(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
+        public static IReadOnlyList<Candidate> S3(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
         {
             ArgumentNullException.ThrowIfNull(symbol);
             ArgumentNullException.ThrowIfNull(env);

@@ -54,17 +54,17 @@ namespace BotCore.Strategy
 
 
 
-        public static List<Candidate> generate_candidates(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
+        public static IReadOnlyList<Candidate> generate_candidates(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
         {
             return generate_candidates_with_time_filter(symbol, env, levels, bars, risk, DateTime.UtcNow, null);
         }
 
-        public static List<Candidate> generate_candidates(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk, TradingBot.Abstractions.IS7Service? s7Service)
+        public static IReadOnlyList<Candidate> generate_candidates(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk, TradingBot.Abstractions.IS7Service? s7Service)
         {
             return generate_candidates_with_time_filter(symbol, env, levels, bars, risk, DateTime.UtcNow, s7Service);
         }
 
-        public static List<Candidate> generate_candidates_with_time_filter(
+        public static IReadOnlyList<Candidate> generate_candidates_with_time_filter(
             string symbol, 
             Env env, 
             Levels levels, 
@@ -103,7 +103,7 @@ namespace BotCore.Strategy
                 ? strategies
                 : new[] { "S2", "S3", "S6", "S11" };
 
-            var strategyMethods = new List<(string, Func<string, Env, Levels, IList<Bar>, RiskEngine, List<Candidate>>)> {
+            var strategyMethods = new List<(string, Func<string, Env, Levels, IList<Bar>, RiskEngine, IReadOnlyList<Candidate>>)> {
                 ("S2", S2), ("S3", S3), ("S6", S6), ("S11", S11)
             };
 
@@ -193,7 +193,7 @@ namespace BotCore.Strategy
         }
 
         // Config-aware method for StrategyAgent
-        public static List<Signal> generate_candidates(string symbol, TradingProfileConfig cfg, StrategyDef def, List<Bar> bars, object risk, BotCore.Models.MarketSnapshot snap, TradingBot.Abstractions.IS7Service? s7Service = null)
+        public static IReadOnlyList<Signal> generate_candidates(string symbol, TradingProfileConfig cfg, StrategyDef def, IList<Bar> bars, object risk, BotCore.Models.MarketSnapshot snap, TradingBot.Abstractions.IS7Service? s7Service = null)
         {
             ArgumentNullException.ThrowIfNull(cfg);
             ArgumentNullException.ThrowIfNull(def);
@@ -204,17 +204,18 @@ namespace BotCore.Strategy
             // Dispatch to the specific strategy function based on def.Name (S1..S14)
             var env = new Env { atr = bars.Count > 0 ? (decimal?)Math.Abs(bars[^1].High - bars[^1].Low) : null, volz = VolZ(bars) };
             var levels = new Levels();
-            var riskEngine = risk as RiskEngine;
+            RiskEngine? riskEngine = null;
             var disposeRiskEngine = false;
-            if (riskEngine == null)
-            {
-                riskEngine = new RiskEngine();
-                disposeRiskEngine = true;
-            }
-
             try
             {
-                var map = new Dictionary<string, Func<string, Env, Levels, IList<Bar>, RiskEngine, List<Candidate>>>(StringComparer.OrdinalIgnoreCase)
+                riskEngine = risk as RiskEngine;
+                if (riskEngine == null)
+                {
+                    riskEngine = new RiskEngine();
+                    disposeRiskEngine = true;
+                }
+
+                var map = new Dictionary<string, Func<string, Env, Levels, IList<Bar>, RiskEngine, IReadOnlyList<Candidate>>>(StringComparer.OrdinalIgnoreCase)
                 {
                     ["S2"] = S2,
                     ["S3"] = S3,
@@ -310,14 +311,14 @@ namespace BotCore.Strategy
         }
 
         // Deterministic combined candidate flow (no forced trade); config-aware with defs list
-        public static List<Signal> generate_candidates(
+        public static IReadOnlyList<Signal> generate_candidates(
             string symbol, Env env, Levels levels, IList<Bar> bars,
             IList<StrategyDef> defs, RiskEngine risk, TradingProfileConfig profile, BotCore.Models.MarketSnapshot snap, 
             TradingBot.Abstractions.IS7Service? s7Service = null, int max = 10)
         {
             ArgumentNullException.ThrowIfNull(bars);
             
-            var map = new Dictionary<string, Func<string, Env, Levels, IList<Bar>, RiskEngine, List<Candidate>>>(StringComparer.OrdinalIgnoreCase)
+            var map = new Dictionary<string, Func<string, Env, Levels, IList<Bar>, RiskEngine, IReadOnlyList<Candidate>>>(StringComparer.OrdinalIgnoreCase)
             {
                 ["S2"] = S2,
                 ["S3"] = S3,
@@ -396,7 +397,7 @@ namespace BotCore.Strategy
         }
 
         // Config-aware method for StrategyAgent
-        public static List<Signal> generate_signals(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk, long accountId, string contractId)
+        public static IReadOnlyList<Signal> generate_signals(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk, long accountId, string contractId)
         {
             // Use the enumerating candidate method to include S1..S14
             var candidates = generate_candidates(symbol, env, levels, bars, risk);
@@ -645,7 +646,7 @@ namespace BotCore.Strategy
             return engulf || shoot;
         }
 
-        public static List<Candidate> S2(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
+        public static IReadOnlyList<Candidate> S2(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
         {
             ArgumentNullException.ThrowIfNull(symbol);
             ArgumentNullException.ThrowIfNull(env);
@@ -1065,14 +1066,14 @@ namespace BotCore.Strategy
         public static Func<string, int>? ExternalSpreadTicks { get; set; }
         public static Func<string, decimal>? ExternalTickSize { get; set; }
 
-        public static List<Candidate> S3(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
+        public static IReadOnlyList<Candidate> S3(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
             => S3Strategy.S3(symbol, env, levels, bars, risk);
 
         // S3 internals moved to S3Strategy.cs
 
 
 
-        public static List<Candidate> S6(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
+        public static IReadOnlyList<Candidate> S6(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
         {
             ArgumentNullException.ThrowIfNull(env);
             ArgumentNullException.ThrowIfNull(bars);
@@ -1121,7 +1122,7 @@ namespace BotCore.Strategy
 
 
 
-        public static List<Candidate> S11(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
+        public static IReadOnlyList<Candidate> S11(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk)
         {
             ArgumentNullException.ThrowIfNull(env);
             ArgumentNullException.ThrowIfNull(bars);
@@ -1167,7 +1168,7 @@ namespace BotCore.Strategy
 
 
 
-        public static void add_cand(List<Candidate> lst, string sid, string symbol, string sideTxt,
+        public static void add_cand(IList<Candidate> lst, string sid, string symbol, string sideTxt,
                                  decimal entry, decimal stop, decimal t1, Env env, RiskEngine risk, string? tag = null, IList<Bar>? bars = null)
         {
             ArgumentNullException.ThrowIfNull(lst);
