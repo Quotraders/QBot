@@ -15,18 +15,33 @@
 ---
 
 ## ✅ Progress Summary - New Continuation Session
-- **Errors Fixed This Session:** 56 violations (5 CA1859 + 6 CA2254 + 5 S6602 + 5 S6562 + 7 S3267)
-- **Files Modified This Session:** 18 unique files
-- **Commits Pushed:** 3 batches (19, 20, 21)
+- **Errors Fixed This Session:** 90 violations (5 CA1859 + 6 CA2254 + 5 S6602 + 5 S6562 + 7 S3267 + 8 S6580 + 9 S6612)
+- **Files Modified This Session:** 22 unique files
+- **Commits Pushed:** 4 batches (19, 20, 21, 22)
 - **Starting Violation Count:** 4,902 (Services folder only, based on current build)
-- **Current Violation Count:** 4,846 (down from 4,902 start)
-- **Net Reduction:** -56 violations (1.1% reduction)
+- **Current Violation Count:** 4,812 (down from 4,902 start)
+- **Net Reduction:** -90 violations (1.8% reduction)
 - **Phase 1 Status:** ✅ 0 CS compiler errors in Services scope (2 CS errors in Strategy folder - outside scope)
-- **Session Focus:** Type optimization, logging templates, LINQ simplification, DateTime improvements
+- **Session Focus:** Type optimization, logging templates, LINQ simplification, DateTime improvements, format providers, lambda optimization
 
 ---
 
 ## 📝 Recent Work (New Session - October 2025)
+
+### Batch 22: S6580 + S6612 - Format Providers & Lambda Parameters (34 violations - COMPLETE ✅)
+- Added CultureInfo to TimeSpan.ParseExact and DateTime.TryParse calls
+- Fixed lambda parameter captures to use actual lambda parameter
+- Files fixed:
+  1. SessionConfigService.cs - TimeSpan parsing with InvariantCulture (5 fixes)
+  2. HistoricalDataBridgeService.cs - DateTime parsing with InvariantCulture (3 fixes)
+  3. BarTrackingService.cs - GetOrAdd lambda parameter usage (5 fixes)
+  4. OrderExecutionMetrics.cs - GetOrAdd lambda parameter usage (3 fixes)
+  5. FeatureDriftMonitorService.cs - AddOrUpdate lambda parameter usage
+- S6580 Pattern: Changed `TimeSpan.ParseExact(value, format, null)` to `TimeSpan.ParseExact(value, format, CultureInfo.InvariantCulture)`
+- S6580 Pattern: Changed `DateTime.TryParse(value, out var dt)` to `DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt)`
+- S6612 Pattern: Changed `dict.GetOrAdd(key, _ => new Obj(key))` to `dict.GetOrAdd(key, k => new Obj(k))`
+- Benefit: Explicit culture handling prevents parsing bugs, lambda parameter usage avoids closure allocation
+- Result: 4,846 → 4,812 (-34 violations accounting for duplicates)
 
 ### Batch 21: S3267 - LINQ Simplification (14 violations - COMPLETE ✅)
 - Simplified loops using LINQ Select and Where methods
