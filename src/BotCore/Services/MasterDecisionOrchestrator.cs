@@ -761,14 +761,11 @@ public class MasterDecisionOrchestrator : BackgroundService
         
         // Time-based reward (faster profits are better)
         var timeReward = 0m;
-        if (metadata.TryGetValue("hold_time", out var holdTimeObj) && holdTimeObj is TimeSpan holdTime)
+        if (metadata.TryGetValue("hold_time", out var holdTimeObj) && holdTimeObj is TimeSpan holdTime && realizedPnL > 0)
         {
             // Reward shorter holding periods for profitable trades
-            if (realizedPnL > 0)
-            {
-                timeReward = Math.Max(-MaxTimeRewardMagnitude, Math.Min(MaxTimeRewardMagnitude, 
-                    (decimal)(1.0 - holdTime.TotalHours / HoursInDay) * MaxTimeRewardMagnitude));
-            }
+            timeReward = Math.Max(-MaxTimeRewardMagnitude, Math.Min(MaxTimeRewardMagnitude, 
+                (decimal)(1.0 - holdTime.TotalHours / HoursInDay) * MaxTimeRewardMagnitude));
         }
         
         var totalReward = pnlReward + accuracyReward + timeReward;

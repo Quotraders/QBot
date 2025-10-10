@@ -353,12 +353,10 @@ public class EnhancedTradingBrainIntegration
         }
         
         // Adjust based on price prediction strength
-        if (pricePrediction.Result is PriceDirectionPrediction pricePred)
+        if (pricePrediction.Result is PriceDirectionPrediction pricePred &&
+            pricePred.Direction != "Sideways" && pricePred.Probability > (double)ModerateConfidenceThreshold)
         {
-            if (pricePred.Direction != "Sideways" && pricePred.Probability > (double)ModerateConfidenceThreshold)
-            {
-                sizeMultiplier *= StrongDirectionalSizeBoost; // Slightly increase for strong directional bias
-            }
+            sizeMultiplier *= StrongDirectionalSizeBoost; // Slightly increase for strong directional bias
         }
         
         var enhancedSize = originalSize * sizeMultiplier;

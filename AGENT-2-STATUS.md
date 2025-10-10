@@ -15,18 +15,27 @@
 ---
 
 ## ✅ Progress Summary - New Continuation Session
-- **Errors Fixed This Session:** 145 violations (125 previous + 20 new: CA1024)
-- **Files Modified This Session:** 47 unique files (34 previous + 13 new)
-- **Commits Pushed:** 8 batches (25 previous + 26 new)
+- **Errors Fixed This Session:** 149 violations (145 previous + 4 new: S1066)
+- **Files Modified This Session:** 49 unique files (47 previous + 2 new)
+- **Commits Pushed:** 9 batches (26 previous + 27 new)
 - **Starting Violation Count:** 4,768 (Services folder only, verified build)
-- **Current Violation Count:** 4,748 (down from 4,768 start)
-- **Net Reduction:** -20 violations (0.4% reduction this batch)
+- **Current Violation Count:** 4,744 (down from 4,768 start)
+- **Net Reduction:** -24 violations (0.5% reduction cumulative)
 - **Phase 1 Status:** ✅ 0 CS compiler errors in Services scope (maintained)
-- **Session Focus:** Method to property conversions, API design improvements
+- **Session Focus:** Code quality improvements, complexity reduction
 
 ---
 
 ## 📝 Recent Work (New Session - October 2025)
+
+### Batch 27: S1066 - Mergeable If Statements (2 violations - COMPLETE ✅)
+- Merged nested if statements to reduce complexity
+- Files fixed:
+  1. MasterDecisionOrchestrator.cs - Time reward calculation for profitable trades
+  2. EnhancedTradingBrainIntegration.cs - Price prediction strength adjustment
+- Pattern: Changed `if (a) { if (b) { } }` to `if (a && b) { }`
+- Benefit: Reduced nesting, improved readability, simpler control flow
+- Result: 4,748 → 4,744 (-4 violations)
 
 ### Batch 26: CA1024 - Method to Property Conversions (20 violations - COMPLETE ✅)
 - Converted simple getter methods to properties for better API design
