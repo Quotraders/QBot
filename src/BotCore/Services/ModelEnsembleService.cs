@@ -414,9 +414,8 @@ public class ModelEnsembleService : IDisposable
     {
         var activeModels = new List<LoadedModel>();
         
-        foreach (var kvp in _loadedModels)
+        foreach (var model in _loadedModels.Select(kvp => kvp.Value))
         {
-            var model = kvp.Value;
             
             // Check if model is relevant for this prediction type
             if (IsModelRelevant(model.Name, predictionType))

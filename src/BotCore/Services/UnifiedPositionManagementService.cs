@@ -558,12 +558,10 @@ namespace BotCore.Services
                 return; // No positions to manage
             }
             
-            foreach (var kvp in _activePositions)
+            foreach (var state in _activePositions.Select(kvp => kvp.Value))
             {
                 if (cancellationToken.IsCancellationRequested)
                     break;
-                    
-                var state = kvp.Value;
                 state.LastCheckTime = DateTime.UtcNow;
                 
                 try
