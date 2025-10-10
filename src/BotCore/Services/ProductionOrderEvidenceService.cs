@@ -19,6 +19,7 @@ public class ProductionOrderEvidenceService
 
     public ProductionOrderEvidenceService(ILogger<ProductionOrderEvidenceService> logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
     }
 
@@ -31,6 +32,8 @@ public class ProductionOrderEvidenceService
         string customTag,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(customTag);
+
         _logger.LogInformation("🔍 [ORDER-EVIDENCE] Verifying fill evidence for tag: {CustomTag}, orderId: {OrderId}", 
             customTag, orderId ?? "NULL");
 
@@ -108,6 +111,11 @@ public class ProductionOrderEvidenceService
     public void LogOrderStructured(string signal, string side, string symbol, int quantity, 
         decimal entry, decimal stop, decimal target, decimal rMultiple, string customTag, string? orderId = null)
     {
+        ArgumentNullException.ThrowIfNull(signal);
+        ArgumentNullException.ThrowIfNull(side);
+        ArgumentNullException.ThrowIfNull(symbol);
+        ArgumentNullException.ThrowIfNull(customTag);
+
         // Following guardrails format:
         // [{sig}] side={BUY|SELL} symbol={ES} qty={n} entry={0.00} stop={0.00} t1={0.00} R~{0.00} tag={customTag} orderId={guid?}
         _logger.LogInformation("[{Signal}] side={Side} symbol={Symbol} qty={Quantity} entry={Entry:0.00} stop={Stop:0.00} t1={Target:0.00} R~{RMultiple:0.00} tag={CustomTag} orderId={OrderId}", 
@@ -119,6 +127,9 @@ public class ProductionOrderEvidenceService
     /// </summary>
     public void LogOrderStatus(string accountId, string status, string? orderId, string? reason = null)
     {
+        ArgumentNullException.ThrowIfNull(accountId);
+        ArgumentNullException.ThrowIfNull(status);
+
         // Following guardrails format:
         // ORDER account={id} status={New|Open|Filled|Cancelled|Rejected} orderId={id} reason={...}
         _logger.LogInformation("ORDER account={AccountId} status={Status} orderId={OrderId} reason={Reason}", 
@@ -130,6 +141,8 @@ public class ProductionOrderEvidenceService
     /// </summary>
     public void LogTrade(string accountId, string? orderId, decimal fillPrice, int quantity, DateTime time)
     {
+        ArgumentNullException.ThrowIfNull(accountId);
+
         // Following guardrails format:
         // TRADE account={id} orderId={id} fillPrice={0.00} qty={n} time={iso}
         _logger.LogInformation("TRADE account={AccountId} orderId={OrderId} fillPrice={FillPrice:0.00} qty={Quantity} time={Time:yyyy-MM-ddTHH:mm:ss.fffZ}", 

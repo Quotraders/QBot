@@ -54,7 +54,6 @@ public class MasterDecisionOrchestrator : BackgroundService
     private const double MinimumSharpeForDivision = 0.01;   // Minimum Sharpe ratio to avoid division by zero
     
     private readonly ILogger<MasterDecisionOrchestrator> _logger;
-    private readonly IServiceProvider _serviceProvider;
     
     // Core decision routing components
     private readonly UnifiedDecisionRouter _unifiedRouter;
@@ -111,7 +110,6 @@ public class MasterDecisionOrchestrator : BackgroundService
         BotPerformanceReporter? performanceReporter = null)
     {
         _logger = logger;
-        _serviceProvider = serviceProvider;
         _unifiedRouter = unifiedRouter;
         _serviceStatus = new TradingBot.Abstractions.DecisionServiceStatus();
         _unifiedBrain = unifiedBrain;
@@ -1801,12 +1799,11 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
 public class ContinuousLearningManager
 {
     private readonly ILogger _logger;
-    private readonly IServiceProvider _serviceProvider;
     
     public ContinuousLearningManager(ILogger logger, IServiceProvider serviceProvider)
     {
         _logger = logger;
-        _serviceProvider = serviceProvider;
+        // serviceProvider reserved for future implementation
     }
     
     public Task InitializeAsync(CancellationToken cancellationToken)
@@ -1858,12 +1855,11 @@ public class ContinuousLearningManager
 public class ContractRolloverManager
 {
     private readonly ILogger _logger;
-    private readonly IServiceProvider _serviceProvider;
     
     public ContractRolloverManager(ILogger logger, IServiceProvider serviceProvider)
     {
         _logger = logger;
-        _serviceProvider = serviceProvider;
+        // serviceProvider reserved for future implementation
     }
     
     public Task InitializeAsync(CancellationToken cancellationToken)

@@ -17,23 +17,17 @@ namespace BotCore.Services;
 public class ProductionGuardrailOrchestrator : IHostedService
 {
     private readonly ILogger<ProductionGuardrailOrchestrator> _logger;
-    private readonly ProductionKillSwitchService _killSwitchService;
-    private readonly ProductionOrderEvidenceService _orderEvidenceService;
     private readonly ProductionGuardrailConfiguration _config;
-    private readonly IServiceProvider _serviceProvider;
 
     public ProductionGuardrailOrchestrator(
         ILogger<ProductionGuardrailOrchestrator> logger,
-        ProductionKillSwitchService killSwitchService,
-        ProductionOrderEvidenceService orderEvidenceService,
-        IOptions<ProductionGuardrailConfiguration> config,
-        IServiceProvider serviceProvider)
+        IOptions<ProductionGuardrailConfiguration> config)
     {
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(config);
+        
         _logger = logger;
-        _killSwitchService = killSwitchService;
-        _orderEvidenceService = orderEvidenceService;
-        _config = config?.Value ?? throw new ArgumentNullException(nameof(config));
-        _serviceProvider = serviceProvider;
+        _config = config.Value;
         
         // Validate configuration on startup
         _config.Validate();

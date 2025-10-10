@@ -32,6 +32,9 @@ namespace BotCore.Services;
 /// </summary>
 public class UnifiedDecisionRouter
 {
+    // Floating point comparison tolerance
+    private const double Epsilon = 1e-10;
+    
     // Trading analysis constants
     private const int MAX_DECISION_HISTORY = 1000;          // Maximum decisions to retain in memory
     
@@ -343,7 +346,7 @@ public class UnifiedDecisionRouter
             var env = ConvertToEnv(marketContext);
             var levels = ConvertToLevels(marketContext);
             var bars = ConvertToBars(marketContext);
-            var risk = CreateRiskEngine();
+            using var risk = CreateRiskEngine();
             
             var brainDecision = await _unifiedBrain.MakeIntelligentDecisionAsync(
                 symbol, env, levels, bars, risk, cancellationToken).ConfigureAwait(false);
@@ -703,7 +706,7 @@ public class UnifiedDecisionRouter
     private static TradingBot.Abstractions.MarketContext EnhanceMarketContext(TradingBot.Abstractions.MarketContext context)
     {
         // Enhance the context with additional properties if not already set
-        if (context.Bid == 0 && context.Ask == 0)
+        if (Math.Abs(context.Bid) < Epsilon && Math.Abs(context.Ask) < Epsilon)
         {
             var newContext = new TradingBot.Abstractions.MarketContext
             {
