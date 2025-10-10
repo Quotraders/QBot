@@ -2,6 +2,7 @@ using System.Text.Json;
 using BotCore.Models;
 using Microsoft.Extensions.Logging;
 using System.Globalization;
+using TradingBot.Abstractions;
 
 namespace BotCore.Services;
 
@@ -15,14 +16,17 @@ public class ExecutionAnalyzer
     private const decimal PercentToDecimalConversion = 100m;    // Convert percentage to decimal (divide by 100)
     private const int PriceRoundingDecimals = 2;                // Price rounding to 2 decimal places
     private const int SuccessRateRoundingDecimals = 3;          // Success rate rounding to 3 decimal places
+    private const decimal MediumConfidenceThreshold = 0.4m;     // Medium confidence threshold for pattern outcomes
 
     private readonly ILogger<ExecutionAnalyzer> _logger;
+    private readonly IMLConfigurationService _mlConfigService;
     private readonly string _feedbackPath;
     private readonly JsonSerializerOptions _jsonOptions;
 
-    public ExecutionAnalyzer(ILogger<ExecutionAnalyzer> logger, string? feedbackPath = null)
+    public ExecutionAnalyzer(ILogger<ExecutionAnalyzer> logger, IMLConfigurationService mlConfigService, string? feedbackPath = null)
     {
         _logger = logger;
+        _mlConfigService = mlConfigService ?? throw new ArgumentNullException(nameof(mlConfigService));
         _feedbackPath = feedbackPath ?? "data/zones/feedback";
         _jsonOptions = new JsonSerializerOptions
         {
@@ -163,18 +167,18 @@ public class ExecutionAnalyzer
 
             string DetermineOutcomeQuality(bool isSuccessful, decimal conf)
             {
-                const decimal HighConfidenceThreshold = 0.7m;
-                const decimal MediumConfidenceThreshold = 0.4m;
+                // Use MLConfigurationService for AI confidence threshold (replaces hardcoded 0.7)
+                var highConfidenceThreshold = (decimal)_mlConfigService.GetAIConfidenceThreshold();
                 
                 if (isSuccessful)
                 {
-                    if (conf > HighConfidenceThreshold) return "high_confidence_success";
+                    if (conf > highConfidenceThreshold) return "high_confidence_success";
                     if (conf > MediumConfidenceThreshold) return "medium_confidence_success";
                     return "low_confidence_success";
                 }
                 else
                 {
-                    if (conf > HighConfidenceThreshold) return "high_confidence_failure";
+                    if (conf > highConfidenceThreshold) return "high_confidence_failure";
                     return "failed";
                 }
             }
