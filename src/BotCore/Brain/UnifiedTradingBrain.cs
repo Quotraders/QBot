@@ -450,6 +450,43 @@ namespace BotCore.Brain
         private static readonly Action<ILogger, Exception?> LogReflectionError =
             LoggerMessage.Define(LogLevel.Error, new EventId(40, nameof(LogReflectionError)),
                 "❌ [BOT-REFLECTION] Error during AI reflection");
+        
+        // Additional high-value logging delegates for Round 10
+        private static readonly Action<ILogger, double, string, double, Exception?> LogDecisionDetails =
+            LoggerMessage.Define<double, string, double>(LogLevel.Information, new EventId(41, nameof(LogDecisionDetails)),
+                "  └─ Size={Size}x, Regime={Regime}, Time={Ms}ms");
+        
+        private static readonly Action<ILogger, Exception?> LogSnapshotInvalidOperation =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(42, nameof(LogSnapshotInvalidOperation)),
+                "⚠️ [SNAPSHOT] Failed to capture market snapshot - invalid operation");
+        
+        private static readonly Action<ILogger, Exception?> LogSnapshotArgumentException =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(43, nameof(LogSnapshotArgumentException)),
+                "⚠️ [SNAPSHOT] Failed to capture market snapshot - invalid argument");
+        
+        private static readonly Action<ILogger, Exception?> LogSnapshotIOException =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(44, nameof(LogSnapshotIOException)),
+                "⚠️ [SNAPSHOT] Failed to capture market snapshot - I/O error");
+        
+        private static readonly Action<ILogger, Exception?> LogContextGatherInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(45, nameof(LogContextGatherInvalidOperation)),
+                "❌ [BOT-CONTEXT] Error gathering current context - invalid operation");
+        
+        private static readonly Action<ILogger, Exception?> LogContextGatherArgumentException =
+            LoggerMessage.Define(LogLevel.Error, new EventId(46, nameof(LogContextGatherArgumentException)),
+                "❌ [BOT-CONTEXT] Error gathering current context - invalid argument");
+        
+        private static readonly Action<ILogger, string, double, Exception?> LogCrossLearningUpdate =
+            LoggerMessage.Define<string, double>(LogLevel.Debug, new EventId(47, nameof(LogCrossLearningUpdate)),
+                "🧠 [CROSS-LEARNING] Updated all strategies from {ExecutedStrategy} outcome: {Reward}");
+        
+        private static readonly Action<ILogger, Exception?> LogCrossLearningInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(48, nameof(LogCrossLearningInvalidOperation)),
+                "❌ [CROSS-LEARNING] Invalid operation updating all strategies");
+        
+        private static readonly Action<ILogger, Exception?> LogCrossLearningArgumentException =
+            LoggerMessage.Define(LogLevel.Error, new EventId(49, nameof(LogCrossLearningArgumentException)),
+                "❌ [CROSS-LEARNING] Invalid argument updating all strategies");
 
         public UnifiedTradingBrain(
             ILogger<UnifiedTradingBrain> logger,
@@ -683,8 +720,7 @@ namespace BotCore.Brain
                 
                 LogBrainDecision(_logger, symbol, optimalStrategy.SelectedStrategy, (double)optimalStrategy.Confidence,
                     priceDirection.Direction.ToString(), (double)priceDirection.Probability, null);
-                _logger.LogInformation("  └─ Size={Size:F2}x, Regime={Regime}, Time={Ms:F0}ms", 
-                    optimalSize, marketRegime, decision.ProcessingTimeMs);
+                LogDecisionDetails(_logger, (double)optimalSize, marketRegime.ToString(), decision.ProcessingTimeMs, null);
 
                 // AI bot thinking - explain decision before taking trade
                 if (_ollamaClient != null && (Environment.GetEnvironmentVariable("BOT_THINKING_ENABLED") == "true"))
@@ -801,15 +837,15 @@ namespace BotCore.Brain
                     }
                     catch (InvalidOperationException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [SNAPSHOT] Failed to capture market snapshot - invalid operation");
+                        LogSnapshotInvalidOperation(_logger, ex);
                     }
                     catch (ArgumentException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [SNAPSHOT] Failed to capture market snapshot - invalid argument");
+                        LogSnapshotArgumentException(_logger, ex);
                     }
                     catch (IOException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [SNAPSHOT] Failed to capture market snapshot - I/O error");
+                        LogSnapshotIOException(_logger, ex);
                     }
                 }
 
@@ -1019,16 +1055,15 @@ namespace BotCore.Brain
                     UpdateStrategyOptimalConditions(strategy, context, crossLearningReward > BaseConfidenceThreshold);
                 }
                 
-                _logger.LogDebug("🧠 [CROSS-LEARNING] Updated all strategies from {ExecutedStrategy} outcome: {Reward:F3}", 
-                    executedStrategy, reward);
+                LogCrossLearningUpdate(_logger, executedStrategy, (double)reward, null);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [CROSS-LEARNING] Invalid operation updating all strategies");
+                LogCrossLearningInvalidOperation(_logger, ex);
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "❌ [CROSS-LEARNING] Invalid argument updating all strategies");
+                LogCrossLearningArgumentException(_logger, ex);
             }
         }
         
@@ -1086,12 +1121,12 @@ namespace BotCore.Brain
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-CONTEXT] Error gathering current context - invalid operation");
+                LogContextGatherInvalidOperation(_logger, ex);
                 return "Context unavailable";
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-CONTEXT] Error gathering current context - invalid argument");
+                LogContextGatherArgumentException(_logger, ex);
                 return "Context unavailable";
             }
         }
