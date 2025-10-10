@@ -533,9 +533,8 @@ namespace TradingBot.BotCore.Services
             var positionMultiplier = TradingBotParameterProvider.GetPositionSizeMultiplier();
             var regimeThreshold = TradingBotParameterProvider.GetRegimeDetectionThreshold();
             
-            var parameterConfigs = new List<StrategyTrialConfig>();
-            
             // Generate strategy-specific parameter sets
+            List<StrategyTrialConfig> parameterConfigs;
             switch (strategyId)
             {
                 case "S6": // Momentum strategy

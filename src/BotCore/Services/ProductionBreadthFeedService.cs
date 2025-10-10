@@ -237,8 +237,7 @@ namespace TradingBot.BotCore.Services
             var hour = currentTime.Hour;
             
             // Market breadth tends to be stronger during active trading hours - ALL CONFIG-DRIVEN
-            decimal baseRatio = _config.BaseAdvanceDeclineRatio;
-            
+            decimal baseRatio;
             if (hour >= _config.UsMarketStartHour && hour <= _config.UsMarketEndHour) // US market hours from config
             {
                 baseRatio = _config.UsHoursAdvanceDeclineMultiplier; // Config-driven multiplier
