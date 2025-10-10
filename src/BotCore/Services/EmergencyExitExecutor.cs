@@ -23,6 +23,7 @@ namespace BotCore.Services
         private readonly StuckPositionRecoveryConfiguration _config;
         private readonly IOrderService _orderService;
         private readonly EmergencyStopSystem _emergencyStop;
+        private readonly ITopstepXAdapterService _topstepAdapter;
         
         // Track active recovery operations
         private readonly ConcurrentDictionary<string, PositionRecoveryState> _activeRecoveries = new();
@@ -35,12 +36,14 @@ namespace BotCore.Services
             ILogger<EmergencyExitExecutor> logger,
             IOptions<StuckPositionRecoveryConfiguration> config,
             IOrderService orderService,
-            EmergencyStopSystem emergencyStop)
+            EmergencyStopSystem emergencyStop,
+            ITopstepXAdapterService topstepAdapter)
         {
             _logger = logger;
             _config = config?.Value ?? throw new ArgumentNullException(nameof(config));
             _orderService = orderService ?? throw new ArgumentNullException(nameof(orderService));
             _emergencyStop = emergencyStop ?? throw new ArgumentNullException(nameof(emergencyStop));
+            _topstepAdapter = topstepAdapter ?? throw new ArgumentNullException(nameof(topstepAdapter));
             
             _config.Validate();
         }
@@ -633,13 +636,24 @@ namespace BotCore.Services
             }
         }
         
-        // Placeholder methods that would integrate with actual order service
+        // Integration methods with actual services
         
-        private Task<decimal> GetCurrentMarketPriceAsync(string symbol, CancellationToken cancellationToken)
+        private async Task<decimal> GetCurrentMarketPriceAsync(string symbol, CancellationToken cancellationToken)
         {
-            // This would call the actual market data service
-            // For now, return placeholder
-            return Task.FromResult(5000m);
+            try
+            {
+                // Use TopstepX adapter to get current market price
+                var price = await _topstepAdapter.GetPriceAsync(symbol, cancellationToken).ConfigureAwait(false);
+                
+                _logger.LogDebug("📊 [EMERGENCY-EXIT] Current market price for {Symbol}: ${Price:F2}", symbol, price);
+                return price;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [EMERGENCY-EXIT] Error getting market price for {Symbol}", symbol);
+                // Return 0 to indicate price unavailable - caller should handle appropriately
+                return 0m;
+            }
         }
         
         private async Task<string> SubmitExitOrderAsync(
@@ -650,40 +664,186 @@ namespace BotCore.Services
             bool isMarketOrder,
             CancellationToken cancellationToken)
         {
-            // Submit exit order through order service
-            // This would use IOrderService.PlaceOrderAsync or similar
-            var orderId = Guid.NewGuid().ToString();
-            
             _logger.LogInformation(
                 "📤 [EMERGENCY-EXIT] Submitting {OrderType} exit for {Symbol}: {Qty} @ ${Price:F2}",
                 isMarketOrder ? "MARKET" : "LIMIT", symbol, quantity, price);
             
-            // Actual implementation would call order service
-            await Task.CompletedTask;
-            
-            return orderId;
+            try
+            {
+                // Use IOrderService to place the exit order
+                // Direction is opposite of current position: if long, we sell; if short, we buy
+                var side = isLong ? "Sell" : "Buy";
+                
+                string orderId;
+                if (isMarketOrder)
+                {
+                    orderId = await _orderService.PlaceMarketOrderAsync(
+                        symbol: symbol,
+                        side: side,
+                        quantity: quantity,
+                        tag: "emergency-exit"
+                    ).ConfigureAwait(false);
+                }
+                else
+                {
+                    orderId = await _orderService.PlaceLimitOrderAsync(
+                        symbol: symbol,
+                        side: side,
+                        quantity: quantity,
+                        price: price,
+                        tag: "emergency-exit"
+                    ).ConfigureAwait(false);
+                }
+                
+                if (!string.IsNullOrEmpty(orderId))
+                {
+                    _logger.LogInformation(
+                        "✅ [EMERGENCY-EXIT] Order submitted successfully: {OrderId}",
+                        orderId);
+                    return orderId;
+                }
+                
+                _logger.LogWarning("⚠️ [EMERGENCY-EXIT] Order submission returned null/empty order ID");
+                return Guid.NewGuid().ToString(); // Fallback ID
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [EMERGENCY-EXIT] Failed to submit exit order for {Symbol}", symbol);
+                // Return generated ID so escalation can continue
+                return Guid.NewGuid().ToString();
+            }
         }
         
-        private Task<bool> WaitForFillAsync(string orderId, TimeSpan timeout, CancellationToken cancellationToken)
+        private async Task<bool> WaitForFillAsync(string orderId, TimeSpan timeout, CancellationToken cancellationToken)
         {
-            // Wait for order fill confirmation
-            // This would subscribe to order fill events
-            // For now, return false (not filled) to simulate escalation
-            return Task.FromResult(false);
+            try
+            {
+                // Query order status from order service
+                var startTime = DateTime.UtcNow;
+                var checkInterval = TimeSpan.FromSeconds(2); // Check every 2 seconds
+                
+                while (DateTime.UtcNow - startTime < timeout)
+                {
+                    try
+                    {
+                        // Check order status using IOrderService
+                        var orderStatus = await _orderService.GetOrderStatusAsync(orderId).ConfigureAwait(false);
+                        
+                        if (orderStatus == TradingBot.Abstractions.OrderStatus.Filled || 
+                            orderStatus == TradingBot.Abstractions.OrderStatus.PartiallyFilled)
+                        {
+                            _logger.LogInformation(
+                                "✅ [EMERGENCY-EXIT] Order {OrderId} filled with status: {Status}",
+                                orderId, orderStatus);
+                            return true;
+                        }
+                        
+                        if (orderStatus == TradingBot.Abstractions.OrderStatus.Rejected || 
+                            orderStatus == TradingBot.Abstractions.OrderStatus.Cancelled)
+                        {
+                            _logger.LogWarning(
+                                "⚠️ [EMERGENCY-EXIT] Order {OrderId} terminated with status: {Status}",
+                                orderId, orderStatus);
+                            return false;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "⚠️ [EMERGENCY-EXIT] Error checking order status for {OrderId}", orderId);
+                    }
+                    
+                    // Wait before next check
+                    await Task.Delay(checkInterval, cancellationToken).ConfigureAwait(false);
+                }
+                
+                _logger.LogWarning("⏰ [EMERGENCY-EXIT] Order {OrderId} did not fill within {Timeout} seconds", 
+                    orderId, timeout.TotalSeconds);
+                return false;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("🛑 [EMERGENCY-EXIT] Fill wait cancelled for order {OrderId}", orderId);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [EMERGENCY-EXIT] Error waiting for fill of order {OrderId}", orderId);
+                return false;
+            }
         }
         
-        private Task<decimal> GetOrderFillPriceAsync(string orderId, CancellationToken cancellationToken)
+        private async Task<decimal> GetOrderFillPriceAsync(string orderId, CancellationToken cancellationToken)
         {
-            // Get actual fill price from order service
-            return Task.FromResult(5000m);
+            try
+            {
+                // Try to get order details from active orders list
+                var activeOrders = await _orderService.GetActiveOrdersAsync().ConfigureAwait(false);
+                var order = activeOrders?.FirstOrDefault(o => o.Id == orderId);
+                
+                if (order?.Price.HasValue == true)
+                {
+                    _logger.LogDebug("📊 [EMERGENCY-EXIT] Order {OrderId} filled at ${Price:F2}", 
+                        orderId, order.Price.Value);
+                    return order.Price.Value;
+                }
+                
+                _logger.LogWarning("⚠️ [EMERGENCY-EXIT] Could not get fill price for order {OrderId}, using fallback", orderId);
+                return 0m; // Return 0 as indicator that price wasn't available
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [EMERGENCY-EXIT] Error getting fill price for order {OrderId}", orderId);
+                return 0m;
+            }
         }
         
         private async Task CancelAllOrdersForSymbolAsync(string symbol, CancellationToken cancellationToken)
         {
             _logger.LogInformation("❌ [EMERGENCY-EXIT] Cancelling all orders for {Symbol}", symbol);
             
-            // This would call order service to cancel all pending orders for symbol
-            await Task.CompletedTask;
+            try
+            {
+                // Get all active orders from order service
+                var allOrders = await _orderService.GetActiveOrdersAsync().ConfigureAwait(false);
+                
+                if (allOrders == null || !allOrders.Any())
+                {
+                    _logger.LogDebug("ℹ️ [EMERGENCY-EXIT] No active orders found");
+                    return;
+                }
+                
+                // Filter for orders matching the symbol
+                var symbolOrders = allOrders.Where(o => 
+                    o.Symbol.Equals(symbol, StringComparison.OrdinalIgnoreCase) &&
+                    (o.Status == TradingBot.Abstractions.OrderStatus.Pending || 
+                     o.Status == TradingBot.Abstractions.OrderStatus.PartiallyFilled)).ToList();
+                
+                if (!symbolOrders.Any())
+                {
+                    _logger.LogDebug("ℹ️ [EMERGENCY-EXIT] No pending orders found for {Symbol}", symbol);
+                    return;
+                }
+                
+                _logger.LogInformation("🔍 [EMERGENCY-EXIT] Found {Count} pending orders for {Symbol}, cancelling...", 
+                    symbolOrders.Count, symbol);
+                
+                foreach (var order in symbolOrders)
+                {
+                    try
+                    {
+                        await _orderService.CancelOrderAsync(order.Id).ConfigureAwait(false);
+                        _logger.LogDebug("✅ [EMERGENCY-EXIT] Cancelled order {OrderId}", order.Id);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [EMERGENCY-EXIT] Failed to cancel order {OrderId}", order.Id);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ [EMERGENCY-EXIT] Error cancelling orders for {Symbol}", symbol);
+            }
         }
         
         private async Task SendEmergencyNotificationsAsync(PositionRecoveryState state, CancellationToken cancellationToken)
