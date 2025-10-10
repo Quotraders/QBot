@@ -241,7 +241,7 @@ public sealed class ShadowModeManager
             result.ShadowPick = shadowPick;
             result.RouterAction = ShadowRouterAction.Hold; // Always hold for shadow strategies
             
-            LogShadowPickProcessed(_logger, strategyName, request.Direction, request.Symbol, request.EntryPrice, request.Confidence, null);
+            LogShadowPickProcessed(_logger, strategyName, request.Direction.ToString(), request.Symbol, (decimal)request.EntryPrice, request.Confidence, null);
                 
             return result;
         }
@@ -325,7 +325,7 @@ public sealed class ShadowModeManager
             // Emit trade telemetry
             await EmitShadowTradeTelemetryAsync(shadowTrade, cancellationToken).ConfigureAwait(false);
             
-            LogShadowTradeRecorded(_logger, strategyName, outcome.TradeId, outcome.Direction, outcome.Symbol, outcome.PnL, outcome.ExitReason, null);
+            LogShadowTradeRecorded(_logger, strategyName, outcome.TradeId, outcome.Direction.ToString(), outcome.Symbol, (decimal)outcome.PnL, outcome.ExitReason, null);
         }
         catch (ArgumentException ex)
         {
@@ -394,7 +394,7 @@ public sealed class ShadowModeManager
             }
             else
             {
-                LogNotYetEligibleForPromotion(_logger, strategyName, winRate, shadowStrategy.WinRateThreshold, avgPnL, sharpeRatio, null);
+                LogNotYetEligibleForPromotion(_logger, strategyName, winRate, shadowStrategy.WinRateThreshold, (decimal)avgPnL, sharpeRatio, null);
             }
         }
         catch (InvalidOperationException ex)
@@ -441,7 +441,7 @@ public sealed class ShadowModeManager
             // Emit promotion telemetry
             await EmitShadowPromotionTelemetryAsync(shadowStrategy, metrics, cancellationToken).ConfigureAwait(false);
             
-        LogStrategyPromoted(_logger, strategyName, metrics.WinRate, metrics.TotalTrades, metrics.TotalPnL, metrics.SharpeRatio, null);
+        LogStrategyPromoted(_logger, strategyName, metrics.WinRate, metrics.TotalTrades, (decimal)metrics.TotalPnL, metrics.SharpeRatio, null);
     }
     
     /// <summary>

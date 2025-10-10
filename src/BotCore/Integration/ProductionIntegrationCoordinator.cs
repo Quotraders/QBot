@@ -100,7 +100,7 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
             {
                 _currentStatus = IntegrationStatus.Failed;
             }
-            throw;
+            throw new InvalidOperationException("Production integration coordinator encountered a critical error", ex);
         }
     }
     
