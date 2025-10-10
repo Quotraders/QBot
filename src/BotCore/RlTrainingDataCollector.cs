@@ -12,6 +12,9 @@ namespace BotCore
     /// </summary>
     public static class RlTrainingDataCollector
     {
+        // Cached JsonSerializerOptions for performance (CA1869 compliance)
+        private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };
+        
         // RL training data constants for market feature approximation
         private const decimal AtrPercentageApproximation = 0.01m;     // 1% ATR approximation
         private const int BaselineRsiValue = 50;                      // RSI baseline value  
@@ -127,10 +130,7 @@ namespace BotCore
             
             try
             {
-                var json = JsonSerializer.Serialize(features, new JsonSerializerOptions
-                {
-                    WriteIndented = false
-                });
+                var json = JsonSerializer.Serialize(features, JsonOptions);
 
                 // Create symbol-specific files for better organization
                 var fileName = $"features_{features.Symbol.ToUpperInvariant()}_{DateTime.UtcNow:yyyyMMdd}.jsonl";
@@ -167,10 +167,7 @@ namespace BotCore
             
             try
             {
-                var json = JsonSerializer.Serialize(outcome, new JsonSerializerOptions
-                {
-                    WriteIndented = false
-                });
+                var json = JsonSerializer.Serialize(outcome, JsonOptions);
 
                 // Create symbol-specific outcome files
                 var symbol = ExtractSymbolFromSignalId(outcome.SignalId);
