@@ -49,7 +49,6 @@ namespace BotCore.Services
         private readonly ConcurrentDictionary<string, DataFlowMetrics> _flowMetrics = new();
         private readonly Timer _healthCheckTimer;
         private readonly Timer _heartbeatTimer;
-        private volatile bool _isHealthy;
         private volatile bool _isMonitoring;
         private readonly object _recoveryLock = new object();
         private int _recoveryAttempts;
@@ -135,7 +134,6 @@ namespace BotCore.Services
                     _logger.LogInformation("[HEARTBEAT] ✅ 15-second heartbeat recovery monitoring enabled");
                 }
 
-                _isHealthy = true;
                 _logger.LogInformation("[ENHANCED-DATA-FLOW] ✅ Enhanced market data flow initialized successfully");
 
                 return Task.FromResult(true);
@@ -143,7 +141,6 @@ namespace BotCore.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[ENHANCED-DATA-FLOW] ❌ Failed to initialize enhanced market data flow");
-                _isHealthy = false; // Fix CS0201: assign the value
                 return Task.FromResult(false);
             }
         }
@@ -181,7 +178,6 @@ namespace BotCore.Services
                 }
 
                 var overallHealthy = totalSymbols > 0 && (double)healthySymbols / totalSymbols >= 0.5; // At least 50% healthy
-                _isHealthy = overallHealthy;
 
                 var status = new MarketDataHealthStatus
                 {
