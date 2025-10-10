@@ -216,11 +216,6 @@ public sealed class SpreadResolver : IFeatureResolver
             new EventId(6441, nameof(LogSpreadResolutionFailed)),
             "Failed to resolve bid-ask spread for symbol {Symbol}");
     
-    public SpreadResolver(IServiceProvider serviceProvider
-{
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<SpreadResolver> _logger;
-    
     public SpreadResolver(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
