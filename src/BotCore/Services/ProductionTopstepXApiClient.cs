@@ -14,6 +14,27 @@ namespace BotCore.Services
     /// </summary>
     public class ProductionTopstepXApiClient
     {
+        /// <summary>
+        /// Helper to mask sensitive accountId in endpoint strings for logging
+        /// </summary>
+        private static string MaskAccountIdInEndpoint(string endpoint)
+        {
+            // Matches /accounts/{accountId}/... and replaces accountId with ***
+            const string accountsPrefix = "/accounts/";
+            int idx = endpoint.IndexOf(accountsPrefix, StringComparison.OrdinalIgnoreCase);
+            if (idx >= 0)
+            {
+                int start = idx + accountsPrefix.Length;
+                int end = endpoint.IndexOf('/', start);
+                if (end > start)
+                {
+                    // Redact between start and end
+                    return endpoint.Substring(0, start) + "***" + endpoint.Substring(end);
+                }
+            }
+            // If unable to locate, or different structure just return original
+            return endpoint;
+        }
         // HTTP Configuration Constants
         private const int HttpTimeoutSeconds = 30;
         private const int RetryBaseDelaySeconds = 1;
@@ -209,7 +230,7 @@ namespace BotCore.Services
                 try
                 {
                     _logger.LogDebug("[API-CLIENT] Executing POST request to {Endpoint}, Attempt {Attempt}/{MaxRetries}",
-                        endpoint, attempt, maxRetries);
+                        MaskAccountIdInEndpoint(endpoint), attempt, maxRetries);
 
                     using var response = await _httpClient.PostAsync(new Uri(endpoint, UriKind.RelativeOrAbsolute), content, cancellationToken).ConfigureAwait(false);
                     
@@ -218,7 +239,7 @@ namespace BotCore.Services
                         var responseContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                         var jsonElement = JsonSerializer.Deserialize<JsonElement>(responseContent);
                         
-                        _logger.LogInformation("[API-CLIENT] POST request to {Endpoint} succeeded", endpoint);
+                        _logger.LogInformation("[API-CLIENT] POST request to {Endpoint} succeeded", MaskAccountIdInEndpoint(endpoint));
                         return jsonElement;
                     }
 
@@ -227,13 +248,13 @@ namespace BotCore.Services
                 }
                 catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
                 {
-                    _logger.LogWarning(ex, "[API-CLIENT] POST request to {Endpoint} was cancelled", endpoint);
+                    _logger.LogWarning(ex, "[API-CLIENT] POST request to {Endpoint} was cancelled", MaskAccountIdInEndpoint(endpoint));
                     throw;
                 }
                 catch (HttpRequestException ex)
                 {
                     _logger.LogError(ex, "[API-CLIENT] HTTP error on POST request to {Endpoint}, Attempt {Attempt}/{MaxRetries}",
-                        endpoint, attempt, maxRetries);
+                        MaskAccountIdInEndpoint(endpoint), attempt, maxRetries);
                     
                     if (attempt == maxRetries)
                         throw new HttpRequestException($"POST request to {endpoint} failed after {maxRetries} attempts", ex);
@@ -241,7 +262,7 @@ namespace BotCore.Services
                 catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
                 {
                     _logger.LogError(ex, "[API-CLIENT] POST request timeout to {Endpoint}, Attempt {Attempt}/{MaxRetries}",
-                        endpoint, attempt, maxRetries);
+                        MaskAccountIdInEndpoint(endpoint), attempt, maxRetries);
                     
                     if (attempt == maxRetries)
                         throw new TimeoutException($"POST request to {endpoint} timed out after {maxRetries} attempts", ex);
@@ -249,7 +270,7 @@ namespace BotCore.Services
                 catch (JsonException ex)
                 {
                     _logger.LogError(ex, "[API-CLIENT] JSON deserialization error on POST to {Endpoint}, Attempt {Attempt}/{MaxRetries}",
-                        endpoint, attempt, maxRetries);
+                        MaskAccountIdInEndpoint(endpoint), attempt, maxRetries);
                     
                     if (attempt == maxRetries)
                         throw;
