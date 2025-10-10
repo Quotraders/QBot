@@ -2083,7 +2083,7 @@ Reason closed: {reason}
                 ).ConfigureAwait(false);
                 
                 contracts = (int)(contracts * Math.Clamp(rlMultiplier, TopStepConfig.MinRlMultiplier, TopStepConfig.MaxRlMultiplier));
-                LogLegacyRlMultiplier(_logger, rlMultiplier, null);
+                LogLegacyRlMultiplier(_logger, (double)rlMultiplier, null);
             }
 
             LogPositionSize(_logger, instrument, (double)confidence, _currentDrawdown, contracts, riskAmount, null);
@@ -2365,7 +2365,7 @@ Reason closed: {reason}
                 availableStrategies = timeBasedStrategies.ToList();
             }
             
-            LogStrategySelection(_logger, hour, regime, string.Join(",", availableStrategies), null);
+            LogStrategySelection(_logger, hour, regime.ToString(), string.Join(",", availableStrategies), null);
             
             return availableStrategies;
         }
