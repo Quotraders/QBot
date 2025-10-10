@@ -470,7 +470,7 @@ namespace BotCore.Services
         /// </summary>
         private static int MonthCodeToMonth(string monthCode)
         {
-            return monthCode.ToUpper() switch
+            return monthCode.ToUpper(System.Globalization.CultureInfo.InvariantCulture) switch
             {
                 "F" => JanuaryMonth,  // January
                 "G" => FebruaryMonth,  // February

@@ -367,7 +367,7 @@ namespace BotCore.Services
         /// </summary>
         private static decimal GetTickSize(string symbol)
         {
-            return symbol.ToUpper() switch
+            return symbol.ToUpper(System.Globalization.CultureInfo.InvariantCulture) switch
             {
                 "ES" => EsTickSize,
                 "NQ" => NqTickSize,

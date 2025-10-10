@@ -178,7 +178,7 @@ namespace BotCore.Services
                 catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
                 {
                     _logger.LogWarning(ex, "[API-CLIENT] Request to {Endpoint} was cancelled", endpoint);
-                    throw;
+                    throw new OperationCanceledException($"GET request to {endpoint} was cancelled", ex, cancellationToken);
                 }
                 catch (HttpRequestException ex)
                 {
@@ -249,7 +249,7 @@ namespace BotCore.Services
                 catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
                 {
                     _logger.LogWarning(ex, "[API-CLIENT] POST request to {Endpoint} was cancelled", MaskAccountIdInEndpoint(endpoint));
-                    throw;
+                    throw new OperationCanceledException($"POST request to {endpoint} was cancelled", ex, cancellationToken);
                 }
                 catch (HttpRequestException ex)
                 {

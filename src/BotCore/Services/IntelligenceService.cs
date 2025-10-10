@@ -185,7 +185,7 @@ public class IntelligenceService : IIntelligenceService
     {
         try
         {
-            var resultsFolderPath = Path.GetDirectoryName(_signalsPath)?.Replace("signals", "trades")
+            var resultsFolderPath = Path.GetDirectoryName(_signalsPath)?.Replace("signals", "trades", StringComparison.Ordinal)
                                    ?? "data/trades/";
 
             Directory.CreateDirectory(resultsFolderPath);

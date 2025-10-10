@@ -138,7 +138,7 @@ public class TopstepXHttpClient : ITopstepXHttpClient, IDisposable
             };
 
             _logger.LogError(ex, "Failed to ensure fresh token: {ErrorData}", JsonSerializer.Serialize(errorData));
-            throw;
+            throw new InvalidOperationException("Failed to ensure fresh authentication token for TopstepX API", ex);
         }
     }
 
