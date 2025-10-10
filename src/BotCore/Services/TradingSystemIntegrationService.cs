@@ -726,8 +726,6 @@ namespace TopstepX.Bot.Core.Services
                     brainDecision.PriceDirection, brainDecision.PriceProbability, brainDecision.OptimalPositionMultiplier);
                 
                 // PHASE 6: AllStrategies Signal Generation - Generate high-confidence signals using existing sophisticated strategies
-                CreateMarketSnapshot(symbol, marketData);
-                
                 // Use AllStrategies for signal generation - this is what the user wants!
                 var allStrategiesSignals = ConvertCandidatesToSignals(mlEnhancedCandidates, "ML-Enhanced");
 
