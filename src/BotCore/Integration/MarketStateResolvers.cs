@@ -236,12 +236,12 @@ public sealed class SpreadResolver : IFeatureResolver
                 throw new InvalidOperationException($"Bid-ask spread not available for symbol '{symbol}' - fail closed");
             }
             
-            _logger.LogTrace("Bid-ask spread for {Symbol}: {Spread:F4}", symbol, value);
+            LogSpreadValue(_logger, symbol, value.Value, null);
             return Task.FromResult(value);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to resolve bid-ask spread for symbol {Symbol}", symbol);
+            LogSpreadResolutionFailed(_logger, symbol, ex);
             throw new InvalidOperationException($"Production bid-ask spread resolution failed for '{symbol}': {ex.Message}", ex);
         }
     }
@@ -251,6 +251,19 @@ public sealed class LiquidityScoreResolver : IFeatureResolver
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<LiquidityScoreResolver> _logger;
+    
+    // LoggerMessage delegates for CA1848 performance compliance
+    private static readonly Action<ILogger, string, double, Exception?> LogLiquidityScore =
+        LoggerMessage.Define<string, double>(
+            LogLevel.Trace,
+            new EventId(6442, nameof(LogLiquidityScore)),
+            "Liquidity score for {Symbol}: {Score:F2}");
+    
+    private static readonly Action<ILogger, string, Exception> LogLiquidityScoreResolutionFailed =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(6443, nameof(LogLiquidityScoreResolutionFailed)),
+            "Failed to resolve liquidity score for symbol {Symbol}");
     
     public LiquidityScoreResolver(IServiceProvider serviceProvider)
     {
@@ -272,12 +285,12 @@ public sealed class LiquidityScoreResolver : IFeatureResolver
                 throw new InvalidOperationException($"Liquidity score not available for symbol '{symbol}' - fail closed");
             }
             
-            _logger.LogTrace("Liquidity score for {Symbol}: {Score:F2}", symbol, value);
+            LogLiquidityScore(_logger, symbol, value.Value, null);
             return Task.FromResult(value);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to resolve liquidity score for symbol {Symbol}", symbol);
+            LogLiquidityScoreResolutionFailed(_logger, symbol, ex);
             throw new InvalidOperationException($"Production liquidity score resolution failed for '{symbol}': {ex.Message}", ex);
         }
     }
