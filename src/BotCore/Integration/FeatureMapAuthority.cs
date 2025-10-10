@@ -634,18 +634,18 @@ public sealed class MtfFeatureResolver : IFeatureResolver
             
             if (value.HasValue)
             {
-                LogMtfFeatureValue(_logger, _featureKey, symbol, value.Value, null);
+                _logger.LogTrace("MTF feature {FeatureKey} for {Symbol}: {Value}", _featureKey, symbol, value.Value);
             }
             else
             {
-                LogMtfFeatureNoValue(_logger, _featureKey, symbol, null);
+                _logger.LogTrace("MTF feature {FeatureKey} for {Symbol}: no value available", _featureKey, symbol);
             }
             
             return value;
         }
         catch (Exception ex)
         {
-            LogMtfFeatureFailed(_logger, _featureKey, symbol, ex);
+            _logger.LogError(ex, "Failed to resolve MTF feature {FeatureKey} for symbol {Symbol}", _featureKey, symbol);
             throw new InvalidOperationException($"Production MTF feature resolution failed for '{symbol}.{_featureKey}': {ex.Message}", ex);
         }
     }
