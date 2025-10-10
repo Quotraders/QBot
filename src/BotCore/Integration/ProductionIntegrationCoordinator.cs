@@ -100,6 +100,82 @@ public sealed partial class ProductionIntegrationCoordinator : BackgroundService
         LoggerMessage.Define(LogLevel.Information, new EventId(8020, nameof(LogCoordinatorOperational)),
             "🎉 Production integration coordinator OPERATIONAL - All systems ready");
     
+    private static readonly Action<ILogger, Exception?> LogInvalidOperationInMonitoring =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(8021, nameof(LogInvalidOperationInMonitoring)),
+            "Invalid operation in continuous monitoring loop");
+    
+    private static readonly Action<ILogger, Exception?> LogTimeoutInMonitoring =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(8022, nameof(LogTimeoutInMonitoring)),
+            "Timeout in continuous monitoring loop");
+    
+    private static readonly Action<ILogger, int, double, Exception?> LogUnifiedBarPipelineSuccess =
+        LoggerMessage.Define<int, double>(LogLevel.Debug, new EventId(8023, nameof(LogUnifiedBarPipelineSuccess)),
+            "Unified bar pipeline test: SUCCESS - {StepCount} steps completed in {ProcessingTime:F2}ms");
+    
+    private static readonly Action<ILogger, string, Exception?> LogUnifiedBarPipelineFailed =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(8024, nameof(LogUnifiedBarPipelineFailed)),
+            "Unified bar pipeline test: FAILED - {Error}");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidOperationTestingBarPipeline =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(8025, nameof(LogInvalidOperationTestingBarPipeline)),
+            "Invalid operation testing unified bar pipeline");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidArgumentTestingBarPipeline =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(8026, nameof(LogInvalidArgumentTestingBarPipeline)),
+            "Invalid argument testing unified bar pipeline");
+    
+    private static readonly Action<ILogger, string, double, string, Exception?> LogFeatureResolutionTest =
+        LoggerMessage.Define<string, double, string>(LogLevel.Trace, new EventId(8027, nameof(LogFeatureResolutionTest)),
+            "Feature resolution test: {FeatureKey} = {Value} ({ResolverType})");
+    
+    private static readonly Action<ILogger, string, Exception?> LogFeatureResolutionMissing =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(8028, nameof(LogFeatureResolutionMissing)),
+            "Feature resolution test: {FeatureKey} MISSING - would trigger hold decision");
+    
+    private static readonly Action<ILogger, int, int, Exception?> LogFeatureResolutionSummary =
+        LoggerMessage.Define<int, int>(LogLevel.Debug, new EventId(8029, nameof(LogFeatureResolutionSummary)),
+            "Feature resolution test: {SuccessCount}/{TotalCount} features resolved successfully");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidOperationTestingFeatureResolution =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(8030, nameof(LogInvalidOperationTestingFeatureResolution)),
+            "Invalid operation testing feature resolution");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidArgumentTestingFeatureResolution =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(8031, nameof(LogInvalidArgumentTestingFeatureResolution)),
+            "Invalid argument testing feature resolution");
+    
+    private static readonly Action<ILogger, Exception?> LogTelemetryEmissionSuccess =
+        LoggerMessage.Define(LogLevel.Debug, new EventId(8032, nameof(LogTelemetryEmissionSuccess)),
+            "Telemetry emission test: Zone and pattern telemetry emitted successfully");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidOperationTestingTelemetry =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(8033, nameof(LogInvalidOperationTestingTelemetry)),
+            "Invalid operation testing telemetry emission");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidArgumentTestingTelemetry =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(8034, nameof(LogInvalidArgumentTestingTelemetry)),
+            "Invalid argument testing telemetry emission");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidOperationEmittingTelemetry =
+        LoggerMessage.Define(LogLevel.Trace, new EventId(8035, nameof(LogInvalidOperationEmittingTelemetry)),
+            "Invalid operation emitting operational telemetry");
+    
+    private static readonly Action<ILogger, Exception?> LogTimeoutEmittingTelemetry =
+        LoggerMessage.Define(LogLevel.Trace, new EventId(8036, nameof(LogTimeoutEmittingTelemetry)),
+            "Timeout emitting operational telemetry");
+    
+    private static readonly Action<ILogger, string, int, int, string, Exception?> LogHealthCheck =
+        LoggerMessage.Define<string, int, int, string>(LogLevel.Trace, new EventId(8037, nameof(LogHealthCheck)),
+            "Health check: Pipeline {PipelineHealth}, EpochFreeze {EpochStats}, Shadow {ShadowStats}, Telemetry {TelemetryHealth}");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidOperationInHealthCheck =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(8038, nameof(LogInvalidOperationInHealthCheck)),
+            "Invalid operation in periodic health check");
+    
+    private static readonly Action<ILogger, Exception?> LogCoordinatorDisposed =
+        LoggerMessage.Define(LogLevel.Information, new EventId(8039, nameof(LogCoordinatorDisposed)),
+            "Production integration coordinator disposed");
+    
     // Integration components
     private readonly Lazy<ServiceInventory> _serviceInventory;
     private readonly Lazy<ConfigurationLocks> _configurationLocks;
@@ -310,11 +386,11 @@ public sealed partial class ProductionIntegrationCoordinator : BackgroundService
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Invalid operation in continuous monitoring loop");
+                LogInvalidOperationInMonitoring(_logger, ex);
             }
             catch (TimeoutException ex)
             {
-                _logger.LogWarning(ex, "Timeout in continuous monitoring loop");
+                LogTimeoutInMonitoring(_logger, ex);
             }
         }
     }
@@ -341,21 +417,20 @@ public sealed partial class ProductionIntegrationCoordinator : BackgroundService
             
             if (pipelineResult.Success)
             {
-                _logger.LogDebug("Unified bar pipeline test: SUCCESS - {StepCount} steps completed in {ProcessingTime:F2}ms", 
-                    pipelineResult.PipelineSteps.Count, pipelineResult.ProcessingTimeMs);
+                LogUnifiedBarPipelineSuccess(_logger, pipelineResult.PipelineSteps.Count, pipelineResult.ProcessingTimeMs, null);
             }
             else
             {
-                _logger.LogWarning("Unified bar pipeline test: FAILED - {Error}", pipelineResult.Error);
+                LogUnifiedBarPipelineFailed(_logger, pipelineResult.Error ?? "Unknown error", null);
             }
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Invalid operation testing unified bar pipeline");
+            LogInvalidOperationTestingBarPipeline(_logger, ex);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogWarning(ex, "Invalid argument testing unified bar pipeline");
+            LogInvalidArgumentTestingBarPipeline(_logger, ex);
         }
     }
     
@@ -375,25 +450,23 @@ public sealed partial class ProductionIntegrationCoordinator : BackgroundService
                 if (result.Success)
                 {
                     successCount++;
-                    _logger.LogTrace("Feature resolution test: {FeatureKey} = {Value} ({ResolverType})", 
-                        featureKey, result.Value, result.ResolverType);
+                    LogFeatureResolutionTest(_logger, featureKey, result.Value, result.ResolverType ?? "Unknown", null);
                 }
                 else if (result.ShouldHoldDecision)
                 {
-                    _logger.LogWarning("Feature resolution test: {FeatureKey} MISSING - would trigger hold decision", featureKey);
+                    LogFeatureResolutionMissing(_logger, featureKey, null);
                 }
             }
             
-            _logger.LogDebug("Feature resolution test: {SuccessCount}/{TotalCount} features resolved successfully", 
-                successCount, testFeatures.Length);
+            LogFeatureResolutionSummary(_logger, successCount, testFeatures.Length, null);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Invalid operation testing feature resolution");
+            LogInvalidOperationTestingFeatureResolution(_logger, ex);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogWarning(ex, "Invalid argument testing feature resolution");
+            LogInvalidArgumentTestingFeatureResolution(_logger, ex);
         }
     }
     
@@ -431,15 +504,15 @@ public sealed partial class ProductionIntegrationCoordinator : BackgroundService
             
             await _telemetryService.Value.EmitPatternTelemetryAsync("ES", patternTelemetry, cancellationToken).ConfigureAwait(false);
             
-            _logger.LogDebug("Telemetry emission test: Zone and pattern telemetry emitted successfully");
+            LogTelemetryEmissionSuccess(_logger, null);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Invalid operation testing telemetry emission");
+            LogInvalidOperationTestingTelemetry(_logger, ex);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogWarning(ex, "Invalid argument testing telemetry emission");
+            LogInvalidArgumentTestingTelemetry(_logger, ex);
         }
     }
     
@@ -465,11 +538,11 @@ public sealed partial class ProductionIntegrationCoordinator : BackgroundService
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogTrace(ex, "Invalid operation emitting operational telemetry");
+            LogInvalidOperationEmittingTelemetry(_logger, ex);
         }
         catch (TimeoutException ex)
         {
-            _logger.LogTrace(ex, "Timeout emitting operational telemetry");
+            LogTimeoutEmittingTelemetry(_logger, ex);
         }
     }
     
@@ -488,15 +561,16 @@ public sealed partial class ProductionIntegrationCoordinator : BackgroundService
             var shadowModeStats = _shadowModeManager.IsValueCreated ? _shadowModeManager.Value.GetShadowModeStats() : null;
             var telemetryHealth = _telemetryService.IsValueCreated ? _telemetryService.Value.GetTelemetryHealth() : null;
             
-            _logger.LogTrace("Health check: Pipeline {PipelineHealth}, EpochFreeze {EpochStats}, Shadow {ShadowStats}, Telemetry {TelemetryHealth}",
+            LogHealthCheck(_logger,
                 pipelineHealth?.IsHealthy ?? false ? "Healthy" : "Degraded",
                 epochFreezeStats?.ActiveEpochs ?? 0,
                 shadowModeStats?.ActiveShadowStrategies ?? 0,
-                telemetryHealth?.IsHealthy ?? false ? "Healthy" : "Degraded");
+                telemetryHealth?.IsHealthy ?? false ? "Healthy" : "Degraded",
+                null);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Invalid operation in periodic health check");
+            LogInvalidOperationInHealthCheck(_logger, ex);
         }
     }
     
@@ -536,7 +610,7 @@ public sealed partial class ProductionIntegrationCoordinator : BackgroundService
         }
         
         base.Dispose();
-        _logger.LogInformation("Production integration coordinator disposed");
+        LogCoordinatorDisposed(_logger, null);
     }
 }
 
