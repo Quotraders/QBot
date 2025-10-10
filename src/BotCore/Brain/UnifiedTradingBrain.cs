@@ -532,8 +532,17 @@ namespace BotCore.Brain
             try
             {
                 var neuralNetwork = new OnnxNeuralNetwork(onnxLoader, neuralNetworkLogger, runtimeMode, "models/strategy_selection.onnx");
-                tempSelector = new NeuralUcbBandit(neuralNetwork);
-                _strategySelector = tempSelector;
+                try
+                {
+                    tempSelector = new NeuralUcbBandit(neuralNetwork);
+                    _strategySelector = tempSelector;
+                }
+                catch
+                {
+                    // Dispose neuralNetwork if NeuralUcbBandit constructor fails
+                    neuralNetwork.Dispose();
+                    throw;
+                }
                 
                 // Initialize confidence network for model confidence prediction
                 tempConfidenceNet = new OnnxNeuralNetwork(onnxLoader, neuralNetworkLogger, runtimeMode, "models/confidence_prediction.onnx");
@@ -541,7 +550,7 @@ namespace BotCore.Brain
             }
             catch
             {
-                // Dispose networks if initialization fails
+                // Dispose selector if second network creation fails (selector owns neuralNetwork)
                 tempSelector?.Dispose();
                 tempConfidenceNet?.Dispose();
                 throw;
