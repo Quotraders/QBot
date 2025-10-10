@@ -75,7 +75,6 @@ public class UnifiedDecisionRouter
     private const int DECISION_ID_RANDOM_MAX = 9999;              // Maximum random number for decision ID
 
     private readonly ILogger<UnifiedDecisionRouter> _logger;
-    private readonly IServiceProvider _serviceProvider;
     
     // AI Brain components in priority order - Strategy Knowledge Graph & Decision Fusion is highest priority
     private readonly DecisionFusionCoordinator? _decisionFusion;
@@ -84,7 +83,6 @@ public class UnifiedDecisionRouter
     private readonly TradingBot.IntelligenceStack.IntelligenceOrchestrator _intelligenceOrchestrator;
     
     // Strategy routing configuration
-    private readonly Dictionary<string, StrategyConfig> _strategyConfigs;
     private readonly Random _random = new();
     
     // Decision tracking for learning
@@ -99,7 +97,6 @@ public class UnifiedDecisionRouter
         TradingBot.IntelligenceStack.IntelligenceOrchestrator intelligenceOrchestrator)
     {
         _logger = logger;
-        _serviceProvider = serviceProvider;
         _unifiedBrain = unifiedBrain;
         _enhancedBrain = enhancedBrain;
         _intelligenceOrchestrator = intelligenceOrchestrator;
@@ -118,9 +115,6 @@ public class UnifiedDecisionRouter
             _logger.LogWarning(ex, "Decision Fusion Coordinator service resolution failed, continuing without it");
             _decisionFusion = null;
         }
-        
-        // Initialize strategy configurations
-        _strategyConfigs = InitializeStrategyConfigs();
         
         _logger.LogInformation("🎯 [DECISION-ROUTER] Unified Decision Router initialized");
         _logger.LogInformation("📊 [DECISION-ROUTER] Services wired: Fusion={FusionAvailable}, Enhanced=True, Unified=True, Intelligence=True", 

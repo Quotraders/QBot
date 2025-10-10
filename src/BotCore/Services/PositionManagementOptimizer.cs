@@ -42,7 +42,6 @@ namespace BotCore.Services
     public sealed class PositionManagementOptimizer : BackgroundService
     {
         private readonly ILogger<PositionManagementOptimizer> _logger;
-        private readonly IServiceProvider _serviceProvider;
         private readonly ConcurrentDictionary<string, PositionManagementOutcome> _outcomes = new();
         private readonly ParameterChangeTracker _changeTracker;
         private DateTime _lastExportTime = DateTime.MinValue;
@@ -98,7 +97,7 @@ namespace BotCore.Services
             ParameterChangeTracker changeTracker)
         {
             _logger = logger;
-            _serviceProvider = serviceProvider;
+            // serviceProvider parameter accepted for DI compatibility but not currently used
             _changeTracker = changeTracker;
         }
         

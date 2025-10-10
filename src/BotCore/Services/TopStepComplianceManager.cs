@@ -23,7 +23,6 @@ namespace BotCore.Services;
 public class TopStepComplianceManager
 {
     private readonly ILogger _logger;
-    private readonly AutonomousConfig _config;
     
     // TopStep compliance limits (read from environment variables)
     private readonly decimal TopStepDailyLossLimit;
@@ -61,7 +60,6 @@ public class TopStepComplianceManager
         ArgumentNullException.ThrowIfNull(config);
         
         _logger = logger;
-        _config = config.Value;
         
         // Read TopStep compliance limits from environment variables (with defaults)
         TopStepDailyLossLimit = decimal.Parse(

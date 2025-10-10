@@ -1614,13 +1614,6 @@ namespace TopstepX.Bot.Core.Services
                 if (hasEsData && !hasNqData) return "ES";
                 if (hasNqData && !hasEsData) return "NQ";
                 
-                // If neither has data (shouldn't happen due to IsEmpty check above), default to ES
-                if (!hasEsData && !hasNqData)
-                {
-                    _logger.LogWarning("⚠️ Unexpected: cache not empty but ES/NQ data not found");
-                    return "ES";
-                }
-
                 // Both have data - make intelligent choice based on:
                 // 1. Recent volatility (prefer more volatile for momentum strategies)
                 // 2. Spread tightness (prefer tighter spreads)
