@@ -19,7 +19,6 @@ namespace BotCore.Services
     public class TimeOptimizedStrategyManager : IDisposable
     {
         private readonly ILogger<TimeOptimizedStrategyManager> _logger;
-        private readonly Dictionary<string, IStrategy> _strategies;
         private readonly TimeZoneInfo _centralTime;
         private readonly OnnxModelLoader? _onnxLoader;
         private readonly TradingBot.Abstractions.IS7Service? _s7Service;
@@ -197,7 +196,6 @@ namespace BotCore.Services
             _logger = logger;
             _s7Service = s7Service;
             _onnxLoader = onnxLoader;
-            _strategies = new Dictionary<string, IStrategy>();
             _centralTime = TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time");
 
             LoadHistoricalPerformanceData();

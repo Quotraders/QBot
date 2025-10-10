@@ -63,7 +63,7 @@ namespace TradingBot.BotCore.Services
                 
                 if (hasInfrastructure)
                 {
-                    _logger?.LogDebug("[BREADTH-FEED] Data available from {DataSource} - ready for breadth computation", _config?.DataSource ?? "Unknown");
+                    _logger!.LogDebug("[BREADTH-FEED] Data available from {DataSource} - ready for breadth computation", _config!.DataSource);
                     return true;
                 }
                 else
