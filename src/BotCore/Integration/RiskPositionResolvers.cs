@@ -61,7 +61,7 @@ public sealed class PositionSizeResolver : IFeatureResolver
         try
         {
             var positionTracker = _serviceProvider.GetRequiredService<PositionTrackingSystem>();
-            var positions = positionTracker.GetAllPositions();
+            var positions = positionTracker.AllPositions;
             
             var symbolPositions = positions.Values.Where(p => p.Symbol == symbol).ToList();
             var totalSize = symbolPositions.Sum(p => p.NetQuantity);
@@ -93,7 +93,7 @@ public sealed class PositionPnLResolver : IFeatureResolver
         try
         {
             var positionTracker = _serviceProvider.GetRequiredService<PositionTrackingSystem>();
-            var positions = positionTracker.GetAllPositions();
+            var positions = positionTracker.AllPositions;
             
             var symbolPositions = positions.Values.Where(p => p.Symbol == symbol).ToList();
             var totalPnL = symbolPositions.Sum(p => p.RealizedPnL);
@@ -125,7 +125,7 @@ public sealed class UnrealizedPnLResolver : IFeatureResolver
         try
         {
             var positionTracker = _serviceProvider.GetRequiredService<PositionTrackingSystem>();
-            var positions = positionTracker.GetAllPositions();
+            var positions = positionTracker.AllPositions;
             
             var symbolPositions = positions.Values.Where(p => p.Symbol == symbol).ToList();
             var totalUnrealizedPnL = symbolPositions.Sum(p => p.UnrealizedPnL);
