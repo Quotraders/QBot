@@ -340,8 +340,8 @@ namespace BotCore.Brain
             catch
             {
                 // Dispose networks if initialization fails
-                (neuralNetwork as IDisposable)?.Dispose();
-                (confidenceNetwork as IDisposable)?.Dispose();
+                neuralNetwork?.Dispose();
+                confidenceNetwork?.Dispose();
                 throw;
             }
             
@@ -930,11 +930,6 @@ namespace BotCore.Brain
             catch (ArgumentException ex)
             {
                 _logger.LogError(ex, "❌ [BOT-CONTEXT] Error gathering current context - invalid argument");
-                return "Context unavailable";
-            }
-            catch (NullReferenceException ex)
-            {
-                _logger.LogError(ex, "❌ [BOT-CONTEXT] Error gathering current context - null reference");
                 return "Context unavailable";
             }
         }
