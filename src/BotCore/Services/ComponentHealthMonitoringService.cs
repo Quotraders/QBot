@@ -152,16 +152,14 @@ public sealed class ComponentHealthMonitoringService : BackgroundService
         HealthCheckResult healthResult,
         CancellationToken cancellationToken)
     {
-        var message = $"❌ {component.Name}: {healthResult.Status} - {healthResult.Description}";
-        
         // Add relevant metrics to the message
+        var metricsStr = string.Empty;
         if (healthResult.Metrics.Count > 0)
         {
-            var metricsStr = string.Join(", ", healthResult.Metrics.Take(3).Select(kvp => $"{kvp.Key}={kvp.Value}"));
-            message += $" ({metricsStr})";
+            metricsStr = " (" + string.Join(", ", healthResult.Metrics.Take(3).Select(kvp => $"{kvp.Key}={kvp.Value}")) + ")";
         }
 
-        _logger.LogWarning(message);
+        _logger.LogWarning("❌ {ComponentName}: {Status} - {Description}{Metrics}", component.Name, healthResult.Status, healthResult.Description, metricsStr);
 
         // If Ollama is available and enabled, generate a plain English explanation
         var selfAwarenessEnabled = Environment.GetEnvironmentVariable("BOT_SELF_AWARENESS_ENABLED")?.ToUpperInvariant() == "TRUE";
@@ -197,16 +195,14 @@ Explain in one sentence what this means for my operation and what action should 
         HealthCheckResult healthResult,
         CancellationToken cancellationToken)
     {
-        var message = $"⚠️ {component.Name}: {healthResult.Status} - {healthResult.Description}";
-        
         // Add relevant metrics
+        var metricsStr = string.Empty;
         if (healthResult.Metrics.Count > 0)
         {
-            var metricsStr = string.Join(", ", healthResult.Metrics.Take(3).Select(kvp => $"{kvp.Key}={kvp.Value}"));
-            message += $" ({metricsStr})";
+            metricsStr = " (" + string.Join(", ", healthResult.Metrics.Take(3).Select(kvp => $"{kvp.Key}={kvp.Value}")) + ")";
         }
 
-        _logger.LogInformation(message);
+        _logger.LogInformation("⚠️ {ComponentName}: {Status} - {Description}{Metrics}", component.Name, healthResult.Status, healthResult.Description, metricsStr);
 
         // Generate AI explanation for degraded components if enabled
         var selfAwarenessEnabled = Environment.GetEnvironmentVariable("BOT_SELF_AWARENESS_ENABLED")?.ToUpperInvariant() == "TRUE";

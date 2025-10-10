@@ -735,7 +735,7 @@ public class EnhancedTradingBrainIntegration
         };
     }
 
-    private static IList<Bar> CreateSampleBars()
+    private static List<Bar> CreateSampleBars()
     {
         var bars = new List<Bar>();
         var basePrice = 4500.0m;
