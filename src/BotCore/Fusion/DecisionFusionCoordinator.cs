@@ -115,9 +115,9 @@ public sealed class DecisionFusionCoordinator
         LoggerMessage.Define<string, string>(LogLevel.Information, new EventId(8114, nameof(LogFusionRecommendationCount)),
             "📊 Fusion recommendation count for symbol {Symbol}, decision {Decision}");
     
-    private static readonly Action<ILogger, string, string, string, string, double, string, double, Exception?> LogDecisionCompleted =
-        LoggerMessage.Define<string, string, string, string, double, string, double>(LogLevel.Information, new EventId(8115, nameof(LogDecisionCompleted)),
-            "🔍 [AUDIT-{DecisionId}] Decision completed for {Symbol}: Strategy={Strategy}, Intent={Intent}, Confidence={Confidence:F3}, Size={Size:F4}, Duration={Duration}ms");
+    private static readonly Action<ILogger, string, string, string, string, double, long, Exception?> LogDecisionCompleted =
+        LoggerMessage.Define<string, string, string, string, double, long>(LogLevel.Information, new EventId(8115, nameof(LogDecisionCompleted)),
+            "🔍 [AUDIT-{DecisionId}] Decision completed for {Symbol}: Strategy={Strategy}, Intent={Intent}, Confidence={Confidence:F3}, Duration={Duration}ms");
     
     private static readonly Action<ILogger, string, string, string, long, Exception?> LogCriticalDecisionFailure =
         LoggerMessage.Define<string, string, string, long>(LogLevel.Error, new EventId(8116, nameof(LogCriticalDecisionFailure)),
@@ -334,7 +334,7 @@ public sealed class DecisionFusionCoordinator
 
             // Audit log: Final decision with comprehensive details
             LogDecisionCompleted(_logger, decisionId, symbol, finalRec.StrategyName, finalRec.Intent.ToString(), 
-                finalRec.Confidence, combinedScore.ToString("F3"), (DateTime.UtcNow - startTime).TotalMilliseconds, null);
+                finalRec.Confidence, (long)(DateTime.UtcNow - startTime).TotalMilliseconds, null);
 
             return finalRec;
         }
