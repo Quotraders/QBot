@@ -824,9 +824,9 @@ public class TopstepXDataFeed : IDataFeed
         OnDataReceived?.Invoke(this, data);
     }
 
-    protected virtual void OnErrorEvent(Exception error)
+    protected virtual void OnErrorEvent(Exception exception)
     {
-        OnError?.Invoke(this, error);
+        OnError?.Invoke(this, exception);
     }
 }
 
@@ -885,8 +885,8 @@ public class BackupDataFeed : IDataFeed
         OnDataReceived?.Invoke(this, data);
     }
 
-    protected virtual void OnErrorEvent(Exception error)
+    protected virtual void OnErrorEvent(Exception exception)
     {
-        OnError?.Invoke(this, error);
+        OnError?.Invoke(this, exception);
     }
 }

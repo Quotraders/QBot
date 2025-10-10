@@ -20,8 +20,9 @@ internal sealed class SimpleTopstepAuthWrapper : ITopstepAuth, IAsyncDisposable
 {
     private readonly Auth.SimpleTopstepAuth _auth;
 
-    public SimpleTopstepAuthWrapper(HttpClient httpClient, ILogger<Auth.SimpleTopstepAuth> logger)
+    public SimpleTopstepAuthWrapper(HttpClient httpClient, ILoggerFactory loggerFactory)
     {
+        var logger = loggerFactory.CreateLogger<Auth.SimpleTopstepAuth>();
         _auth = new Auth.SimpleTopstepAuth(httpClient, logger);
     }
 
@@ -184,10 +185,10 @@ public static class AuthenticationServiceExtensions
         {
             var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
             var httpClient = httpClientFactory.CreateClient("Topstep");
-            var logger = serviceProvider.GetRequiredService<ILogger<BotCore.Auth.SimpleTopstepAuth>>();
+            var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
             
             // Create wrapper that implements ITopstepAuth interface
-            return new SimpleTopstepAuthWrapper(httpClient, logger);
+            return new SimpleTopstepAuthWrapper(httpClient, loggerFactory);
         });
 
         // Register HTTP client service as singleton using factory
