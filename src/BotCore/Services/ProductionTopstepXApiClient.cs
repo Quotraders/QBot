@@ -29,7 +29,7 @@ namespace BotCore.Services
                 if (end > start)
                 {
                     // Redact between start and end
-                    return endpoint.Substring(0, start) + "***" + endpoint.Substring(end);
+                    return string.Concat(endpoint.AsSpan(0, start), "***", endpoint.AsSpan(end));
                 }
             }
             // If unable to locate, or different structure just return original
@@ -185,7 +185,7 @@ namespace BotCore.Services
                     _logger.LogError(ex, "[API-CLIENT] HTTP error on request to {Endpoint}, Attempt {Attempt}/{MaxRetries}",
                         endpoint, attempt, maxRetries);
                     
-                    if (attempt == maxRetries)
+                    if (attempt >= maxRetries)
                         throw new HttpRequestException($"HTTP request to {endpoint} failed after {maxRetries} attempts", ex);
                 }
                 catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
@@ -193,7 +193,7 @@ namespace BotCore.Services
                     _logger.LogError(ex, "[API-CLIENT] Request timeout on {Endpoint}, Attempt {Attempt}/{MaxRetries}",
                         endpoint, attempt, maxRetries);
                     
-                    if (attempt == maxRetries)
+                    if (attempt >= maxRetries)
                         throw new TimeoutException($"Request to {endpoint} timed out after {maxRetries} attempts", ex);
                 }
 
@@ -256,7 +256,7 @@ namespace BotCore.Services
                     _logger.LogError(ex, "[API-CLIENT] HTTP error on POST request to {Endpoint}, Attempt {Attempt}/{MaxRetries}",
                         MaskAccountIdInEndpoint(endpoint), attempt, maxRetries);
                     
-                    if (attempt == maxRetries)
+                    if (attempt >= maxRetries)
                         throw new HttpRequestException($"POST request to {endpoint} failed after {maxRetries} attempts", ex);
                 }
                 catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
@@ -264,7 +264,7 @@ namespace BotCore.Services
                     _logger.LogError(ex, "[API-CLIENT] POST request timeout to {Endpoint}, Attempt {Attempt}/{MaxRetries}",
                         MaskAccountIdInEndpoint(endpoint), attempt, maxRetries);
                     
-                    if (attempt == maxRetries)
+                    if (attempt >= maxRetries)
                         throw new TimeoutException($"POST request to {endpoint} timed out after {maxRetries} attempts", ex);
                 }
                 catch (JsonException ex)
@@ -272,7 +272,7 @@ namespace BotCore.Services
                     _logger.LogError(ex, "[API-CLIENT] JSON deserialization error on POST to {Endpoint}, Attempt {Attempt}/{MaxRetries}",
                         MaskAccountIdInEndpoint(endpoint), attempt, maxRetries);
                     
-                    if (attempt == maxRetries)
+                    if (attempt >= maxRetries)
                         throw;
                 }
 

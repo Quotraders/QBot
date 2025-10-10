@@ -60,7 +60,7 @@ public class ProductionMonitoringService : IHealthCheck
             var performanceHealth = CheckTradingPerformanceHealth();
             healthChecks.Add(("Performance", performanceHealth.IsHealthy, performanceHealth.Message));
 
-            var overallHealthy = healthChecks.All(h => h.IsHealthy);
+            var overallHealthy = healthChecks.TrueForAll(h => h.IsHealthy);
             var status = overallHealthy ? HealthStatus.Healthy : HealthStatus.Degraded;
             
             var data = healthChecks.ToDictionary(h => h.Name, h => (object)new { IsHealthy = h.IsHealthy, Message = h.Message });

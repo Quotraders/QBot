@@ -138,7 +138,7 @@ public class EnhancedTradingBrainIntegration
             var env = CreateSampleEnv();
             var levels = CreateSampleLevels();
             var bars = CreateSampleBars();
-            var risk = CreateSampleRisk();
+            using var risk = CreateSampleRisk();
             
             var originalBrainDecision = await _tradingBrain.MakeIntelligentDecisionAsync(
                 symbol, env, levels, bars, risk, cancellationToken).ConfigureAwait(false);
@@ -205,7 +205,7 @@ public class EnhancedTradingBrainIntegration
                 var env = CreateSampleEnv();
                 var levels = CreateSampleLevels();
                 var bars = CreateSampleBars();
-                var risk = CreateSampleRisk();
+                using var risk = CreateSampleRisk();
                 
                 var originalBrainDecision = await _tradingBrain.MakeIntelligentDecisionAsync(
                     symbol, env, levels, bars, risk, cancellationToken).ConfigureAwait(false);
@@ -353,12 +353,10 @@ public class EnhancedTradingBrainIntegration
         }
         
         // Adjust based on price prediction strength
-        if (pricePrediction.Result is PriceDirectionPrediction pricePred)
+        if (pricePrediction.Result is PriceDirectionPrediction pricePred &&
+            pricePred.Direction != "Sideways" && pricePred.Probability > (double)ModerateConfidenceThreshold)
         {
-            if (pricePred.Direction != "Sideways" && pricePred.Probability > (double)ModerateConfidenceThreshold)
-            {
-                sizeMultiplier *= StrongDirectionalSizeBoost; // Slightly increase for strong directional bias
-            }
+            sizeMultiplier *= StrongDirectionalSizeBoost; // Slightly increase for strong directional bias
         }
         
         var enhancedSize = originalSize * sizeMultiplier;
@@ -658,14 +656,32 @@ public class EnhancedTradingBrainIntegration
     {
         // Create state vector for CVaR-PPO using available properties
         return new double[] { 
-            (double)decision.Confidence, // Decision confidence
-            (double)marketContext.CurrentPrice, // Current price
-            (double)marketContext.Volume, // Market volume
-            (double)marketContext.Volatility, // Volatility
+            decision.Confidence, // Decision confidence (already double)
+            (double)marketContext.CurrentPrice, // Current price (decimal to double)
+            (double)marketContext.Volume, // Market volume (decimal to double)
+            (double)marketContext.Volatility, // Volatility (decimal to double)
             // Use strategy as action encoding instead of Action property (which doesn't exist)
-            decision.StrategyId.Contains("S3", StringComparison.OrdinalIgnoreCase) ? 1.0 : 
-            decision.StrategyId.Contains("S6", StringComparison.OrdinalIgnoreCase) ? -1.0 : 0.0 // Strategy-based encoding
+            GetStrategyActionEncoding(decision.StrategyId) // Strategy-based encoding
         };
+    }
+
+    /// <summary>
+    /// Get strategy action encoding from strategy ID
+    /// </summary>
+    private static double GetStrategyActionEncoding(string strategyId)
+    {
+        if (strategyId.Contains("S3", StringComparison.OrdinalIgnoreCase))
+        {
+            return 1.0;
+        }
+        else if (strategyId.Contains("S6", StringComparison.OrdinalIgnoreCase))
+        {
+            return -1.0;
+        }
+        else
+        {
+            return 0.0;
+        }
     }
 
     /// <summary>

@@ -16,6 +16,8 @@ namespace BotCore.Services
     /// </summary>
     public class ZoneMarketDataBridge : IHostedService, IDisposable
     {
+        private const double Epsilon = 1e-10; // Tolerance for floating point comparisons
+        
         private readonly ILogger<ZoneMarketDataBridge> _logger;
         private readonly IServiceProvider _serviceProvider;
         private IEnhancedMarketDataFlowService? _marketDataService;
@@ -115,10 +117,6 @@ namespace BotCore.Services
             {
                 _logger.LogError(ex, "[ZONE-BRIDGE] Invalid arguments when processing market data for {Symbol}", symbol);
             }
-            catch (NullReferenceException ex)
-            {
-                _logger.LogError(ex, "[ZONE-BRIDGE] Null reference when processing market data for {Symbol}", symbol);
-            }
         }
 
         private void ProcessMarketData(MarketData marketData)
@@ -126,8 +124,8 @@ namespace BotCore.Services
             if (_zoneService == null) return;
 
             // If this is OHLCV bar data, feed to zone service
-            if (marketData.Open != 0 && marketData.High != 0 && 
-                marketData.Low != 0 && marketData.Close != 0)
+            if (Math.Abs(marketData.Open) > Epsilon && Math.Abs(marketData.High) > Epsilon && 
+                Math.Abs(marketData.Low) > Epsilon && Math.Abs(marketData.Close) > Epsilon)
             {
                 _zoneService.OnBar(
                     marketData.Symbol, 
@@ -141,7 +139,7 @@ namespace BotCore.Services
                 _logger.LogTrace("[ZONE-BRIDGE] Fed bar data to zone service: {Symbol} OHLCV", marketData.Symbol);
             }
             // If this is tick data with bid/ask, feed as tick
-            else if (marketData.Bid != 0 && marketData.Ask != 0)
+            else if (Math.Abs(marketData.Bid) > Epsilon && Math.Abs(marketData.Ask) > Epsilon)
             {
                 _zoneService.OnTick(
                     marketData.Symbol,

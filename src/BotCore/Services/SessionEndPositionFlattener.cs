@@ -168,7 +168,7 @@ namespace BotCore.Services
             _logger.LogWarning("🚨 [SESSION-FLATTEN] Session-end flatten triggered at {Time} ET", currentEt.ToString("HH:mm:ss", CultureInfo.InvariantCulture));
             
             // Get all currently open positions from PositionTrackingSystem
-            var positions = _positionTracker.GetAllPositions();
+            var positions = _positionTracker.AllPositions;
             var openPositions = positions.Values.Where(p => p.NetQuantity != 0).ToList();
             
             // Check if there are any positions to flatten

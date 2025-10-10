@@ -63,7 +63,7 @@ namespace TradingBot.BotCore.Services
                 
                 if (hasInfrastructure)
                 {
-                    _logger?.LogDebug("[BREADTH-FEED] Data available from {DataSource} - ready for breadth computation", _config?.DataSource ?? "Unknown");
+                    _logger!.LogDebug("[BREADTH-FEED] Data available from {DataSource} - ready for breadth computation", _config!.DataSource);
                     return true;
                 }
                 else
@@ -72,14 +72,9 @@ namespace TradingBot.BotCore.Services
                     return false;
                 }
             }
-            catch (NullReferenceException ex)
-            {
-                _logger.LogError(ex, "[BREADTH-AUDIT-VIOLATION] Infrastructure availability check failed - TRIGGERING HOLD + TELEMETRY");
-                return false;
-            }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[BREADTH-AUDIT-VIOLATION] Infrastructure availability check failed - TRIGGERING HOLD + TELEMETRY");
+                _logger?.LogError(ex, "[BREADTH-AUDIT-VIOLATION] Infrastructure availability check failed - TRIGGERING HOLD + TELEMETRY");
                 return false;
             }
         }
@@ -242,8 +237,7 @@ namespace TradingBot.BotCore.Services
             var hour = currentTime.Hour;
             
             // Market breadth tends to be stronger during active trading hours - ALL CONFIG-DRIVEN
-            decimal baseRatio = _config.BaseAdvanceDeclineRatio;
-            
+            decimal baseRatio;
             if (hour >= _config.UsMarketStartHour && hour <= _config.UsMarketEndHour) // US market hours from config
             {
                 baseRatio = _config.UsHoursAdvanceDeclineMultiplier; // Config-driven multiplier

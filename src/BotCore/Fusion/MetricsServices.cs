@@ -89,7 +89,7 @@ public sealed class ProductionMetrics : IMetrics
         {
             // Audit log: Telemetry failure - fail closed
             _logger.LogCritical(ex, "🚨 [AUDIT-FAIL-CLOSED] Critical telemetry failure for fusion metric {Name} - system hold required", name);
-            throw; // Fail-closed: propagate exception to trigger hold decision
+            throw new InvalidOperationException($"Critical telemetry failure for fusion metric '{name}' - fail-closed mode activated", ex);
         }
     }
 
@@ -133,7 +133,7 @@ public sealed class ProductionMetrics : IMetrics
         {
             // Audit log: Telemetry failure - fail closed
             _logger.LogCritical(ex, "🚨 [AUDIT-FAIL-CLOSED] Critical telemetry failure for fusion counter {Name} - system hold required", name);
-            throw; // Fail-closed: propagate exception to trigger hold decision
+            throw new InvalidOperationException($"Critical telemetry failure for fusion counter '{name}' - fail-closed mode activated", ex);
         }
     }
 
@@ -214,7 +214,7 @@ public sealed class ProductionMlrlMetricsService : IMlrlMetricsServiceForFusion
         {
             // Audit log: ML/RL telemetry failure - fail closed
             _logger.LogCritical(ex, "🚨 [AUDIT-FAIL-CLOSED] Critical ML/RL telemetry failure for metric {Name} - system hold required", name);
-            throw; // Fail-closed: propagate exception to trigger hold decision
+            throw new InvalidOperationException($"Critical ML/RL telemetry failure for metric '{name}' - fail-closed mode activated", ex);
         }
     }
 
@@ -258,7 +258,7 @@ public sealed class ProductionMlrlMetricsService : IMlrlMetricsServiceForFusion
         {
             // Audit log: ML/RL telemetry failure - fail closed
             _logger.LogCritical(ex, "🚨 [AUDIT-FAIL-CLOSED] Critical ML/RL telemetry failure for counter {Name} - system hold required", name);
-            throw; // Fail-closed: propagate exception to trigger hold decision
+            throw new InvalidOperationException($"Critical ML/RL telemetry failure for counter '{name}' - fail-closed mode activated", ex);
         }
     }
 

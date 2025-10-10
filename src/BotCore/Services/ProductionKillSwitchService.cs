@@ -23,7 +23,8 @@ public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, I
     private readonly Timer _periodicCheck;
     private volatile bool _disposed;
     
-    private static KillSwitchConfiguration? _staticConfig;
+    // Default kill file path for static method fallback
+    private const string DefaultKillFilePath = "kill.txt";
 
     // IKillSwitchWatcher implementation - for compatibility with legacy Safety module integrations
     public event EventHandler<KillSwitchToggledEventArgs>? KillSwitchToggled;
@@ -36,7 +37,6 @@ public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, I
     {
         _logger = logger;
         _config = config?.Value ?? throw new ArgumentNullException(nameof(config));
-        _staticConfig = _config; // Store for static methods
         
         // Validate configuration
         _config.Validate();
@@ -251,18 +251,21 @@ public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, I
 
     /// <summary>
     /// Check if kill file exists (for use by other services)
+    /// Uses default kill.txt file path when called statically
     /// </summary>
     public static bool IsKillSwitchActive()
     {
-        var config = _staticConfig;
-        if (config == null)
-        {
-            // Fallback to default behavior if config not available
-            return File.Exists("kill.txt");
-        }
-        
-        var killFilePath = ResolveKillFilePath(config.FilePath);
-        return File.Exists(killFilePath);
+        // Static method uses default kill file path
+        return File.Exists(DefaultKillFilePath);
+    }
+    
+    /// <summary>
+    /// Check if kill file exists using custom configuration
+    /// </summary>
+    public static bool IsKillSwitchActive(string killFilePath)
+    {
+        var resolvedPath = ResolveKillFilePath(killFilePath);
+        return File.Exists(resolvedPath);
     }
 
     /// <summary>

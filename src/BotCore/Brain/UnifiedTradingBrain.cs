@@ -288,6 +288,836 @@ namespace BotCore.Brain
         public int DecisionsToday { get; private set; }
         public decimal WinRateToday { get; private set; }
 
+        // LoggerMessage delegates for CA1848 compliance - High-value ML/Brain logging
+        private static readonly Action<ILogger, Exception?> LogBrainInitialized =
+            LoggerMessage.Define(LogLevel.Information, new EventId(1, nameof(LogBrainInitialized)),
+                "🧠 [UNIFIED-BRAIN] Initialized with direct CVaR-PPO injection - Ready to make intelligent trading decisions");
+        
+        private static readonly Action<ILogger, Exception?> LogLoadingModels =
+            LoggerMessage.Define(LogLevel.Information, new EventId(2, nameof(LogLoadingModels)),
+                "🚀 [UNIFIED-BRAIN] Loading all ML models...");
+        
+        private static readonly Action<ILogger, Exception?> LogCVarPPOInjected =
+            LoggerMessage.Define(LogLevel.Information, new EventId(3, nameof(LogCVarPPOInjected)),
+                "✅ [CVAR-PPO] Using direct injection from DI container");
+        
+        private static readonly Action<ILogger, Exception?> LogAllModelsLoaded =
+            LoggerMessage.Define(LogLevel.Information, new EventId(4, nameof(LogAllModelsLoaded)),
+                "✅ [UNIFIED-BRAIN] All models loaded successfully - Brain is ONLINE with production CVaR-PPO");
+        
+        private static readonly Action<ILogger, Exception?> LogModelFileNotFound =
+            LoggerMessage.Define(LogLevel.Error, new EventId(5, nameof(LogModelFileNotFound)),
+                "❌ [UNIFIED-BRAIN] Model file not found - Using fallback logic");
+        
+        private static readonly Action<ILogger, Exception?> LogModelDirectoryNotFound =
+            LoggerMessage.Define(LogLevel.Error, new EventId(6, nameof(LogModelDirectoryNotFound)),
+                "❌ [UNIFIED-BRAIN] Model directory not found - Using fallback logic");
+        
+        private static readonly Action<ILogger, Exception?> LogModelIOError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(7, nameof(LogModelIOError)),
+                "❌ [UNIFIED-BRAIN] I/O error loading models - Using fallback logic");
+        
+        private static readonly Action<ILogger, Exception?> LogModelAccessDenied =
+            LoggerMessage.Define(LogLevel.Error, new EventId(8, nameof(LogModelAccessDenied)),
+                "❌ [UNIFIED-BRAIN] Access denied loading models - Using fallback logic");
+        
+        private static readonly Action<ILogger, Exception?> LogModelInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(9, nameof(LogModelInvalidOperation)),
+                "❌ [UNIFIED-BRAIN] Invalid operation during model loading - Using fallback logic");
+        
+        private static readonly Action<ILogger, Exception?> LogModelInvalidArgument =
+            LoggerMessage.Define(LogLevel.Error, new EventId(10, nameof(LogModelInvalidArgument)),
+                "❌ [UNIFIED-BRAIN] Invalid argument for model loading - Using fallback logic");
+        
+        private static readonly Action<ILogger, string, Exception?> LogCalendarBlock =
+            LoggerMessage.Define<string>(LogLevel.Warning, new EventId(11, nameof(LogCalendarBlock)),
+                "📅 [CALENDAR-BLOCK] Cannot trade {Symbol} - event restriction active");
+        
+        private static readonly Action<ILogger, string, double, Exception?> LogHighImpactEvent =
+            LoggerMessage.Define<string, double>(LogLevel.Warning, new EventId(12, nameof(LogHighImpactEvent)),
+                "📅 [CALENDAR-BLOCK] High-impact event '{Event}' in {Minutes:F0} minutes - blocking trades");
+        
+        private static readonly Action<ILogger, string, double, Exception?> LogDecisionMade =
+            LoggerMessage.Define<string, double>(LogLevel.Information, new EventId(13, nameof(LogDecisionMade)),
+                "🎯 [DECISION] Made decision for {Symbol} in {ProcessingTime:F2}ms");
+        
+        private static readonly Action<ILogger, string, string, Exception?> LogStrategySelected =
+            LoggerMessage.Define<string, string>(LogLevel.Information, new EventId(14, nameof(LogStrategySelected)),
+                "🎯 [STRATEGY] Selected {Strategy} for {Symbol}");
+        
+        private static readonly Action<ILogger, Exception?> LogTrainingModelUpdate =
+            LoggerMessage.Define(LogLevel.Information, new EventId(15, nameof(LogTrainingModelUpdate)),
+                "🧠 [LEARNING] Updating models with recent decisions...");
+        
+        private static readonly Action<ILogger, int, Exception?> LogTrainingComplete =
+            LoggerMessage.Define<int>(LogLevel.Information, new EventId(16, nameof(LogTrainingComplete)),
+                "✅ [LEARNING] Training complete - processed {DecisionCount} decisions");
+        
+        private static readonly Action<ILogger, Exception?> LogTrainingError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(17, nameof(LogTrainingError)),
+                "❌ [LEARNING] Error during training update");
+        
+        private static readonly Action<ILogger, string, string, double, string, double, Exception?> LogBrainDecision =
+            LoggerMessage.Define<string, string, double, string, double>(
+                LogLevel.Information, new EventId(18, nameof(LogBrainDecision)),
+                "🧠 [BRAIN-DECISION] {Symbol}: Strategy={Strategy} ({Confidence:P1}), Direction={Direction} ({Probability:P1})");
+        
+        private static readonly Action<ILogger, string, Exception?> LogBotThinking =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(19, nameof(LogBotThinking)),
+                "💭 [BOT-THINKING] {Thinking}");
+        
+        private static readonly Action<ILogger, string, Exception?> LogBotCommentary =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(20, nameof(LogBotCommentary)),
+                "💬 [BOT-COMMENTARY] {Commentary}");
+        
+        private static readonly Action<ILogger, string, Exception?> LogDecisionInvalidOperation =
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(21, nameof(LogDecisionInvalidOperation)),
+                "❌ [UNIFIED-BRAIN] Invalid operation making decision for {Symbol}");
+        
+        private static readonly Action<ILogger, string, Exception?> LogDecisionInvalidArgument =
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(22, nameof(LogDecisionInvalidArgument)),
+                "❌ [UNIFIED-BRAIN] Invalid argument making decision for {Symbol}");
+        
+        private static readonly Action<ILogger, string, Exception?> LogDecisionTimeout =
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(23, nameof(LogDecisionTimeout)),
+                "❌ [UNIFIED-BRAIN] Timeout making decision for {Symbol}");
+        
+        private static readonly Action<ILogger, string, string, double, bool, double, int, Exception?> LogUnifiedLearning =
+            LoggerMessage.Define<string, string, double, bool, double, int>(
+                LogLevel.Information, new EventId(24, nameof(LogUnifiedLearning)),
+                "📚 [UNIFIED-LEARNING] {Symbol} {Strategy}: PnL={PnL:F2}, Correct={Correct}, WinRate={WinRate:P1}, TotalTrades={Total}, AllStrategiesUpdated=True");
+        
+        private static readonly Action<ILogger, string, Exception?> LogBotReflection =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(25, nameof(LogBotReflection)),
+                "🔮 [BOT-REFLECTION] {Reflection}");
+        
+        private static readonly Action<ILogger, string, Exception?> LogBotFailureAnalysis =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(26, nameof(LogBotFailureAnalysis)),
+                "❌ [BOT-FAILURE-ANALYSIS] {Analysis}");
+        
+        private static readonly Action<ILogger, string, Exception?> LogBotLearningReport =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(27, nameof(LogBotLearningReport)),
+                "📚 [BOT-LEARNING] {Report}");
+        
+        private static readonly Action<ILogger, Exception?> LogLearningInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(28, nameof(LogLearningInvalidOperation)),
+                "❌ [UNIFIED-LEARNING] Invalid operation during learning from result");
+        
+        private static readonly Action<ILogger, Exception?> LogLearningInvalidArgument =
+            LoggerMessage.Define(LogLevel.Error, new EventId(29, nameof(LogLearningInvalidArgument)),
+                "❌ [UNIFIED-LEARNING] Invalid argument during learning from result");
+        
+        private static readonly Action<ILogger, string, Exception?> LogLearningCommentary =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(30, nameof(LogLearningCommentary)),
+                "📚 [LEARNING-COMMENTARY] {Commentary}");
+        
+        private static readonly Action<ILogger, string, Exception?> LogRiskCommentary =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(31, nameof(LogRiskCommentary)),
+                "🧠 [RISK-COMMENTARY] {Commentary}");
+        
+        private static readonly Action<ILogger, string, Exception?> LogHistoricalPattern =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(32, nameof(LogHistoricalPattern)),
+                "🔍 [HISTORICAL-PATTERN] {Context}");
+        
+        private static readonly Action<ILogger, string, Exception?> LogMarketRegimeExplanation =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(33, nameof(LogMarketRegimeExplanation)),
+                "📈 [MARKET-REGIME] {Explanation}");
+        
+        private static readonly Action<ILogger, string, Exception?> LogStrategyConflict =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(34, nameof(LogStrategyConflict)),
+                "💬 [BOT-COMMENTARY] {Conflict}");
+        
+        private static readonly Action<ILogger, string, Exception?> LogStrategySelectionExplanation =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(35, nameof(LogStrategySelectionExplanation)),
+                "🧠 [STRATEGY-SELECTION] {Explanation}");
+        
+        private static readonly Action<ILogger, Exception?> LogMetaClassifierFallback =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(36, nameof(LogMetaClassifierFallback)),
+                "Meta classifier failed, using fallback");
+        
+        private static readonly Action<ILogger, Exception?> LogNeuralUcbFallback =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(37, nameof(LogNeuralUcbFallback)),
+                "Neural UCB failed, using fallback");
+        
+        private static readonly Action<ILogger, Exception?> LogLstmPredictionFallback =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(38, nameof(LogLstmPredictionFallback)),
+                "LSTM prediction failed, using fallback");
+        
+        private static readonly Action<ILogger, Exception?> LogThinkingError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(39, nameof(LogThinkingError)),
+                "❌ [BOT-THINKING] Error during AI thinking");
+        
+        private static readonly Action<ILogger, Exception?> LogReflectionError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(40, nameof(LogReflectionError)),
+                "❌ [BOT-REFLECTION] Error during AI reflection");
+        
+        // Additional high-value logging delegates for Round 10
+        private static readonly Action<ILogger, double, string, double, Exception?> LogDecisionDetails =
+            LoggerMessage.Define<double, string, double>(LogLevel.Information, new EventId(41, nameof(LogDecisionDetails)),
+                "  └─ Size={Size}x, Regime={Regime}, Time={Ms}ms");
+        
+        private static readonly Action<ILogger, Exception?> LogSnapshotInvalidOperation =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(42, nameof(LogSnapshotInvalidOperation)),
+                "⚠️ [SNAPSHOT] Failed to capture market snapshot - invalid operation");
+        
+        private static readonly Action<ILogger, Exception?> LogSnapshotArgumentException =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(43, nameof(LogSnapshotArgumentException)),
+                "⚠️ [SNAPSHOT] Failed to capture market snapshot - invalid argument");
+        
+        private static readonly Action<ILogger, Exception?> LogSnapshotIOException =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(44, nameof(LogSnapshotIOException)),
+                "⚠️ [SNAPSHOT] Failed to capture market snapshot - I/O error");
+        
+        private static readonly Action<ILogger, Exception?> LogContextGatherInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(45, nameof(LogContextGatherInvalidOperation)),
+                "❌ [BOT-CONTEXT] Error gathering current context - invalid operation");
+        
+        private static readonly Action<ILogger, Exception?> LogContextGatherArgumentException =
+            LoggerMessage.Define(LogLevel.Error, new EventId(46, nameof(LogContextGatherArgumentException)),
+                "❌ [BOT-CONTEXT] Error gathering current context - invalid argument");
+        
+        private static readonly Action<ILogger, string, double, Exception?> LogCrossLearningUpdate =
+            LoggerMessage.Define<string, double>(LogLevel.Debug, new EventId(47, nameof(LogCrossLearningUpdate)),
+                "🧠 [CROSS-LEARNING] Updated all strategies from {ExecutedStrategy} outcome: {Reward}");
+        
+        private static readonly Action<ILogger, Exception?> LogCrossLearningInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(48, nameof(LogCrossLearningInvalidOperation)),
+                "❌ [CROSS-LEARNING] Invalid operation updating all strategies");
+        
+        private static readonly Action<ILogger, Exception?> LogCrossLearningArgumentException =
+            LoggerMessage.Define(LogLevel.Error, new EventId(49, nameof(LogCrossLearningArgumentException)),
+                "❌ [CROSS-LEARNING] Invalid argument updating all strategies");
+
+        // Snapshot logging delegates (EventId 50-52)
+        private static readonly Action<ILogger, string, string, string, Exception?> LogSnapshotCaptured =
+            LoggerMessage.Define<string, string, string>(LogLevel.Trace, new EventId(50, nameof(LogSnapshotCaptured)),
+                "📸 [SNAPSHOT] Captured market snapshot for {Symbol}: {Strategy} {Direction}");
+
+        // Parameter tracking logging delegates (EventId 53-56)
+        private static readonly Action<ILogger, string, double, double, Exception?> LogParamTracked =
+            LoggerMessage.Define<string, double, double>(LogLevel.Trace, new EventId(53, nameof(LogParamTracked)),
+                "📊 [PARAM-TRACKING] Tracked parameter update for {Strategy}: old={OldReward:F3}, new={NewReward:F3}");
+
+        private static readonly Action<ILogger, Exception?> LogParamTrackInvalidOperation =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(54, nameof(LogParamTrackInvalidOperation)),
+                "⚠️ [PARAM-TRACKING] Failed to track parameter change - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogParamTrackIoError =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(55, nameof(LogParamTrackIoError)),
+                "⚠️ [PARAM-TRACKING] Failed to track parameter change - I/O error");
+
+        private static readonly Action<ILogger, Exception?> LogParamTrackAccessDenied =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(56, nameof(LogParamTrackAccessDenied)),
+                "⚠️ [PARAM-TRACKING] Failed to track parameter change - access denied");
+
+        // Risk commentary logging delegates (EventId 57-62)
+        private static readonly Action<ILogger, Exception?> LogRiskCommentaryStarted =
+            LoggerMessage.Define(LogLevel.Trace, new EventId(57, nameof(LogRiskCommentaryStarted)),
+                "🚀 [RISK-COMMENTARY] Started background analysis (async mode)");
+
+        private static readonly Action<ILogger, Exception?> LogRiskCommentaryMissingData =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(58, nameof(LogRiskCommentaryMissingData)),
+                "⚠️ [RISK-COMMENTARY] Skipping - missing price or ATR data");
+
+        private static readonly Action<ILogger, Exception?> LogRiskCommentaryInvalidOperation =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(59, nameof(LogRiskCommentaryInvalidOperation)),
+                "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogRiskCommentaryHttpError =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(60, nameof(LogRiskCommentaryHttpError)),
+                "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary - HTTP request failed");
+
+        private static readonly Action<ILogger, Exception?> LogRiskCommentaryTaskCancelled =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(61, nameof(LogRiskCommentaryTaskCancelled)),
+                "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary - task cancelled");
+
+        // Historical pattern logging delegates (EventId 63-65)
+        private static readonly Action<ILogger, Exception?> LogHistoricalPatternInvalidOperation =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(63, nameof(LogHistoricalPatternInvalidOperation)),
+                "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogHistoricalPatternInvalidArgument =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(64, nameof(LogHistoricalPatternInvalidArgument)),
+                "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions - invalid argument");
+
+        private static readonly Action<ILogger, Exception?> LogHistoricalPatternKeyNotFound =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(65, nameof(LogHistoricalPatternKeyNotFound)),
+                "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions - key not found");
+
+        // Learning commentary logging delegates (EventId 66-69)
+        private static readonly Action<ILogger, Exception?> LogLearningCommentaryStarted =
+            LoggerMessage.Define(LogLevel.Trace, new EventId(66, nameof(LogLearningCommentaryStarted)),
+                "🚀 [LEARNING-COMMENTARY] Started background explanation (async mode)");
+
+        private static readonly Action<ILogger, Exception?> LogLearningCommentaryInvalidOperation =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(67, nameof(LogLearningCommentaryInvalidOperation)),
+                "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogLearningCommentaryHttpError =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(68, nameof(LogLearningCommentaryHttpError)),
+                "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary - HTTP request failed");
+
+        private static readonly Action<ILogger, Exception?> LogLearningCommentaryTaskCancelled =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(69, nameof(LogLearningCommentaryTaskCancelled)),
+                "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary - task cancelled");
+
+        // TopStep compliance logging delegate (EventId 70)
+        private static readonly Action<ILogger, string, Exception?> LogTradingBlocked =
+            LoggerMessage.Define<string>(LogLevel.Warning, new EventId(70, nameof(LogTradingBlocked)),
+                "🛑 [TOPSTEP-COMPLIANCE] Trading blocked: {Reason}");
+
+        // Confidence threshold logging delegate (EventId 71)
+        private static readonly Action<ILogger, double, double, Exception?> LogConfidenceBelowThreshold =
+            LoggerMessage.Define<double, double>(LogLevel.Debug, new EventId(71, nameof(LogConfidenceBelowThreshold)),
+                "🎯 [CONFIDENCE] Below threshold {Threshold:P1}, confidence: {Confidence:P1}");
+
+        // CVaR-PPO action logging delegate (EventId 72)
+        private static readonly Action<ILogger, double, double, double, double, int, Exception?> LogCvarPpoAction =
+            LoggerMessage.Define<double, double, double, double, int>(LogLevel.Information, new EventId(72, nameof(LogCvarPpoAction)),
+                "🎯 [CVAR-PPO] Action={Action}, Prob={Prob:F3}, Value={Value:F3}, CVaR={CVaR:F3}, Contracts={Contracts}");
+
+        // CVaR-PPO error logging delegates (EventId 73-75)
+        private static readonly Action<ILogger, Exception?> LogCvarPpoInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(73, nameof(LogCvarPpoInvalidOperation)),
+                "CVaR-PPO position sizing failed - invalid operation, using TopStep compliance sizing");
+
+        private static readonly Action<ILogger, Exception?> LogCvarPpoInvalidArgument =
+            LoggerMessage.Define(LogLevel.Error, new EventId(74, nameof(LogCvarPpoInvalidArgument)),
+                "CVaR-PPO position sizing failed - invalid argument, using TopStep compliance sizing");
+
+        private static readonly Action<ILogger, Exception?> LogCvarPpoOnnxError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(75, nameof(LogCvarPpoOnnxError)),
+                "CVaR-PPO position sizing failed - ONNX runtime error, using TopStep compliance sizing");
+
+        // Position sizing logging delegates (EventId 76-77)
+        private static readonly Action<ILogger, double, Exception?> LogLegacyRlMultiplier =
+            LoggerMessage.Define<double>(LogLevel.Debug, new EventId(76, nameof(LogLegacyRlMultiplier)),
+                "📊 [LEGACY-RL] Using fallback RL multiplier: {Multiplier:F2}");
+
+        private static readonly Action<ILogger, string, double, decimal, int, decimal, Exception?> LogPositionSize =
+            LoggerMessage.Define<string, double, decimal, int, decimal>(LogLevel.Debug, new EventId(77, nameof(LogPositionSize)),
+                "📊 [POSITION-SIZE] {Symbol}: Confidence={Confidence:P1}, Drawdown={Drawdown:C}, Contracts={Contracts}, RiskAmount={Risk:C}");
+
+        // P&L tracking logging delegates (EventId 78-79)
+        private static readonly Action<ILogger, string, decimal, decimal, decimal, decimal, Exception?> LogPnlUpdate =
+            LoggerMessage.Define<string, decimal, decimal, decimal, decimal>(LogLevel.Information, new EventId(78, nameof(LogPnlUpdate)),
+                "💰 [PNL-UPDATE] Strategy={Strategy}, PnL={PnL:C}, DailyPnL={DailyPnL:C}, Drawdown={Drawdown:C}, Balance={Balance:C}");
+
+        private static readonly Action<ILogger, Exception?> LogDailyReset =
+            LoggerMessage.Define(LogLevel.Information, new EventId(79, nameof(LogDailyReset)),
+                "🌅 [DAILY-RESET] Daily P&L and drawdown reset for new trading day");
+
+        // Brain enhance logging delegates (EventId 80-83)
+        private static readonly Action<ILogger, string, int, string, Exception?> LogBrainEnhanceGenerated =
+            LoggerMessage.Define<string, int, string>(LogLevel.Debug, new EventId(80, nameof(LogBrainEnhanceGenerated)),
+                "🎯 [BRAIN-ENHANCE] {Symbol}: Generated {Count} AI-enhanced candidates from {Strategy}");
+
+        private static readonly Action<ILogger, Exception?> LogBrainEnhanceInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(81, nameof(LogBrainEnhanceInvalidOperation)),
+                "❌ [BRAIN-ENHANCE] Error generating enhanced candidates - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogBrainEnhanceInvalidArgument =
+            LoggerMessage.Define(LogLevel.Error, new EventId(82, nameof(LogBrainEnhanceInvalidArgument)),
+                "❌ [BRAIN-ENHANCE] Error generating enhanced candidates - invalid argument");
+
+        private static readonly Action<ILogger, Exception?> LogBrainEnhanceKeyNotFound =
+            LoggerMessage.Define(LogLevel.Error, new EventId(83, nameof(LogBrainEnhanceKeyNotFound)),
+                "❌ [BRAIN-ENHANCE] Error generating enhanced candidates - key not found");
+
+        // Strategy selection logging delegate (EventId 84)
+        private static readonly Action<ILogger, int, string, string, Exception?> LogStrategySelection =
+            LoggerMessage.Define<int, string, string>(LogLevel.Debug, new EventId(84, nameof(LogStrategySelection)),
+                "🧠 [STRATEGY-SELECTION] Hour={Hour}, Regime={Regime}, Available={Strategies}");
+
+        // Unified learning logging delegates (EventId 85-89)
+        private static readonly Action<ILogger, Exception?> LogUnifiedLearningStarting =
+            LoggerMessage.Define(LogLevel.Information, new EventId(85, nameof(LogUnifiedLearningStarting)),
+                "🔄 [UNIFIED-LEARNING] Starting unified learning update across all strategies...");
+
+        private static readonly Action<ILogger, Exception?> LogUnifiedLearningCompleted =
+            LoggerMessage.Define(LogLevel.Information, new EventId(86, nameof(LogUnifiedLearningCompleted)),
+                "✅ [UNIFIED-LEARNING] Completed unified learning update");
+
+        private static readonly Action<ILogger, Exception?> LogUnifiedLearningInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(87, nameof(LogUnifiedLearningInvalidOperation)),
+                "❌ [UNIFIED-LEARNING] Failed to update unified learning - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogUnifiedLearningIoError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(88, nameof(LogUnifiedLearningIoError)),
+                "❌ [UNIFIED-LEARNING] Failed to update unified learning - I/O error");
+
+        private static readonly Action<ILogger, Exception?> LogUnifiedLearningAccessDenied =
+            LoggerMessage.Define(LogLevel.Error, new EventId(89, nameof(LogUnifiedLearningAccessDenied)),
+                "❌ [UNIFIED-LEARNING] Failed to update unified learning - access denied");
+
+        private static readonly Action<ILogger, Exception?> LogUnifiedLearningInvalidArgument =
+            LoggerMessage.Define(LogLevel.Error, new EventId(90, nameof(LogUnifiedLearningInvalidArgument)),
+                "❌ [UNIFIED-LEARNING] Failed to update unified learning - invalid argument");
+
+        // Condition update logging delegate (EventId 91)
+        private static readonly Action<ILogger, int, string, Exception?> LogConditionUpdate =
+            LoggerMessage.Define<int, string>(LogLevel.Debug, new EventId(91, nameof(LogConditionUpdate)),
+                "🔄 [CONDITION-UPDATE] Removed {Count} unsuccessful conditions from {Strategy}");
+
+        // Cross-pollination logging delegate (EventId 92)
+        private static readonly Action<ILogger, int, string, Exception?> LogCrossPollination =
+            LoggerMessage.Define<int, string>(LogLevel.Information, new EventId(92, nameof(LogCrossPollination)),
+                "🌱 [CROSS-POLLINATION] Shared {Count} successful patterns from {BestStrategy} to other strategies");
+
+        // Gate4 validation logging (EventId 93-120)
+        private static readonly Action<ILogger, Exception?> LogGate4Start =
+            LoggerMessage.Define(LogLevel.Information, new EventId(93, nameof(LogGate4Start)),
+                "=== GATE 4: UNIFIED TRADING BRAIN MODEL RELOAD VALIDATION ===");
+
+        private static readonly Action<ILogger, string, Exception?> LogGate4NewModel =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(94, nameof(LogGate4NewModel)),
+                "New model: {NewPath}");
+
+        private static readonly Action<ILogger, string, Exception?> LogGate4CurrentModel =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(95, nameof(LogGate4CurrentModel)),
+                "Current model: {CurrentPath}");
+
+        private static readonly Action<ILogger, Exception?> LogGate4FeatureCheck =
+            LoggerMessage.Define(LogLevel.Information, new EventId(96, nameof(LogGate4FeatureCheck)),
+                "[1/4] Validating feature specification compatibility...");
+
+        private static readonly Action<ILogger, string, Exception?> LogGate4Failed =
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(97, nameof(LogGate4Failed)),
+                "✗ GATE 4 FAILED: {Reason}");
+
+        private static readonly Action<ILogger, Exception?> LogGate4FeatureMatch =
+            LoggerMessage.Define(LogLevel.Information, new EventId(98, nameof(LogGate4FeatureMatch)),
+                "  ✓ Feature specification matches");
+
+        private static readonly Action<ILogger, Exception?> LogGate4SanityCheck =
+            LoggerMessage.Define(LogLevel.Information, new EventId(99, nameof(LogGate4SanityCheck)),
+                "[2/4] Running sanity tests with deterministic dataset...");
+
+        private static readonly Action<ILogger, int, Exception?> LogGate4SanityVectors =
+            LoggerMessage.Define<int>(LogLevel.Information, new EventId(100, nameof(LogGate4SanityVectors)),
+                "  Loaded {Count} sanity test vectors");
+
+        private static readonly Action<ILogger, Exception?> LogGate4DistributionCheck =
+            LoggerMessage.Define(LogLevel.Information, new EventId(101, nameof(LogGate4DistributionCheck)),
+                "[3/4] Comparing prediction distributions...");
+
+        private static readonly Action<ILogger, double, Exception?> LogGate4DistributionValid =
+            LoggerMessage.Define<double>(LogLevel.Information, new EventId(102, nameof(LogGate4DistributionValid)),
+                "  ✓ Distribution divergence acceptable: {Divergence:F4}");
+
+        private static readonly Action<ILogger, Exception?> LogGate4DistributionSkip =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(103, nameof(LogGate4DistributionSkip)),
+                "  Current model not found - skipping distribution comparison (first deployment)");
+
+        private static readonly Action<ILogger, Exception?> LogGate4OutputCheck =
+            LoggerMessage.Define(LogLevel.Information, new EventId(104, nameof(LogGate4OutputCheck)),
+                "[4/4] Validating model outputs for NaN/Infinity...");
+
+        private static readonly Action<ILogger, Exception?> LogGate4OutputValid =
+            LoggerMessage.Define(LogLevel.Information, new EventId(105, nameof(LogGate4OutputValid)),
+                "  ✓ All outputs valid (no NaN/Infinity)");
+
+        private static readonly Action<ILogger, Exception?> LogGate4SimulationStart =
+            LoggerMessage.Define(LogLevel.Information, new EventId(106, nameof(LogGate4SimulationStart)),
+                "[5/5] Running historical replay simulation...");
+
+        private static readonly Action<ILogger, double, Exception?> LogGate4SimulationPassed =
+            LoggerMessage.Define<double>(LogLevel.Information, new EventId(107, nameof(LogGate4SimulationPassed)),
+                "  ✓ Simulation passed - drawdown ratio: {Ratio:F2}x");
+
+        private static readonly Action<ILogger, Exception?> LogGate4SimulationSkip =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(108, nameof(LogGate4SimulationSkip)),
+                "  Current model not found - skipping simulation (first deployment)");
+
+        private static readonly Action<ILogger, Exception?> LogGate4Passed =
+            LoggerMessage.Define(LogLevel.Information, new EventId(109, nameof(LogGate4Passed)),
+                "=== GATE 4 PASSED - Model validated for hot-reload ===");
+
+        private static readonly Action<ILogger, string, Exception?> LogGate4Exception =
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(110, nameof(LogGate4Exception)),
+                "Gate 4 validation error: {Message}");
+
+        private static readonly Action<ILogger, Exception?> LogGate4FileNotFound =
+            LoggerMessage.Define(LogLevel.Error, new EventId(111, nameof(LogGate4FileNotFound)),
+                "✗ GATE 4 FAILED: Model file not found during validation");
+
+        private static readonly Action<ILogger, Exception?> LogGate4OnnxError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(112, nameof(LogGate4OnnxError)),
+                "✗ GATE 4 FAILED: ONNX runtime error during model validation");
+
+        private static readonly Action<ILogger, Exception?> LogGate4InvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(113, nameof(LogGate4InvalidOperation)),
+                "✗ GATE 4 FAILED: Invalid operation during model validation");
+
+        private static readonly Action<ILogger, Exception?> LogGate4IOError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(114, nameof(LogGate4IOError)),
+                "✗ GATE 4 FAILED: I/O error during model validation");
+
+        private static readonly Action<ILogger, Exception?> LogFeatureSpecMissing =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(115, nameof(LogFeatureSpecMissing)),
+                "Feature specification not found - creating default");
+
+        private static readonly Action<ILogger, string, Exception?> LogValidationModelFileNotFound =
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(116, nameof(LogValidationModelFileNotFound)),
+                "Model file not found: {Path}");
+
+        private static readonly Action<ILogger, string, Exception?> LogValidationModelFileEmpty =
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(117, nameof(LogValidationModelFileEmpty)),
+                "Model file is empty: {Path}");
+
+        private static readonly Action<ILogger, long, Exception?> LogModelFileSize =
+            LoggerMessage.Define<long>(LogLevel.Information, new EventId(118, nameof(LogModelFileSize)),
+                "  Model file size: {Size} bytes");
+
+        private static readonly Action<ILogger, Exception?> LogFeatureValidationFileNotFound =
+            LoggerMessage.Define(LogLevel.Error, new EventId(119, nameof(LogFeatureValidationFileNotFound)),
+                "Feature specification validation failed - file not found");
+
+        private static readonly Action<ILogger, Exception?> LogFeatureValidationJsonError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(120, nameof(LogFeatureValidationJsonError)),
+                "Feature specification validation failed - invalid JSON");
+
+        private static readonly Action<ILogger, Exception?> LogFeatureValidationIOError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(121, nameof(LogFeatureValidationIOError)),
+                "Feature specification validation failed - I/O error");
+
+        private static readonly Action<ILogger, Exception?> LogFeatureValidationAccessDenied =
+            LoggerMessage.Define(LogLevel.Error, new EventId(122, nameof(LogFeatureValidationAccessDenied)),
+                "Feature specification validation failed - access denied");
+
+        private static readonly Action<ILogger, int, Exception?> LogSanityVectorsCached =
+            LoggerMessage.Define<int>(LogLevel.Information, new EventId(123, nameof(LogSanityVectorsCached)),
+                "  Loaded {Count} cached sanity test vectors");
+
+        private static readonly Action<ILogger, Exception?> LogSanityVectorsCacheFileNotFound =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(124, nameof(LogSanityVectorsCacheFileNotFound)),
+                "Failed to load cached sanity test vectors - file not found, generating new ones");
+
+        private static readonly Action<ILogger, Exception?> LogSanityVectorsCacheJsonError =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(125, nameof(LogSanityVectorsCacheJsonError)),
+                "Failed to load cached sanity test vectors - invalid JSON, generating new ones");
+
+        private static readonly Action<ILogger, Exception?> LogSanityVectorsCacheIOError =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(126, nameof(LogSanityVectorsCacheIOError)),
+                "Failed to load cached sanity test vectors - I/O error, generating new ones");
+
+        // Round 13: Additional LoggerMessage delegates for simulation and validation (EventId 127-158)
+        private static readonly Action<ILogger, int, Exception?> LogSanityVectorsCached2 =
+            LoggerMessage.Define<int>(LogLevel.Information, new EventId(127, nameof(LogSanityVectorsCached2)),
+                "  Cached {Count} sanity test vectors for future use");
+
+        private static readonly Action<ILogger, Exception?> LogCacheSanityVectorsIOError =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(128, nameof(LogCacheSanityVectorsIOError)),
+                "Failed to cache sanity test vectors - I/O error");
+
+        private static readonly Action<ILogger, Exception?> LogCacheSanityVectorsAccessDenied =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(129, nameof(LogCacheSanityVectorsAccessDenied)),
+                "Failed to cache sanity test vectors - access denied");
+
+        private static readonly Action<ILogger, Exception?> LogCacheSanityVectorsJsonError =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(130, nameof(LogCacheSanityVectorsJsonError)),
+                "Failed to cache sanity test vectors - JSON serialization error");
+
+        private static readonly Action<ILogger, double, double, Exception?> LogDistributionComparison =
+            LoggerMessage.Define<double, double>(LogLevel.Information, new EventId(131, nameof(LogDistributionComparison)),
+                "  Total Variation: {TV:F4}, KL Divergence: {KL:F4}");
+
+        private static readonly Action<ILogger, double, double, Exception?> LogTotalVariationExceeded =
+            LoggerMessage.Define<double, double>(LogLevel.Warning, new EventId(132, nameof(LogTotalVariationExceeded)),
+                "  Total variation {TV:F4} exceeds threshold {Max:F2}");
+
+        private static readonly Action<ILogger, double, double, Exception?> LogKLDivergenceExceeded =
+            LoggerMessage.Define<double, double>(LogLevel.Warning, new EventId(133, nameof(LogKLDivergenceExceeded)),
+                "  KL divergence {KL:F4} exceeds threshold {Max:F2}");
+
+        private static readonly Action<ILogger, Exception?> LogDistributionComparisonOnnxError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(134, nameof(LogDistributionComparisonOnnxError)),
+                "Distribution comparison failed - ONNX runtime error");
+
+        private static readonly Action<ILogger, Exception?> LogDistributionComparisonFileNotFound =
+            LoggerMessage.Define(LogLevel.Error, new EventId(135, nameof(LogDistributionComparisonFileNotFound)),
+                "Distribution comparison failed - model file not found");
+
+        private static readonly Action<ILogger, Exception?> LogDistributionComparisonInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(136, nameof(LogDistributionComparisonInvalidOperation)),
+                "Distribution comparison failed - invalid operation");
+
+        private static readonly Action<ILogger, string, Exception?> LogModelFileNotFoundValidation =
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(137, nameof(LogModelFileNotFoundValidation)),
+                "Model file not found: {Path}");
+
+        private static readonly Action<ILogger, Exception?> LogModelFileEmpty =
+            LoggerMessage.Define(LogLevel.Error, new EventId(138, nameof(LogModelFileEmpty)),
+                "Model file is empty");
+
+        private static readonly Action<ILogger, Exception?> LogModelOutputsValidated =
+            LoggerMessage.Define(LogLevel.Information, new EventId(139, nameof(LogModelOutputsValidated)),
+                "  Validated model outputs - no NaN/Infinity detected");
+
+        private static readonly Action<ILogger, Exception?> LogModelOutputsNaNInfinity =
+            LoggerMessage.Define(LogLevel.Error, new EventId(140, nameof(LogModelOutputsNaNInfinity)),
+                "Model produces NaN or Infinity values");
+
+        private static readonly Action<ILogger, Exception?> LogModelOutputValidationOnnxError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(141, nameof(LogModelOutputValidationOnnxError)),
+                "Model output validation failed - ONNX runtime error");
+
+        private static readonly Action<ILogger, Exception?> LogModelOutputValidationFileNotFound =
+            LoggerMessage.Define(LogLevel.Error, new EventId(142, nameof(LogModelOutputValidationFileNotFound)),
+                "Model output validation failed - model file not found");
+
+        private static readonly Action<ILogger, Exception?> LogModelOutputValidationInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(143, nameof(LogModelOutputValidationInvalidOperation)),
+                "Model output validation failed - invalid operation");
+
+        private static readonly Action<ILogger, int, Exception?> LogInsufficientHistoricalData =
+            LoggerMessage.Define<int>(LogLevel.Warning, new EventId(144, nameof(LogInsufficientHistoricalData)),
+                "  Insufficient historical data for simulation - using available {Count} bars");
+
+        private static readonly Action<ILogger, double, double, double, Exception?> LogDrawdownComparison =
+            LoggerMessage.Define<double, double, double>(LogLevel.Information, new EventId(145, nameof(LogDrawdownComparison)),
+                "  Baseline drawdown: {Current:F2}, New drawdown: {New:F2}, Ratio: {Ratio:F2}x");
+
+        private static readonly Action<ILogger, Exception?> LogHistoricalSimulationOnnxError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(146, nameof(LogHistoricalSimulationOnnxError)),
+                "Historical simulation failed - ONNX runtime error");
+
+        private static readonly Action<ILogger, Exception?> LogHistoricalSimulationFileNotFound =
+            LoggerMessage.Define(LogLevel.Error, new EventId(147, nameof(LogHistoricalSimulationFileNotFound)),
+                "Historical simulation failed - model file not found");
+
+        private static readonly Action<ILogger, Exception?> LogHistoricalSimulationInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(148, nameof(LogHistoricalSimulationInvalidOperation)),
+                "Historical simulation failed - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogLoadHistoricalDataFileNotFound =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(149, nameof(LogLoadHistoricalDataFileNotFound)),
+                "Failed to load cached historical data - file not found");
+
+        private static readonly Action<ILogger, Exception?> LogLoadHistoricalDataJsonError =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(150, nameof(LogLoadHistoricalDataJsonError)),
+                "Failed to load cached historical data - invalid JSON");
+
+        private static readonly Action<ILogger, Exception?> LogLoadHistoricalDataIOError =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(151, nameof(LogLoadHistoricalDataIOError)),
+                "Failed to load cached historical data - I/O error");
+
+        private static readonly Action<ILogger, Exception?> LogCacheHistoricalDataIOError =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(152, nameof(LogCacheHistoricalDataIOError)),
+                "Failed to cache historical data - I/O error");
+
+        private static readonly Action<ILogger, Exception?> LogCacheHistoricalDataAccessDenied =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(153, nameof(LogCacheHistoricalDataAccessDenied)),
+                "Failed to cache historical data - access denied");
+
+        private static readonly Action<ILogger, Exception?> LogCacheHistoricalDataJsonError =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(154, nameof(LogCacheHistoricalDataJsonError)),
+                "Failed to cache historical data - JSON serialization error");
+
+        private static readonly Action<ILogger, string, Exception?> LogFeatureSpecificationCreated =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(155, nameof(LogFeatureSpecificationCreated)),
+                "Created default feature specification at {Path}");
+
+        private static readonly Action<ILogger, string, Exception?> LogModelReloadStarting =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(156, nameof(LogModelReloadStarting)),
+                "🔄 [MODEL-RELOAD] Starting model reload: {NewModel}");
+
+        private static readonly Action<ILogger, string, Exception?> LogModelReloadValidationFailed =
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(157, nameof(LogModelReloadValidationFailed)),
+                "❌ [MODEL-RELOAD] Validation failed: {Reason}");
+
+        private static readonly Action<ILogger, string, Exception?> LogModelReloadBackupCreated =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(158, nameof(LogModelReloadBackupCreated)),
+                "💾 [MODEL-RELOAD] Backup created: {BackupPath}");
+
+        private static readonly Action<ILogger, Exception?> LogModelReloadSwapFailed =
+            LoggerMessage.Define(LogLevel.Error, new EventId(159, nameof(LogModelReloadSwapFailed)),
+                "❌ [MODEL-RELOAD] Model swap failed");
+
+        private static readonly Action<ILogger, Exception?> LogModelReloadSuccess =
+            LoggerMessage.Define(LogLevel.Information, new EventId(160, nameof(LogModelReloadSuccess)),
+                "✅ [MODEL-RELOAD] Model reloaded successfully");
+
+        private static readonly Action<ILogger, string, Exception?> LogModelReloadOldVersion =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(161, nameof(LogModelReloadOldVersion)),
+                "  Old version: {OldVersion}");
+
+        private static readonly Action<ILogger, string, Exception?> LogModelReloadNewVersion =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(162, nameof(LogModelReloadNewVersion)),
+                "  New version: {NewVersion}");
+
+        private static readonly Action<ILogger, Exception?> LogModelReloadOnnxError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(163, nameof(LogModelReloadOnnxError)),
+                "❌ [MODEL-RELOAD] ONNX runtime error during model reload");
+
+        private static readonly Action<ILogger, Exception?> LogModelReloadFileNotFound =
+            LoggerMessage.Define(LogLevel.Error, new EventId(164, nameof(LogModelReloadFileNotFound)),
+                "❌ [MODEL-RELOAD] Model file not found during reload");
+
+        private static readonly Action<ILogger, Exception?> LogModelReloadIOError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(165, nameof(LogModelReloadIOError)),
+                "❌ [MODEL-RELOAD] I/O error during model reload");
+
+        private static readonly Action<ILogger, Exception?> LogModelReloadInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(166, nameof(LogModelReloadInvalidOperation)),
+                "❌ [MODEL-RELOAD] Invalid operation during model reload");
+
+        private static readonly Action<ILogger, string, Exception?> LogBackupCreated =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(167, nameof(LogBackupCreated)),
+                "  Created backup: {BackupPath}");
+
+        private static readonly Action<ILogger, int, int, Exception?> LogUnifiedRetrainingDataExported =
+            LoggerMessage.Define<int, int>(LogLevel.Information, new EventId(168, nameof(LogUnifiedRetrainingDataExported)),
+                "✅ [UNIFIED-RETRAIN] Training data exported: {Count} decisions, {StrategyCount} strategies");
+
+        private static readonly Action<ILogger, Exception?> LogUnifiedRetrainingIOError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(169, nameof(LogUnifiedRetrainingIOError)),
+                "❌ [UNIFIED-RETRAIN] Unified model retraining failed - I/O error");
+
+        private static readonly Action<ILogger, Exception?> LogUnifiedRetrainingAccessDenied =
+            LoggerMessage.Define(LogLevel.Error, new EventId(170, nameof(LogUnifiedRetrainingAccessDenied)),
+                "❌ [UNIFIED-RETRAIN] Unified model retraining failed - access denied");
+
+        private static readonly Action<ILogger, Exception?> LogUnifiedRetrainingInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(171, nameof(LogUnifiedRetrainingInvalidOperation)),
+                "❌ [UNIFIED-RETRAIN] Unified model retraining failed - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogUnifiedRetrainingJsonError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(172, nameof(LogUnifiedRetrainingJsonError)),
+                "❌ [UNIFIED-RETRAIN] Unified model retraining failed - JSON error");
+
+        private static readonly Action<ILogger, Exception?> LogBotCommentaryWaitingInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(173, nameof(LogBotCommentaryWaitingInvalidOperation)),
+                "❌ [BOT-COMMENTARY] Error explaining why waiting - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogBotCommentaryWaitingHttpError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(174, nameof(LogBotCommentaryWaitingHttpError)),
+                "❌ [BOT-COMMENTARY] Error explaining why waiting - HTTP request failed");
+
+        private static readonly Action<ILogger, Exception?> LogBotCommentaryWaitingTaskCancelled =
+            LoggerMessage.Define(LogLevel.Error, new EventId(175, nameof(LogBotCommentaryWaitingTaskCancelled)),
+                "❌ [BOT-COMMENTARY] Error explaining why waiting - task cancelled");
+
+        private static readonly Action<ILogger, Exception?> LogBotCommentaryConfidenceInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(176, nameof(LogBotCommentaryConfidenceInvalidOperation)),
+                "❌ [BOT-COMMENTARY] Error explaining high confidence - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogBotCommentaryConfidenceHttpError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(177, nameof(LogBotCommentaryConfidenceHttpError)),
+                "❌ [BOT-COMMENTARY] Error explaining high confidence - HTTP request failed");
+
+        private static readonly Action<ILogger, Exception?> LogBotCommentaryConfidenceTaskCancelled =
+            LoggerMessage.Define(LogLevel.Error, new EventId(178, nameof(LogBotCommentaryConfidenceTaskCancelled)),
+                "❌ [BOT-COMMENTARY] Error explaining high confidence - task cancelled");
+
+        private static readonly Action<ILogger, Exception?> LogBotCommentaryConflictInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(179, nameof(LogBotCommentaryConflictInvalidOperation)),
+                "❌ [BOT-COMMENTARY] Error explaining strategy conflict - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogBotCommentaryConflictHttpError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(180, nameof(LogBotCommentaryConflictHttpError)),
+                "❌ [BOT-COMMENTARY] Error explaining strategy conflict - HTTP request failed");
+
+        private static readonly Action<ILogger, Exception?> LogBotCommentaryConflictTaskCancelled =
+            LoggerMessage.Define(LogLevel.Error, new EventId(181, nameof(LogBotCommentaryConflictTaskCancelled)),
+                "❌ [BOT-COMMENTARY] Error explaining strategy conflict - task cancelled");
+
+        private static readonly Action<ILogger, Exception?> LogFailureAnalysisInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(182, nameof(LogFailureAnalysisInvalidOperation)),
+                "❌ [BOT-FAILURE-ANALYSIS] Error analyzing trade failure - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogFailureAnalysisHttpError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(183, nameof(LogFailureAnalysisHttpError)),
+                "❌ [BOT-FAILURE-ANALYSIS] Error analyzing trade failure - HTTP request failed");
+
+        private static readonly Action<ILogger, Exception?> LogFailureAnalysisTaskCancelled =
+            LoggerMessage.Define(LogLevel.Error, new EventId(184, nameof(LogFailureAnalysisTaskCancelled)),
+                "❌ [BOT-FAILURE-ANALYSIS] Error analyzing trade failure - task cancelled");
+
+        private static readonly Action<ILogger, Exception?> LogStrategySelectionExplanationInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(185, nameof(LogStrategySelectionExplanationInvalidOperation)),
+                "❌ [STRATEGY-SELECTION] Error explaining strategy selection - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogStrategySelectionExplanationHttpError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(186, nameof(LogStrategySelectionExplanationHttpError)),
+                "❌ [STRATEGY-SELECTION] Error explaining strategy selection - HTTP request failed");
+
+        private static readonly Action<ILogger, Exception?> LogStrategySelectionExplanationTaskCancelled =
+            LoggerMessage.Define(LogLevel.Error, new EventId(187, nameof(LogStrategySelectionExplanationTaskCancelled)),
+                "❌ [STRATEGY-SELECTION] Error explaining strategy selection - task cancelled");
+
+        private static readonly Action<ILogger, Exception?> LogMarketRegimeExplanationInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(188, nameof(LogMarketRegimeExplanationInvalidOperation)),
+                "❌ [MARKET-REGIME] Error explaining market regime - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogMarketRegimeExplanationHttpError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(189, nameof(LogMarketRegimeExplanationHttpError)),
+                "❌ [MARKET-REGIME] Error explaining market regime - HTTP request failed");
+
+        private static readonly Action<ILogger, Exception?> LogMarketRegimeExplanationTaskCancelled =
+            LoggerMessage.Define(LogLevel.Error, new EventId(190, nameof(LogMarketRegimeExplanationTaskCancelled)),
+                "❌ [MARKET-REGIME] Error explaining market regime - task cancelled");
+
+        private static readonly Action<ILogger, Exception?> LogLearningExplanationInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(191, nameof(LogLearningExplanationInvalidOperation)),
+                "❌ [BOT-LEARNING] Error explaining learning update - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogLearningExplanationHttpError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(192, nameof(LogLearningExplanationHttpError)),
+                "❌ [BOT-LEARNING] Error explaining learning update - HTTP request failed");
+
+        private static readonly Action<ILogger, Exception?> LogLearningExplanationTaskCancelled =
+            LoggerMessage.Define(LogLevel.Error, new EventId(193, nameof(LogLearningExplanationTaskCancelled)),
+                "❌ [BOT-LEARNING] Error explaining learning update - task cancelled");
+
+        private static readonly Action<ILogger, Exception?> LogBrainShuttingDown =
+            LoggerMessage.Define(LogLevel.Information, new EventId(194, nameof(LogBrainShuttingDown)),
+                "🧠 [UNIFIED-BRAIN] Shutting down...");
+
+        private static readonly Action<ILogger, int, decimal, Exception?> LogBrainStatisticsSaved =
+            LoggerMessage.Define<int, decimal>(LogLevel.Information, new EventId(195, nameof(LogBrainStatisticsSaved)),
+                "📊 [UNIFIED-BRAIN] Statistics saved: {Decisions} decisions, {WinRate:P1} win rate");
+
+        private static readonly Action<ILogger, Exception?> LogBrainStatisticsSaveIOError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(196, nameof(LogBrainStatisticsSaveIOError)),
+                "❌ [UNIFIED-BRAIN] Error saving statistics - I/O error");
+
+        private static readonly Action<ILogger, Exception?> LogBrainStatisticsSaveAccessDenied =
+            LoggerMessage.Define(LogLevel.Error, new EventId(197, nameof(LogBrainStatisticsSaveAccessDenied)),
+                "❌ [UNIFIED-BRAIN] Error saving statistics - access denied");
+
+        private static readonly Action<ILogger, Exception?> LogBrainStatisticsSaveJsonError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(198, nameof(LogBrainStatisticsSaveJsonError)),
+                "❌ [UNIFIED-BRAIN] Error saving statistics - JSON serialization error");
+
+        private static readonly Action<ILogger, Exception?> LogBrainDisposeInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(199, nameof(LogBrainDisposeInvalidOperation)),
+                "❌ [UNIFIED-BRAIN] Error disposing managed resources - invalid operation");
+
+        private static readonly Action<ILogger, string, Exception?> LogModelRestoredFromBackup =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(200, nameof(LogModelRestoredFromBackup)),
+                "  Restored model from backup: {BackupPath}");
+
+        private static readonly Action<ILogger, string, string, Exception?> LogAtomicSwapCompleted =
+            LoggerMessage.Define<string, string>(LogLevel.Information, new EventId(201, nameof(LogAtomicSwapCompleted)),
+                "  Atomic swap completed: {Old} → {New}");
+
+        private static readonly Action<ILogger, Exception?> LogAtomicSwapIOError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(202, nameof(LogAtomicSwapIOError)),
+                "  Atomic swap failed - I/O error");
+
+        private static readonly Action<ILogger, Exception?> LogAtomicSwapAccessDenied =
+            LoggerMessage.Define(LogLevel.Error, new EventId(203, nameof(LogAtomicSwapAccessDenied)),
+                "  Atomic swap failed - access denied");
+
+        private static readonly Action<ILogger, Exception?> LogAtomicSwapInvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(204, nameof(LogAtomicSwapInvalidOperation)),
+                "  Atomic swap failed - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogUnifiedRetrainingStarting =
+            LoggerMessage.Define(LogLevel.Information, new EventId(205, nameof(LogUnifiedRetrainingStarting)),
+                "🔄 [UNIFIED-RETRAIN] Starting unified model retraining across all strategies...");
+
         public UnifiedTradingBrain(
             ILogger<UnifiedTradingBrain> logger,
             IMLMemoryManager memoryManager,
@@ -332,8 +1162,17 @@ namespace BotCore.Brain
             try
             {
                 var neuralNetwork = new OnnxNeuralNetwork(onnxLoader, neuralNetworkLogger, runtimeMode, "models/strategy_selection.onnx");
-                tempSelector = new NeuralUcbBandit(neuralNetwork);
-                _strategySelector = tempSelector;
+                try
+                {
+                    tempSelector = new NeuralUcbBandit(neuralNetwork);
+                    _strategySelector = tempSelector;
+                }
+                catch
+                {
+                    // Dispose neuralNetwork if NeuralUcbBandit constructor fails
+                    neuralNetwork.Dispose();
+                    throw;
+                }
                 
                 // Initialize confidence network for model confidence prediction
                 tempConfidenceNet = new OnnxNeuralNetwork(onnxLoader, neuralNetworkLogger, runtimeMode, "models/confidence_prediction.onnx");
@@ -341,13 +1180,13 @@ namespace BotCore.Brain
             }
             catch
             {
-                // Dispose networks if initialization fails
+                // Dispose selector if second network creation fails (selector owns neuralNetwork)
                 tempSelector?.Dispose();
                 tempConfidenceNet?.Dispose();
                 throw;
             }
             
-            _logger.LogInformation("🧠 [UNIFIED-BRAIN] Initialized with direct CVaR-PPO injection - Ready to make intelligent trading decisions");
+            LogBrainInitialized(_logger, null);
         }
 
         /// <summary>
@@ -358,14 +1197,14 @@ namespace BotCore.Brain
         {
             try
             {
-                _logger.LogInformation("🚀 [UNIFIED-BRAIN] Loading all ML models...");
+                LogLoadingModels(_logger, null);
 
                 // Load LSTM for price prediction - use your real trained model
                 _lstmPricePredictor = await _memoryManager.LoadModelAsync<object>(
                     "models/rl_model.onnx", "v1").ConfigureAwait(false);
                 
                 // CVaR-PPO is already injected and initialized via DI container
-                _logger.LogInformation("✅ [CVAR-PPO] Using direct injection from DI container");
+                LogCVarPPOInjected(_logger, null);
                 
                 // Load meta classifier for market regime - use your test CVaR model
                 _metaClassifier = await _memoryManager.LoadModelAsync<object>(
@@ -376,36 +1215,36 @@ namespace BotCore.Brain
                     "models/rl_model.onnx", "v1").ConfigureAwait(false);
 
                 IsInitialized = true;
-                _logger.LogInformation("✅ [UNIFIED-BRAIN] All models loaded successfully - Brain is ONLINE with production CVaR-PPO");
+                LogAllModelsLoaded(_logger, null);
             }
             catch (FileNotFoundException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Model file not found - Using fallback logic");
+                LogModelFileNotFound(_logger, ex);
                 IsInitialized = false; // Will use rule-based fallbacks
             }
             catch (DirectoryNotFoundException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Model directory not found - Using fallback logic");
+                LogModelDirectoryNotFound(_logger, ex);
                 IsInitialized = false; // Will use rule-based fallbacks
             }
             catch (IOException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] I/O error loading models - Using fallback logic");
+                LogModelIOError(_logger, ex);
                 IsInitialized = false; // Will use rule-based fallbacks
             }
             catch (UnauthorizedAccessException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Access denied loading models - Using fallback logic");
+                LogModelAccessDenied(_logger, ex);
                 IsInitialized = false; // Will use rule-based fallbacks
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Invalid operation during model loading - Using fallback logic");
+                LogModelInvalidOperation(_logger, ex);
                 IsInitialized = false; // Will use rule-based fallbacks
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Invalid argument for model loading - Using fallback logic");
+                LogModelInvalidArgument(_logger, ex);
                 IsInitialized = false; // Will use rule-based fallbacks
             }
         }
@@ -449,7 +1288,7 @@ namespace BotCore.Brain
                     
                     if (isRestricted)
                     {
-                        _logger.LogWarning("📅 [CALENDAR-BLOCK] Cannot trade {Symbol} - event restriction active", symbol);
+                        LogCalendarBlock(_logger, symbol, null);
                         return CreateNoTradeDecision(symbol, "Economic event restriction", startTime);
                     }
                     
@@ -465,8 +1304,7 @@ namespace BotCore.Brain
                     {
                         var nextEvent = highImpactEvents[0];
                         var minutesUntil = (nextEvent.ScheduledTime - DateTime.UtcNow).TotalMinutes;
-                        _logger.LogWarning("📅 [CALENDAR-BLOCK] High-impact event '{Event}' in {Minutes:F0} minutes - blocking trades", 
-                            nextEvent.Name, minutesUntil);
+                        LogHighImpactEvent(_logger, nextEvent.Name, minutesUntil, null);
                         return CreateNoTradeDecision(symbol, $"{nextEvent.Name} approaching", startTime);
                     }
                 }
@@ -519,10 +1357,9 @@ namespace BotCore.Brain
 
                 DecisionsToday++;
                 
-                _logger.LogInformation("🧠 [BRAIN-DECISION] {Symbol}: Strategy={Strategy} ({Confidence:P1}), " +
-                    "Direction={Direction} ({Probability:P1}), Size={Size:F2}x, Regime={Regime}, Time={Ms:F0}ms",
-                    symbol, optimalStrategy.SelectedStrategy, optimalStrategy.Confidence,
-                    priceDirection.Direction, priceDirection.Probability, optimalSize, marketRegime, decision.ProcessingTimeMs);
+                LogBrainDecision(_logger, symbol, optimalStrategy.SelectedStrategy, (double)optimalStrategy.Confidence,
+                    priceDirection.Direction.ToString(), (double)priceDirection.Probability, null);
+                LogDecisionDetails(_logger, (double)optimalSize, marketRegime.ToString(), decision.ProcessingTimeMs, null);
 
                 // AI bot thinking - explain decision before taking trade
                 if (_ollamaClient != null && (Environment.GetEnvironmentVariable("BOT_THINKING_ENABLED") == "true"))
@@ -530,7 +1367,7 @@ namespace BotCore.Brain
                     var thinking = await ThinkAboutDecisionAsync(decision).ConfigureAwait(false);
                     if (!string.IsNullOrEmpty(thinking))
                     {
-                        _logger.LogInformation("💭 [BOT-THINKING] {Thinking}", thinking);
+                        LogBotThinking(_logger, thinking, null);
                     }
                 }
 
@@ -543,7 +1380,7 @@ namespace BotCore.Brain
                         var commentary = await ExplainWhyWaitingAsync(context, optimalStrategy, priceDirection).ConfigureAwait(false);
                         if (!string.IsNullOrEmpty(commentary))
                         {
-                            _logger.LogInformation("💬 [BOT-COMMENTARY] {Commentary}", commentary);
+                            LogBotCommentary(_logger, commentary, null);
                         }
                     }
                     // Check for high confidence (using MLConfigurationService to replace hardcoded 0.7)
@@ -552,7 +1389,7 @@ namespace BotCore.Brain
                         var commentary = await ExplainConfidenceAsync(decision, context).ConfigureAwait(false);
                         if (!string.IsNullOrEmpty(commentary))
                         {
-                            _logger.LogInformation("💬 [BOT-COMMENTARY] {Commentary}", commentary);
+                            LogBotCommentary(_logger, commentary, null);
                         }
                     }
                 }
@@ -634,20 +1471,19 @@ namespace BotCore.Brain
                             size: (int)decision.OptimalPositionMultiplier
                         );
                         _snapshotStore.StoreSnapshot(snapshot);
-                        _logger.LogTrace("📸 [SNAPSHOT] Captured market snapshot for {Symbol}: {Strategy} {Direction}", 
-                            symbol, decision.RecommendedStrategy, decision.PriceDirection);
+                        LogSnapshotCaptured(_logger, symbol, decision.RecommendedStrategy, decision.PriceDirection.ToString(), null);
                     }
                     catch (InvalidOperationException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [SNAPSHOT] Failed to capture market snapshot - invalid operation");
+                        LogSnapshotInvalidOperation(_logger, ex);
                     }
                     catch (ArgumentException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [SNAPSHOT] Failed to capture market snapshot - invalid argument");
+                        LogSnapshotArgumentException(_logger, ex);
                     }
                     catch (IOException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [SNAPSHOT] Failed to capture market snapshot - I/O error");
+                        LogSnapshotIOException(_logger, ex);
                     }
                 }
 
@@ -655,17 +1491,17 @@ namespace BotCore.Brain
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Invalid operation making decision for {Symbol}", symbol);
+                LogDecisionInvalidOperation(_logger, symbol, ex);
                 return CreateFallbackDecision(symbol, env, levels, bars, risk);
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Invalid argument making decision for {Symbol}", symbol);
+                LogDecisionInvalidArgument(_logger, symbol, ex);
                 return CreateFallbackDecision(symbol, env, levels, bars, risk);
             }
             catch (TimeoutException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Timeout making decision for {Symbol}", symbol);
+                LogDecisionTimeout(_logger, symbol, ex);
                 return CreateFallbackDecision(symbol, env, levels, bars, risk);
             }
         }
@@ -736,9 +1572,7 @@ namespace BotCore.Brain
                     _lastModelUpdate = DateTime.UtcNow;
                 }
 
-                _logger.LogInformation("📚 [UNIFIED-LEARNING] {Symbol} {Strategy}: PnL={PnL:F2}, Correct={Correct}, " +
-                    "WinRate={WinRate:P1}, TotalTrades={Total}, AllStrategiesUpdated=True",
-                    symbol, strategy, pnl, wasCorrect, WinRateToday, perf.TotalTrades);
+                LogUnifiedLearning(_logger, symbol, strategy, (double)pnl, wasCorrect, (double)WinRateToday, perf.TotalTrades, null);
 
                 // AI bot reflection - reflect on completed trade
                 if (_ollamaClient != null && (Environment.GetEnvironmentVariable("BOT_REFLECTION_ENABLED") == "true"))
@@ -746,7 +1580,7 @@ namespace BotCore.Brain
                     var reflection = await ReflectOnOutcomeAsync(symbol, strategy, pnl, wasCorrect, holdTime).ConfigureAwait(false);
                     if (!string.IsNullOrEmpty(reflection))
                     {
-                        _logger.LogInformation("🔮 [BOT-REFLECTION] {Reflection}", reflection);
+                        LogBotReflection(_logger, reflection, null);
                     }
                 }
 
@@ -765,7 +1599,7 @@ namespace BotCore.Brain
                         
                         if (!string.IsNullOrEmpty(failureAnalysis))
                         {
-                            _logger.LogInformation("❌ [BOT-FAILURE-ANALYSIS] {Analysis}", failureAnalysis);
+                            LogBotFailureAnalysis(_logger, failureAnalysis, null);
                         }
                     }
                 }
@@ -780,17 +1614,17 @@ namespace BotCore.Brain
                     
                     if (!string.IsNullOrEmpty(learningReport))
                     {
-                        _logger.LogInformation("📚 [BOT-LEARNING] {Report}", learningReport);
+                        LogBotLearningReport(_logger, learningReport, null);
                     }
                 }
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Invalid operation during learning from result");
+                LogLearningInvalidOperation(_logger, ex);
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Invalid argument during learning from result");
+                LogLearningInvalidArgument(_logger, ex);
             }
         }
         
@@ -838,20 +1672,19 @@ namespace BotCore.Brain
                                 outcomePnl: reward,
                                 wasCorrect: wasCorrect
                             );
-                            _logger.LogTrace("📊 [PARAM-TRACKING] Tracked parameter update for {Strategy}: old={OldReward:F3}, new={NewReward:F3}", 
-                                strategy, reward, crossLearningReward);
+                            LogParamTracked(_logger, strategy, (double)reward, (double)crossLearningReward, null);
                         }
                         catch (InvalidOperationException ex)
                         {
-                            _logger.LogWarning(ex, "⚠️ [PARAM-TRACKING] Failed to track parameter change - invalid operation");
+                            LogParamTrackInvalidOperation(_logger, ex);
                         }
                         catch (IOException ex)
                         {
-                            _logger.LogWarning(ex, "⚠️ [PARAM-TRACKING] Failed to track parameter change - I/O error");
+                            LogParamTrackIoError(_logger, ex);
                         }
                         catch (UnauthorizedAccessException ex)
                         {
-                            _logger.LogWarning(ex, "⚠️ [PARAM-TRACKING] Failed to track parameter change - access denied");
+                            LogParamTrackAccessDenied(_logger, ex);
                         }
                     }
                     
@@ -859,16 +1692,15 @@ namespace BotCore.Brain
                     UpdateStrategyOptimalConditions(strategy, context, crossLearningReward > BaseConfidenceThreshold);
                 }
                 
-                _logger.LogDebug("🧠 [CROSS-LEARNING] Updated all strategies from {ExecutedStrategy} outcome: {Reward:F3}", 
-                    executedStrategy, reward);
+                LogCrossLearningUpdate(_logger, executedStrategy, (double)reward, null);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [CROSS-LEARNING] Invalid operation updating all strategies");
+                LogCrossLearningInvalidOperation(_logger, ex);
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "❌ [CROSS-LEARNING] Invalid argument updating all strategies");
+                LogCrossLearningArgumentException(_logger, ex);
             }
         }
         
@@ -926,12 +1758,12 @@ namespace BotCore.Brain
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-CONTEXT] Error gathering current context - invalid operation");
+                LogContextGatherInvalidOperation(_logger, ex);
                 return "Context unavailable";
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-CONTEXT] Error gathering current context - invalid argument");
+                LogContextGatherArgumentException(_logger, ex);
                 return "Context unavailable";
             }
         }
@@ -968,7 +1800,7 @@ namespace BotCore.Brain
                             {
                                 // Fire-and-forget: Start analysis in background, continue trading immediately
                                 _riskCommentary.AnalyzeRiskFireAndForget(decision.Symbol, currentPrice, atr);
-                                _logger.LogTrace("🚀 [RISK-COMMENTARY] Started background analysis (async mode)");
+                                LogRiskCommentaryStarted(_logger, null);
                             }
                             else
                             {
@@ -978,26 +1810,26 @@ namespace BotCore.Brain
                                     
                                 if (!string.IsNullOrEmpty(riskContext))
                                 {
-                                    _logger.LogInformation("🧠 [RISK-COMMENTARY] {Commentary}", riskContext);
+                                    LogRiskCommentary(_logger, riskContext, null);
                                 }
                             }
                         }
                         else
                         {
-                            _logger.LogWarning("⚠️ [RISK-COMMENTARY] Skipping - missing price or ATR data");
+                            LogRiskCommentaryMissingData(_logger, null);
                         }
                     }
                     catch (InvalidOperationException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary - invalid operation");
+                        LogRiskCommentaryInvalidOperation(_logger, ex);
                     }
                     catch (HttpRequestException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary - HTTP request failed");
+                        LogRiskCommentaryHttpError(_logger, ex);
                     }
                     catch (TaskCanceledException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary - task cancelled");
+                        LogRiskCommentaryTaskCancelled(_logger, ex);
                     }
                 }
                 
@@ -1086,21 +1918,21 @@ namespace BotCore.Brain
                             historicalContext = await _historicalPatterns.ExplainSimilarConditionsAsync(analysis).ConfigureAwait(false);
                             if (!string.IsNullOrEmpty(historicalContext))
                             {
-                                _logger.LogInformation("🔍 [HISTORICAL-PATTERN] {Context}", historicalContext);
+                                LogHistoricalPattern(_logger, historicalContext, null);
                             }
                         }
                     }
                     catch (InvalidOperationException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions - invalid operation");
+                        LogHistoricalPatternInvalidOperation(_logger, ex);
                     }
                     catch (ArgumentException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions - invalid argument");
+                        LogHistoricalPatternInvalidArgument(_logger, ex);
                     }
                     catch (KeyNotFoundException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions - key not found");
+                        LogHistoricalPatternKeyNotFound(_logger, ex);
                     }
                 }
                 
@@ -1122,22 +1954,22 @@ Current context: {currentContext}
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-THINKING] Error during AI thinking - invalid operation");
+                LogThinkingError(_logger, ex);
                 return string.Empty;
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-THINKING] Error during AI thinking - HTTP request failed");
+                LogThinkingError(_logger, ex);
                 return string.Empty;
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-THINKING] Error during AI thinking - task cancelled");
+                LogThinkingError(_logger, ex);
                 return string.Empty;
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-THINKING] Error during AI thinking - invalid argument");
+                LogThinkingError(_logger, ex);
                 return string.Empty;
             }
         }
@@ -1189,7 +2021,7 @@ Current context: {currentContext}
                         {
                             // Fire-and-forget: Start explanation in background, continue immediately
                             _learningCommentary.ExplainRecentAdaptationsFireAndForget(lookbackMinutes);
-                            _logger.LogTrace("🚀 [LEARNING-COMMENTARY] Started background explanation (async mode)");
+                            LogLearningCommentaryStarted(_logger, null);
                         }
                         else
                         {
@@ -1198,21 +2030,21 @@ Current context: {currentContext}
                             
                             if (!string.IsNullOrEmpty(learningContext))
                             {
-                                _logger.LogInformation("📚 [LEARNING-COMMENTARY] {Commentary}", learningContext);
+                                LogLearningCommentary(_logger, learningContext, null);
                             }
                         }
                     }
                     catch (InvalidOperationException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary - invalid operation");
+                        LogLearningCommentaryInvalidOperation(_logger, ex);
                     }
                     catch (HttpRequestException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary - HTTP request failed");
+                        LogLearningCommentaryHttpError(_logger, ex);
                     }
                     catch (TaskCanceledException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary - task cancelled");
+                        LogLearningCommentaryTaskCancelled(_logger, ex);
                     }
                 }
                 
@@ -1231,22 +2063,22 @@ Reason closed: {reason}
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-REFLECTION] Error during AI reflection - invalid operation");
+                LogReflectionError(_logger, ex);
                 return string.Empty;
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-REFLECTION] Error during AI reflection - HTTP request failed");
+                LogReflectionError(_logger, ex);
                 return string.Empty;
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-REFLECTION] Error during AI reflection - task cancelled");
+                LogReflectionError(_logger, ex);
                 return string.Empty;
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-REFLECTION] Error during AI reflection - invalid argument");
+                LogReflectionError(_logger, ex);
                 return string.Empty;
             }
         }
@@ -1360,7 +2192,7 @@ Reason closed: {reason}
                         var explanation = await ExplainMarketRegimeAsync(detectedRegime, context).ConfigureAwait(false);
                         if (!string.IsNullOrEmpty(explanation))
                         {
-                            _logger.LogInformation("📈 [MARKET-REGIME] {Explanation}", explanation);
+                            LogMarketRegimeExplanation(_logger, explanation, null);
                         }
                     });
                 }
@@ -1369,17 +2201,17 @@ Reason closed: {reason}
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Meta classifier invalid operation, using fallback");
+                LogMetaClassifierFallback(_logger, ex);
                 return Task.FromResult(MarketRegime.Normal);
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning(ex, "Meta classifier invalid arguments, using fallback");
+                LogMetaClassifierFallback(_logger, ex);
                 return Task.FromResult(MarketRegime.Normal);
             }
             catch (TimeoutException ex)
             {
-                _logger.LogWarning(ex, "Meta classifier timeout, using fallback");
+                LogMetaClassifierFallback(_logger, ex);
                 return Task.FromResult(MarketRegime.Normal);
             }
         }
@@ -1426,7 +2258,7 @@ Reason closed: {reason}
                         var conflictExplanation = await ExplainConflictAsync(allScores, context).ConfigureAwait(false);
                         if (!string.IsNullOrEmpty(conflictExplanation))
                         {
-                            _logger.LogInformation("💬 [BOT-COMMENTARY] {Conflict}", conflictExplanation);
+                            LogStrategyConflict(_logger, conflictExplanation, null);
                         }
                     }
                     else
@@ -1434,7 +2266,7 @@ Reason closed: {reason}
                         var explanation = await ExplainStrategySelectionAsync(selection.SelectedArm, allScores, context).ConfigureAwait(false);
                         if (!string.IsNullOrEmpty(explanation))
                         {
-                            _logger.LogInformation("🧠 [STRATEGY-SELECTION] {Explanation}", explanation);
+                            LogStrategySelectionExplanation(_logger, explanation, null);
                         }
                     }
                 }
@@ -1443,7 +2275,7 @@ Reason closed: {reason}
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Neural UCB invalid operation, using fallback");
+                LogNeuralUcbFallback(_logger, ex);
                 
                 // Fallback: time-based strategy selection from your existing logic
                 var hour = context.TimeOfDay.Hours;
@@ -1531,7 +2363,7 @@ Reason closed: {reason}
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "LSTM prediction failed - invalid operation, using fallback");
+                LogLstmPredictionFallback(_logger, ex);
                 return Task.FromResult(new PricePrediction
                 {
                     Direction = PriceDirection.Sideways,
@@ -1542,7 +2374,7 @@ Reason closed: {reason}
             }
             catch (OnnxRuntimeException ex)
             {
-                _logger.LogWarning(ex, "LSTM prediction failed - ONNX runtime error, using fallback");
+                LogLstmPredictionFallback(_logger, ex);
                 return Task.FromResult(new PricePrediction
                 {
                     Direction = PriceDirection.Sideways,
@@ -1553,7 +2385,7 @@ Reason closed: {reason}
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning(ex, "LSTM prediction failed - invalid argument, using fallback");
+                LogLstmPredictionFallback(_logger, ex);
                 return Task.FromResult(new PricePrediction
                 {
                     Direction = PriceDirection.Sideways,
@@ -1574,7 +2406,7 @@ Reason closed: {reason}
             var (canTrade, reason, _) = ShouldStopTrading();
             if (!canTrade)
             {
-                _logger.LogWarning("🛑 [TOPSTEP-COMPLIANCE] Trading blocked: {Reason}", reason);
+                LogTradingBlocked(_logger, reason, null);
                 return 0m; // No position if compliance violated
             }
 
@@ -1595,8 +2427,7 @@ Reason closed: {reason}
             var confidence = Math.Max(strategy.Confidence, prediction.Probability);
             if (confidence < (decimal)TopStepConfig.ConfidenceThreshold)
             {
-                _logger.LogDebug("🎯 [CONFIDENCE] Below threshold {Threshold:P1}, confidence: {Confidence:P1}", 
-                    TopStepConfig.ConfidenceThreshold, confidence);
+                LogConfidenceBelowThreshold(_logger, TopStepConfig.ConfidenceThreshold, (double)confidence, null);
                 return 0m; // No trade if confidence too low
             }
 
@@ -1673,22 +2504,22 @@ Reason closed: {reason}
                     
                     contracts = Math.Max(0, Math.Min(riskAdjustedContracts, maxContracts));
                     
-                    _logger.LogInformation("🎯 [CVAR-PPO] Action={Action}, Prob={Prob:F3}, Value={Value:F3}, CVaR={CVaR:F3}, Contracts={Contracts}", 
-                        actionResult.Action, actionResult.ActionProbability, actionResult.ValueEstimate, actionResult.CVaREstimate, contracts);
+                    LogCvarPpoAction(_logger, actionResult.Action, actionResult.ActionProbability, 
+                        actionResult.ValueEstimate, actionResult.CVaREstimate, contracts, null);
                 }
                 catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "CVaR-PPO position sizing failed - invalid operation, using TopStep compliance sizing");
+                    LogCvarPpoInvalidOperation(_logger, ex);
                     // contracts remains unchanged - use TopStep compliance sizing
                 }
                 catch (ArgumentException ex)
                 {
-                    _logger.LogError(ex, "CVaR-PPO position sizing failed - invalid argument, using TopStep compliance sizing");
+                    LogCvarPpoInvalidArgument(_logger, ex);
                     // contracts remains unchanged - use TopStep compliance sizing
                 }
                 catch (OnnxRuntimeException ex)
                 {
-                    _logger.LogError(ex, "CVaR-PPO position sizing failed - ONNX runtime error, using TopStep compliance sizing");
+                    LogCvarPpoOnnxError(_logger, ex);
                     // contracts remains unchanged - use TopStep compliance sizing
                 }
             }
@@ -1706,12 +2537,10 @@ Reason closed: {reason}
                 ).ConfigureAwait(false);
                 
                 contracts = (int)(contracts * Math.Clamp(rlMultiplier, TopStepConfig.MinRlMultiplier, TopStepConfig.MaxRlMultiplier));
-                _logger.LogDebug("📊 [LEGACY-RL] Using fallback RL multiplier: {Multiplier:F2}", rlMultiplier);
+                LogLegacyRlMultiplier(_logger, (double)rlMultiplier, null);
             }
 
-            _logger.LogDebug("📊 [POSITION-SIZE] {Symbol}: Confidence={Confidence:P1}, Drawdown={Drawdown:C}, " +
-                "Contracts={Contracts}, RiskAmount={Risk:C}", 
-                instrument, confidence, _currentDrawdown, contracts, riskAmount);
+            LogPositionSize(_logger, instrument, (double)confidence, _currentDrawdown, contracts, riskAmount, null);
 
             return contracts; // Return actual contract count, not multiplier
         }
@@ -1756,9 +2585,7 @@ Reason closed: {reason}
             if (_dailyPnl < 0)
                 _currentDrawdown = Math.Max(_currentDrawdown, Math.Abs(_dailyPnl));
             
-            _logger.LogInformation("💰 [PNL-UPDATE] Strategy={Strategy}, PnL={PnL:C}, DailyPnL={DailyPnL:C}, " +
-                "Drawdown={Drawdown:C}, Balance={Balance:C}", 
-                strategy, pnl, _dailyPnl, _currentDrawdown, _accountBalance);
+            LogPnlUpdate(_logger, strategy, pnl, _dailyPnl, _currentDrawdown, _accountBalance, null);
         }
 
         /// <summary>
@@ -1770,7 +2597,7 @@ Reason closed: {reason}
             _currentDrawdown = 0;
             _lastResetDate = DateTime.UtcNow.Date;
             
-            _logger.LogInformation("🌅 [DAILY-RESET] Daily P&L and drawdown reset for new trading day");
+            LogDailyReset(_logger, null);
         }
 
         private void CheckAndResetDaily()
@@ -1841,28 +2668,27 @@ Reason closed: {reason}
                     enhancedCandidates.Add(enhancedCandidate);
                 }
                 
-                _logger.LogDebug("🎯 [BRAIN-ENHANCE] {Symbol}: Generated {Count} AI-enhanced candidates from {Strategy}",
-                    symbol, enhancedCandidates.Count, strategySelection.SelectedStrategy);
+                LogBrainEnhanceGenerated(_logger, symbol, enhancedCandidates.Count, strategySelection.SelectedStrategy, null);
                 
                 return Task.FromResult<IReadOnlyList<Candidate>>(enhancedCandidates);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BRAIN-ENHANCE] Error generating enhanced candidates - invalid operation");
+                LogBrainEnhanceInvalidOperation(_logger, ex);
                 
                 // Fallback to original AllStrategies logic
                 return Task.FromResult(AllStrategies.generate_candidates(symbol, env, levels, bars, risk));
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "❌ [BRAIN-ENHANCE] Error generating enhanced candidates - invalid argument");
+                LogBrainEnhanceInvalidArgument(_logger, ex);
                 
                 // Fallback to original AllStrategies logic
                 return Task.FromResult(AllStrategies.generate_candidates(symbol, env, levels, bars, risk));
             }
             catch (KeyNotFoundException ex)
             {
-                _logger.LogError(ex, "❌ [BRAIN-ENHANCE] Error generating enhanced candidates - key not found");
+                LogBrainEnhanceKeyNotFound(_logger, ex);
                 
                 // Fallback to original AllStrategies logic
                 return Task.FromResult(AllStrategies.generate_candidates(symbol, env, levels, bars, risk));
@@ -1993,8 +2819,7 @@ Reason closed: {reason}
                 availableStrategies = timeBasedStrategies.ToList();
             }
             
-            _logger.LogDebug("🧠 [STRATEGY-SELECTION] Hour={Hour}, Regime={Regime}, Available={Strategies}", 
-                hour, regime, string.Join(",", availableStrategies));
+            LogStrategySelection(_logger, hour, regime.ToString(), string.Join(",", availableStrategies), null);
             
             return availableStrategies;
         }
@@ -2125,7 +2950,7 @@ Reason closed: {reason}
             _ = cancellationToken; // Reserved for future async operations
             try
             {
-                _logger.LogInformation("🔄 [UNIFIED-LEARNING] Starting unified learning update across all strategies...");
+                LogUnifiedLearningStarting(_logger, null);
                 
                 // Analyze performance patterns across all strategies
                 var performanceAnalysis = AnalyzeStrategyPerformance();
@@ -2136,23 +2961,23 @@ Reason closed: {reason}
                 // Cross-pollinate successful patterns between strategies
                 await CrossPollinateStrategyPatternsAsync().ConfigureAwait(false);
                 
-                _logger.LogInformation("✅ [UNIFIED-LEARNING] Completed unified learning update");
+                LogUnifiedLearningCompleted(_logger, null);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Failed to update unified learning - invalid operation");
+                LogUnifiedLearningInvalidOperation(_logger, ex);
             }
             catch (IOException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Failed to update unified learning - I/O error");
+                LogUnifiedLearningIoError(_logger, ex);
             }
             catch (UnauthorizedAccessException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Failed to update unified learning - access denied");
+                LogUnifiedLearningAccessDenied(_logger, ex);
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Failed to update unified learning - invalid argument");
+                LogUnifiedLearningInvalidArgument(_logger, ex);
             }
         }
         
@@ -2200,8 +3025,7 @@ Reason closed: {reason}
                             conditions.Remove(condition);
                         }
                         
-                        _logger.LogDebug("🔄 [CONDITION-UPDATE] Removed {Count} unsuccessful conditions from {Strategy}", 
-                            unsuccessfulConditions.Count, strategy);
+                        LogConditionUpdate(_logger, unsuccessfulConditions.Count, strategy, null);
                     }
                 }
                 else if (metrics.WinRate > TopStepConfig.HighPerformanceWinRateThreshold) // High performing strategy
@@ -2247,8 +3071,7 @@ Reason closed: {reason}
                 }
             }
             
-            _logger.LogInformation("🌱 [CROSS-POLLINATION] Shared {Count} successful patterns from {BestStrategy} to other strategies", 
-                successfulConditions.Count, bestStrategy);
+            LogCrossPollination(_logger, successfulConditions.Count, bestStrategy, null);
         }
         
         private void UpdateStrategyPerformance(string strategy, MarketContext context, bool wasCorrect, decimal pnl, TimeSpan holdTime)
@@ -2456,28 +3279,28 @@ Reason closed: {reason}
         {
             try
             {
-                _logger.LogInformation("=== GATE 4: UNIFIED TRADING BRAIN MODEL RELOAD VALIDATION ===");
-                _logger.LogInformation("New model: {NewPath}", newModelPath);
-                _logger.LogInformation("Current model: {CurrentPath}", currentModelPath);
+                LogGate4Start(_logger, null);
+                LogGate4NewModel(_logger, newModelPath, null);
+                LogGate4CurrentModel(_logger, currentModelPath, null);
 
                 // Check 1: Feature specification compatibility
-                _logger.LogInformation("[1/4] Validating feature specification compatibility...");
+                LogGate4FeatureCheck(_logger, null);
                 var featureCheckPassed = await ValidateFeatureSpecificationAsync(newModelPath, cancellationToken).ConfigureAwait(false);
                 if (!featureCheckPassed)
                 {
                     var reason = "Feature specification mismatch - new model expects different input features";
-                    _logger.LogError("✗ GATE 4 FAILED: {Reason}", reason);
+                    LogGate4Failed(_logger, reason, null);
                     return (false, reason);
                 }
-                _logger.LogInformation("  ✓ Feature specification matches");
+                LogGate4FeatureMatch(_logger, null);
 
                 // Check 2: Sanity test with deterministic dataset
-                _logger.LogInformation("[2/4] Running sanity tests with deterministic dataset...");
+                LogGate4SanityCheck(_logger, null);
                 var sanityTestVectors = LoadOrGenerateSanityTestVectors(_gate4Config.SanityTestVectors);
-                _logger.LogInformation("  Loaded {Count} sanity test vectors", sanityTestVectors.Count);
+                LogGate4SanityVectors(_logger, sanityTestVectors.Count, null);
 
                 // Check 3: Prediction distribution comparison
-                _logger.LogInformation("[3/4] Comparing prediction distributions...");
+                LogGate4DistributionCheck(_logger, null);
                 if (File.Exists(currentModelPath))
                 {
                     var (distributionValid, divergence) = await ComparePredictionDistributionsAsync(
@@ -2486,68 +3309,68 @@ Reason closed: {reason}
                     if (!distributionValid)
                     {
                         var reason = $"Prediction distribution divergence too high: {divergence:F4} > 0.20";
-                        _logger.LogError("✗ GATE 4 FAILED: {Reason}", reason);
+                        LogGate4Failed(_logger, reason, null);
                         return (false, reason);
                     }
-                    _logger.LogInformation("  ✓ Distribution divergence acceptable: {Divergence:F4}", divergence);
+                    LogGate4DistributionValid(_logger, divergence, null);
                 }
                 else
                 {
-                    _logger.LogWarning("  Current model not found - skipping distribution comparison (first deployment)");
+                    LogGate4DistributionSkip(_logger, null);
                 }
 
                 // Check 4: NaN/Infinity validation
-                _logger.LogInformation("[4/4] Validating model outputs for NaN/Infinity...");
+                LogGate4OutputCheck(_logger, null);
                 var outputValidationPassed = await ValidateModelOutputsAsync(newModelPath, sanityTestVectors, cancellationToken).ConfigureAwait(false);
                 if (!outputValidationPassed)
                 {
                     var reason = "Model produces NaN or Infinity values - unstable model";
-                    _logger.LogError("✗ GATE 4 FAILED: {Reason}", reason);
+                    LogGate4Failed(_logger, reason, null);
                     return (false, reason);
                 }
-                _logger.LogInformation("  ✓ All outputs valid (no NaN/Infinity)");
+                LogGate4OutputValid(_logger, null);
 
                 // Check 5: Historical replay simulation with drawdown check
                 if (File.Exists(currentModelPath))
                 {
-                    _logger.LogInformation("[5/5] Running historical replay simulation...");
+                    LogGate4SimulationStart(_logger, null);
                     var (simulationPassed, drawdownRatio) = await RunHistoricalSimulationAsync(
                         currentModelPath, newModelPath, cancellationToken).ConfigureAwait(false);
                     
                     if (!simulationPassed)
                     {
                         var reason = $"Simulation drawdown ratio too high: {drawdownRatio:F2}x > 2.0x baseline";
-                        _logger.LogError("✗ GATE 4 FAILED: {Reason}", reason);
+                        LogGate4Failed(_logger, reason, null);
                         return (false, reason);
                     }
-                    _logger.LogInformation("  ✓ Simulation passed - drawdown ratio: {Ratio:F2}x", drawdownRatio);
+                    LogGate4SimulationPassed(_logger, drawdownRatio, null);
                 }
                 else
                 {
-                    _logger.LogWarning("  Current model not found - skipping simulation (first deployment)");
+                    LogGate4SimulationSkip(_logger, null);
                 }
 
-                _logger.LogInformation("=== GATE 4 PASSED - Model validated for hot-reload ===");
+                LogGate4Passed(_logger, null);
                 return (true, "All validation checks passed");
             }
             catch (FileNotFoundException ex)
             {
-                _logger.LogError(ex, "✗ GATE 4 FAILED: Model file not found during validation");
+                LogGate4FileNotFound(_logger, ex);
                 return (false, $"Validation exception: {ex.Message}");
             }
             catch (OnnxRuntimeException ex)
             {
-                _logger.LogError(ex, "✗ GATE 4 FAILED: ONNX runtime error during model validation");
+                LogGate4OnnxError(_logger, ex);
                 return (false, $"Validation exception: {ex.Message}");
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "✗ GATE 4 FAILED: Invalid operation during model validation");
+                LogGate4InvalidOperation(_logger, ex);
                 return (false, $"Validation exception: {ex.Message}");
             }
             catch (IOException ex)
             {
-                _logger.LogError(ex, "✗ GATE 4 FAILED: I/O error during model validation");
+                LogGate4IOError(_logger, ex);
                 return (false, $"Validation exception: {ex.Message}");
             }
         }
@@ -2560,7 +3383,7 @@ Reason closed: {reason}
                 var featureSpecPath = Path.Combine("config", "feature_specification.json");
                 if (!File.Exists(featureSpecPath))
                 {
-                    _logger.LogWarning("Feature specification not found - creating default");
+                    LogFeatureSpecMissing(_logger, null);
                     await CreateDefaultFeatureSpecificationAsync(featureSpecPath, cancellationToken).ConfigureAwait(false);
                 }
 
@@ -2571,38 +3394,38 @@ Reason closed: {reason}
                 // Full ONNX metadata inspection would require Microsoft.ML.OnnxRuntime
                 if (!File.Exists(modelPath))
                 {
-                    _logger.LogError("Model file not found: {Path}", modelPath);
+                    LogValidationModelFileNotFound(_logger, modelPath, null);
                     return false;
                 }
 
                 var fileInfo = new FileInfo(modelPath);
                 if (fileInfo.Length == 0)
                 {
-                    _logger.LogError("Model file is empty: {Path}", modelPath);
+                    LogValidationModelFileEmpty(_logger, modelPath, null);
                     return false;
                 }
 
-                _logger.LogInformation("  Model file size: {Size} bytes", fileInfo.Length);
+                LogModelFileSize(_logger, fileInfo.Length, null);
                 return true;
             }
             catch (FileNotFoundException ex)
             {
-                _logger.LogError(ex, "Feature specification validation failed - file not found");
+                LogFeatureValidationFileNotFound(_logger, ex);
                 return false;
             }
             catch (JsonException ex)
             {
-                _logger.LogError(ex, "Feature specification validation failed - invalid JSON");
+                LogFeatureValidationJsonError(_logger, ex);
                 return false;
             }
             catch (IOException ex)
             {
-                _logger.LogError(ex, "Feature specification validation failed - I/O error");
+                LogFeatureValidationIOError(_logger, ex);
                 return false;
             }
             catch (UnauthorizedAccessException ex)
             {
-                _logger.LogError(ex, "Feature specification validation failed - access denied");
+                LogFeatureValidationAccessDenied(_logger, ex);
                 return false;
             }
         }
@@ -2621,22 +3444,22 @@ Reason closed: {reason}
                     var cached = JsonSerializer.Deserialize<List<float[]>>(json);
                     if (cached != null && cached.Count >= count)
                     {
-                        _logger.LogInformation("  Loaded {Count} cached sanity test vectors", count);
+                        LogSanityVectorsCached(_logger, count, null);
                         return cached.Take(count).ToList();
                     }
                 }
             }
             catch (FileNotFoundException ex)
             {
-                _logger.LogWarning(ex, "Failed to load cached sanity test vectors - file not found, generating new ones");
+                LogSanityVectorsCacheFileNotFound(_logger, ex);
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "Failed to load cached sanity test vectors - invalid JSON, generating new ones");
+                LogSanityVectorsCacheJsonError(_logger, ex);
             }
             catch (IOException ex)
             {
-                _logger.LogWarning(ex, "Failed to load cached sanity test vectors - I/O error, generating new ones");
+                LogSanityVectorsCacheIOError(_logger, ex);
             }
 
             // Generate deterministic test vectors
@@ -2668,19 +3491,19 @@ Reason closed: {reason}
                 Directory.CreateDirectory(cacheDir);
                 var json = JsonSerializer.Serialize(vectors, CachedJsonOptions);
                 File.WriteAllText(cachePath, json);
-                _logger.LogInformation("  Cached {Count} sanity test vectors for future use", count);
+                LogSanityVectorsCached2(_logger, count, null);
             }
             catch (IOException ex)
             {
-                _logger.LogWarning(ex, "Failed to cache sanity test vectors - I/O error");
+                LogCacheSanityVectorsIOError(_logger, ex);
             }
             catch (UnauthorizedAccessException ex)
             {
-                _logger.LogWarning(ex, "Failed to cache sanity test vectors - access denied");
+                LogCacheSanityVectorsAccessDenied(_logger, ex);
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "Failed to cache sanity test vectors - JSON serialization error");
+                LogCacheSanityVectorsJsonError(_logger, ex);
             }
 
             return vectors;
@@ -2719,19 +3542,17 @@ Reason closed: {reason}
                 var totalVariation = CalculateTotalVariationDistance(currentPredictions, newPredictions);
                 var klDivergence = CalculateKLDivergence(currentPredictions, newPredictions, minProbability);
 
-                _logger.LogInformation("  Total Variation: {TV:F4}, KL Divergence: {KL:F4}", totalVariation, klDivergence);
+                LogDistributionComparison(_logger, totalVariation, klDivergence, null);
 
                 if (totalVariation > maxTotalVariation)
                 {
-                    _logger.LogWarning("  Total variation {TV:F4} exceeds threshold {Max:F2}", 
-                        totalVariation, maxTotalVariation);
+                    LogTotalVariationExceeded(_logger, totalVariation, maxTotalVariation, null);
                     return (false, totalVariation);
                 }
 
                 if (klDivergence > maxKLDivergence)
                 {
-                    _logger.LogWarning("  KL divergence {KL:F4} exceeds threshold {Max:F2}", 
-                        klDivergence, maxKLDivergence);
+                    LogKLDivergenceExceeded(_logger, klDivergence, maxKLDivergence, null);
                     return (false, klDivergence);
                 }
 
@@ -2739,17 +3560,17 @@ Reason closed: {reason}
             }
             catch (OnnxRuntimeException ex)
             {
-                _logger.LogError(ex, "Distribution comparison failed - ONNX runtime error");
+                LogDistributionComparisonOnnxError(_logger, ex);
                 return (false, 1.0);
             }
             catch (FileNotFoundException ex)
             {
-                _logger.LogError(ex, "Distribution comparison failed - model file not found");
+                LogDistributionComparisonFileNotFound(_logger, ex);
                 return (false, 1.0);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "Distribution comparison failed - invalid operation");
+                LogDistributionComparisonInvalidOperation(_logger, ex);
                 return (false, 1.0);
             }
             finally
@@ -2827,14 +3648,14 @@ Reason closed: {reason}
             {
                 if (!File.Exists(modelPath))
                 {
-                    _logger.LogError("Model file not found: {Path}", modelPath);
+                    LogModelFileNotFoundValidation(_logger, modelPath, null);
                     return false;
                 }
 
                 var fileInfo = new FileInfo(modelPath);
                 if (fileInfo.Length == 0)
                 {
-                    _logger.LogError("Model file is empty");
+                    LogModelFileEmpty(_logger, null);
                     return false;
                 }
 
@@ -2848,28 +3669,28 @@ Reason closed: {reason}
                     {
                         if (float.IsNaN(value) || float.IsInfinity(value))
                         {
-                            _logger.LogError("Model produces NaN or Infinity values");
+                            LogModelOutputsNaNInfinity(_logger, null);
                             return false;
                         }
                     }
                 }
 
-                _logger.LogInformation("  Validated model outputs - no NaN/Infinity detected");
+                LogModelOutputsValidated(_logger, null);
                 return true;
             }
             catch (OnnxRuntimeException ex)
             {
-                _logger.LogError(ex, "Model output validation failed - ONNX runtime error");
+                LogModelOutputValidationOnnxError(_logger, ex);
                 return false;
             }
             catch (FileNotFoundException ex)
             {
-                _logger.LogError(ex, "Model output validation failed - model file not found");
+                LogModelOutputValidationFileNotFound(_logger, ex);
                 return false;
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "Model output validation failed - invalid operation");
+                LogModelOutputValidationInvalidOperation(_logger, ex);
                 return false;
             }
             finally
@@ -2894,7 +3715,7 @@ Reason closed: {reason}
                 var historicalData = await LoadHistoricalDataAsync(simulationBars, cancellationToken).ConfigureAwait(false);
                 if (historicalData.Count < TopStepConfig.MinHistoricalBarsForSimulation)
                 {
-                    _logger.LogWarning("  Insufficient historical data for simulation - using available {Count} bars", historicalData.Count);
+                    LogInsufficientHistoricalData(_logger, historicalData.Count, null);
                 }
 
                 currentSession = new InferenceSession(currentModelPath);
@@ -2905,24 +3726,23 @@ Reason closed: {reason}
 
                 var drawdownRatio = currentMaxDrawdown > 0 ? newMaxDrawdown / currentMaxDrawdown : 1.0;
 
-                _logger.LogInformation("  Baseline drawdown: {Current:F2}, New drawdown: {New:F2}, Ratio: {Ratio:F2}x", 
-                    currentMaxDrawdown, newMaxDrawdown, drawdownRatio);
+                LogDrawdownComparison(_logger, currentMaxDrawdown, newMaxDrawdown, drawdownRatio, null);
 
                 return (drawdownRatio <= maxDrawdownMultiplier, drawdownRatio);
             }
             catch (OnnxRuntimeException ex)
             {
-                _logger.LogError(ex, "Historical simulation failed - ONNX runtime error");
+                LogHistoricalSimulationOnnxError(_logger, ex);
                 return (false, double.MaxValue);
             }
             catch (FileNotFoundException ex)
             {
-                _logger.LogError(ex, "Historical simulation failed - model file not found");
+                LogHistoricalSimulationFileNotFound(_logger, ex);
                 return (false, double.MaxValue);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "Historical simulation failed - invalid operation");
+                LogHistoricalSimulationInvalidOperation(_logger, ex);
                 return (false, double.MaxValue);
             }
             finally
@@ -2951,15 +3771,15 @@ Reason closed: {reason}
             }
             catch (FileNotFoundException ex)
             {
-                _logger.LogWarning(ex, "Failed to load cached historical data - file not found");
+                LogLoadHistoricalDataFileNotFound(_logger, ex);
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "Failed to load cached historical data - invalid JSON");
+                LogLoadHistoricalDataJsonError(_logger, ex);
             }
             catch (IOException ex)
             {
-                _logger.LogWarning(ex, "Failed to load cached historical data - I/O error");
+                LogLoadHistoricalDataIOError(_logger, ex);
             }
 
             var historicalData = new List<float[]>();
@@ -2983,15 +3803,15 @@ Reason closed: {reason}
             }
             catch (IOException ex)
             {
-                _logger.LogWarning(ex, "Failed to cache historical data - I/O error");
+                LogCacheHistoricalDataIOError(_logger, ex);
             }
             catch (UnauthorizedAccessException ex)
             {
-                _logger.LogWarning(ex, "Failed to cache historical data - access denied");
+                LogCacheHistoricalDataAccessDenied(_logger, ex);
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "Failed to cache historical data - JSON serialization error");
+                LogCacheHistoricalDataJsonError(_logger, ex);
             }
 
             return historicalData;
@@ -3053,7 +3873,7 @@ Reason closed: {reason}
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             var json = JsonSerializer.Serialize(spec, CachedJsonOptions);
             await File.WriteAllTextAsync(path, json, cancellationToken).ConfigureAwait(false);
-            _logger.LogInformation("Created default feature specification at {Path}", path);
+            LogFeatureSpecificationCreated(_logger, path, null);
         }
 
         /// <summary>
@@ -3067,54 +3887,54 @@ Reason closed: {reason}
             
             try
             {
-                _logger.LogInformation("🔄 [MODEL-RELOAD] Starting model reload: {NewModel}", newModelPath);
+                LogModelReloadStarting(_logger, newModelPath, null);
 
                 var (isValid, reason) = await ValidateModelForReloadAsync(
                     newModelPath, currentModelPath, cancellationToken).ConfigureAwait(false);
 
                 if (!isValid)
                 {
-                    _logger.LogError("❌ [MODEL-RELOAD] Validation failed: {Reason}", reason);
+                    LogModelReloadValidationFailed(_logger, reason, null);
                     return false;
                 }
 
                 var backupPath = CreateModelBackup(currentModelPath);
-                _logger.LogInformation("💾 [MODEL-RELOAD] Backup created: {BackupPath}", backupPath);
+                LogModelReloadBackupCreated(_logger, backupPath, null);
 
                 var (swapSuccess, oldVersion, newVersion) = await AtomicModelSwapAsync(
                     currentModelPath, newModelPath, cancellationToken).ConfigureAwait(false);
 
                 if (!swapSuccess)
                 {
-                    _logger.LogError("❌ [MODEL-RELOAD] Model swap failed");
+                    LogModelReloadSwapFailed(_logger, null);
                     RestoreModelFromBackup(backupPath, currentModelPath);
                     return false;
                 }
 
-                _logger.LogInformation("✅ [MODEL-RELOAD] Model reloaded successfully");
-                _logger.LogInformation("  Old version: {OldVersion}", oldVersion);
-                _logger.LogInformation("  New version: {NewVersion}", newVersion);
+                LogModelReloadSuccess(_logger, null);
+                LogModelReloadOldVersion(_logger, oldVersion, null);
+                LogModelReloadNewVersion(_logger, newVersion, null);
 
                 return true;
             }
             catch (OnnxRuntimeException ex)
             {
-                _logger.LogError(ex, "❌ [MODEL-RELOAD] ONNX runtime error during model reload");
+                LogModelReloadOnnxError(_logger, ex);
                 return false;
             }
             catch (FileNotFoundException ex)
             {
-                _logger.LogError(ex, "❌ [MODEL-RELOAD] Model file not found during reload");
+                LogModelReloadFileNotFound(_logger, ex);
                 return false;
             }
             catch (IOException ex)
             {
-                _logger.LogError(ex, "❌ [MODEL-RELOAD] I/O error during model reload");
+                LogModelReloadIOError(_logger, ex);
                 return false;
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [MODEL-RELOAD] Invalid operation during model reload");
+                LogModelReloadInvalidOperation(_logger, ex);
                 return false;
             }
         }
@@ -3138,7 +3958,7 @@ Reason closed: {reason}
             if (File.Exists(currentModelPath))
             {
                 File.Copy(currentModelPath, backupPath, overwrite: true);
-                _logger.LogInformation("  Created backup: {BackupPath}", backupPath);
+                LogBackupCreated(_logger, backupPath, null);
             }
 
             return backupPath;
@@ -3149,7 +3969,7 @@ Reason closed: {reason}
             if (File.Exists(backupPath))
             {
                 File.Copy(backupPath, targetPath, overwrite: true);
-                _logger.LogInformation("  Restored model from backup: {BackupPath}", backupPath);
+                LogModelRestoredFromBackup(_logger, backupPath, null);
             }
         }
 
@@ -3176,23 +3996,23 @@ Reason closed: {reason}
 
                 File.Move(tempPath, currentModelPath);
 
-                _logger.LogInformation("  Atomic swap completed: {Old} → {New}", oldVersion, newVersion);
+                LogAtomicSwapCompleted(_logger, oldVersion, newVersion, null);
 
                 return Task.FromResult((true, oldVersion, newVersion));
             }
             catch (IOException ex)
             {
-                _logger.LogError(ex, "  Atomic swap failed - I/O error");
+                LogAtomicSwapIOError(_logger, ex);
                 return Task.FromResult((false, string.Empty, string.Empty));
             }
             catch (UnauthorizedAccessException ex)
             {
-                _logger.LogError(ex, "  Atomic swap failed - access denied");
+                LogAtomicSwapAccessDenied(_logger, ex);
                 return Task.FromResult((false, string.Empty, string.Empty));
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "  Atomic swap failed - invalid operation");
+                LogAtomicSwapInvalidOperation(_logger, ex);
                 return Task.FromResult((false, string.Empty, string.Empty));
             }
         }
@@ -3215,7 +4035,7 @@ Reason closed: {reason}
         {
             try
             {
-                _logger.LogInformation("🔄 [UNIFIED-RETRAIN] Starting unified model retraining across all strategies...");
+                LogUnifiedRetrainingStarting(_logger, null);
                 
                 // Export comprehensive training data including all strategies
                 var unifiedTrainingData = _decisionHistory.TakeLast(TopStepConfig.TrainingDataHistorySize).Select(d => new
@@ -3253,26 +4073,25 @@ Reason closed: {reason}
                 await File.WriteAllTextAsync(perfPath, JsonSerializer.Serialize(strategyPerformanceData, 
                     CachedJsonOptions), cancellationToken).ConfigureAwait(false);
                 
-                _logger.LogInformation("✅ [UNIFIED-RETRAIN] Training data exported: {Count} decisions, {StrategyCount} strategies", 
-                    unifiedTrainingData.Count(), _strategyPerformance.Count);
+                LogUnifiedRetrainingDataExported(_logger, unifiedTrainingData.Count(), _strategyPerformance.Count, null);
                 
                 // Enhanced Python training scripts for multi-strategy learning would be integrated here
             }
             catch (IOException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-RETRAIN] Unified model retraining failed - I/O error");
+                LogUnifiedRetrainingIOError(_logger, ex);
             }
             catch (UnauthorizedAccessException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-RETRAIN] Unified model retraining failed - access denied");
+                LogUnifiedRetrainingAccessDenied(_logger, ex);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-RETRAIN] Unified model retraining failed - invalid operation");
+                LogUnifiedRetrainingInvalidOperation(_logger, ex);
             }
             catch (JsonException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-RETRAIN] Unified model retraining failed - JSON error");
+                LogUnifiedRetrainingJsonError(_logger, ex);
             }
         }
 
@@ -3310,17 +4129,17 @@ Explain in 1-2 sentences why I'm waiting and what I'm looking for. Speak as ME (
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining why waiting - invalid operation");
+                LogBotCommentaryWaitingInvalidOperation(_logger, ex);
                 return string.Empty;
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining why waiting - HTTP request failed");
+                LogBotCommentaryWaitingHttpError(_logger, ex);
                 return string.Empty;
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining why waiting - task cancelled");
+                LogBotCommentaryWaitingTaskCancelled(_logger, ex);
                 return string.Empty;
             }
         }
@@ -3356,17 +4175,17 @@ Explain in 1-2 sentences why I'm so confident. Speak as ME (the bot).";
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining high confidence - invalid operation");
+                LogBotCommentaryConfidenceInvalidOperation(_logger, ex);
                 return string.Empty;
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining high confidence - HTTP request failed");
+                LogBotCommentaryConfidenceHttpError(_logger, ex);
                 return string.Empty;
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining high confidence - task cancelled");
+                LogBotCommentaryConfidenceTaskCancelled(_logger, ex);
                 return string.Empty;
             }
         }
@@ -3399,17 +4218,17 @@ Explain in 1-2 sentences why strategies disagree and what this means. Speak as M
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining strategy conflict - invalid operation");
+                LogBotCommentaryConflictInvalidOperation(_logger, ex);
                 return string.Empty;
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining strategy conflict - HTTP request failed");
+                LogBotCommentaryConflictHttpError(_logger, ex);
                 return string.Empty;
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining strategy conflict - task cancelled");
+                LogBotCommentaryConflictTaskCancelled(_logger, ex);
                 return string.Empty;
             }
         }
@@ -3458,17 +4277,17 @@ Analyze in 2-3 sentences: What went wrong? Was it my entry timing, stop placemen
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-FAILURE-ANALYSIS] Error analyzing trade failure - invalid operation");
+                LogFailureAnalysisInvalidOperation(_logger, ex);
                 return string.Empty;
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-FAILURE-ANALYSIS] Error analyzing trade failure - HTTP request failed");
+                LogFailureAnalysisHttpError(_logger, ex);
                 return string.Empty;
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-FAILURE-ANALYSIS] Error analyzing trade failure - task cancelled");
+                LogFailureAnalysisTaskCancelled(_logger, ex);
                 return string.Empty;
             }
         }
@@ -3508,17 +4327,17 @@ Explain in 1-2 sentences why Neural UCB selected this strategy over others. Spea
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [STRATEGY-SELECTION] Error explaining strategy selection - invalid operation");
+                LogStrategySelectionExplanationInvalidOperation(_logger, ex);
                 return string.Empty;
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "❌ [STRATEGY-SELECTION] Error explaining strategy selection - HTTP request failed");
+                LogStrategySelectionExplanationHttpError(_logger, ex);
                 return string.Empty;
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogError(ex, "❌ [STRATEGY-SELECTION] Error explaining strategy selection - task cancelled");
+                LogStrategySelectionExplanationTaskCancelled(_logger, ex);
                 return string.Empty;
             }
         }
@@ -3552,17 +4371,17 @@ Explain in 1-2 sentences what this regime means and how it affects my trading. S
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [MARKET-REGIME] Error explaining market regime - invalid operation");
+                LogMarketRegimeExplanationInvalidOperation(_logger, ex);
                 return string.Empty;
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "❌ [MARKET-REGIME] Error explaining market regime - HTTP request failed");
+                LogMarketRegimeExplanationHttpError(_logger, ex);
                 return string.Empty;
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogError(ex, "❌ [MARKET-REGIME] Error explaining market regime - task cancelled");
+                LogMarketRegimeExplanationTaskCancelled(_logger, ex);
                 return string.Empty;
             }
         }
@@ -3594,17 +4413,17 @@ Explain in 1-2 sentences what I learned and how it will improve my future tradin
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-LEARNING] Error explaining learning update - invalid operation");
+                LogLearningExplanationInvalidOperation(_logger, ex);
                 return string.Empty;
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-LEARNING] Error explaining learning update - HTTP request failed");
+                LogLearningExplanationHttpError(_logger, ex);
                 return string.Empty;
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-LEARNING] Error explaining learning update - task cancelled");
+                LogLearningExplanationTaskCancelled(_logger, ex);
                 return string.Empty;
             }
         }
@@ -3725,7 +4544,7 @@ Explain in 1-2 sentences what I learned and how it will improve my future tradin
         {
             if (disposing)
             {
-                _logger.LogInformation("🧠 [UNIFIED-BRAIN] Shutting down...");
+                LogBrainShuttingDown(_logger, null);
                 
                 // Save performance statistics
                 var stats = new
@@ -3742,20 +4561,19 @@ Explain in 1-2 sentences what I learned and how it will improve my future tradin
                     var statsPath = Path.Combine("logs", $"brain_stats_{DateTime.Now:yyyyMMdd}.json");
                     Directory.CreateDirectory(Path.GetDirectoryName(statsPath)!);
                     File.WriteAllText(statsPath, JsonSerializer.Serialize(stats, CachedJsonOptions));
-                    _logger.LogInformation("📊 [UNIFIED-BRAIN] Statistics saved: {Decisions} decisions, {WinRate:P1} win rate",
-                        DecisionsToday, WinRateToday);
+                    LogBrainStatisticsSaved(_logger, DecisionsToday, WinRateToday, null);
                 }
                 catch (IOException ex)
                 {
-                    _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Error saving statistics - I/O error");
+                    LogBrainStatisticsSaveIOError(_logger, ex);
                 }
                 catch (UnauthorizedAccessException ex)
                 {
-                    _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Error saving statistics - access denied");
+                    LogBrainStatisticsSaveAccessDenied(_logger, ex);
                 }
                 catch (JsonException ex)
                 {
-                    _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Error saving statistics - JSON serialization error");
+                    LogBrainStatisticsSaveJsonError(_logger, ex);
                 }
                 
                 // Dispose managed resources
@@ -3781,7 +4599,7 @@ Explain in 1-2 sentences what I learned and how it will improve my future tradin
                 }
                 catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Error disposing managed resources - invalid operation");
+                    LogBrainDisposeInvalidOperation(_logger, ex);
                 }
             }
         }

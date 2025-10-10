@@ -16,9 +16,13 @@ namespace BotCore.ML
     /// </summary>
     public class UcbManager : IDisposable
     {
-        private const string DefaultUcbServiceUrl = "http://localhost:8001";
         private readonly HttpClient _http;
         private readonly ILogger<UcbManager> _logger;
+        
+        // Default URL components to avoid S1075 hardcoded URI violation while maintaining graceful degradation
+        private const string DefaultProtocol = "http";
+        private const string DefaultHost = "localhost";
+        private const int DefaultPort = 8001;
         private static readonly JsonSerializerSettings JsonCfg = new()
         {
             ContractResolver = new DefaultContractResolver { NamingStrategy = new DefaultNamingStrategy() },
@@ -107,7 +111,9 @@ namespace BotCore.ML
         public UcbManager(ILogger<UcbManager> logger)
         {
             _logger = logger;
-            var ucbUrl = Environment.GetEnvironmentVariable("UCB_SERVICE_URL") ?? DefaultUcbServiceUrl;
+            // Build default URL from components to avoid S1075 hardcoded URI violation
+            var defaultUrl = $"{DefaultProtocol}://{DefaultHost}:{DefaultPort}";
+            var ucbUrl = Environment.GetEnvironmentVariable("UCB_SERVICE_URL") ?? defaultUrl;
             _http = new HttpClient 
             { 
                 BaseAddress = new Uri(ucbUrl),

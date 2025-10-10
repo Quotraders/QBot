@@ -18,8 +18,9 @@ namespace BotCore.Services
     /// </summary>
     public class TimeOptimizedStrategyManager : IDisposable
     {
+        private const double Epsilon = 1e-10; // Tolerance for floating point comparisons
+        
         private readonly ILogger<TimeOptimizedStrategyManager> _logger;
-        private readonly Dictionary<string, IStrategy> _strategies;
         private readonly TimeZoneInfo _centralTime;
         private readonly OnnxModelLoader? _onnxLoader;
         private readonly TradingBot.Abstractions.IS7Service? _s7Service;
@@ -197,7 +198,6 @@ namespace BotCore.Services
             _logger = logger;
             _s7Service = s7Service;
             _onnxLoader = onnxLoader;
-            _strategies = new Dictionary<string, IStrategy>();
             _centralTime = TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time");
 
             LoadHistoricalPerformanceData();
@@ -398,7 +398,7 @@ namespace BotCore.Services
                 };
 
                 using var results = session.Run(inputs);
-                var output = results.FirstOrDefault()?.AsEnumerable<float>()?.FirstOrDefault() ?? 0.5f;
+                var output = results.Count > 0 ? results[0].AsEnumerable<float>()?.FirstOrDefault() ?? 0.5f : 0.5f;
                 
                 return Task.FromResult((decimal)output);
             }
@@ -436,9 +436,23 @@ namespace BotCore.Services
             var volatility = (double)features[0];
             var trend = (double)features[1];
 
+            string regimeName;
+            if (volatility > HighVolatilityThreshold)
+            {
+                regimeName = "high_vol";
+            }
+            else if (volatility < LowVolatilityThreshold)
+            {
+                regimeName = "low_vol";
+            }
+            else
+            {
+                regimeName = "mid_vol";
+            }
+
             return new MarketRegime
             {
-                Name = volatility > HighVolatilityThreshold ? "high_vol" : volatility < LowVolatilityThreshold ? "low_vol" : "mid_vol",
+                Name = regimeName,
                 TrendStrength = Math.Abs(trend),
                 Volatility = volatility,
                 MLConfidence = NoMLConfidenceFallback // No ML confidence in fallback
@@ -485,7 +499,7 @@ namespace BotCore.Services
             {
                 var env = CreateEnvironment(bars);
                 var levels = CreateLevels();
-                var riskEngine = new BotCore.Risk.RiskEngine();
+                using var riskEngine = new BotCore.Risk.RiskEngine();
 
                 return AllStrategies.generate_candidates(instrument, env, levels, bars.ToList(), riskEngine)
                     .Where(c => c.strategy_id == strategyId)
@@ -546,8 +560,8 @@ namespace BotCore.Services
             try
             {
                 // Get recent price data for both ES and NQ
-                var esPrices = _esBars?.TakeLast(CorrelationLookbackPeriod)?.Select(b => (double)b.Close)?.ToArray();
-                var nqPrices = _nqBars?.TakeLast(CorrelationLookbackPeriod)?.Select(b => (double)b.Close)?.ToArray();
+                var esPrices = _esBars?.TakeLast(CorrelationLookbackPeriod).Select(b => (double)b.Close).ToArray();
+                var nqPrices = _nqBars?.TakeLast(CorrelationLookbackPeriod).Select(b => (double)b.Close).ToArray();
                 
                 // Calculate Pearson correlation if we have sufficient data
                 if (esPrices != null && nqPrices != null && esPrices.Length >= MinimumDataPointsForCorrelation && nqPrices.Length >= MinimumDataPointsForCorrelation)
@@ -595,7 +609,7 @@ namespace BotCore.Services
             var returns = new double[prices.Length - 1];
             for (int i = 1; i < prices.Length; i++)
             {
-                if (prices[i - 1] != 0)
+                if (Math.Abs(prices[i - 1]) > Epsilon)
                 {
                     returns[i - 1] = (prices[i] - prices[i - 1]) / prices[i - 1];
                 }
@@ -620,7 +634,7 @@ namespace BotCore.Services
                 series2.Sum(y => Math.Pow(y - mean2, 2))
             );
             
-            return denominator != 0 ? numerator / denominator : FallbackCorrelation;
+            return Math.Abs(denominator) > Epsilon ? numerator / denominator : FallbackCorrelation;
         }
 
         private EsNqCorrelation CheckES_NQ_Correlation(string instrument)
@@ -693,7 +707,7 @@ namespace BotCore.Services
             var avgGain = gains.Average();
             var avgLoss = losses.Average();
 
-            if (avgLoss == 0) return MaxRSIValue; // All gains
+            if (Math.Abs(avgLoss) < Epsilon) return MaxRSIValue; // All gains
             
             var rs = avgGain / avgLoss;
             return MaxRSIValue - (MaxRSIValue / (1 + rs));
@@ -739,7 +753,7 @@ namespace BotCore.Services
         private static decimal CalculateOrderBookImbalance(TradingBot.Abstractions.MarketData data)
         {
             // Use Bid/Ask prices to estimate imbalance since TradingBot.Abstractions.MarketData doesn't have sizes
-            if (data.Bid == 0 && data.Ask == 0) return 0m;
+            if (Math.Abs(data.Bid) < Epsilon && Math.Abs(data.Ask) < Epsilon) return 0m;
             
             var spread = data.Ask - data.Bid;
             if (spread <= 0) return 0m;
@@ -859,7 +873,7 @@ namespace BotCore.Services
             var avgVolume = recent.Take(recent.Count - 1).Average(b => b.Volume);
             var currentVolume = recent[^1].Volume;
             
-            if (avgVolume == 0) return DefaultVolumeStress;
+            if (Math.Abs(avgVolume) < Epsilon) return DefaultVolumeStress;
             
             var volumeRatio = (decimal)(currentVolume / avgVolume);
             

@@ -432,95 +432,120 @@ public class CloudModelSynchronizationService : BackgroundService
 
     /// <summary>
     /// Determine where to save data files based on entry path
+    /// Security: Sanitizes paths to prevent path traversal attacks
     /// </summary>
     private static string DetermineDataPath(string entryFullName)
     {
         var baseDir = Directory.GetCurrentDirectory();
         
-        // Preserve folder structure from the zip
-        // If entry contains path separators, preserve the structure
-        if (entryFullName.Contains('/', StringComparison.Ordinal) || entryFullName.Contains('\\', StringComparison.Ordinal))
+        // Security: Sanitize - always use just the filename, no path traversal
+        var fileName = Path.GetFileName(entryFullName);
+        if (string.IsNullOrEmpty(fileName))
         {
-            // Normalize path separators
-            var normalizedPath = entryFullName.Replace('\\', '/');
-            
-            // Extract just the filename if it's at the root
-            var fileName = Path.GetFileName(normalizedPath);
-            
-            // Determine target directory based on naming conventions
-            if (normalizedPath.Contains("features", StringComparison.OrdinalIgnoreCase) || 
-                fileName.Contains("features", StringComparison.OrdinalIgnoreCase) ||
-                fileName.Contains("market_features", StringComparison.OrdinalIgnoreCase))
-            {
-                return Path.Combine(baseDir, "datasets", "features", fileName);
-            }
-            else if (normalizedPath.Contains("regime", StringComparison.OrdinalIgnoreCase) || 
-                     fileName.Contains("regime", StringComparison.OrdinalIgnoreCase) ||
-                     fileName.Contains("market_state", StringComparison.OrdinalIgnoreCase))
-            {
-                return Path.Combine(baseDir, "datasets", "regime_output", fileName);
-            }
-            else if (normalizedPath.Contains("news", StringComparison.OrdinalIgnoreCase) || 
-                     fileName.Contains("news", StringComparison.OrdinalIgnoreCase) ||
-                     fileName.Contains("government_releases", StringComparison.OrdinalIgnoreCase))
-            {
-                return Path.Combine(baseDir, "datasets", "news_flags", fileName);
-            }
-            else if (normalizedPath.Contains("quotes", StringComparison.OrdinalIgnoreCase) || 
-                     fileName.Contains("quotes", StringComparison.OrdinalIgnoreCase))
-            {
-                return Path.Combine(baseDir, "datasets", "quotes", fileName);
-            }
-            else if (normalizedPath.Contains("macro", StringComparison.OrdinalIgnoreCase) || 
-                     fileName.Contains("macro", StringComparison.OrdinalIgnoreCase) ||
-                     fileName.Contains("vix", StringComparison.OrdinalIgnoreCase) ||
-                     fileName.Contains("spx", StringComparison.OrdinalIgnoreCase) ||
-                     fileName.Contains("ndx", StringComparison.OrdinalIgnoreCase))
-            {
-                return Path.Combine(baseDir, "Intelligence", "data", "macro", fileName);
-            }
-            else if (normalizedPath.Contains("cot", StringComparison.OrdinalIgnoreCase) || 
-                     fileName.Contains("cot", StringComparison.OrdinalIgnoreCase))
-            {
-                return Path.Combine(baseDir, "Intelligence", "data", "cot", fileName);
-            }
+            throw new InvalidOperationException("Invalid file name in zip entry");
+        }
+        
+        // Normalize path separators for pattern matching only
+        var normalizedPath = entryFullName.Replace('\\', '/');
+        
+        // Determine target directory based on naming conventions
+        if (normalizedPath.Contains("features", StringComparison.OrdinalIgnoreCase) || 
+            fileName.Contains("features", StringComparison.OrdinalIgnoreCase) ||
+            fileName.Contains("market_features", StringComparison.OrdinalIgnoreCase))
+        {
+            return Path.Combine(baseDir, "datasets", "features", fileName);
+        }
+        else if (normalizedPath.Contains("regime", StringComparison.OrdinalIgnoreCase) || 
+                 fileName.Contains("regime", StringComparison.OrdinalIgnoreCase) ||
+                 fileName.Contains("market_state", StringComparison.OrdinalIgnoreCase))
+        {
+            return Path.Combine(baseDir, "datasets", "regime_output", fileName);
+        }
+        else if (normalizedPath.Contains("news", StringComparison.OrdinalIgnoreCase) || 
+                 fileName.Contains("news", StringComparison.OrdinalIgnoreCase) ||
+                 fileName.Contains("government_releases", StringComparison.OrdinalIgnoreCase))
+        {
+            return Path.Combine(baseDir, "datasets", "news_flags", fileName);
+        }
+        else if (normalizedPath.Contains("quotes", StringComparison.OrdinalIgnoreCase) || 
+                 fileName.Contains("quotes", StringComparison.OrdinalIgnoreCase))
+        {
+            return Path.Combine(baseDir, "datasets", "quotes", fileName);
+        }
+        else if (normalizedPath.Contains("macro", StringComparison.OrdinalIgnoreCase) || 
+                 fileName.Contains("macro", StringComparison.OrdinalIgnoreCase) ||
+                 fileName.Contains("vix", StringComparison.OrdinalIgnoreCase) ||
+                 fileName.Contains("spx", StringComparison.OrdinalIgnoreCase) ||
+                 fileName.Contains("ndx", StringComparison.OrdinalIgnoreCase))
+        {
+            return Path.Combine(baseDir, "Intelligence", "data", "macro", fileName);
+        }
+        else if (normalizedPath.Contains("cot", StringComparison.OrdinalIgnoreCase) || 
+                 fileName.Contains("cot", StringComparison.OrdinalIgnoreCase))
+        {
+            return Path.Combine(baseDir, "Intelligence", "data", "cot", fileName);
         }
         
         // Default to datasets/features
-        var defaultFileName = Path.GetFileName(entryFullName);
-        return Path.Combine(baseDir, "datasets", "features", defaultFileName);
+        return Path.Combine(baseDir, "datasets", "features", fileName);
     }
 
     /// <summary>
     /// Determine where to save the model based on artifact name
+    /// Security: Sanitizes fileName to prevent path traversal
     /// </summary>
     private string DetermineModelPath(string artifactName, string fileName)
     {
+        // Security: Sanitize fileName - use only the filename, no directory traversal
+        var sanitizedFileName = Path.GetFileName(fileName);
+        if (string.IsNullOrEmpty(sanitizedFileName))
+        {
+            throw new InvalidOperationException("Invalid file name in zip entry");
+        }
+        
         var upperName = artifactName.ToUpperInvariant();
         
         if (upperName.Contains("CVAR", StringComparison.Ordinal) || upperName.Contains("PPO", StringComparison.Ordinal) || upperName.Contains("RL", StringComparison.Ordinal))
         {
-            return Path.Combine(_modelsDirectory, "rl", fileName);
+            return Path.Combine(_modelsDirectory, "rl", sanitizedFileName);
         }
         else if (upperName.Contains("ENSEMBLE", StringComparison.Ordinal) || upperName.Contains("BLEND", StringComparison.Ordinal))
         {
-            return Path.Combine(_modelsDirectory, "ensemble", fileName);
+            return Path.Combine(_modelsDirectory, "ensemble", sanitizedFileName);
         }
         else if (upperName.Contains("CLOUD", StringComparison.Ordinal))
         {
-            return Path.Combine(_modelsDirectory, "cloud", fileName);
+            return Path.Combine(_modelsDirectory, "cloud", sanitizedFileName);
         }
         else
         {
-            return Path.Combine(_modelsDirectory, fileName);
+            return Path.Combine(_modelsDirectory, sanitizedFileName);
         }
     }
 
     /// <summary>
     /// Extract and save file from zip entry with atomic write operation
+    /// Includes path traversal protection (SCS0018)
     /// </summary>
     private async Task ExtractAndSaveFileAsync(ZipArchiveEntry entry, string targetPath, CancellationToken cancellationToken)
     {
+        // Security: Validate entry name to prevent path traversal attacks
+        var entryName = entry.FullName.Replace('\\', '/');
+        if (entryName.Contains("..", StringComparison.Ordinal) || 
+            entryName.StartsWith('/') || 
+            Path.IsPathRooted(entryName))
+        {
+            throw new InvalidOperationException($"Invalid zip entry path detected (path traversal attempt): {entry.FullName}");
+        }
+        
+        // Security: Validate target path is within expected directories
+        var normalizedTarget = Path.GetFullPath(targetPath);
+        var baseDir = Path.GetFullPath(Directory.GetCurrentDirectory());
+        if (!normalizedTarget.StartsWith(baseDir, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"Target path is outside base directory: {targetPath}");
+        }
+        
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
         
         // Write to transient file first for atomic operation
@@ -617,11 +642,14 @@ public class CloudModelSynchronizationService : BackgroundService
     /// <summary>
     /// Get current model information for external services
     /// </summary>
-    public Dictionary<string, ModelInfo> GetCurrentModels()
+    public Dictionary<string, ModelInfo> CurrentModels
     {
-        lock (_syncLock)
+        get
         {
-            return new Dictionary<string, ModelInfo>(_currentModels);
+            lock (_syncLock)
+            {
+                return new Dictionary<string, ModelInfo>(_currentModels);
+            }
         }
     }
 

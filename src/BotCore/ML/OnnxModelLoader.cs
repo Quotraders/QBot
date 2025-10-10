@@ -263,6 +263,119 @@ public sealed class OnnxModelLoader : IDisposable
         LoggerMessage.Define(LogLevel.Error, new EventId(50, nameof(LogUnregistrationFailedInvalid)),
             "[ONNX-Registry] Model unregistration failed - invalid operation");
 
+    // Registry operations logging
+    private static readonly Action<ILogger, string, Exception?> LogTempFileCleanupDebug =
+        LoggerMessage.Define<string>(LogLevel.Debug, new EventId(51, nameof(LogTempFileCleanupDebug)),
+            "[ONNX-Loader] Failed to cleanup temp file: {TempPath}");
+
+    private static readonly Action<ILogger, Exception?> LogDeployFailedUnauthorized =
+        LoggerMessage.Define(LogLevel.Error, new EventId(52, nameof(LogDeployFailedUnauthorized)),
+            "[ONNX-Registry] Failed to deploy model atomically - access denied");
+
+    private static readonly Action<ILogger, string, string, Exception?> LogModelRegisteredSuccess =
+        LoggerMessage.Define<string, string>(LogLevel.Information, new EventId(53, nameof(LogModelRegisteredSuccess)),
+            "[ONNX-Registry] Model registered: {ModelName} v{Version}");
+
+    private static readonly Action<ILogger, string, Exception?> LogModelRegistrationFailed =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(54, nameof(LogModelRegistrationFailed)),
+            "[ONNX-Registry] Failed to register model: {ModelName}");
+
+    private static readonly Action<ILogger, string, Exception?> LogGetLatestModelFailedDirectory =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(55, nameof(LogGetLatestModelFailedDirectory)),
+            "[ONNX-Registry] Failed to get latest model - directory not found: {ModelName}");
+
+    private static readonly Action<ILogger, string, Exception?> LogGetLatestModelFailedFile =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(56, nameof(LogGetLatestModelFailedFile)),
+            "[ONNX-Registry] Failed to get latest model - file not found: {ModelName}");
+
+    private static readonly Action<ILogger, string, Exception?> LogGetLatestModelFailedJson =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(57, nameof(LogGetLatestModelFailedJson)),
+            "[ONNX-Registry] Failed to get latest model - invalid JSON: {ModelName}");
+
+    private static readonly Action<ILogger, string, Exception?> LogGetLatestModelFailedIO =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(58, nameof(LogGetLatestModelFailedIO)),
+            "[ONNX-Registry] Failed to get latest model - I/O error: {ModelName}");
+
+    private static readonly Action<ILogger, int, int, Exception?> LogHealthCheckCompleted =
+        LoggerMessage.Define<int, int>(LogLevel.Information, new EventId(59, nameof(LogHealthCheckCompleted)),
+            "[ONNX-Registry] Health check completed: {HealthyCount}/{TotalCount} healthy");
+
+    private static readonly Action<ILogger, Exception?> LogHealthCheckFailedDirectory =
+        LoggerMessage.Define(LogLevel.Error, new EventId(60, nameof(LogHealthCheckFailedDirectory)),
+            "[ONNX-Registry] Failed to perform health check - directory not found");
+
+    private static readonly Action<ILogger, Exception?> LogHealthCheckFailedFile =
+        LoggerMessage.Define(LogLevel.Error, new EventId(61, nameof(LogHealthCheckFailedFile)),
+            "[ONNX-Registry] Failed to perform health check - file not found");
+
+    private static readonly Action<ILogger, Exception?> LogHealthCheckFailedIO =
+        LoggerMessage.Define(LogLevel.Error, new EventId(62, nameof(LogHealthCheckFailedIO)),
+            "[ONNX-Registry] Failed to perform health check - I/O error");
+
+    private static readonly Action<ILogger, Exception?> LogHealthCheckFailedUnauthorized =
+        LoggerMessage.Define(LogLevel.Error, new EventId(63, nameof(LogHealthCheckFailedUnauthorized)),
+            "[ONNX-Registry] Failed to perform health check - access denied");
+
+    private static readonly Action<ILogger, string, string, Exception?> LogOldVersionCleaned =
+        LoggerMessage.Define<string, string>(LogLevel.Information, new EventId(64, nameof(LogOldVersionCleaned)),
+            "[ONNX-Registry] Cleaned up old model version: {ModelName} v{Version}");
+
+    private static readonly Action<ILogger, Exception?> LogCleanupFailedDirectory =
+        LoggerMessage.Define(LogLevel.Error, new EventId(65, nameof(LogCleanupFailedDirectory)),
+            "[ONNX-Registry] Failed to cleanup old model versions - directory not found");
+
+    private static readonly Action<ILogger, Exception?> LogCleanupFailedIO =
+        LoggerMessage.Define(LogLevel.Error, new EventId(66, nameof(LogCleanupFailedIO)),
+            "[ONNX-Registry] Failed to cleanup old model versions - I/O error");
+
+    private static readonly Action<ILogger, Exception?> LogCleanupFailedUnauthorized =
+        LoggerMessage.Define(LogLevel.Error, new EventId(67, nameof(LogCleanupFailedUnauthorized)),
+            "[ONNX-Registry] Failed to cleanup old model versions - access denied");
+
+    private static readonly Action<ILogger, string, Exception?> LogSacReloadTriggered =
+        LoggerMessage.Define<string>(LogLevel.Information, new EventId(68, nameof(LogSacReloadTriggered)),
+            "[SAC_RELOAD] Triggering SAC model reload for {File}");
+
+    private static readonly Action<ILogger, Exception?> LogSacReloadSuccess =
+        LoggerMessage.Define(LogLevel.Information, new EventId(69, nameof(LogSacReloadSuccess)),
+            "[SAC_RELOAD] Reload signal sent for SAC model");
+
+    private static readonly Action<ILogger, string, Exception?> LogSacReloadFailedUnauthorized =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(70, nameof(LogSacReloadFailedUnauthorized)),
+            "[SAC_RELOAD] Failed to trigger SAC model reload for {File}");
+
+    private static readonly Action<ILogger, string, Exception?> LogSacReloadFailedIO =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(71, nameof(LogSacReloadFailedIO)),
+            "[SAC_RELOAD] Failed to trigger SAC model reload for {File}");
+
+    private static readonly Action<ILogger, string, Exception?> LogModelNotificationCreated =
+        LoggerMessage.Define<string>(LogLevel.Information, new EventId(72, nameof(LogModelNotificationCreated)),
+            "[MODEL_NOTIFICATION] Model update notification created: {File}");
+
+    private static readonly Action<ILogger, Exception?> LogModelNotificationFailedUnauthorized =
+        LoggerMessage.Define(LogLevel.Error, new EventId(73, nameof(LogModelNotificationFailedUnauthorized)),
+            "[MODEL_NOTIFICATION] Failed to create model update notification");
+
+    private static readonly Action<ILogger, Exception?> LogModelNotificationFailedIO =
+        LoggerMessage.Define(LogLevel.Error, new EventId(74, nameof(LogModelNotificationFailedIO)),
+            "[MODEL_NOTIFICATION] Failed to create model update notification");
+
+    private static readonly Action<ILogger, Exception?> LogModelNotificationFailedJson =
+        LoggerMessage.Define(LogLevel.Error, new EventId(75, nameof(LogModelNotificationFailedJson)),
+            "[MODEL_NOTIFICATION] Failed to create model update notification");
+
+    private static readonly Action<ILogger, string, double, Exception?> LogModelCompressed =
+        LoggerMessage.Define<string, double>(LogLevel.Information, new EventId(76, nameof(LogModelCompressed)),
+            "[ONNX-Registry] Model compressed: {ModelPath} (ratio: {Ratio:P1})");
+
+    private static readonly Action<ILogger, string, object, Exception?> LogModelMetadataParsed =
+        LoggerMessage.Define<string, object>(LogLevel.Information, new EventId(77, nameof(LogModelMetadataParsed)),
+            "[MODEL_RELOAD] Model metadata parsed from {File}, version: {Version}");
+
+    private static readonly Action<ILogger, string, Exception?> LogModelMetadataParseError =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(78, nameof(LogModelMetadataParseError)),
+            "[MODEL_RELOAD] Failed to parse metadata from {File}");
+
     public OnnxModelLoader(
         ILogger<OnnxModelLoader> logger, 
         string modelsDirectory = "models",
@@ -498,7 +611,7 @@ public sealed class OnnxModelLoader : IDisposable
                 
                 if (!isHealthy)
                 {
-                    LogHealthProbeFailed(_logger, modelPath, healthProbeResult.ErrorMessage, null);
+                    LogHealthProbeFailed(_logger, modelPath, healthProbeResult.ErrorMessage ?? "Unknown error", null);
                     // Dispose will happen in finally block
                     return new ModelLoadResult { Session = null, IsHealthy = false };
                 }
@@ -717,7 +830,7 @@ public sealed class OnnxModelLoader : IDisposable
                 if (!_modelMetadata.TryGetValue(cacheKey, out var metadata) || 
                     metadata.LoadedAt < lastWriteTime)
                 {
-                    LogRegistryUpdateNew(_logger, Path.GetFileName(metadataFile), lastWriteTime, null);
+                    LogRegistryUpdateNew(_logger, Path.GetFileName(metadataFile), lastWriteTime.ToString("O", CultureInfo.InvariantCulture), null);
                     
                     // Read and parse metadata to trigger model reload if needed
                     var content = await File.ReadAllTextAsync(metadataFile).ConfigureAwait(false);
@@ -775,7 +888,7 @@ public sealed class OnnxModelLoader : IDisposable
                 if (!_modelMetadata.TryGetValue(cacheKey, out var sacMetadata) || 
                     sacMetadata.LoadedAt < lastWriteTime)
                 {
-                    LogSacUpdate(_logger, Path.GetFileName(sacFile), lastWriteTime, null);
+                    LogSacUpdate(_logger, Path.GetFileName(sacFile), lastWriteTime.ToString("O", CultureInfo.InvariantCulture), null);
                     
                     // Trigger SAC model reload in Python side
                     await TriggerSacModelReloadAsync(sacFile).ConfigureAwait(false);
@@ -979,7 +1092,7 @@ public sealed class OnnxModelLoader : IDisposable
     {
         using var stream = File.OpenRead(filePath);
         using var sha256 = SHA256.Create();
-        var hash = await Task.Run(() => sha256.ComputeHash(stream)).ConfigureAwait(false);
+        var hash = await sha256.ComputeHashAsync(stream).ConfigureAwait(false);
         return Convert.ToHexString(hash).ToUpperInvariant();
     }
 
@@ -1253,19 +1366,19 @@ public sealed class OnnxModelLoader : IDisposable
                     catch (IOException cleanupEx)
                     {
                         // Ignore cleanup errors - temp file deletion is best-effort
-                        _logger.LogDebug(cleanupEx, "[ONNX-Loader] Failed to cleanup temp file: {TempPath}", tempModelPath);
+                        LogTempFileCleanupDebug(_logger, tempModelPath, cleanupEx);
                     }
                     catch (UnauthorizedAccessException cleanupEx)
                     {
                         // Ignore cleanup errors - temp file deletion is best-effort
-                        _logger.LogDebug(cleanupEx, "[ONNX-Loader] Failed to cleanup temp file: {TempPath}", tempModelPath);
+                        LogTempFileCleanupDebug(_logger, tempModelPath, cleanupEx);
                     }
                 }
                 throw new IOException($"Failed to deploy model atomically from {tempModelPath} to {registryModelPath}", ex);
             }
             catch (UnauthorizedAccessException ex)
             {
-                _logger.LogError(ex, "[ONNX-Registry] Failed to deploy model atomically - access denied");
+                LogDeployFailedUnauthorized(_logger, ex);
                 // Cleanup temp file on error
                 if (File.Exists(tempModelPath))
                 {
@@ -1276,12 +1389,12 @@ public sealed class OnnxModelLoader : IDisposable
                     catch (IOException cleanupEx)
                     {
                         // Ignore cleanup errors - temp file deletion is best-effort
-                        _logger.LogDebug(cleanupEx, "[ONNX-Loader] Failed to cleanup temp file: {TempPath}", tempModelPath);
+                        LogTempFileCleanupDebug(_logger, tempModelPath, cleanupEx);
                     }
                     catch (UnauthorizedAccessException cleanupEx)
                     {
                         // Ignore cleanup errors - temp file deletion is best-effort
-                        _logger.LogDebug(cleanupEx, "[ONNX-Loader] Failed to cleanup temp file: {TempPath}", tempModelPath);
+                        LogTempFileCleanupDebug(_logger, tempModelPath, cleanupEx);
                     }
                 }
                 throw new UnauthorizedAccessException($"Access denied deploying model from {tempModelPath} to {registryModelPath}", ex);
@@ -1304,12 +1417,12 @@ public sealed class OnnxModelLoader : IDisposable
             // Update registry index
             await UpdateRegistryIndexAsync(entry, cancellationToken).ConfigureAwait(false);
 
-            _logger.LogInformation("[ONNX-Registry] Model registered: {ModelName} v{Version}", modelName, version);
+            LogModelRegisteredSuccess(_logger, modelName, version, null);
             return entry;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[ONNX-Registry] Failed to register model: {ModelName}", modelName);
+            LogModelRegistrationFailed(_logger, modelName, ex);
             throw new InvalidOperationException($"Failed to register model '{modelName}' in registry", ex);
         }
     }
@@ -1352,22 +1465,22 @@ public sealed class OnnxModelLoader : IDisposable
         }
         catch (DirectoryNotFoundException ex)
         {
-            _logger.LogError(ex, "[ONNX-Registry] Failed to get latest model - directory not found: {ModelName}", modelName);
+            LogGetLatestModelFailedDirectory(_logger, modelName, ex);
             return null;
         }
         catch (FileNotFoundException ex)
         {
-            _logger.LogError(ex, "[ONNX-Registry] Failed to get latest model - file not found: {ModelName}", modelName);
+            LogGetLatestModelFailedFile(_logger, modelName, ex);
             return null;
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "[ONNX-Registry] Failed to get latest model - invalid JSON: {ModelName}", modelName);
+            LogGetLatestModelFailedJson(_logger, modelName, ex);
             return null;
         }
         catch (IOException ex)
         {
-            _logger.LogError(ex, "[ONNX-Registry] Failed to get latest model - I/O error: {ModelName}", modelName);
+            LogGetLatestModelFailedIO(_logger, modelName, ex);
             return null;
         }
     }
@@ -1432,27 +1545,26 @@ public sealed class OnnxModelLoader : IDisposable
             }
 
             report.IsHealthy = report.ModelStatuses.All(s => s.IsHealthy);
-            _logger.LogInformation("[ONNX-Registry] Health check completed: {HealthyCount}/{TotalCount} healthy", 
-                report.ModelStatuses.Count(s => s.IsHealthy), report.ModelStatuses.Count);
+            LogHealthCheckCompleted(_logger, report.ModelStatuses.Count(s => s.IsHealthy), report.ModelStatuses.Count, null);
         }
         catch (DirectoryNotFoundException ex)
         {
-            _logger.LogError(ex, "[ONNX-Registry] Failed to perform health check - directory not found");
+            LogHealthCheckFailedDirectory(_logger, ex);
             report.IsHealthy = false;
         }
         catch (FileNotFoundException ex)
         {
-            _logger.LogError(ex, "[ONNX-Registry] Failed to perform health check - file not found");
+            LogHealthCheckFailedFile(_logger, ex);
             report.IsHealthy = false;
         }
         catch (IOException ex)
         {
-            _logger.LogError(ex, "[ONNX-Registry] Failed to perform health check - I/O error");
+            LogHealthCheckFailedIO(_logger, ex);
             report.IsHealthy = false;
         }
         catch (UnauthorizedAccessException ex)
         {
-            _logger.LogError(ex, "[ONNX-Registry] Failed to perform health check - access denied");
+            LogHealthCheckFailedUnauthorized(_logger, ex);
             report.IsHealthy = false;
         }
 
@@ -1482,23 +1594,22 @@ public sealed class OnnxModelLoader : IDisposable
                     foreach (var version in toDelete)
                     {
                         Directory.Delete(version.Path, recursive: true);
-                        _logger.LogInformation("[ONNX-Registry] Cleaned up old model version: {ModelName} v{Version}", 
-                            modelName, version.Version);
+                        LogOldVersionCleaned(_logger, modelName, version.Version, null);
                     }
                 }
             }
         }
         catch (DirectoryNotFoundException ex)
         {
-            _logger.LogError(ex, "[ONNX-Registry] Failed to cleanup old model versions - directory not found");
+            LogCleanupFailedDirectory(_logger, ex);
         }
         catch (IOException ex)
         {
-            _logger.LogError(ex, "[ONNX-Registry] Failed to cleanup old model versions - I/O error");
+            LogCleanupFailedIO(_logger, ex);
         }
         catch (UnauthorizedAccessException ex)
         {
-            _logger.LogError(ex, "[ONNX-Registry] Failed to cleanup old model versions - access denied");
+            LogCleanupFailedUnauthorized(_logger, ex);
         }
         
         return Task.CompletedTask;
@@ -1508,7 +1619,7 @@ public sealed class OnnxModelLoader : IDisposable
     {
         using var sha256 = SHA256.Create();
         using var fileStream = File.OpenRead(filePath);
-        var hashBytes = await Task.Run(() => sha256.ComputeHash(fileStream), cancellationToken).ConfigureAwait(false);
+        var hashBytes = await sha256.ComputeHashAsync(fileStream, cancellationToken).ConfigureAwait(false);
         return Convert.ToHexString(hashBytes).ToUpperInvariant();
     }
 
@@ -1528,8 +1639,7 @@ public sealed class OnnxModelLoader : IDisposable
         var compressedSize = new FileInfo(compressedPath).Length;
         var compressionRatio = (double)compressedSize / originalSize;
         
-        _logger.LogInformation("[ONNX-Registry] Model compressed: {ModelPath} (ratio: {Ratio:P1})", 
-            modelPath, compressionRatio);
+        LogModelCompressed(_logger, modelPath, compressionRatio, null);
     }
 
     private async Task UpdateRegistryIndexAsync(ModelRegistryEntry entry, CancellationToken cancellationToken)
@@ -1574,8 +1684,7 @@ public sealed class OnnxModelLoader : IDisposable
             var metadata = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(content);
             if (metadata != null && metadata.TryGetValue("version", out var version))
             {
-                _logger.LogInformation("[MODEL_RELOAD] Model metadata parsed from {File}, version: {Version}", 
-                    Path.GetFileName(metadataFile), version);
+                LogModelMetadataParsed(_logger, Path.GetFileName(metadataFile), version, null);
                 
                 // Trigger model reload notification
                 await NotifyModelUpdateAsync(metadataFile, metadata).ConfigureAwait(false);
@@ -1583,7 +1692,7 @@ public sealed class OnnxModelLoader : IDisposable
         }
         catch (JsonException ex)
         {
-            _logger.LogWarning(ex, "[MODEL_RELOAD] Failed to parse metadata from {File}", metadataFile);
+            LogModelMetadataParseError(_logger, metadataFile, ex);
         }
     }
 
@@ -1594,21 +1703,21 @@ public sealed class OnnxModelLoader : IDisposable
     {
         try
         {
-            _logger.LogInformation("[SAC_RELOAD] Triggering SAC model reload for {File}", Path.GetFileName(sacFile));
+            LogSacReloadTriggered(_logger, Path.GetFileName(sacFile), null);
             
             // Send reload signal to Python SAC agent via file system signal
             var reloadSignalFile = Path.Combine(Path.GetDirectoryName(sacFile) ?? "", ".sac_reload_signal");
             await File.WriteAllTextAsync(reloadSignalFile, DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)).ConfigureAwait(false);
             
-            _logger.LogInformation("[SAC_RELOAD] Reload signal sent for SAC model");
+            LogSacReloadSuccess(_logger, null);
         }
         catch (UnauthorizedAccessException ex)
         {
-            _logger.LogError(ex, "[SAC_RELOAD] Failed to trigger SAC model reload for {File}", sacFile);
+            LogSacReloadFailedUnauthorized(_logger, sacFile, ex);
         }
         catch (IOException ex)
         {
-            _logger.LogError(ex, "[SAC_RELOAD] Failed to trigger SAC model reload for {File}", sacFile);
+            LogSacReloadFailedIO(_logger, sacFile, ex);
         }
     }
 
@@ -1636,19 +1745,19 @@ public sealed class OnnxModelLoader : IDisposable
             var notificationJson = System.Text.Json.JsonSerializer.Serialize(notification, _jsonOptions);
             
             await File.WriteAllTextAsync(notificationFile, notificationJson).ConfigureAwait(false);
-            _logger.LogInformation("[MODEL_NOTIFICATION] Model update notification created: {File}", notificationFile);
+            LogModelNotificationCreated(_logger, notificationFile, null);
         }
         catch (UnauthorizedAccessException ex)
         {
-            _logger.LogError(ex, "[MODEL_NOTIFICATION] Failed to create model update notification");
+            LogModelNotificationFailedUnauthorized(_logger, ex);
         }
         catch (IOException ex)
         {
-            _logger.LogError(ex, "[MODEL_NOTIFICATION] Failed to create model update notification");
+            LogModelNotificationFailedIO(_logger, ex);
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "[MODEL_NOTIFICATION] Failed to create model update notification");
+            LogModelNotificationFailedJson(_logger, ex);
         }
     }
 

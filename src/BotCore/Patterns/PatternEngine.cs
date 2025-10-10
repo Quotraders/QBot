@@ -32,6 +32,73 @@ public class PatternEngine : IComponentHealth
     private const double NEUTRAL_SCORE = 0.5;
     private const double MINIMUM_SCORE_FOR_ANALYSIS = 0.01;
 
+    // LoggerMessage delegates for CA1848 performance compliance
+    private static readonly Action<ILogger, string, string, Exception> LogPatternDetectorWarning =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Warning,
+            new EventId(6201, nameof(LogPatternDetectorWarning)),
+            "Pattern detector {PatternName} invalid operation for {Symbol}");
+    
+    private static readonly Action<ILogger, string, string, Exception> LogPatternDetectorArgumentError =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Warning,
+            new EventId(6202, nameof(LogPatternDetectorArgumentError)),
+            "Pattern detector {PatternName} invalid argument for {Symbol}");
+    
+    private static readonly Action<ILogger, string, double, double, int, Exception?> LogPatternAnalysis =
+        LoggerMessage.Define<string, double, double, int>(
+            LogLevel.Debug,
+            new EventId(6203, nameof(LogPatternAnalysis)),
+            "Pattern analysis for {Symbol}: Bull={BullScore:F3}, Bear={BearScore:F3}, Patterns={Count}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogNoBarsAvailable =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(6204, nameof(LogNoBarsAvailable)),
+            "No recent bars available for pattern analysis of {Symbol}, using neutral scores");
+    
+    private static readonly Action<ILogger, string, Exception> LogGetScoresError =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(6205, nameof(LogGetScoresError)),
+            "Invalid operation getting pattern scores for {Symbol}");
+    
+    private static readonly Action<ILogger, int, string, Exception?> LogRetrievedBars =
+        LoggerMessage.Define<int, string>(
+            LogLevel.Debug,
+            new EventId(6206, nameof(LogRetrievedBars)),
+            "Retrieved {Count} real bars for pattern analysis of {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogBarConsumerNoQuery =
+        LoggerMessage.Define<string>(
+            LogLevel.Debug,
+            new EventId(6207, nameof(LogBarConsumerNoQuery)),
+            "Bar consumer available but no query interface for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogNoBarDataAvailable =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(6208, nameof(LogNoBarDataAvailable)),
+            "No bar data available for pattern analysis of {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception> LogInvalidSymbolArgument =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(6209, nameof(LogInvalidSymbolArgument)),
+            "Invalid symbol argument for pattern analysis: {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception> LogServiceUnavailable =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(6210, nameof(LogServiceUnavailable)),
+            "Pattern analysis service unavailable for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception> LogTimeout =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(6211, nameof(LogTimeout)),
+            "Timeout retrieving bar data for pattern analysis of {Symbol}");
+
     public PatternEngine(ILogger<PatternEngine> logger, IFeatureBus featureBus, IEnumerable<IPatternDetector> detectors, IServiceProvider serviceProvider)
     {
         _logger = logger;
@@ -83,11 +150,11 @@ public class PatternEngine : IComponentHealth
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Pattern detector {PatternName} invalid operation for {Symbol}", detector.PatternName, symbol);
+                LogPatternDetectorWarning(_logger, detector.PatternName, symbol, ex);
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning(ex, "Pattern detector {PatternName} invalid argument for {Symbol}", detector.PatternName, symbol);
+                LogPatternDetectorArgumentError(_logger, detector.PatternName, symbol, ex);
             }
         }
 
@@ -99,8 +166,7 @@ public class PatternEngine : IComponentHealth
         _featureBus.Publish(symbol, now, "pattern.bear_score", (decimal)patternScores.BearScore);
         _featureBus.Publish(symbol, now, "pattern.total_count", (decimal)patternScores.PatternFlags.Count);
 
-        _logger.LogDebug("Pattern analysis for {Symbol}: Bull={BullScore:F3}, Bear={BearScore:F3}, Patterns={Count}",
-            symbol, patternScores.BullScore, patternScores.BearScore, results.Count);
+        LogPatternAnalysis(_logger, symbol, patternScores.BullScore, patternScores.BearScore, results.Count, null);
 
         return patternScores;
     }
@@ -117,7 +183,7 @@ public class PatternEngine : IComponentHealth
             
             if (recentBars == null || recentBars.Count == 0)
             {
-                _logger.LogWarning("No recent bars available for pattern analysis of {Symbol}, using neutral scores", symbol);
+                LogNoBarsAvailable(_logger, symbol, null);
                 var neutralResult = new PatternScoresWithDetails
                 {
                     BullScore = NEUTRAL_SCORE,
@@ -150,7 +216,7 @@ public class PatternEngine : IComponentHealth
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Invalid operation getting pattern scores for {Symbol}", symbol);
+            LogGetScoresError(_logger, symbol, ex);
             
             // Return neutral scores on error
             var errorResult = new PatternScoresWithDetails
@@ -222,7 +288,7 @@ public class PatternEngine : IComponentHealth
                         Volume = (int)Math.Min(marketBar.Volume, int.MaxValue)
                     }).ToList();
                     
-                    _logger.LogDebug("Retrieved {Count} real bars for pattern analysis of {Symbol}", bars.Count, symbol);
+                    LogRetrievedBars(_logger, bars.Count, symbol, null);
                     
                     await Task.CompletedTask.ConfigureAwait(false);
                     return bars;
@@ -234,26 +300,26 @@ public class PatternEngine : IComponentHealth
             if (barConsumer != null)
             {
                 // The bar consumer doesn't expose a query interface, but we can try other sources
-                _logger.LogDebug("Bar consumer available but no query interface for {Symbol}", symbol);
+                LogBarConsumerNoQuery(_logger, symbol, null);
             }
             
             // If no bars available, we cannot perform pattern analysis
-            _logger.LogWarning("No bar data available for pattern analysis of {Symbol}", symbol);
+            LogNoBarDataAvailable(_logger, symbol, null);
             return null;
         }
         catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "Invalid symbol argument for pattern analysis: {Symbol}", symbol);
+            LogInvalidSymbolArgument(_logger, symbol, ex);
             throw new InvalidOperationException($"Pattern analysis failed for symbol '{symbol}' due to invalid symbol argument", ex);
         }
         catch (InvalidOperationException ex) 
         {
-            _logger.LogError(ex, "Pattern analysis service unavailable for {Symbol}", symbol);
+            LogServiceUnavailable(_logger, symbol, ex);
             throw new InvalidOperationException($"Pattern analysis failed for symbol '{symbol}' due to service unavailability", ex);
         }
         catch (TimeoutException ex)
         {
-            _logger.LogError(ex, "Timeout retrieving bar data for pattern analysis of {Symbol}", symbol);
+            LogTimeout(_logger, symbol, ex);
             throw new InvalidOperationException($"Pattern analysis failed for symbol '{symbol}' due to data retrieval timeout", ex);
         }
     }

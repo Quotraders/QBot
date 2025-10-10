@@ -305,13 +305,10 @@ namespace TopstepX.Bot.Core.Services
                 _logger.LogInformation("✅ Trading System Integration Service ready");
                 _isSystemReady = true;
 
-                // Start trading evaluation timer if system is ready
-                if (_isSystemReady)
-                {
-                    _tradingEvaluationTimer.Change(
-                        InitialEvaluationDelayMs, // Initial delay in ms
-                        (int)TimeSpan.FromSeconds(_config.TradingEvaluationIntervalSeconds).TotalMilliseconds);
-                }
+                // Start trading evaluation timer now that system is ready
+                _tradingEvaluationTimer.Change(
+                    InitialEvaluationDelayMs, // Initial delay in ms
+                    (int)TimeSpan.FromSeconds(_config.TradingEvaluationIntervalSeconds).TotalMilliseconds);
                 
                 // Main service loop
                 while (!stoppingToken.IsCancellationRequested)
@@ -729,8 +726,6 @@ namespace TopstepX.Bot.Core.Services
                     brainDecision.PriceDirection, brainDecision.PriceProbability, brainDecision.OptimalPositionMultiplier);
                 
                 // PHASE 6: AllStrategies Signal Generation - Generate high-confidence signals using existing sophisticated strategies
-                CreateMarketSnapshot(symbol, marketData);
-                
                 // Use AllStrategies for signal generation - this is what the user wants!
                 var allStrategiesSignals = ConvertCandidatesToSignals(mlEnhancedCandidates, "ML-Enhanced");
 
@@ -1472,10 +1467,10 @@ namespace TopstepX.Bot.Core.Services
                         bars.RemoveAt(0);
                     }
                 }
-                else if (lastBar != null)
+                else
                 {
-                    // Update current bar
-                    lastBar.High = Math.Max(lastBar.High, marketData.LastPrice);
+                    // Update current bar (lastBar is guaranteed non-null here due to shouldCreateNewBar logic)
+                    lastBar!.High = Math.Max(lastBar.High, marketData.LastPrice);
                     lastBar.Low = Math.Min(lastBar.Low, marketData.LastPrice);
                     lastBar.Close = marketData.LastPrice;
                     lastBar.Volume += (int)marketData.Volume;
@@ -1616,8 +1611,7 @@ namespace TopstepX.Bot.Core.Services
                 // If only one has data, use that one
                 if (hasEsData && !hasNqData) return "ES";
                 if (hasNqData && !hasEsData) return "NQ";
-                if (!hasEsData && !hasNqData) return "ES"; // Default
-
+                
                 // Both have data - make intelligent choice based on:
                 // 1. Recent volatility (prefer more volatile for momentum strategies)
                 // 2. Spread tightness (prefer tighter spreads)
@@ -1750,16 +1744,20 @@ namespace TopstepX.Bot.Core.Services
             _isTradingEnabled = false;
         }
 
-        private Task CleanupAsync()
+        private async Task CleanupAsync()
         {
             _logger.LogInformation("🧹 Cleaning up trading system resources...");
             
-            _tradingEvaluationTimer?.Dispose();
+            if (_tradingEvaluationTimer != null)
+            {
+                await _tradingEvaluationTimer.DisposeAsync().ConfigureAwait(false);
+            }
             
             _orderConfirmation?.Dispose();
             
+            _riskEngine?.Dispose();
+            
             _logger.LogInformation("✅ Trading system cleanup completed");
-            return Task.CompletedTask;
         }
 
         #region Production Readiness Helper Methods
@@ -1888,7 +1886,7 @@ namespace TopstepX.Bot.Core.Services
                 LastMarketDataUpdate = _lastMarketDataUpdate,
                 HubsConnected = true, // TopstepX SDK connections managed internally
                 CanTrade = !_emergencyStop.IsEmergencyStop && !File.Exists("kill.txt"),
-                ContractId = _readinessConfig.SeedingContracts.FirstOrDefault(),
+                ContractId = _readinessConfig.SeedingContracts.Count > 0 ? _readinessConfig.SeedingContracts[0] : null,
                 State = _currentReadinessState
             };
         }

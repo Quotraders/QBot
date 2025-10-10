@@ -12,16 +12,16 @@ namespace BotCore.Services;
 public static class ProductionPriceService
 {
     // Tick size constants following guardrails
-    public const decimal ES_TICK = 0.25m;
-    public const decimal MES_TICK = 0.25m;
-    public const decimal DEFAULT_TICK = 0.01m; // Default 1 cent tick for other instruments
+    public const decimal EsTick = 0.25m;
+    public const decimal MesTick = 0.25m;
+    public const decimal DefaultTick = 0.01m; // Default 1 cent tick for other instruments
     
     private static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
 
     /// <summary>
     /// Round price to tick size (ES/MES = 0.25)
     /// </summary>
-    public static decimal RoundToTick(decimal price, decimal tick = ES_TICK)
+    public static decimal RoundToTick(decimal price, decimal tick = EsTick)
     {
         return Math.Round(price / tick, 0, MidpointRounding.AwayFromZero) * tick;
     }
@@ -91,11 +91,11 @@ public static class ProductionPriceService
     {
         if (RequiresEsTickRounding(symbol))
         {
-            return ES_TICK;
+            return EsTick;
         }
         
         // Add other instruments here as needed
-        return DEFAULT_TICK;
+        return DefaultTick;
     }
 
     /// <summary>

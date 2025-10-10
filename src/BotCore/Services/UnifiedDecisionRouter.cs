@@ -32,6 +32,9 @@ namespace BotCore.Services;
 /// </summary>
 public class UnifiedDecisionRouter
 {
+    // Floating point comparison tolerance
+    private const double Epsilon = 1e-10;
+    
     // Trading analysis constants
     private const int MAX_DECISION_HISTORY = 1000;          // Maximum decisions to retain in memory
     
@@ -75,7 +78,6 @@ public class UnifiedDecisionRouter
     private const int DECISION_ID_RANDOM_MAX = 9999;              // Maximum random number for decision ID
 
     private readonly ILogger<UnifiedDecisionRouter> _logger;
-    private readonly IServiceProvider _serviceProvider;
     
     // AI Brain components in priority order - Strategy Knowledge Graph & Decision Fusion is highest priority
     private readonly DecisionFusionCoordinator? _decisionFusion;
@@ -84,7 +86,6 @@ public class UnifiedDecisionRouter
     private readonly TradingBot.IntelligenceStack.IntelligenceOrchestrator _intelligenceOrchestrator;
     
     // Strategy routing configuration
-    private readonly Dictionary<string, StrategyConfig> _strategyConfigs;
     private readonly Random _random = new();
     
     // Decision tracking for learning
@@ -99,7 +100,6 @@ public class UnifiedDecisionRouter
         TradingBot.IntelligenceStack.IntelligenceOrchestrator intelligenceOrchestrator)
     {
         _logger = logger;
-        _serviceProvider = serviceProvider;
         _unifiedBrain = unifiedBrain;
         _enhancedBrain = enhancedBrain;
         _intelligenceOrchestrator = intelligenceOrchestrator;
@@ -118,9 +118,6 @@ public class UnifiedDecisionRouter
             _logger.LogWarning(ex, "Decision Fusion Coordinator service resolution failed, continuing without it");
             _decisionFusion = null;
         }
-        
-        // Initialize strategy configurations
-        _strategyConfigs = InitializeStrategyConfigs();
         
         _logger.LogInformation("🎯 [DECISION-ROUTER] Unified Decision Router initialized");
         _logger.LogInformation("📊 [DECISION-ROUTER] Services wired: Fusion={FusionAvailable}, Enhanced=True, Unified=True, Intelligence=True", 
@@ -349,7 +346,7 @@ public class UnifiedDecisionRouter
             var env = ConvertToEnv(marketContext);
             var levels = ConvertToLevels(marketContext);
             var bars = ConvertToBars(marketContext);
-            var risk = CreateRiskEngine();
+            using var risk = CreateRiskEngine();
             
             var brainDecision = await _unifiedBrain.MakeIntelligentDecisionAsync(
                 symbol, env, levels, bars, risk, cancellationToken).ConfigureAwait(false);
@@ -709,7 +706,7 @@ public class UnifiedDecisionRouter
     private static TradingBot.Abstractions.MarketContext EnhanceMarketContext(TradingBot.Abstractions.MarketContext context)
     {
         // Enhance the context with additional properties if not already set
-        if (context.Bid == 0 && context.Ask == 0)
+        if (Math.Abs(context.Bid) < Epsilon && Math.Abs(context.Ask) < Epsilon)
         {
             var newContext = new TradingBot.Abstractions.MarketContext
             {

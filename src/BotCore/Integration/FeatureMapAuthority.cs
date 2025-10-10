@@ -54,6 +54,139 @@ public sealed class FeatureMapAuthority
     private long _missingFeatureCalls;
     private long _resolverErrors;
     
+    // LoggerMessage delegates for CA1848 performance compliance
+    private static readonly Action<ILogger, Exception?> LogInitializingManifest =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(6520, nameof(LogInitializingManifest)),
+            "Initializing feature resolver manifest...");
+    
+    private static readonly Action<ILogger, int, Exception?> LogManifestInitialized =
+        LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(6521, nameof(LogManifestInitialized)),
+            "Feature resolver manifest initialized with {ResolverCount} resolvers");
+    
+    private static readonly Action<ILogger, string, Exception?> LogOverridingResolver =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(6522, nameof(LogOverridingResolver)),
+            "Overriding existing resolver for feature key: {FeatureKey}");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogResolverRegistered =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Trace,
+            new EventId(6523, nameof(LogResolverRegistered)),
+            "Registered feature resolver: {FeatureKey} → {ResolverType}");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogFeatureMissing =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Error,
+            new EventId(6524, nameof(LogFeatureMissing)),
+            "FEATURE MISSING: {FeatureKey} for {Symbol} - HOLDING DECISION");
+    
+    private static readonly Action<ILogger, string, string, double?, string, Exception?> LogFeatureResolved =
+        LoggerMessage.Define<string, string, double?, string>(
+            LogLevel.Trace,
+            new EventId(6525, nameof(LogFeatureResolved)),
+            "Feature resolved: {FeatureKey} for {Symbol} = {Value} ({ResolverType})");
+    
+    private static readonly Action<ILogger, string, string, string, Exception?> LogFeatureResolvedNull =
+        LoggerMessage.Define<string, string, string>(
+            LogLevel.Warning,
+            new EventId(6526, nameof(LogFeatureResolvedNull)),
+            "Feature resolution returned null: {FeatureKey} for {Symbol} ({ResolverType})");
+    
+    private static readonly Action<ILogger, string, string, Exception> LogInvalidOperationResolvingFeature =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Error,
+            new EventId(6527, nameof(LogInvalidOperationResolvingFeature)),
+            "Invalid operation resolving feature {FeatureKey} for {Symbol}");
+    
+    private static readonly Action<ILogger, string, string, Exception> LogFeatureKeyNotFound =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Error,
+            new EventId(6528, nameof(LogFeatureKeyNotFound)),
+            "Feature key not found: {FeatureKey} for {Symbol}");
+    
+    private static readonly Action<ILogger, string, string, Exception> LogTimeoutResolvingFeature =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Error,
+            new EventId(6529, nameof(LogTimeoutResolvingFeature)),
+            "Timeout resolving feature {FeatureKey} for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogFusionFeatureMissing =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(6530, nameof(LogFusionFeatureMissing)),
+            "🚨 FUSION FEATURE MISSING: {FeatureKey} - emitted telemetry");
+    
+    private static readonly Action<ILogger, string, Exception> LogReflectionErrorEmittingTelemetry =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(6531, nameof(LogReflectionErrorEmittingTelemetry)),
+            "Reflection error emitting fusion.feature_missing telemetry for {FeatureKey}");
+    
+    private static readonly Action<ILogger, string, Exception> LogInvalidOperationEmittingTelemetry =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(6532, nameof(LogInvalidOperationEmittingTelemetry)),
+            "Invalid operation emitting fusion.feature_missing telemetry for {FeatureKey}");
+    
+    private static readonly Action<ILogger, string, string, double, Exception?> LogMtfFeatureValue =
+        LoggerMessage.Define<string, string, double>(
+            LogLevel.Trace,
+            new EventId(6533, nameof(LogMtfFeatureValue)),
+            "MTF feature {FeatureKey} for {Symbol}: {Value}");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogMtfFeatureNoValue =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Trace,
+            new EventId(6534, nameof(LogMtfFeatureNoValue)),
+            "MTF feature {FeatureKey} for {Symbol}: no value available");
+    
+    private static readonly Action<ILogger, string, string, Exception> LogMtfFeatureFailed =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Error,
+            new EventId(6535, nameof(LogMtfFeatureFailed)),
+            "Failed to resolve MTF feature {FeatureKey} for symbol {Symbol}");
+    
+    private static readonly Action<ILogger, string, string, double, Exception?> LogLiquidityFeatureValue =
+        LoggerMessage.Define<string, string, double>(
+            LogLevel.Trace,
+            new EventId(6536, nameof(LogLiquidityFeatureValue)),
+            "Liquidity feature {FeatureKey} for {Symbol}: {Value}");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogLiquidityFeatureNoValue =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Trace,
+            new EventId(6537, nameof(LogLiquidityFeatureNoValue)),
+            "Liquidity feature {FeatureKey} for {Symbol}: no value available");
+    
+    private static readonly Action<ILogger, string, string, Exception> LogLiquidityFeatureFailed =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Error,
+            new EventId(6538, nameof(LogLiquidityFeatureFailed)),
+            "Failed to resolve liquidity feature {FeatureKey} for symbol {Symbol}");
+    
+    private static readonly Action<ILogger, string, double, Exception?> LogOfiProxyValue =
+        LoggerMessage.Define<string, double>(
+            LogLevel.Trace,
+            new EventId(6539, nameof(LogOfiProxyValue)),
+            "OFI proxy for {Symbol}: {Value}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogOfiProxyNoValue =
+        LoggerMessage.Define<string>(
+            LogLevel.Trace,
+            new EventId(6540, nameof(LogOfiProxyNoValue)),
+            "OFI proxy for {Symbol}: no value available");
+    
+    private static readonly Action<ILogger, string, Exception> LogOfiProxyFailed =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(6541, nameof(LogOfiProxyFailed)),
+            "Failed to resolve OFI proxy for symbol {Symbol}");
+    
     public FeatureMapAuthority(ILogger<FeatureMapAuthority> logger, IServiceProvider serviceProvider)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -68,7 +201,7 @@ public sealed class FeatureMapAuthority
     /// </summary>
     private void InitializeFeatureResolverManifest()
     {
-        _logger.LogInformation("Initializing feature resolver manifest...");
+        LogInitializingManifest(_logger, null);
         
         // Zone-based features
         RegisterZoneFeatureResolvers();
@@ -91,7 +224,7 @@ public sealed class FeatureMapAuthority
         // Performance and execution features
         RegisterPerformanceExecutionResolvers();
         
-        _logger.LogInformation("Feature resolver manifest initialized with {ResolverCount} resolvers", _featureResolvers.Count);
+        LogManifestInitialized(_logger, _featureResolvers.Count, null);
     }
     
     /// <summary>
@@ -225,11 +358,11 @@ public sealed class FeatureMapAuthority
             
         if (_featureResolvers.ContainsKey(featureKey))
         {
-            _logger.LogWarning("Overriding existing resolver for feature key: {FeatureKey}", featureKey);
+            LogOverridingResolver(_logger, featureKey, null);
         }
         
         _featureResolvers[featureKey] = resolver;
-        _logger.LogTrace("Registered feature resolver: {FeatureKey} → {ResolverType}", featureKey, resolver.GetType().Name);
+        LogResolverRegistered(_logger, featureKey, resolver.GetType().Name, null);
     }
     
     /// <summary>
@@ -266,7 +399,7 @@ public sealed class FeatureMapAuthority
                 // Emit fusion.feature_missing telemetry (once per session)
                 await EmitMissingFeatureTelemetryAsync(featureKey, cancellationToken).ConfigureAwait(false);
                 
-                _logger.LogError("FEATURE MISSING: {FeatureKey} for {Symbol} - HOLDING DECISION", featureKey, symbol);
+                LogFeatureMissing(_logger, featureKey, symbol, null);
                 return result;
             }
             
@@ -281,13 +414,11 @@ public sealed class FeatureMapAuthority
             
             if (result.Success)
             {
-                _logger.LogTrace("Feature resolved: {FeatureKey} for {Symbol} = {Value} ({ResolverType})", 
-                    featureKey, symbol, value, result.ResolverType);
+                LogFeatureResolved(_logger, featureKey, symbol, value, result.ResolverType, null);
             }
             else
             {
-                _logger.LogWarning("Feature resolution returned null: {FeatureKey} for {Symbol} ({ResolverType})", 
-                    featureKey, symbol, result.ResolverType);
+                LogFeatureResolvedNull(_logger, featureKey, symbol, result.ResolverType, null);
             }
             
             return result;
@@ -299,7 +430,7 @@ public sealed class FeatureMapAuthority
             result.CompletedAt = DateTime.UtcNow;
             result.ResolutionTimeMs = (result.CompletedAt - result.RequestedAt).TotalMilliseconds;
             
-            _logger.LogError(ex, "Invalid operation resolving feature {FeatureKey} for {Symbol}", featureKey, symbol);
+            LogInvalidOperationResolvingFeature(_logger, featureKey, symbol, ex);
             return result;
         }
         catch (KeyNotFoundException ex)
@@ -309,7 +440,7 @@ public sealed class FeatureMapAuthority
             result.CompletedAt = DateTime.UtcNow;
             result.ResolutionTimeMs = (result.CompletedAt - result.RequestedAt).TotalMilliseconds;
             
-            _logger.LogError(ex, "Feature key not found: {FeatureKey} for {Symbol}", featureKey, symbol);
+            LogFeatureKeyNotFound(_logger, featureKey, symbol, ex);
             return result;
         }
         catch (TimeoutException ex)
@@ -319,7 +450,7 @@ public sealed class FeatureMapAuthority
             result.CompletedAt = DateTime.UtcNow;
             result.ResolutionTimeMs = (result.CompletedAt - result.RequestedAt).TotalMilliseconds;
             
-            _logger.LogError(ex, "Timeout resolving feature {FeatureKey} for {Symbol}", featureKey, symbol);
+            LogTimeoutResolvingFeature(_logger, featureKey, symbol, ex);
             return result;
         }
     }
@@ -356,15 +487,15 @@ public sealed class FeatureMapAuthority
                     }
                 }
                 
-                _logger.LogError("🚨 FUSION FEATURE MISSING: {FeatureKey} - emitted telemetry", featureKey);
+                LogFusionFeatureMissing(_logger, featureKey, null);
             }
             catch (TargetInvocationException ex)
             {
-                _logger.LogWarning(ex, "Reflection error emitting fusion.feature_missing telemetry for {FeatureKey}", featureKey);
+                LogReflectionErrorEmittingTelemetry(_logger, featureKey, ex);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Invalid operation emitting fusion.feature_missing telemetry for {FeatureKey}", featureKey);
+                LogInvalidOperationEmittingTelemetry(_logger, featureKey, ex);
             }
         }
     }

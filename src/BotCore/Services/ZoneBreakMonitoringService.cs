@@ -95,7 +95,7 @@ namespace BotCore.Services
             }
             
             // Get all open positions to monitor
-            var positions = positionTracker.GetAllPositions();
+            var positions = positionTracker.AllPositions;
             if (positions == null || positions.Count == 0)
             {
                 // No positions to monitor
@@ -116,17 +116,13 @@ namespace BotCore.Services
                 {
                     _logger.LogWarning(ex, "⚠️ [ZONE-BREAK] Invalid argument checking zone breaks for position {Symbol}", position.Symbol);
                 }
-                catch (NullReferenceException ex)
-                {
-                    _logger.LogWarning(ex, "⚠️ [ZONE-BREAK] Null reference checking zone breaks for position {Symbol}", position.Symbol);
-                }
             }
             
             // Process any queued zone break events
             await ProcessZoneBreakEventsAsync(cancellationToken).ConfigureAwait(false);
         }
         
-        private async Task CheckPositionForZoneBreaksAsync(
+        private Task CheckPositionForZoneBreaksAsync(
             BotCore.Models.Position position,
             IZoneService zoneService,
             CancellationToken cancellationToken)
@@ -134,13 +130,13 @@ namespace BotCore.Services
             var snapshot = zoneService.GetSnapshot(position.Symbol);
             if (snapshot == null)
             {
-                return;
+                return Task.CompletedTask;
             }
             
             var currentPrice = CalculateCurrentPrice(position);
             if (currentPrice <= 0)
             {
-                return;
+                return Task.CompletedTask;
             }
             
             var stateKey = $"{position.Symbol}_{(position.NetQuantity > 0 ? "LONG" : "SHORT")}";
@@ -167,7 +163,7 @@ namespace BotCore.Services
             state.LastCheckedPrice = currentPrice;
             state.LastCheckedTime = DateTime.UtcNow;
             
-            await Task.CompletedTask.ConfigureAwait(false);
+            return Task.CompletedTask;
         }
         
         private void CheckZoneForBreak(

@@ -227,11 +227,14 @@ namespace BotCore.Services
         /// <summary>
         /// Get recent metrics for debugging/testing
         /// </summary>
-        public IReadOnlyDictionary<string, object> GetRecentMetrics()
+        public IReadOnlyDictionary<string, object> RecentMetrics
         {
-            lock (_metricsLock)
+            get
             {
-                return new Dictionary<string, object>(_recentMetrics);
+                lock (_metricsLock)
+                {
+                    return new Dictionary<string, object>(_recentMetrics);
+                }
             }
         }
     }

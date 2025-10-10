@@ -15,6 +15,7 @@ using BotCore.Strategy;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using TradingBot.BotCore.Services.Helpers;
+using TradingBot.BotCore.Services.TuningModels;
 
 namespace TradingBot.BotCore.Services
 {
@@ -533,9 +534,8 @@ namespace TradingBot.BotCore.Services
             var positionMultiplier = TradingBotParameterProvider.GetPositionSizeMultiplier();
             var regimeThreshold = TradingBotParameterProvider.GetRegimeDetectionThreshold();
             
-            var parameterConfigs = new List<StrategyTrialConfig>();
-            
             // Generate strategy-specific parameter sets
+            List<StrategyTrialConfig> parameterConfigs;
             switch (strategyId)
             {
                 case "S6": // Momentum strategy
@@ -767,20 +767,26 @@ namespace TradingBot.BotCore.Services
             }
         }
 
-        /// <summary>
-        /// History bars response model - used by System.Text.Json for deserialization
-        /// </summary>
-        public sealed class HistoryBarsResponse
-        {
-            public List<BarData> Bars { get; init; } = new();
-        }
+    }
+}
 
-        /// <summary>
-        /// Bar data model for backtesting - used by System.Text.Json for deserialization
-        /// </summary>
-        public sealed class BarData
-        {
-            public decimal Close { get; init; }
-        }
+namespace TradingBot.BotCore.Services.TuningModels
+{
+    /// <summary>
+    /// History bars response model - used by System.Text.Json for deserialization
+    /// This class is instantiated by the JSON deserializer, not directly in code
+    /// </summary>
+    public sealed class HistoryBarsResponse
+    {
+        public List<BarData> Bars { get; init; } = new();
+    }
+
+    /// <summary>
+    /// Bar data model for backtesting - used by System.Text.Json for deserialization
+    /// This class is instantiated by the JSON deserializer, not directly in code
+    /// </summary>
+    public sealed class BarData
+    {
+        public decimal Close { get; init; }
     }
 }

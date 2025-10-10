@@ -31,6 +31,61 @@ public sealed class YamlSchemaValidator
     // Schema definitions for strategy YAML validation
     private readonly Dictionary<string, YamlSchemaDefinition> _schemas = new();
     
+    // LoggerMessage delegates for CA1848 performance compliance
+    private static readonly Action<ILogger, int, Exception?> LogSchemaDefinitionsInitialized =
+        LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(6401, nameof(LogSchemaDefinitionsInitialized)),
+            "YAML schema definitions initialized with {SchemaCount} schemas");
+    
+    private static readonly Action<ILogger, string, Exception?> LogValidationSuccessful =
+        LoggerMessage.Define<string>(
+            LogLevel.Debug,
+            new EventId(6402, nameof(LogValidationSuccessful)),
+            "YAML validation successful: {FilePath}");
+    
+    private static readonly Action<ILogger, string, int, int, Exception?> LogValidationFailed =
+        LoggerMessage.Define<string, int, int>(
+            LogLevel.Error,
+            new EventId(6403, nameof(LogValidationFailed)),
+            "YAML validation failed: {FilePath} - {ErrorCount} errors, {WarningCount} warnings");
+    
+    private static readonly Action<ILogger, string, Exception> LogIOError =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(6404, nameof(LogIOError)),
+            "IO error validating YAML file: {FilePath}");
+    
+    private static readonly Action<ILogger, string, Exception> LogAccessDenied =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(6405, nameof(LogAccessDenied)),
+            "Access denied validating YAML file: {FilePath}");
+    
+    private static readonly Action<ILogger, int, string, Exception?> LogFilesFound =
+        LoggerMessage.Define<int, string>(
+            LogLevel.Information,
+            new EventId(6406, nameof(LogFilesFound)),
+            "Found {FileCount} YAML files in {DirectoryPath}");
+    
+    private static readonly Action<ILogger, int, int, string, Exception?> LogDirectoryValidationCompleted =
+        LoggerMessage.Define<int, int, string>(
+            LogLevel.Information,
+            new EventId(6407, nameof(LogDirectoryValidationCompleted)),
+            "Directory validation completed: {ValidFiles}/{TotalFiles} valid files in {DirectoryPath}");
+    
+    private static readonly Action<ILogger, string, Exception> LogDirectoryIOError =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(6408, nameof(LogDirectoryIOError)),
+            "IO error validating directory: {DirectoryPath}");
+    
+    private static readonly Action<ILogger, string, Exception> LogDirectoryAccessDenied =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(6409, nameof(LogDirectoryAccessDenied)),
+            "Access denied validating directory: {DirectoryPath}");
+    
     public YamlSchemaValidator(ILogger<YamlSchemaValidator> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -95,7 +150,7 @@ public sealed class YamlSchemaValidator
             }
         };
         
-        _logger.LogInformation("YAML schema definitions initialized with {SchemaCount} schemas", _schemas.Count);
+        LogSchemaDefinitionsInitialized(_logger, _schemas.Count, null);
     }
     
     /// <summary>
@@ -172,12 +227,11 @@ public sealed class YamlSchemaValidator
             
             if (result.IsValid)
             {
-                _logger.LogDebug("YAML validation successful: {FilePath}", filePath);
+                LogValidationSuccessful(_logger, filePath, null);
             }
             else
             {
-                _logger.LogError("YAML validation failed: {FilePath} - {ErrorCount} errors, {WarningCount} warnings",
-                    filePath, result.Errors.Count, result.Warnings.Count);
+                LogValidationFailed(_logger, filePath, result.Errors.Count, result.Warnings.Count, null);
             }
             
             return result;
@@ -188,7 +242,7 @@ public sealed class YamlSchemaValidator
             result.ValidationTimeMs = (result.ValidationCompleted - result.ValidationStarted).TotalMilliseconds;
             result.AddError($"IO error: {ex.Message}");
             
-            _logger.LogError(ex, "IO error validating YAML file: {FilePath}", filePath);
+            LogIOError(_logger, filePath, ex);
             return result;
         }
         catch (UnauthorizedAccessException ex)
@@ -197,7 +251,7 @@ public sealed class YamlSchemaValidator
             result.ValidationTimeMs = (result.ValidationCompleted - result.ValidationStarted).TotalMilliseconds;
             result.AddError($"Access denied: {ex.Message}");
             
-            _logger.LogError(ex, "Access denied validating YAML file: {FilePath}", filePath);
+            LogAccessDenied(_logger, filePath, ex);
             return result;
         }
     }
@@ -223,7 +277,7 @@ public sealed class YamlSchemaValidator
             else
             {
                 var yamlFiles = Directory.GetFiles(directoryPath, searchPattern, SearchOption.AllDirectories);
-                _logger.LogInformation("Found {FileCount} YAML files in {DirectoryPath}", yamlFiles.Length, directoryPath);
+                LogFilesFound(_logger, yamlFiles.Length, directoryPath, null);
                 
                 foreach (var filePath in yamlFiles)
                 {
@@ -239,8 +293,7 @@ public sealed class YamlSchemaValidator
             var invalidFiles = totalFiles - validFiles;
             var isAllValid = invalidFiles == 0;
             
-            _logger.LogInformation("Directory validation completed: {ValidFiles}/{TotalFiles} valid files in {DirectoryPath}",
-                validFiles, totalFiles, directoryPath);
+            LogDirectoryValidationCompleted(_logger, validFiles, totalFiles, directoryPath, null);
                 
             return new YamlDirectoryValidationResult
             {
@@ -262,7 +315,7 @@ public sealed class YamlSchemaValidator
             var validationCompleted = DateTime.UtcNow;
             var validationTimeMs = (validationCompleted - validationStarted).TotalMilliseconds;
             
-            _logger.LogError(ex, "IO error validating directory: {DirectoryPath}", directoryPath);
+            LogDirectoryIOError(_logger, directoryPath, ex);
             
             return new YamlDirectoryValidationResult
             {
@@ -280,7 +333,7 @@ public sealed class YamlSchemaValidator
             var validationCompleted = DateTime.UtcNow;
             var validationTimeMs = (validationCompleted - validationStarted).TotalMilliseconds;
             
-            _logger.LogError(ex, "Access denied validating directory: {DirectoryPath}", directoryPath);
+            LogDirectoryAccessDenied(_logger, directoryPath, ex);
             
             return new YamlDirectoryValidationResult
             {

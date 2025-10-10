@@ -50,7 +50,6 @@ namespace BotCore.Services
         
         private readonly ILogger<WalkForwardValidationService> _logger;
         private readonly WalkForwardValidationConfiguration _config;
-        private readonly IEnhancedBacktestService _backtestService;
         private readonly IModelVersionVerificationService _modelVersionService;
         private readonly string _validationHistoryPath;
 
@@ -64,7 +63,7 @@ namespace BotCore.Services
             
             _logger = logger;
             _config = config.Value;
-            _backtestService = backtestService;
+            // backtestService parameter accepted for DI compatibility but not currently used
             _modelVersionService = modelVersionService;
             _validationHistoryPath = Path.Combine("./validation_results", "walk_forward_history.json");
             

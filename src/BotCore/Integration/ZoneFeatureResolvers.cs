@@ -15,6 +15,19 @@ public sealed class ZoneFeatureResolver : IFeatureResolver
     private readonly string _featureName;
     private readonly ILogger<ZoneFeatureResolver> _logger;
     
+    // LoggerMessage delegates for CA1848 performance compliance
+    private static readonly Action<ILogger, string, string, double, Exception?> LogZoneFeatureResolved =
+        LoggerMessage.Define<string, string, double>(
+            LogLevel.Trace,
+            new EventId(5001, nameof(LogZoneFeatureResolved)),
+            "Zone feature {Feature} for {Symbol}: {Value}");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogZoneFeatureResolutionFailed =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Error,
+            new EventId(5002, nameof(LogZoneFeatureResolutionFailed)),
+            "Failed to resolve zone feature {Feature} for symbol {Symbol}");
+    
     public ZoneFeatureResolver(IServiceProvider serviceProvider, string featureName)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
@@ -40,12 +53,12 @@ public sealed class ZoneFeatureResolver : IFeatureResolver
                 _ => throw new InvalidOperationException($"Unknown zone feature: {_featureName}")
             };
             
-            _logger.LogTrace("Zone feature {Feature} for {Symbol}: {Value}", _featureName, symbol, value);
+            LogZoneFeatureResolved(_logger, _featureName, symbol, value, null);
             return Task.FromResult<double?>(value);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to resolve zone feature {Feature} for symbol {Symbol}", _featureName, symbol);
+            LogZoneFeatureResolutionFailed(_logger, _featureName, symbol, ex);
             throw new InvalidOperationException($"Production zone feature resolution failed for '{_featureName}' on '{symbol}': {ex.Message}", ex);
         }
     }
@@ -74,6 +87,19 @@ public sealed class ZoneCountResolver : IFeatureResolver
     
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ZoneCountResolver> _logger;
+    
+    // LoggerMessage delegates for CA1848 performance compliance
+    private static readonly Action<ILogger, string, double, double, double, Exception?> LogZoneCountCalculated =
+        LoggerMessage.Define<string, double, double, double>(
+            LogLevel.Trace,
+            new EventId(5003, nameof(LogZoneCountCalculated)),
+            "Zone count for {Symbol}: {Count} (demand: {Demand}ATR, supply: {Supply}ATR)");
+    
+    private static readonly Action<ILogger, string, Exception?> LogZoneCountFailed =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(5004, nameof(LogZoneCountFailed)),
+            "Failed to count zones for symbol {Symbol}");
     
     public ZoneCountResolver(IServiceProvider serviceProvider)
     {
@@ -107,14 +133,13 @@ public sealed class ZoneCountResolver : IFeatureResolver
             // Pressure multiplier - higher pressure indicates more significant zones
             activeZoneCount *= Math.Max(FullZoneWeight, (double)features.zonePressure);
             
-            _logger.LogTrace("Zone count for {Symbol}: {Count} (demand: {Demand}ATR, supply: {Supply}ATR)", 
-                symbol, activeZoneCount, demandProximity, supplyProximity);
+            LogZoneCountCalculated(_logger, symbol, activeZoneCount, demandProximity, supplyProximity, null);
             
             return Task.FromResult<double?>(activeZoneCount);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to count zones for symbol {Symbol}", symbol);
+            LogZoneCountFailed(_logger, symbol, ex);
             throw new InvalidOperationException($"Production zone count resolution failed for '{symbol}': {ex.Message}", ex);
         }
     }
@@ -127,6 +152,19 @@ public sealed class ZoneTestsResolver : IFeatureResolver
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ZoneTestsResolver> _logger;
+    
+    // LoggerMessage delegates for CA1848 performance compliance
+    private static readonly Action<ILogger, string, double, decimal, decimal, Exception?> LogZoneTestsCalculated =
+        LoggerMessage.Define<string, double, decimal, decimal>(
+            LogLevel.Trace,
+            new EventId(5005, nameof(LogZoneTestsCalculated)),
+            "Zone tests for {Symbol}: {Tests} (breakout: {Breakout}, pressure: {Pressure})");
+    
+    private static readonly Action<ILogger, string, Exception?> LogZoneTestsFailed =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(5006, nameof(LogZoneTestsFailed)),
+            "Failed to calculate zone tests for symbol {Symbol}");
     
     public ZoneTestsResolver(IServiceProvider serviceProvider)
     {
@@ -144,14 +182,13 @@ public sealed class ZoneTestsResolver : IFeatureResolver
             // Calculate zone tests based on breakout score and pressure
             var testFrequency = CalculateZoneTestCount(((double)features.distToDemandAtr, (double)features.distToSupplyAtr, (double)features.breakoutScore, (double)features.zonePressure));
             
-            _logger.LogTrace("Zone tests for {Symbol}: {Tests} (breakout: {Breakout}, pressure: {Pressure})", 
-                symbol, testFrequency, features.breakoutScore, features.zonePressure);
+            LogZoneTestsCalculated(_logger, symbol, testFrequency, features.breakoutScore, features.zonePressure, null);
             
             return Task.FromResult<double?>(testFrequency);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to calculate zone tests for symbol {Symbol}", symbol);
+            LogZoneTestsFailed(_logger, symbol, ex);
             throw new InvalidOperationException($"Production zone tests resolution failed for '{symbol}': {ex.Message}", ex);
         }
     }

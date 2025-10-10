@@ -89,9 +89,9 @@ public class BotPerformanceReporter
             var winningTrades = _todayTrades.Count(t => t.WasCorrect);
             var winRate = (decimal)winningTrades / totalTrades;
             var totalPnL = _todayTrades.Sum(t => t.PnL);
-            var avgWin = _todayTrades.Where(t => t.PnL > 0).Any() 
+            var avgWin = _todayTrades.Exists(t => t.PnL > 0) 
                 ? _todayTrades.Where(t => t.PnL > 0).Average(t => t.PnL) : 0;
-            var avgLoss = _todayTrades.Where(t => t.PnL < 0).Any() 
+            var avgLoss = _todayTrades.Exists(t => t.PnL < 0) 
                 ? _todayTrades.Where(t => t.PnL < 0).Average(t => t.PnL) : 0;
 
             // Strategy breakdown
