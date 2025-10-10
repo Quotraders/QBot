@@ -227,15 +227,7 @@ namespace TradingBot.BotCore.Services
 
             foreach (var component in expectedComponents)
             {
-                var hasSeededComponent = false;
-                foreach (var key in _seedRegistry.Keys)
-                {
-                    if (key.StartsWith(component, StringComparison.OrdinalIgnoreCase))
-                    {
-                        hasSeededComponent = true;
-                        break;
-                    }
-                }
+                var hasSeededComponent = _seedRegistry.Keys.Any(key => key.StartsWith(component, StringComparison.OrdinalIgnoreCase));
 
                 if (!hasSeededComponent)
                 {

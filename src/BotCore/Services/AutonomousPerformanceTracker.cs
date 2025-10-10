@@ -407,7 +407,7 @@ public class AutonomousPerformanceTracker
         // Time-based P&L
         var today = DateTime.Today;
         var weekStart = today.AddDays(-(int)today.DayOfWeek);
-        var monthStart = new DateTime(today.Year, today.Month, 1);
+        var monthStart = new DateTime(today.Year, today.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         
         _todayPnL = _allTrades.Where(t => t.EntryTime.Date == today).Sum(t => t.PnL);
         _weekPnL = _allTrades.Where(t => t.EntryTime.Date >= weekStart).Sum(t => t.PnL);

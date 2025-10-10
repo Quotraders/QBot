@@ -1820,7 +1820,7 @@ public class ContinuousLearningManager
     
     public Task StartLearningAsync(CancellationToken cancellationToken)
     {
-        _ = _logger; // Placeholder implementation - will be implemented in future phase
+        _ = _logger; // Placeholder for StartLearningAsync - will be implemented in future phase
         return Task.CompletedTask;
     }
     
@@ -1832,19 +1832,19 @@ public class ContinuousLearningManager
     
     public Task CheckAndUpdateModelsAsync(CancellationToken cancellationToken)
     {
-        _ = _logger; // Placeholder implementation - will be implemented in future phase
+        _ = _logger; // Placeholder for CheckAndUpdateModelsAsync - will be implemented in future phase
         return Task.CompletedTask;
     }
     
     public Task ForceUpdateAsync(CancellationToken cancellationToken)
     {
-        _ = _logger; // Placeholder implementation - will be implemented in future phase
+        _ = _logger; // Placeholder for ForceUpdateAsync - will be implemented in future phase
         return Task.CompletedTask;
     }
     
     public Task RestartAsync(CancellationToken cancellationToken)
     {
-        _ = _logger; // Placeholder implementation - will be implemented in future phase
+        _ = _logger; // Placeholder for RestartAsync - will be implemented in future phase
         return Task.CompletedTask;
     }
     
@@ -1877,13 +1877,13 @@ public class ContractRolloverManager
     
     public Task StartMonitoringAsync(CancellationToken cancellationToken)
     {
-        _ = _logger; // Placeholder implementation - will be implemented in future phase
+        _ = _logger; // Placeholder for StartMonitoringAsync - will be implemented in future phase
         return Task.CompletedTask;
     }
     
     public Task CheckRolloverNeedsAsync(CancellationToken cancellationToken)
     {
-        _ = _logger; // Placeholder implementation - will be implemented in future phase
+        _ = _logger; // Placeholder for CheckRolloverNeedsAsync - will be implemented in future phase
         return Task.CompletedTask;
     }
 }

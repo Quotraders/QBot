@@ -244,9 +244,8 @@ public class TradingFeedbackService : BackgroundService
     {
         var performanceIssues = new List<PerformanceIssue>();
         
-        foreach (var kvp in _performanceMetrics)
+        foreach (var metrics in _performanceMetrics.Select(kvp => kvp.Value))
         {
-            var metrics = kvp.Value;
             
             // Check if we have enough samples
             if (metrics.TotalTrades < _minFeedbackSamples)

@@ -262,10 +262,10 @@ namespace TopstepX.Bot.Core.Services
                 var cutoffTime = DateTime.UtcNow.AddHours(-1);
                 var staleOrders = _pendingOrders.Values.Where(o => o.SubmittedTime < cutoffTime).ToList();
                 
-                foreach (var staleOrder in staleOrders)
+                foreach (var clientOrderId in staleOrders.Select(staleOrder => staleOrder.ClientOrderId))
                 {
-                    _pendingOrders.TryRemove(staleOrder.ClientOrderId, out _);
-                    _logger.LogWarning("⚠️ Removed stale pending order: {ClientOrderId}", staleOrder.ClientOrderId);
+                    _pendingOrders.TryRemove(clientOrderId, out _);
+                    _logger.LogWarning("⚠️ Removed stale pending order: {ClientOrderId}", clientOrderId);
                 }
                 
                 // Log current positions

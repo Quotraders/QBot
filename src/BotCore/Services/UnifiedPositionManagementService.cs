@@ -558,12 +558,10 @@ namespace BotCore.Services
                 return; // No positions to manage
             }
             
-            foreach (var kvp in _activePositions)
+            foreach (var state in _activePositions.Select(kvp => kvp.Value))
             {
                 if (cancellationToken.IsCancellationRequested)
                     break;
-                    
-                var state = kvp.Value;
                 state.LastCheckTime = DateTime.UtcNow;
                 
                 try
@@ -2131,7 +2129,7 @@ namespace BotCore.Services
             state.ProgressiveTighteningTier = newTier;
             
             // Get current tier requirements
-            var currentTierRequirements = tighteningSchedule.FirstOrDefault(t => t.Tier == newTier);
+            var currentTierRequirements = tighteningSchedule.Find(t => t.Tier == newTier);
             if (currentTierRequirements == null)
             {
                 return;

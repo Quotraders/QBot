@@ -215,13 +215,10 @@ namespace TradingBot.BotCore.Services
             foreach (var provider in configRoot.Providers)
             {
                 // Check for patterns that indicate hardcoded secrets
-                foreach (var rule in _validationRules)
+                foreach (var rule in _validationRules.Where(rule => rule.Pattern.IsMatch(provider.ToString() ?? "")))
                 {
-                    if (rule.Pattern.IsMatch(provider.ToString() ?? ""))
-                    {
-                        result.AddError($"Potential hardcoded secret detected: {rule.Name}");
-                        _logger.LogError("🚨 [SECRETS] Potential hardcoded secret detected: {Rule}", rule.Name);
-                    }
+                    result.AddError($"Potential hardcoded secret detected: {rule.Name}");
+                    _logger.LogError("🚨 [SECRETS] Potential hardcoded secret detected: {Rule}", rule.Name);
                 }
             }
         }

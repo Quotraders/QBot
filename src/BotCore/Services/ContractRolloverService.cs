@@ -460,7 +460,7 @@ namespace BotCore.Services
         /// </summary>
         private static DateTime GetThirdFridayOfMonth(int year, int month)
         {
-            var firstDay = new DateTime(year, month, 1);
+            var firstDay = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
             var firstFriday = firstDay.AddDays((DayOfWeek.Friday - firstDay.DayOfWeek + 7) % 7);
             return firstFriday.AddDays(DaysAfterFirstFridayForThirdFriday); // Third Friday is 2 weeks after first Friday
         }

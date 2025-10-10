@@ -292,14 +292,14 @@ public class SecurityService : ISecurityService
             var vmProcesses = new[] { "VMWARE", "VBOX", "VIRTUALBOX", "QEMU", "HYPERV", "XEN" };
             var runningProcesses = Process.GetProcesses();
             
-            foreach (var process in runningProcesses)
+            foreach (var processName in runningProcesses.Select(process => process.ProcessName))
             {
                 try
                 {
-                    var processName = process.ProcessName.ToUpperInvariant();
-                    if (vmProcesses.Any(vm => processName.Contains(vm, StringComparison.Ordinal)))
+                    var processNameUpper = processName.ToUpperInvariant();
+                    if (vmProcesses.Any(vm => processNameUpper.Contains(vm, StringComparison.Ordinal)))
                     {
-                        vmIndicators.Add($"VM process detected: {process.ProcessName}");
+                        vmIndicators.Add($"VM process detected: {processName}");
                     }
                 }
                 catch

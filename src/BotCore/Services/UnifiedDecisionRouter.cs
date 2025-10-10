@@ -504,7 +504,7 @@ public class UnifiedDecisionRouter
             
             lock (_historyLock)
             {
-                outcome = _decisionHistory.FirstOrDefault(d => d.DecisionId == decisionId);
+                outcome = _decisionHistory.Find(d => d.DecisionId == decisionId);
             }
             
             if (outcome == null)
@@ -671,7 +671,7 @@ public class UnifiedDecisionRouter
         };
     }
     
-    private IList<ModelBar> ConvertToBars(TradingBot.Abstractions.MarketContext context)
+    private List<ModelBar> ConvertToBars(TradingBot.Abstractions.MarketContext context)
     {
         var bars = new List<ModelBar>();
         var price = (decimal)context.Price;

@@ -215,7 +215,7 @@ namespace BotCore.Services
 
             if (session == null)
             {
-                _logger.LogDebug($"Market closed at {currentTime} for {instrument}");
+                _logger.LogDebug("Market closed at {CurrentTime} for {Instrument}", currentTime, instrument);
                 return StrategyEvaluationResult.NoSignal("Market closed");
             }
 
@@ -247,7 +247,7 @@ namespace BotCore.Services
                 // Skip if performance too low for this time
                 if (timePerformance < MinTimePerformanceThreshold)
                 {
-                    _logger.LogDebug($"{strategyId} skipped - low time performance: {timePerformance:P0} at hour {currentTime.Hours}");
+                    _logger.LogDebug("{StrategyId} skipped - low time performance: {TimePerformance:P0} at hour {Hour}", strategyId, timePerformance, currentTime.Hours);
                     continue;
                 }
 
@@ -283,7 +283,7 @@ namespace BotCore.Services
                     var correlation = CheckES_NQ_Correlation(instrument);
                     if (correlation.ShouldVeto)
                     {
-                        _logger.LogInformation($"Signal vetoed due to ES/NQ correlation: {correlation.Reason}");
+                        _logger.LogInformation("Signal vetoed due to ES/NQ correlation: {Reason}", correlation.Reason);
                         return StrategyEvaluationResult.NoSignal(correlation.Reason);
                     }
 
@@ -641,7 +641,7 @@ namespace BotCore.Services
             {
                 // In production, check actual opposite instrument position/trend
                 // For now, just log the correlation
-                _logger.LogDebug($"High correlation ({correlation:P0}) detected for {instrument} signal");
+                _logger.LogDebug("High correlation ({Correlation:P0}) detected for {Instrument} signal", correlation, instrument);
             }
 
             return result;
@@ -852,7 +852,7 @@ namespace BotCore.Services
             return Math.Max(0, Math.Min(1, combinedStress));
         }
 
-        private static decimal CalculateVolumeStress(IReadOnlyList<Bar> recent)
+        private static decimal CalculateVolumeStress(List<Bar> recent)
         {
             if (recent.Count < MinimumBarsForVolumeStress) return DefaultVolumeStress;
             
@@ -867,7 +867,7 @@ namespace BotCore.Services
             return Math.Max(0, Math.Min(1, (volumeRatio - (decimal)DefaultConfidenceMultiplier) / VolumeStressNormalizationFactor));
         }
 
-        private static decimal CalculateGapStress(IReadOnlyList<Bar> recent)
+        private static decimal CalculateGapStress(List<Bar> recent)
         {
             if (recent.Count < MinimumBarsForGapAnalysis) return 0m;
             
@@ -893,7 +893,7 @@ namespace BotCore.Services
             return Math.Max(0, Math.Min(1, avgGap / GapStressThreshold));
         }
 
-        private static decimal CalculateTrendStress(IReadOnlyList<Bar> recent)
+        private static decimal CalculateTrendStress(List<Bar> recent)
         {
             if (recent.Count < MinimumBarsForTrendStress) return DefaultTrendStress;
             
