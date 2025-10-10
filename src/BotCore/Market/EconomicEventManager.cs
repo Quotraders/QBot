@@ -352,8 +352,8 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
                         continue;
                     
                     // Parse date and time
-                    if (!DateTime.TryParse($"{dateStr} {timeStr}", out var scheduledTime) &&
-                        !DateTime.TryParse(dateStr, out scheduledTime))
+                    if (!DateTime.TryParse($"{dateStr} {timeStr}", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var scheduledTime) &&
+                        !DateTime.TryParse(dateStr, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out scheduledTime))
                     {
                         continue;
                     }

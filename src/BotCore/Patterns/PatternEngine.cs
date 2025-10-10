@@ -330,12 +330,6 @@ public class PatternEngine : IComponentHealth
                 $"Invalid operation during health check: {ex.Message}",
                 new Dictionary<string, object> { ["Exception"] = ex.GetType().Name }));
         }
-        catch (NullReferenceException ex)
-        {
-            return Task.FromResult(HealthCheckResult.Unhealthy(
-                $"Null reference during health check: {ex.Message}",
-                new Dictionary<string, object> { ["Exception"] = ex.GetType().Name }));
-        }
     }
 }
 

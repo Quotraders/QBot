@@ -254,7 +254,7 @@ public sealed class AtomicStatePersistence : IDisposable
                 File.Delete(backupFilePath);
             }
         }
-        catch (IOException)
+        catch (IOException ex)
         {
             // Clean up temp file on error
             if (File.Exists(tempFilePath))
@@ -268,7 +268,7 @@ public sealed class AtomicStatePersistence : IDisposable
                 try 
                 { 
                     File.Move(backupFilePath, filePath);
-                    _logger.LogWarning("Restored state file from backup: {FilePath}", filePath);
+                    _logger.LogInformation(ex, "Restored state file from backup after IOException: {FilePath}", filePath);
                 } 
                 catch (IOException restoreEx)
                 {

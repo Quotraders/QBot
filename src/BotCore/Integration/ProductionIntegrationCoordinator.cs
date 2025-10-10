@@ -89,9 +89,9 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
             // Phase 4: Continuous Monitoring
             await RunContinuousMonitoringAsync(stoppingToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException ex)
         {
-            _logger.LogInformation("Production integration coordinator stopped gracefully");
+            _logger.LogInformation(ex, "Production integration coordinator stopped gracefully");
         }
         catch (Exception ex)
         {
@@ -419,10 +419,6 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Invalid operation in periodic health check");
-        }
-        catch (NullReferenceException ex)
-        {
-            _logger.LogWarning(ex, "Null reference in periodic health check");
         }
     }
     
