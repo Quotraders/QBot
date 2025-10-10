@@ -214,41 +214,41 @@ namespace BotCore.Strategy
         /// <summary>
         /// Places a market order asynchronously - recommended for async callers
         /// </summary>
-        public async Task<string> PlaceMarketAsync(string instrument, string side, int qty, string tag, CancellationToken cancellationToken = default)
+        public Task<string> PlaceMarketAsync(string instrument, string side, int qty, string tag, CancellationToken cancellationToken = default)
         {
-            return await PlaceMarketOrderInternalAsync(instrument, side, qty, tag).ConfigureAwait(false);
+            return PlaceMarketOrderInternalAsync(instrument, side, qty, tag);
         }
 
         /// <summary>
         /// Gets a position asynchronously - recommended for async callers
         /// </summary>
-        public async Task<TradingBot.Abstractions.Position?> GetPositionAsync(string instrument, CancellationToken cancellationToken = default)
+        public Task<TradingBot.Abstractions.Position?> GetPositionAsync(string instrument, CancellationToken cancellationToken = default)
         {
-            return await GetPositionInternalAsync(instrument).ConfigureAwait(false);
+            return GetPositionInternalAsync(instrument);
         }
 
         /// <summary>
         /// Gets all positions asynchronously - recommended for async callers
         /// </summary>
-        public async Task<IReadOnlyList<(object Side, int Qty, double AvgPx, DateTime OpenedAt)>> GetPositionsAsync(CancellationToken cancellationToken = default)
+        public Task<IReadOnlyList<(object Side, int Qty, double AvgPx, DateTime OpenedAt)>> GetPositionsAsync(CancellationToken cancellationToken = default)
         {
-            return await GetPositionsInternalAsync().ConfigureAwait(false);
+            return GetPositionsInternalAsync();
         }
 
         /// <summary>
         /// Modifies stop price asynchronously - recommended for async callers
         /// </summary>
-        public async Task ModifyStopAsync(string positionId, decimal stopPrice, CancellationToken cancellationToken = default)
+        public Task ModifyStopAsync(string positionId, decimal stopPrice, CancellationToken cancellationToken = default)
         {
-            await ModifyStopOrderInternalAsync(positionId, stopPrice).ConfigureAwait(false);
+            return ModifyStopOrderInternalAsync(positionId, stopPrice);
         }
 
         /// <summary>
         /// Closes a position asynchronously - recommended for async callers
         /// </summary>
-        public async Task ClosePositionAsync(string positionId, CancellationToken cancellationToken = default)
+        public Task ClosePositionAsync(string positionId, CancellationToken cancellationToken = default)
         {
-            await ClosePositionInternalAsync(positionId).ConfigureAwait(false);
+            return ClosePositionInternalAsync(positionId);
         }
 
         #endregion
@@ -501,6 +501,7 @@ namespace BotCore.Strategy
 
                 // Retrieve positions through production service
                 var positions = await _orderService.GetPositionsAsync().ConfigureAwait(false);
+                // Note: Cannot use List.Find on IReadOnlyList - FirstOrDefault is appropriate here
                 var position = positions.FirstOrDefault(p => p.Symbol == instrument);
 
                 if (position != null)

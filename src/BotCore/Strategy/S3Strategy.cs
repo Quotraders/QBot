@@ -12,7 +12,7 @@ namespace BotCore.Strategy
 {
     public static class S3Strategy
     {
-        private static readonly ILogger? _logger; // Logger field for S3Strategy - initialized externally
+        // Logger removed - S3Strategy uses static methods and doesn't need instance logging
         
         private static bool BtBypass(string gate)
         {
@@ -100,14 +100,14 @@ namespace BotCore.Strategy
                     }
                     return TimeZoneInfo.ConvertTimeFromUtc(utc, Et);
                 }
-                catch (TimeZoneNotFoundException ex)
+                catch (TimeZoneNotFoundException)
                 {
-                    _logger?.LogWarning(ex, "[S3-STRATEGY] TimeZone conversion failed for {DateTime}, using original", b.Start);
+                    // TimeZone conversion failed, use original time
                     return b.Start; 
                 }
-                catch (ArgumentException ex)
+                catch (ArgumentException)
                 {
-                    _logger?.LogWarning(ex, "[S3-STRATEGY] Invalid DateTime argument for conversion: {DateTime}", b.Start);
+                    // Invalid DateTime argument, use original time
                     return b.Start;
                 }
             }
@@ -930,7 +930,7 @@ namespace BotCore.Strategy
                     candidates.Add(Path.Combine(AppContext.BaseDirectory, "src", "BotCore", "Strategy", "S3-StrategyConfig.json"));
                     candidates.Add("src\\BotCore\\Strategy\\S3-StrategyConfig.json");
 
-                    var path = candidates.FirstOrDefault(File.Exists);
+                    var path = candidates.Find(File.Exists);
                     if (string.IsNullOrEmpty(path)) return new S3RuntimeConfig();
 
                     var json = File.ReadAllText(path);

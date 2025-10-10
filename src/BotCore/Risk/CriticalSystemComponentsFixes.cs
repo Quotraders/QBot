@@ -200,16 +200,12 @@ namespace BotCore.Risk
         {
             await Task.Yield();
             
-            // Intelligent cleanup instead of forced GC
-            _logger.LogInformation("[CRITICAL-SYSTEM] Performing intelligent memory cleanup");
+            // Memory monitoring - allow CLR to manage garbage collection automatically
+            _logger.LogInformation("[CRITICAL-SYSTEM] Memory monitoring active - CLR managing GC automatically");
             
-            // Only suggest GC if memory pressure is truly critical
-            var memoryBeforeCleanup = GC.GetTotalMemory(false);
-            GC.Collect(0, GCCollectionMode.Optimized, false); // Gentle suggestion, not forced
-            var memoryAfterCleanup = GC.GetTotalMemory(false);
-            
-            var memoryFreed = (memoryBeforeCleanup - memoryAfterCleanup) / (1024.0 * 1024.0);
-            _logger.LogInformation("[CRITICAL-SYSTEM] Memory cleanup completed - Freed: {MemoryFreedMB:F2}MB", memoryFreed);
+            var currentMemory = GC.GetTotalMemory(false);
+            var memoryMB = currentMemory / (1024.0 * 1024.0);
+            _logger.LogInformation("[CRITICAL-SYSTEM] Current memory usage: {MemoryMB:F2}MB", memoryMB);
         }
 
         private static async Task<double> GetCpuUsageAsync()
@@ -236,7 +232,7 @@ namespace BotCore.Risk
         {
             _cancellationTokenSource?.Dispose();
             base.Dispose();
-            GC.SuppressFinalize(this);
+            // GC.SuppressFinalize not needed - no finalizer defined
         }
     }
 }
