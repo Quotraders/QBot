@@ -230,7 +230,7 @@ namespace BotCore.Strategy
         /// <summary>
         /// Gets all positions asynchronously - recommended for async callers
         /// </summary>
-        public async Task<List<(object Side, int Qty, double AvgPx, DateTime OpenedAt)>> GetPositionsAsync(CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<(object Side, int Qty, double AvgPx, DateTime OpenedAt)>> GetPositionsAsync(CancellationToken cancellationToken = default)
         {
             return await GetPositionsInternalAsync().ConfigureAwait(false);
         }
@@ -443,10 +443,10 @@ namespace BotCore.Strategy
         /// Uses bounded timeout to execute async work.
         /// For async callers, use GetPositionsInternalAsync directly.
         /// </remarks>
-        public List<(object Side, int Qty, double AvgPx, DateTime OpenedAt)> GetPositions()
+        public IReadOnlyList<(object Side, int Qty, double AvgPx, DateTime OpenedAt)> GetPositions()
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            var task = GetPositionsInternalAsync(cts.Token);
+            var task = GetPositionsInternalAsync();
             
             try
             {
@@ -464,7 +464,7 @@ namespace BotCore.Strategy
             }
         }
 
-        private async Task<List<(object Side, int Qty, double AvgPx, DateTime OpenedAt)>> GetPositionsInternalAsync()
+        private async Task<IReadOnlyList<(object Side, int Qty, double AvgPx, DateTime OpenedAt)>> GetPositionsInternalAsync()
         {
             try
             {
@@ -680,7 +680,7 @@ namespace BotCore.Strategy
         /// <summary>
         /// Get S6 strategy candidates using full production implementation
         /// </summary>
-        public static List<Candidate> GetS6Candidates(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk, 
+        public static IReadOnlyList<Candidate> GetS6Candidates(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk, 
             IOrderService orderService, ILogger<BridgeOrderRouter> logger, IServiceProvider serviceProvider)
         {
             ArgumentNullException.ThrowIfNull(symbol);
@@ -790,7 +790,7 @@ namespace BotCore.Strategy
         /// <summary>
         /// Get S11 strategy candidates using full production implementation  
         /// </summary>
-        public static List<Candidate> GetS11Candidates(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk,
+        public static IReadOnlyList<Candidate> GetS11Candidates(string symbol, Env env, Levels levels, IList<Bar> bars, RiskEngine risk,
             IOrderService orderService, ILogger<BridgeOrderRouter> logger, IServiceProvider serviceProvider)
         {
             ArgumentNullException.ThrowIfNull(symbol);

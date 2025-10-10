@@ -49,7 +49,7 @@ public static class S15RlStrategy
     /// <param name="currentPos">Current position (-1 short, 0 flat, 1 long)</param>
     /// <param name="currentTime">Current time for session detection</param>
     /// <returns>List of trading candidates</returns>
-    public static List<Candidate> GenerateCandidates(
+    public static IReadOnlyList<Candidate> GenerateCandidates(
         string symbol,
         Env env,
         Levels levels,
