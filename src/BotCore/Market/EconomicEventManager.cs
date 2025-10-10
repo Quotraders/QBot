@@ -270,8 +270,10 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
                 }
                 else
                 {
-                    // Final fallback to known scheduled events only
-                    events = GetKnownScheduledEvents();
+                    // No API configured and no local data - return empty list
+                    // Do not use hardcoded fallback data
+                    _logger.LogWarning("[EconomicEventManager] No economic calendar API configured and no local data file found. Economic event monitoring disabled.");
+                    return new List<EconomicEvent>();
                 }
             }
 
@@ -279,18 +281,18 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
         }
         catch (IOException ex)
         {
-            _logger.LogWarning(ex, "[EconomicEventManager] I/O error loading from primary source, using fallback");
-            events = GetKnownScheduledEvents();
+            _logger.LogError(ex, "[EconomicEventManager] I/O error loading from primary source. Economic event monitoring disabled.");
+            return new List<EconomicEvent>();
         }
         catch (JsonException ex)
         {
-            _logger.LogWarning(ex, "[EconomicEventManager] JSON error loading from primary source, using fallback");
-            events = GetKnownScheduledEvents();
+            _logger.LogError(ex, "[EconomicEventManager] JSON error loading from primary source. Economic event monitoring disabled.");
+            return new List<EconomicEvent>();
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "[EconomicEventManager] Invalid operation loading from primary source, using fallback");
-            events = GetKnownScheduledEvents();
+            _logger.LogError(ex, "[EconomicEventManager] Invalid operation loading from primary source. Economic event monitoring disabled.");
+            return new List<EconomicEvent>();
         }
 
         return events;
@@ -300,9 +302,9 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
     {
         // This would integrate with real economic calendar APIs
         // For production readiness, implement actual API integration
-        _logger.LogInformation("[EconomicEventManager] Loading from external source: {Source}", dataSource);
-        await Task.Delay(SimulatedApiCallDelayMs).ConfigureAwait(false); // Simulate async API call
-        return GetKnownScheduledEvents();
+        _logger.LogWarning("[EconomicEventManager] External API source configured but not implemented: {Source}. Economic event monitoring disabled.", dataSource);
+        await Task.Yield(); // Maintain async signature
+        return new List<EconomicEvent>();
     }
 
     private async Task<List<EconomicEvent>> LoadFromLocalFileAsync(string filePath)
