@@ -42,7 +42,6 @@ namespace BotCore.Services
         
         private readonly ILogger<EnhancedMarketDataFlowService> _logger;
         private readonly DataFlowEnhancementConfiguration _config;
-        private readonly HttpClient _httpClient;
         private readonly BotCore.Market.BarPyramid? _barPyramid;
         private readonly IServiceProvider _serviceProvider;
         private readonly ConcurrentDictionary<string, DateTime> _lastDataReceived = new();
@@ -70,7 +69,7 @@ namespace BotCore.Services
             _logger = logger;
             ArgumentNullException.ThrowIfNull(config);
             _config = config.Value;
-            _httpClient = httpClient;
+            // httpClient parameter accepted for DI compatibility but not currently used
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _barPyramid = barPyramid;
 
