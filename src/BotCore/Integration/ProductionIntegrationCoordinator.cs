@@ -2,6 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
+using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,10 +14,167 @@ namespace BotCore.Integration;
 /// Ensures complete system integration with all requirements met
 /// Provides runtime proof and comprehensive monitoring
 /// </summary>
-public sealed class ProductionIntegrationCoordinator : BackgroundService
+public sealed partial class ProductionIntegrationCoordinator : BackgroundService
 {
     private readonly ILogger<ProductionIntegrationCoordinator> _logger;
     private readonly IServiceProvider _serviceProvider;
+    
+    // LoggerMessage delegates for high-performance logging
+    private static readonly Action<ILogger, Exception?> LogCoordinatorInitialized =
+        LoggerMessage.Define(LogLevel.Information, new EventId(8001, nameof(LogCoordinatorInitialized)),
+            "Production integration coordinator initialized");
+    
+    private static readonly Action<ILogger, Exception?> LogStartingCoordinator =
+        LoggerMessage.Define(LogLevel.Information, new EventId(8002, nameof(LogStartingCoordinator)),
+            "🚀 Starting production integration coordinator...");
+    
+    private static readonly Action<ILogger, Exception?> LogCoordinatorStoppedGracefully =
+        LoggerMessage.Define(LogLevel.Information, new EventId(8003, nameof(LogCoordinatorStoppedGracefully)),
+            "Production integration coordinator stopped gracefully");
+    
+    private static readonly Action<ILogger, Exception?> LogCriticalError =
+        LoggerMessage.Define(LogLevel.Error, new EventId(8004, nameof(LogCriticalError)),
+            "Critical error in production integration coordinator");
+    
+    private static readonly Action<ILogger, Exception?> LogPhase1Start =
+        LoggerMessage.Define(LogLevel.Information, new EventId(8005, nameof(LogPhase1Start)),
+            "Phase 1: Validating system integrity...");
+    
+    private static readonly Action<ILogger, int, int, Exception?> LogServiceInventory =
+        LoggerMessage.Define<int, int>(LogLevel.Information, new EventId(8006, nameof(LogServiceInventory)),
+            "Service inventory: {CategoryCount} categories, {ServiceCount} services");
+    
+    private static readonly Action<ILogger, Exception?> LogConfigLocksValidated =
+        LoggerMessage.Define(LogLevel.Information, new EventId(8007, nameof(LogConfigLocksValidated)),
+            "✅ Configuration locks validated - all safety settings active");
+    
+    private static readonly Action<ILogger, int, int, Exception?> LogYamlValidationIssues =
+        LoggerMessage.Define<int, int>(LogLevel.Warning, new EventId(8008, nameof(LogYamlValidationIssues)),
+            "YAML validation found issues - {InvalidFiles}/{TotalFiles} files invalid");
+    
+    private static readonly Action<ILogger, int, int, Exception?> LogYamlSchemaValidation =
+        LoggerMessage.Define<int, int>(LogLevel.Information, new EventId(8009, nameof(LogYamlSchemaValidation)),
+            "YAML schema validation: {ValidFiles}/{TotalFiles} files valid");
+    
+    private static readonly Action<ILogger, Exception?> LogPhase1Completed =
+        LoggerMessage.Define(LogLevel.Information, new EventId(8010, nameof(LogPhase1Completed)),
+            "✅ Phase 1 completed - System integrity validated");
+    
+    private static readonly Action<ILogger, Exception?> LogPhase2Start =
+        LoggerMessage.Define(LogLevel.Information, new EventId(8011, nameof(LogPhase2Start)),
+            "Phase 2: Initializing integration components...");
+    
+    private static readonly Action<ILogger, int, Exception?> LogFeatureMapAuthority =
+        LoggerMessage.Define<int>(LogLevel.Information, new EventId(8012, nameof(LogFeatureMapAuthority)),
+            "Feature map authority: {ResolverCount} resolvers registered");
+    
+    private static readonly Action<ILogger, int, string, Exception?> LogStatePersistence =
+        LoggerMessage.Define<int, string>(LogLevel.Information, new EventId(8013, nameof(LogStatePersistence)),
+            "State persistence: {ZoneCount} zone states, {PatternAvailable} pattern data loaded");
+    
+    private static readonly Action<ILogger, Exception?> LogShadowModeManagerInitialized =
+        LoggerMessage.Define(LogLevel.Information, new EventId(8014, nameof(LogShadowModeManagerInitialized)),
+            "Shadow mode manager initialized - ready for strategy testing");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogTelemetryService =
+        LoggerMessage.Define<string, string>(LogLevel.Information, new EventId(8015, nameof(LogTelemetryService)),
+            "Telemetry service: {HealthStatus}, Config snapshot: {ConfigSnapshotId}");
+    
+    private static readonly Action<ILogger, Exception?> LogPhase2Completed =
+        LoggerMessage.Define(LogLevel.Information, new EventId(8016, nameof(LogPhase2Completed)),
+            "✅ Phase 2 completed - Integration components initialized");
+    
+    private static readonly Action<ILogger, Exception?> LogPhase3Start =
+        LoggerMessage.Define(LogLevel.Information, new EventId(8017, nameof(LogPhase3Start)),
+            "Phase 3: Validating runtime integration...");
+    
+    private static readonly Action<ILogger, Exception?> LogPhase3Completed =
+        LoggerMessage.Define(LogLevel.Information, new EventId(8018, nameof(LogPhase3Completed)),
+            "✅ Phase 3 completed - Runtime integration validated");
+    
+    private static readonly Action<ILogger, Exception?> LogPhase4Start =
+        LoggerMessage.Define(LogLevel.Information, new EventId(8019, nameof(LogPhase4Start)),
+            "Phase 4: Starting continuous monitoring...");
+    
+    private static readonly Action<ILogger, Exception?> LogCoordinatorOperational =
+        LoggerMessage.Define(LogLevel.Information, new EventId(8020, nameof(LogCoordinatorOperational)),
+            "🎉 Production integration coordinator OPERATIONAL - All systems ready");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidOperationInMonitoring =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(8021, nameof(LogInvalidOperationInMonitoring)),
+            "Invalid operation in continuous monitoring loop");
+    
+    private static readonly Action<ILogger, Exception?> LogTimeoutInMonitoring =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(8022, nameof(LogTimeoutInMonitoring)),
+            "Timeout in continuous monitoring loop");
+    
+    private static readonly Action<ILogger, int, double, Exception?> LogUnifiedBarPipelineSuccess =
+        LoggerMessage.Define<int, double>(LogLevel.Debug, new EventId(8023, nameof(LogUnifiedBarPipelineSuccess)),
+            "Unified bar pipeline test: SUCCESS - {StepCount} steps completed in {ProcessingTime:F2}ms");
+    
+    private static readonly Action<ILogger, string, Exception?> LogUnifiedBarPipelineFailed =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(8024, nameof(LogUnifiedBarPipelineFailed)),
+            "Unified bar pipeline test: FAILED - {Error}");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidOperationTestingBarPipeline =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(8025, nameof(LogInvalidOperationTestingBarPipeline)),
+            "Invalid operation testing unified bar pipeline");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidArgumentTestingBarPipeline =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(8026, nameof(LogInvalidArgumentTestingBarPipeline)),
+            "Invalid argument testing unified bar pipeline");
+    
+    private static readonly Action<ILogger, string, double, string, Exception?> LogFeatureResolutionTest =
+        LoggerMessage.Define<string, double, string>(LogLevel.Trace, new EventId(8027, nameof(LogFeatureResolutionTest)),
+            "Feature resolution test: {FeatureKey} = {Value} ({ResolverType})");
+    
+    private static readonly Action<ILogger, string, Exception?> LogFeatureResolutionMissing =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(8028, nameof(LogFeatureResolutionMissing)),
+            "Feature resolution test: {FeatureKey} MISSING - would trigger hold decision");
+    
+    private static readonly Action<ILogger, int, int, Exception?> LogFeatureResolutionSummary =
+        LoggerMessage.Define<int, int>(LogLevel.Debug, new EventId(8029, nameof(LogFeatureResolutionSummary)),
+            "Feature resolution test: {SuccessCount}/{TotalCount} features resolved successfully");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidOperationTestingFeatureResolution =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(8030, nameof(LogInvalidOperationTestingFeatureResolution)),
+            "Invalid operation testing feature resolution");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidArgumentTestingFeatureResolution =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(8031, nameof(LogInvalidArgumentTestingFeatureResolution)),
+            "Invalid argument testing feature resolution");
+    
+    private static readonly Action<ILogger, Exception?> LogTelemetryEmissionSuccess =
+        LoggerMessage.Define(LogLevel.Debug, new EventId(8032, nameof(LogTelemetryEmissionSuccess)),
+            "Telemetry emission test: Zone and pattern telemetry emitted successfully");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidOperationTestingTelemetry =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(8033, nameof(LogInvalidOperationTestingTelemetry)),
+            "Invalid operation testing telemetry emission");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidArgumentTestingTelemetry =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(8034, nameof(LogInvalidArgumentTestingTelemetry)),
+            "Invalid argument testing telemetry emission");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidOperationEmittingTelemetry =
+        LoggerMessage.Define(LogLevel.Trace, new EventId(8035, nameof(LogInvalidOperationEmittingTelemetry)),
+            "Invalid operation emitting operational telemetry");
+    
+    private static readonly Action<ILogger, Exception?> LogTimeoutEmittingTelemetry =
+        LoggerMessage.Define(LogLevel.Trace, new EventId(8036, nameof(LogTimeoutEmittingTelemetry)),
+            "Timeout emitting operational telemetry");
+    
+    private static readonly Action<ILogger, string, int, int, string, Exception?> LogHealthCheck =
+        LoggerMessage.Define<string, int, int, string>(LogLevel.Trace, new EventId(8037, nameof(LogHealthCheck)),
+            "Health check: Pipeline {PipelineHealth}, EpochFreeze {EpochStats}, Shadow {ShadowStats}, Telemetry {TelemetryHealth}");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidOperationInHealthCheck =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(8038, nameof(LogInvalidOperationInHealthCheck)),
+            "Invalid operation in periodic health check");
+    
+    private static readonly Action<ILogger, Exception?> LogCoordinatorDisposed =
+        LoggerMessage.Define(LogLevel.Information, new EventId(8039, nameof(LogCoordinatorDisposed)),
+            "Production integration coordinator disposed");
     
     // Integration components
     private readonly Lazy<ServiceInventory> _serviceInventory;
@@ -65,7 +224,7 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
         // Start periodic health checks
         _healthCheckTimer = new Timer(PeriodicHealthCheckCallback, null, _healthCheckInterval, _healthCheckInterval);
         
-        _logger.LogInformation("Production integration coordinator initialized");
+        LogCoordinatorInitialized(_logger, null);
     }
     
     /// <summary>
@@ -75,7 +234,7 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
     {
         try
         {
-            _logger.LogInformation("🚀 Starting production integration coordinator...");
+            LogStartingCoordinator(_logger, null);
             
             // Phase 1: System Validation
             await ValidateSystemIntegrityAsync(stoppingToken).ConfigureAwait(false);
@@ -91,11 +250,11 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
         }
         catch (OperationCanceledException ex)
         {
-            _logger.LogInformation(ex, "Production integration coordinator stopped gracefully");
+            LogCoordinatorStoppedGracefully(_logger, ex);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Critical error in production integration coordinator");
+            LogCriticalError(_logger, ex);
             lock (_statusLock)
             {
                 _currentStatus = IntegrationStatus.Failed;
@@ -109,7 +268,7 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
     /// </summary>
     private async Task ValidateSystemIntegrityAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Phase 1: Validating system integrity...");
+        LogPhase1Start(_logger, null);
         
         lock (_statusLock)
             {
@@ -118,8 +277,7 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
             
             // 1.1: Validate service inventory
             var inventoryReport = _serviceInventory.Value.GenerateInventoryReport();
-            _logger.LogInformation("Service inventory: {CategoryCount} categories, {ServiceCount} services", 
-                inventoryReport.Services.Count, inventoryReport.Services.Values.Sum(s => s.Count));
+            LogServiceInventory(_logger, inventoryReport.Services.Count, inventoryReport.Services.Values.Sum(s => s.Count), null);
             
             // 1.2: Validate configuration locks
             var configReport = _configurationLocks.Value.ValidateConfigurationLocks();
@@ -127,7 +285,7 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
             {
                 throw new InvalidOperationException("Configuration lock validation failed - system not production ready");
             }
-            _logger.LogInformation("✅ Configuration locks validated - all safety settings active");
+            LogConfigLocksValidated(_logger, null);
             
             // 1.3: Validate YAML schemas
             var strategiesDir = Path.Combine(Directory.GetCurrentDirectory(), "strategies");
@@ -136,14 +294,12 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
                 var yamlValidation = await _yamlSchemaValidator.Value.ValidateDirectoryAsync(strategiesDir).ConfigureAwait(false);
                 if (!yamlValidation.IsAllValid)
                 {
-                    _logger.LogWarning("YAML validation found issues - {InvalidFiles}/{TotalFiles} files invalid", 
-                        yamlValidation.InvalidFiles, yamlValidation.TotalFiles);
+                    LogYamlValidationIssues(_logger, yamlValidation.InvalidFiles, yamlValidation.TotalFiles, null);
                 }
-                _logger.LogInformation("YAML schema validation: {ValidFiles}/{TotalFiles} files valid", 
-                    yamlValidation.ValidFiles, yamlValidation.TotalFiles);
+                LogYamlSchemaValidation(_logger, yamlValidation.ValidFiles, yamlValidation.TotalFiles, null);
             }
             
-        _logger.LogInformation("✅ Phase 1 completed - System integrity validated");
+        LogPhase1Completed(_logger, null);
     }
     
     /// <summary>
@@ -151,7 +307,7 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
     /// </summary>
     private async Task InitializeIntegrationComponentsAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Phase 2: Initializing integration components...");
+        LogPhase2Start(_logger, null);
         
         lock (_statusLock)
             {
@@ -160,22 +316,20 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
             
             // 2.1: Initialize feature map authority
             var featureManifest = _featureMapAuthority.Value.GetManifestReport();
-            _logger.LogInformation("Feature map authority: {ResolverCount} resolvers registered", featureManifest.TotalResolvers);
+            LogFeatureMapAuthority(_logger, featureManifest.TotalResolvers, null);
             
             // 2.2: Initialize state persistence
             var stateCollection = await _statePersistence.Value.LoadAllStateAsync(cancellationToken).ConfigureAwait(false);
-            _logger.LogInformation("State persistence: {ZoneCount} zone states, {PatternAvailable} pattern data loaded", 
-                stateCollection.ZoneStates.Count, stateCollection.PatternReliability != null ? "Available" : "None");
+            LogStatePersistence(_logger, stateCollection.ZoneStates.Count, stateCollection.PatternReliability != null ? "Available" : "None", null);
             
             // 2.3: Initialize shadow mode manager
-            _logger.LogInformation("Shadow mode manager initialized - ready for strategy testing");
+            LogShadowModeManagerInitialized(_logger, null);
             
             // 2.4: Initialize telemetry service
             var telemetryHealth = _telemetryService.Value.GetTelemetryHealth();
-            _logger.LogInformation("Telemetry service: {HealthStatus}, Config snapshot: {ConfigSnapshotId}", 
-                telemetryHealth.IsHealthy ? "Healthy" : "Degraded", telemetryHealth.ConfigSnapshotId);
+            LogTelemetryService(_logger, telemetryHealth.IsHealthy ? "Healthy" : "Degraded", telemetryHealth.ConfigSnapshotId ?? "None", null);
             
-        _logger.LogInformation("✅ Phase 2 completed - Integration components initialized");
+        LogPhase2Completed(_logger, null);
     }
     
     /// <summary>
@@ -183,7 +337,7 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
     /// </summary>
     private async Task ValidateRuntimeIntegrationAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Phase 3: Validating runtime integration...");
+        LogPhase3Start(_logger, null);
         
         lock (_statusLock)
             {
@@ -199,7 +353,7 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
             // 3.3: Test telemetry emission
             await TestTelemetryEmissionAsync(cancellationToken).ConfigureAwait(false);
             
-        _logger.LogInformation("✅ Phase 3 completed - Runtime integration validated");
+        LogPhase3Completed(_logger, null);
     }
     
     /// <summary>
@@ -207,14 +361,14 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
     /// </summary>
     private async Task RunContinuousMonitoringAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Phase 4: Starting continuous monitoring...");
+        LogPhase4Start(_logger, null);
         
         lock (_statusLock)
         {
             _currentStatus = IntegrationStatus.Operational;
         }
         
-        _logger.LogInformation("🎉 Production integration coordinator OPERATIONAL - All systems ready");
+        LogCoordinatorOperational(_logger, null);
         
         // Run until cancellation is requested
         while (!cancellationToken.IsCancellationRequested)
@@ -232,11 +386,11 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Invalid operation in continuous monitoring loop");
+                LogInvalidOperationInMonitoring(_logger, ex);
             }
             catch (TimeoutException ex)
             {
-                _logger.LogWarning(ex, "Timeout in continuous monitoring loop");
+                LogTimeoutInMonitoring(_logger, ex);
             }
         }
     }
@@ -263,21 +417,20 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
             
             if (pipelineResult.Success)
             {
-                _logger.LogDebug("Unified bar pipeline test: SUCCESS - {StepCount} steps completed in {ProcessingTime:F2}ms", 
-                    pipelineResult.PipelineSteps.Count, pipelineResult.ProcessingTimeMs);
+                LogUnifiedBarPipelineSuccess(_logger, pipelineResult.PipelineSteps.Count, pipelineResult.ProcessingTimeMs, null);
             }
             else
             {
-                _logger.LogWarning("Unified bar pipeline test: FAILED - {Error}", pipelineResult.Error);
+                LogUnifiedBarPipelineFailed(_logger, pipelineResult.Error ?? "Unknown error", null);
             }
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Invalid operation testing unified bar pipeline");
+            LogInvalidOperationTestingBarPipeline(_logger, ex);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogWarning(ex, "Invalid argument testing unified bar pipeline");
+            LogInvalidArgumentTestingBarPipeline(_logger, ex);
         }
     }
     
@@ -297,25 +450,23 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
                 if (result.Success)
                 {
                     successCount++;
-                    _logger.LogTrace("Feature resolution test: {FeatureKey} = {Value} ({ResolverType})", 
-                        featureKey, result.Value, result.ResolverType);
+                    LogFeatureResolutionTest(_logger, featureKey, result.Value, result.ResolverType ?? "Unknown", null);
                 }
                 else if (result.ShouldHoldDecision)
                 {
-                    _logger.LogWarning("Feature resolution test: {FeatureKey} MISSING - would trigger hold decision", featureKey);
+                    LogFeatureResolutionMissing(_logger, featureKey, null);
                 }
             }
             
-            _logger.LogDebug("Feature resolution test: {SuccessCount}/{TotalCount} features resolved successfully", 
-                successCount, testFeatures.Length);
+            LogFeatureResolutionSummary(_logger, successCount, testFeatures.Length, null);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Invalid operation testing feature resolution");
+            LogInvalidOperationTestingFeatureResolution(_logger, ex);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogWarning(ex, "Invalid argument testing feature resolution");
+            LogInvalidArgumentTestingFeatureResolution(_logger, ex);
         }
     }
     
@@ -353,15 +504,15 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
             
             await _telemetryService.Value.EmitPatternTelemetryAsync("ES", patternTelemetry, cancellationToken).ConfigureAwait(false);
             
-            _logger.LogDebug("Telemetry emission test: Zone and pattern telemetry emitted successfully");
+            LogTelemetryEmissionSuccess(_logger, null);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Invalid operation testing telemetry emission");
+            LogInvalidOperationTestingTelemetry(_logger, ex);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogWarning(ex, "Invalid argument testing telemetry emission");
+            LogInvalidArgumentTestingTelemetry(_logger, ex);
         }
     }
     
@@ -387,11 +538,11 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogTrace(ex, "Invalid operation emitting operational telemetry");
+            LogInvalidOperationEmittingTelemetry(_logger, ex);
         }
         catch (TimeoutException ex)
         {
-            _logger.LogTrace(ex, "Timeout emitting operational telemetry");
+            LogTimeoutEmittingTelemetry(_logger, ex);
         }
     }
     
@@ -410,15 +561,16 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
             var shadowModeStats = _shadowModeManager.IsValueCreated ? _shadowModeManager.Value.GetShadowModeStats() : null;
             var telemetryHealth = _telemetryService.IsValueCreated ? _telemetryService.Value.GetTelemetryHealth() : null;
             
-            _logger.LogTrace("Health check: Pipeline {PipelineHealth}, EpochFreeze {EpochStats}, Shadow {ShadowStats}, Telemetry {TelemetryHealth}",
+            LogHealthCheck(_logger,
                 pipelineHealth?.IsHealthy ?? false ? "Healthy" : "Degraded",
                 epochFreezeStats?.ActiveEpochs ?? 0,
                 shadowModeStats?.ActiveShadowStrategies ?? 0,
-                telemetryHealth?.IsHealthy ?? false ? "Healthy" : "Degraded");
+                telemetryHealth?.IsHealthy ?? false ? "Healthy" : "Degraded",
+                null);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Invalid operation in periodic health check");
+            LogInvalidOperationInHealthCheck(_logger, ex);
         }
     }
     
@@ -458,7 +610,7 @@ public sealed class ProductionIntegrationCoordinator : BackgroundService
         }
         
         base.Dispose();
-        _logger.LogInformation("Production integration coordinator disposed");
+        LogCoordinatorDisposed(_logger, null);
     }
 }
 

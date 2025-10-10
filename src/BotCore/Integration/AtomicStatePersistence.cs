@@ -13,10 +13,115 @@ namespace BotCore.Integration;
 /// Persists zone buffers, pattern reliability, and other critical state
 /// Uses atomic File.Replace operations to prevent corruption
 /// </summary>
-public sealed class AtomicStatePersistence : IDisposable
+public sealed partial class AtomicStatePersistence : IDisposable
 {
     private readonly ILogger<AtomicStatePersistence> _logger;
     private readonly string _stateDirectory;
+    
+    // LoggerMessage delegates for high-performance logging
+    private static readonly Action<ILogger, string, Exception?> LogPersistenceInitialized =
+        LoggerMessage.Define<string>(LogLevel.Information, new EventId(9001, nameof(LogPersistenceInitialized)),
+            "Atomic state persistence initialized with base directory: {StateDirectory}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogCreatedStateDirectory =
+        LoggerMessage.Define<string>(LogLevel.Debug, new EventId(9002, nameof(LogCreatedStateDirectory)),
+            "Created state directory: {Directory}");
+    
+    private static readonly Action<ILogger, Exception?> LogZonesStateSavingStarted =
+        LoggerMessage.Define(LogLevel.Trace, new EventId(9003, nameof(LogZonesStateSavingStarted)),
+            "Periodic persistence: Saving zones state...");
+    
+    private static readonly Action<ILogger, Exception?> LogZonesStateSavingError =
+        LoggerMessage.Define(LogLevel.Error, new EventId(9004, nameof(LogZonesStateSavingError)),
+            "Error during periodic zone state persistence");
+    
+    private static readonly Action<ILogger, Exception?> LogZonesStateSavingFailed =
+        LoggerMessage.Define(LogLevel.Error, new EventId(9005, nameof(LogZonesStateSavingFailed)),
+            "Failed to persist zone state during periodic persistence");
+    
+    private static readonly Action<ILogger, Exception?> LogPatternsStateSavingStarted =
+        LoggerMessage.Define(LogLevel.Trace, new EventId(9006, nameof(LogPatternsStateSavingStarted)),
+            "Periodic persistence: Saving patterns state...");
+    
+    private static readonly Action<ILogger, Exception?> LogPatternsStateSavingError =
+        LoggerMessage.Define(LogLevel.Error, new EventId(9007, nameof(LogPatternsStateSavingError)),
+            "Error during periodic pattern state persistence");
+    
+    private static readonly Action<ILogger, Exception?> LogPatternsStateSavingFailed =
+        LoggerMessage.Define(LogLevel.Error, new EventId(9008, nameof(LogPatternsStateSavingFailed)),
+            "Failed to persist pattern state during periodic persistence");
+    
+    private static readonly Action<ILogger, Exception?> LogFusionStateSavingStarted =
+        LoggerMessage.Define(LogLevel.Trace, new EventId(9009, nameof(LogFusionStateSavingStarted)),
+            "Periodic persistence: Saving fusion state...");
+    
+    private static readonly Action<ILogger, Exception?> LogFusionStateSavingError =
+        LoggerMessage.Define(LogLevel.Error, new EventId(9010, nameof(LogFusionStateSavingError)),
+            "Error during periodic fusion state persistence");
+    
+    private static readonly Action<ILogger, Exception?> LogFusionStateSavingFailed =
+        LoggerMessage.Define(LogLevel.Error, new EventId(9011, nameof(LogFusionStateSavingFailed)),
+            "Failed to persist fusion state during periodic persistence");
+    
+    private static readonly Action<ILogger, Exception?> LogMetricsStateSavingStarted =
+        LoggerMessage.Define(LogLevel.Trace, new EventId(9012, nameof(LogMetricsStateSavingStarted)),
+            "Periodic persistence: Saving metrics state...");
+    
+    private static readonly Action<ILogger, Exception?> LogMetricsStateSavingError =
+        LoggerMessage.Define(LogLevel.Error, new EventId(9013, nameof(LogMetricsStateSavingError)),
+            "Error during periodic metrics state persistence");
+    
+    private static readonly Action<ILogger, Exception?> LogMetricsStateSavingFailed =
+        LoggerMessage.Define(LogLevel.Error, new EventId(9014, nameof(LogMetricsStateSavingFailed)),
+            "Failed to persist metrics state during periodic persistence");
+    
+    private static readonly Action<ILogger, string, Exception?> LogZoneStatePersisted =
+        LoggerMessage.Define<string>(LogLevel.Trace, new EventId(9015, nameof(LogZoneStatePersisted)),
+            "Zone state persisted for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogIOErrorPersistingZoneState =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(9016, nameof(LogIOErrorPersistingZoneState)),
+            "I/O error persisting zone state for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogSerializationErrorPersistingZoneState =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(9017, nameof(LogSerializationErrorPersistingZoneState)),
+            "Serialization error persisting zone state for {Symbol}");
+    
+    private static readonly Action<ILogger, Exception?> LogPatternReliabilityPersisted =
+        LoggerMessage.Define(LogLevel.Trace, new EventId(9018, nameof(LogPatternReliabilityPersisted)),
+            "Pattern reliability state persisted");
+    
+    private static readonly Action<ILogger, Exception?> LogIOErrorPersistingPatternReliability =
+        LoggerMessage.Define(LogLevel.Error, new EventId(9019, nameof(LogIOErrorPersistingPatternReliability)),
+            "I/O error persisting pattern reliability state");
+    
+    private static readonly Action<ILogger, Exception?> LogSerializationErrorPersistingPatternReliability =
+        LoggerMessage.Define(LogLevel.Error, new EventId(9020, nameof(LogSerializationErrorPersistingPatternReliability)),
+            "Serialization error persisting pattern reliability state");
+    
+    private static readonly Action<ILogger, Exception?> LogFusionStatePersisted =
+        LoggerMessage.Define(LogLevel.Trace, new EventId(9021, nameof(LogFusionStatePersisted)),
+            "Fusion coordinator state persisted");
+    
+    private static readonly Action<ILogger, Exception?> LogIOErrorPersistingFusionState =
+        LoggerMessage.Define(LogLevel.Error, new EventId(9022, nameof(LogIOErrorPersistingFusionState)),
+            "I/O error persisting fusion coordinator state");
+    
+    private static readonly Action<ILogger, Exception?> LogSerializationErrorPersistingFusionState =
+        LoggerMessage.Define(LogLevel.Error, new EventId(9023, nameof(LogSerializationErrorPersistingFusionState)),
+            "Serialization error persisting fusion coordinator state");
+    
+    private static readonly Action<ILogger, string, Exception?> LogMetricsStatePersisted =
+        LoggerMessage.Define<string>(LogLevel.Trace, new EventId(9024, nameof(LogMetricsStatePersisted)),
+            "Metrics state persisted for {MetricsName}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogIOErrorPersistingMetricsState =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(9025, nameof(LogIOErrorPersistingMetricsState)),
+            "I/O error persisting metrics state for {MetricsName}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogSerializationErrorPersistingMetricsState =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(9026, nameof(LogSerializationErrorPersistingMetricsState)),
+            "Serialization error persisting metrics state for {MetricsName}");
     
     // Subdirectories for different state types
     private readonly string _zonesStateDirectory;
@@ -61,7 +166,7 @@ public sealed class AtomicStatePersistence : IDisposable
         // Start periodic persistence timer
         _persistenceTimer = new Timer(PeriodicPersistenceCallback, null, _persistenceInterval, _persistenceInterval);
         
-        _logger.LogInformation("Atomic state persistence initialized with base directory: {StateDirectory}", _stateDirectory);
+        LogPersistenceInitialized(_logger, _stateDirectory, null);
     }
     
     /// <summary>
@@ -83,7 +188,7 @@ public sealed class AtomicStatePersistence : IDisposable
             if (!Directory.Exists(directory))
             {
                 Directory.CreateDirectory(directory);
-                _logger.LogDebug("Created state directory: {Directory}", directory);
+                LogCreatedStateDirectory(_logger, directory, null);
             }
         }
     }
@@ -107,16 +212,16 @@ public sealed class AtomicStatePersistence : IDisposable
             
             await PersistStateAtomicallyAsync(filePath, snapshot, cancellationToken).ConfigureAwait(false);
             
-            _logger.LogTrace("Zone state persisted for {Symbol}", symbol);
+            LogZoneStatePersisted(_logger, symbol, null);
         }
         catch (IOException ex)
         {
-            _logger.LogError(ex, "I/O error persisting zone state for {Symbol}", symbol);
+            LogIOErrorPersistingZoneState(_logger, symbol, ex);
             throw new InvalidOperationException($"Failed to persist zone state for {symbol} due to I/O error", ex);
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "Serialization error persisting zone state for {Symbol}", symbol);
+            LogSerializationErrorPersistingZoneState(_logger, symbol, ex);
             throw new InvalidOperationException($"Failed to serialize zone state for {symbol}", ex);
         }
     }
@@ -137,16 +242,16 @@ public sealed class AtomicStatePersistence : IDisposable
             
             await PersistStateAtomicallyAsync(filePath, snapshot, cancellationToken).ConfigureAwait(false);
             
-            _logger.LogTrace("Pattern reliability state persisted");
+            LogPatternReliabilityPersisted(_logger, null);
         }
         catch (IOException ex)
         {
-            _logger.LogError(ex, "I/O error persisting pattern reliability state");
+            LogIOErrorPersistingPatternReliability(_logger, ex);
             throw new InvalidOperationException("Failed to persist pattern reliability state due to I/O error", ex);
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "Serialization error persisting pattern reliability state");
+            LogSerializationErrorPersistingPatternReliability(_logger, ex);
             throw new InvalidOperationException("Failed to serialize pattern reliability state", ex);
         }
     }
@@ -167,16 +272,16 @@ public sealed class AtomicStatePersistence : IDisposable
             
             await PersistStateAtomicallyAsync(filePath, snapshot, cancellationToken).ConfigureAwait(false);
             
-            _logger.LogTrace("Fusion coordinator state persisted");
+            LogFusionStatePersisted(_logger, null);
         }
         catch (IOException ex)
         {
-            _logger.LogError(ex, "I/O error persisting fusion coordinator state");
+            LogIOErrorPersistingFusionState(_logger, ex);
             throw new InvalidOperationException("Failed to persist fusion coordinator state due to I/O error", ex);
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "Serialization error persisting fusion coordinator state");
+            LogSerializationErrorPersistingFusionState(_logger, ex);
             throw new InvalidOperationException("Failed to serialize fusion coordinator state", ex);
         }
     }
@@ -200,16 +305,16 @@ public sealed class AtomicStatePersistence : IDisposable
             
             await PersistStateAtomicallyAsync(filePath, snapshot, cancellationToken).ConfigureAwait(false);
             
-            _logger.LogTrace("Metrics state persisted for {MetricsName}", metricsName);
+            LogMetricsStatePersisted(_logger, metricsName, null);
         }
         catch (IOException ex)
         {
-            _logger.LogError(ex, "I/O error persisting metrics state for {MetricsName}", metricsName);
+            LogIOErrorPersistingMetricsState(_logger, metricsName, ex);
             throw new InvalidOperationException($"Failed to persist metrics state for {metricsName} due to I/O error", ex);
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "Serialization error persisting metrics state for {MetricsName}", metricsName);
+            LogSerializationErrorPersistingMetricsState(_logger, metricsName, ex);
             throw new InvalidOperationException($"Failed to serialize metrics state for {metricsName}", ex);
         }
     }
