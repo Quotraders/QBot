@@ -15,7 +15,7 @@ namespace BotCore.Services;
 /// Following agent guardrails: "kill.txt always forces DRY_RUN"
 /// Implements IKillSwitchWatcher for compatibility with legacy Safety module integrations
 /// </summary>
-public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, IDisposable
+public sealed class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, IDisposable
 {
     private readonly ILogger<ProductionKillSwitchService> _logger;
     private readonly KillSwitchConfiguration _config;
@@ -332,7 +332,7 @@ public class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, I
         }
     }
 
-    protected virtual void Dispose(bool disposing)
+    private void Dispose(bool disposing)
     {
         if (!_disposed && disposing)
         {

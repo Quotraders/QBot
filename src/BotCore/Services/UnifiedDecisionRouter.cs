@@ -812,17 +812,6 @@ public class UnifiedDecisionRouter
         };
     }
     
-    private static Dictionary<string, StrategyConfig> InitializeStrategyConfigs()
-    {
-        return new Dictionary<string, StrategyConfig>
-        {
-            ["S2"] = new StrategyConfig { Name = "VWAP Mean Reversion", OptimalHours = new[] { LUNCH_MEAN_REVERSION_START, LUNCH_MEAN_REVERSION_START + 1, LUNCH_MEAN_REVERSION_END } },
-            ["S3"] = new StrategyConfig { Name = "Bollinger Compression", OptimalHours = new[] { OPENING_DRIVE_START_HOUR, OPENING_DRIVE_END_HOUR, AFTERNOON_TRADING_START, AFTERNOON_TRADING_START + 1 } },
-            ["S6"] = new StrategyConfig { Name = "Opening Drive", OptimalHours = new[] { OPENING_DRIVE_START_HOUR, OPENING_DRIVE_END_HOUR } },
-            ["S11"] = new StrategyConfig { Name = "Afternoon Fade", OptimalHours = new[] { AFTERNOON_TRADING_START, AFTERNOON_TRADING_START + 1, AFTERNOON_TRADING_END } }
-        };
-    }
-    
     private static string GenerateDecisionId()
     {
         return $"UD{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}_{Random.Shared.Next(DECISION_ID_RANDOM_MIN, DECISION_ID_RANDOM_MAX)}";

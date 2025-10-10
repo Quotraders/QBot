@@ -13,7 +13,7 @@ namespace TradingBot.BotCore.Services
     /// Integrity and signing service for logs, models, and manifests
     /// Provides SHA-256 hashing and digital signing for production data integrity
     /// </summary>
-    public class IntegritySigningService
+    public class IntegritySigningService : IDisposable
     {
         private readonly ILogger<IntegritySigningService> _logger;
         private readonly RSA _signingKey;

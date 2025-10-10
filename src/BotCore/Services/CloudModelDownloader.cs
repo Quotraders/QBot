@@ -118,6 +118,6 @@ public class CloudModelDownloader : ICloudModelDownloader
 
     private static void CleanupStaging(string path)
     {
-        try { if (File.Exists(path)) File.Delete(path); } catch { }
+        try { if (File.Exists(path)) File.Delete(path); } catch { /* Ignore cleanup errors */ }
     }
 }

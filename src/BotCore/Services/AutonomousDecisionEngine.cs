@@ -1603,7 +1603,7 @@ public class AutonomousDecisionEngine : BackgroundService
     private static double CalculateVolumeMA(List<Bar> bars, int period)
     {
         if (bars.Count < period) return 0;
-        return (double)bars.TakeLast(period).Select(b => b.Volume).Average();
+        return bars.TakeLast(period).Select(b => b.Volume).Average();
     }
     
     private static decimal CalculateEMA(List<decimal> values, int period)
