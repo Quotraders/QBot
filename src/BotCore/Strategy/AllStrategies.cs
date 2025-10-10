@@ -206,28 +206,29 @@ namespace BotCore.Strategy
             var levels = new Levels();
             RiskEngine? riskEngine = null;
             var disposeRiskEngine = false;
+            // Check early exit conditions before creating RiskEngine
+            if (!def.Enabled) return [];
+            
+            var map = new Dictionary<string, Func<string, Env, Levels, IList<Bar>, RiskEngine, IReadOnlyList<Candidate>>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["S2"] = S2,
+                ["S3"] = S3,
+                ["S6"] = S6,
+                ["S11"] = S11,
+            };
+
+            if (!map.TryGetValue(def.Name, out var fn)) return [];
+            if (!StrategyGates.PassesS7Gate(s7Service, def.Name)) return [];
+
             try
             {
+                // Create RiskEngine inside try block for proper dispose on all paths
                 riskEngine = risk as RiskEngine;
                 if (riskEngine == null)
                 {
                     riskEngine = new RiskEngine();
                     disposeRiskEngine = true;
                 }
-
-                var map = new Dictionary<string, Func<string, Env, Levels, IList<Bar>, RiskEngine, IReadOnlyList<Candidate>>>(StringComparer.OrdinalIgnoreCase)
-                {
-                    ["S2"] = S2,
-                    ["S3"] = S3,
-                    ["S6"] = S6,
-                    ["S11"] = S11,
-                };
-
-                if (!def.Enabled) return [];
-                if (!map.TryGetValue(def.Name, out var fn)) return [];
-
-                // Apply S7 gate for gated strategies (S2, S3, S6, S11) before candidate generation
-                if (!StrategyGates.PassesS7Gate(s7Service, def.Name)) return [];
 
                 var candidates = fn(symbol, env, levels, bars, riskEngine);
 
@@ -303,9 +304,9 @@ namespace BotCore.Strategy
             }
             finally
             {
-                if (disposeRiskEngine)
+                if (disposeRiskEngine && riskEngine != null)
                 {
-                    riskEngine?.Dispose();
+                    riskEngine.Dispose();
                 }
             }
         }
@@ -769,7 +770,8 @@ namespace BotCore.Strategy
             int look = Math.Max(5, S2RuntimeConfig.AdrGuardEnabled ? S2RuntimeConfig.AdrGuardLen : S2RuntimeConfig.AdrLookbackDays);
             int daysCounted = 0; 
             decimal sumAdr = 0m;
-            for (int i = bars.Count - 1; i >= 0 && daysCounted < look; i--)
+            int i = bars.Count - 1;
+            while (i >= 0 && daysCounted < look)
             {
                 var day = bars[i].Start.Date;
                 var dayStartIdx = i;
@@ -789,7 +791,7 @@ namespace BotCore.Strategy
                 }
                 sumAdr += Math.Max(0m, hi - lo);
                 daysCounted++;
-                i = dayStartIdx; // for-loop will i-- again
+                i = dayStartIdx - 1; // Move to previous day
             }
             if (daysCounted > 0) adr = sumAdr / daysCounted;
             // Today's realized range

@@ -12,7 +12,7 @@ namespace BotCore.Strategy
 {
     public static class S3Strategy
     {
-        private static readonly ILogger? _logger; // Logger field for S3Strategy - initialized externally
+        // Logger removed - S3Strategy uses static methods and doesn't need instance logging
         
         private static bool BtBypass(string gate)
         {
