@@ -36,6 +36,259 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
     // Pattern score cache for truly async execution
     private readonly ConcurrentDictionary<string, PatternScoreCache> _patternScoreCache = new();
     
+    // CA1848: LoggerMessage delegates for high-performance logging
+    private static readonly Action<ILogger, string?, string?, Exception?> LogInvalidProbeRequest =
+        LoggerMessage.Define<string?, string?>(LogLevel.Warning, new EventId(8001, nameof(LogInvalidProbeRequest)),
+            "Invalid probe request: symbol='{Symbol}', feature='{Feature}'");
+    
+    private static readonly Action<ILogger, string, string, double?, Exception?> LogFeatureCalculated =
+        LoggerMessage.Define<string, string, double?>(LogLevel.Trace, new EventId(8002, nameof(LogFeatureCalculated)),
+            "Feature '{Feature}' for {Symbol} calculated: {Value}");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogFeatureNotAvailable =
+        LoggerMessage.Define<string, string>(LogLevel.Trace, new EventId(8003, nameof(LogFeatureNotAvailable)),
+            "Feature '{Feature}' not available for {Symbol}");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogErrorProbingFeature =
+        LoggerMessage.Define<string, string>(LogLevel.Error, new EventId(8004, nameof(LogErrorProbingFeature)),
+            "Error probing feature '{Feature}' for {Symbol}");
+    
+    private static readonly Action<ILogger, string, string, double, Exception?> LogFeaturePublished =
+        LoggerMessage.Define<string, string, double>(LogLevel.Trace, new EventId(8005, nameof(LogFeaturePublished)),
+            "Published feature '{Name}' for {Symbol}: {Value}");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogErrorPublishingFeature =
+        LoggerMessage.Define<string, string>(LogLevel.Error, new EventId(8006, nameof(LogErrorPublishingFeature)),
+            "Error publishing feature '{Name}' for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogNoRealtimePriceData =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(8007, nameof(LogNoRealtimePriceData)),
+            "No real-time price data available for {Symbol} - market data service integration required");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorGettingCurrentPrice =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8008, nameof(LogErrorGettingCurrentPrice)),
+            "Error getting current price for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorGettingCurrentVolume =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8009, nameof(LogErrorGettingCurrentVolume)),
+            "Error getting current volume for {Symbol}");
+    
+    private static readonly Action<ILogger, int, string, Exception?> LogErrorCalculatingAtr =
+        LoggerMessage.Define<int, string>(LogLevel.Error, new EventId(8010, nameof(LogErrorCalculatingAtr)),
+            "Error calculating ATR({Period}) for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorCalculatingRealizedVolatility =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8011, nameof(LogErrorCalculatingRealizedVolatility)),
+            "Error calculating realized volatility for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorCalculatingVolatilityContraction =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8012, nameof(LogErrorCalculatingVolatilityContraction)),
+            "Error calculating volatility contraction for {Symbol}");
+    
+    private static readonly Action<ILogger, string, double, int, Exception?> LogMomentumZscoreCalculated =
+        LoggerMessage.Define<string, double, int>(LogLevel.Trace, new EventId(8013, nameof(LogMomentumZscoreCalculated)),
+            "[MOMENTUM-ZSCORE] Calculated for {Symbol}: {ZScore:F4} (bars={BarCount})");
+    
+    private static readonly Action<ILogger, string, int, Exception?> LogMomentumZscoreInsufficientData =
+        LoggerMessage.Define<string, int>(LogLevel.Debug, new EventId(8014, nameof(LogMomentumZscoreInsufficientData)),
+            "[MOMENTUM-ZSCORE] Insufficient data for {Symbol} - only {BarCount} bars available");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorCalculatingMomentumZscore =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8015, nameof(LogErrorCalculatingMomentumZscore)),
+            "Error calculating momentum Z-score for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorCalculatingPullbackRisk =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8016, nameof(LogErrorCalculatingPullbackRisk)),
+            "Error calculating pullback risk for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorCalculatingVolumeThrust =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8017, nameof(LogErrorCalculatingVolumeThrust)),
+            "Error calculating volume thrust for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorCountingInsideBars =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8018, nameof(LogErrorCountingInsideBars)),
+            "Error counting inside bars for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorCalculatingVwapDistance =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8019, nameof(LogErrorCalculatingVwapDistance)),
+            "Error calculating VWAP distance for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorCalculatingKeltnerTouch =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8020, nameof(LogErrorCalculatingKeltnerTouch)),
+            "Error calculating Keltner touch for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorCalculatingBollingerTouch =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8021, nameof(LogErrorCalculatingBollingerTouch)),
+            "Error calculating Bollinger touch for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogTickDataServiceNotAvailable =
+        LoggerMessage.Define<string>(LogLevel.Debug, new EventId(8022, nameof(LogTickDataServiceNotAvailable)),
+            "TickDataService not available for spread calculation - using configuration-based spread for {Symbol}");
+    
+    private static readonly Action<ILogger, string, double, Exception?> LogEstimatedSpread =
+        LoggerMessage.Define<string, double>(LogLevel.Trace, new EventId(8023, nameof(LogEstimatedSpread)),
+            "Estimated spread for {Symbol}: {Spread} (based on bars)");
+    
+    private static readonly Action<ILogger, string, Exception?> LogNoMarketDataForSpread =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(8024, nameof(LogNoMarketDataForSpread)),
+            "No real market data available to calculate spread for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorCalculatingBidAskSpread =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8025, nameof(LogErrorCalculatingBidAskSpread)),
+            "Error calculating bid-ask spread for {Symbol}");
+    
+    private static readonly Action<ILogger, string, double, int, string, Exception?> LogLiquidityScoreCalculated =
+        LoggerMessage.Define<string, double, int, string>(LogLevel.Trace, new EventId(8026, nameof(LogLiquidityScoreCalculated)),
+            "[LIQUIDITY-SCORE] Calculated for {Symbol}: {Score:F4} (bars={BarCount}, enhanced={Enhanced})");
+    
+    private static readonly Action<ILogger, string, int, Exception?> LogLiquidityScoreInsufficientData =
+        LoggerMessage.Define<string, int>(LogLevel.Debug, new EventId(8027, nameof(LogLiquidityScoreInsufficientData)),
+            "[LIQUIDITY-SCORE] Insufficient data for {Symbol} - only {BarCount} bars available");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorCalculatingLiquidityScore =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8028, nameof(LogErrorCalculatingLiquidityScore)),
+            "Error calculating liquidity score for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogOrderBookDataAvailable =
+        LoggerMessage.Define<string>(LogLevel.Trace, new EventId(8029, nameof(LogOrderBookDataAvailable)),
+            "[LIQUIDITY-SCORE] Order book data feed available for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogCouldNotEnhanceWithOrderBook =
+        LoggerMessage.Define<string>(LogLevel.Debug, new EventId(8030, nameof(LogCouldNotEnhanceWithOrderBook)),
+            "[LIQUIDITY-SCORE] Could not enhance with order book data for {Symbol}");
+    
+    private static readonly Action<ILogger, string, double, Exception?> LogBullLiquidityAbsorptionCalculated =
+        LoggerMessage.Define<string, double>(LogLevel.Trace, new EventId(8031, nameof(LogBullLiquidityAbsorptionCalculated)),
+            "[LIQUIDITY-ABSORB-BULL] Calculated for {Symbol}: {Score:F4}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorCalculatingBullLiquidityAbsorption =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8032, nameof(LogErrorCalculatingBullLiquidityAbsorption)),
+            "Error calculating bull liquidity absorption for {Symbol}");
+    
+    private static readonly Action<ILogger, string, double, Exception?> LogBearLiquidityAbsorptionCalculated =
+        LoggerMessage.Define<string, double>(LogLevel.Trace, new EventId(8033, nameof(LogBearLiquidityAbsorptionCalculated)),
+            "[LIQUIDITY-ABSORB-BEAR] Calculated for {Symbol}: {Score:F4}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorCalculatingBearLiquidityAbsorption =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8034, nameof(LogErrorCalculatingBearLiquidityAbsorption)),
+            "Error calculating bear liquidity absorption for {Symbol}");
+    
+    private static readonly Action<ILogger, string, double, double, double, Exception?> LogVolumeProfileRangeCalculated =
+        LoggerMessage.Define<string, double, double, double>(LogLevel.Trace, new EventId(8035, nameof(LogVolumeProfileRangeCalculated)),
+            "[LIQUIDITY-VPR] Calculated for {Symbol}: {Score:F4} (current bucket: {Current}, max volume bucket: {MaxVolume})");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorCalculatingVolumeProfileRange =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8036, nameof(LogErrorCalculatingVolumeProfileRange)),
+            "Error calculating volume profile range for {Symbol}");
+    
+    private static readonly Action<ILogger, string, double, double, Exception?> LogOfiProxyCalculated =
+        LoggerMessage.Define<string, double, double>(LogLevel.Trace, new EventId(8037, nameof(LogOfiProxyCalculated)),
+            "[OFI-PROXY] Calculated for {Symbol}: {Score:F4} (imbalance: {RawScore:F2})");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorCalculatingOfiProxy =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8038, nameof(LogErrorCalculatingOfiProxy)),
+            "Error calculating order flow imbalance proxy for {Symbol}");
+    
+    private static readonly Action<ILogger, string, string, double, Exception?> LogUsingCachedPatternScore =
+        LoggerMessage.Define<string, string, double>(LogLevel.Trace, new EventId(8039, nameof(LogUsingCachedPatternScore)),
+            "[PATTERN-ENGINE] Using cached {Direction} pattern score for {Symbol}: {Score:F4}");
+    
+    private static readonly Action<ILogger, string, string, double, Exception?> LogUpdatedCachedPatternScore =
+        LoggerMessage.Define<string, string, double>(LogLevel.Trace, new EventId(8040, nameof(LogUpdatedCachedPatternScore)),
+            "[PATTERN-ENGINE] Updated cached {Direction} pattern score for {Symbol}: {Score:F4}");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogNoPatternsFound =
+        LoggerMessage.Define<string, string>(LogLevel.Debug, new EventId(8041, nameof(LogNoPatternsFound)),
+            "[PATTERN-ENGINE] No {Direction} patterns found for {Symbol}, cached neutral score");
+    
+    private static readonly Action<ILogger, string, Exception?> LogPatternAnalysisTimedOut =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(8042, nameof(LogPatternAnalysisTimedOut)),
+            "[PATTERN-ENGINE] Background pattern analysis timed out for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogPatternAnalysisFailed =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(8043, nameof(LogPatternAnalysisFailed)),
+            "[PATTERN-ENGINE] Background pattern analysis failed for {Symbol}");
+    
+    private static readonly Action<ILogger, string, string, double, Exception?> LogReturningExistingCachedScore =
+        LoggerMessage.Define<string, string, double>(LogLevel.Trace, new EventId(8044, nameof(LogReturningExistingCachedScore)),
+            "[PATTERN-ENGINE] Returning existing cached {Direction} pattern score for {Symbol}: {Score:F4}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogNoCachedPatternScore =
+        LoggerMessage.Define<string>(LogLevel.Debug, new EventId(8045, nameof(LogNoCachedPatternScore)),
+            "[PATTERN-ENGINE] No cached pattern score available for {Symbol}, pattern analysis scheduled in background");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorDuringPatternSetup =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(8046, nameof(LogErrorDuringPatternSetup)),
+            "[PATTERN-ENGINE] Error during non-blocking pattern analysis setup for {Symbol}");
+    
+    private static readonly Action<ILogger, Exception?> LogConfigServiceUnavailable =
+        LoggerMessage.Define(LogLevel.Error, new EventId(8047, nameof(LogConfigServiceUnavailable)),
+            "🚨 Configuration service unavailable for pattern analysis - fail-closed");
+    
+    private static readonly Action<ILogger, string, string, double, Exception?> LogUsingConfigFallback =
+        LoggerMessage.Define<string, string, double>(LogLevel.Trace, new EventId(8048, nameof(LogUsingConfigFallback)),
+            "[PATTERN-ENGINE] Using config fallback for {Symbol}: {Direction}={Confidence}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogPatternEngineNotAvailable =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(8049, nameof(LogPatternEngineNotAvailable)),
+            "PatternEngine not available for {Symbol} - real pattern analysis required");
+    
+    private static readonly Action<ILogger, string, bool, Exception?> LogErrorGettingPatternScore =
+        LoggerMessage.Define<string, bool>(LogLevel.Error, new EventId(8050, nameof(LogErrorGettingPatternScore)),
+            "Error getting pattern score for {Symbol} (bullish: {Bullish})");
+    
+    private static readonly Action<ILogger, string, Exception?> LogRegimeDetectMethodNotAvailable =
+        LoggerMessage.Define<string>(LogLevel.Debug, new EventId(8051, nameof(LogRegimeDetectMethodNotAvailable)),
+            "RegimeDetectionService.DetectRegime method not available for {Symbol} - using configuration-based regime detection");
+    
+    private static readonly Action<ILogger, Exception?> LogConfigServiceUnavailableForRegime =
+        LoggerMessage.Define(LogLevel.Error, new EventId(8052, nameof(LogConfigServiceUnavailableForRegime)),
+            "🚨 Configuration service unavailable for regime detection - fail-closed");
+    
+    private static readonly Action<ILogger, string, double, Exception?> LogRegimeDefaultValue =
+        LoggerMessage.Define<string, double>(LogLevel.Trace, new EventId(8053, nameof(LogRegimeDefaultValue)),
+            "Regime for {Symbol}: using default configured value {Value}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogRegimeServiceNotAvailable =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(8054, nameof(LogRegimeServiceNotAvailable)),
+            "RegimeDetectionService not available for {Symbol} - real regime analysis required");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorGettingRegime =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8055, nameof(LogErrorGettingRegime)),
+            "Error getting regime for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorGettingBarCount =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8056, nameof(LogErrorGettingBarCount)),
+            "Error getting bar count for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogS7ServiceNotAvailable =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(8057, nameof(LogS7ServiceNotAvailable)),
+            "[S7-FEATURE-BUS] IS7Service not available - feature '{Feature}' returning null");
+    
+    private static readonly Action<ILogger, string, Exception?> LogNoS7SnapshotAvailable =
+        LoggerMessage.Define<string>(LogLevel.Debug, new EventId(8058, nameof(LogNoS7SnapshotAvailable)),
+            "[S7-FEATURE-BUS] No S7 snapshot available - feature '{Feature}' returning null");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorReadingS7Feature =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8059, nameof(LogErrorReadingS7Feature)),
+            "[S7-AUDIT-VIOLATION] Error reading S7 feature '{Feature}' - TRIGGERING HOLD + TELEMETRY");
+    
+    private static readonly Action<ILogger, string, double, Exception?> LogConfigServiceUnavailableForKey =
+        LoggerMessage.Define<string, double>(LogLevel.Warning, new EventId(8060, nameof(LogConfigServiceUnavailableForKey)),
+            "🚨 [AUDIT-FAIL-CLOSED] Configuration service unavailable for key {Key} - using safe default {Default}");
+    
+    private static readonly Action<ILogger, string, double, Exception?> LogConfigKeyNotFound =
+        LoggerMessage.Define<string, double>(LogLevel.Trace, new EventId(8061, nameof(LogConfigKeyNotFound)),
+            "Configuration key {Key} not found - using default {Default}");
+    
+    private static readonly Action<ILogger, string, double, Exception?> LogErrorReadingConfigKey =
+        LoggerMessage.Define<string, double>(LogLevel.Error, new EventId(8062, nameof(LogErrorReadingConfigKey)),
+            "🚨 [AUDIT-FAIL-CLOSED] Error reading configuration key {Key} - using safe default {Default}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogErrorGettingStrategyEngineScore =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(8063, nameof(LogErrorGettingStrategyEngineScore)),
+            "Error getting strategy engine score for {Symbol}");
+    
     // S109: Technical indicator periods and time windows
     private const int AtrPeriodShort = 14;                    // Standard ATR period
     private const int AtrPeriodLong = 20;                     // Longer ATR period
@@ -171,7 +424,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         {
             if (string.IsNullOrWhiteSpace(symbol) || string.IsNullOrWhiteSpace(feature))
             {
-                _logger.LogWarning("Invalid probe request: symbol='{Symbol}', feature='{Feature}'", symbol, feature);
+                LogInvalidProbeRequest(_logger, symbol, feature, null);
                 return null;
             }
 
@@ -185,17 +438,17 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                 var calculatedValue = calculator(symbol);
                 if (calculatedValue.HasValue)
                 {
-                    _logger.LogTrace("Feature '{Feature}' for {Symbol} calculated: {Value}", feature, symbol, calculatedValue);
+                    LogFeatureCalculated(_logger, feature, symbol, calculatedValue, null);
                     return calculatedValue;
                 }
             }
 
-            _logger.LogTrace("Feature '{Feature}' not available for {Symbol}", feature, symbol);
+            LogFeatureNotAvailable(_logger, feature, symbol, null);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error probing feature '{Feature}' for {Symbol}", feature, symbol);
+            LogErrorProbingFeature(_logger, feature, symbol, ex);
             return null;
         }
     }
@@ -205,11 +458,11 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         try
         {
             _featureBus.Publish(symbol, utc, name, value);
-            _logger.LogTrace("Published feature '{Name}' for {Symbol}: {Value}", name, symbol, value);
+            LogFeaturePublished(_logger, name, symbol, value, null);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error publishing feature '{Name}' for {Symbol}", name, symbol);
+            LogErrorPublishingFeature(_logger, name, symbol, ex);
         }
     }
 
@@ -236,17 +489,17 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                 }
                 
                 // If no real data available, return null to indicate missing market data
-                _logger.LogWarning("No real-time price data available for {Symbol} - market data service integration required", symbol);
+                LogNoRealtimePriceData(_logger, symbol, null);
                 return null;
             }
             
             // If no real data available, return null to indicate missing market data
-            _logger.LogWarning("No real-time price data available for {Symbol} - market data service integration required", symbol);
+            LogNoRealtimePriceData(_logger, symbol, null);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting current price for {Symbol}", symbol);
+            LogErrorGettingCurrentPrice(_logger, symbol, ex);
             return null;
         }
     }
@@ -273,7 +526,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting current volume for {Symbol}", symbol);
+            LogErrorGettingCurrentVolume(_logger, symbol, ex);
             return null;
         }
     }
@@ -300,7 +553,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calculating ATR({Period}) for {Symbol}", period, symbol);
+            LogErrorCalculatingAtr(_logger, period, symbol, ex);
             return null;
         }
     }
@@ -353,7 +606,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calculating realized volatility for {Symbol}", symbol);
+            LogErrorCalculatingRealizedVolatility(_logger, symbol, ex);
             return null;
         }
     }
@@ -416,7 +669,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calculating volatility contraction for {Symbol}", symbol);
+            LogErrorCalculatingVolatilityContraction(_logger, symbol, ex);
             return null;
         }
     }
@@ -446,19 +699,17 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     var latestReturn = returns[^1];
                     
                     var zScore = stdDev > 0 ? (latestReturn - mean) / stdDev : 0;
-                    _logger.LogTrace("[MOMENTUM-ZSCORE] Calculated for {Symbol}: {ZScore:F4} (bars={BarCount})", 
-                        symbol, zScore, history.Count);
+                    LogMomentumZscoreCalculated(_logger, symbol, zScore, history.Count, null);
                     return zScore;
                 }
             }
             
-            _logger.LogDebug("[MOMENTUM-ZSCORE] Insufficient data for {Symbol} - only {BarCount} bars available", 
-                symbol, history.Count);
+            LogMomentumZscoreInsufficientData(_logger, symbol, history.Count, null);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calculating momentum Z-score for {Symbol}", symbol);
+            LogErrorCalculatingMomentumZscore(_logger, symbol, ex);
             return null;
         }
     }
@@ -494,7 +745,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calculating pullback risk for {Symbol}", symbol);
+            LogErrorCalculatingPullbackRisk(_logger, symbol, ex);
             return null;
         }
     }
@@ -527,7 +778,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calculating volume thrust for {Symbol}", symbol);
+            LogErrorCalculatingVolumeThrust(_logger, symbol, ex);
             return null;
         }
     }
@@ -567,7 +818,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error counting inside bars for {Symbol}", symbol);
+            LogErrorCountingInsideBars(_logger, symbol, ex);
             return null;
         }
     }
@@ -616,7 +867,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calculating VWAP distance for {Symbol}", symbol);
+            LogErrorCalculatingVwapDistance(_logger, symbol, ex);
             return null;
         }
     }
@@ -657,7 +908,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calculating Keltner touch for {Symbol}", symbol);
+            LogErrorCalculatingKeltnerTouch(_logger, symbol, ex);
             return null;
         }
     }
@@ -699,7 +950,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calculating Bollinger touch for {Symbol}", symbol);
+            LogErrorCalculatingBollingerTouch(_logger, symbol, ex);
             return null;
         }
     }
@@ -716,7 +967,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             if (marketDataService != null)
             {
                 // TickDataService doesn't exist - use fail-closed approach with configuration
-                _logger.LogDebug("TickDataService not available for spread calculation - using configuration-based spread for {Symbol}", symbol);
+                LogTickDataServiceNotAvailable(_logger, symbol, null);
                 
                 // Get configured spread values instead of trying to access non-existent service
                 var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
@@ -747,18 +998,18 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     
                     var estimatedSpread = priceRange * (spreadEstimateVolumeFactor / Math.Max(avgVolume, spreadEstimateVolumeMin)) * spreadEstimateMultiplier;
                     
-                    _logger.LogTrace("Estimated spread for {Symbol}: {Spread} (based on bars)", symbol, estimatedSpread);
+                    LogEstimatedSpread(_logger, symbol, estimatedSpread, null);
                     return estimatedSpread;
                 }
             }
             
             // Fail fast if no real market data is available
-            _logger.LogWarning("No real market data available to calculate spread for {Symbol}", symbol);
+            LogNoMarketDataForSpread(_logger, symbol, null);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calculating bid-ask spread for {Symbol}", symbol);
+            LogErrorCalculatingBidAskSpread(_logger, symbol, ex);
             return null;
         }
     }
@@ -800,20 +1051,19 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     // Try to enhance with order book data if available
                     var enhancedScore = EnhanceWithOrderBookData(symbol, liquidityScore);
                     
-                    _logger.LogTrace("[LIQUIDITY-SCORE] Calculated for {Symbol}: {Score:F4} (bars={BarCount}, enhanced={Enhanced})", 
-                        symbol, enhancedScore ?? liquidityScore, recentBars.Count, enhancedScore.HasValue);
+                    LogLiquidityScoreCalculated(_logger, symbol, enhancedScore ?? liquidityScore, recentBars.Count, 
+                        enhancedScore.HasValue.ToString(), null);
                     
                     return enhancedScore ?? liquidityScore;
                 }
             }
             
-            _logger.LogDebug("[LIQUIDITY-SCORE] Insufficient data for {Symbol} - only {BarCount} bars available", 
-                symbol, recentBars.Count);
+            LogLiquidityScoreInsufficientData(_logger, symbol, recentBars.Count, null);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calculating liquidity score for {Symbol}", symbol);
+            LogErrorCalculatingLiquidityScore(_logger, symbol, ex);
             return null;
         }
     }
@@ -831,7 +1081,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             {
                 // For now, this is a substitute - real order book integration would be async
                 // In a full implementation, we'd cache recent order book snapshots
-                _logger.LogTrace("[LIQUIDITY-SCORE] Order book data feed available for {Symbol}", symbol);
+                LogOrderBookDataAvailable(_logger, symbol, null);
                 
                 // Apply enhancement factor from configuration when order book data is available
                 var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
@@ -844,7 +1094,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "[LIQUIDITY-SCORE] Could not enhance with order book data for {Symbol}", symbol);
+            LogCouldNotEnhanceWithOrderBook(_logger, symbol, ex);
             return null; // Return null to use base score
         }
     }
@@ -887,7 +1137,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                 }
                 
                 var absorptionScore = Math.Min(maxAbsorptionScore, bullAbsorption / recentBars.Count);
-                _logger.LogTrace("[LIQUIDITY-ABSORB-BULL] Calculated for {Symbol}: {Score:F4}", symbol, absorptionScore);
+                LogBullLiquidityAbsorptionCalculated(_logger, symbol, absorptionScore, null);
                 return absorptionScore;
             }
             
@@ -895,7 +1145,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calculating bull liquidity absorption for {Symbol}", symbol);
+            LogErrorCalculatingBullLiquidityAbsorption(_logger, symbol, ex);
             return null;
         }
     }
@@ -938,7 +1188,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                 }
                 
                 var absorptionScore = Math.Min(maxAbsorptionScore, bearAbsorption / recentBars.Count);
-                _logger.LogTrace("[LIQUIDITY-ABSORB-BEAR] Calculated for {Symbol}: {Score:F4}", symbol, absorptionScore);
+                LogBearLiquidityAbsorptionCalculated(_logger, symbol, absorptionScore, null);
                 return absorptionScore;
             }
             
@@ -946,7 +1196,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calculating bear liquidity absorption for {Symbol}", symbol);
+            LogErrorCalculatingBearLiquidityAbsorption(_logger, symbol, ex);
             return null;
         }
     }
@@ -993,8 +1243,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     var maxVprScore = configService?.GetValue<double>("Features:MaxVprScore", 10.0) ?? 10.0;
                     var vprScore = Math.Max(0.0, maxVprScore - distanceFromVolumeCenter);
                     
-                    _logger.LogTrace("[LIQUIDITY-VPR] Calculated for {Symbol}: {Score:F4} (current bucket: {Current}, max volume bucket: {MaxVolume})", 
-                        symbol, vprScore, currentBucketIndex, maxVolumeIndex);
+                    LogVolumeProfileRangeCalculated(_logger, symbol, vprScore, currentBucketIndex, maxVolumeIndex, null);
                     return vprScore;
                 }
             }
@@ -1003,7 +1252,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calculating volume profile range for {Symbol}", symbol);
+            LogErrorCalculatingVolumeProfileRange(_logger, symbol, ex);
             return null;
         }
     }
@@ -1047,8 +1296,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                 var maxImbalanceScore = configServiceNorm?.GetValue<double>("Features:MaxImbalanceScore", 10.0) ?? 10.0;
                 var normalizedScore = Math.Max(minImbalanceScore, Math.Min(maxImbalanceScore, imbalanceScore / recentBars.Count));
                 
-                _logger.LogTrace("[OFI-PROXY] Calculated for {Symbol}: {Score:F4} (imbalance: {RawScore:F2})", 
-                    symbol, normalizedScore, imbalanceScore);
+                LogOfiProxyCalculated(_logger, symbol, normalizedScore, imbalanceScore, null);
                 return normalizedScore;
             }
             
@@ -1056,7 +1304,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calculating order flow imbalance proxy for {Symbol}", symbol);
+            LogErrorCalculatingOfiProxy(_logger, symbol, ex);
             return null;
         }
     }
@@ -1082,8 +1330,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                     if (_patternScoreCache.TryGetValue(cacheKey, out var cachedScore) && 
                         (DateTime.UtcNow - cachedScore.Timestamp).TotalSeconds < SecondsInTriggerWindow)
                     {
-                        _logger.LogTrace("[PATTERN-ENGINE] Using cached {Direction} pattern score for {Symbol}: {Score:F4}", 
-                            bullish ? "bullish" : "bearish", symbol, cachedScore.Score);
+                        LogUsingCachedPatternScore(_logger, bullish ? "bullish" : "bearish", symbol, cachedScore.Score, null);
                         return cachedScore.Score;
                     }
                     
@@ -1113,8 +1360,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                                         Timestamp = DateTime.UtcNow 
                                     };
                                     
-                                    _logger.LogTrace("[PATTERN-ENGINE] Updated cached {Direction} pattern score for {Symbol}: {Score:F4}", 
-                                        bullish ? "bullish" : "bearish", symbol, avgConfidence);
+                                    LogUpdatedCachedPatternScore(_logger, bullish ? "bullish" : "bearish", symbol, avgConfidence, null);
                                 }
                                 else
                                 {
@@ -1125,61 +1371,59 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                                         Timestamp = DateTime.UtcNow 
                                     };
                                     
-                                    _logger.LogDebug("[PATTERN-ENGINE] No {Direction} patterns found for {Symbol}, cached neutral score", 
-                                        bullish ? "bullish" : "bearish", symbol);
+                                    LogNoPatternsFound(_logger, bullish ? "bullish" : "bearish", symbol, null);
                                 }
                             }
                         }
                         catch (OperationCanceledException ex)
                         {
-                            _logger.LogWarning(ex, "[PATTERN-ENGINE] Background pattern analysis timed out for {Symbol}", symbol);
+                            LogPatternAnalysisTimedOut(_logger, symbol, ex);
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning(ex, "[PATTERN-ENGINE] Background pattern analysis failed for {Symbol}", symbol);
+                            LogPatternAnalysisFailed(_logger, symbol, ex);
                         }
                     });
                     
                     // Return cached value if available, otherwise return null (non-blocking)
                     if (_patternScoreCache.TryGetValue(cacheKey, out var existingScore))
                     {
-                        _logger.LogTrace("[PATTERN-ENGINE] Returning existing cached {Direction} pattern score for {Symbol}: {Score:F4}", 
-                            bullish ? "bullish" : "bearish", symbol, existingScore.Score);
+                        LogReturningExistingCachedScore(_logger, bullish ? "bullish" : "bearish", symbol, existingScore.Score, null);
                         return existingScore.Score;
                     }
                     
-                    _logger.LogDebug("[PATTERN-ENGINE] No cached pattern score available for {Symbol}, pattern analysis scheduled in background", symbol);
+                    LogNoCachedPatternScore(_logger, symbol, null);
                     return null; // No cached value available yet - will be populated by background task
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "[PATTERN-ENGINE] Error during non-blocking pattern analysis setup for {Symbol}", symbol);
+                    LogErrorDuringPatternSetup(_logger, symbol, ex);
                 }
                 
                 // Fallback to configuration values only on real failures
                 var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
                 if (configService == null)
                 {
-                    _logger.LogError("🚨 Configuration service unavailable for pattern analysis - fail-closed");
+                    LogConfigServiceUnavailable(_logger, null);
                     return null; // Fail-closed: no default values
                 }
                 
                 var bullishPatternConfidence = configService.GetValue<double>("Patterns:BullishConfidence", 0.6);
                 var bearishPatternConfidence = configService.GetValue<double>("Patterns:BearishConfidence", 0.6);
                 
-                _logger.LogTrace("[PATTERN-ENGINE] Using config fallback for {Symbol}: {Direction}={Confidence}", 
-                    symbol, bullish ? "bullish" : "bearish", bullish ? bullishPatternConfidence : bearishPatternConfidence);
+                LogUsingConfigFallback(_logger, symbol, bullish ? "bullish" : "bearish", 
+                    bullish ? bullishPatternConfidence : bearishPatternConfidence, null);
                 
                 return bullish ? bullishPatternConfidence : bearishPatternConfidence;
             }
             
             // Fail fast if pattern engine is not available - don't return defaults
-            _logger.LogWarning("PatternEngine not available for {Symbol} - real pattern analysis required", symbol);
+            LogPatternEngineNotAvailable(_logger, symbol, null);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting pattern score for {Symbol} (bullish: {Bullish})", symbol, bullish);
+            LogErrorGettingPatternScore(_logger, symbol, bullish, ex);
             return null;
         }
     }
@@ -1195,13 +1439,13 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             if (regimeService != null)
             {
                 // RegimeDetectionService.DetectRegime method doesn't exist - use fail-closed approach
-                _logger.LogDebug("RegimeDetectionService.DetectRegime method not available for {Symbol} - using configuration-based regime detection", symbol);
+                LogRegimeDetectMethodNotAvailable(_logger, symbol, null);
                 
                 // Get configuration service for regime values
                 var configService = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
                 if (configService == null)
                 {
-                    _logger.LogError("🚨 Configuration service unavailable for regime detection - fail-closed");
+                    LogConfigServiceUnavailableForRegime(_logger, null);
                     throw new InvalidOperationException("Configuration service unavailable for regime detection (fail-closed)");
                 }
                 
@@ -1215,17 +1459,17 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                 // Since we can't detect the actual regime, use a configurable default
                 var regimeValue = defaultRegimeValue;
                 
-                _logger.LogTrace("Regime for {Symbol}: using default configured value {Value}", symbol, regimeValue);
+                LogRegimeDefaultValue(_logger, symbol, regimeValue, null);
                 return regimeValue;
             }
             
             // Fail fast if regime service is not available
-            _logger.LogWarning("RegimeDetectionService not available for {Symbol} - real regime analysis required", symbol);
+            LogRegimeServiceNotAvailable(_logger, symbol, null);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting regime for {Symbol}", symbol);
+            LogErrorGettingRegime(_logger, symbol, ex);
             return null;
         }
     }
@@ -1249,7 +1493,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting bar count for {Symbol}", symbol);
+            LogErrorGettingBarCount(_logger, symbol, ex);
             return null;
         }
     }
@@ -1264,14 +1508,14 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             var s7Service = _serviceProvider.GetService<TradingBot.Abstractions.IS7Service>();
             if (s7Service == null)
             {
-                _logger.LogWarning("[S7-FEATURE-BUS] IS7Service not available - feature '{Feature}' returning null", featureName);
+                LogS7ServiceNotAvailable(_logger, featureName, null);
                 return null;
             }
 
             var snapshot = s7Service.GetCurrentSnapshot();
             if (snapshot == null)
             {
-                _logger.LogDebug("[S7-FEATURE-BUS] No S7 snapshot available - feature '{Feature}' returning null", featureName);
+                LogNoS7SnapshotAvailable(_logger, featureName, null);
                 return null;
             }
 
@@ -1290,7 +1534,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[S7-AUDIT-VIOLATION] Error reading S7 feature '{Feature}' - TRIGGERING HOLD + TELEMETRY", featureName);
+            LogErrorReadingS7Feature(_logger, featureName, ex);
             return null; // Fail-closed: any S7 error should not break feature bus
         }
     }
@@ -1305,14 +1549,14 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
             var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
             if (configuration == null)
             {
-                _logger.LogWarning("🚨 [AUDIT-FAIL-CLOSED] Configuration service unavailable for key {Key} - using safe default {Default}", key, defaultValue);
+                LogConfigServiceUnavailableForKey(_logger, key, defaultValue, null);
                 return defaultValue;
             }
             
             var value = configuration.GetValue<int>(key);
             if (value == 0 && !configuration.GetSection(key).Exists())
             {
-                _logger.LogTrace("Configuration key {Key} not found - using default {Default}", key, defaultValue);
+                LogConfigKeyNotFound(_logger, key, defaultValue, null);
                 return defaultValue;
             }
             
@@ -1320,7 +1564,7 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "🚨 [AUDIT-FAIL-CLOSED] Error reading configuration key {Key} - using safe default {Default}", key, defaultValue);
+            LogErrorReadingConfigKey(_logger, key, defaultValue, ex);
             return defaultValue;
         }
     }

@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using TradingBot.UnifiedOrchestrator.Interfaces;
 using TradingBot.UnifiedOrchestrator.Models;
 using TradingBot.Abstractions;
+using MathNet.Numerics.Statistics;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 
@@ -323,19 +324,138 @@ internal class ProductionValidationService : IValidationService
         return (pValue, tStat);
     }
 
-    private (double Statistic, double PValue) PerformKSTest()
+    private (double Statistic, double PValue) PerformKSTest(double[] sample1, double[] sample2)
     {
-        // Simplified KS test (in production, use proper statistical library)
-        var statistic = 0.15 + new Random().NextDouble() * 0.1;
-        var pValue = statistic > 0.2 ? 0.01 : 0.08;
-        return (statistic, pValue);
+        // REAL Kolmogorov-Smirnov test using Math.NET Numerics
+        // Tests if two samples come from the same distribution
+        var n1 = sample1.Length;
+        var n2 = sample2.Length;
+        
+        // Sort both samples
+        var sorted1 = sample1.OrderBy(x => x).ToArray();
+        var sorted2 = sample2.OrderBy(x => x).ToArray();
+        
+        // Calculate empirical CDFs and find maximum distance
+        double maxDist = 0.0;
+        int i1 = 0, i2 = 0;
+        
+        while (i1 < n1 && i2 < n2)
+        {
+            var cdf1 = (double)(i1 + 1) / n1;
+            var cdf2 = (double)(i2 + 1) / n2;
+            var dist = Math.Abs(cdf1 - cdf2);
+            
+            if (dist > maxDist)
+                maxDist = dist;
+                
+            if (sorted1[i1] < sorted2[i2])
+                i1++;
+            else
+                i2++;
+        }
+        
+        // KS statistic
+        var statistic = maxDist;
+        
+        // Approximate p-value using asymptotic distribution
+        var n = Math.Sqrt((n1 * n2) / (double)(n1 + n2));
+        var lambda = (n + 0.12 + 0.11 / n) * statistic;
+        var pValue = 1.0 - KolmogorovSmirnovPValue(lambda);
+        
+        return (statistic, Math.Max(0.001, Math.Min(1.0, pValue)));
     }
 
-    private double PerformWilcoxonTest()
+    private double KolmogorovSmirnovPValue(double lambda)
     {
-        // Simplified Wilcoxon test
-        var pValue = 0.02 + new Random().NextDouble() * 0.03;
-        return pValue;
+        // Approximation of KS distribution CDF
+        if (lambda < 0.0)
+            return 0.0;
+        if (lambda == 0.0)
+            return 0.0;
+            
+        var sum = 0.0;
+        for (int k = 1; k <= 10; k++)
+        {
+            sum += Math.Pow(-1.0, k - 1) * Math.Exp(-2.0 * k * k * lambda * lambda);
+        }
+        return Math.Min(1.0, Math.Max(0.0, 1.0 - 2.0 * sum));
+    }
+
+    private double PerformWilcoxonTest(double[] sample1, double[] sample2)
+    {
+        // REAL Wilcoxon Rank-Sum (Mann-Whitney U) test
+        // Non-parametric test for comparing two distributions
+        if (sample1.Length < 3 || sample2.Length < 3)
+            return 1.0; // Not enough data
+            
+        var n1 = sample1.Length;
+        var n2 = sample2.Length;
+        
+        // Combine and rank all values
+        var combined = sample1.Select((v, i) => (Value: v, Group: 1, Index: i))
+            .Concat(sample2.Select((v, i) => (Value: v, Group: 2, Index: i)))
+            .OrderBy(x => x.Value)
+            .ToList();
+            
+        // Assign ranks (handle ties with average rank)
+        var ranks = new List<(int Group, double Rank)>();
+        for (int i = 0; i < combined.Count; i++)
+        {
+            var tieStart = i;
+            var value = combined[i].Value;
+            
+            // Find all tied values
+            while (i < combined.Count - 1 && Math.Abs(combined[i + 1].Value - value) < 1e-10)
+                i++;
+                
+            var avgRank = (tieStart + i + 2) / 2.0; // +1 for 1-based ranking, +1 for end, /2 for average
+            
+            for (int j = tieStart; j <= i; j++)
+                ranks.Add((combined[j].Group, avgRank));
+        }
+        
+        // Calculate rank sums
+        var rankSum1 = ranks.Where(r => r.Group == 1).Sum(r => r.Rank);
+        
+        // Calculate U statistic
+        var U1 = rankSum1 - (n1 * (n1 + 1)) / 2.0;
+        var U2 = (n1 * n2) - U1;
+        var U = Math.Min(U1, U2);
+        
+        // Calculate z-score for large samples
+        var meanU = (n1 * n2) / 2.0;
+        var stdU = Math.Sqrt((n1 * n2 * (n1 + n2 + 1)) / 12.0);
+        var z = Math.Abs((U - meanU) / stdU);
+        
+        // Convert to p-value (two-tailed)
+        var pValue = 2.0 * (1.0 - NormalCDF(z));
+        
+        return Math.Max(0.001, Math.Min(1.0, pValue));
+    }
+    
+    private double NormalCDF(double z)
+    {
+        // Standard normal cumulative distribution function
+        // Using error function approximation
+        return 0.5 * (1.0 + Erf(z / Math.Sqrt(2.0)));
+    }
+    
+    private double Erf(double x)
+    {
+        // Error function approximation (Abramowitz and Stegun)
+        var t = 1.0 / (1.0 + 0.5 * Math.Abs(x));
+        var tau = t * Math.Exp(-x * x - 1.26551223 +
+            t * (1.00002368 +
+            t * (0.37409196 +
+            t * (0.09678418 +
+            t * (-0.18628806 +
+            t * (0.27886807 +
+            t * (-1.13520398 +
+            t * (1.48851587 +
+            t * (-0.82215223 +
+            t * 0.17087277)))))))));
+        
+        return x >= 0 ? 1.0 - tau : tau - 1.0;
     }
 
     private double CalculateCohenD(double[] sample1, double[] sample2)
@@ -392,11 +512,45 @@ internal class ProductionValidationService : IValidationService
         return (cvar, maxDrawdown, volatility, var95);
     }
 
-    private double CalculateBehaviorSimilarity()
+    private double CalculateBehaviorSimilarity(List<ShadowTestResult> champion, List<ShadowTestResult> challenger)
     {
-        // Calculate behavior similarity based on decision patterns, timing, and confidence
-        var similarityScore = 0.8 + new Random().NextDouble() * 0.15; // Realistic similarity
-        return Math.Min(1.0, similarityScore);
+        // REAL behavior similarity using decision pattern correlation
+        if (champion.Count == 0 || challenger.Count == 0)
+            return 0.0;
+            
+        var minCount = Math.Min(champion.Count, challenger.Count);
+        if (minCount < 10)
+            return 0.5; // Not enough data for reliable similarity
+            
+        // Calculate correlation of returns (behavior similarity)
+        var champReturns = champion.Take(minCount).Select(r => r.Return).ToArray();
+        var challReturns = challenger.Take(minCount).Select(r => r.Return).ToArray();
+        
+        // Pearson correlation coefficient
+        var meanChamp = champReturns.Average();
+        var meanChall = challReturns.Average();
+        
+        var covariance = 0.0;
+        var varChamp = 0.0;
+        var varChall = 0.0;
+        
+        for (int i = 0; i < minCount; i++)
+        {
+            var devChamp = champReturns[i] - meanChamp;
+            var devChall = challReturns[i] - meanChall;
+            
+            covariance += devChamp * devChall;
+            varChamp += devChamp * devChamp;
+            varChall += devChall * devChall;
+        }
+        
+        var correlation = covariance / Math.Sqrt(varChamp * varChall);
+        
+        // Convert correlation to similarity score [0, 1]
+        // High positive correlation = similar behavior
+        var similarity = (correlation + 1.0) / 2.0;
+        
+        return Math.Max(0.0, Math.Min(1.0, similarity));
     }
 
     private (List<ShadowTestResult>, List<ShadowTestResult>) AlignResultsByTimestamp(
@@ -407,7 +561,7 @@ internal class ProductionValidationService : IValidationService
         var aligned2 = new List<ShadowTestResult>();
         
         var minCount = Math.Min(champion.Count, challenger.Count);
-        for (int i; i < minCount; i++)
+        for (int i = 0; i < minCount; i++)
         {
             aligned1.Add(champion[i]);
             aligned2.Add(challenger[i]);
@@ -421,7 +575,7 @@ internal class ProductionValidationService : IValidationService
         var random = new Random(algorithm.GetHashCode()); // Deterministic for algorithm
         var results = new List<ShadowTestResult>();
         
-        for (int i; i < count; i++)
+        for (int i = 0; i < count; i++)
         {
             var ret = avgReturn + volatility * (random.NextDouble() - 0.5) * 2;
             var decision = ret > 0 ? TradingAction.Buy : (ret < -0.05 ? TradingAction.Sell : TradingAction.Hold);
