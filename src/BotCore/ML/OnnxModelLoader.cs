@@ -1627,8 +1627,7 @@ public sealed class OnnxModelLoader : IDisposable
         var compressedSize = new FileInfo(compressedPath).Length;
         var compressionRatio = (double)compressedSize / originalSize;
         
-        _logger.LogInformation("[ONNX-Registry] Model compressed: {ModelPath} (ratio: {Ratio:P1})", 
-            modelPath, compressionRatio);
+        LogModelCompressed(_logger, modelPath, compressionRatio, null);
     }
 
     private async Task UpdateRegistryIndexAsync(ModelRegistryEntry entry, CancellationToken cancellationToken)
@@ -1673,8 +1672,7 @@ public sealed class OnnxModelLoader : IDisposable
             var metadata = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(content);
             if (metadata != null && metadata.TryGetValue("version", out var version))
             {
-                _logger.LogInformation("[MODEL_RELOAD] Model metadata parsed from {File}, version: {Version}", 
-                    Path.GetFileName(metadataFile), version);
+                LogModelMetadataParsed(_logger, Path.GetFileName(metadataFile), version, null);
                 
                 // Trigger model reload notification
                 await NotifyModelUpdateAsync(metadataFile, metadata).ConfigureAwait(false);
@@ -1682,7 +1680,7 @@ public sealed class OnnxModelLoader : IDisposable
         }
         catch (JsonException ex)
         {
-            _logger.LogWarning(ex, "[MODEL_RELOAD] Failed to parse metadata from {File}", metadataFile);
+            LogModelMetadataParseError(_logger, metadataFile, ex);
         }
     }
 
