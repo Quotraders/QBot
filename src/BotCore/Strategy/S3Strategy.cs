@@ -930,7 +930,7 @@ namespace BotCore.Strategy
                     candidates.Add(Path.Combine(AppContext.BaseDirectory, "src", "BotCore", "Strategy", "S3-StrategyConfig.json"));
                     candidates.Add("src\\BotCore\\Strategy\\S3-StrategyConfig.json");
 
-                    var path = candidates.FirstOrDefault(File.Exists);
+                    var path = candidates.Find(File.Exists);
                     if (string.IsNullOrEmpty(path)) return new S3RuntimeConfig();
 
                     var json = File.ReadAllText(path);
