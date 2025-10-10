@@ -122,7 +122,7 @@ namespace BotCore.Services
             await ProcessZoneBreakEventsAsync(cancellationToken).ConfigureAwait(false);
         }
         
-        private async Task CheckPositionForZoneBreaksAsync(
+        private Task CheckPositionForZoneBreaksAsync(
             BotCore.Models.Position position,
             IZoneService zoneService,
             CancellationToken cancellationToken)
@@ -130,13 +130,13 @@ namespace BotCore.Services
             var snapshot = zoneService.GetSnapshot(position.Symbol);
             if (snapshot == null)
             {
-                return;
+                return Task.CompletedTask;
             }
             
             var currentPrice = CalculateCurrentPrice(position);
             if (currentPrice <= 0)
             {
-                return;
+                return Task.CompletedTask;
             }
             
             var stateKey = $"{position.Symbol}_{(position.NetQuantity > 0 ? "LONG" : "SHORT")}";
@@ -163,7 +163,7 @@ namespace BotCore.Services
             state.LastCheckedPrice = currentPrice;
             state.LastCheckedTime = DateTime.UtcNow;
             
-            await Task.CompletedTask.ConfigureAwait(false);
+            return Task.CompletedTask;
         }
         
         private void CheckZoneForBreak(
