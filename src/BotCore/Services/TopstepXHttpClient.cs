@@ -137,7 +137,7 @@ public class TopstepXHttpClient : ITopstepXHttpClient, IDisposable
                 sanitized_message = SanitizeErrorMessage(ex.Message)
             };
 
-            _logger.LogError("Failed to ensure fresh token: {ErrorData}", JsonSerializer.Serialize(errorData));
+            _logger.LogError(ex, "Failed to ensure fresh token: {ErrorData}", JsonSerializer.Serialize(errorData));
             throw;
         }
     }
@@ -219,7 +219,7 @@ public class TopstepXHttpClient : ITopstepXHttpClient, IDisposable
                     delay_ms = delay.TotalMilliseconds
                 };
 
-                _logger.LogWarning("HTTP_RETRY_EXCEPTION: {RetryData}", JsonSerializer.Serialize(retryData));
+                _logger.LogWarning(ex, "HTTP_RETRY_EXCEPTION: {RetryData}", JsonSerializer.Serialize(retryData));
 
                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
@@ -239,7 +239,7 @@ public class TopstepXHttpClient : ITopstepXHttpClient, IDisposable
                     delay_ms = delay.TotalMilliseconds
                 };
 
-                _logger.LogWarning("HTTP_RETRY_TIMEOUT: {RetryData}", JsonSerializer.Serialize(retryData));
+                _logger.LogWarning(ex, "HTTP_RETRY_TIMEOUT: {RetryData}", JsonSerializer.Serialize(retryData));
 
                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }

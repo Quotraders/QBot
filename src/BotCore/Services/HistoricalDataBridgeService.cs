@@ -304,7 +304,7 @@ namespace BotCore.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning("[HISTORICAL-BRIDGE] Failed to parse bar data: {Error}", ex.Message);
+                        _logger.LogWarning(ex, "[HISTORICAL-BRIDGE] Failed to parse bar data");
                     }
                 }
                 } // Close the null check
@@ -411,7 +411,7 @@ namespace BotCore.Services
             }
             catch (Exception ex)
             {
-                _logger.LogDebug("[HISTORICAL-BRIDGE] Correlation manager bars failed for {ContractId}: {Error}", contractId, ex.Message);
+                _logger.LogDebug(ex, "[HISTORICAL-BRIDGE] Correlation manager bars failed for {ContractId}", contractId);
                 return new List<BotCore.Models.Bar>();
             }
         }
