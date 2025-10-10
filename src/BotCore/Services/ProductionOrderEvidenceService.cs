@@ -40,9 +40,6 @@ public class ProductionOrderEvidenceService
         // Requirement 1: orderId returned by place-order call
         bool hasOrderId = !string.IsNullOrWhiteSpace(orderId);
         
-        // Requirement 2: Fill event from User Hub
-        bool hasFillEvent = fillEvent != null;
-        
         // Build evidence types list
         var evidenceTypes = new List<string>();
         
@@ -57,11 +54,11 @@ public class ProductionOrderEvidenceService
             _logger.LogWarning("❌ [ORDER-EVIDENCE] Evidence 1: Missing OrderId");
         }
 
-        if (hasFillEvent)
+        if (fillEvent is not null)
         {
-            // fillEvent is guaranteed non-null here due to hasFillEvent check
+            // fillEvent is guaranteed non-null here due to pattern matching
             _logger.LogInformation("✅ [ORDER-EVIDENCE] Evidence 2: Fill event present - OrderId: {EventOrderId}, FillPrice: {FillPrice}, Qty: {Qty}", 
-                fillEvent!.OrderId ?? "unknown", fillEvent.FillPrice, fillEvent.Quantity);
+                fillEvent.OrderId ?? "unknown", fillEvent.FillPrice, fillEvent.Quantity);
             evidenceTypes.Add("FillEvent");
         }
         else
@@ -83,9 +80,9 @@ public class ProductionOrderEvidenceService
             CustomTag = customTag,
             Timestamp = DateTime.UtcNow,
             EvidenceTypes = evidenceTypes,
-            FillPrice = hasFillEvent ? fillEvent!.FillPrice : null,
-            Quantity = hasFillEvent ? fillEvent!.Quantity : null,
-            HasSufficientEvidence = hasOrderId && hasFillEvent,
+            FillPrice = fillEvent?.FillPrice,
+            Quantity = fillEvent?.Quantity,
+            HasSufficientEvidence = hasOrderId && fillEvent is not null,
             TotalEvidenceCount = evidenceTypes.Count
         };
 
