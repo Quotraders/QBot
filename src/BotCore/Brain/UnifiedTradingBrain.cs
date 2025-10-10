@@ -325,11 +325,25 @@ namespace BotCore.Brain
             {
                 runtimeMode = TradingBot.Abstractions.RlRuntimeMode.InferenceOnly;
             }
-            var neuralNetwork = new OnnxNeuralNetwork(onnxLoader, neuralNetworkLogger, runtimeMode, "models/strategy_selection.onnx");
-            _strategySelector = new NeuralUcbBandit(neuralNetwork);
             
-            // Initialize confidence network for model confidence prediction
-            _confidenceNetwork = new OnnxNeuralNetwork(onnxLoader, neuralNetworkLogger, runtimeMode, "models/confidence_prediction.onnx");
+            OnnxNeuralNetwork? neuralNetwork = null;
+            OnnxNeuralNetwork? confidenceNetwork = null;
+            try
+            {
+                neuralNetwork = new OnnxNeuralNetwork(onnxLoader, neuralNetworkLogger, runtimeMode, "models/strategy_selection.onnx");
+                _strategySelector = new NeuralUcbBandit(neuralNetwork);
+                
+                // Initialize confidence network for model confidence prediction
+                confidenceNetwork = new OnnxNeuralNetwork(onnxLoader, neuralNetworkLogger, runtimeMode, "models/confidence_prediction.onnx");
+                _confidenceNetwork = confidenceNetwork;
+            }
+            catch
+            {
+                // Dispose networks if initialization fails
+                (neuralNetwork as IDisposable)?.Dispose();
+                (confidenceNetwork as IDisposable)?.Dispose();
+                throw;
+            }
             
             _logger.LogInformation("🧠 [UNIFIED-BRAIN] Initialized with direct CVaR-PPO injection - Ready to make intelligent trading decisions");
         }
