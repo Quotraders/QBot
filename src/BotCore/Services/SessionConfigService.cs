@@ -25,22 +25,22 @@ namespace TradingBot.BotCore.Services
             _config.GetValue("Session:PrimaryTimezone", "America/Chicago");
 
         public TimeSpan GetRthStartTime() => 
-            TimeSpan.ParseExact(_config.GetValue("Session:RthStartTime", "09:30"), @"hh\:mm", null);
+            TimeSpan.ParseExact(_config.GetValue("Session:RthStartTime", "09:30"), @"hh\:mm", System.Globalization.CultureInfo.InvariantCulture);
 
         public TimeSpan GetRthEndTime() => 
-            TimeSpan.ParseExact(_config.GetValue("Session:RthEndTime", "16:00"), @"hh\:mm", null);
+            TimeSpan.ParseExact(_config.GetValue("Session:RthEndTime", "16:00"), @"hh\:mm", System.Globalization.CultureInfo.InvariantCulture);
 
         public bool AllowExtendedHours() => 
             _config.GetValue("Session:AllowExtendedHours", false);
 
         public TimeSpan GetOvernightStartTime() => 
-            TimeSpan.ParseExact(_config.GetValue("Session:OvernightStartTime", "20:00"), @"hh\:mm", null);
+            TimeSpan.ParseExact(_config.GetValue("Session:OvernightStartTime", "20:00"), @"hh\:mm", System.Globalization.CultureInfo.InvariantCulture);
 
         public TimeSpan GetOvernightEndTime() => 
-            TimeSpan.ParseExact(_config.GetValue("Session:OvernightEndTime", "02:00"), @"hh\:mm", null);
+            TimeSpan.ParseExact(_config.GetValue("Session:OvernightEndTime", "02:00"), @"hh\:mm", System.Globalization.CultureInfo.InvariantCulture);
 
         public TimeSpan GetMaintenanceWindowStartUtc() => 
-            TimeSpan.ParseExact(_config.GetValue("Session:MaintenanceWindowStartUtc", "05:00"), @"hh\:mm", null);
+            TimeSpan.ParseExact(_config.GetValue("Session:MaintenanceWindowStartUtc", "05:00"), @"hh\:mm", System.Globalization.CultureInfo.InvariantCulture);
 
         public int GetMaintenanceWindowDurationMinutes() => 
             _config.GetValue("Session:MaintenanceWindowDurationMinutes", DefaultMaintenanceWindowDurationMinutes);

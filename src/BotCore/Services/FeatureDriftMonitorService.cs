@@ -178,7 +178,7 @@ namespace BotCore.Services
                     {
                         var state = new FeatureDriftState
                         {
-                            FeatureName = featureName,
+                            FeatureName = key,
                             LastUpdate = DateTime.UtcNow
                         };
                         state.AddRecentValue(value);

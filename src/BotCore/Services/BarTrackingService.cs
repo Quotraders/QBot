@@ -31,7 +31,7 @@ namespace BotCore.Services
         {
             await Task.CompletedTask.ConfigureAwait(false); // For async compliance
             
-            var metrics = _symbolMetrics.GetOrAdd(symbol, _ => new BarMetrics(symbol));
+            var metrics = _symbolMetrics.GetOrAdd(symbol, s => new BarMetrics(s));
             
             lock (metrics.Lock)
             {
@@ -57,7 +57,7 @@ namespace BotCore.Services
         {
             await Task.CompletedTask.ConfigureAwait(false); // For async compliance
             
-            var metrics = _symbolMetrics.GetOrAdd(symbol, _ => new BarMetrics(symbol));
+            var metrics = _symbolMetrics.GetOrAdd(symbol, s => new BarMetrics(s));
             
             lock (metrics.Lock)
             {
@@ -71,7 +71,7 @@ namespace BotCore.Services
         /// </summary>
         public void RecordBarProcessed(string symbol, Bar bar)
         {
-            var metrics = _symbolMetrics.GetOrAdd(symbol, _ => new BarMetrics(symbol));
+            var metrics = _symbolMetrics.GetOrAdd(symbol, s => new BarMetrics(s));
             
             lock (metrics.Lock)
             {
@@ -94,7 +94,7 @@ namespace BotCore.Services
         /// </summary>
         public void RecordBarsProcessed(string symbol, int count)
         {
-            var metrics = _symbolMetrics.GetOrAdd(symbol, _ => new BarMetrics(symbol));
+            var metrics = _symbolMetrics.GetOrAdd(symbol, s => new BarMetrics(s));
             
             lock (metrics.Lock)
             {
@@ -123,7 +123,7 @@ namespace BotCore.Services
         /// </summary>
         public BarProcessingMetrics GetBarProcessingMetrics(string symbol)
         {
-            var metrics = _symbolMetrics.GetOrAdd(symbol, _ => new BarMetrics(symbol));
+            var metrics = _symbolMetrics.GetOrAdd(symbol, s => new BarMetrics(s));
             
             lock (metrics.Lock)
             {

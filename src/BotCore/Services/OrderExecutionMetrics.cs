@@ -152,7 +152,7 @@ namespace BotCore.Services
         /// </summary>
         public void RecordOrderPlaced(string symbol)
         {
-            var stats = _fillStats.GetOrAdd(symbol, _ => new FillStatistics { Symbol = symbol });
+            var stats = _fillStats.GetOrAdd(symbol, s => new FillStatistics { Symbol = s });
             
             lock (_metricsLock)
             {
@@ -167,7 +167,7 @@ namespace BotCore.Services
         /// </summary>
         public void RecordOrderFilled(string symbol, bool isPartialFill)
         {
-            var stats = _fillStats.GetOrAdd(symbol, _ => new FillStatistics { Symbol = symbol });
+            var stats = _fillStats.GetOrAdd(symbol, s => new FillStatistics { Symbol = s });
             
             lock (_metricsLock)
             {
@@ -188,7 +188,7 @@ namespace BotCore.Services
         /// </summary>
         public void RecordOrderRejected(string symbol, string reason)
         {
-            var stats = _fillStats.GetOrAdd(symbol, _ => new FillStatistics { Symbol = symbol });
+            var stats = _fillStats.GetOrAdd(symbol, s => new FillStatistics { Symbol = s });
             
             lock (_metricsLock)
             {

@@ -295,10 +295,10 @@ namespace BotCore.Services
                             Low = Convert.ToDecimal(bar["low"], System.Globalization.CultureInfo.InvariantCulture),
                             Close = Convert.ToDecimal(bar["close"], System.Globalization.CultureInfo.InvariantCulture),
                             Volume = Convert.ToInt32(bar.GetValueOrDefault("volume", 0), System.Globalization.CultureInfo.InvariantCulture), // Convert to int
-                            Ts = DateTime.TryParse(bar["timestamp"].ToString(), out var ts) ? 
+                            Ts = DateTime.TryParse(bar["timestamp"].ToString(), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var ts) ? 
                                 ((DateTimeOffset)ts).ToUnixTimeMilliseconds() : // Convert DateTime to long
                                 ((DateTimeOffset)DateTime.UtcNow).ToUnixTimeMilliseconds(),
-                            Start = DateTime.TryParse(bar["timestamp"]?.ToString(), out var startTime) ? startTime : DateTime.UtcNow
+                            Start = DateTime.TryParse(bar["timestamp"]?.ToString(), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var startTime) ? startTime : DateTime.UtcNow
                         };
                         bars.Add(botBar);
                     }
@@ -503,7 +503,7 @@ namespace BotCore.Services
             if (barElement.TryGetProperty("t", out var timestampElement) && timestampElement.ValueKind == JsonValueKind.String)
             {
                 var timestampStr = timestampElement.GetString();
-                if (DateTime.TryParse(timestampStr, out var timestamp))
+                if (DateTime.TryParse(timestampStr, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var timestamp))
                 {
                     return ((DateTimeOffset)timestamp.ToUniversalTime()).ToUnixTimeMilliseconds();
                 }
