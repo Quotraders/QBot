@@ -25,6 +25,103 @@ public sealed class ComprehensiveTelemetryService
     private readonly Dictionary<string, DateTime> _lastEmissionTimes = new();
     private readonly object _emissionLock = new();
     
+    // High-performance logging delegates (CA1848)
+    private static readonly Action<ILogger, string?, Exception?> LogServiceInitialized =
+        LoggerMessage.Define<string?>(LogLevel.Information, new EventId(6225, nameof(LogServiceInitialized)),
+            "Comprehensive telemetry service initialized with config snapshot ID: {ConfigSnapshotId}");
+    
+    private static readonly Action<ILogger, string, int, int, Exception?> LogZoneTelemetry =
+        LoggerMessage.Define<string, int, int>(LogLevel.Information, new EventId(6226, nameof(LogZoneTelemetry)),
+            "Zone telemetry: Symbol={Symbol}, ZoneCount={ZoneCount}, TotalTests={TotalTests}");
+    
+    private static readonly Action<ILogger, string, double, Exception?> LogZoneProximityDemand =
+        LoggerMessage.Define<string, double>(LogLevel.Trace, new EventId(6227, nameof(LogZoneProximityDemand)),
+            "Zone proximity: Symbol={Symbol}, Side=demand, DistanceATR={Distance}");
+    
+    private static readonly Action<ILogger, string, double, Exception?> LogZoneProximitySupply =
+        LoggerMessage.Define<string, double>(LogLevel.Trace, new EventId(6228, nameof(LogZoneProximitySupply)),
+            "Zone proximity: Symbol={Symbol}, Side=supply, DistanceATR={Distance}");
+    
+    private static readonly Action<ILogger, string, double, Exception?> LogZoneBreakout =
+        LoggerMessage.Define<string, double>(LogLevel.Trace, new EventId(6229, nameof(LogZoneBreakout)),
+            "Zone breakout: Symbol={Symbol}, BreakoutScore={Score}");
+    
+    private static readonly Action<ILogger, string, int, int, Exception?> LogZoneTelemetryEmitted =
+        LoggerMessage.Define<string, int, int>(LogLevel.Trace, new EventId(6230, nameof(LogZoneTelemetryEmitted)),
+            "Zone telemetry emitted for {Symbol}: {ZoneCount} zones, {TotalTests} tests");
+    
+    private static readonly Action<ILogger, string, Exception?> LogZoneTelemetryInvalidOperation =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(6231, nameof(LogZoneTelemetryInvalidOperation)),
+            "Invalid operation emitting zone telemetry for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogZoneTelemetryInvalidArgument =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(6232, nameof(LogZoneTelemetryInvalidArgument)),
+            "Invalid argument emitting zone telemetry for {Symbol}");
+    
+    private static readonly Action<ILogger, string, double, double, int, Exception?> LogPatternTelemetryEmitted =
+        LoggerMessage.Define<string, double, double, int>(LogLevel.Trace, new EventId(6233, nameof(LogPatternTelemetryEmitted)),
+            "Pattern telemetry emitted for {Symbol}: Bull {BullScore:F2}, Bear {BearScore:F2}, {SignalCount} signals");
+    
+    private static readonly Action<ILogger, string, Exception?> LogPatternTelemetryInvalidOperation =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(6234, nameof(LogPatternTelemetryInvalidOperation)),
+            "Invalid operation emitting pattern telemetry for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogPatternTelemetryInvalidArgument =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(6235, nameof(LogPatternTelemetryInvalidArgument)),
+            "Invalid argument emitting pattern telemetry for {Symbol}");
+    
+    private static readonly Action<ILogger, double, int, int, Exception?> LogFusionRiskTelemetryEmitted =
+        LoggerMessage.Define<double, int, int>(LogLevel.Trace, new EventId(6236, nameof(LogFusionRiskTelemetryEmitted)),
+            "Fusion/Risk telemetry emitted: Confidence {Confidence:F2}, Features {FeatureCount}, Rejections {RejectionCount}");
+    
+    private static readonly Action<ILogger, Exception?> LogFusionRiskTelemetryInvalidOperation =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(6237, nameof(LogFusionRiskTelemetryInvalidOperation)),
+            "Invalid operation emitting fusion/risk telemetry");
+    
+    private static readonly Action<ILogger, Exception?> LogFusionRiskTelemetryInvalidArgument =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(6238, nameof(LogFusionRiskTelemetryInvalidArgument)),
+            "Invalid argument emitting fusion/risk telemetry");
+    
+    private static readonly Action<ILogger, string, string, string?, Exception?> LogDecisionOrderTelemetryEmitted =
+        LoggerMessage.Define<string, string, string?>(LogLevel.Debug, new EventId(6239, nameof(LogDecisionOrderTelemetryEmitted)),
+            "Decision/Order telemetry emitted: {DecisionType} for {Symbol} (Config: {ConfigSnapshotId})");
+    
+    private static readonly Action<ILogger, string, Exception?> LogDecisionOrderTelemetryInvalidOperation =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(6240, nameof(LogDecisionOrderTelemetryInvalidOperation)),
+            "Invalid operation emitting decision/order telemetry for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogDecisionOrderTelemetryInvalidArgument =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(6241, nameof(LogDecisionOrderTelemetryInvalidArgument)),
+            "Invalid argument emitting decision/order telemetry for {Symbol}");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogFailClosedTriggered =
+        LoggerMessage.Define<string, string>(LogLevel.Warning, new EventId(6242, nameof(LogFailClosedTriggered)),
+            "🚨 FAIL-CLOSED triggered: {Component} - {Reason}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogFailClosedTelemetryInvalidOperation =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6243, nameof(LogFailClosedTelemetryInvalidOperation)),
+            "Invalid operation emitting fail-closed telemetry for {Component}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogFailClosedTelemetryInvalidArgument =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6244, nameof(LogFailClosedTelemetryInvalidArgument)),
+            "Invalid argument emitting fail-closed telemetry for {Component}");
+    
+    private static readonly Action<ILogger, double?, double?, Exception?> LogPerformanceExecutionTelemetryEmitted =
+        LoggerMessage.Define<double?, double?>(LogLevel.Trace, new EventId(6245, nameof(LogPerformanceExecutionTelemetryEmitted)),
+            "Performance/Execution telemetry emitted: Decision {DecisionLatency}ms, Order {OrderLatency}ms");
+    
+    private static readonly Action<ILogger, Exception?> LogPerformanceExecutionTelemetryInvalidOperation =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(6246, nameof(LogPerformanceExecutionTelemetryInvalidOperation)),
+            "Invalid operation emitting performance/execution telemetry");
+    
+    private static readonly Action<ILogger, Exception?> LogPerformanceExecutionTelemetryInvalidArgument =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(6247, nameof(LogPerformanceExecutionTelemetryInvalidArgument)),
+            "Invalid argument emitting performance/execution telemetry");
+    
+    private static readonly Action<ILogger, string?, Exception?> LogConfigSnapshotRefreshed =
+        LoggerMessage.Define<string?>(LogLevel.Information, new EventId(6248, nameof(LogConfigSnapshotRefreshed)),
+            "Configuration snapshot refreshed: {ConfigSnapshotId}");
+    
     public ComprehensiveTelemetryService(ILogger<ComprehensiveTelemetryService> logger, IServiceProvider serviceProvider)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -34,7 +131,7 @@ public sealed class ComprehensiveTelemetryService
         // Initialize configuration snapshot
         InitializeConfigurationSnapshot();
         
-        _logger.LogInformation("Comprehensive telemetry service initialized with config snapshot ID: {ConfigSnapshotId}", _currentConfigSnapshotId);
+        LogServiceInitialized(_logger, _currentConfigSnapshotId, null);
     }
     
     /// <summary>
@@ -70,38 +167,34 @@ public sealed class ComprehensiveTelemetryService
         try
         {
             // Emit zone count and tests via logging
-            _logger.LogInformation("Zone telemetry: Symbol={Symbol}, ZoneCount={ZoneCount}, TotalTests={TotalTests}", 
-                symbol, data.ZoneCount, data.TotalTests);
+            LogZoneTelemetry(_logger, symbol, data.ZoneCount, data.TotalTests, null);
             
             // Emit zone proximity in ATR units
             if (data.DemandZoneDistanceATR.HasValue)
             {
-                _logger.LogTrace("Zone proximity: Symbol={Symbol}, Side=demand, DistanceATR={Distance}", 
-                    symbol, data.DemandZoneDistanceATR.Value);
+                LogZoneProximityDemand(_logger, symbol, data.DemandZoneDistanceATR.Value, null);
             }
             
             if (data.SupplyZoneDistanceATR.HasValue)
             {
-                _logger.LogTrace("Zone proximity: Symbol={Symbol}, Side=supply, DistanceATR={Distance}", 
-                    symbol, data.SupplyZoneDistanceATR.Value);
+                LogZoneProximitySupply(_logger, symbol, data.SupplyZoneDistanceATR.Value, null);
             }
             
             // Emit zone breakout score
             if (data.BreakoutScore.HasValue)
             {
-                _logger.LogTrace("Zone breakout: Symbol={Symbol}, BreakoutScore={Score}", 
-                    symbol, data.BreakoutScore.Value);
+                LogZoneBreakout(_logger, symbol, data.BreakoutScore.Value, null);
             }
             
-            _logger.LogTrace("Zone telemetry emitted for {Symbol}: {ZoneCount} zones, {TotalTests} tests", symbol, data.ZoneCount, data.TotalTests);
+            LogZoneTelemetryEmitted(_logger, symbol, data.ZoneCount, data.TotalTests, null);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Invalid operation emitting zone telemetry for {Symbol}", symbol);
+            LogZoneTelemetryInvalidOperation(_logger, symbol, ex);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogWarning(ex, "Invalid argument emitting zone telemetry for {Symbol}", symbol);
+            LogZoneTelemetryInvalidArgument(_logger, symbol, ex);
         }
     }
     
@@ -121,16 +214,15 @@ public sealed class ComprehensiveTelemetryService
             // Emit pattern scores - telemetry replaced with logging
             // Emit pattern reliability metrics - telemetry replaced with logging
             
-            _logger.LogTrace("Pattern telemetry emitted for {Symbol}: Bull {BullScore:F2}, Bear {BearScore:F2}, {SignalCount} signals",
-                symbol, data.BullScore, data.BearScore, data.PatternSignals.Count);
+            LogPatternTelemetryEmitted(_logger, symbol, data.BullScore, data.BearScore, data.PatternSignals.Count, null);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Invalid operation emitting pattern telemetry for {Symbol}", symbol);
+            LogPatternTelemetryInvalidOperation(_logger, symbol, ex);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogWarning(ex, "Invalid argument emitting pattern telemetry for {Symbol}", symbol);
+            LogPatternTelemetryInvalidArgument(_logger, symbol, ex);
         }
     }
     
@@ -155,16 +247,15 @@ public sealed class ComprehensiveTelemetryService
             
             // Emit risk rejection metrics - telemetry replaced with logging
             
-            _logger.LogTrace("Fusion/Risk telemetry emitted: Confidence {Confidence:F2}, Features {FeatureCount}, Rejections {RejectionCount}",
-                data.DecisionConfidence, data.FeatureCount, data.RiskRejections.Count);
+            LogFusionRiskTelemetryEmitted(_logger, data.DecisionConfidence, data.FeatureCount, data.RiskRejections.Count, null);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Invalid operation emitting fusion/risk telemetry");
+            LogFusionRiskTelemetryInvalidOperation(_logger, ex);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogWarning(ex, "Invalid argument emitting fusion/risk telemetry");
+            LogFusionRiskTelemetryInvalidArgument(_logger, ex);
         }
     }
     
@@ -188,16 +279,15 @@ public sealed class ComprehensiveTelemetryService
                 // Telemetry replaced with logging
             }
             
-            _logger.LogDebug("Decision/Order telemetry emitted: {DecisionType} for {Symbol} (Config: {ConfigSnapshotId})",
-                data.DecisionType, data.Symbol, _currentConfigSnapshotId);
+            LogDecisionOrderTelemetryEmitted(_logger, data.DecisionType, data.Symbol, _currentConfigSnapshotId, null);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Invalid operation emitting decision/order telemetry for {Symbol}", data.Symbol);
+            LogDecisionOrderTelemetryInvalidOperation(_logger, data.Symbol, ex);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogWarning(ex, "Invalid argument emitting decision/order telemetry for {Symbol}", data.Symbol);
+            LogDecisionOrderTelemetryInvalidArgument(_logger, data.Symbol, ex);
         }
     }
     
@@ -228,15 +318,15 @@ public sealed class ComprehensiveTelemetryService
             
             // Telemetry replaced with logging - tags and metricName preparation removed
             
-            _logger.LogWarning("🚨 FAIL-CLOSED triggered: {Component} - {Reason}", component, reason);
+            LogFailClosedTriggered(_logger, component, reason, null);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Invalid operation emitting fail-closed telemetry for {Component}", component);
+            LogFailClosedTelemetryInvalidOperation(_logger, component, ex);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "Invalid argument emitting fail-closed telemetry for {Component}", component);
+            LogFailClosedTelemetryInvalidArgument(_logger, component, ex);
         }
     }
     
@@ -284,16 +374,15 @@ public sealed class ComprehensiveTelemetryService
                 // Telemetry replaced with logging
 }
             
-            _logger.LogTrace("Performance/Execution telemetry emitted: Decision {DecisionLatency}ms, Order {OrderLatency}ms",
-                data.DecisionLatencyMs, data.OrderLatencyMs);
+            LogPerformanceExecutionTelemetryEmitted(_logger, data.DecisionLatencyMs, data.OrderLatencyMs, null);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Invalid operation emitting performance/execution telemetry");
+            LogPerformanceExecutionTelemetryInvalidOperation(_logger, ex);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogWarning(ex, "Invalid argument emitting performance/execution telemetry");
+            LogPerformanceExecutionTelemetryInvalidArgument(_logger, ex);
         }
     }
     
@@ -322,7 +411,7 @@ public sealed class ComprehensiveTelemetryService
     public void RefreshConfigurationSnapshot()
     {
         InitializeConfigurationSnapshot();
-        _logger.LogInformation("Configuration snapshot refreshed: {ConfigSnapshotId}", _currentConfigSnapshotId);
+        LogConfigSnapshotRefreshed(_logger, _currentConfigSnapshotId, null);
     }
     
     /// <summary>

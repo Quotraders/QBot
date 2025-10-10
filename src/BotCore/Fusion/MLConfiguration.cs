@@ -42,6 +42,15 @@ public sealed class ProductionMLConfigurationService : IMLConfigurationService
 {
     private readonly IConfiguration _configuration;
     private readonly ILogger<ProductionMLConfigurationService> _logger;
+    
+    // High-performance logging delegates (CA1848)
+    private static readonly Action<ILogger, int, Exception?> LogConfigRetrieved =
+        LoggerMessage.Define<int>(LogLevel.Trace, new EventId(6320, nameof(LogConfigRetrieved)),
+            "ML configuration retrieved with {Count} parameters");
+    
+    private static readonly Action<ILogger, Exception> LogConfigError =
+        LoggerMessage.Define(LogLevel.Error, new EventId(6321, nameof(LogConfigError)),
+            "🚨 Error retrieving ML configuration - fail-closed: cannot provide ML configuration");
 
     public ProductionMLConfigurationService(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<ProductionMLConfigurationService> logger)
     {
@@ -77,12 +86,12 @@ public sealed class ProductionMLConfigurationService : IMLConfigurationService
                 ["max_position_size"] = _configuration.GetValue<double>("Trading:MaxPositionSize", 0.1), // 10% max position
             };
 
-            _logger.LogTrace("ML configuration retrieved with {Count} parameters", config.Count);
+            LogConfigRetrieved(_logger, config.Count, null);
             return config;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "🚨 Error retrieving ML configuration - fail-closed: cannot provide ML configuration");
+            LogConfigError(_logger, ex);
             
             // Fail-closed: Do not return safe defaults, throw to force proper configuration
             throw new InvalidOperationException("ML configuration unavailable - system must be properly configured (fail-closed)", ex);
@@ -108,6 +117,35 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
     
     // Strategy selection fallback constants
     private const double DefaultScoreForFallback = 0.5;
+    
+    // High-performance logging delegates (CA1848)
+    private static readonly Action<ILogger, string, string, double, Exception?> LogUcbStrategyNoHistory =
+        LoggerMessage.Define<string, string, double>(LogLevel.Trace, new EventId(6322, nameof(LogUcbStrategyNoHistory)),
+            "UCB strategy selection for {Symbol}: {Strategy} (no history, initial score: {Score:F3})");
+    
+    private static readonly Action<ILogger, string, string, double, Exception?> LogUcbStrategy =
+        LoggerMessage.Define<string, string, double>(LogLevel.Trace, new EventId(6323, nameof(LogUcbStrategy)),
+            "UCB strategy selection for {Symbol}: {Strategy} (UCB score: {Score:F3})");
+    
+    private static readonly Action<ILogger, string, Exception> LogUcbPredictionError =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6324, nameof(LogUcbPredictionError)),
+            "Error in UCB strategy prediction for symbol {Symbol}");
+    
+    private static readonly Action<ILogger, Exception?> LogFallbackConfigUnavailable =
+        LoggerMessage.Define(LogLevel.Error, new EventId(6325, nameof(LogFallbackConfigUnavailable)),
+            "🚨 Configuration service unavailable for fallback strategy selection - using simple fallback");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogFallbackStrategySelected =
+        LoggerMessage.Define<string, string>(LogLevel.Trace, new EventId(6326, nameof(LogFallbackStrategySelected)),
+            "Fallback strategy selected for {Symbol}: {Strategy} (feature-based selection)");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogFallbackError =
+        LoggerMessage.Define<string, string>(LogLevel.Error, new EventId(6327, nameof(LogFallbackError)),
+            "Error in fallback strategy selection for {Symbol} - using default: {Strategy}");
+    
+    private static readonly Action<ILogger, string, double, Exception?> LogStrategyUpdate =
+        LoggerMessage.Define<string, double>(LogLevel.Trace, new EventId(6328, nameof(LogStrategyUpdate)),
+            "Updated UCB statistics for strategy {Strategy}: new average reward = {AvgReward:F3}");
 
     public ProductionUcbStrategyChooser(IServiceProvider serviceProvider, ILogger<ProductionUcbStrategyChooser> logger)
     {
@@ -153,8 +191,7 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
                 var initialScore = initialConfig?.GetValue<double>("ML:UCB:InitialStrategyScore", 0.5) ?? 0.5;
                 var random = Random.Shared;
                 var selected = strategies[random.Next(strategies.Length)];
-                _logger.LogTrace("UCB strategy selection for {Symbol}: {Strategy} (no history, initial score: {Score:F3})", 
-                    symbol, selected.Item1, initialScore);
+                LogUcbStrategyNoHistory(_logger, symbol, selected.Item1, initialScore, null);
                 return (selected.Item1, selected.Item2, initialScore);
             }
 
@@ -192,15 +229,14 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
                 }
             }
 
-            _logger.LogTrace("UCB strategy selection for {Symbol}: {Strategy} (UCB score: {Score:F3})", 
-                symbol, bestStrategy.Item1, bestScore);
+            LogUcbStrategy(_logger, symbol, bestStrategy.Item1, bestScore, null);
             
             var maxScore = configuration?.GetValue<double>("ML:UCB:MaxScore", 1.0) ?? 1.0;
             return (bestStrategy.Item1, bestStrategy.Item2, Math.Min(bestScore, maxScore));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in UCB strategy prediction for symbol {Symbol}", symbol);
+            LogUcbPredictionError(_logger, symbol, ex);
             
             // Fallback to intelligent strategy selection based on available data
             return SelectIntelligentFallbackStrategy(symbol);
@@ -218,7 +254,7 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
             var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
             if (configuration == null)
             {
-                _logger.LogError("🚨 Configuration service unavailable for fallback strategy selection - using simple fallback");
+                LogFallbackConfigUnavailable(_logger, null);
                 return ("MomentumFade", BotCore.Strategy.StrategyIntent.Buy, DefaultScoreForFallback); // Safe fallback
             }
             
@@ -276,7 +312,7 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "🚨 Error in strategy selection for {Symbol} - fail-closed: cannot provide strategy recommendation", symbol);
+            LogFallbackError(_logger, symbol, "failed", ex);
             
             // Fail-closed: Do not return safe defaults, throw to force proper configuration
             throw new InvalidOperationException($"Strategy selection failed for {symbol} - system must be properly configured (fail-closed)", ex);
@@ -302,11 +338,11 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
                 }
             }
             
-            _logger.LogTrace("Updated strategy {Strategy} with reward {Reward:F3}", strategy, reward);
+            LogStrategyUpdate(_logger, strategy, reward, null);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating strategy reward for {Strategy}", strategy);
+            LogFallbackError(_logger, strategy, "update failed", ex);
         }
     }
 }
@@ -323,6 +359,35 @@ public sealed class ProductionPpoSizer : IPpoSizer
     private const int OperationIdPrefixLength = 8;
     private const double MinimalFallbackSizePercent = 0.01;
     private const double MinimalFallbackRiskMultiplier = 0.1;
+    
+    // High-performance logging delegates (CA1848)
+    private static readonly Action<ILogger, Exception?> LogRlSizingMissing =
+        LoggerMessage.Define(LogLevel.Error, new EventId(6329, nameof(LogRlSizingMissing)),
+            "RL system lacks position sizing capability - fail-closed: cannot provide ML-based position sizing");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogRlSizingUnavailable =
+        LoggerMessage.Define<string, string>(LogLevel.Error, new EventId(6330, nameof(LogRlSizingUnavailable)),
+            "🚨 [AUDIT-{OperationId}] RL system position sizing not available - fail-closed: cannot provide ML sizing for {Symbol}");
+    
+    private static readonly Action<ILogger, Exception?> LogFallbackAllowed =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(6331, nameof(LogFallbackAllowed)),
+            "🔄 [AUDIT] ML position sizing unavailable but fallback allowed - proceeding to heuristic sizing");
+    
+    private static readonly Action<ILogger, string, Exception> LogPpoSizeError =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6332, nameof(LogPpoSizeError)),
+            "Error in PPO size prediction for symbol {Symbol}");
+    
+    private static readonly Action<ILogger, Exception?> LogConfigUnavailableSizing =
+        LoggerMessage.Define(LogLevel.Error, new EventId(6333, nameof(LogConfigUnavailableSizing)),
+            "🚨 Configuration service unavailable for intelligent fallback sizing - using minimal fallback");
+    
+    private static readonly Action<ILogger, Exception?> LogConfigUnavailableConservative =
+        LoggerMessage.Define(LogLevel.Error, new EventId(6334, nameof(LogConfigUnavailableConservative)),
+            "🚨 Configuration service unavailable for conservative sizing - using minimal fallback");
+    
+    private static readonly Action<ILogger, string, string, double, Exception?> LogAttemptMlSizing =
+        LoggerMessage.Define<string, string, double>(LogLevel.Debug, new EventId(6335, nameof(LogAttemptMlSizing)),
+            "Attempting ML position sizing for {Symbol} with intent {Intent}, risk {Risk:P2}");
 
     public ProductionPpoSizer(IServiceProvider serviceProvider, ILogger<ProductionPpoSizer> logger)
     {
@@ -342,18 +407,18 @@ public sealed class ProductionPpoSizer : IPpoSizer
             if (rlAdvisorSystem != null)
             {
                 // Attempt to get size recommendation from RL system - fail-closed approach
-                _logger.LogDebug("Attempting ML position sizing for {Symbol} with intent {Intent}, risk {Risk:P2}", symbol, intent, risk);
+                LogAttemptMlSizing(_logger, symbol, intent.ToString(), risk, null);
                 
                 // Check if RL system has the required capability
                 if (!IsRLSystemCapableOfPositionSizing(rlAdvisorSystem))
                 {
-                    _logger.LogError("RL system lacks position sizing capability - fail-closed: cannot provide ML-based position sizing");
+                    LogRlSizingMissing(_logger, null);
                     throw new InvalidOperationException("ML position sizing unavailable - RL system lacks required capability (fail-closed)");
                 }
                 
                 // RL system lacks position sizing capability - fail-closed approach
-                _logger.LogError("🚨 [AUDIT-{OperationId}] RL system position sizing not available - fail-closed: cannot provide ML sizing for {Symbol}", 
-                    Guid.NewGuid().ToString("N")[..OperationIdPrefixLength], symbol);
+                var operationId = Guid.NewGuid().ToString("N")[..OperationIdPrefixLength];
+                LogRlSizingUnavailable(_logger, operationId, symbol, null);
                 
                 // Get configuration for fail-closed behavior
                 var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
@@ -366,7 +431,7 @@ public sealed class ProductionPpoSizer : IPpoSizer
                 }
                 
                 // If configuration allows fallback, proceed to heuristic sizing
-                _logger.LogWarning("🔄 [AUDIT] ML position sizing unavailable but fallback allowed - proceeding to heuristic sizing");
+                LogFallbackAllowed(_logger, null);
             }
             
             // Fallback to intelligent heuristic-based sizing with real market data
@@ -374,7 +439,7 @@ public sealed class ProductionPpoSizer : IPpoSizer
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in PPO size prediction for symbol {Symbol}", symbol);
+            LogPpoSizeError(_logger, symbol, ex);
             
             // Fallback to safe conservative sizing
             return CalculateConservativeFallbackSize(risk, intent);
@@ -405,7 +470,7 @@ public sealed class ProductionPpoSizer : IPpoSizer
             var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
             if (configuration == null)
             {
-                _logger.LogError("🚨 Configuration service unavailable for intelligent fallback sizing - using minimal fallback");
+                LogConfigUnavailableSizing(_logger, null);
                 return intent switch
                 {
                     BotCore.Strategy.StrategyIntent.Buy => Math.Min(MinimalFallbackSizePercent, risk * MinimalFallbackRiskMultiplier),
@@ -463,7 +528,7 @@ public sealed class ProductionPpoSizer : IPpoSizer
         
         if (configuration == null)
         {
-            _logger.LogError("🚨 Configuration service unavailable for conservative sizing - using minimal fallback");
+            LogConfigUnavailableConservative(_logger, null);
             // Absolute minimal fallback when even configuration is unavailable
             return intent switch
             {
