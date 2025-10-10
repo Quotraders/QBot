@@ -174,7 +174,7 @@ public class AutonomousPerformanceTracker
         {
             foreach (var trade in recentTrades)
             {
-                if (!_allTrades.Any(t => t.EntryTime == trade.EntryTime && t.Strategy == trade.Strategy))
+                if (!_allTrades.Exists(t => t.EntryTime == trade.EntryTime && t.Strategy == trade.Strategy))
                 {
                     _allTrades.Add(trade);
                 }

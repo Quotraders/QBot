@@ -326,7 +326,7 @@ namespace TradingBot.BotCore.Services
                 @"example\.com"
             };
 
-            return hardcodedPatterns.Any(pattern => Regex.IsMatch(endpoint, pattern, RegexOptions.IgnoreCase));
+            return Array.Exists(hardcodedPatterns, pattern => Regex.IsMatch(endpoint, pattern, RegexOptions.IgnoreCase));
         }
 
         private static bool ContainsHardcodedCredentials(string connectionString)
@@ -340,7 +340,7 @@ namespace TradingBot.BotCore.Services
                 @"uid=(?!{|\$)[^;]+sa"
             };
 
-            return sensitivePatterns.Any(pattern => Regex.IsMatch(connectionString, pattern, RegexOptions.IgnoreCase));
+            return Array.Exists(sensitivePatterns, pattern => Regex.IsMatch(connectionString, pattern, RegexOptions.IgnoreCase));
         }
 
         private static string MaskSensitiveValue(string value)
