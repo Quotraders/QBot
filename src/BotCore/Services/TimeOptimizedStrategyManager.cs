@@ -546,8 +546,8 @@ namespace BotCore.Services
             try
             {
                 // Get recent price data for both ES and NQ
-                var esPrices = _esBars?.TakeLast(CorrelationLookbackPeriod)?.Select(b => (double)b.Close)?.ToArray();
-                var nqPrices = _nqBars?.TakeLast(CorrelationLookbackPeriod)?.Select(b => (double)b.Close)?.ToArray();
+                var esPrices = _esBars?.TakeLast(CorrelationLookbackPeriod).Select(b => (double)b.Close).ToArray();
+                var nqPrices = _nqBars?.TakeLast(CorrelationLookbackPeriod).Select(b => (double)b.Close).ToArray();
                 
                 // Calculate Pearson correlation if we have sufficient data
                 if (esPrices != null && nqPrices != null && esPrices.Length >= MinimumDataPointsForCorrelation && nqPrices.Length >= MinimumDataPointsForCorrelation)

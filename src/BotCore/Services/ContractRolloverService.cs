@@ -417,7 +417,7 @@ namespace BotCore.Services
             
             // Map months to contract months for quarterly contracts
             var quarterlyMonths = new[] { 3, 6, 9, 12 }; // Mar, Jun, Sep, Dec
-            var currentQuarterIndex = quarterlyMonths.Where(m => m >= currentMonth).FirstOrDefault();
+            var currentQuarterIndex = quarterlyMonths.FirstOrDefault(m => m >= currentMonth);
             
             if (currentQuarterIndex == 0) // Past December, go to next year March
             {

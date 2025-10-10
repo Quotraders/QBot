@@ -56,8 +56,9 @@ public class ProductionOrderEvidenceService
 
         if (hasFillEvent)
         {
+            // fillEvent is guaranteed non-null here due to hasFillEvent check
             _logger.LogInformation("✅ [ORDER-EVIDENCE] Evidence 2: Fill event present - OrderId: {EventOrderId}, FillPrice: {FillPrice}, Qty: {Qty}", 
-                fillEvent?.OrderId ?? "unknown", fillEvent?.FillPrice ?? 0, fillEvent?.Quantity ?? 0);
+                fillEvent!.OrderId ?? "unknown", fillEvent.FillPrice ?? 0, fillEvent.Quantity ?? 0);
             evidenceTypes.Add("FillEvent");
         }
         else
@@ -79,8 +80,8 @@ public class ProductionOrderEvidenceService
             CustomTag = customTag,
             Timestamp = DateTime.UtcNow,
             EvidenceTypes = evidenceTypes,
-            FillPrice = hasFillEvent ? fillEvent?.FillPrice ?? 0 : null,
-            Quantity = hasFillEvent ? fillEvent?.Quantity ?? 0 : null,
+            FillPrice = hasFillEvent ? fillEvent!.FillPrice ?? 0 : null,
+            Quantity = hasFillEvent ? fillEvent!.Quantity ?? 0 : null,
             HasSufficientEvidence = hasOrderId && hasFillEvent,
             TotalEvidenceCount = evidenceTypes.Count
         };

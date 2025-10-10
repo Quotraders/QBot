@@ -537,8 +537,7 @@ public class TradingFeedbackService : BackgroundService
             TotalTrades = _performanceMetrics.Values.Sum(m => m.TotalTrades),
             // Phase 6A: Exception Guards - Add .Any() check before .Average()
             OverallAccuracy = _performanceMetrics.Values
-                .Where(m => m.TotalTrades >= _minFeedbackSamples)
-                .Any() ? _performanceMetrics.Values
+                .Any(m => m.TotalTrades >= _minFeedbackSamples) ? _performanceMetrics.Values
                 .Where(m => m.TotalTrades >= _minFeedbackSamples)
                 .Average(m => m.AverageAccuracy) : 0.0,
             OverallPnL = _performanceMetrics.Values.Sum(m => m.TotalPnL),

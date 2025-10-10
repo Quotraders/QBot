@@ -305,13 +305,10 @@ namespace TopstepX.Bot.Core.Services
                 _logger.LogInformation("✅ Trading System Integration Service ready");
                 _isSystemReady = true;
 
-                // Start trading evaluation timer if system is ready
-                if (_isSystemReady)
-                {
-                    _tradingEvaluationTimer.Change(
-                        InitialEvaluationDelayMs, // Initial delay in ms
-                        (int)TimeSpan.FromSeconds(_config.TradingEvaluationIntervalSeconds).TotalMilliseconds);
-                }
+                // Start trading evaluation timer now that system is ready
+                _tradingEvaluationTimer.Change(
+                    InitialEvaluationDelayMs, // Initial delay in ms
+                    (int)TimeSpan.FromSeconds(_config.TradingEvaluationIntervalSeconds).TotalMilliseconds);
                 
                 // Main service loop
                 while (!stoppingToken.IsCancellationRequested)
@@ -1472,10 +1469,10 @@ namespace TopstepX.Bot.Core.Services
                         bars.RemoveAt(0);
                     }
                 }
-                else if (lastBar != null)
+                else
                 {
-                    // Update current bar
-                    lastBar.High = Math.Max(lastBar.High, marketData.LastPrice);
+                    // Update current bar (lastBar is guaranteed non-null here due to shouldCreateNewBar logic)
+                    lastBar!.High = Math.Max(lastBar.High, marketData.LastPrice);
                     lastBar.Low = Math.Min(lastBar.Low, marketData.LastPrice);
                     lastBar.Close = marketData.LastPrice;
                     lastBar.Volume += (int)marketData.Volume;
@@ -1616,7 +1613,13 @@ namespace TopstepX.Bot.Core.Services
                 // If only one has data, use that one
                 if (hasEsData && !hasNqData) return "ES";
                 if (hasNqData && !hasEsData) return "NQ";
-                if (!hasEsData && !hasNqData) return "ES"; // Default
+                
+                // If neither has data (shouldn't happen due to IsEmpty check above), default to ES
+                if (!hasEsData && !hasNqData)
+                {
+                    _logger.LogWarning("⚠️ Unexpected: cache not empty but ES/NQ data not found");
+                    return "ES";
+                }
 
                 // Both have data - make intelligent choice based on:
                 // 1. Recent volatility (prefer more volatile for momentum strategies)
@@ -1757,6 +1760,8 @@ namespace TopstepX.Bot.Core.Services
             _tradingEvaluationTimer?.Dispose();
             
             _orderConfirmation?.Dispose();
+            
+            _riskEngine?.Dispose();
             
             _logger.LogInformation("✅ Trading system cleanup completed");
             return Task.CompletedTask;
