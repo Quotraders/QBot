@@ -16,6 +16,8 @@ namespace BotCore.Services
     /// </summary>
     public sealed class S7BreadthReallocationService
     {
+        private const double Epsilon = 1e-10; // Tolerance for floating point comparisons
+        
         private readonly ILogger<S7BreadthReallocationService> _logger;
         private readonly BreadthReallocationConfiguration _config;
         private readonly ConcurrentDictionary<string, BreadthMetrics> _breadthMetrics = new(StringComparer.OrdinalIgnoreCase);
@@ -71,7 +73,7 @@ namespace BotCore.Services
                     var nqStrength = CalculateStrengthScore(nqMetrics);
                     var totalStrength = esStrength + nqStrength;
 
-                    if (totalStrength == 0)
+                    if (Math.Abs(totalStrength) < Epsilon)
                     {
                         _logger.LogWarning("[BREADTH-REALLOCATION] [AUDIT-VIOLATION] Zero total strength - using neutral allocation");
                         return 1.0;
