@@ -263,21 +263,19 @@ public class BatchedOnnxInferenceService : IDisposable
     {
         try
         {
-            // Prepare batch input
+            // Prepare batch input using jagged array for better performance (CA1814)
             var batchSize = batchRequests.Count;
             var featureSize = batchRequests[0].Features.Length;
-            var batchInput = new float[batchSize, featureSize];
-
+            
+            // Flatten features into 1D array for tensor creation
+            var flattenedInput = new float[batchSize * featureSize];
             for (int i = 0; i < batchSize; i++)
             {
-                for (int j = 0; j < featureSize; j++)
-                {
-                    batchInput[i, j] = batchRequests[i].Features[j];
-                }
+                Array.Copy(batchRequests[i].Features, 0, flattenedInput, i * featureSize, featureSize);
             }
 
-            // Create input tensor
-            var inputTensor = new DenseTensor<float>(batchInput.Cast<float>().ToArray(), new[] { batchSize, featureSize });
+            // Create input tensor from flattened array
+            var inputTensor = new DenseTensor<float>(flattenedInput, new[] { batchSize, featureSize });
             var inputs = new List<NamedOnnxValue>
             {
                 NamedOnnxValue.CreateFromTensor(session.InputMetadata.Keys.ToList()[0], inputTensor)
