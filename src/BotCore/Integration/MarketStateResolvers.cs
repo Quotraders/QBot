@@ -216,11 +216,6 @@ public sealed class SpreadResolver : IFeatureResolver
             new EventId(6441, nameof(LogSpreadResolutionFailed)),
             "Failed to resolve bid-ask spread for symbol {Symbol}");
     
-    public SpreadResolver(IServiceProvider serviceProvider
-{
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<SpreadResolver> _logger;
-    
     public SpreadResolver(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
@@ -241,12 +236,12 @@ public sealed class SpreadResolver : IFeatureResolver
                 throw new InvalidOperationException($"Bid-ask spread not available for symbol '{symbol}' - fail closed");
             }
             
-            _logger.LogTrace("Bid-ask spread for {Symbol}: {Spread:F4}", symbol, value);
+            LogSpreadValue(_logger, symbol, value.Value, null);
             return Task.FromResult(value);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to resolve bid-ask spread for symbol {Symbol}", symbol);
+            LogSpreadResolutionFailed(_logger, symbol, ex);
             throw new InvalidOperationException($"Production bid-ask spread resolution failed for '{symbol}': {ex.Message}", ex);
         }
     }
