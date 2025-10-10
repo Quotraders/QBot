@@ -165,6 +165,7 @@ public class ProductionTradingConfig
     public SecurityConfig Security { get; set; } = new();
 }
 
+[Serializable]
 public class GitHubConfig
 {
     [Required]
@@ -181,6 +182,7 @@ public class GitHubConfig
     public int MaxConcurrentDownloads { get; set; } = 3;
 }
 
+[Serializable]
 public class TopstepXConfig
 {
     public string ApiToken { get; set; } = string.Empty;
@@ -190,6 +192,7 @@ public class TopstepXConfig
     public TimeSpan RequestTimeout { get; set; } = TimeSpan.FromSeconds(30);
 }
 
+[Serializable]
 public class EnsembleConfig
 {
     [Range(0.0, 1.0)]
@@ -203,6 +206,7 @@ public class EnsembleConfig
     public int MinModelsRequired { get; set; } = 2;
 }
 
+[Serializable]
 public class ModelLifecycleConfig
 {
     public int SyncIntervalMinutes { get; set; } = 15;
@@ -212,6 +216,7 @@ public class ModelLifecycleConfig
     public string ModelStoragePath { get; set; } = "models/production";
 }
 
+[Serializable]
 public class PerformanceConfig
 {
     // Configuration constants for performance evaluation
@@ -226,6 +231,7 @@ public class PerformanceConfig
     public bool EnablePerformanceLogging { get; set; } = true;
 }
 
+[Serializable]
 public class SecurityConfig
 {
     public bool EnableEncryption { get; set; } = true;

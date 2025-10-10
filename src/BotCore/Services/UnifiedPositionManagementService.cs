@@ -877,7 +877,7 @@ namespace BotCore.Services
                 var positionTracker = _serviceProvider.GetService<PositionTrackingSystem>();
                 if (positionTracker != null)
                 {
-                    var positions = positionTracker.GetAllPositions();
+                    var positions = positionTracker.AllPositions;
                     if (positions.TryGetValue(symbol, out var position))
                     {
                         // Calculate current price from unrealized P&L if available

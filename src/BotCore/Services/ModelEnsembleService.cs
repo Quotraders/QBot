@@ -627,11 +627,14 @@ public class ModelEnsembleService : IDisposable
     /// <summary>
     /// Get performance statistics for all models
     /// </summary>
-    public Dictionary<string, ModelPerformance> GetModelPerformanceStats()
+    public Dictionary<string, ModelPerformance> ModelPerformanceStats
     {
-        lock (_ensembleLock)
+        get
         {
-            return new Dictionary<string, ModelPerformance>(_modelPerformance);
+            lock (_ensembleLock)
+            {
+                return new Dictionary<string, ModelPerformance>(_modelPerformance);
+            }
         }
     }
 
