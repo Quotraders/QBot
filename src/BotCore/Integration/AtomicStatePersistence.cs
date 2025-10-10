@@ -268,7 +268,7 @@ public sealed class AtomicStatePersistence : IDisposable
                 try 
                 { 
                     File.Move(backupFilePath, filePath);
-                    _logger.LogWarning("Restored state file from backup: {FilePath}", filePath);
+                    _logger.LogInformation("Restored state file from backup: {FilePath}", filePath);
                 } 
                 catch (IOException restoreEx)
                 {

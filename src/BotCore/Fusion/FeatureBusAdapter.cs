@@ -1130,9 +1130,9 @@ public sealed class FeatureBusAdapter : IFeatureBusWithProbe
                                 }
                             }
                         }
-                        catch (OperationCanceledException)
+                        catch (OperationCanceledException ex)
                         {
-                            _logger.LogWarning("[PATTERN-ENGINE] Background pattern analysis timed out for {Symbol}", symbol);
+                            _logger.LogWarning(ex, "[PATTERN-ENGINE] Background pattern analysis timed out for {Symbol}", symbol);
                         }
                         catch (Exception ex)
                         {

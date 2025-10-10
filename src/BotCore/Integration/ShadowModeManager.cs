@@ -528,9 +528,9 @@ public sealed class ShadowModeManager
     {
         lock (_shadowLock)
         {
-            var activeStrategies = _shadowStrategies.Values.Where(s => s.Enabled && s.Shadow).Count();
-            var promotedStrategies = _shadowStrategies.Values.Where(s => s.Status == ShadowStrategyStatus.Promoted).Count();
-            var demotedStrategies = _shadowStrategies.Values.Where(s => s.Status == ShadowStrategyStatus.Demoted).Count();
+            var activeStrategies = _shadowStrategies.Values.Count(s => s.Enabled && s.Shadow);
+            var promotedStrategies = _shadowStrategies.Values.Count(s => s.Status == ShadowStrategyStatus.Promoted);
+            var demotedStrategies = _shadowStrategies.Values.Count(s => s.Status == ShadowStrategyStatus.Demoted);
             
             return new ShadowModeStats
             {
