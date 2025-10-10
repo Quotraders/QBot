@@ -327,22 +327,23 @@ namespace BotCore.Brain
                 runtimeMode = TradingBot.Abstractions.RlRuntimeMode.InferenceOnly;
             }
             
-            OnnxNeuralNetwork? neuralNetwork = null;
-            OnnxNeuralNetwork? confidenceNetwork = null;
+            NeuralUcbBandit? tempSelector = null;
+            OnnxNeuralNetwork? tempConfidenceNet = null;
             try
             {
-                neuralNetwork = new OnnxNeuralNetwork(onnxLoader, neuralNetworkLogger, runtimeMode, "models/strategy_selection.onnx");
-                _strategySelector = new NeuralUcbBandit(neuralNetwork);
+                var neuralNetwork = new OnnxNeuralNetwork(onnxLoader, neuralNetworkLogger, runtimeMode, "models/strategy_selection.onnx");
+                tempSelector = new NeuralUcbBandit(neuralNetwork);
+                _strategySelector = tempSelector;
                 
                 // Initialize confidence network for model confidence prediction
-                confidenceNetwork = new OnnxNeuralNetwork(onnxLoader, neuralNetworkLogger, runtimeMode, "models/confidence_prediction.onnx");
-                _confidenceNetwork = confidenceNetwork;
+                tempConfidenceNet = new OnnxNeuralNetwork(onnxLoader, neuralNetworkLogger, runtimeMode, "models/confidence_prediction.onnx");
+                _confidenceNetwork = tempConfidenceNet;
             }
             catch
             {
                 // Dispose networks if initialization fails
-                neuralNetwork?.Dispose();
-                confidenceNetwork?.Dispose();
+                tempSelector?.Dispose();
+                tempConfidenceNet?.Dispose();
                 throw;
             }
             
