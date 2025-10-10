@@ -19,13 +19,13 @@ namespace BotCore.Services
             _ci = cfg.GetValue("CI", false);
         }
         
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             if (_ci) 
             {
                 throw new InvalidOperationException("Cloud egress blocked (CI=1).");
             }
-            return base.SendAsync(request, ct);
+            return base.SendAsync(request, cancellationToken);
         }
     }
 }
