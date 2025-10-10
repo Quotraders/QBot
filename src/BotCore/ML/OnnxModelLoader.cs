@@ -1092,7 +1092,7 @@ public sealed class OnnxModelLoader : IDisposable
     {
         using var stream = File.OpenRead(filePath);
         using var sha256 = SHA256.Create();
-        var hash = await Task.Run(() => sha256.ComputeHash(stream)).ConfigureAwait(false);
+        var hash = await sha256.ComputeHashAsync(stream).ConfigureAwait(false);
         return Convert.ToHexString(hash).ToUpperInvariant();
     }
 
@@ -1619,7 +1619,7 @@ public sealed class OnnxModelLoader : IDisposable
     {
         using var sha256 = SHA256.Create();
         using var fileStream = File.OpenRead(filePath);
-        var hashBytes = await Task.Run(() => sha256.ComputeHash(fileStream), cancellationToken).ConfigureAwait(false);
+        var hashBytes = await sha256.ComputeHashAsync(fileStream, cancellationToken).ConfigureAwait(false);
         return Convert.ToHexString(hashBytes).ToUpperInvariant();
     }
 
