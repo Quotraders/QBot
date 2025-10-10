@@ -281,10 +281,28 @@ public sealed class OnnxModelValidationService
                 result.ErrorMessage = "Failed to load model";
             }
         }
-        catch (Exception ex)
+        catch (OnnxRuntimeException ex)
         {
             result.IsValid = false;
-            result.ErrorMessage = ex.Message;
+            result.ErrorMessage = $"ONNX runtime error: {ex.Message}";
+            LogValidationException(_logger, modelPath, ex);
+        }
+        catch (FileNotFoundException ex)
+        {
+            result.IsValid = false;
+            result.ErrorMessage = $"Model file not found: {ex.Message}";
+            LogValidationException(_logger, modelPath, ex);
+        }
+        catch (InvalidOperationException ex)
+        {
+            result.IsValid = false;
+            result.ErrorMessage = $"Invalid operation: {ex.Message}";
+            LogValidationException(_logger, modelPath, ex);
+        }
+        catch (ArgumentException ex)
+        {
+            result.IsValid = false;
+            result.ErrorMessage = $"Invalid argument: {ex.Message}";
             LogValidationException(_logger, modelPath, ex);
         }
 

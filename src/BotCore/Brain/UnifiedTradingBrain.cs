@@ -621,9 +621,17 @@ namespace BotCore.Brain
                         _logger.LogTrace("📸 [SNAPSHOT] Captured market snapshot for {Symbol}: {Strategy} {Direction}", 
                             symbol, decision.RecommendedStrategy, decision.PriceDirection);
                     }
-                    catch (Exception ex)
+                    catch (InvalidOperationException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [SNAPSHOT] Failed to capture market snapshot");
+                        _logger.LogWarning(ex, "⚠️ [SNAPSHOT] Failed to capture market snapshot - invalid operation");
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [SNAPSHOT] Failed to capture market snapshot - invalid argument");
+                    }
+                    catch (IOException ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [SNAPSHOT] Failed to capture market snapshot - I/O error");
                     }
                 }
 
@@ -820,9 +828,17 @@ namespace BotCore.Brain
                             _logger.LogTrace("📊 [PARAM-TRACKING] Tracked parameter update for {Strategy}: old={OldReward:F3}, new={NewReward:F3}", 
                                 strategy, reward, crossLearningReward);
                         }
-                        catch (Exception ex)
+                        catch (InvalidOperationException ex)
                         {
-                            _logger.LogWarning(ex, "⚠️ [PARAM-TRACKING] Failed to track parameter change");
+                            _logger.LogWarning(ex, "⚠️ [PARAM-TRACKING] Failed to track parameter change - invalid operation");
+                        }
+                        catch (IOException ex)
+                        {
+                            _logger.LogWarning(ex, "⚠️ [PARAM-TRACKING] Failed to track parameter change - I/O error");
+                        }
+                        catch (UnauthorizedAccessException ex)
+                        {
+                            _logger.LogWarning(ex, "⚠️ [PARAM-TRACKING] Failed to track parameter change - access denied");
                         }
                     }
                     
@@ -895,9 +911,19 @@ namespace BotCore.Brain
                        $"Trend: {trend}, Active Strategies: {activeStrategies}, Position: {positionInfo}, " +
                        $"Decisions Today: {DecisionsToday}";
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-CONTEXT] Error gathering current context");
+                _logger.LogError(ex, "❌ [BOT-CONTEXT] Error gathering current context - invalid operation");
+                return "Context unavailable";
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-CONTEXT] Error gathering current context - invalid argument");
+                return "Context unavailable";
+            }
+            catch (NullReferenceException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-CONTEXT] Error gathering current context - null reference");
                 return "Context unavailable";
             }
         }
@@ -953,9 +979,17 @@ namespace BotCore.Brain
                             _logger.LogWarning("⚠️ [RISK-COMMENTARY] Skipping - missing price or ATR data");
                         }
                     }
-                    catch (Exception ex)
+                    catch (InvalidOperationException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary");
+                        _logger.LogWarning(ex, "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary - invalid operation");
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary - HTTP request failed");
+                    }
+                    catch (TaskCanceledException ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary - task cancelled");
                     }
                 }
                 
@@ -1048,9 +1082,17 @@ namespace BotCore.Brain
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (InvalidOperationException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions");
+                        _logger.LogWarning(ex, "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions - invalid operation");
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions - invalid argument");
+                    }
+                    catch (KeyNotFoundException ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions - key not found");
                     }
                 }
                 
@@ -1070,9 +1112,24 @@ Current context: {currentContext}
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-THINKING] Error during AI thinking");
+                _logger.LogError(ex, "❌ [BOT-THINKING] Error during AI thinking - invalid operation");
+                return string.Empty;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-THINKING] Error during AI thinking - HTTP request failed");
+                return string.Empty;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-THINKING] Error during AI thinking - task cancelled");
+                return string.Empty;
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-THINKING] Error during AI thinking - invalid argument");
                 return string.Empty;
             }
         }
@@ -1137,9 +1194,17 @@ Current context: {currentContext}
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (InvalidOperationException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary");
+                        _logger.LogWarning(ex, "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary - invalid operation");
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary - HTTP request failed");
+                    }
+                    catch (TaskCanceledException ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary - task cancelled");
                     }
                 }
                 
@@ -1156,9 +1221,24 @@ Reason closed: {reason}
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-REFLECTION] Error during AI reflection");
+                _logger.LogError(ex, "❌ [BOT-REFLECTION] Error during AI reflection - invalid operation");
+                return string.Empty;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-REFLECTION] Error during AI reflection - HTTP request failed");
+                return string.Empty;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-REFLECTION] Error during AI reflection - task cancelled");
+                return string.Empty;
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-REFLECTION] Error during AI reflection - invalid argument");
                 return string.Empty;
             }
         }
@@ -1441,9 +1521,31 @@ Reason closed: {reason}
                     TimeHorizon = TimeSpan.FromMinutes(30)
                 });
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "LSTM prediction failed, using fallback");
+                _logger.LogWarning(ex, "LSTM prediction failed - invalid operation, using fallback");
+                return Task.FromResult(new PricePrediction
+                {
+                    Direction = PriceDirection.Sideways,
+                    Probability = TopStepConfig.NeutralProbability,
+                    ExpectedMove = TopStepConfig.FallbackExpectedMove,
+                    TimeHorizon = TimeSpan.FromMinutes(30)
+                });
+            }
+            catch (OnnxRuntimeException ex)
+            {
+                _logger.LogWarning(ex, "LSTM prediction failed - ONNX runtime error, using fallback");
+                return Task.FromResult(new PricePrediction
+                {
+                    Direction = PriceDirection.Sideways,
+                    Probability = TopStepConfig.NeutralProbability,
+                    ExpectedMove = TopStepConfig.FallbackExpectedMove,
+                    TimeHorizon = TimeSpan.FromMinutes(30)
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "LSTM prediction failed - invalid argument, using fallback");
                 return Task.FromResult(new PricePrediction
                 {
                     Direction = PriceDirection.Sideways,
@@ -1566,9 +1668,19 @@ Reason closed: {reason}
                     _logger.LogInformation("🎯 [CVAR-PPO] Action={Action}, Prob={Prob:F3}, Value={Value:F3}, CVaR={CVaR:F3}, Contracts={Contracts}", 
                         actionResult.Action, actionResult.ActionProbability, actionResult.ValueEstimate, actionResult.CVaREstimate, contracts);
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "CVaR-PPO position sizing failed, using TopStep compliance sizing");
+                    _logger.LogError(ex, "CVaR-PPO position sizing failed - invalid operation, using TopStep compliance sizing");
+                    // contracts remains unchanged - use TopStep compliance sizing
+                }
+                catch (ArgumentException ex)
+                {
+                    _logger.LogError(ex, "CVaR-PPO position sizing failed - invalid argument, using TopStep compliance sizing");
+                    // contracts remains unchanged - use TopStep compliance sizing
+                }
+                catch (OnnxRuntimeException ex)
+                {
+                    _logger.LogError(ex, "CVaR-PPO position sizing failed - ONNX runtime error, using TopStep compliance sizing");
                     // contracts remains unchanged - use TopStep compliance sizing
                 }
             }
@@ -1726,9 +1838,23 @@ Reason closed: {reason}
                 
                 return Task.FromResult(enhancedCandidates);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BRAIN-ENHANCE] Error generating enhanced candidates");
+                _logger.LogError(ex, "❌ [BRAIN-ENHANCE] Error generating enhanced candidates - invalid operation");
+                
+                // Fallback to original AllStrategies logic
+                return Task.FromResult(AllStrategies.generate_candidates(symbol, env, levels, bars, risk));
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "❌ [BRAIN-ENHANCE] Error generating enhanced candidates - invalid argument");
+                
+                // Fallback to original AllStrategies logic
+                return Task.FromResult(AllStrategies.generate_candidates(symbol, env, levels, bars, risk));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogError(ex, "❌ [BRAIN-ENHANCE] Error generating enhanced candidates - key not found");
                 
                 // Fallback to original AllStrategies logic
                 return Task.FromResult(AllStrategies.generate_candidates(symbol, env, levels, bars, risk));
@@ -2004,9 +2130,21 @@ Reason closed: {reason}
                 
                 _logger.LogInformation("✅ [UNIFIED-LEARNING] Completed unified learning update");
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Failed to update unified learning");
+                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Failed to update unified learning - invalid operation");
+            }
+            catch (IOException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Failed to update unified learning - I/O error");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Failed to update unified learning - access denied");
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-LEARNING] Failed to update unified learning - invalid argument");
             }
         }
         
@@ -2385,9 +2523,24 @@ Reason closed: {reason}
                 _logger.LogInformation("=== GATE 4 PASSED - Model validated for hot-reload ===");
                 return (true, "All validation checks passed");
             }
-            catch (Exception ex)
+            catch (FileNotFoundException ex)
             {
-                _logger.LogError(ex, "✗ GATE 4 FAILED: Exception during model validation");
+                _logger.LogError(ex, "✗ GATE 4 FAILED: Model file not found during validation");
+                return (false, $"Validation exception: {ex.Message}");
+            }
+            catch (OnnxRuntimeException ex)
+            {
+                _logger.LogError(ex, "✗ GATE 4 FAILED: ONNX runtime error during model validation");
+                return (false, $"Validation exception: {ex.Message}");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "✗ GATE 4 FAILED: Invalid operation during model validation");
+                return (false, $"Validation exception: {ex.Message}");
+            }
+            catch (IOException ex)
+            {
+                _logger.LogError(ex, "✗ GATE 4 FAILED: I/O error during model validation");
                 return (false, $"Validation exception: {ex.Message}");
             }
         }
@@ -2425,9 +2578,24 @@ Reason closed: {reason}
                 _logger.LogInformation("  Model file size: {Size} bytes", fileInfo.Length);
                 return true;
             }
-            catch (Exception ex)
+            catch (FileNotFoundException ex)
             {
-                _logger.LogError(ex, "Feature specification validation failed");
+                _logger.LogError(ex, "Feature specification validation failed - file not found");
+                return false;
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "Feature specification validation failed - invalid JSON");
+                return false;
+            }
+            catch (IOException ex)
+            {
+                _logger.LogError(ex, "Feature specification validation failed - I/O error");
+                return false;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogError(ex, "Feature specification validation failed - access denied");
                 return false;
             }
         }
@@ -2451,9 +2619,17 @@ Reason closed: {reason}
                     }
                 }
             }
-            catch (Exception ex)
+            catch (FileNotFoundException ex)
             {
-                _logger.LogWarning(ex, "Failed to load cached sanity test vectors - generating new ones");
+                _logger.LogWarning(ex, "Failed to load cached sanity test vectors - file not found, generating new ones");
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Failed to load cached sanity test vectors - invalid JSON, generating new ones");
+            }
+            catch (IOException ex)
+            {
+                _logger.LogWarning(ex, "Failed to load cached sanity test vectors - I/O error, generating new ones");
             }
 
             // Generate deterministic test vectors
@@ -2486,9 +2662,17 @@ Reason closed: {reason}
                 File.WriteAllText(cachePath, json);
                 _logger.LogInformation("  Cached {Count} sanity test vectors for future use", count);
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                _logger.LogWarning(ex, "Failed to cache sanity test vectors");
+                _logger.LogWarning(ex, "Failed to cache sanity test vectors - I/O error");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Failed to cache sanity test vectors - access denied");
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Failed to cache sanity test vectors - JSON serialization error");
             }
 
             return vectors;
@@ -2545,9 +2729,19 @@ Reason closed: {reason}
 
                 return (true, totalVariation);
             }
-            catch (Exception ex)
+            catch (OnnxRuntimeException ex)
             {
-                _logger.LogError(ex, "Distribution comparison failed");
+                _logger.LogError(ex, "Distribution comparison failed - ONNX runtime error");
+                return (false, 1.0);
+            }
+            catch (FileNotFoundException ex)
+            {
+                _logger.LogError(ex, "Distribution comparison failed - model file not found");
+                return (false, 1.0);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Distribution comparison failed - invalid operation");
                 return (false, 1.0);
             }
             finally
@@ -2655,9 +2849,19 @@ Reason closed: {reason}
                 _logger.LogInformation("  Validated model outputs - no NaN/Infinity detected");
                 return true;
             }
-            catch (Exception ex)
+            catch (OnnxRuntimeException ex)
             {
-                _logger.LogError(ex, "Model output validation failed");
+                _logger.LogError(ex, "Model output validation failed - ONNX runtime error");
+                return false;
+            }
+            catch (FileNotFoundException ex)
+            {
+                _logger.LogError(ex, "Model output validation failed - model file not found");
+                return false;
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Model output validation failed - invalid operation");
                 return false;
             }
             finally
@@ -2698,9 +2902,19 @@ Reason closed: {reason}
 
                 return (drawdownRatio <= maxDrawdownMultiplier, drawdownRatio);
             }
-            catch (Exception ex)
+            catch (OnnxRuntimeException ex)
             {
-                _logger.LogError(ex, "Historical simulation failed");
+                _logger.LogError(ex, "Historical simulation failed - ONNX runtime error");
+                return (false, double.MaxValue);
+            }
+            catch (FileNotFoundException ex)
+            {
+                _logger.LogError(ex, "Historical simulation failed - model file not found");
+                return (false, double.MaxValue);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Historical simulation failed - invalid operation");
                 return (false, double.MaxValue);
             }
             finally
@@ -2727,9 +2941,17 @@ Reason closed: {reason}
                     }
                 }
             }
-            catch (Exception ex)
+            catch (FileNotFoundException ex)
             {
-                _logger.LogWarning(ex, "Failed to load cached historical data");
+                _logger.LogWarning(ex, "Failed to load cached historical data - file not found");
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Failed to load cached historical data - invalid JSON");
+            }
+            catch (IOException ex)
+            {
+                _logger.LogWarning(ex, "Failed to load cached historical data - I/O error");
             }
 
             var historicalData = new List<float[]>();
@@ -2750,9 +2972,17 @@ Reason closed: {reason}
                 var json = JsonSerializer.Serialize(historicalData, CachedJsonOptions);
                 await File.WriteAllTextAsync(dataPath, json, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                _logger.LogWarning(ex, "Failed to cache historical data");
+                _logger.LogWarning(ex, "Failed to cache historical data - I/O error");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Failed to cache historical data - access denied");
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Failed to cache historical data - JSON serialization error");
             }
 
             return historicalData;
@@ -2858,9 +3088,24 @@ Reason closed: {reason}
 
                 return true;
             }
-            catch (Exception ex)
+            catch (OnnxRuntimeException ex)
             {
-                _logger.LogError(ex, "❌ [MODEL-RELOAD] Exception during model reload");
+                _logger.LogError(ex, "❌ [MODEL-RELOAD] ONNX runtime error during model reload");
+                return false;
+            }
+            catch (FileNotFoundException ex)
+            {
+                _logger.LogError(ex, "❌ [MODEL-RELOAD] Model file not found during reload");
+                return false;
+            }
+            catch (IOException ex)
+            {
+                _logger.LogError(ex, "❌ [MODEL-RELOAD] I/O error during model reload");
+                return false;
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "❌ [MODEL-RELOAD] Invalid operation during model reload");
                 return false;
             }
         }
@@ -2926,9 +3171,19 @@ Reason closed: {reason}
 
                 return Task.FromResult((true, oldVersion, newVersion));
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                _logger.LogError(ex, "  Atomic swap failed");
+                _logger.LogError(ex, "  Atomic swap failed - I/O error");
+                return Task.FromResult((false, string.Empty, string.Empty));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogError(ex, "  Atomic swap failed - access denied");
+                return Task.FromResult((false, string.Empty, string.Empty));
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "  Atomic swap failed - invalid operation");
                 return Task.FromResult((false, string.Empty, string.Empty));
             }
         }
@@ -2994,9 +3249,21 @@ Reason closed: {reason}
                 
                 // Enhanced Python training scripts for multi-strategy learning would be integrated here
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                _logger.LogError(ex, "❌ [UNIFIED-RETRAIN] Unified model retraining failed");
+                _logger.LogError(ex, "❌ [UNIFIED-RETRAIN] Unified model retraining failed - I/O error");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-RETRAIN] Unified model retraining failed - access denied");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-RETRAIN] Unified model retraining failed - invalid operation");
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex, "❌ [UNIFIED-RETRAIN] Unified model retraining failed - JSON error");
             }
         }
 
@@ -3032,9 +3299,19 @@ Explain in 1-2 sentences why I'm waiting and what I'm looking for. Speak as ME (
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining why waiting");
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining why waiting - invalid operation");
+                return string.Empty;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining why waiting - HTTP request failed");
+                return string.Empty;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining why waiting - task cancelled");
                 return string.Empty;
             }
         }
@@ -3068,9 +3345,19 @@ Explain in 1-2 sentences why I'm so confident. Speak as ME (the bot).";
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining high confidence");
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining high confidence - invalid operation");
+                return string.Empty;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining high confidence - HTTP request failed");
+                return string.Empty;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining high confidence - task cancelled");
                 return string.Empty;
             }
         }
@@ -3101,9 +3388,19 @@ Explain in 1-2 sentences why strategies disagree and what this means. Speak as M
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining strategy conflict");
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining strategy conflict - invalid operation");
+                return string.Empty;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining strategy conflict - HTTP request failed");
+                return string.Empty;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-COMMENTARY] Error explaining strategy conflict - task cancelled");
                 return string.Empty;
             }
         }
@@ -3150,9 +3447,19 @@ Analyze in 2-3 sentences: What went wrong? Was it my entry timing, stop placemen
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-FAILURE-ANALYSIS] Error analyzing trade failure");
+                _logger.LogError(ex, "❌ [BOT-FAILURE-ANALYSIS] Error analyzing trade failure - invalid operation");
+                return string.Empty;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-FAILURE-ANALYSIS] Error analyzing trade failure - HTTP request failed");
+                return string.Empty;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-FAILURE-ANALYSIS] Error analyzing trade failure - task cancelled");
                 return string.Empty;
             }
         }
@@ -3190,9 +3497,19 @@ Explain in 1-2 sentences why Neural UCB selected this strategy over others. Spea
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [STRATEGY-SELECTION] Error explaining strategy selection");
+                _logger.LogError(ex, "❌ [STRATEGY-SELECTION] Error explaining strategy selection - invalid operation");
+                return string.Empty;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "❌ [STRATEGY-SELECTION] Error explaining strategy selection - HTTP request failed");
+                return string.Empty;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ [STRATEGY-SELECTION] Error explaining strategy selection - task cancelled");
                 return string.Empty;
             }
         }
@@ -3224,9 +3541,19 @@ Explain in 1-2 sentences what this regime means and how it affects my trading. S
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [MARKET-REGIME] Error explaining market regime");
+                _logger.LogError(ex, "❌ [MARKET-REGIME] Error explaining market regime - invalid operation");
+                return string.Empty;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "❌ [MARKET-REGIME] Error explaining market regime - HTTP request failed");
+                return string.Empty;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ [MARKET-REGIME] Error explaining market regime - task cancelled");
                 return string.Empty;
             }
         }
@@ -3256,9 +3583,19 @@ Explain in 1-2 sentences what I learned and how it will improve my future tradin
                 var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
                 return response;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-LEARNING] Error explaining learning update");
+                _logger.LogError(ex, "❌ [BOT-LEARNING] Error explaining learning update - invalid operation");
+                return string.Empty;
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-LEARNING] Error explaining learning update - HTTP request failed");
+                return string.Empty;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "❌ [BOT-LEARNING] Error explaining learning update - task cancelled");
                 return string.Empty;
             }
         }
@@ -3399,9 +3736,17 @@ Explain in 1-2 sentences what I learned and how it will improve my future tradin
                     _logger.LogInformation("📊 [UNIFIED-BRAIN] Statistics saved: {Decisions} decisions, {WinRate:P1} win rate",
                         DecisionsToday, WinRateToday);
                 }
-                catch (Exception ex)
+                catch (IOException ex)
                 {
-                    _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Error saving statistics");
+                    _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Error saving statistics - I/O error");
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Error saving statistics - access denied");
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Error saving statistics - JSON serialization error");
                 }
                 
                 // Dispose managed resources
@@ -3425,9 +3770,9 @@ Explain in 1-2 sentences what I learned and how it will improve my future tradin
                 {
                     // Expected during shutdown - ignore
                 }
-                catch (Exception ex)
+                catch (InvalidOperationException ex)
                 {
-                    _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Error disposing managed resources");
+                    _logger.LogError(ex, "❌ [UNIFIED-BRAIN] Error disposing managed resources - invalid operation");
                 }
             }
         }
