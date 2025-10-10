@@ -270,20 +270,23 @@ namespace BotCore
             }
         }
 
+        // Standard Python search paths for cross-platform compatibility
+        private static readonly string[] PythonSearchPaths = new[]
+        {
+            "python",      // PATH environment variable search
+            "python3",     // PATH environment variable search
+            "/usr/bin/python3",  // Linux/Mac standard location
+            "/usr/bin/python",   // Linux/Mac standard location
+            @"C:\Python39\python.exe",   // Windows Python 3.9
+            @"C:\Python310\python.exe",  // Windows Python 3.10
+            @"C:\Python311\python.exe",  // Windows Python 3.11
+            @"C:\Python312\python.exe"   // Windows Python 3.12
+        };
+
         private static string FindPythonExecutable()
         {
             // Try common Python paths
-            var pythonPaths = new[]
-            {
-                "python",
-                "python3",
-                "/usr/bin/python3",
-                "/usr/bin/python",
-                @"C:\Python39\python.exe",
-                @"C:\Python310\python.exe",
-                @"C:\Python311\python.exe",
-                @"C:\Python312\python.exe"
-            };
+            var pythonPaths = PythonSearchPaths;
 
             foreach (var path in pythonPaths)
             {

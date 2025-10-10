@@ -47,6 +47,9 @@ namespace BotCore.Services
         private const decimal NqFuturesBasePrice = 20000m;
         private const decimal GenericContractFallbackPrice = 100m;
         
+        // TopstepX History API endpoint
+        private const string TopstepXHistoryApiUrl = "https://api.topstepx.com/api/History/retrieveBars";
+        
         private readonly ILogger<HistoricalDataBridgeService> _logger;
         private readonly TradingReadinessConfiguration _config;
         private readonly HttpClient _httpClient;
@@ -361,7 +364,7 @@ namespace BotCore.Services
                     new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", jwt);
                 
                 // Make API call
-                var response = await _httpClient.PostAsJsonAsync("https://api.topstepx.com/api/History/retrieveBars", requestBody).ConfigureAwait(false);
+                var response = await _httpClient.PostAsJsonAsync(TopstepXHistoryApiUrl, requestBody).ConfigureAwait(false);
                 
                 if (!response.IsSuccessStatusCode)
                 {

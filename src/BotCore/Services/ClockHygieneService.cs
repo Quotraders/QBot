@@ -181,10 +181,12 @@ namespace TradingBot.BotCore.Services
     public static class ClockHygieneExtensions
     {
         /// <summary>
-        /// BANNED: This property should never be accessed in production code
-        /// Use ClockHygieneService.UtcNow instead
+        /// PERMANENTLY BANNED: This property should never be accessed in production code.
+        /// Use ClockHygieneService.UtcNow instead.
+        /// NOTE: This [Obsolete] attribute is a PERMANENT compile-time guard, not temporary deprecation.
+        /// It prevents accidental use of DateTime.Now which causes timezone bugs in trading systems.
         /// </summary>
-        [Obsolete("DateTime.Now is banned in production code. Use ClockHygieneService.UtcNow instead.", true)]
+        [Obsolete("DateTime.Now is banned in production code. Use ClockHygieneService.UtcNow instead.", error: true)]
         public static DateTime LocalNow => throw new InvalidOperationException("DateTime.Now is banned in production code. Use ClockHygieneService.UtcNow instead.");
 
         /// <summary>

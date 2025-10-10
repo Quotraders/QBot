@@ -1319,9 +1319,6 @@ Please check the configuration and ensure all required services are registered.
         services.AddHostedService(provider => provider.GetRequiredService<DecisionServiceLauncher>());
         services.AddHostedService(provider => provider.GetRequiredService<DecisionServiceIntegration>());
         
-        // Register feature demonstration service
-        services.AddHostedService<FeatureDemonstrationService>();
-        
         // ================================================================================
         // 🔧 MICROSTRUCTURE CALIBRATION SERVICE (ES and NQ only)
         // ================================================================================

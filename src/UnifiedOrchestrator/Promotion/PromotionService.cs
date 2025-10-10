@@ -550,11 +550,21 @@ internal class PromotionService : IPromotionService
             decision.ValidationErrors.Add("Challenger artifact failed schema validation");
         }
 
-        // Check resource requirements
-        decision.HasSufficientMemory = true; // Mock check
+        // Check resource requirements - REAL memory validation
+        var memoryInfo = GC.GetGCMemoryInfo();
+        var availableMemoryBytes = memoryInfo.TotalAvailableMemoryBytes;
+        var availableMemoryMB = availableMemoryBytes / (1024 * 1024);
+        
+        // Estimate model memory requirement (typical ONNX model: 50-200MB, allow 2x overhead)
+        const long estimatedModelMemoryMB = 200;
+        const long requiredMemoryOverheadMB = 300; // Extra buffer for inference + data
+        const long totalRequiredMemoryMB = estimatedModelMemoryMB + requiredMemoryOverheadMB;
+        
+        decision.HasSufficientMemory = availableMemoryMB > totalRequiredMemoryMB;
+        
         if (!decision.HasSufficientMemory)
         {
-            decision.ValidationErrors.Add("Insufficient memory for challenger model");
+            decision.ValidationErrors.Add($"Insufficient memory for challenger model. Available: {availableMemoryMB}MB, Required: {totalRequiredMemoryMB}MB");
         }
     }
 
