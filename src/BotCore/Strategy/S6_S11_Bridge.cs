@@ -501,8 +501,8 @@ namespace BotCore.Strategy
 
                 // Retrieve positions through production service
                 var positions = await _orderService.GetPositionsAsync().ConfigureAwait(false);
-                // Note: Cannot use List.Find on IReadOnlyList - FirstOrDefault is appropriate here
-                var position = positions.FirstOrDefault(p => p.Symbol == instrument);
+                // Use Find for better performance on List<T>
+                var position = positions.Find(p => p.Symbol == instrument);
 
                 if (position != null)
                 {

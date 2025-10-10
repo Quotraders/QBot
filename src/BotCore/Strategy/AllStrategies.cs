@@ -201,11 +201,6 @@ namespace BotCore.Strategy
             
             // Warm-up disabled: always allow indicator use immediately
 
-            // Dispatch to the specific strategy function based on def.Name (S1..S14)
-            var env = new Env { atr = bars.Count > 0 ? (decimal?)Math.Abs(bars[^1].High - bars[^1].Low) : null, volz = VolZ(bars) };
-            var levels = new Levels();
-            RiskEngine? riskEngine = null;
-            var disposeRiskEngine = false;
             // Check early exit conditions before creating RiskEngine
             if (!def.Enabled) return [];
             
@@ -220,18 +215,32 @@ namespace BotCore.Strategy
             if (!map.TryGetValue(def.Name, out var fn)) return [];
             if (!StrategyGates.PassesS7Gate(s7Service, def.Name)) return [];
 
-            try
+            // Dispatch to the specific strategy function based on def.Name (S1..S14)
+            var env = new Env { atr = bars.Count > 0 ? (decimal?)Math.Abs(bars[^1].High - bars[^1].Low) : null, volz = VolZ(bars) };
+            var levels = new Levels();
+            
+            // Use existing RiskEngine or create new one with proper disposal
+            var riskEngine = risk as RiskEngine;
+            if (riskEngine != null)
             {
-                // Create RiskEngine inside try block for proper dispose on all paths
-                riskEngine = risk as RiskEngine;
-                if (riskEngine == null)
-                {
-                    riskEngine = new RiskEngine();
-                    disposeRiskEngine = true;
-                }
-
+                // Use existing RiskEngine without disposal
                 var candidates = fn(symbol, env, levels, bars, riskEngine);
+                return ProcessCandidatesToSignals(candidates, def, cfg, snap, bars);
+            }
+            else
+            {
+                // Create and dispose new RiskEngine
+                using var localRiskEngine = new RiskEngine();
+                var candidates = fn(symbol, env, levels, bars, localRiskEngine);
+                return ProcessCandidatesToSignals(candidates, def, cfg, snap, bars);
+            }
+        }
 
+        // Helper method to process candidates into signals
+        private static List<Signal> ProcessCandidatesToSignals(
+            IReadOnlyList<Candidate> candidates, StrategyDef def, TradingProfileConfig cfg, 
+            BotCore.Models.MarketSnapshot snap, IList<Bar> bars)
+        {
             // Family weighting
             var family = def.Family ?? "breakout";
             var famW = StrategyGates.ScoreWeight(cfg, snap, family);
@@ -301,14 +310,6 @@ namespace BotCore.Strategy
                 });
             }
             return signals;
-            }
-            finally
-            {
-                if (disposeRiskEngine && riskEngine != null)
-                {
-                    riskEngine.Dispose();
-                }
-            }
         }
 
         // Deterministic combined candidate flow (no forced trade); config-aware with defs list
