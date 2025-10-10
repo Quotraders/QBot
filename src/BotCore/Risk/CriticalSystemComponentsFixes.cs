@@ -14,7 +14,7 @@ namespace BotCore.Risk
     /// <summary>
     /// Complete infinite loop fixes with cancellation token support
     /// </summary>
-    public class CriticalSystemComponentsFixes : BackgroundService
+    public sealed class CriticalSystemComponentsFixes : BackgroundService
     {
         private readonly ILogger<CriticalSystemComponentsFixes> _logger;
         private readonly CancellationTokenSource _cancellationTokenSource = new();
