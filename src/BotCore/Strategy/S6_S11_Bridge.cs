@@ -21,8 +21,102 @@ namespace BotCore.Strategy
     /// Production-ready bridge router implementing full-stack IOrderRouter interface
     /// with complete TopstepX SDK integration, health checks, and audit trails
     /// </summary>
-    public class BridgeOrderRouter : TopstepX.S6.IOrderRouter, TopstepX.S11.IOrderRouter, IDisposable
-    {        
+    public partial class BridgeOrderRouter : TopstepX.S6.IOrderRouter, TopstepX.S11.IOrderRouter, IDisposable
+    {
+        // High-performance logging using LoggerMessage pattern
+        [LoggerMessage(Level = LogLevel.Error, Message = "PlaceMarket timed out after 30 seconds for {Instrument} {Side} {Qty}")]
+        private static partial void LogPlaceMarketTimeout(ILogger logger, object instrument, object side, int qty);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "PlaceMarket cancelled for {Instrument} {Side} {Qty}")]
+        private static partial void LogPlaceMarketCancelled(ILogger logger, Exception ex, object instrument, object side, int qty);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "GetPosition timed out after 10 seconds for {Instrument}")]
+        private static partial void LogGetPositionTimeout(ILogger logger, object instrument);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "GetPosition cancelled for {Instrument}")]
+        private static partial void LogGetPositionCancelled(ILogger logger, Exception ex, object instrument);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "[S6S11_BRIDGE] Placing real market order via TopstepX SDK: {Instrument} {Side} x{Qty} ConfigSnapshot.Id={ConfigSnapshotId}")]
+        private static partial void LogPlacingMarketOrder(ILogger logger, string instrument, string side, int qty, string configSnapshotId);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "[S6S11_BRIDGE] ✅ Order submitted via SDK: OrderId={OrderId} ConfigSnapshot.Id={ConfigSnapshotId} Instrument={Instrument}")]
+        private static partial void LogOrderSubmitted(ILogger logger, string orderId, string configSnapshotId, string instrument);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[S6S11_BRIDGE] ❌ Order placement failed: {Instrument} {Side} x{Qty} ConfigSnapshot.Id={ConfigSnapshotId}")]
+        private static partial void LogOrderPlacementFailed(ILogger logger, Exception ex, string instrument, string side, int qty, string configSnapshotId);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "ModifyStop timed out after 15 seconds for position {PositionId}")]
+        private static partial void LogModifyStopTimeout(ILogger logger, string positionId);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "ModifyStop cancelled for position {PositionId}")]
+        private static partial void LogModifyStopCancelled(ILogger logger, Exception ex, string positionId);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "[S6S11_BRIDGE] Modifying stop order via SDK: PositionId={PositionId} StopPrice={StopPrice:F2} ConfigSnapshot.Id={ConfigSnapshotId}")]
+        private static partial void LogModifyingStopOrder(ILogger logger, string positionId, decimal stopPrice, string configSnapshotId);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "[S6S11_BRIDGE] ✅ Stop order modification completed: PositionId={PositionId} ConfigSnapshot.Id={ConfigSnapshotId}")]
+        private static partial void LogStopModificationCompleted(ILogger logger, string positionId, string configSnapshotId);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[S6S11_BRIDGE] ❌ Stop modification failed: PositionId={PositionId} ConfigSnapshot.Id={ConfigSnapshotId}")]
+        private static partial void LogStopModificationFailed(ILogger logger, Exception ex, string positionId, string configSnapshotId);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "ClosePosition timed out after 15 seconds for position {PositionId}")]
+        private static partial void LogClosePositionTimeout(ILogger logger, string positionId);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "ClosePosition cancelled for position {PositionId}")]
+        private static partial void LogClosePositionCancelled(ILogger logger, Exception ex, string positionId);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "[S6S11_BRIDGE] Closing position via SDK: PositionId={PositionId} ConfigSnapshot.Id={ConfigSnapshotId}")]
+        private static partial void LogClosingPosition(ILogger logger, string positionId, string configSnapshotId);
+
+        [LoggerMessage(Level = LogLevel.Information, Message = "[S6S11_BRIDGE] ✅ Position closed successfully: PositionId={PositionId} ConfigSnapshot.Id={ConfigSnapshotId}")]
+        private static partial void LogPositionClosedSuccessfully(ILogger logger, string positionId, string configSnapshotId);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[S6S11_BRIDGE] ❌ Position closure failed: PositionId={PositionId} ConfigSnapshot.Id={ConfigSnapshotId}")]
+        private static partial void LogPositionClosureFailed(ILogger logger, Exception ex, string positionId, string configSnapshotId);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "GetPositions timed out after 10 seconds")]
+        private static partial void LogGetPositionsTimeout(ILogger logger);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "GetPositions cancelled")]
+        private static partial void LogGetPositionsCancelled(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Debug, Message = "[S6S11_BRIDGE] Retrieving positions via SDK: ConfigSnapshot.Id={ConfigSnapshotId}")]
+        private static partial void LogRetrievingPositions(ILogger logger, string configSnapshotId);
+
+        [LoggerMessage(Level = LogLevel.Debug, Message = "[S6S11_BRIDGE] Retrieved {PositionCount} positions: ConfigSnapshot.Id={ConfigSnapshotId}")]
+        private static partial void LogRetrievedPositions(ILogger logger, int positionCount, string configSnapshotId);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[S6S11_BRIDGE] ❌ Position retrieval failed: ConfigSnapshot.Id={ConfigSnapshotId}")]
+        private static partial void LogPositionRetrievalFailed(ILogger logger, Exception ex, string configSnapshotId);
+
+        [LoggerMessage(Level = LogLevel.Debug, Message = "[S6S11_BRIDGE] Retrieving position for {Instrument}: ConfigSnapshot.Id={ConfigSnapshotId}")]
+        private static partial void LogRetrievingPosition(ILogger logger, string instrument, string configSnapshotId);
+
+        [LoggerMessage(Level = LogLevel.Debug, Message = "[S6S11_BRIDGE] Found position for {Instrument}: {Side} x{Qty} ConfigSnapshot.Id={ConfigSnapshotId}")]
+        private static partial void LogFoundPosition(ILogger logger, string instrument, string side, int qty, string configSnapshotId);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[S6S11_BRIDGE] ❌ Position retrieval failed for {Instrument}: ConfigSnapshot.Id={ConfigSnapshotId}")]
+        private static partial void LogPositionRetrievalFailedForInstrument(ILogger logger, Exception ex, string instrument, string configSnapshotId);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "[S6S11_BRIDGE] Risk limit violation: Invalid quantity {Qty} for {Instrument}")]
+        private static partial void LogRiskLimitViolationInvalidQuantity(ILogger logger, int qty, string instrument);
+
+        [LoggerMessage(Level = LogLevel.Warning, Message = "[S6S11_BRIDGE] Risk limit violation: Invalid parameters")]
+        private static partial void LogRiskLimitViolationInvalidParameters(ILogger logger);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[S6S11_BRIDGE] Invalid risk validation arguments")]
+        private static partial void LogInvalidRiskValidationArguments(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[S6S11_BRIDGE] Risk validation operation failed")]
+        private static partial void LogRiskValidationOperationFailed(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[S6S11_BRIDGE] Risk validation timeout")]
+        private static partial void LogRiskValidationTimeout(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Debug, Message = "[S6S11_BRIDGE] Position cache updated: {OrderId} ConfigSnapshot.Id={ConfigSnapshotId}")]
+        private static partial void LogPositionCacheUpdated(ILogger logger, string orderId, string configSnapshotId);
+        
         // Instrument specifications constants (using decimal for precision in price calculations)
         private const decimal EsTickSize = 0.25m;               // ES futures tick size
         private const decimal NqTickSize = 0.25m;               // NQ futures tick size
@@ -76,14 +170,14 @@ namespace BotCore.Strategy
             {
                 if (!task.Wait(TimeSpan.FromSeconds(30)))
                 {
-                    _logger.LogError("PlaceMarket timed out after 30 seconds for {Instrument} {Side} {Qty}", instr, side, qty);
+                    LogPlaceMarketTimeout(_logger, instr, side, qty);
                     throw new TimeoutException($"Order placement timed out for {instr}");
                 }
                 return task.Result;
             }
             catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogError(ex, "PlaceMarket cancelled for {Instrument} {Side} {Qty}", instr, side, qty);
+                LogPlaceMarketCancelled(_logger, ex, instr, side, qty);
                 throw new TimeoutException($"Order placement cancelled for {instr}");
             }
         }
@@ -105,7 +199,7 @@ namespace BotCore.Strategy
             {
                 if (!task.Wait(TimeSpan.FromSeconds(10)))
                 {
-                    _logger.LogWarning("GetPosition timed out after 10 seconds for {Instrument}", instr);
+                    LogGetPositionTimeout(_logger, instr);
                     return (TopstepX.S6.Side.Flat, 0, 0, DateTimeOffset.MinValue, string.Empty);
                 }
                 var position = task.Result;
@@ -114,7 +208,7 @@ namespace BotCore.Strategy
             }
             catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogWarning(ex, "GetPosition cancelled for {Instrument}", instr);
+                LogGetPositionCancelled(_logger, ex, instr);
                 return (TopstepX.S6.Side.Flat, 0, 0, DateTimeOffset.MinValue, string.Empty);
             }
         }
@@ -152,14 +246,14 @@ namespace BotCore.Strategy
             {
                 if (!task.Wait(TimeSpan.FromSeconds(30)))
                 {
-                    _logger.LogError("PlaceMarket timed out after 30 seconds for {Instrument} {Side} {Qty}", instr, side, qty);
+                    LogPlaceMarketTimeout(_logger, instr, side, qty);
                     throw new TimeoutException($"Order placement timed out for {instr}");
                 }
                 return task.Result;
             }
             catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogError(ex, "PlaceMarket cancelled for {Instrument} {Side} {Qty}", instr, side, qty);
+                LogPlaceMarketCancelled(_logger, ex, instr, side, qty);
                 throw new TimeoutException($"Order placement cancelled for {instr}");
             }
         }
@@ -181,7 +275,7 @@ namespace BotCore.Strategy
             {
                 if (!task.Wait(TimeSpan.FromSeconds(10)))
                 {
-                    _logger.LogWarning("GetPosition timed out after 10 seconds for {Instrument}", instr);
+                    LogGetPositionTimeout(_logger, instr);
                     return (TopstepX.S11.Side.Flat, 0, 0, DateTimeOffset.MinValue, string.Empty);
                 }
                 var position = task.Result;
@@ -190,7 +284,7 @@ namespace BotCore.Strategy
             }
             catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogWarning(ex, "GetPosition cancelled for {Instrument}", instr);
+                LogGetPositionCancelled(_logger, ex, instr);
                 return (TopstepX.S11.Side.Flat, 0, 0, DateTimeOffset.MinValue, string.Empty);
             }
         }
@@ -286,15 +380,13 @@ namespace BotCore.Strategy
                 // Generate production order ID with ConfigSnapshot.Id tagging
                 var enhancedTag = $"{tag}|ConfigSnapshot.Id={_configSnapshotId}|Strategy=S6S11Bridge";
                 
-                _logger.LogInformation("[S6S11_BRIDGE] Placing real market order via TopstepX SDK: {Instrument} {Side} x{Qty} ConfigSnapshot.Id={ConfigSnapshotId}", 
-                    instrument, side, qty, _configSnapshotId);
+                LogPlacingMarketOrder(_logger, instrument, side, qty, _configSnapshotId);
 
                 // Place order through production order service
                 var orderId = await _orderService.PlaceMarketOrderAsync(instrument, side, qty, enhancedTag).ConfigureAwait(false);
 
                 // Audit logging with ConfigSnapshot.Id
-                _logger.LogInformation("[S6S11_BRIDGE] ✅ Order submitted via SDK: OrderId={OrderId} ConfigSnapshot.Id={ConfigSnapshotId} Instrument={Instrument}", 
-                    orderId, _configSnapshotId, instrument);
+                LogOrderSubmitted(_logger, orderId, _configSnapshotId, instrument);
 
                 // Update position cache for tracking
                 await UpdatePositionCacheAsync(orderId, instrument, side, qty).ConfigureAwait(false);
@@ -303,8 +395,7 @@ namespace BotCore.Strategy
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[S6S11_BRIDGE] ❌ Order placement failed: {Instrument} {Side} x{Qty} ConfigSnapshot.Id={ConfigSnapshotId}", 
-                    instrument, side, qty, _configSnapshotId);
+                LogOrderPlacementFailed(_logger, ex, instrument, side, qty, _configSnapshotId);
                 
                 // Re-throw with production error handling
                 throw new InvalidOperationException("Order placement failed", ex);
@@ -328,13 +419,13 @@ namespace BotCore.Strategy
             {
                 if (!task.Wait(TimeSpan.FromSeconds(15)))
                 {
-                    _logger.LogError("ModifyStop timed out after 15 seconds for position {PositionId}", positionId);
+                    LogModifyStopTimeout(_logger, positionId);
                     throw new TimeoutException($"Stop modification timed out for position {positionId}");
                 }
             }
             catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogError(ex, "ModifyStop cancelled for position {PositionId}", positionId);
+                LogModifyStopCancelled(_logger, ex, positionId);
                 throw new TimeoutException($"Stop modification cancelled for position {positionId}");
             }
         }
@@ -343,8 +434,7 @@ namespace BotCore.Strategy
         {
             try
             {
-                _logger.LogInformation("[S6S11_BRIDGE] Modifying stop order via SDK: PositionId={PositionId} StopPrice={StopPrice:F2} ConfigSnapshot.Id={ConfigSnapshotId}", 
-                    positionId, stopPrice, _configSnapshotId);
+                LogModifyingStopOrder(_logger, positionId, stopPrice, _configSnapshotId);
 
                 // Validate position exists
                 var position = await _orderService.GetPositionAsync(positionId).ConfigureAwait(false);
@@ -360,13 +450,11 @@ namespace BotCore.Strategy
                     throw new InvalidOperationException($"Stop modification failed for position {positionId}");
                 }
 
-                _logger.LogInformation("[S6S11_BRIDGE] ✅ Stop order modification completed: PositionId={PositionId} ConfigSnapshot.Id={ConfigSnapshotId}", 
-                    positionId, _configSnapshotId);
+                LogStopModificationCompleted(_logger, positionId, _configSnapshotId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[S6S11_BRIDGE] ❌ Stop modification failed: PositionId={PositionId} ConfigSnapshot.Id={ConfigSnapshotId}", 
-                    positionId, _configSnapshotId);
+                LogStopModificationFailed(_logger, ex, positionId, _configSnapshotId);
                 throw new InvalidOperationException($"Failed to modify stop for position {positionId} in config snapshot {_configSnapshotId}", ex);
             }
         }
@@ -388,13 +476,13 @@ namespace BotCore.Strategy
             {
                 if (!task.Wait(TimeSpan.FromSeconds(15)))
                 {
-                    _logger.LogError("ClosePosition timed out after 15 seconds for position {PositionId}", positionId);
+                    LogClosePositionTimeout(_logger, positionId);
                     throw new TimeoutException($"Position close timed out for position {positionId}");
                 }
             }
             catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogError(ex, "ClosePosition cancelled for position {PositionId}", positionId);
+                LogClosePositionCancelled(_logger, ex, positionId);
                 throw new TimeoutException($"Position close cancelled for position {positionId}");
             }
         }
@@ -403,8 +491,7 @@ namespace BotCore.Strategy
         {
             try
             {
-                _logger.LogInformation("[S6S11_BRIDGE] Closing position via SDK: PositionId={PositionId} ConfigSnapshot.Id={ConfigSnapshotId}", 
-                    positionId, _configSnapshotId);
+                LogClosingPosition(_logger, positionId, _configSnapshotId);
 
                 // Execute position closure through production service
                 var closeResult = await _orderService.ClosePositionAsync(positionId).ConfigureAwait(false);
@@ -424,13 +511,11 @@ namespace BotCore.Strategy
                     _positionCacheLock.Release();
                 }
 
-                _logger.LogInformation("[S6S11_BRIDGE] ✅ Position closed successfully: PositionId={PositionId} ConfigSnapshot.Id={ConfigSnapshotId}", 
-                    positionId, _configSnapshotId);
+                LogPositionClosedSuccessfully(_logger, positionId, _configSnapshotId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[S6S11_BRIDGE] ❌ Position closure failed: PositionId={PositionId} ConfigSnapshot.Id={ConfigSnapshotId}", 
-                    positionId, _configSnapshotId);
+                LogPositionClosureFailed(_logger, ex, positionId, _configSnapshotId);
                 throw new InvalidOperationException($"Failed to close position {positionId} in config snapshot {_configSnapshotId}", ex);
             }
         }
@@ -452,14 +537,14 @@ namespace BotCore.Strategy
             {
                 if (!task.Wait(TimeSpan.FromSeconds(10)))
                 {
-                    _logger.LogWarning("GetPositions timed out after 10 seconds");
+                    LogGetPositionsTimeout(_logger);
                     return new List<(object Side, int Qty, double AvgPx, DateTime OpenedAt)>();
                 }
                 return task.Result;
             }
             catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
             {
-                _logger.LogWarning(ex, "GetPositions cancelled");
+                LogGetPositionsCancelled(_logger, ex);
                 return new List<(object Side, int Qty, double AvgPx, DateTime OpenedAt)>();
             }
         }
@@ -468,7 +553,7 @@ namespace BotCore.Strategy
         {
             try
             {
-                _logger.LogDebug("[S6S11_BRIDGE] Retrieving positions via SDK: ConfigSnapshot.Id={ConfigSnapshotId}", _configSnapshotId);
+                LogRetrievingPositions(_logger, _configSnapshotId);
 
                 // Retrieve positions through production service
                 var positions = await _orderService.GetPositionsAsync().ConfigureAwait(false);
@@ -480,14 +565,13 @@ namespace BotCore.Strategy
                     OpenedAt: p.OpenTime.DateTime
                 )).ToList();
 
-                _logger.LogDebug("[S6S11_BRIDGE] Retrieved {PositionCount} positions: ConfigSnapshot.Id={ConfigSnapshotId}", 
-                    result.Count, _configSnapshotId);
+                LogRetrievedPositions(_logger, result.Count, _configSnapshotId);
 
                 return result;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[S6S11_BRIDGE] ❌ Position retrieval failed: ConfigSnapshot.Id={ConfigSnapshotId}", _configSnapshotId);
+                LogPositionRetrievalFailed(_logger, ex, _configSnapshotId);
                 throw new InvalidOperationException($"Failed to retrieve all positions in config snapshot {_configSnapshotId}", ex);
             }
         }
@@ -496,8 +580,7 @@ namespace BotCore.Strategy
         {
             try
             {
-                _logger.LogDebug("[S6S11_BRIDGE] Retrieving position for {Instrument}: ConfigSnapshot.Id={ConfigSnapshotId}", 
-                    instrument, _configSnapshotId);
+                LogRetrievingPosition(_logger, instrument, _configSnapshotId);
 
                 // Retrieve positions through production service
                 var positions = await _orderService.GetPositionsAsync().ConfigureAwait(false);
@@ -506,16 +589,14 @@ namespace BotCore.Strategy
 
                 if (position != null)
                 {
-                    _logger.LogDebug("[S6S11_BRIDGE] Found position for {Instrument}: {Side} x{Qty} ConfigSnapshot.Id={ConfigSnapshotId}", 
-                        instrument, position.Side, position.Quantity, _configSnapshotId);
+                    LogFoundPosition(_logger, instrument, position.Side, position.Quantity, _configSnapshotId);
                 }
 
                 return position;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[S6S11_BRIDGE] ❌ Position retrieval failed for {Instrument}: ConfigSnapshot.Id={ConfigSnapshotId}", 
-                    instrument, _configSnapshotId);
+                LogPositionRetrievalFailedForInstrument(_logger, ex, instrument, _configSnapshotId);
                 throw new InvalidOperationException($"Failed to retrieve position for instrument {instrument} in config snapshot {_configSnapshotId}", ex);
             }
         }
@@ -571,13 +652,13 @@ namespace BotCore.Strategy
                 // Production risk validation implementation
                 if (qty <= 0 || qty > MaxQuantityLimit)
                 {
-                    _logger.LogWarning("[S6S11_BRIDGE] Risk limit violation: Invalid quantity {Qty} for {Instrument}", qty, instrument);
+                    LogRiskLimitViolationInvalidQuantity(_logger, qty, instrument);
                     return Task.FromResult(false);
                 }
 
                 if (string.IsNullOrWhiteSpace(instrument) || string.IsNullOrWhiteSpace(side))
                 {
-                    _logger.LogWarning("[S6S11_BRIDGE] Risk limit violation: Invalid parameters");
+                    LogRiskLimitViolationInvalidParameters(_logger);
                     return Task.FromResult(false);
                 }
 
@@ -591,17 +672,17 @@ namespace BotCore.Strategy
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "[S6S11_BRIDGE] Invalid risk validation arguments");
+                LogInvalidRiskValidationArguments(_logger, ex);
                 return Task.FromResult(false);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "[S6S11_BRIDGE] Risk validation operation failed");
+                LogRiskValidationOperationFailed(_logger, ex);
                 return Task.FromResult(false);
             }
             catch (TimeoutException ex)
             {
-                _logger.LogError(ex, "[S6S11_BRIDGE] Risk validation timeout");
+                LogRiskValidationTimeout(_logger, ex);
                 return Task.FromResult(false);
             }
         }
@@ -624,8 +705,7 @@ namespace BotCore.Strategy
 
                 _positionCache[orderId] = position;
                 
-                _logger.LogDebug("[S6S11_BRIDGE] Position cache updated: {OrderId} ConfigSnapshot.Id={ConfigSnapshotId}", 
-                    orderId, _configSnapshotId);
+                LogPositionCacheUpdated(_logger, orderId, _configSnapshotId);
             }
             finally
             {
@@ -661,8 +741,21 @@ namespace BotCore.Strategy
     /// Static bridge class to provide S6 and S11 full-stack strategy integration
     /// Production-ready with complete TopstepX SDK integration
     /// </summary>
-    public static class S6S11Bridge
+    public static partial class S6S11Bridge
     {
+        // High-performance logging using LoggerMessage pattern
+        [LoggerMessage(Level = LogLevel.Error, Message = "[S6Bridge] Invalid operation in strategy candidate generation")]
+        private static partial void LogS6InvalidOperation(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[S6Bridge] Invalid argument in strategy candidate generation")]
+        private static partial void LogS6InvalidArgument(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[S11Bridge] Invalid operation in strategy candidate generation")]
+        private static partial void LogS11InvalidOperation(ILogger logger, Exception ex);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[S11Bridge] Invalid argument in strategy candidate generation")]
+        private static partial void LogS11InvalidArgument(ILogger logger, Exception ex);
+        
         private static TopstepX.S6.S6Strategy? _s6Strategy;
         private static TopstepX.S11.S11Strategy? _s11Strategy;
         private static BridgeOrderRouter? _router;
@@ -740,7 +833,7 @@ namespace BotCore.Strategy
                 var timeOfDay = etTime.TimeOfDay;
                 
                 if (timeOfDay >= TimeSpan.Parse("09:28", System.Globalization.CultureInfo.InvariantCulture) && timeOfDay <= TimeSpan.Parse("10:00", System.Globalization.CultureInfo.InvariantCulture) && 
-                    bars?.Count > 0 && currentPosition.qty == 0) // Only if no existing position
+                    bars.Count > 0 && currentPosition.qty == 0) // Only if no existing position
                 {
                     // Use loaded parameters with fallback to RuntimeConfig
                     var minAtr = S6RuntimeConfig.MinAtr;
@@ -778,11 +871,11 @@ namespace BotCore.Strategy
             }
             catch (InvalidOperationException ex)
             {
-                logger?.LogError(ex, "[S6Bridge] Invalid operation in strategy candidate generation");
+                LogS6InvalidOperation(logger, ex);
             }
             catch (ArgumentException ex)
             {
-                logger?.LogError(ex, "[S6Bridge] Invalid argument in strategy candidate generation");
+                LogS6InvalidArgument(logger, ex);
             }
 
             return candidates;
@@ -850,7 +943,7 @@ namespace BotCore.Strategy
                 var timeOfDay = etTime.TimeOfDay;
                 
                 if (timeOfDay >= TimeSpan.Parse("13:30", System.Globalization.CultureInfo.InvariantCulture) && timeOfDay <= TimeSpan.Parse("15:30", System.Globalization.CultureInfo.InvariantCulture) && 
-                    bars?.Count > 0 && currentPosition.qty == 0) // Only if no existing position
+                    bars.Count > 0 && currentPosition.qty == 0) // Only if no existing position
                 {
                     // Use loaded parameters with fallback to RuntimeConfig
                     var minAtr = S11RuntimeConfig.MinAtr;
@@ -888,11 +981,11 @@ namespace BotCore.Strategy
             }
             catch (InvalidOperationException ex)
             {
-                logger?.LogError(ex, "[S11Bridge] Invalid operation in strategy candidate generation");
+                LogS11InvalidOperation(logger, ex);
             }
             catch (ArgumentException ex)
             {
-                logger?.LogError(ex, "[S11Bridge] Invalid argument in strategy candidate generation");
+                LogS11InvalidArgument(logger, ex);
             }
 
             return candidates;
