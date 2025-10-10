@@ -488,6 +488,94 @@ namespace BotCore.Brain
             LoggerMessage.Define(LogLevel.Error, new EventId(49, nameof(LogCrossLearningArgumentException)),
                 "❌ [CROSS-LEARNING] Invalid argument updating all strategies");
 
+        // Snapshot logging delegates (EventId 50-52)
+        private static readonly Action<ILogger, string, string, string, Exception?> LogSnapshotCaptured =
+            LoggerMessage.Define<string, string, string>(LogLevel.Trace, new EventId(50, nameof(LogSnapshotCaptured)),
+                "📸 [SNAPSHOT] Captured market snapshot for {Symbol}: {Strategy} {Direction}");
+
+        // Parameter tracking logging delegates (EventId 53-56)
+        private static readonly Action<ILogger, string, double, double, Exception?> LogParamTracked =
+            LoggerMessage.Define<string, double, double>(LogLevel.Trace, new EventId(53, nameof(LogParamTracked)),
+                "📊 [PARAM-TRACKING] Tracked parameter update for {Strategy}: old={OldReward:F3}, new={NewReward:F3}");
+
+        private static readonly Action<ILogger, Exception?> LogParamTrackInvalidOperation =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(54, nameof(LogParamTrackInvalidOperation)),
+                "⚠️ [PARAM-TRACKING] Failed to track parameter change - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogParamTrackIoError =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(55, nameof(LogParamTrackIoError)),
+                "⚠️ [PARAM-TRACKING] Failed to track parameter change - I/O error");
+
+        private static readonly Action<ILogger, Exception?> LogParamTrackAccessDenied =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(56, nameof(LogParamTrackAccessDenied)),
+                "⚠️ [PARAM-TRACKING] Failed to track parameter change - access denied");
+
+        // Risk commentary logging delegates (EventId 57-62)
+        private static readonly Action<ILogger, Exception?> LogRiskCommentaryStarted =
+            LoggerMessage.Define(LogLevel.Trace, new EventId(57, nameof(LogRiskCommentaryStarted)),
+                "🚀 [RISK-COMMENTARY] Started background analysis (async mode)");
+
+        private static readonly Action<ILogger, Exception?> LogRiskCommentaryMissingData =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(58, nameof(LogRiskCommentaryMissingData)),
+                "⚠️ [RISK-COMMENTARY] Skipping - missing price or ATR data");
+
+        private static readonly Action<ILogger, Exception?> LogRiskCommentaryInvalidOperation =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(59, nameof(LogRiskCommentaryInvalidOperation)),
+                "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogRiskCommentaryHttpError =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(60, nameof(LogRiskCommentaryHttpError)),
+                "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary - HTTP request failed");
+
+        private static readonly Action<ILogger, Exception?> LogRiskCommentaryTaskCancelled =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(61, nameof(LogRiskCommentaryTaskCancelled)),
+                "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary - task cancelled");
+
+        // Historical pattern logging delegates (EventId 63-65)
+        private static readonly Action<ILogger, Exception?> LogHistoricalPatternInvalidOperation =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(63, nameof(LogHistoricalPatternInvalidOperation)),
+                "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogHistoricalPatternInvalidArgument =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(64, nameof(LogHistoricalPatternInvalidArgument)),
+                "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions - invalid argument");
+
+        private static readonly Action<ILogger, Exception?> LogHistoricalPatternKeyNotFound =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(65, nameof(LogHistoricalPatternKeyNotFound)),
+                "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions - key not found");
+
+        // Learning commentary logging delegates (EventId 66-69)
+        private static readonly Action<ILogger, Exception?> LogLearningCommentaryStarted =
+            LoggerMessage.Define(LogLevel.Trace, new EventId(66, nameof(LogLearningCommentaryStarted)),
+                "🚀 [LEARNING-COMMENTARY] Started background explanation (async mode)");
+
+        private static readonly Action<ILogger, Exception?> LogLearningCommentaryInvalidOperation =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(67, nameof(LogLearningCommentaryInvalidOperation)),
+                "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary - invalid operation");
+
+        private static readonly Action<ILogger, Exception?> LogLearningCommentaryHttpError =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(68, nameof(LogLearningCommentaryHttpError)),
+                "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary - HTTP request failed");
+
+        private static readonly Action<ILogger, Exception?> LogLearningCommentaryTaskCancelled =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(69, nameof(LogLearningCommentaryTaskCancelled)),
+                "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary - task cancelled");
+
+        // TopStep compliance logging delegate (EventId 70)
+        private static readonly Action<ILogger, string, Exception?> LogTradingBlocked =
+            LoggerMessage.Define<string>(LogLevel.Warning, new EventId(70, nameof(LogTradingBlocked)),
+                "🛑 [TOPSTEP-COMPLIANCE] Trading blocked: {Reason}");
+
+        // Confidence threshold logging delegate (EventId 71)
+        private static readonly Action<ILogger, double, double, Exception?> LogConfidenceBelowThreshold =
+            LoggerMessage.Define<double, double>(LogLevel.Debug, new EventId(71, nameof(LogConfidenceBelowThreshold)),
+                "🎯 [CONFIDENCE] Below threshold {Threshold:P1}, confidence: {Confidence:P1}");
+
+        // CVaR-PPO action logging delegate (EventId 72)
+        private static readonly Action<ILogger, double, double, double, double, int, Exception?> LogCvarPpoAction =
+            LoggerMessage.Define<double, double, double, double, int>(LogLevel.Information, new EventId(72, nameof(LogCvarPpoAction)),
+                "🎯 [CVAR-PPO] Action={Action}, Prob={Prob:F3}, Value={Value:F3}, CVaR={CVaR:F3}, Contracts={Contracts}");
+
         public UnifiedTradingBrain(
             ILogger<UnifiedTradingBrain> logger,
             IMLMemoryManager memoryManager,
@@ -841,8 +929,7 @@ namespace BotCore.Brain
                             size: (int)decision.OptimalPositionMultiplier
                         );
                         _snapshotStore.StoreSnapshot(snapshot);
-                        _logger.LogTrace("📸 [SNAPSHOT] Captured market snapshot for {Symbol}: {Strategy} {Direction}", 
-                            symbol, decision.RecommendedStrategy, decision.PriceDirection);
+                        LogSnapshotCaptured(_logger, symbol, decision.RecommendedStrategy, decision.PriceDirection.ToString(), null);
                     }
                     catch (InvalidOperationException ex)
                     {
@@ -1043,20 +1130,19 @@ namespace BotCore.Brain
                                 outcomePnl: reward,
                                 wasCorrect: wasCorrect
                             );
-                            _logger.LogTrace("📊 [PARAM-TRACKING] Tracked parameter update for {Strategy}: old={OldReward:F3}, new={NewReward:F3}", 
-                                strategy, reward, crossLearningReward);
+                            LogParamTracked(_logger, strategy, (double)reward, (double)crossLearningReward, null);
                         }
                         catch (InvalidOperationException ex)
                         {
-                            _logger.LogWarning(ex, "⚠️ [PARAM-TRACKING] Failed to track parameter change - invalid operation");
+                            LogParamTrackInvalidOperation(_logger, ex);
                         }
                         catch (IOException ex)
                         {
-                            _logger.LogWarning(ex, "⚠️ [PARAM-TRACKING] Failed to track parameter change - I/O error");
+                            LogParamTrackIoError(_logger, ex);
                         }
                         catch (UnauthorizedAccessException ex)
                         {
-                            _logger.LogWarning(ex, "⚠️ [PARAM-TRACKING] Failed to track parameter change - access denied");
+                            LogParamTrackAccessDenied(_logger, ex);
                         }
                     }
                     
@@ -1172,7 +1258,7 @@ namespace BotCore.Brain
                             {
                                 // Fire-and-forget: Start analysis in background, continue trading immediately
                                 _riskCommentary.AnalyzeRiskFireAndForget(decision.Symbol, currentPrice, atr);
-                                _logger.LogTrace("🚀 [RISK-COMMENTARY] Started background analysis (async mode)");
+                                LogRiskCommentaryStarted(_logger, null);
                             }
                             else
                             {
@@ -1188,20 +1274,20 @@ namespace BotCore.Brain
                         }
                         else
                         {
-                            _logger.LogWarning("⚠️ [RISK-COMMENTARY] Skipping - missing price or ATR data");
+                            LogRiskCommentaryMissingData(_logger, null);
                         }
                     }
                     catch (InvalidOperationException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary - invalid operation");
+                        LogRiskCommentaryInvalidOperation(_logger, ex);
                     }
                     catch (HttpRequestException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary - HTTP request failed");
+                        LogRiskCommentaryHttpError(_logger, ex);
                     }
                     catch (TaskCanceledException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [RISK-COMMENTARY] Failed to generate risk commentary - task cancelled");
+                        LogRiskCommentaryTaskCancelled(_logger, ex);
                     }
                 }
                 
@@ -1296,15 +1382,15 @@ namespace BotCore.Brain
                     }
                     catch (InvalidOperationException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions - invalid operation");
+                        LogHistoricalPatternInvalidOperation(_logger, ex);
                     }
                     catch (ArgumentException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions - invalid argument");
+                        LogHistoricalPatternInvalidArgument(_logger, ex);
                     }
                     catch (KeyNotFoundException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [HISTORICAL-PATTERN] Failed to find similar conditions - key not found");
+                        LogHistoricalPatternKeyNotFound(_logger, ex);
                     }
                 }
                 
@@ -1393,7 +1479,7 @@ Current context: {currentContext}
                         {
                             // Fire-and-forget: Start explanation in background, continue immediately
                             _learningCommentary.ExplainRecentAdaptationsFireAndForget(lookbackMinutes);
-                            _logger.LogTrace("🚀 [LEARNING-COMMENTARY] Started background explanation (async mode)");
+                            LogLearningCommentaryStarted(_logger, null);
                         }
                         else
                         {
@@ -1408,15 +1494,15 @@ Current context: {currentContext}
                     }
                     catch (InvalidOperationException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary - invalid operation");
+                        LogLearningCommentaryInvalidOperation(_logger, ex);
                     }
                     catch (HttpRequestException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary - HTTP request failed");
+                        LogLearningCommentaryHttpError(_logger, ex);
                     }
                     catch (TaskCanceledException ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ [LEARNING-COMMENTARY] Failed to generate learning commentary - task cancelled");
+                        LogLearningCommentaryTaskCancelled(_logger, ex);
                     }
                 }
                 
@@ -1778,7 +1864,7 @@ Reason closed: {reason}
             var (canTrade, reason, _) = ShouldStopTrading();
             if (!canTrade)
             {
-                _logger.LogWarning("🛑 [TOPSTEP-COMPLIANCE] Trading blocked: {Reason}", reason);
+                LogTradingBlocked(_logger, reason, null);
                 return 0m; // No position if compliance violated
             }
 
@@ -1799,8 +1885,7 @@ Reason closed: {reason}
             var confidence = Math.Max(strategy.Confidence, prediction.Probability);
             if (confidence < (decimal)TopStepConfig.ConfidenceThreshold)
             {
-                _logger.LogDebug("🎯 [CONFIDENCE] Below threshold {Threshold:P1}, confidence: {Confidence:P1}", 
-                    TopStepConfig.ConfidenceThreshold, confidence);
+                LogConfidenceBelowThreshold(_logger, TopStepConfig.ConfidenceThreshold, (double)confidence, null);
                 return 0m; // No trade if confidence too low
             }
 
@@ -1877,8 +1962,8 @@ Reason closed: {reason}
                     
                     contracts = Math.Max(0, Math.Min(riskAdjustedContracts, maxContracts));
                     
-                    _logger.LogInformation("🎯 [CVAR-PPO] Action={Action}, Prob={Prob:F3}, Value={Value:F3}, CVaR={CVaR:F3}, Contracts={Contracts}", 
-                        actionResult.Action, actionResult.ActionProbability, actionResult.ValueEstimate, actionResult.CVaREstimate, contracts);
+                    LogCvarPpoAction(_logger, actionResult.Action, actionResult.ActionProbability, 
+                        actionResult.ValueEstimate, actionResult.CVaREstimate, contracts, null);
                 }
                 catch (InvalidOperationException ex)
                 {
