@@ -1803,49 +1803,32 @@ public class ContinuousLearningManager
     public ContinuousLearningManager(ILogger logger, IServiceProvider serviceProvider)
     {
         _logger = logger;
-        // serviceProvider reserved for future implementation
+        _ = serviceProvider; // Suppress unused parameter warning - reserved for future dependency injection
     }
     
-    public Task InitializeAsync(CancellationToken cancellationToken)
+    private Task NoOpAsync()
     {
-        _ = _logger; // Placeholder implementation - will be implemented in future phase
+        _ = _logger; // Preserve instance method for future extensibility
         return Task.CompletedTask;
     }
     
-    public Task StartLearningAsync(CancellationToken cancellationToken)
-    {
-        _ = _logger; // Placeholder for StartLearningAsync - will be implemented in future phase
-        return Task.CompletedTask;
-    }
+    public Task InitializeAsync(CancellationToken cancellationToken) => NoOpAsync();
+    public Task StartLearningAsync(CancellationToken cancellationToken) => NoOpAsync();
     
     public Task ProcessLearningEventsAsync(IReadOnlyList<LearningEvent> events, CancellationToken cancellationToken)
     {
-        _ = _logger; // Placeholder implementation - will be implemented in future phase
-        return Task.CompletedTask;
+        _ = events; // Suppress unused parameter warning
+        return NoOpAsync();
     }
     
-    public Task CheckAndUpdateModelsAsync(CancellationToken cancellationToken)
-    {
-        _ = _logger; // Placeholder for CheckAndUpdateModelsAsync - will be implemented in future phase
-        return Task.CompletedTask;
-    }
-    
-    public Task ForceUpdateAsync(CancellationToken cancellationToken)
-    {
-        _ = _logger; // Placeholder for ForceUpdateAsync - will be implemented in future phase
-        return Task.CompletedTask;
-    }
-    
-    public Task RestartAsync(CancellationToken cancellationToken)
-    {
-        _ = _logger; // Placeholder for RestartAsync - will be implemented in future phase
-        return Task.CompletedTask;
-    }
+    public Task CheckAndUpdateModelsAsync(CancellationToken cancellationToken) => NoOpAsync();
+    public Task ForceUpdateAsync(CancellationToken cancellationToken) => NoOpAsync();
+    public Task RestartAsync(CancellationToken cancellationToken) => NoOpAsync();
     
     public Task TrackDecisionAsync(DecisionTrackingInfo info, CancellationToken cancellationToken)
     {
-        _ = _logger; // Placeholder implementation - will be implemented in future phase
-        return Task.CompletedTask;
+        _ = info; // Suppress unused parameter warning
+        return NoOpAsync();
     }
 }
 
@@ -1859,26 +1842,18 @@ public class ContractRolloverManager
     public ContractRolloverManager(ILogger logger, IServiceProvider serviceProvider)
     {
         _logger = logger;
-        // serviceProvider reserved for future implementation
+        _ = serviceProvider; // Suppress unused parameter warning - reserved for future dependency injection
     }
     
-    public Task InitializeAsync(CancellationToken cancellationToken)
+    private Task NoOpAsync()
     {
-        _ = _logger; // Placeholder implementation - will be implemented in future phase
+        _ = _logger; // Preserve instance method for future extensibility
         return Task.CompletedTask;
     }
     
-    public Task StartMonitoringAsync(CancellationToken cancellationToken)
-    {
-        _ = _logger; // Placeholder for StartMonitoringAsync - will be implemented in future phase
-        return Task.CompletedTask;
-    }
-    
-    public Task CheckRolloverNeedsAsync(CancellationToken cancellationToken)
-    {
-        _ = _logger; // Placeholder for CheckRolloverNeedsAsync - will be implemented in future phase
-        return Task.CompletedTask;
-    }
+    public Task InitializeAsync(CancellationToken cancellationToken) => NoOpAsync();
+    public Task StartMonitoringAsync(CancellationToken cancellationToken) => NoOpAsync();
+    public Task CheckRolloverNeedsAsync(CancellationToken cancellationToken) => NoOpAsync();
 }
 
 #endregion
