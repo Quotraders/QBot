@@ -373,11 +373,11 @@ public sealed partial class AtomicStatePersistence : IDisposable
                 try 
                 { 
                     File.Move(backupFilePath, filePath);
-                    _logger.LogInformation(ex, "Restored state file from backup after IOException: {FilePath}", filePath);
+                    LogRestoredFromBackup(_logger, filePath, ex);
                 } 
                 catch (IOException restoreEx)
                 {
-                    _logger.LogError(restoreEx, "Failed to restore backup for {FilePath}", filePath);
+                    LogFailedToRestoreBackup(_logger, filePath, restoreEx);
                 }
             }
             
@@ -410,24 +410,24 @@ public sealed partial class AtomicStatePersistence : IDisposable
             
             if (!File.Exists(filePath))
             {
-                _logger.LogDebug("No saved zone state found for {Symbol}", symbol);
+                LogNoSavedZoneState(_logger, symbol, null);
                 return null;
             }
             
             var jsonData = await File.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false);
             var snapshot = JsonSerializer.Deserialize<ZoneStateSnapshot>(jsonData, _jsonOptions);
             
-            _logger.LogDebug("Loaded zone state for {Symbol} from {FilePath}", symbol, filePath);
+            LogLoadedZoneState(_logger, symbol, filePath, null);
             return snapshot;
         }
         catch (IOException ex)
         {
-            _logger.LogError(ex, "I/O error loading zone state for {Symbol}", symbol);
+            LogIOErrorLoadingZoneState(_logger, symbol, ex);
             return null;
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "Deserialization error loading zone state for {Symbol}", symbol);
+            LogDeserializationErrorZoneState(_logger, symbol, ex);
             return null;
         }
     }
@@ -443,24 +443,24 @@ public sealed partial class AtomicStatePersistence : IDisposable
             
             if (!File.Exists(filePath))
             {
-                _logger.LogDebug("No saved pattern reliability state found");
+                LogNoSavedPatternState(_logger, null);
                 return null;
             }
             
             var jsonData = await File.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false);
             var snapshot = JsonSerializer.Deserialize<PatternReliabilitySnapshot>(jsonData, _jsonOptions);
             
-            _logger.LogDebug("Loaded pattern reliability state from {FilePath}", filePath);
+            LogLoadedPatternState(_logger, filePath, null);
             return snapshot;
         }
         catch (IOException ex)
         {
-            _logger.LogError(ex, "I/O error loading pattern reliability state");
+            LogIOErrorLoadingPatternState(_logger, ex);
             return null;
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "Deserialization error loading pattern reliability state");
+            LogDeserializationErrorPatternState(_logger, ex);
             return null;
         }
     }
@@ -476,24 +476,24 @@ public sealed partial class AtomicStatePersistence : IDisposable
             
             if (!File.Exists(filePath))
             {
-                _logger.LogDebug("No saved fusion coordinator state found");
+                LogNoSavedFusionState(_logger, null);
                 return null;
             }
             
             var jsonData = await File.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false);
             var snapshot = JsonSerializer.Deserialize<FusionStateSnapshot>(jsonData, _jsonOptions);
             
-            _logger.LogDebug("Loaded fusion coordinator state from {FilePath}", filePath);
+            LogLoadedFusionState(_logger, filePath, null);
             return snapshot;
         }
         catch (IOException ex)
         {
-            _logger.LogError(ex, "I/O error loading fusion coordinator state");
+            LogIOErrorLoadingFusionState(_logger, ex);
             return null;
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "Deserialization error loading fusion coordinator state");
+            LogDeserializationErrorFusionState(_logger, ex);
             return null;
         }
     }
@@ -553,31 +553,30 @@ public sealed partial class AtomicStatePersistence : IDisposable
                     }
                     catch (IOException ex)
                     {
-                        _logger.LogWarning(ex, "I/O error loading metrics state: {MetricsName}", metricsName);
+                        LogIOErrorLoadingMetricsState(_logger, metricsName, ex);
                     }
                     catch (JsonException ex)
                     {
-                        _logger.LogWarning(ex, "Deserialization error loading metrics state: {MetricsName}", metricsName);
+                        LogDeserializationErrorMetricsState(_logger, metricsName, ex);
                     }
                 }
             }
             
-            _logger.LogInformation("Warm restart state loaded - Zones: {ZoneCount}, Patterns: {PatternAvailable}, Fusion: {FusionAvailable}, Metrics: {MetricsCount}",
-                collection.ZoneStates.Count, 
-                collection.PatternReliability != null ? "Available" : "None",
-                collection.FusionState != null ? "Available" : "None",
-                collection.MetricsStates.Count);
+            LogWarmRestartStateLoaded(_logger, collection.ZoneStates.Count, 
+                collection.PatternReliability != null,
+                collection.FusionState != null,
+                collection.MetricsStates.Count, null);
                 
             return collection;
         }
         catch (IOException ex)
         {
-            _logger.LogError(ex, "I/O error loading warm restart state collection");
+            LogIOErrorLoadingWarmRestartState(_logger, ex);
             return collection;
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "Deserialization error loading warm restart state collection");
+            LogDeserializationErrorWarmRestartState(_logger, ex);
             return collection;
         }
     }
@@ -596,16 +595,16 @@ public sealed partial class AtomicStatePersistence : IDisposable
             {
                 // Persist any pending state changes
                 // This would be triggered by state change notifications from various services
-                _logger.LogTrace("Periodic persistence check completed");
+                LogPeriodicPersistenceCompleted(_logger, null);
             }
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Invalid operation in periodic persistence callback");
+            LogInvalidOperationInPeriodicPersistence(_logger, ex);
         }
         catch (IOException ex)
         {
-            _logger.LogWarning(ex, "IO error in periodic persistence callback");
+            LogIOErrorInPeriodicPersistence(_logger, ex);
         }
     }
     
@@ -615,7 +614,7 @@ public sealed partial class AtomicStatePersistence : IDisposable
     public void SetPersistenceEnabled(bool enabled)
     {
         _persistenceEnabled = enabled;
-        _logger.LogInformation("State persistence {Status}", enabled ? "enabled" : "disabled");
+        LogPersistenceStatusChanged(_logger, enabled ? "enabled" : "disabled", null);
     }
     
     /// <summary>
@@ -624,8 +623,105 @@ public sealed partial class AtomicStatePersistence : IDisposable
     public void Dispose()
     {
         _persistenceTimer?.Dispose();
-        _logger.LogInformation("Atomic state persistence disposed");
+        LogDisposed(_logger, null);
     }
+    
+    // LoggerMessage delegates for high-performance logging
+    private static readonly Action<ILogger, string, Exception?> LogRestoredFromBackup =
+        LoggerMessage.Define<string>(LogLevel.Information, new EventId(6201, nameof(LogRestoredFromBackup)),
+            "Restored state file from backup after IOException: {FilePath}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogFailedToRestoreBackup =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6202, nameof(LogFailedToRestoreBackup)),
+            "Failed to restore backup for {FilePath}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogNoSavedZoneState =
+        LoggerMessage.Define<string>(LogLevel.Debug, new EventId(6203, nameof(LogNoSavedZoneState)),
+            "No saved zone state found for {Symbol}");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogLoadedZoneState =
+        LoggerMessage.Define<string, string>(LogLevel.Debug, new EventId(6204, nameof(LogLoadedZoneState)),
+            "Loaded zone state for {Symbol} from {FilePath}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogIOErrorLoadingZoneState =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6205, nameof(LogIOErrorLoadingZoneState)),
+            "I/O error loading zone state for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogDeserializationErrorZoneState =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6206, nameof(LogDeserializationErrorZoneState)),
+            "Deserialization error loading zone state for {Symbol}");
+    
+    private static readonly Action<ILogger, Exception?> LogNoSavedPatternState =
+        LoggerMessage.Define(LogLevel.Debug, new EventId(6207, nameof(LogNoSavedPatternState)),
+            "No saved pattern reliability state found");
+    
+    private static readonly Action<ILogger, string, Exception?> LogLoadedPatternState =
+        LoggerMessage.Define<string>(LogLevel.Debug, new EventId(6208, nameof(LogLoadedPatternState)),
+            "Loaded pattern reliability state from {FilePath}");
+    
+    private static readonly Action<ILogger, Exception?> LogIOErrorLoadingPatternState =
+        LoggerMessage.Define(LogLevel.Error, new EventId(6209, nameof(LogIOErrorLoadingPatternState)),
+            "I/O error loading pattern reliability state");
+    
+    private static readonly Action<ILogger, Exception?> LogDeserializationErrorPatternState =
+        LoggerMessage.Define(LogLevel.Error, new EventId(6210, nameof(LogDeserializationErrorPatternState)),
+            "Deserialization error loading pattern reliability state");
+    
+    private static readonly Action<ILogger, Exception?> LogNoSavedFusionState =
+        LoggerMessage.Define(LogLevel.Debug, new EventId(6211, nameof(LogNoSavedFusionState)),
+            "No saved fusion coordinator state found");
+    
+    private static readonly Action<ILogger, string, Exception?> LogLoadedFusionState =
+        LoggerMessage.Define<string>(LogLevel.Debug, new EventId(6212, nameof(LogLoadedFusionState)),
+            "Loaded fusion coordinator state from {FilePath}");
+    
+    private static readonly Action<ILogger, Exception?> LogIOErrorLoadingFusionState =
+        LoggerMessage.Define(LogLevel.Error, new EventId(6213, nameof(LogIOErrorLoadingFusionState)),
+            "I/O error loading fusion coordinator state");
+    
+    private static readonly Action<ILogger, Exception?> LogDeserializationErrorFusionState =
+        LoggerMessage.Define(LogLevel.Error, new EventId(6214, nameof(LogDeserializationErrorFusionState)),
+            "Deserialization error loading fusion coordinator state");
+    
+    private static readonly Action<ILogger, string, Exception?> LogIOErrorLoadingMetricsState =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(6215, nameof(LogIOErrorLoadingMetricsState)),
+            "I/O error loading metrics state: {MetricsName}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogDeserializationErrorMetricsState =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(6216, nameof(LogDeserializationErrorMetricsState)),
+            "Deserialization error loading metrics state: {MetricsName}");
+    
+    private static readonly Action<ILogger, int, bool, bool, int, Exception?> LogWarmRestartStateLoaded =
+        LoggerMessage.Define<int, bool, bool, int>(LogLevel.Information, new EventId(6217, nameof(LogWarmRestartStateLoaded)),
+            "Warm restart state loaded - Zones: {ZoneCount}, Patterns: {PatternAvailable}, Fusion: {FusionAvailable}, Metrics: {MetricsCount}");
+    
+    private static readonly Action<ILogger, Exception?> LogIOErrorLoadingWarmRestartState =
+        LoggerMessage.Define(LogLevel.Error, new EventId(6218, nameof(LogIOErrorLoadingWarmRestartState)),
+            "I/O error loading warm restart state collection");
+    
+    private static readonly Action<ILogger, Exception?> LogDeserializationErrorWarmRestartState =
+        LoggerMessage.Define(LogLevel.Error, new EventId(6219, nameof(LogDeserializationErrorWarmRestartState)),
+            "Deserialization error loading warm restart state collection");
+    
+    private static readonly Action<ILogger, Exception?> LogPeriodicPersistenceCompleted =
+        LoggerMessage.Define(LogLevel.Trace, new EventId(6220, nameof(LogPeriodicPersistenceCompleted)),
+            "Periodic persistence check completed");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidOperationInPeriodicPersistence =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(6221, nameof(LogInvalidOperationInPeriodicPersistence)),
+            "Invalid operation in periodic persistence callback");
+    
+    private static readonly Action<ILogger, Exception?> LogIOErrorInPeriodicPersistence =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(6222, nameof(LogIOErrorInPeriodicPersistence)),
+            "IO error in periodic persistence callback");
+    
+    private static readonly Action<ILogger, string, Exception?> LogPersistenceStatusChanged =
+        LoggerMessage.Define<string>(LogLevel.Information, new EventId(6223, nameof(LogPersistenceStatusChanged)),
+            "State persistence {Status}");
+    
+    private static readonly Action<ILogger, Exception?> LogDisposed =
+        LoggerMessage.Define(LogLevel.Information, new EventId(6224, nameof(LogDisposed)),
+            "Atomic state persistence disposed");
 }
 
 /// <summary>

@@ -70,7 +70,7 @@ public sealed class UnifiedBarPipeline
         
         try
         {
-            _logger.LogDebug("Starting unified bar processing for {Symbol} at {Timestamp}", symbol, bar.Start);
+            LogStartingBarProcessing(_logger, symbol, bar.Start, null);
             
             // Step 1: ZoneService.OnBar
             var zoneServiceResult = await ProcessZoneServiceOnBarAsync(symbol, bar, cancellationToken).ConfigureAwait(false);
@@ -78,7 +78,7 @@ public sealed class UnifiedBarPipeline
             
             if (!zoneServiceResult.Success)
             {
-                _logger.LogWarning("ZoneService OnBar failed for {Symbol} - stopping pipeline", symbol);
+                LogZoneServiceOnBarFailed(_logger, symbol, null);
                 return processingResult;
             }
             
@@ -88,7 +88,7 @@ public sealed class UnifiedBarPipeline
             
             if (!patternEngineResult.Success)
             {
-                _logger.LogWarning("PatternEngine OnBar failed for {Symbol} - stopping pipeline", symbol);
+                LogPatternEngineOnBarFailed(_logger, symbol, null);
                 return processingResult;
             }
             
@@ -98,7 +98,7 @@ public sealed class UnifiedBarPipeline
             
             if (!dslEngineResult.Success)
             {
-                _logger.LogWarning("DslEngine Evaluate failed for {Symbol} - stopping pipeline", symbol);
+                LogDslEngineEvaluateFailed(_logger, symbol, null);
                 return processingResult;
             }
             
@@ -120,14 +120,12 @@ public sealed class UnifiedBarPipeline
             
             if (processingResult.Success)
             {
-                _logger.LogDebug("Unified bar processing completed successfully for {Symbol} in {ProcessingTime}ms", 
-                    symbol, processingResult.ProcessingTimeMs);
+                LogBarProcessingCompleted(_logger, symbol, processingResult.ProcessingTimeMs, null);
             }
             else
             {
                 Interlocked.Increment(ref _pipelineErrors);
-                _logger.LogError("Unified bar processing failed for {Symbol} after {ProcessingTime}ms", 
-                    symbol, processingResult.ProcessingTimeMs);
+                LogBarProcessingFailed(_logger, symbol, processingResult.ProcessingTimeMs, null);
             }
             
             return processingResult;
@@ -139,7 +137,7 @@ public sealed class UnifiedBarPipeline
             processingResult.ProcessingTimeMs = (processingResult.ProcessingCompleted - processingResult.ProcessingStarted).TotalMilliseconds;
             processingResult.Error = ex.Message;
             
-            _logger.LogError(ex, "Invalid operation in unified bar pipeline for {Symbol}", symbol);
+            LogInvalidOperationInPipeline(_logger, symbol, ex);
             return processingResult;
         }
         catch (ArgumentException ex)
@@ -149,7 +147,7 @@ public sealed class UnifiedBarPipeline
             processingResult.ProcessingTimeMs = (processingResult.ProcessingCompleted - processingResult.ProcessingStarted).TotalMilliseconds;
             processingResult.Error = ex.Message;
             
-            _logger.LogError(ex, "Invalid argument in unified bar pipeline for {Symbol}", symbol);
+            LogInvalidArgumentInPipeline(_logger, symbol, ex);
             return processingResult;
         }
     }
@@ -170,19 +168,19 @@ public sealed class UnifiedBarPipeline
             var zoneService = _zoneService.Value ?? throw new InvalidOperationException("ZoneService must be registered in DI container for production operation");
             zoneService.OnBar(symbol, bar.Start, bar.Open, bar.High, bar.Low, bar.Close, bar.Volume);
             stepResult.Success = true;
-            _logger.LogTrace("ZoneService.OnBar completed for {Symbol}", symbol);
+            LogZoneServiceCompleted(_logger, symbol, null);
         }
         catch (InvalidOperationException ex)
         {
             stepResult.Success = false;
             stepResult.Error = ex.Message;
-            _logger.LogError(ex, "Invalid operation in ZoneService.OnBar for {Symbol}", symbol);
+            LogInvalidOperationInZoneService(_logger, symbol, ex);
         }
         catch (ArgumentException ex)
         {
             stepResult.Success = false;
             stepResult.Error = ex.Message;
-            _logger.LogError(ex, "Invalid argument in ZoneService.OnBar for {Symbol}", symbol);
+            LogInvalidArgumentInZoneService(_logger, symbol, ex);
         }
         finally
         {
@@ -211,20 +209,19 @@ public sealed class UnifiedBarPipeline
             var patternScores = await patternEngine.GetCurrentScoresAsync(symbol, cancellationToken).ConfigureAwait(false);
             stepResult.Success = true;
             stepResult.Data = new { BullScore = patternScores.BullScore, BearScore = patternScores.BearScore };
-            _logger.LogTrace("PatternEngine.OnBar completed for {Symbol} - Bull: {BullScore}, Bear: {BearScore}", 
-                symbol, patternScores.BullScore, patternScores.BearScore);
+            LogPatternEngineCompleted(_logger, symbol, patternScores.BullScore, patternScores.BearScore, null);
         }
         catch (InvalidOperationException ex)
         {
             stepResult.Success = false;
             stepResult.Error = ex.Message;
-            _logger.LogError(ex, "Invalid operation in PatternEngine.OnBar for {Symbol}", symbol);
+            LogInvalidOperationInPatternEngine(_logger, symbol, ex);
         }
         catch (ArgumentException ex)
         {
             stepResult.Success = false;
             stepResult.Error = ex.Message;
-            _logger.LogError(ex, "Invalid argument in PatternEngine.OnBar for {Symbol}", symbol);
+            LogInvalidArgumentInPatternEngine(_logger, symbol, ex);
         }
         finally
         {
@@ -252,20 +249,19 @@ public sealed class UnifiedBarPipeline
             var recommendations = await dslEngine.EvaluateAsync(symbol, bar.Start, cancellationToken).ConfigureAwait(false);
             stepResult.Success = true;
             stepResult.Data = new { RecommendationCount = recommendations.Count };
-            _logger.LogTrace("DslEngine.Evaluate completed for {Symbol} - {RecommendationCount} recommendations", 
-                symbol, recommendations.Count);
+            LogDslEngineCompleted(_logger, symbol, recommendations.Count, null);
         }
         catch (InvalidOperationException ex)
         {
             stepResult.Success = false;
             stepResult.Error = ex.Message;
-            _logger.LogError(ex, "Invalid operation in DslEngine.Evaluate for {Symbol}", symbol);
+            LogInvalidOperationInDslEngine(_logger, symbol, ex);
         }
         catch (ArgumentException ex)
         {
             stepResult.Success = false;
             stepResult.Error = ex.Message;
-            _logger.LogError(ex, "Invalid argument in DslEngine.Evaluate for {Symbol}", symbol);
+            LogInvalidArgumentInDslEngine(_logger, symbol, ex);
         }
         finally
         {
@@ -311,7 +307,7 @@ public sealed class UnifiedBarPipeline
             featureBus.Publish(symbol, bar.Start, "bar.processed", 1.0);
             
             stepResult.Success = true;
-            _logger.LogTrace("FeatureBus.Publish completed for {Symbol}", symbol);
+            LogFeatureBusCompleted(_logger, symbol, null);
             
             await Task.CompletedTask.ConfigureAwait(false); // Satisfy async signature
         }
@@ -319,13 +315,13 @@ public sealed class UnifiedBarPipeline
         {
             stepResult.Success = false;
             stepResult.Error = ex.Message;
-            _logger.LogError(ex, "Invalid operation in FeatureBus.Publish for {Symbol}", symbol);
+            LogInvalidOperationInFeatureBus(_logger, symbol, ex);
         }
         catch (ArgumentException ex)
         {
             stepResult.Success = false;
             stepResult.Error = ex.Message;
-            _logger.LogError(ex, "Invalid argument in FeatureBus.Publish for {Symbol}", symbol);
+            LogInvalidArgumentInFeatureBus(_logger, symbol, ex);
         }
         finally
         {
@@ -347,27 +343,24 @@ public sealed class UnifiedBarPipeline
             // RealTradingMetricsService integration would be done here in full production setup
             
             // Emit pipeline metrics via logging for observability
-            _logger.LogInformation("Unified pipeline metrics: Symbol={Symbol}, ProcessingTime={ProcessingTimeMs}ms, Success={Success}, BarsProcessed={BarsProcessed}", 
-                result.Symbol, result.ProcessingTimeMs, result.Success, _barsProcessed);
+            LogUnifiedPipelineMetrics(_logger, result.Symbol, result.ProcessingTimeMs, result.Success, _barsProcessed, null);
             
             // Emit step-level metrics
             foreach (var step in result.PipelineSteps)
             {
-                _logger.LogTrace("Pipeline step metrics: Step={StepName}, Duration={DurationMs}ms, Success={Success}", 
-                    step.StepName, step.DurationMs, step.Success);
+                LogPipelineStepMetrics(_logger, step.StepName, step.DurationMs, step.Success, null);
             }
             
             // Log cumulative metrics
-            _logger.LogDebug("Pipeline cumulative metrics: TotalBarsProcessed={BarsProcessed}, TotalErrors={Errors}", 
-                _barsProcessed, _pipelineErrors);
+            LogCumulativeMetrics(_logger, _barsProcessed, _pipelineErrors, null);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Invalid operation emitting pipeline telemetry for {Symbol}", result.Symbol);
+            LogInvalidOperationEmittingTelemetry(_logger, result.Symbol, ex);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogWarning(ex, "Invalid argument emitting pipeline telemetry for {Symbol}", result.Symbol);
+            LogInvalidArgumentEmittingTelemetry(_logger, result.Symbol, ex);
         }
         
         return Task.CompletedTask;
@@ -387,6 +380,107 @@ public sealed class UnifiedBarPipeline
             IsHealthy = _pipelineErrors == 0 || (_barsProcessed > 0 && (double)_pipelineErrors / _barsProcessed < HealthyErrorRateThreshold) // < 1% error rate
         };
     }
+    
+    // LoggerMessage delegates for high-performance logging
+    private static readonly Action<ILogger, string, DateTime, Exception?> LogStartingBarProcessing =
+        LoggerMessage.Define<string, DateTime>(LogLevel.Debug, new EventId(6101, nameof(LogStartingBarProcessing)),
+            "Starting unified bar processing for {Symbol} at {Timestamp}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogZoneServiceOnBarFailed =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(6102, nameof(LogZoneServiceOnBarFailed)),
+            "ZoneService OnBar failed for {Symbol} - stopping pipeline");
+    
+    private static readonly Action<ILogger, string, Exception?> LogPatternEngineOnBarFailed =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(6103, nameof(LogPatternEngineOnBarFailed)),
+            "PatternEngine OnBar failed for {Symbol} - stopping pipeline");
+    
+    private static readonly Action<ILogger, string, Exception?> LogDslEngineEvaluateFailed =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(6104, nameof(LogDslEngineEvaluateFailed)),
+            "DslEngine Evaluate failed for {Symbol} - stopping pipeline");
+    
+    private static readonly Action<ILogger, string, double, Exception?> LogBarProcessingCompleted =
+        LoggerMessage.Define<string, double>(LogLevel.Debug, new EventId(6105, nameof(LogBarProcessingCompleted)),
+            "Unified bar processing completed successfully for {Symbol} in {ProcessingTime}ms");
+    
+    private static readonly Action<ILogger, string, double, Exception?> LogBarProcessingFailed =
+        LoggerMessage.Define<string, double>(LogLevel.Error, new EventId(6106, nameof(LogBarProcessingFailed)),
+            "Unified bar processing failed for {Symbol} after {ProcessingTime}ms");
+    
+    private static readonly Action<ILogger, string, Exception?> LogInvalidOperationInPipeline =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6107, nameof(LogInvalidOperationInPipeline)),
+            "Invalid operation in unified bar pipeline for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogInvalidArgumentInPipeline =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6108, nameof(LogInvalidArgumentInPipeline)),
+            "Invalid argument in unified bar pipeline for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogZoneServiceCompleted =
+        LoggerMessage.Define<string>(LogLevel.Trace, new EventId(6109, nameof(LogZoneServiceCompleted)),
+            "ZoneService.OnBar completed for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogInvalidOperationInZoneService =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6110, nameof(LogInvalidOperationInZoneService)),
+            "Invalid operation in ZoneService.OnBar for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogInvalidArgumentInZoneService =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6111, nameof(LogInvalidArgumentInZoneService)),
+            "Invalid argument in ZoneService.OnBar for {Symbol}");
+    
+    private static readonly Action<ILogger, string, double, double, Exception?> LogPatternEngineCompleted =
+        LoggerMessage.Define<string, double, double>(LogLevel.Trace, new EventId(6112, nameof(LogPatternEngineCompleted)),
+            "PatternEngine.OnBar completed for {Symbol} - Bull: {BullScore}, Bear: {BearScore}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogInvalidOperationInPatternEngine =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6113, nameof(LogInvalidOperationInPatternEngine)),
+            "Invalid operation in PatternEngine.OnBar for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogInvalidArgumentInPatternEngine =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6114, nameof(LogInvalidArgumentInPatternEngine)),
+            "Invalid argument in PatternEngine.OnBar for {Symbol}");
+    
+    private static readonly Action<ILogger, string, int, Exception?> LogDslEngineCompleted =
+        LoggerMessage.Define<string, int>(LogLevel.Trace, new EventId(6115, nameof(LogDslEngineCompleted)),
+            "DslEngine.Evaluate completed for {Symbol} - {RecommendationCount} recommendations");
+    
+    private static readonly Action<ILogger, string, Exception?> LogInvalidOperationInDslEngine =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6116, nameof(LogInvalidOperationInDslEngine)),
+            "Invalid operation in DslEngine.Evaluate for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogInvalidArgumentInDslEngine =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6117, nameof(LogInvalidArgumentInDslEngine)),
+            "Invalid argument in DslEngine.Evaluate for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogFeatureBusCompleted =
+        LoggerMessage.Define<string>(LogLevel.Trace, new EventId(6118, nameof(LogFeatureBusCompleted)),
+            "FeatureBus.Publish completed for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogInvalidOperationInFeatureBus =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6119, nameof(LogInvalidOperationInFeatureBus)),
+            "Invalid operation in FeatureBus.Publish for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogInvalidArgumentInFeatureBus =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6120, nameof(LogInvalidArgumentInFeatureBus)),
+            "Invalid argument in FeatureBus.Publish for {Symbol}");
+    
+    private static readonly Action<ILogger, string, double, bool, long, Exception?> LogUnifiedPipelineMetrics =
+        LoggerMessage.Define<string, double, bool, long>(LogLevel.Information, new EventId(6121, nameof(LogUnifiedPipelineMetrics)),
+            "Unified pipeline metrics: Symbol={Symbol}, ProcessingTime={ProcessingTimeMs}ms, Success={Success}, BarsProcessed={BarsProcessed}");
+    
+    private static readonly Action<ILogger, string, double, bool, Exception?> LogPipelineStepMetrics =
+        LoggerMessage.Define<string, double, bool>(LogLevel.Trace, new EventId(6122, nameof(LogPipelineStepMetrics)),
+            "Pipeline step metrics: Step={StepName}, Duration={DurationMs}ms, Success={Success}");
+    
+    private static readonly Action<ILogger, long, long, Exception?> LogCumulativeMetrics =
+        LoggerMessage.Define<long, long>(LogLevel.Debug, new EventId(6123, nameof(LogCumulativeMetrics)),
+            "Pipeline cumulative metrics: TotalBarsProcessed={BarsProcessed}, TotalErrors={Errors}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogInvalidOperationEmittingTelemetry =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(6124, nameof(LogInvalidOperationEmittingTelemetry)),
+            "Invalid operation emitting pipeline telemetry for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogInvalidArgumentEmittingTelemetry =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(6125, nameof(LogInvalidArgumentEmittingTelemetry)),
+            "Invalid argument emitting pipeline telemetry for {Symbol}");
 }
 
 /// <summary>

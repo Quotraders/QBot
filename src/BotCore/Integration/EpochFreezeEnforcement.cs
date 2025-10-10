@@ -41,7 +41,7 @@ public sealed class EpochFreezeEnforcement
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _config = config ?? new EpochFreezeConfig();
         
-        _logger.LogInformation("EpochFreeze enforcement initialized with tolerance: {Tolerance} ticks", _config.PriceToleranceTicks);
+        LogEpochFreezeInitialized(_logger, _config.PriceToleranceTicks, null);
     }
     
     /// <summary>
@@ -85,19 +85,18 @@ public sealed class EpochFreezeEnforcement
             // Emit telemetry
             await EmitEpochSnapshotTelemetryAsync(snapshot, cancellationToken).ConfigureAwait(false);
             
-            _logger.LogInformation("EpochFreeze snapshot captured for position {PositionId} on {Symbol} - Entry: {EntryPrice}, SL: {StopLoss}, TP: {TakeProfit}",
-                positionId, symbol, snapshot.EntryPrice, snapshot.BracketSettings.StopLossPrice, snapshot.BracketSettings.TakeProfitPrice);
+            LogSnapshotCaptured(_logger, positionId, symbol, snapshot.EntryPrice, snapshot.BracketSettings.StopLossPrice, snapshot.BracketSettings.TakeProfitPrice, null);
                 
             return snapshot;
         }
         catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "Invalid argument capturing epoch snapshot for position {PositionId}", positionId);
+            LogInvalidArgumentCapturingSnapshot(_logger, positionId, ex);
             throw new InvalidOperationException($"Failed to capture epoch snapshot for position {positionId} due to invalid argument", ex);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Invalid operation capturing epoch snapshot for position {PositionId}", positionId);
+            LogInvalidOperationCapturingSnapshot(_logger, positionId, ex);
             throw new InvalidOperationException($"Failed to capture epoch snapshot for position {positionId}", ex);
         }
     }
@@ -173,12 +172,11 @@ public sealed class EpochFreezeEnforcement
             
             if (validationResult.IsValid)
             {
-                _logger.LogTrace("EpochFreeze validation passed for position {PositionId}", positionId);
+                LogValidationPassed(_logger, positionId, null);
             }
             else
             {
-                _logger.LogWarning("EpochFreeze violation detected for position {PositionId} - {CriticalCount} critical, {WarningCount} warnings",
-                    positionId, criticalViolations, warningViolations);
+                LogViolationDetected(_logger, positionId, criticalViolations, warningViolations, null);
             }
             
             return validationResult;
@@ -192,7 +190,7 @@ public sealed class EpochFreezeEnforcement
                 Severity = ViolationSeverity.Critical
             });
             
-            _logger.LogError(ex, "Invalid argument validating epoch freeze for position {PositionId}", positionId);
+            LogInvalidArgumentValidating(_logger, positionId, ex);
             return validationResult;
         }
         catch (InvalidOperationException ex)
@@ -204,7 +202,7 @@ public sealed class EpochFreezeEnforcement
                 Severity = ViolationSeverity.Critical
             });
             
-            _logger.LogError(ex, "Invalid operation validating epoch freeze for position {PositionId}", positionId);
+            LogInvalidOperationValidating(_logger, positionId, ex);
             return validationResult;
         }
     }
@@ -234,21 +232,20 @@ public sealed class EpochFreezeEnforcement
                 // Emit telemetry for epoch release
                 await EmitEpochReleaseTelemetryAsync(releasedSnapshot, cancellationToken).ConfigureAwait(false);
                 
-                _logger.LogInformation("EpochFreeze released for position {PositionId} on {Symbol} - Duration: {Duration}",
-                    positionId, releasedSnapshot.Symbol, DateTime.UtcNow - releasedSnapshot.CapturedAt);
+                LogFreezeReleased(_logger, positionId, releasedSnapshot.Symbol, DateTime.UtcNow - releasedSnapshot.CapturedAt, null);
             }
             else
             {
-                _logger.LogWarning("Attempted to release epoch freeze for unknown position {PositionId}", positionId);
+                LogReleaseUnknownPosition(_logger, positionId, null);
             }
         }
         catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "Invalid argument releasing epoch freeze for position {PositionId}", positionId);
+            LogInvalidArgumentReleasing(_logger, positionId, ex);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Invalid operation releasing epoch freeze for position {PositionId}", positionId);
+            LogInvalidOperationReleasing(_logger, positionId, ex);
         }
     }
     
@@ -262,7 +259,7 @@ public sealed class EpochFreezeEnforcement
             var zoneService = _serviceProvider.GetService<Zones.IZoneService>();
             if (zoneService == null)
             {
-                _logger.LogWarning("Zone service not available for epoch snapshot capture");
+                LogZoneServiceNotAvailable(_logger, null);
                 return;
             }
             
@@ -298,11 +295,11 @@ public sealed class EpochFreezeEnforcement
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "Invalid operation capturing zone anchors for {Symbol}", snapshot.Symbol);
+            LogInvalidOperationCapturingZoneAnchors(_logger, snapshot.Symbol, ex);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogError(ex, "Invalid argument capturing zone anchors for {Symbol}", snapshot.Symbol);
+            LogInvalidArgumentCapturingZoneAnchors(_logger, snapshot.Symbol, ex);
         }
     }
     
@@ -503,15 +500,15 @@ public sealed class EpochFreezeEnforcement
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Invalid operation emitting epoch snapshot telemetry");
+            LogInvalidOperationEmittingSnapshotTelemetry(_logger, ex);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogWarning(ex, "Invalid argument emitting epoch snapshot telemetry");
+            LogInvalidArgumentEmittingSnapshotTelemetry(_logger, ex);
         }
         catch (OperationCanceledException ex)
         {
-            _logger.LogWarning(ex, "Operation cancelled emitting epoch snapshot telemetry");
+            LogCancelledEmittingSnapshotTelemetry(_logger, ex);
         }
     }
     
@@ -540,15 +537,15 @@ public sealed class EpochFreezeEnforcement
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Invalid operation emitting freeze violation telemetry");
+            LogInvalidOperationEmittingViolationTelemetry(_logger, ex);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogWarning(ex, "Invalid argument emitting freeze violation telemetry");
+            LogInvalidArgumentEmittingViolationTelemetry(_logger, ex);
         }
         catch (OperationCanceledException ex)
         {
-            _logger.LogWarning(ex, "Operation cancelled emitting freeze violation telemetry");
+            LogCancelledEmittingViolationTelemetry(_logger, ex);
         }
     }
     
@@ -575,15 +572,15 @@ public sealed class EpochFreezeEnforcement
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Invalid operation emitting epoch release telemetry");
+            LogInvalidOperationEmittingReleaseTelemetry(_logger, ex);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogWarning(ex, "Invalid argument emitting epoch release telemetry");
+            LogInvalidArgumentEmittingReleaseTelemetry(_logger, ex);
         }
         catch (OperationCanceledException ex)
         {
-            _logger.LogWarning(ex, "Operation cancelled emitting epoch release telemetry");
+            LogCancelledEmittingReleaseTelemetry(_logger, ex);
         }
     }
     
@@ -603,6 +600,103 @@ public sealed class EpochFreezeEnforcement
             };
         }
     }
+    
+    // LoggerMessage delegates for high-performance logging
+    private static readonly Action<ILogger, double, Exception?> LogEpochFreezeInitialized =
+        LoggerMessage.Define<double>(LogLevel.Information, new EventId(6001, nameof(LogEpochFreezeInitialized)),
+            "EpochFreeze enforcement initialized with tolerance: {Tolerance} ticks");
+    
+    private static readonly Action<ILogger, string, string, double, double, double, Exception?> LogSnapshotCaptured =
+        LoggerMessage.Define<string, string, double, double, double>(LogLevel.Information, new EventId(6002, nameof(LogSnapshotCaptured)),
+            "EpochFreeze snapshot captured for position {PositionId} on {Symbol} - Entry: {EntryPrice}, SL: {StopLoss}, TP: {TakeProfit}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogInvalidArgumentCapturingSnapshot =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6003, nameof(LogInvalidArgumentCapturingSnapshot)),
+            "Invalid argument capturing epoch snapshot for position {PositionId}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogInvalidOperationCapturingSnapshot =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6004, nameof(LogInvalidOperationCapturingSnapshot)),
+            "Invalid operation capturing epoch snapshot for position {PositionId}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogValidationPassed =
+        LoggerMessage.Define<string>(LogLevel.Trace, new EventId(6005, nameof(LogValidationPassed)),
+            "EpochFreeze validation passed for position {PositionId}");
+    
+    private static readonly Action<ILogger, string, int, int, Exception?> LogViolationDetected =
+        LoggerMessage.Define<string, int, int>(LogLevel.Warning, new EventId(6006, nameof(LogViolationDetected)),
+            "EpochFreeze violation detected for position {PositionId} - {CriticalCount} critical, {WarningCount} warnings");
+    
+    private static readonly Action<ILogger, string, Exception?> LogInvalidArgumentValidating =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6007, nameof(LogInvalidArgumentValidating)),
+            "Invalid argument validating epoch freeze for position {PositionId}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogInvalidOperationValidating =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6008, nameof(LogInvalidOperationValidating)),
+            "Invalid operation validating epoch freeze for position {PositionId}");
+    
+    private static readonly Action<ILogger, string, string, TimeSpan, Exception?> LogFreezeReleased =
+        LoggerMessage.Define<string, string, TimeSpan>(LogLevel.Information, new EventId(6009, nameof(LogFreezeReleased)),
+            "EpochFreeze released for position {PositionId} on {Symbol} - Duration: {Duration}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogReleaseUnknownPosition =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(6010, nameof(LogReleaseUnknownPosition)),
+            "Attempted to release epoch freeze for unknown position {PositionId}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogInvalidArgumentReleasing =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6011, nameof(LogInvalidArgumentReleasing)),
+            "Invalid argument releasing epoch freeze for position {PositionId}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogInvalidOperationReleasing =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6012, nameof(LogInvalidOperationReleasing)),
+            "Invalid operation releasing epoch freeze for position {PositionId}");
+    
+    private static readonly Action<ILogger, Exception?> LogZoneServiceNotAvailable =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(6013, nameof(LogZoneServiceNotAvailable)),
+            "Zone service not available for epoch snapshot capture");
+    
+    private static readonly Action<ILogger, string, Exception?> LogInvalidOperationCapturingZoneAnchors =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6014, nameof(LogInvalidOperationCapturingZoneAnchors)),
+            "Invalid operation capturing zone anchors for {Symbol}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogInvalidArgumentCapturingZoneAnchors =
+        LoggerMessage.Define<string>(LogLevel.Error, new EventId(6015, nameof(LogInvalidArgumentCapturingZoneAnchors)),
+            "Invalid argument capturing zone anchors for {Symbol}");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidOperationEmittingSnapshotTelemetry =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(6016, nameof(LogInvalidOperationEmittingSnapshotTelemetry)),
+            "Invalid operation emitting epoch snapshot telemetry");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidArgumentEmittingSnapshotTelemetry =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(6017, nameof(LogInvalidArgumentEmittingSnapshotTelemetry)),
+            "Invalid argument emitting epoch snapshot telemetry");
+    
+    private static readonly Action<ILogger, Exception?> LogCancelledEmittingSnapshotTelemetry =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(6018, nameof(LogCancelledEmittingSnapshotTelemetry)),
+            "Operation cancelled emitting epoch snapshot telemetry");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidOperationEmittingViolationTelemetry =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(6019, nameof(LogInvalidOperationEmittingViolationTelemetry)),
+            "Invalid operation emitting freeze violation telemetry");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidArgumentEmittingViolationTelemetry =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(6020, nameof(LogInvalidArgumentEmittingViolationTelemetry)),
+            "Invalid argument emitting freeze violation telemetry");
+    
+    private static readonly Action<ILogger, Exception?> LogCancelledEmittingViolationTelemetry =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(6021, nameof(LogCancelledEmittingViolationTelemetry)),
+            "Operation cancelled emitting freeze violation telemetry");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidOperationEmittingReleaseTelemetry =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(6022, nameof(LogInvalidOperationEmittingReleaseTelemetry)),
+            "Invalid operation emitting epoch release telemetry");
+    
+    private static readonly Action<ILogger, Exception?> LogInvalidArgumentEmittingReleaseTelemetry =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(6023, nameof(LogInvalidArgumentEmittingReleaseTelemetry)),
+            "Invalid argument emitting epoch release telemetry");
+    
+    private static readonly Action<ILogger, Exception?> LogCancelledEmittingReleaseTelemetry =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(6024, nameof(LogCancelledEmittingReleaseTelemetry)),
+            "Operation cancelled emitting epoch release telemetry");
 }
 
 // Supporting data structures and enums...
