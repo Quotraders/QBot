@@ -65,10 +65,10 @@ namespace BotCore.Services
 
                 // Calculate exposures
                 heat.ESExposure = positions.Where(p => p.Symbol == "ES")
-                    .Sum(p => p.Size * p.CurrentPrice);
+                    .Sum(p => p.Quantity * p.AveragePrice);
 
                 heat.NQExposure = positions.Where(p => p.Symbol == "NQ")
-                    .Sum(p => p.Size * p.CurrentPrice);
+                    .Sum(p => p.Quantity * p.AveragePrice);
 
                 heat.TotalExposure = Math.Abs(heat.ESExposure) + Math.Abs(heat.NQExposure);
 
@@ -157,7 +157,7 @@ namespace BotCore.Services
                 }
 
                 // Fallback: Use your sophisticated session analysis instead of simulation
-                var totalExposure = positions.Sum(p => Math.Abs(p.Size * p.CurrentPrice));
+                var totalExposure = positions.Sum(p => Math.Abs(p.Quantity * p.AveragePrice));
 
                 // Use your EsNqTradingSchedule logic for session weighting
                 var sessionWeight = GetSessionExposureWeight(session);
@@ -184,8 +184,8 @@ namespace BotCore.Services
 
                 // Simplified correlation calculation
                 // In practice, you'd use historical price data
-                var esExposure = esPositions.Sum(p => p.Size * p.CurrentPrice);
-                var nqExposure = nqPositions.Sum(p => p.Size * p.CurrentPrice);
+                var esExposure = esPositions.Sum(p => p.Quantity * p.AveragePrice);
+                var nqExposure = nqPositions.Sum(p => p.Quantity * p.AveragePrice);
 
                 // Check if positions are in same direction
                 var sameDirection = (esExposure > 0 && nqExposure > 0) || (esExposure < 0 && nqExposure < 0);
@@ -208,7 +208,7 @@ namespace BotCore.Services
                 var metrics = new Dictionary<string, decimal>();
 
                 // Total notional exposure
-                var totalNotional = positions.Sum(p => Math.Abs(p.Size * p.CurrentPrice));
+                var totalNotional = positions.Sum(p => Math.Abs(p.Quantity * p.AveragePrice));
                 metrics["TotalNotional"] = totalNotional;
 
                 // Leverage ratio
@@ -227,7 +227,7 @@ namespace BotCore.Services
 
                 // Largest single position risk
                 var largestPosition = positions.Any() ?
-                    positions.Max(p => Math.Abs(p.Size * p.CurrentPrice)) : 0m;
+                    positions.Max(p => Math.Abs(p.Quantity * p.AveragePrice)) : 0m;
                 metrics["LargestPositionRisk"] = largestPosition;
 
                 return metrics;

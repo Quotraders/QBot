@@ -598,6 +598,26 @@ Please check the configuration and ensure all required services are registered.
         Console.WriteLine("   ✅ Aggressive entry signals - Boosts confidence on strong zone breaks");
         
         // ================================================================================
+        // POSITION MONITORING SERVICES - SESSION-AWARE EXPOSURE TRACKING
+        // ================================================================================
+        
+        // Register position monitoring services for real-time session exposure tracking
+        services.AddSingleton<BotCore.Services.PositionMonitoring.IRealTimePositionMonitor, BotCore.Services.PositionMonitoring.RealTimePositionMonitor>();
+        services.AddSingleton<BotCore.Services.PositionMonitoring.ISessionExposureCalculator, BotCore.Services.PositionMonitoring.SessionExposureCalculator>();
+        services.AddSingleton<BotCore.Services.PositionMonitoring.IPositionTimeTracker, BotCore.Services.PositionMonitoring.PositionTimeTracker>();
+        services.AddSingleton<BotCore.Services.PositionMonitoring.SessionDetectionService>();
+        
+        // Register ES/NQ Portfolio Heat Manager with position monitoring services
+        services.AddSingleton<BotCore.Services.IPortfolioHeatManager, BotCore.Services.ES_NQ_PortfolioHeatManager>();
+        
+        Console.WriteLine("📊 [POSITION-MONITORING] Registered position monitoring services");
+        Console.WriteLine("   ✅ Real-time session exposure tracking - Monitors exposure by trading session");
+        Console.WriteLine("   ✅ Risk-adjusted exposure calculation - Volatility, correlation, liquidity factors");
+        Console.WriteLine("   ✅ Position lifecycle tracking - Complete history across sessions");
+        Console.WriteLine("   ✅ Time-decay weighting - Fresh (1.0x) to Stale (0.3x) positions");
+        Console.WriteLine("   ✅ ES/NQ Portfolio Heat Manager - Integrated with real-time monitoring");
+        
+        // ================================================================================
         // POSITION MANAGEMENT OPTIMIZER - PHASE 3 ML/RL LEARNING
         // ================================================================================
         
