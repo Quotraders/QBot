@@ -1786,7 +1786,7 @@ namespace TopstepX.Bot.Core.Services
                 }
 
                 // Step 2: Seed with historical data  
-                var seedingSuccess = await _historicalBridge.SeedTradingSystemAsync(_readinessConfig.SeedingContracts).ConfigureAwait(false);
+                var seedingSuccess = await _historicalBridge.SeedTradingSystemAsync(_readinessConfig.SeedingContracts.ToArray()).ConfigureAwait(false);
                 if (seedingSuccess)
                 {
                     _seededBars = _readinessConfig.MinSeededBars; // Assume successful seeding

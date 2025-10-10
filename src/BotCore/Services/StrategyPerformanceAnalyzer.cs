@@ -979,9 +979,9 @@ public class StrategyCharacteristics
 {
     public string Name { get; set; } = "";
     public StrategyType Type { get; set; }
-    public AnalyzerMarketRegime[] BestMarketConditions { get; set; } = Array.Empty<AnalyzerMarketRegime>();
-    public decimal[] OptimalVolatilityRange { get; set; } = Array.Empty<decimal>();
-    public TimeSpan[] PreferredTimeWindows { get; set; } = Array.Empty<TimeSpan>();
+    public IReadOnlyList<AnalyzerMarketRegime> BestMarketConditions { get; set; } = Array.Empty<AnalyzerMarketRegime>();
+    public IReadOnlyList<decimal> OptimalVolatilityRange { get; set; } = Array.Empty<decimal>();
+    public IReadOnlyList<TimeSpan> PreferredTimeWindows { get; set; } = Array.Empty<TimeSpan>();
     public string Description { get; set; } = "";
 }
 

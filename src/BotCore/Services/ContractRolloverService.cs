@@ -235,7 +235,7 @@ namespace BotCore.Services
                 }
 
                 // Find current month in the sequence
-                var currentIndex = Array.IndexOf(spec.MonthSequence, currentMonthCode);
+                var currentIndex = spec.MonthSequence.ToList().IndexOf(currentMonthCode);
                 if (currentIndex == -1)
                 {
                     throw new ArgumentException($"Invalid month code {currentMonthCode} for {baseSymbol}");
@@ -245,7 +245,7 @@ namespace BotCore.Services
                 string nextMonthCode;
                 int nextYear;
 
-                if (currentIndex < spec.MonthSequence.Length - 1)
+                if (currentIndex < spec.MonthSequence.Count - 1)
                 {
                     // Next month in same year
                     nextMonthCode = spec.MonthSequence[currentIndex + 1];
@@ -432,7 +432,7 @@ namespace BotCore.Services
             if ((expirationDate - currentDate).Days <= _config.ContractRolloverDays)
             {
                 // Move to next quarter
-                monthIndex = (monthIndex + 1) % spec.MonthSequence.Length;
+                monthIndex = (monthIndex + 1) % spec.MonthSequence.Count;
                 monthCode = spec.MonthSequence[monthIndex];
                 var year = monthIndex == 0 ? currentDate.Year + 1 : currentDate.Year;
                 return $"{baseSymbol}{monthCode}{year % YearModuloForTwoDigitYear:D2}";
@@ -606,7 +606,7 @@ namespace BotCore.Services
     {
         public string BaseSymbol { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
-        public string[] MonthSequence { get; set; } = Array.Empty<string>();
+        public IReadOnlyList<string> MonthSequence { get; set; } = Array.Empty<string>();
         public decimal TickSize { get; set; }
         public int ContractSize { get; set; }
         public string Currency { get; set; } = "USD";

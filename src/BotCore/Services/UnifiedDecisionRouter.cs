@@ -901,7 +901,7 @@ public class SourceStats
 public class StrategyConfig
 {
     public string Name { get; set; } = string.Empty;
-    public int[] OptimalHours { get; set; } = Array.Empty<int>();
+    public IReadOnlyList<int> OptimalHours { get; set; } = Array.Empty<int>();
 }
 
 #endregion
