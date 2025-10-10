@@ -79,7 +79,7 @@ namespace BotCore.Services
             
             // PHASE 3: Start reconciliation timer (every 60 seconds)
             _reconciliationTimer = new Timer(
-                _ => _ = ReconcilePositionsWithBrokerAsync(),
+                _ => ReconcilePositionsWithBrokerAsync().ConfigureAwait(false),
                 null,
                 TimeSpan.FromSeconds(ReconciliationIntervalSeconds),
                 TimeSpan.FromSeconds(ReconciliationIntervalSeconds)

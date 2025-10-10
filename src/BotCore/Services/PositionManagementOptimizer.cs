@@ -328,7 +328,7 @@ namespace BotCore.Services
                 }
             }
             
-            await Task.CompletedTask.ConfigureAwait(false);
+            return Task.CompletedTask;
         }
         
         /// <summary>
