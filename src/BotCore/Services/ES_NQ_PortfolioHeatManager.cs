@@ -34,14 +34,23 @@ namespace BotCore.Services
         private readonly ILogger<ES_NQ_PortfolioHeatManager> _logger;
         private readonly decimal _accountBalance;
         private readonly TopstepX.Bot.Core.Services.PositionTrackingSystem? _positionTracker;
+        private readonly PositionMonitoring.IRealTimePositionMonitor? _realTimeMonitor;
+        private readonly PositionMonitoring.ISessionExposureCalculator? _sessionCalculator;
+        private readonly PositionMonitoring.IPositionTimeTracker? _timeTracker;
 
         public ES_NQ_PortfolioHeatManager(
             ILogger<ES_NQ_PortfolioHeatManager> logger, 
-            TopstepX.Bot.Core.Services.PositionTrackingSystem? positionTracker = null)
+            TopstepX.Bot.Core.Services.PositionTrackingSystem? positionTracker = null,
+            PositionMonitoring.IRealTimePositionMonitor? realTimeMonitor = null,
+            PositionMonitoring.ISessionExposureCalculator? sessionCalculator = null,
+            PositionMonitoring.IPositionTimeTracker? timeTracker = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _accountBalance = 100000m; // Default account balance, should be injected
             _positionTracker = positionTracker;
+            _realTimeMonitor = realTimeMonitor;
+            _sessionCalculator = sessionCalculator;
+            _timeTracker = timeTracker;
         }
 
         public async Task<PortfolioHeat> CalculateHeatAsync(List<Position> positions)
@@ -358,16 +367,12 @@ namespace BotCore.Services
             try
             {
                 // Production integration with real-time position monitoring
-                // This would connect to your existing real-time position tracking system
-                /*
-                if (_positionTracker is IRealTimePositionMonitor realTimeMonitor)
+                if (_realTimeMonitor != null)
                 {
-                    var sessionExposure = await realTimeMonitor.GetSessionExposureAsync(session, positions).ConfigureAwait(false);
+                    var sessionExposure = await _realTimeMonitor.GetSessionExposureAsync(session, positions).ConfigureAwait(false);
                     return sessionExposure;
                 }
-                */
                 
-                await Task.Delay(3).ConfigureAwait(false); // Simulate real-time check
                 return null; // Return null when real-time monitoring not available
             }
             catch (Exception ex)
@@ -382,16 +387,12 @@ namespace BotCore.Services
             try
             {
                 // Production integration with session-based exposure algorithms
-                // This would use your existing sophisticated exposure calculation algorithms
-                /*
-                if (_exposureCalculator is ISessionExposureCalculator sessionCalculator)
+                if (_sessionCalculator != null)
                 {
-                    var exposure = await sessionCalculator.CalculateSessionExposureAsync(positions, session).ConfigureAwait(false);
+                    var exposure = await _sessionCalculator.CalculateSessionExposureAsync(positions, session).ConfigureAwait(false);
                     return exposure;
                 }
-                */
                 
-                await Task.Delay(5).ConfigureAwait(false); // Simulate algorithmic calculation
                 return null; // Return null when algorithmic calculator not available
             }
             catch (Exception ex)
@@ -406,16 +407,12 @@ namespace BotCore.Services
             try
             {
                 // Production integration with position time tracking system
-                // This would connect to your existing time-based position tracking
-                /*
-                if (_timeTracker is IPositionTimeTracker timeTracker)
+                if (_timeTracker != null)
                 {
-                    var timeBasedExposure = await timeTracker.GetSessionTimeExposureAsync(positions, session).ConfigureAwait(false);
+                    var timeBasedExposure = await _timeTracker.GetSessionTimeExposureAsync(positions, session).ConfigureAwait(false);
                     return timeBasedExposure;
                 }
-                */
                 
-                await Task.Delay(2).ConfigureAwait(false); // Simulate time tracking lookup
                 return null; // Return null when time tracking not available
             }
             catch (Exception ex)
