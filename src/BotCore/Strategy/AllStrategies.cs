@@ -237,7 +237,7 @@ namespace BotCore.Strategy
         }
 
         // Helper method to process candidates into signals
-        private static IReadOnlyList<Signal> ProcessCandidatesToSignals(
+        private static List<Signal> ProcessCandidatesToSignals(
             IReadOnlyList<Candidate> candidates, StrategyDef def, TradingProfileConfig cfg, 
             BotCore.Models.MarketSnapshot snap, IList<Bar> bars)
         {

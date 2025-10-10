@@ -232,7 +232,6 @@ namespace BotCore.Risk
         {
             _cancellationTokenSource?.Dispose();
             base.Dispose();
-            GC.SuppressFinalize(this);
         }
     }
 }
