@@ -75,7 +75,7 @@ public class CloudModelDownloader : ICloudModelDownloader
     private async Task<bool> DownloadToStagingAsync(string modelName, string stagingPath, CancellationToken ct)
     {
         var endpoint = Environment.GetEnvironmentVariable("CLOUD_MODEL_ENDPOINT") ?? "https://api.github.com/repos";
-        var response = await _httpClient.GetAsync($"{endpoint}/{modelName}", ct).ConfigureAwait(false);
+        var response = await _httpClient.GetAsync(new Uri($"{endpoint}/{modelName}"), ct).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode) return false;
         
         Directory.CreateDirectory(Path.GetDirectoryName(stagingPath) ?? ".");

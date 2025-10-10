@@ -130,7 +130,7 @@ public class NewsIntelligenceEngine : INewsIntelligenceEngine
             // Example: Reuters Economic News API
             using var httpClient = new HttpClient();
             var newsApiKey = Environment.GetEnvironmentVariable("NEWS_API_KEY") ?? "demo_key";
-            var response = await httpClient.GetAsync($"https://newsapi.org/v2/everything?q=economy+market+fed&apiKey={newsApiKey}").ConfigureAwait(false);
+            var response = await httpClient.GetAsync(new Uri($"https://newsapi.org/v2/everything?q=economy+market+fed&apiKey={newsApiKey}")).ConfigureAwait(false);
             
             if (response.IsSuccessStatusCode)
             {

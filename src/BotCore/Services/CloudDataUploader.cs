@@ -44,7 +44,7 @@ public class CloudDataUploader : ICloudDataUploader
             using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
             
             var cloudEndpoint = Environment.GetEnvironmentVariable("CLOUD_UPLOAD_ENDPOINT") ?? "https://api.cloudprovider.com/upload/trades";
-            var response = await httpClient.PostAsync(cloudEndpoint, content).ConfigureAwait(false);
+            var response = await httpClient.PostAsync(new Uri(cloudEndpoint), content).ConfigureAwait(false);
             
             if (response.IsSuccessStatusCode)
             {
@@ -82,7 +82,7 @@ public class CloudDataUploader : ICloudDataUploader
             content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/gzip");
             
             var cloudEndpoint = Environment.GetEnvironmentVariable("CLOUD_UPLOAD_ENDPOINT") ?? "https://api.cloudprovider.com/upload/market";
-            var response = await httpClient.PostAsync(cloudEndpoint, content).ConfigureAwait(false);
+            var response = await httpClient.PostAsync(new Uri(cloudEndpoint), content).ConfigureAwait(false);
             
             if (response.IsSuccessStatusCode)
             {

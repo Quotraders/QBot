@@ -63,7 +63,7 @@ public class TopstepXHttpClient : ITopstepXHttpClient, IDisposable
     {
         await EnsureFreshTokenAsync(cancellationToken).ConfigureAwait(false);
         return await ExecuteWithRetryAsync(
-            () => _httpClient.GetAsync(requestUri, cancellationToken),
+            () => _httpClient.GetAsync(new Uri(requestUri, UriKind.RelativeOrAbsolute), cancellationToken),
             "GET",
             requestUri,
             cancellationToken
@@ -74,7 +74,7 @@ public class TopstepXHttpClient : ITopstepXHttpClient, IDisposable
     {
         await EnsureFreshTokenAsync(cancellationToken).ConfigureAwait(false);
         return await ExecuteWithRetryAsync(
-            () => _httpClient.PostAsync(requestUri, content, cancellationToken),
+            () => _httpClient.PostAsync(new Uri(requestUri, UriKind.RelativeOrAbsolute), content, cancellationToken),
             "POST",
             requestUri,
             cancellationToken

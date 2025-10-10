@@ -546,7 +546,7 @@ namespace TopstepX.Bot.Core.Services
                 var json = JsonSerializer.Serialize(orderPayload);
                 using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                var response = await _httpClient.PostAsync("/api/Order/place", content, cancellationToken).ConfigureAwait(false);
+                var response = await _httpClient.PostAsync(new Uri("/api/Order/place", UriKind.Relative), content, cancellationToken).ConfigureAwait(false);
 
                 if (response.IsSuccessStatusCode)
                 {

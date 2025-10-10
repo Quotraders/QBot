@@ -139,7 +139,7 @@ namespace BotCore.Services
                     _logger.LogDebug("[API-CLIENT] Executing GET request to {Endpoint}, Attempt {Attempt}/{MaxRetries}",
                         endpoint, attempt, maxRetries);
 
-                    using var response = await _httpClient.GetAsync(endpoint, cancellationToken).ConfigureAwait(false);
+                    using var response = await _httpClient.GetAsync(new Uri(endpoint, UriKind.RelativeOrAbsolute), cancellationToken).ConfigureAwait(false);
                     
                     if (response.IsSuccessStatusCode)
                     {
@@ -211,7 +211,7 @@ namespace BotCore.Services
                     _logger.LogDebug("[API-CLIENT] Executing POST request to {Endpoint}, Attempt {Attempt}/{MaxRetries}",
                         endpoint, attempt, maxRetries);
 
-                    using var response = await _httpClient.PostAsync(endpoint, content, cancellationToken).ConfigureAwait(false);
+                    using var response = await _httpClient.PostAsync(new Uri(endpoint, UriKind.RelativeOrAbsolute), content, cancellationToken).ConfigureAwait(false);
                     
                     if (response.IsSuccessStatusCode)
                     {
@@ -277,7 +277,7 @@ namespace BotCore.Services
             {
                 try
                 {
-                    using var response = await _httpClient.DeleteAsync(endpoint, cancellationToken).ConfigureAwait(false);
+                    using var response = await _httpClient.DeleteAsync(new Uri(endpoint, UriKind.RelativeOrAbsolute), cancellationToken).ConfigureAwait(false);
                     
                     if (response.IsSuccessStatusCode)
                     {
