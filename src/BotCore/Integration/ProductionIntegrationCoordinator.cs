@@ -450,7 +450,7 @@ public sealed partial class ProductionIntegrationCoordinator : BackgroundService
                 if (result.Success)
                 {
                     successCount++;
-                    LogFeatureResolutionTest(_logger, featureKey, result.Value, result.ResolverType ?? "Unknown", null);
+                    LogFeatureResolutionTest(_logger, featureKey, result.Value ?? 0.0, result.ResolverType ?? "Unknown", null);
                 }
                 else if (result.ShouldHoldDecision)
                 {

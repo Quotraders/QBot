@@ -59,11 +59,11 @@ namespace TradingBot.BotCore.Services
             {
                 // Basic infrastructure check - if we can access configuration and logging, 
                 // we can compute synthetic breadth metrics from available data
-                var hasInfrastructure = _config != null && _logger != null;
+                var hasInfrastructure = _config != null;
                 
                 if (hasInfrastructure)
                 {
-                    _logger!.LogDebug("[BREADTH-FEED] Data available from {DataSource} - ready for breadth computation", _config!.DataSource);
+                    _logger.LogDebug("[BREADTH-FEED] Data available from {DataSource} - ready for breadth computation", _config!.DataSource);
                     return true;
                 }
                 else

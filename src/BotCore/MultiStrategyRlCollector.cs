@@ -14,6 +14,14 @@ namespace BotCore
     /// </summary>
     public static class MultiStrategyRlCollector
     {
+        // Cached JsonSerializerOptions for performance (CA1869 compliance)
+        private static readonly JsonSerializerOptions JsonOptions = new() 
+        { 
+            WriteIndented = false,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+        private static readonly JsonSerializerOptions JsonOptionsIndented = new() { WriteIndented = true };
+        
         // Feature calculation constants
         private const decimal PercentageConversionFactor = 100m;      // Convert decimal to percentage
         private const decimal VolumeNormalizationFactor = 1000m;      // Normalize volume for cross strength
@@ -245,11 +253,7 @@ namespace BotCore
                 // Enrich with calculated fields
                 EnrichFeatures(features);
 
-                var json = JsonSerializer.Serialize(features, new JsonSerializerOptions
-                {
-                    WriteIndented = false,
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                });
+                var json = JsonSerializer.Serialize(features, JsonOptions);
 
                 var fileName = $"features_{features.Strategy.ToString().ToLower()}_{DateTime.UtcNow:yyyyMMdd}.jsonl";
                 var filePath = Path.Combine(DataPath, fileName);
@@ -285,11 +289,7 @@ namespace BotCore
             
             try
             {
-                var json = JsonSerializer.Serialize(outcome, new JsonSerializerOptions
-                {
-                    WriteIndented = false,
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                });
+                var json = JsonSerializer.Serialize(outcome, JsonOptions);
 
                 var fileName = $"outcomes_{outcome.Strategy.ToString().ToLower()}_{DateTime.UtcNow:yyyyMMdd}.jsonl";
                 var filePath = Path.Combine(DataPath, fileName);
@@ -499,7 +499,7 @@ namespace BotCore
                 if (allFeatures.Count > 0)
                 {
                     Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
-                    var json = JsonSerializer.Serialize(allFeatures, new JsonSerializerOptions { WriteIndented = true });
+                    var json = JsonSerializer.Serialize(allFeatures, JsonOptionsIndented);
                     await File.WriteAllTextAsync(outputPath.Replace(".parquet", ".json"), json).ConfigureAwait(false);
                 }
             }
