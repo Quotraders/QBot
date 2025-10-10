@@ -16,6 +16,55 @@ public sealed class ConfigurationLocks
     private readonly ILogger<ConfigurationLocks> _logger;
     private readonly IConfiguration _configuration;
     
+    // LoggerMessage delegates for CA1848 performance compliance
+    private static readonly Action<ILogger, Exception?> LogValidatingConfigurationLocks =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(5010, nameof(LogValidatingConfigurationLocks)),
+            "Validating production configuration locks...");
+    
+    private static readonly Action<ILogger, string, string, string, Exception?> LogConfigurationLockViolation =
+        LoggerMessage.Define<string, string, string>(
+            LogLevel.Error,
+            new EventId(5011, nameof(LogConfigurationLockViolation)),
+            "Configuration lock violation: {Key} expected {Expected} but got {Actual}");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogConfigurationLockVerified =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Debug,
+            new EventId(5012, nameof(LogConfigurationLockVerified)),
+            "Configuration lock verified: {Key} = {Value}");
+    
+    private static readonly Action<ILogger, Exception?> LogAllConfigurationLocksValidated =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(5013, nameof(LogAllConfigurationLocksValidated)),
+            "✅ All configuration locks validated successfully");
+    
+    private static readonly Action<ILogger, Exception?> LogConfigurationLockValidationFailed =
+        LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(5014, nameof(LogConfigurationLockValidationFailed)),
+            "❌ Configuration lock validation failed - system may not be production ready");
+    
+    private static readonly Action<ILogger, string, string, string, string, Exception?> LogSafetySettingNonCompliant =
+        LoggerMessage.Define<string, string, string, string>(
+            LogLevel.Warning,
+            new EventId(5015, nameof(LogSafetySettingNonCompliant)),
+            "Safety setting non-compliant: {Key} expected {Expected} but got {Actual} - {Description}");
+    
+    private static readonly Action<ILogger, Exception?> LogEnforcingConfigurationLocks =
+        LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(5016, nameof(LogEnforcingConfigurationLocks)),
+            "Enforcing configuration locks - this should only be used in development/test environments");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogEnforcedConfigurationLock =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Information,
+            new EventId(5017, nameof(LogEnforcedConfigurationLock)),
+            "Enforced configuration lock: {Key} = {Value}");
+    
     // Required configuration locks for production safety
     private readonly Dictionary<string, string> _requiredSettings = new()
     {
@@ -46,7 +95,7 @@ public sealed class ConfigurationLocks
             IsCompliant = true
         };
         
-        _logger.LogInformation("Validating production configuration locks...");
+        LogValidatingConfigurationLocks(_logger, null);
         
         foreach (var requiredSetting in _requiredSettings)
         {
@@ -67,12 +116,11 @@ public sealed class ConfigurationLocks
             if (!status.IsCompliant)
             {
                 report.IsCompliant = false;
-                _logger.LogError("Configuration lock violation: {Key} expected {Expected} but got {Actual}",
-                    key, expectedValue, actualValue ?? "NOT_SET");
+                LogConfigurationLockViolation(_logger, key, expectedValue, actualValue ?? "NOT_SET", null);
             }
             else
             {
-                _logger.LogDebug("Configuration lock verified: {Key} = {Value}", key, actualValue);
+                LogConfigurationLockVerified(_logger, key, actualValue!, null);
             }
         }
         
@@ -81,11 +129,11 @@ public sealed class ConfigurationLocks
         
         if (report.IsCompliant)
         {
-            _logger.LogInformation("✅ All configuration locks validated successfully");
+            LogAllConfigurationLocksValidated(_logger, null);
         }
         else
         {
-            _logger.LogError("❌ Configuration lock validation failed - system may not be production ready");
+            LogConfigurationLockValidationFailed(_logger, null);
         }
         
         return report;
@@ -145,8 +193,7 @@ public sealed class ConfigurationLocks
         if (!isCompliant)
         {
             report.IsCompliant = false;
-            _logger.LogWarning("Safety setting non-compliant: {Key} expected {Expected} but got {Actual} - {Description}",
-                key, expectedValue, actualValue ?? "NOT_SET", description);
+            LogSafetySettingNonCompliant(_logger, key, expectedValue, actualValue ?? "NOT_SET", description, null);
         }
     }
     
@@ -198,7 +245,7 @@ public sealed class ConfigurationLocks
     /// </summary>
     public void EnforceConfigurationLocks()
     {
-        _logger.LogWarning("Enforcing configuration locks - this should only be used in development/test environments");
+        LogEnforcingConfigurationLocks(_logger, null);
         
         foreach (var requiredSetting in _requiredSettings)
         {
@@ -207,7 +254,7 @@ public sealed class ConfigurationLocks
             
             // Set environment variable to enforce the lock
             Environment.SetEnvironmentVariable(key, value);
-            _logger.LogInformation("Enforced configuration lock: {Key} = {Value}", key, value);
+            LogEnforcedConfigurationLock(_logger, key, value, null);
         }
     }
 }

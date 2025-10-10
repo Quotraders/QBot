@@ -15,6 +15,19 @@ public sealed class PatternScoreResolver : IFeatureResolver
     private readonly bool _isBullScore;
     private readonly ILogger<PatternScoreResolver> _logger;
     
+    // LoggerMessage delegates for CA1848 performance compliance
+    private static readonly Action<ILogger, string, string, double?, Exception?> LogPatternScoreResolved =
+        LoggerMessage.Define<string, string, double?>(
+            LogLevel.Trace,
+            new EventId(5020, nameof(LogPatternScoreResolved)),
+            "Pattern {ScoreType} score for {Symbol}: {Value}");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogPatternScoreResolutionFailed =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Error,
+            new EventId(5021, nameof(LogPatternScoreResolutionFailed)),
+            "Failed to resolve pattern {ScoreType} score for symbol {Symbol}");
+    
     public PatternScoreResolver(IServiceProvider serviceProvider, bool isBullScore)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
@@ -32,13 +45,13 @@ public sealed class PatternScoreResolver : IFeatureResolver
             var value = _isBullScore ? patternScores.BullScore : patternScores.BearScore;
             var scoreType = _isBullScore ? "bull" : "bear";
             
-            _logger.LogTrace("Pattern {ScoreType} score for {Symbol}: {Value}", scoreType, symbol, value);
+            LogPatternScoreResolved(_logger, scoreType, symbol, value, null);
             return value;
         }
         catch (Exception ex)
         {
             var scoreType = _isBullScore ? "bull" : "bear";
-            _logger.LogError(ex, "Failed to resolve pattern {ScoreType} score for symbol {Symbol}", scoreType, symbol);
+            LogPatternScoreResolutionFailed(_logger, scoreType, symbol, ex);
             throw new InvalidOperationException($"Production pattern {scoreType} score resolution failed for '{symbol}': {ex.Message}", ex);
         }
     }
@@ -58,6 +71,19 @@ public sealed class PatternSignalResolver : IFeatureResolver
     private readonly IServiceProvider _serviceProvider;
     private readonly string _patternType;
     private readonly ILogger<PatternSignalResolver> _logger;
+    
+    // LoggerMessage delegates for CA1848 performance compliance
+    private static readonly Action<ILogger, string, string, double, Exception?> LogPatternSignalDetected =
+        LoggerMessage.Define<string, string, double>(
+            LogLevel.Trace,
+            new EventId(5022, nameof(LogPatternSignalDetected)),
+            "Pattern signal {Pattern} for {Symbol}: {Value}");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogPatternSignalResolutionFailed =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Error,
+            new EventId(5023, nameof(LogPatternSignalResolutionFailed)),
+            "Failed to resolve pattern signal {Pattern} for symbol {Symbol}");
     
     public PatternSignalResolver(IServiceProvider serviceProvider, string patternType)
     {
@@ -82,12 +108,12 @@ public sealed class PatternSignalResolver : IFeatureResolver
             };
             
             var signalValue = isPatternPresent ? 1.0 : 0.0;
-            _logger.LogTrace("Pattern signal {Pattern} for {Symbol}: {Value}", _patternType, symbol, signalValue);
+            LogPatternSignalDetected(_logger, _patternType, symbol, signalValue, null);
             return signalValue;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to resolve pattern signal {Pattern} for symbol {Symbol}", _patternType, symbol);
+            LogPatternSignalResolutionFailed(_logger, _patternType, symbol, ex);
             throw new InvalidOperationException($"Production pattern signal resolution failed for '{_patternType}' on '{symbol}': {ex.Message}", ex);
         }
     }
@@ -121,6 +147,19 @@ public sealed class PatternConfirmationResolver : IFeatureResolver
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<PatternConfirmationResolver> _logger;
     
+    // LoggerMessage delegates for CA1848 performance compliance
+    private static readonly Action<ILogger, string, double, double, Exception?> LogPatternConfirmation =
+        LoggerMessage.Define<string, double, double>(
+            LogLevel.Trace,
+            new EventId(5024, nameof(LogPatternConfirmation)),
+            "Pattern confirmation for {Symbol}: {Value} (confidence: {Confidence})");
+    
+    private static readonly Action<ILogger, string, Exception?> LogPatternConfirmationFailed =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(5025, nameof(LogPatternConfirmationFailed)),
+            "Failed to resolve pattern confirmation for symbol {Symbol}");
+    
     public PatternConfirmationResolver(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
@@ -138,14 +177,13 @@ public sealed class PatternConfirmationResolver : IFeatureResolver
             var isConfirmed = patternScores.OverallConfidence >= 0.70;
             var confirmationValue = isConfirmed ? 1.0 : 0.0;
             
-            _logger.LogTrace("Pattern confirmation for {Symbol}: {Value} (confidence: {Confidence})", 
-                symbol, confirmationValue, patternScores.OverallConfidence);
+            LogPatternConfirmation(_logger, symbol, confirmationValue, patternScores.OverallConfidence, null);
             
             return confirmationValue;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to resolve pattern confirmation for symbol {Symbol}", symbol);
+            LogPatternConfirmationFailed(_logger, symbol, ex);
             throw new InvalidOperationException($"Production pattern confirmation resolution failed for '{symbol}': {ex.Message}", ex);
         }
     }
@@ -159,6 +197,19 @@ public sealed class PatternReliabilityResolver : IFeatureResolver
     private readonly IServiceProvider _serviceProvider;
     private readonly string _patternType;
     private readonly ILogger<PatternReliabilityResolver> _logger;
+    
+    // LoggerMessage delegates for CA1848 performance compliance
+    private static readonly Action<ILogger, string, string, double, Exception?> LogPatternReliability =
+        LoggerMessage.Define<string, string, double>(
+            LogLevel.Trace,
+            new EventId(5026, nameof(LogPatternReliability)),
+            "Pattern reliability {Pattern} for {Symbol}: {Value}");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogPatternReliabilityFailed =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Error,
+            new EventId(5027, nameof(LogPatternReliabilityFailed)),
+            "Failed to resolve pattern reliability {Pattern} for symbol {Symbol}");
     
     public PatternReliabilityResolver(IServiceProvider serviceProvider, string patternType)
     {
@@ -177,12 +228,12 @@ public sealed class PatternReliabilityResolver : IFeatureResolver
             // Pattern reliability is directly the overall confidence for the specific pattern type
             var reliability = patternScores.OverallConfidence;
             
-            _logger.LogTrace("Pattern reliability {Pattern} for {Symbol}: {Value}", _patternType, symbol, reliability);
+            LogPatternReliability(_logger, _patternType, symbol, reliability, null);
             return reliability;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to resolve pattern reliability {Pattern} for symbol {Symbol}", _patternType, symbol);
+            LogPatternReliabilityFailed(_logger, _patternType, symbol, ex);
             throw new InvalidOperationException($"Production pattern reliability resolution failed for '{_patternType}' on '{symbol}': {ex.Message}", ex);
         }
     }
