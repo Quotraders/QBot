@@ -498,7 +498,7 @@ public sealed class OnnxModelLoader : IDisposable
                 
                 if (!isHealthy)
                 {
-                    LogHealthProbeFailed(_logger, modelPath, healthProbeResult.ErrorMessage, null);
+                    LogHealthProbeFailed(_logger, modelPath, healthProbeResult.ErrorMessage ?? "Unknown error", null);
                     // Dispose will happen in finally block
                     return new ModelLoadResult { Session = null, IsHealthy = false };
                 }
@@ -717,7 +717,7 @@ public sealed class OnnxModelLoader : IDisposable
                 if (!_modelMetadata.TryGetValue(cacheKey, out var metadata) || 
                     metadata.LoadedAt < lastWriteTime)
                 {
-                    LogRegistryUpdateNew(_logger, Path.GetFileName(metadataFile), lastWriteTime, null);
+                    LogRegistryUpdateNew(_logger, Path.GetFileName(metadataFile), lastWriteTime.ToString("O", CultureInfo.InvariantCulture), null);
                     
                     // Read and parse metadata to trigger model reload if needed
                     var content = await File.ReadAllTextAsync(metadataFile).ConfigureAwait(false);
@@ -775,7 +775,7 @@ public sealed class OnnxModelLoader : IDisposable
                 if (!_modelMetadata.TryGetValue(cacheKey, out var sacMetadata) || 
                     sacMetadata.LoadedAt < lastWriteTime)
                 {
-                    LogSacUpdate(_logger, Path.GetFileName(sacFile), lastWriteTime, null);
+                    LogSacUpdate(_logger, Path.GetFileName(sacFile), lastWriteTime.ToString("O", CultureInfo.InvariantCulture), null);
                     
                     // Trigger SAC model reload in Python side
                     await TriggerSacModelReloadAsync(sacFile).ConfigureAwait(false);
