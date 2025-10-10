@@ -833,7 +833,7 @@ namespace BotCore.Strategy
                 var timeOfDay = etTime.TimeOfDay;
                 
                 if (timeOfDay >= TimeSpan.Parse("09:28", System.Globalization.CultureInfo.InvariantCulture) && timeOfDay <= TimeSpan.Parse("10:00", System.Globalization.CultureInfo.InvariantCulture) && 
-                    bars?.Count > 0 && currentPosition.qty == 0) // Only if no existing position
+                    bars.Count > 0 && currentPosition.qty == 0) // Only if no existing position
                 {
                     // Use loaded parameters with fallback to RuntimeConfig
                     var minAtr = S6RuntimeConfig.MinAtr;
@@ -871,11 +871,11 @@ namespace BotCore.Strategy
             }
             catch (InvalidOperationException ex)
             {
-                if (logger != null) LogS6InvalidOperation(logger, ex);
+                LogS6InvalidOperation(logger, ex);
             }
             catch (ArgumentException ex)
             {
-                if (logger != null) LogS6InvalidArgument(logger, ex);
+                LogS6InvalidArgument(logger, ex);
             }
 
             return candidates;
@@ -943,7 +943,7 @@ namespace BotCore.Strategy
                 var timeOfDay = etTime.TimeOfDay;
                 
                 if (timeOfDay >= TimeSpan.Parse("13:30", System.Globalization.CultureInfo.InvariantCulture) && timeOfDay <= TimeSpan.Parse("15:30", System.Globalization.CultureInfo.InvariantCulture) && 
-                    bars?.Count > 0 && currentPosition.qty == 0) // Only if no existing position
+                    bars.Count > 0 && currentPosition.qty == 0) // Only if no existing position
                 {
                     // Use loaded parameters with fallback to RuntimeConfig
                     var minAtr = S11RuntimeConfig.MinAtr;
@@ -981,11 +981,11 @@ namespace BotCore.Strategy
             }
             catch (InvalidOperationException ex)
             {
-                if (logger != null) LogS11InvalidOperation(logger, ex);
+                LogS11InvalidOperation(logger, ex);
             }
             catch (ArgumentException ex)
             {
-                if (logger != null) LogS11InvalidArgument(logger, ex);
+                LogS11InvalidArgument(logger, ex);
             }
 
             return candidates;
