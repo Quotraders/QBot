@@ -96,11 +96,6 @@ public class ModelEnsembleService : IDisposable
                     _logger.LogWarning(ex, "🔀 [ENSEMBLE] Invalid prediction argument for model {ModelName}", model.Name);
                     UpdateModelPerformance(model.Name, 0.0, "prediction_failure");
                 }
-                catch (NullReferenceException ex)
-                {
-                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Null reference in strategy prediction for model {ModelName}", model.Name);
-                    UpdateModelPerformance(model.Name, 0.0, "prediction_failure");
-                }
             }
             
             // Blend predictions using weighted voting
@@ -127,11 +122,6 @@ public class ModelEnsembleService : IDisposable
         catch (ArgumentException ex)
         {
             _logger.LogError(ex, "🔀 [ENSEMBLE] Invalid argument during strategy selection");
-            return CreateFallbackStrategyPrediction(availableStrategies);
-        }
-        catch (NullReferenceException ex)
-        {
-            _logger.LogError(ex, "🔀 [ENSEMBLE] Null reference during strategy selection");
             return CreateFallbackStrategyPrediction(availableStrategies);
         }
     }
@@ -182,11 +172,6 @@ public class ModelEnsembleService : IDisposable
                     _logger.LogWarning(ex, "🔀 [ENSEMBLE] Invalid prediction argument for model {ModelName}", model.Name);
                     UpdateModelPerformance(model.Name, 0.0, "prediction_failure");
                 }
-                catch (NullReferenceException ex)
-                {
-                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Null reference in price prediction for model {ModelName}", model.Name);
-                    UpdateModelPerformance(model.Name, 0.0, "prediction_failure");
-                }
             }
             
             // Blend predictions using weighted averaging
@@ -213,11 +198,6 @@ public class ModelEnsembleService : IDisposable
         catch (ArgumentException ex)
         {
             _logger.LogError(ex, "🔀 [ENSEMBLE] Invalid argument during price prediction");
-            return CreateFallbackPricePrediction();
-        }
-        catch (NullReferenceException ex)
-        {
-            _logger.LogError(ex, "🔀 [ENSEMBLE] Null reference during price prediction");
             return CreateFallbackPricePrediction();
         }
     }
@@ -292,11 +272,6 @@ public class ModelEnsembleService : IDisposable
         catch (ArgumentException ex)
         {
             _logger.LogError(ex, "🔀 [ENSEMBLE] Invalid argument during CVaR action");
-            return CreateFallbackAction();
-        }
-        catch (NullReferenceException ex)
-        {
-            _logger.LogError(ex, "🔀 [ENSEMBLE] Null reference during CVaR action");
             return CreateFallbackAction();
         }
     }

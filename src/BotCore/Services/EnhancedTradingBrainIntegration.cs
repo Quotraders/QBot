@@ -661,9 +661,27 @@ public class EnhancedTradingBrainIntegration
             (double)marketContext.Volume, // Market volume
             (double)marketContext.Volatility, // Volatility
             // Use strategy as action encoding instead of Action property (which doesn't exist)
-            decision.StrategyId.Contains("S3", StringComparison.OrdinalIgnoreCase) ? 1.0 : 
-            decision.StrategyId.Contains("S6", StringComparison.OrdinalIgnoreCase) ? -1.0 : 0.0 // Strategy-based encoding
+            GetStrategyActionEncoding(decision.StrategyId) // Strategy-based encoding
         };
+    }
+
+    /// <summary>
+    /// Get strategy action encoding from strategy ID
+    /// </summary>
+    private static double GetStrategyActionEncoding(string strategyId)
+    {
+        if (strategyId.Contains("S3", StringComparison.OrdinalIgnoreCase))
+        {
+            return 1.0;
+        }
+        else if (strategyId.Contains("S6", StringComparison.OrdinalIgnoreCase))
+        {
+            return -1.0;
+        }
+        else
+        {
+            return 0.0;
+        }
     }
 
     /// <summary>

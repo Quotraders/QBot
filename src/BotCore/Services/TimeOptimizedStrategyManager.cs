@@ -434,9 +434,23 @@ namespace BotCore.Services
             var volatility = (double)features[0];
             var trend = (double)features[1];
 
+            string regimeName;
+            if (volatility > HighVolatilityThreshold)
+            {
+                regimeName = "high_vol";
+            }
+            else if (volatility < LowVolatilityThreshold)
+            {
+                regimeName = "low_vol";
+            }
+            else
+            {
+                regimeName = "mid_vol";
+            }
+
             return new MarketRegime
             {
-                Name = volatility > HighVolatilityThreshold ? "high_vol" : volatility < LowVolatilityThreshold ? "low_vol" : "mid_vol",
+                Name = regimeName,
                 TrendStrength = Math.Abs(trend),
                 Volatility = volatility,
                 MLConfidence = NoMLConfidenceFallback // No ML confidence in fallback

@@ -115,10 +115,6 @@ namespace BotCore.Services
             {
                 _logger.LogError(ex, "[ZONE-BRIDGE] Invalid arguments when processing market data for {Symbol}", symbol);
             }
-            catch (NullReferenceException ex)
-            {
-                _logger.LogError(ex, "[ZONE-BRIDGE] Null reference when processing market data for {Symbol}", symbol);
-            }
         }
 
         private void ProcessMarketData(MarketData marketData)
