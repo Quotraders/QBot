@@ -517,7 +517,7 @@ namespace BotCore.Services
         private int GenerateWindowSeed(int windowIndex)
         {
             var baseDate = DateTime.UtcNow.Date;
-            var daysSinceEpoch = (int)(baseDate - new DateTime(2020, 1, 1)).TotalDays;
+            var daysSinceEpoch = (int)(baseDate - new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalDays;
             
             return _config.SeedRotation.GenerateNewSeed() + windowIndex * WindowSeedMultiplier + daysSinceEpoch;
         }

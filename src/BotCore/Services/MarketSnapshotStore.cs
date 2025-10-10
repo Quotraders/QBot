@@ -96,7 +96,7 @@ public sealed class MarketSnapshotStore
         lock (_lock)
         {
             return _snapshots.ToList()
-                .FirstOrDefault(s => s.Id == snapshotId);
+                .Find(s => s.Id == snapshotId);
         }
     }
 

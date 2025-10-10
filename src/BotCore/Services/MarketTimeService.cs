@@ -160,13 +160,13 @@ namespace BotCore.Services
         private static DateTime GetMarketOpenTime(DateTime easternTime, string symbol)
         {
             // Standard market open time: 9:30 AM ET
-            return new DateTime(easternTime.Year, easternTime.Month, easternTime.Day, 9, 30, 0);
+            return new DateTime(easternTime.Year, easternTime.Month, easternTime.Day, 9, 30, 0, easternTime.Kind);
         }
 
         private static DateTime GetMarketCloseTime(DateTime easternTime, string symbol)
         {
             // Standard market close time: 4:00 PM ET
-            return new DateTime(easternTime.Year, easternTime.Month, easternTime.Day, 16, 0, 0);
+            return new DateTime(easternTime.Year, easternTime.Month, easternTime.Day, 16, 0, 0, easternTime.Kind);
         }
 
         /// <summary>

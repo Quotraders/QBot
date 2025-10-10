@@ -301,7 +301,7 @@ namespace BotCore.Services
                 }
                 
                 var best = analysis[0];
-                var current = analysis.FirstOrDefault(a => a.Count >= MinSamplesForHalfLearning);
+                var current = analysis.Find(a => a.Count >= MinSamplesForHalfLearning);
                 
                 if (current != null && best.BreakevenTicks != current.BreakevenTicks && best.AvgPnL > current.AvgPnL * (double)ParameterImprovementThreshold)
                 {
@@ -383,7 +383,7 @@ namespace BotCore.Services
                 }
                 
                 var best = analysis[0];
-                var current = analysis.FirstOrDefault(a => a.Count >= MinSamplesForHalfLearning);
+                var current = analysis.Find(a => a.Count >= MinSamplesForHalfLearning);
                 
                 if (current != null && (double)Math.Abs(best.TrailMultiplier - current.TrailMultiplier) > (double)TrailMultiplierSignificantDifference && best.AvgPnL > current.AvgPnL * (double)ParameterImprovementThreshold)
                 {

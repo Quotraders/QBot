@@ -2131,7 +2131,7 @@ namespace BotCore.Services
             state.ProgressiveTighteningTier = newTier;
             
             // Get current tier requirements
-            var currentTierRequirements = tighteningSchedule.FirstOrDefault(t => t.Tier == newTier);
+            var currentTierRequirements = tighteningSchedule.Find(t => t.Tier == newTier);
             if (currentTierRequirements == null)
             {
                 return;

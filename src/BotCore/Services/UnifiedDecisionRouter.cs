@@ -504,7 +504,7 @@ public class UnifiedDecisionRouter
             
             lock (_historyLock)
             {
-                outcome = _decisionHistory.FirstOrDefault(d => d.DecisionId == decisionId);
+                outcome = _decisionHistory.Find(d => d.DecisionId == decisionId);
             }
             
             if (outcome == null)
