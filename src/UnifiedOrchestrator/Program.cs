@@ -1179,6 +1179,9 @@ Please check the configuration and ensure all required services are registered.
         services.AddProductionReadinessServices(configuration);
         services.AddDefaultTradingReadinessConfiguration();
         
+        // Register production guardrails including CriticalSystemComponentsFixes
+        services.AddProductionGuardrails();
+        
         // ================================================================================
         // BAR INFRASTRUCTURE - Register BarPyramid and underlying BarAggregators
         // ================================================================================
