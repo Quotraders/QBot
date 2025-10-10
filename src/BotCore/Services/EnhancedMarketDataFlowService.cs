@@ -633,7 +633,7 @@ namespace BotCore.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[MARKET-DATA-FLOW] Failed to process market data for {Symbol}", marketData.Symbol);
-                throw;
+                throw new InvalidOperationException($"Failed to process market data for symbol {marketData.Symbol}", ex);
             }
         }
 
@@ -687,7 +687,7 @@ namespace BotCore.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[ENHANCED-DATA-FLOW] [AUDIT-VIOLATION] Failed to process historical bars for {ContractId} - FAIL-CLOSED + TELEMETRY", contractId);
-                throw; // Fail-closed behavior
+                throw new InvalidOperationException($"Failed to process historical bars for contract {contractId} - FAIL-CLOSED", ex); // Fail-closed behavior
             }
         }
 
@@ -734,7 +734,7 @@ namespace BotCore.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[ENHANCED-DATA-FLOW] Failed to forward historical bars to BarPyramid for {ContractId}", contractId);
-                throw;
+                throw new InvalidOperationException($"Failed to forward historical bars to BarPyramid for contract {contractId}", ex);
             }
         }
 

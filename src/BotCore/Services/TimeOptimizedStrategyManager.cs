@@ -493,7 +493,7 @@ namespace BotCore.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning($"Error generating candidates for {strategyId}: {ex.Message}");
+                _logger.LogWarning(ex, "Error generating candidates for {StrategyId}", strategyId);
                 return new List<Candidate>();
             }
         }

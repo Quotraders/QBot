@@ -113,7 +113,7 @@ namespace BotCore.Services
 
                 // Wait for all validations to complete
                 var windowResults = await Task.WhenAll(validationTasks).ConfigureAwait(false);
-                result.WindowResults = windowResults.ToList();
+                result.WindowResultsInternal.AddRange(windowResults);
 
                 // Calculate aggregate metrics
                 CalculateAggregateMetrics(result);
@@ -737,11 +737,14 @@ namespace BotCore.Services
         public double SharpeStability { get; set; }
         public double DrawdownStability { get; set; }
 
+        private readonly List<WindowResult> _windowResults = new();
+        
         // Overall validation result
         public bool PassesThresholds { get; set; }
 
         // Detailed results
-        public List<WindowResult> WindowResults { get; set; } = new();
+        public IReadOnlyList<WindowResult> WindowResults => _windowResults;
+        internal List<WindowResult> WindowResultsInternal => _windowResults;
     }
 
     #endregion

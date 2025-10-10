@@ -340,7 +340,7 @@ public class TradingDecision
     public string Symbol { get; set; } = string.Empty;
     public string StrategyId { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; }
-    public System.Collections.Generic.Dictionary<string, object>? Metadata { get; set; }
+    public System.Collections.Generic.Dictionary<string, object>? Metadata { get; init; }
 }
 
 /// <summary>

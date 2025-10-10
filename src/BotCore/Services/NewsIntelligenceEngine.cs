@@ -34,7 +34,7 @@ public class NewsIntelligence
 {
     public string Symbol { get; set; } = string.Empty;
     public decimal Sentiment { get; set; }
-    public string[] Keywords { get; set; } = Array.Empty<string>();
+    public IReadOnlyList<string> Keywords { get; set; } = Array.Empty<string>();
     public DateTime Timestamp { get; set; }
     public bool IsHighImpact { get; set; }
 }

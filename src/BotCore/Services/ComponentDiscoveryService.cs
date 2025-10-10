@@ -148,7 +148,7 @@ public sealed class ComponentDiscoveryService
                 }
                 catch (InvalidOperationException ex)
                 {
-                    _logger.LogDebug("  ⚠️ Could not get service {ServiceType}: {Error}", serviceType.Name, ex.Message);
+                    _logger.LogDebug(ex, "  ⚠️ Could not get service {ServiceType}", serviceType.Name);
                 }
             }
 

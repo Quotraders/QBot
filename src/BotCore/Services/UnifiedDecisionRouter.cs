@@ -845,7 +845,7 @@ public class UnifiedTradingDecision
     public decimal Quantity { get; set; }
     public string Strategy { get; set; } = string.Empty;
     public string DecisionSource { get; set; } = string.Empty;
-    public Dictionary<string, object> Reasoning { get; set; } = new();
+    public Dictionary<string, object> Reasoning { get; init; } = new();
     public DateTime Timestamp { get; set; }
     public double ProcessingTimeMs { get; set; }
 }
@@ -901,7 +901,7 @@ public class SourceStats
 public class StrategyConfig
 {
     public string Name { get; set; } = string.Empty;
-    public int[] OptimalHours { get; set; } = Array.Empty<int>();
+    public IReadOnlyList<int> OptimalHours { get; set; } = Array.Empty<int>();
 }
 
 #endregion

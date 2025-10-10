@@ -295,7 +295,7 @@ namespace TradingBot.BotCore.Services
     {
         public string Name { get; set; } = string.Empty;
         public string DataType { get; set; } = string.Empty;
-        public int[] Shape { get; set; } = Array.Empty<int>();
+        public IReadOnlyList<int> Shape { get; set; } = Array.Empty<int>();
         public string Description { get; set; } = string.Empty;
     }
 }

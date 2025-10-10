@@ -140,12 +140,12 @@ public class IntelligenceService : IIntelligenceService
         }
         catch (JsonException ex)
         {
-            _logger.LogWarning("[INTEL] Failed to parse signals file: {Error}", ex.Message);
+            _logger.LogWarning(ex, "[INTEL] Failed to parse signals file");
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogDebug("[INTEL] Intelligence unavailable: {Error}", ex.Message);
+            _logger.LogDebug(ex, "[INTEL] Intelligence unavailable");
             return null;
         }
     }
@@ -213,7 +213,7 @@ public class IntelligenceService : IIntelligenceService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning("[INTEL] Failed to log trade result: {Error}", ex.Message);
+            _logger.LogWarning(ex, "[INTEL] Failed to log trade result");
         }
     }
 

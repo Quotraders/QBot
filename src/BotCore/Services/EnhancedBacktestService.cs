@@ -383,10 +383,13 @@ namespace BotCore.Services
     /// </summary>
     public class BacktestRequest
     {
+        private readonly List<SignalEvent> _signals = new();
+        
         public string StrategyName { get; set; } = string.Empty;
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
-        public List<SignalEvent> Signals { get; } = new();
+        public IReadOnlyList<SignalEvent> Signals => _signals;
+        internal List<SignalEvent> SignalsInternal => _signals;
         public bool EnableMarketFriction { get; set; } = true;
     }
 

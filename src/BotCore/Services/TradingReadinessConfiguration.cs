@@ -74,7 +74,7 @@ namespace BotCore.Services
         /// <summary>
         /// Contracts to seed with historical data
         /// </summary>
-        public string[] SeedingContracts { get; set; } = { "CON.F.US.EP.Z25", "CON.F.US.ENQ.Z25" };
+        public IReadOnlyList<string> SeedingContracts { get; set; } = new[] { "CON.F.US.EP.Z25", "CON.F.US.ENQ.Z25" };
 
         /// <summary>
         /// Environment-specific settings
@@ -188,6 +188,6 @@ namespace BotCore.Services
         public TradingReadinessState State { get; set; }
         public string Reason { get; set; } = string.Empty;
         public double ReadinessScore { get; set; } // 0.0 to 1.0
-        public string[] Recommendations { get; set; } = Array.Empty<string>();
+        public IReadOnlyList<string> Recommendations { get; set; } = Array.Empty<string>();
     }
 }

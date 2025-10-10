@@ -232,7 +232,7 @@ public class AutonomousDecisionEngine : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ [AUTONOMOUS-ENGINE] Critical error in autonomous engine");
-            throw;
+            throw new InvalidOperationException("Critical error in autonomous decision engine", ex);
         }
     }
     
@@ -492,8 +492,9 @@ public class AutonomousDecisionEngine : BackgroundService
         
         static decimal CalculateProfitFactor(decimal avgWinAmount, decimal avgLossAmount, decimal winRatio)
         {
+            const decimal FallbackProfitFactorWhenNoLosses = 2;
             if (avgLossAmount != 0) return avgWinAmount / Math.Abs(avgLossAmount);
-            return winRatio > 0 ? 2 : 0;
+            return winRatio > 0 ? FallbackProfitFactorWhenNoLosses : 0;
         }
         
         // Combined profitability score
