@@ -315,7 +315,7 @@ public class ExpressionEvaluator
         }
 
         // Handle time comparisons
-        if (featureName.Contains("time", StringComparison.Ordinal) && TimeSpan.TryParse(valueStr, out var timeValue) && TimeSpan.TryParse(featureValue.ToString(), out var featureTime))
+        if (featureName.Contains("time", StringComparison.Ordinal) && TimeSpan.TryParse(valueStr, CultureInfo.InvariantCulture, out var timeValue) && TimeSpan.TryParse(featureValue.ToString(), CultureInfo.InvariantCulture, out var featureTime))
         {
             return operatorStr switch
             {
