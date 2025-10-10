@@ -389,22 +389,17 @@ public class ModelEnsembleService : IDisposable
     {
         var activeModels = new List<LoadedModel>();
         
-        foreach (var model in _loadedModels.Select(kvp => kvp.Value))
+        foreach (var model in _loadedModels.Values.Where(m => IsModelRelevant(m.Name, predictionType)))
         {
-            
-            // Check if model is relevant for this prediction type
-            if (IsModelRelevant(model.Name, predictionType))
+            // Check if model is not too old
+            var age = DateTime.UtcNow - model.LoadedAt;
+            if (age.TotalHours < _maxModelAge)
             {
-                // Check if model is not too old
-                var age = DateTime.UtcNow - model.LoadedAt;
-                if (age.TotalHours < _maxModelAge)
-                {
-                    activeModels.Add(model);
-                }
-                else
-                {
-                    _logger.LogDebug("🔀 [ENSEMBLE] Model {ModelName} is stale (age: {Age:F1}h)", model.Name, age.TotalHours);
-                }
+                activeModels.Add(model);
+            }
+            else
+            {
+                _logger.LogDebug("🔀 [ENSEMBLE] Model {ModelName} is stale (age: {Age:F1}h)", model.Name, age.TotalHours);
             }
         }
         
