@@ -34,14 +34,23 @@ namespace BotCore.Services
         private readonly ILogger<ES_NQ_PortfolioHeatManager> _logger;
         private readonly decimal _accountBalance;
         private readonly TopstepX.Bot.Core.Services.PositionTrackingSystem? _positionTracker;
+        private readonly PositionMonitoring.IRealTimePositionMonitor? _realTimeMonitor;
+        private readonly PositionMonitoring.ISessionExposureCalculator? _sessionCalculator;
+        private readonly PositionMonitoring.IPositionTimeTracker? _timeTracker;
 
         public ES_NQ_PortfolioHeatManager(
             ILogger<ES_NQ_PortfolioHeatManager> logger, 
-            TopstepX.Bot.Core.Services.PositionTrackingSystem? positionTracker = null)
+            TopstepX.Bot.Core.Services.PositionTrackingSystem? positionTracker = null,
+            PositionMonitoring.IRealTimePositionMonitor? realTimeMonitor = null,
+            PositionMonitoring.ISessionExposureCalculator? sessionCalculator = null,
+            PositionMonitoring.IPositionTimeTracker? timeTracker = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _accountBalance = 100000m; // Default account balance, should be injected
             _positionTracker = positionTracker;
+            _realTimeMonitor = realTimeMonitor;
+            _sessionCalculator = sessionCalculator;
+            _timeTracker = timeTracker;
         }
 
         public async Task<PortfolioHeat> CalculateHeatAsync(List<Position> positions)
@@ -56,10 +65,10 @@ namespace BotCore.Services
 
                 // Calculate exposures
                 heat.ESExposure = positions.Where(p => p.Symbol == "ES")
-                    .Sum(p => p.Size * p.CurrentPrice);
+                    .Sum(p => p.Quantity * p.AveragePrice);
 
                 heat.NQExposure = positions.Where(p => p.Symbol == "NQ")
-                    .Sum(p => p.Size * p.CurrentPrice);
+                    .Sum(p => p.Quantity * p.AveragePrice);
 
                 heat.TotalExposure = Math.Abs(heat.ESExposure) + Math.Abs(heat.NQExposure);
 
@@ -148,7 +157,7 @@ namespace BotCore.Services
                 }
 
                 // Fallback: Use your sophisticated session analysis instead of simulation
-                var totalExposure = positions.Sum(p => Math.Abs(p.Size * p.CurrentPrice));
+                var totalExposure = positions.Sum(p => Math.Abs(p.Quantity * p.AveragePrice));
 
                 // Use your EsNqTradingSchedule logic for session weighting
                 var sessionWeight = GetSessionExposureWeight(session);
@@ -165,8 +174,6 @@ namespace BotCore.Services
         {
             try
             {
-                await Task.Delay(1).ConfigureAwait(false); // Simulate async operation
-
                 var esPositions = positions.Where(p => p.Symbol == "ES").ToList();
                 var nqPositions = positions.Where(p => p.Symbol == "NQ").ToList();
 
@@ -175,8 +182,8 @@ namespace BotCore.Services
 
                 // Simplified correlation calculation
                 // In practice, you'd use historical price data
-                var esExposure = esPositions.Sum(p => p.Size * p.CurrentPrice);
-                var nqExposure = nqPositions.Sum(p => p.Size * p.CurrentPrice);
+                var esExposure = esPositions.Sum(p => p.Quantity * p.AveragePrice);
+                var nqExposure = nqPositions.Sum(p => p.Quantity * p.AveragePrice);
 
                 // Check if positions are in same direction
                 var sameDirection = (esExposure > 0 && nqExposure > 0) || (esExposure < 0 && nqExposure < 0);
@@ -194,12 +201,10 @@ namespace BotCore.Services
         {
             try
             {
-                await Task.Delay(1).ConfigureAwait(false); // Simulate async operation
-
                 var metrics = new Dictionary<string, decimal>();
 
                 // Total notional exposure
-                var totalNotional = positions.Sum(p => Math.Abs(p.Size * p.CurrentPrice));
+                var totalNotional = positions.Sum(p => Math.Abs(p.Quantity * p.AveragePrice));
                 metrics["TotalNotional"] = totalNotional;
 
                 // Leverage ratio
@@ -218,7 +223,7 @@ namespace BotCore.Services
 
                 // Largest single position risk
                 var largestPosition = positions.Any() ?
-                    positions.Max(p => Math.Abs(p.Size * p.CurrentPrice)) : 0m;
+                    positions.Max(p => Math.Abs(p.Quantity * p.AveragePrice)) : 0m;
                 metrics["LargestPositionRisk"] = largestPosition;
 
                 return metrics;
@@ -281,7 +286,7 @@ namespace BotCore.Services
                     throw new InvalidOperationException("Position tracker not available - cannot operate without real position data");
                 }
 
-                var realPositions = _positionTracker.GetAllPositions();
+                var realPositions = _positionTracker.AllPositions;
                 var positionList = new List<Position>();
                 
                 foreach (var kvp in realPositions)
@@ -291,9 +296,15 @@ namespace BotCore.Services
                     {
                         positionList.Add(new Position
                         {
+                            Id = Guid.NewGuid().ToString(),
                             Symbol = pos.Symbol,
-                            Size = (int)pos.NetQuantity, // Convert decimal to int
-                            CurrentPrice = pos.AveragePrice // Use average price as current price
+                            Side = pos.NetQuantity > 0 ? "LONG" : "SHORT",
+                            Quantity = (int)pos.NetQuantity,
+                            AveragePrice = pos.AveragePrice,
+                            UnrealizedPnL = pos.UnrealizedPnL,
+                            RealizedPnL = pos.RealizedPnL,
+                            ConfigSnapshotId = "live-" + DateTime.UtcNow.Ticks,
+                            OpenTime = pos.LastUpdate
                         });
                     }
                 }
@@ -358,16 +369,12 @@ namespace BotCore.Services
             try
             {
                 // Production integration with real-time position monitoring
-                // This would connect to your existing real-time position tracking system
-                /*
-                if (_positionTracker is IRealTimePositionMonitor realTimeMonitor)
+                if (_realTimeMonitor != null)
                 {
-                    var sessionExposure = await realTimeMonitor.GetSessionExposureAsync(session, positions).ConfigureAwait(false);
+                    var sessionExposure = await _realTimeMonitor.GetSessionExposureAsync(session, positions).ConfigureAwait(false);
                     return sessionExposure;
                 }
-                */
                 
-                await Task.Delay(3).ConfigureAwait(false); // Simulate real-time check
                 return null; // Return null when real-time monitoring not available
             }
             catch (Exception ex)
@@ -382,16 +389,12 @@ namespace BotCore.Services
             try
             {
                 // Production integration with session-based exposure algorithms
-                // This would use your existing sophisticated exposure calculation algorithms
-                /*
-                if (_exposureCalculator is ISessionExposureCalculator sessionCalculator)
+                if (_sessionCalculator != null)
                 {
-                    var exposure = await sessionCalculator.CalculateSessionExposureAsync(positions, session).ConfigureAwait(false);
+                    var exposure = await _sessionCalculator.CalculateSessionExposureAsync(positions, session).ConfigureAwait(false);
                     return exposure;
                 }
-                */
                 
-                await Task.Delay(5).ConfigureAwait(false); // Simulate algorithmic calculation
                 return null; // Return null when algorithmic calculator not available
             }
             catch (Exception ex)
@@ -406,16 +409,12 @@ namespace BotCore.Services
             try
             {
                 // Production integration with position time tracking system
-                // This would connect to your existing time-based position tracking
-                /*
-                if (_timeTracker is IPositionTimeTracker timeTracker)
+                if (_timeTracker != null)
                 {
-                    var timeBasedExposure = await timeTracker.GetSessionTimeExposureAsync(positions, session).ConfigureAwait(false);
+                    var timeBasedExposure = await _timeTracker.GetSessionTimeExposureAsync(positions, session).ConfigureAwait(false);
                     return timeBasedExposure;
                 }
-                */
                 
-                await Task.Delay(2).ConfigureAwait(false); // Simulate time tracking lookup
                 return null; // Return null when time tracking not available
             }
             catch (Exception ex)
