@@ -557,7 +557,7 @@ public class ModelEnsembleService : IDisposable
         }
         
         // Weighted averaging of action probabilities
-        var actionCount = actions.First().ActionProbabilities?.Count ?? 4;
+        var actionCount = actions[0].ActionProbabilities?.Count ?? 4;
         var blendedProbs = new double[actionCount];
         var totalWeight = 0.0;
         

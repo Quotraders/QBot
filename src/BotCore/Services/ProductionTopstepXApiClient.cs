@@ -154,9 +154,9 @@ namespace BotCore.Services
                     var errorContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                     await HandleHttpErrorAsync(response.StatusCode, errorContent, endpoint, attempt, maxRetries).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
                 {
-                    _logger.LogWarning("[API-CLIENT] Request to {Endpoint} was cancelled", endpoint);
+                    _logger.LogWarning(ex, "[API-CLIENT] Request to {Endpoint} was cancelled", endpoint);
                     throw;
                 }
                 catch (HttpRequestException ex)
@@ -225,9 +225,9 @@ namespace BotCore.Services
                     var errorContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                     await HandleHttpErrorAsync(response.StatusCode, errorContent, endpoint, attempt, maxRetries).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
                 {
-                    _logger.LogWarning("[API-CLIENT] POST request to {Endpoint} was cancelled", endpoint);
+                    _logger.LogWarning(ex, "[API-CLIENT] POST request to {Endpoint} was cancelled", endpoint);
                     throw;
                 }
                 catch (HttpRequestException ex)

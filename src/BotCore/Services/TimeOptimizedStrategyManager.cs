@@ -466,8 +466,8 @@ namespace BotCore.Services
             if (bars.Count < MinimumBarsForTrend) return DefaultTrendFallback;
 
             var recent = bars.TakeLast(MinimumBarsForTrend).ToList();
-            var firstPrice = (double)recent.First().Close;
-            var lastPrice = (double)recent.Last().Close;
+            var firstPrice = (double)recent[0].Close;
+            var lastPrice = (double)recent[recent.Count - 1].Close;
 
             return (lastPrice - firstPrice) / firstPrice;
         }

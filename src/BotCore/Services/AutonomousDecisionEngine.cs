@@ -1572,7 +1572,7 @@ public class AutonomousDecisionEngine : BackgroundService
         
         var upperBand = sma + (2 * stdDev);
         var lowerBand = sma - (2 * stdDev);
-        var currentPrice = bars.Last().Close;
+        var currentPrice = bars[bars.Count - 1].Close;
         
         // Return position between bands (0 = lower band, 1 = upper band)
         if (upperBand == lowerBand) return NeutralBollingerPosition;
