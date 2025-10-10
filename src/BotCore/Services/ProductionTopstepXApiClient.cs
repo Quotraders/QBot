@@ -29,7 +29,7 @@ namespace BotCore.Services
                 if (end > start)
                 {
                     // Redact between start and end
-                    return endpoint.Substring(0, start) + "***" + endpoint.Substring(end);
+                    return string.Concat(endpoint.AsSpan(0, start), "***", endpoint.AsSpan(end));
                 }
             }
             // If unable to locate, or different structure just return original

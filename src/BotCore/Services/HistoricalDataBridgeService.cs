@@ -375,7 +375,7 @@ namespace BotCore.Services
                 _logger.LogDebug("[HISTORICAL-BRIDGE] TopstepX History API response length: {Length} characters", responseContent.Length);
                 
                 // Debug: Log first 500 characters of response
-                var previewContent = responseContent.Length > 500 ? responseContent.Substring(0, 500) + "..." : responseContent;
+                var previewContent = responseContent.Length > 500 ? string.Concat(responseContent.AsSpan(0, 500), "...") : responseContent;
                 _logger.LogInformation("[HISTORICAL-BRIDGE] 📊 API Response Preview: {Preview}", previewContent);
                 
                 // Parse response to Bar objects

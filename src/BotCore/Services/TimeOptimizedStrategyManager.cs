@@ -396,7 +396,7 @@ namespace BotCore.Services
                 };
 
                 using var results = session.Run(inputs);
-                var output = results.FirstOrDefault()?.AsEnumerable<float>()?.FirstOrDefault() ?? 0.5f;
+                var output = results.Count > 0 ? results[0].AsEnumerable<float>()?.FirstOrDefault() ?? 0.5f : 0.5f;
                 
                 return Task.FromResult((decimal)output);
             }
