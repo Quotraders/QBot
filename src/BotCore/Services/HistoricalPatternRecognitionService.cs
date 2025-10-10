@@ -187,10 +187,12 @@ Explain what I should learn from these past experiences in 2-3 sentences. Speak 
             magHistorical += historicalVec[i] * historicalVec[i];
         }
 
+        const double Epsilon = 1e-10;
+        
         magCurrent = Math.Sqrt(magCurrent);
         magHistorical = Math.Sqrt(magHistorical);
 
-        if (magCurrent == 0 || magHistorical == 0)
+        if (Math.Abs(magCurrent) < Epsilon || Math.Abs(magHistorical) < Epsilon)
         {
             return 0.0;
         }

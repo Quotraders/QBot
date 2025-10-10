@@ -220,11 +220,17 @@ public class ModelEnsembleService : IDisposable
             
             foreach (var model in rlModels)
             {
+                // Check for null before accessing properties
+                if (model?.Model is not CVaRPPO cvarAgent || model.Name == null)
+                {
+                    continue;
+                }
+                
                 try
                 {
-                    if (model.Model is CVaRPPO cvarAgent)
+                    var action = await cvarAgent.GetActionAsync(state, deterministic, cancellationToken).ConfigureAwait(false);
+                    if (action != null)
                     {
-                        var action = await cvarAgent.GetActionAsync(state, deterministic, cancellationToken).ConfigureAwait(false);
                         actions.Add(action);
                     }
                 }
@@ -236,11 +242,6 @@ public class ModelEnsembleService : IDisposable
                 catch (ArgumentException ex)
                 {
                     _logger.LogWarning(ex, "🔀 [ENSEMBLE] Invalid CVaR-PPO argument for model {ModelName}", model.Name);
-                    UpdateModelPerformance(model.Name, 0.0, "action_failure");
-                }
-                catch (NullReferenceException ex)
-                {
-                    _logger.LogWarning(ex, "🔀 [ENSEMBLE] Null reference in CVaR-PPO action for model {ModelName}", model.Name);
                     UpdateModelPerformance(model.Name, 0.0, "action_failure");
                 }
             }
