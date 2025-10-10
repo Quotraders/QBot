@@ -125,3 +125,136 @@ ModelData = new byte[1024] // Placeholder for model bytes
 
 **Build Status**: ✅ Compiles successfully (existing ~3300 analyzer warnings remain per baseline)
 **No New Errors Introduced**: ✅ Confirmed
+
+---
+
+## 🔧 Phase 5: Implementation Updates (Addressing Feedback)
+
+### Changes Made in Response to User Feedback
+
+**User Request**: 
+1. Remove all hardcoded fallbacks from economic calendar - if no API, don't connect
+2. Implement full CPU monitoring logic
+3. Implement full model serialization logic
+
+### 1. EconomicEventManager - Removed All Hardcoded Fallbacks ✅
+**Location**: `src/BotCore/Market/EconomicEventManager.cs`
+
+**Changes**:
+- **Removed all calls to `GetKnownScheduledEvents()`** - previously used as fallback
+- **Returns empty list** when no API/file is configured instead of hardcoded events
+- **Changed logging from Warning to Error** for exceptions to make issues more visible
+- **Added clear warning message** when economic event monitoring is disabled
+
+**Before**: Would fall back to hardcoded 2025 events if API/files not configured
+**After**: Returns empty list and logs warnings - no hardcoded data
+
+**Impact**: System now explicitly requires API configuration or data files - no silent fallbacks
+
+---
+
+### 2. CriticalSystemComponentsFixes - Real CPU Monitoring ✅
+**Location**: `src/BotCore/Risk/CriticalSystemComponentsFixes.cs`
+
+**Implementation Details**:
+```csharp
+// Added Process import
+using System.Diagnostics;
+
+// Real CPU calculation using Process.GetCurrentProcess()
+private static async Task<double> GetCpuUsageAsync()
+{
+    using var currentProcess = Process.GetCurrentProcess();
+    var currentTotalProcessorTime = currentProcess.TotalProcessorTime;
+    
+    // Calculate delta between checks
+    var cpuDelta = (currentTotalProcessorTime - _lastTotalProcessorTime).TotalMilliseconds;
+    var timeDelta = (now - _lastCpuCheck).TotalMilliseconds;
+    
+    // Calculate percentage (per-core normalized)
+    var cpuUsagePercent = (cpuDelta / timeDelta) * 100.0 / Environment.ProcessorCount;
+    
+    return Math.Max(0.0, Math.Min(100.0, cpuUsagePercent)); // Clamp 0-100%
+}
+```
+
+**Features**:
+- ✅ Uses `Process.GetCurrentProcess().TotalProcessorTime` for real CPU measurement
+- ✅ Calculates CPU usage delta between monitoring intervals
+- ✅ Normalizes by processor count for accurate per-core percentage
+- ✅ Handles first-call initialization properly
+- ✅ Clamps results between 0-100%
+- ✅ Handles process access exceptions gracefully
+
+**Before**: Always returned 15% placeholder value
+**After**: Returns actual CPU usage based on process metrics
+
+---
+
+### 3. NightlyParameterTuner - Real Model Serialization ✅
+**Location**: `src/IntelligenceStack/NightlyParameterTuner.cs`
+
+**Implementation Details**:
+```csharp
+// New ModelStateSnapshot class for model serialization
+public class ModelStateSnapshot
+{
+    public string ModelFamily { get; set; }
+    public Dictionary<string, double> Parameters { get; set; }
+    public ModelMetrics Metrics { get; set; }
+    public string TuningMethod { get; set; }
+    public DateTime OptimizationTimestamp { get; set; }
+    public int TrialsCompleted { get; set; }
+    public string Version { get; set; }
+}
+
+// Real serialization implementation
+var modelState = new ModelStateSnapshot
+{
+    ModelFamily = modelFamily,
+    Parameters = result.BestParameters,
+    Metrics = result.BestMetrics,
+    TuningMethod = result.Method.ToString(),
+    OptimizationTimestamp = DateTime.UtcNow,
+    TrialsCompleted = result.TrialsCompleted,
+    Version = "1.0"
+};
+
+var modelJson = JsonSerializer.Serialize(modelState, jsonOptions);
+var modelData = System.Text.Encoding.UTF8.GetBytes(modelJson);
+```
+
+**Features**:
+- ✅ Creates `ModelStateSnapshot` class to hold all model information
+- ✅ Serializes model parameters, metrics, and metadata to JSON
+- ✅ Uses UTF-8 encoding for cross-platform compatibility
+- ✅ Includes versioning for backward compatibility
+- ✅ Stores complete configuration for model reconstruction
+- ✅ Ready for ML framework integration (PyTorch/TensorFlow/ONNX when training added)
+
+**Before**: Used `new byte[1024]` placeholder
+**After**: Serializes actual model parameters and configuration as JSON bytes
+
+---
+
+## 📊 Final Summary
+
+| Component | Status | Implementation |
+|-----------|--------|----------------|
+| Example/Demo Files | ✅ Deleted | 3 files removed (467 lines) |
+| Fake Services | ✅ Disabled | 4 service registrations commented out |
+| EconomicEventManager | ✅ Fixed | No hardcoded fallbacks, returns empty on no API |
+| CPU Monitoring | ✅ Implemented | Real Process.GetCurrentProcess() calculation |
+| Model Serialization | ✅ Implemented | JSON serialization with ModelStateSnapshot |
+
+**Total Changes**: 
+- 3 files deleted
+- 4 services disabled
+- 3 components fully implemented
+- No new compilation errors
+- All requirements met
+
+**Commits**:
+1. `04cc04e` - Delete example/demo files and comment out fake service registrations
+2. `de7b3ee` - Add cleanup analysis report documenting completed work
+3. `95f169c` - Remove hardcoded fallbacks and implement real CPU/model logic
