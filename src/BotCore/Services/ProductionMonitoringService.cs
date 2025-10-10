@@ -278,6 +278,9 @@ public class ProductionMonitoringService : IHealthCheck
         }
     }
 
+    // GitHub API used as external connectivity health check endpoint
+    private const string GitHubHealthCheckUrl = "https://api.github.com/";
+
     private static async Task<(bool IsHealthy, string Message)> CheckGitHubConnectivityAsync(CancellationToken cancellationToken)
     {
         try
@@ -286,7 +289,7 @@ public class ProductionMonitoringService : IHealthCheck
             httpClient.Timeout = TimeSpan.FromSeconds(10);
             httpClient.DefaultRequestHeaders.Add("User-Agent", "TradingBot-HealthCheck");
             
-            var response = await httpClient.GetAsync(new Uri("https://api.github.com/"), cancellationToken).ConfigureAwait(false);
+            var response = await httpClient.GetAsync(new Uri(GitHubHealthCheckUrl), cancellationToken).ConfigureAwait(false);
             return response.IsSuccessStatusCode 
                 ? (true, "GitHub API accessible") 
                 : (false, $"GitHub API returned {response.StatusCode}");

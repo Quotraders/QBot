@@ -40,9 +40,12 @@ namespace BotCore.Services
         private const int RetryBaseDelaySeconds = 1;
         private const int RetryJitterMaxMilliseconds = 1000;
         
+        // TopstepX Production API Endpoint - override via HttpClient.BaseAddress if needed
+        private const string DefaultTopstepXApiUrl = "https://api.topstepx.com";
+        
         private readonly HttpClient _httpClient;
         private readonly ILogger<ProductionTopstepXApiClient> _logger;
-        private readonly string _baseUrl = "https://api.topstepx.com";
+        private readonly string _baseUrl = DefaultTopstepXApiUrl;
 
         public ProductionTopstepXApiClient(HttpClient httpClient, ILogger<ProductionTopstepXApiClient> logger)
         {
