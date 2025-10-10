@@ -214,7 +214,7 @@ public class CloudModelSynchronizationService : BackgroundService
         try
         {
             var url = $"https://api.github.com/repos/{_repositoryOwner}/{_repositoryName}/actions/runs?status=completed&per_page=50";
-            var response = await _httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+            var response = await _httpClient.GetAsync(new Uri(url), cancellationToken).ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
@@ -250,7 +250,7 @@ public class CloudModelSynchronizationService : BackgroundService
         try
         {
             var url = $"https://api.github.com/repos/{_repositoryOwner}/{_repositoryName}/actions/runs/{runId}/artifacts";
-            var response = await _httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+            var response = await _httpClient.GetAsync(new Uri(url), cancellationToken).ConfigureAwait(false);
             
             if (!response.IsSuccessStatusCode)
             {
@@ -287,7 +287,7 @@ public class CloudModelSynchronizationService : BackgroundService
             
             // Download artifact
             var downloadUrl = $"https://api.github.com/repos/{_repositoryOwner}/{_repositoryName}/actions/artifacts/{artifact.Id}/zip";
-            var downloadResponse = await _httpClient.GetAsync(downloadUrl, cancellationToken).ConfigureAwait(false);
+            var downloadResponse = await _httpClient.GetAsync(new Uri(downloadUrl), cancellationToken).ConfigureAwait(false);
             
             if (!downloadResponse.IsSuccessStatusCode)
             {
@@ -381,7 +381,7 @@ public class CloudModelSynchronizationService : BackgroundService
             
             // Download artifact
             var downloadUrl = $"https://api.github.com/repos/{_repositoryOwner}/{_repositoryName}/actions/artifacts/{artifact.Id}/zip";
-            var downloadResponse = await _httpClient.GetAsync(downloadUrl, cancellationToken).ConfigureAwait(false);
+            var downloadResponse = await _httpClient.GetAsync(new Uri(downloadUrl), cancellationToken).ConfigureAwait(false);
             
             if (!downloadResponse.IsSuccessStatusCode)
             {

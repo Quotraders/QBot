@@ -63,7 +63,7 @@ public sealed class OllamaClient : IDisposable
 
             // Send POST request to Ollama
             var response = await _httpClient.PostAsync(
-                $"{_ollamaBaseUrl}/api/generate",
+                new Uri($"{_ollamaBaseUrl}/api/generate"),
                 content
             ).ConfigureAwait(false);
 
@@ -105,7 +105,7 @@ public sealed class OllamaClient : IDisposable
     {
         try
         {
-            var response = await _httpClient.GetAsync($"{_ollamaBaseUrl}/api/tags").ConfigureAwait(false);
+            var response = await _httpClient.GetAsync(new Uri($"{_ollamaBaseUrl}/api/tags")).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch

@@ -356,9 +356,9 @@ namespace BotCore.Services
                     await Task.Delay(TimeSpan.FromHours(4), cancellationToken).ConfigureAwait(false); // Check every 4 hours
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
-                _logger.LogInformation("[CONTRACT-MONITOR] Contract rollover monitoring stopped");
+                _logger.LogInformation(ex, "[CONTRACT-MONITOR] Contract rollover monitoring stopped");
             }
             catch (ArgumentException ex)
             {

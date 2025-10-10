@@ -100,7 +100,7 @@ public class ContractService : IContractService
     {
         try
         {
-            var response = await _httpClient.GetAsync($"/Contract/available?live=false&symbol={symbol}", cancellationToken).ConfigureAwait(false);
+            var response = await _httpClient.GetAsync(new Uri($"/Contract/available?live=false&symbol={symbol}", UriKind.Relative), cancellationToken).ConfigureAwait(false);
             
             if (response.IsSuccessStatusCode)
             {
@@ -136,7 +136,7 @@ public class ContractService : IContractService
     {
         try
         {
-            var response = await _httpClient.GetAsync($"/Contract/search?symbol={symbol}&frontMonth=true", cancellationToken).ConfigureAwait(false);
+            var response = await _httpClient.GetAsync(new Uri($"/Contract/search?symbol={symbol}&frontMonth=true", UriKind.Relative), cancellationToken).ConfigureAwait(false);
             
             if (response.IsSuccessStatusCode)
             {

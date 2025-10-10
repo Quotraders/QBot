@@ -219,32 +219,28 @@ namespace BotCore.Services
             }
             
             // For short positions, monitor supply zones breaking (resistance breaking = bad)
-            else if (!isLong && isDemandZone)
+            else if (!isLong && isDemandZone && currentPrice > zone.PriceHigh + (BreakConfirmationTicks * EsTickSize))
             {
-                // Check if price broke above this supply/resistance zone
-                if (currentPrice > zone.PriceHigh + (BreakConfirmationTicks * EsTickSize))
+                // Supply zone broken!
+                var breakEvent = new ZoneBreakEvent
                 {
-                    // Supply zone broken!
-                    var breakEvent = new ZoneBreakEvent
-                    {
-                        Symbol = position.Symbol,
-                        ZoneKey = zoneKey,
-                        ZoneLow = zone.PriceLow,
-                        ZoneHigh = zone.PriceHigh,
-                        ZoneStrength = zone.Pressure,
-                        BreakPrice = currentPrice,
-                        BreakTime = DateTime.UtcNow,
-                        BreakType = zone.Pressure > StrongBreakStrengthThreshold ? ZoneBreakType.StrongSupplyBreak : ZoneBreakType.WeakSupplyBreak,
-                        PositionType = "SHORT",
-                        Severity = CalculateBreakSeverity(zone.Pressure, zone.TouchCount)
-                    };
-                    
-                    _breakEvents.Enqueue(breakEvent);
-                    state.BrokenZones.Add(zoneKey);
-                    
-                    _logger.LogWarning("⚠️ [ZONE-BREAK] {Type} for SHORT {Symbol} - Zone [{Lo}-{Hi}] Strength={Strength:F2} - Price broke to {Price}",
-                        breakEvent.BreakType, position.Symbol, zone.PriceLow, zone.PriceHigh, zone.Pressure, currentPrice);
-                }
+                    Symbol = position.Symbol,
+                    ZoneKey = zoneKey,
+                    ZoneLow = zone.PriceLow,
+                    ZoneHigh = zone.PriceHigh,
+                    ZoneStrength = zone.Pressure,
+                    BreakPrice = currentPrice,
+                    BreakTime = DateTime.UtcNow,
+                    BreakType = zone.Pressure > StrongBreakStrengthThreshold ? ZoneBreakType.StrongSupplyBreak : ZoneBreakType.WeakSupplyBreak,
+                    PositionType = "SHORT",
+                    Severity = CalculateBreakSeverity(zone.Pressure, zone.TouchCount)
+                };
+                
+                _breakEvents.Enqueue(breakEvent);
+                state.BrokenZones.Add(zoneKey);
+                
+                _logger.LogWarning("⚠️ [ZONE-BREAK] {Type} for SHORT {Symbol} - Zone [{Lo}-{Hi}] Strength={Strength:F2} - Price broke to {Price}",
+                    breakEvent.BreakType, position.Symbol, zone.PriceLow, zone.PriceHigh, zone.Pressure, currentPrice);
             }
             
             // Also check for strong zone breaks in the favorable direction (entry signals)
@@ -274,31 +270,28 @@ namespace BotCore.Services
                         position.Symbol, currentPrice);
                 }
             }
-            else if (!isLong && isSupplyZone && zone.Pressure > StrongBreakStrengthThreshold)
+            else if (!isLong && isSupplyZone && zone.Pressure > StrongBreakStrengthThreshold && currentPrice < zone.PriceLow - (BreakConfirmationTicks * EsTickSize))
             {
                 // Strong demand zone breaking downward = bearish signal
-                if (currentPrice < zone.PriceLow - (BreakConfirmationTicks * EsTickSize))
+                var breakEvent = new ZoneBreakEvent
                 {
-                    var breakEvent = new ZoneBreakEvent
-                    {
-                        Symbol = position.Symbol,
-                        ZoneKey = zoneKey,
-                        ZoneLow = zone.PriceLow,
-                        ZoneHigh = zone.PriceHigh,
-                        ZoneStrength = zone.Pressure,
-                        BreakPrice = currentPrice,
-                        BreakTime = DateTime.UtcNow,
-                        BreakType = ZoneBreakType.StrongDemandBreakBearish,
-                        PositionType = "SHORT",
-                        Severity = "POSITIVE"
-                    };
-                    
-                    _breakEvents.Enqueue(breakEvent);
-                    state.BrokenZones.Add(zoneKey);
-                    
-                    _logger.LogInformation("✅ [ZONE-BREAK] Bearish breakout for SHORT {Symbol} - Strong demand broken at {Price}",
-                        position.Symbol, currentPrice);
-                }
+                    Symbol = position.Symbol,
+                    ZoneKey = zoneKey,
+                    ZoneLow = zone.PriceLow,
+                    ZoneHigh = zone.PriceHigh,
+                    ZoneStrength = zone.Pressure,
+                    BreakPrice = currentPrice,
+                    BreakTime = DateTime.UtcNow,
+                    BreakType = ZoneBreakType.StrongDemandBreakBearish,
+                    PositionType = "SHORT",
+                    Severity = "POSITIVE"
+                };
+                
+                _breakEvents.Enqueue(breakEvent);
+                state.BrokenZones.Add(zoneKey);
+                
+                _logger.LogInformation("✅ [ZONE-BREAK] Bearish breakout for SHORT {Symbol} - Strong demand broken at {Price}",
+                    position.Symbol, currentPrice);
             }
         }
         

@@ -178,7 +178,7 @@ namespace TopstepX.Bot.Core.Services
                 using var content = new StringContent(json, Encoding.UTF8, "application/json");
                 
                 // FIXED: Use correct ProjectX endpoint
-                var response = await _httpClient.PostAsync("/api/Order/place", content).ConfigureAwait(false);
+                var response = await _httpClient.PostAsync(new Uri("/api/Order/place", UriKind.Relative), content).ConfigureAwait(false);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -285,7 +285,7 @@ namespace TopstepX.Bot.Core.Services
             {
                 if (string.IsNullOrEmpty(order.GatewayOrderId)) return;
                 
-                var response = await _httpClient.GetAsync($"/api/orders/{order.GatewayOrderId}").ConfigureAwait(false);
+                var response = await _httpClient.GetAsync(new Uri($"/api/orders/{order.GatewayOrderId}", UriKind.Relative)).ConfigureAwait(false);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -340,7 +340,7 @@ namespace TopstepX.Bot.Core.Services
                     var json = JsonSerializer.Serialize(cancelPayload);
                     using var content = new StringContent(json, Encoding.UTF8, "application/json");
                     
-                    var response = await _httpClient.PostAsync("/api/Order/cancel", content).ConfigureAwait(false);
+                    var response = await _httpClient.PostAsync(new Uri("/api/Order/cancel", UriKind.Relative), content).ConfigureAwait(false);
                     
                     if (response.IsSuccessStatusCode)
                     {

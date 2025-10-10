@@ -80,9 +80,9 @@ public sealed class ComponentHealthMonitoringService : BackgroundService
 
             _logger.LogInformation("🏥 [HEALTH-MONITOR] Component health monitoring stopped");
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException ex)
         {
-            _logger.LogInformation("🏥 [HEALTH-MONITOR] Monitoring cancelled during startup");
+            _logger.LogInformation(ex, "🏥 [HEALTH-MONITOR] Monitoring cancelled during startup");
         }
         catch (InvalidOperationException ex)
         {

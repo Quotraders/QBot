@@ -286,7 +286,7 @@ public class ProductionMonitoringService : IHealthCheck
             httpClient.Timeout = TimeSpan.FromSeconds(10);
             httpClient.DefaultRequestHeaders.Add("User-Agent", "TradingBot-HealthCheck");
             
-            var response = await httpClient.GetAsync("https://api.github.com/", cancellationToken).ConfigureAwait(false);
+            var response = await httpClient.GetAsync(new Uri("https://api.github.com/"), cancellationToken).ConfigureAwait(false);
             return response.IsSuccessStatusCode 
                 ? (true, "GitHub API accessible") 
                 : (false, $"GitHub API returned {response.StatusCode}");

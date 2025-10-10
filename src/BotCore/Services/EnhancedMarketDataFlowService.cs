@@ -337,9 +337,9 @@ namespace BotCore.Services
                     await Task.Delay(TimeSpan.FromSeconds(_config.HealthMonitoring.HealthCheckIntervalSeconds), cancellationToken).ConfigureAwait(false);
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
-                _logger.LogInformation("[HEALTH-MONITOR] Health monitoring stopped");
+                _logger.LogInformation(ex, "[HEALTH-MONITOR] Health monitoring stopped");
             }
             catch (Exception ex)
             {
@@ -751,10 +751,10 @@ namespace BotCore.Services
                 var chunk = minuteBars.Skip(i).Take(timeframeMinutes).ToList();
                 if (chunk.Count == 0) continue;
                 
-                var start = chunk.First().Start;
+                var start = chunk[0].Start;
                 var end = start.Add(timeframe);
-                var open = chunk.First().Open;
-                var close = chunk.Last().Close;
+                var open = chunk[0].Open;
+                var close = chunk[chunk.Count - 1].Close;
                 var high = chunk.Max(b => b.High);
                 var low = chunk.Min(b => b.Low);
                 var volume = chunk.Sum(b => b.Volume);

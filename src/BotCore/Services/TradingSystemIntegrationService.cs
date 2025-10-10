@@ -380,10 +380,9 @@ namespace TopstepX.Bot.Core.Services
                     return hour < FridayMarketCloseHourEt;
 
                 // Monday-Thursday: daily maintenance break 5-6 PM ET
-                if (dayOfWeek >= DayOfWeek.Monday && dayOfWeek <= DayOfWeek.Thursday)
+                if (dayOfWeek >= DayOfWeek.Monday && dayOfWeek <= DayOfWeek.Thursday && hour == MaintenanceBreakHourEt) // 5 PM ET - maintenance break
                 {
-                    if (hour == MaintenanceBreakHourEt) // 5 PM ET - maintenance break
-                        return false;
+                    return false;
                 }
 
                 // Regular trading hours (continuous except maintenance)
@@ -546,7 +545,7 @@ namespace TopstepX.Bot.Core.Services
                 var json = JsonSerializer.Serialize(orderPayload);
                 using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                var response = await _httpClient.PostAsync("/api/Order/place", content, cancellationToken).ConfigureAwait(false);
+                var response = await _httpClient.PostAsync(new Uri("/api/Order/place", UriKind.Relative), content, cancellationToken).ConfigureAwait(false);
 
                 if (response.IsSuccessStatusCode)
                 {
