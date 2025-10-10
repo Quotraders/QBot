@@ -1190,7 +1190,7 @@ public sealed class OnnxModelLoader : IDisposable
                         _logger.LogDebug(cleanupEx, "[ONNX-Loader] Failed to cleanup temp file: {TempPath}", tempModelPath);
                     }
                 }
-                throw;
+                throw new IOException($"Failed to deploy model atomically from {tempModelPath} to {registryModelPath}", ex);
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -1213,7 +1213,7 @@ public sealed class OnnxModelLoader : IDisposable
                         _logger.LogDebug(cleanupEx, "[ONNX-Loader] Failed to cleanup temp file: {TempPath}", tempModelPath);
                     }
                 }
-                throw;
+                throw new UnauthorizedAccessException($"Access denied deploying model from {tempModelPath} to {registryModelPath}", ex);
             }
             
             entry.RegistryPath = registryModelPath;
@@ -1239,7 +1239,7 @@ public sealed class OnnxModelLoader : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "[ONNX-Registry] Failed to register model: {ModelName}", modelName);
-            throw;
+            throw new InvalidOperationException($"Failed to register model '{modelName}' in registry", ex);
         }
     }
 

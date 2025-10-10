@@ -185,7 +185,7 @@ namespace BotCore.Brain
         private object? _lstmPricePredictor;
         private object? _metaClassifier;
         private object? _marketRegimeDetector;
-        private readonly INeuralNetwork? _confidenceNetwork;
+        private readonly OnnxNeuralNetwork? _confidenceNetwork;
         
         // TopStep compliance tracking
         private decimal _currentDrawdown;
@@ -769,19 +769,16 @@ namespace BotCore.Brain
                 }
 
                 // Feature 6: Learning Progress Reports
-                if (_ollamaClient != null && (Environment.GetEnvironmentVariable("BOT_LEARNING_REPORTS_ENABLED") == "true"))
+                if (_ollamaClient != null && (Environment.GetEnvironmentVariable("BOT_LEARNING_REPORTS_ENABLED") == "true") && DateTime.UtcNow - _lastUnifiedLearningUpdate < TimeSpan.FromMinutes(1))
                 {
                     // Report after model updates
-                    if (DateTime.UtcNow - _lastUnifiedLearningUpdate < TimeSpan.FromMinutes(1))
+                    var learningReport = await ExplainWhatILearnedAsync(
+                        "Unified Learning Update",
+                        $"Updated all strategies from {strategy} trade outcome. Win rate: {WinRateToday:P0}").ConfigureAwait(false);
+                    
+                    if (!string.IsNullOrEmpty(learningReport))
                     {
-                        var learningReport = await ExplainWhatILearnedAsync(
-                            "Unified Learning Update",
-                            $"Updated all strategies from {strategy} trade outcome. Win rate: {WinRateToday:P0}").ConfigureAwait(false);
-                        
-                        if (!string.IsNullOrEmpty(learningReport))
-                        {
-                            _logger.LogInformation("📚 [BOT-LEARNING] {Report}", learningReport);
-                        }
+                        _logger.LogInformation("📚 [BOT-LEARNING] {Report}", learningReport);
                     }
                 }
             }
@@ -2429,10 +2426,9 @@ Reason closed: {reason}
                 return false;
             
             // Daily maintenance break: 5:00-6:00 PM EST Monday-Thursday
-            if (dayOfWeek >= DayOfWeek.Monday && dayOfWeek <= DayOfWeek.Thursday)
+            if (dayOfWeek >= DayOfWeek.Monday && dayOfWeek <= DayOfWeek.Thursday && timeOfDay >= marketCloseTime && timeOfDay < marketOpenTime)
             {
-                if (timeOfDay >= marketCloseTime && timeOfDay < marketOpenTime)
-                    return false; // Maintenance break
+                return false; // Maintenance break
             }
             
             return true;
