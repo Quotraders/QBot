@@ -1794,8 +1794,8 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
 #region Supporting Classes
 
 /// <summary>
-/// Continuous learning manager - coordinates all learning activities
-/// Integrates with TradingFeedbackService and CloudModelSynchronizationService
+/// Continuous learning manager - coordinates all learning activities with JSON persistence
+/// Tracks decision history, calculates performance metrics, integrates with TradingFeedbackService
 /// </summary>
 public class ContinuousLearningManager
 {
@@ -1805,17 +1805,56 @@ public class ContinuousLearningManager
     private readonly object _bufferLock = new();
     private bool _isInitialized;
     
+    // JSON persistence paths
+    private readonly string _learningStatePath;
+    private readonly string _dataDirectory;
+    
+    // Learning state tracking
+    private LearningState _learningState = new();
+    private readonly int _maxDecisionHistory = 1000; // Keep last 1000 decisions for memory safety
+    private int _decisionsSinceLastMetricsLog;
+    private const int MetricsLogInterval = 100; // Log metrics every 100 decisions
+    
     public ContinuousLearningManager(ILogger logger, IServiceProvider serviceProvider)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        
+        // Setup data directory and file paths
+        _dataDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
+        _learningStatePath = Path.Combine(_dataDirectory, "learning_state.json");
     }
     
-    public Task InitializeAsync(CancellationToken cancellationToken)
+    public async Task InitializeAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("🎓 [LEARNING-MGR] Initializing continuous learning systems...");
+        
+        // Create data directory if it doesn't exist
+        Directory.CreateDirectory(_dataDirectory);
+        
+        // Load existing learning state from disk
+        if (File.Exists(_learningStatePath))
+        {
+            try
+            {
+                var json = await File.ReadAllTextAsync(_learningStatePath, cancellationToken).ConfigureAwait(false);
+                _learningState = JsonSerializer.Deserialize<LearningState>(json) ?? new LearningState();
+                _logger.LogInformation("✅ [LEARNING-MGR] Loaded learning state: {DecisionCount} decisions, Win Rate: {WinRate:P2}", 
+                    _learningState.DecisionHistory.Count, _learningState.PerformanceMetrics.WinRate);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ [LEARNING-MGR] Could not load learning state, starting fresh");
+                _learningState = new LearningState();
+            }
+        }
+        else
+        {
+            _logger.LogInformation("📝 [LEARNING-MGR] No existing learning state found, starting fresh");
+            _learningState = new LearningState();
+        }
+        
         _isInitialized = true;
-        return Task.CompletedTask;
     }
     
     public Task StartLearningAsync(CancellationToken cancellationToken)
@@ -1839,6 +1878,53 @@ public class ContinuousLearningManager
         
         _logger.LogInformation("🎓 [LEARNING-MGR] Processing {Count} learning events", events.Count);
         
+        // Update performance metrics from learning events
+        lock (_bufferLock)
+        {
+            foreach (var evt in events)
+            {
+                _learningState.PerformanceMetrics.TotalDecisions++;
+                
+                if (evt.WasCorrect)
+                {
+                    _learningState.PerformanceMetrics.CorrectDecisions++;
+                }
+                
+                _learningState.PerformanceMetrics.TotalPnL += evt.RealizedPnL;
+                
+                // Track individual P&L for Sharpe calculation
+                _learningState.PerformanceMetrics.IndividualPnLs.Add(evt.RealizedPnL);
+                if (_learningState.PerformanceMetrics.IndividualPnLs.Count > _maxDecisionHistory)
+                {
+                    _learningState.PerformanceMetrics.IndividualPnLs.RemoveAt(0);
+                }
+            }
+            
+            // Recalculate derived metrics
+            _learningState.PerformanceMetrics.WinRate = _learningState.PerformanceMetrics.TotalDecisions > 0
+                ? (double)_learningState.PerformanceMetrics.CorrectDecisions / _learningState.PerformanceMetrics.TotalDecisions
+                : 0.0;
+            
+            _learningState.PerformanceMetrics.AveragePnL = _learningState.PerformanceMetrics.TotalDecisions > 0
+                ? _learningState.PerformanceMetrics.TotalPnL / _learningState.PerformanceMetrics.TotalDecisions
+                : 0m;
+            
+            // Calculate Sharpe ratio approximation (returns / std dev)
+            if (_learningState.PerformanceMetrics.IndividualPnLs.Count >= 10)
+            {
+                var returns = _learningState.PerformanceMetrics.IndividualPnLs.Select(p => (double)p).ToList();
+                var mean = returns.Average();
+                var variance = returns.Sum(r => Math.Pow(r - mean, 2)) / returns.Count;
+                var stdDev = Math.Sqrt(variance);
+                _learningState.PerformanceMetrics.SharpeRatio = stdDev > 0.01 ? mean / stdDev : 0.0;
+            }
+            
+            _learningState.LastUpdated = DateTime.UtcNow;
+        }
+        
+        // Save updated metrics
+        await SaveLearningStateAsync(cancellationToken).ConfigureAwait(false);
+        
         // Get TradingFeedbackService if available
         using var scope = _serviceProvider.CreateScope();
         var feedbackService = scope.ServiceProvider.GetService<TradingFeedbackService>();
@@ -1855,7 +1941,7 @@ public class ContinuousLearningManager
                         Timestamp = DateTime.UtcNow,
                         Strategy = evt.DecisionSource,
                         Action = evt.WasCorrect ? "CORRECT" : "INCORRECT",
-                        Symbol = "ES", // Default symbol, could be extracted from metadata
+                        Symbol = "ES",
                         PredictionAccuracy = evt.WasCorrect ? 1.0 : 0.0,
                         RealizedPnL = evt.RealizedPnL,
                         MarketConditions = "LEARNING",
@@ -1863,23 +1949,18 @@ public class ContinuousLearningManager
                         ActualOutcome = evt.WasCorrect ? "PROFITABLE" : "LOSS"
                     };
                     
-                    // Add learning event metadata to trading context
                     if (evt.Metadata != null && evt.Metadata.Count > 0)
                     {
                         outcome.ReplaceTradingContext(new Dictionary<string, object>(evt.Metadata));
                     }
                     
                     feedbackService.SubmitTradingOutcome(outcome);
-                    _logger.LogDebug("📊 [LEARNING-MGR] Submitted outcome for decision {DecisionId}: PnL={PnL:C}", 
-                        evt.DecisionId, evt.RealizedPnL);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "❌ [LEARNING-MGR] Failed to process learning event {DecisionId}", evt.DecisionId);
                 }
             }
-            
-            await Task.CompletedTask.ConfigureAwait(false);
         }
         else
         {
@@ -1889,6 +1970,13 @@ public class ContinuousLearningManager
                 _eventBuffer.AddRange(events);
             }
         }
+        
+        // Log current metrics after processing
+        _logger.LogInformation("📊 [LEARNING-MGR] Metrics - Win Rate: {WinRate:P2}, Avg P&L: {AvgPnL:C}, Sharpe: {Sharpe:F2}, Total: {Total}", 
+            _learningState.PerformanceMetrics.WinRate,
+            _learningState.PerformanceMetrics.AveragePnL,
+            _learningState.PerformanceMetrics.SharpeRatio,
+            _learningState.PerformanceMetrics.TotalDecisions);
     }
     
     public async Task CheckAndUpdateModelsAsync(CancellationToken cancellationToken)
@@ -1928,36 +2016,108 @@ public class ContinuousLearningManager
         _logger.LogInformation("🔄 [LEARNING-MGR] Restarting learning systems...");
         _isInitialized = false;
         
-        // Clear event buffer
+        // Clear all state
         lock (_bufferLock)
         {
             _eventBuffer.Clear();
+            _learningState = new LearningState();
+            _decisionsSinceLastMetricsLog = 0;
         }
+        
+        // Save cleared state
+        await SaveLearningStateAsync(cancellationToken).ConfigureAwait(false);
         
         // Reinitialize
         await InitializeAsync(cancellationToken).ConfigureAwait(false);
         await StartLearningAsync(cancellationToken).ConfigureAwait(false);
     }
     
-    public Task TrackDecisionAsync(DecisionTrackingInfo info, CancellationToken cancellationToken)
+    private async Task SaveLearningStateAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Use .tmp file and atomic rename for safety
+            var tmpPath = _learningStatePath + ".tmp";
+            
+            var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
+            var json = JsonSerializer.Serialize(_learningState, jsonOptions);
+            await File.WriteAllTextAsync(tmpPath, json, cancellationToken).ConfigureAwait(false);
+            
+            // Atomic rename
+            File.Move(tmpPath, _learningStatePath, overwrite: true);
+            
+            _logger.LogDebug("💾 [LEARNING-MGR] Learning state saved successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ [LEARNING-MGR] Failed to save learning state");
+        }
+    }
+    
+    private void CalculateAndLogMetrics()
+    {
+        lock (_bufferLock)
+        {
+            var metrics = _learningState.PerformanceMetrics;
+            _logger.LogInformation("📊 [LEARNING-MGR] Performance Update - Win Rate: {WinRate:P2} ({Correct}/{Total}), Avg P&L: {AvgPnL:C}, Total P&L: {TotalPnL:C}, Sharpe: {Sharpe:F2}",
+                metrics.WinRate,
+                metrics.CorrectDecisions,
+                metrics.TotalDecisions,
+                metrics.AveragePnL,
+                metrics.TotalPnL,
+                metrics.SharpeRatio);
+        }
+    }
+    
+    public async Task TrackDecisionAsync(DecisionTrackingInfo info, CancellationToken cancellationToken)
     {
         if (info == null)
         {
             _logger.LogWarning("⚠️ [LEARNING-MGR] TrackDecision called with null info");
-            return Task.CompletedTask;
+            return;
         }
         
         _logger.LogDebug("📊 [LEARNING-MGR] Tracking decision {DecisionId} for future learning", info.DecisionId);
         
-        // Decision tracking is stored for correlation with trade outcomes
-        // When trade outcome is received, it will be matched with this decision and added to learning queue
-        return Task.CompletedTask;
+        // Record decision in history
+        var decisionRecord = new DecisionRecord
+        {
+            DecisionId = info.DecisionId,
+            Timestamp = info.Timestamp,
+            Action = info.Action.ToString(),
+            Confidence = info.Confidence,
+            DecisionSource = info.DecisionSource,
+            Strategy = info.Strategy
+        };
+        
+        lock (_bufferLock)
+        {
+            _learningState.DecisionHistory.Add(decisionRecord);
+            
+            // Keep history limited to last N decisions for memory safety
+            if (_learningState.DecisionHistory.Count > _maxDecisionHistory)
+            {
+                _learningState.DecisionHistory.RemoveAt(0);
+            }
+            
+            _decisionsSinceLastMetricsLog++;
+        }
+        
+        // Save state to disk asynchronously
+        await SaveLearningStateAsync(cancellationToken).ConfigureAwait(false);
+        
+        // Log metrics periodically
+        if (_decisionsSinceLastMetricsLog >= MetricsLogInterval)
+        {
+            CalculateAndLogMetrics();
+            _decisionsSinceLastMetricsLog = 0;
+        }
     }
 }
 
 /// <summary>
-/// Contract rollover manager - handles Z25 → H26 transitions
-/// Monitors contract expiration and coordinates rollover to next contract
+/// Contract rollover manager - handles Z25 → H26 transitions with JSON persistence
+/// Monitors contract expiration calendar and coordinates rollover to next contract
 /// </summary>
 public class ContractRolloverManager
 {
@@ -1968,17 +2128,80 @@ public class ContractRolloverManager
     private const int RolloverCheckIntervalMinutes = 60; // Check every hour
     private const int DaysBeforeExpirationToRollover = 7; // Rollover 7 days before expiration
     
+    // JSON persistence paths
+    private readonly string _dataDirectory;
+    private readonly string _calendarPath;
+    private readonly string _rolloverStatePath;
+    
+    // Contract state tracking
+    private ContractCalendar _calendar = new();
+    private RolloverState _rolloverState = new();
+    
     public ContractRolloverManager(ILogger logger, IServiceProvider serviceProvider)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        
+        // Setup data directory and file paths
+        _dataDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
+        _calendarPath = Path.Combine(_dataDirectory, "contract_calendar.json");
+        _rolloverStatePath = Path.Combine(_dataDirectory, "rollover_state.json");
     }
     
-    public Task InitializeAsync(CancellationToken cancellationToken)
+    public async Task InitializeAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("📅 [ROLLOVER-MGR] Initializing contract rollover monitoring...");
+        
+        // Create data directory if it doesn't exist
+        Directory.CreateDirectory(_dataDirectory);
+        
+        // Load or create contract calendar
+        if (File.Exists(_calendarPath))
+        {
+            try
+            {
+                var json = await File.ReadAllTextAsync(_calendarPath, cancellationToken).ConfigureAwait(false);
+                _calendar = JsonSerializer.Deserialize<ContractCalendar>(json) ?? CreateDefaultCalendar();
+                _logger.LogInformation("✅ [ROLLOVER-MGR] Loaded contract calendar with {Count} expirations", _calendar.Expirations.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ [ROLLOVER-MGR] Could not load calendar, creating default");
+                _calendar = CreateDefaultCalendar();
+                await SaveCalendarAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        else
+        {
+            _logger.LogInformation("📝 [ROLLOVER-MGR] Creating default contract calendar");
+            _calendar = CreateDefaultCalendar();
+            await SaveCalendarAsync(cancellationToken).ConfigureAwait(false);
+        }
+        
+        // Load or create rollover state
+        if (File.Exists(_rolloverStatePath))
+        {
+            try
+            {
+                var json = await File.ReadAllTextAsync(_rolloverStatePath, cancellationToken).ConfigureAwait(false);
+                _rolloverState = JsonSerializer.Deserialize<RolloverState>(json) ?? new RolloverState();
+                _logger.LogInformation("✅ [ROLLOVER-MGR] Loaded rollover state: ES={ES}, NQ={NQ}", 
+                    _rolloverState.ActiveContracts["ES"], _rolloverState.ActiveContracts["NQ"]);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ [ROLLOVER-MGR] Could not load rollover state, creating default");
+                _rolloverState = CreateDefaultRolloverState();
+                await SaveRolloverStateAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        else
+        {
+            _rolloverState = CreateDefaultRolloverState();
+            await SaveRolloverStateAsync(cancellationToken).ConfigureAwait(false);
+        }
+        
         _lastRolloverCheck = DateTime.MinValue; // Force check on first run
-        return Task.CompletedTask;
     }
     
     public Task StartMonitoringAsync(CancellationToken cancellationToken)
@@ -2006,23 +2229,63 @@ public class ContractRolloverManager
         
         try
         {
-            // Get current active contracts from market data service
-            using var scope = _serviceProvider.CreateScope();
-            var contractResolver = scope.ServiceProvider.GetService<BotCore.Supervisor.ContractResolver>();
+            var today = DateTime.UtcNow.Date;
+            bool stateChanged = false;
             
-            if (contractResolver != null)
+            // Check each symbol's active contract for rollover needs
+            foreach (var symbol in _rolloverState.ActiveContracts.Keys.ToList())
             {
-                // Check for contracts approaching expiration
-                var activeContracts = await GetActiveContractsAsync(cancellationToken).ConfigureAwait(false);
+                var currentContract = _rolloverState.ActiveContracts[symbol];
                 
-                foreach (var contract in activeContracts)
+                // Find expiration date for current contract
+                if (_calendar.Expirations.TryGetValue(currentContract, out var expirationDate))
                 {
-                    if (IsApproachingExpiration(contract))
+                    var daysUntilExpiration = (expirationDate - today).TotalDays;
+                    
+                    if (daysUntilExpiration <= DaysBeforeExpirationToRollover && daysUntilExpiration > 0)
                     {
-                        _logger.LogWarning("⚠️ [ROLLOVER-MGR] Contract {Contract} expires soon - rollover recommended", contract);
-                        await NotifyRolloverNeeded(contract, cancellationToken).ConfigureAwait(false);
+                        // Rollover window is open - determine next contract
+                        var nextContract = DetermineNextContract(currentContract, expirationDate);
+                        
+                        _logger.LogCritical("🚨 [ROLLOVER-MGR] ROLLOVER REQUIRED: {CurrentContract} expires in {Days} days. Rolling to {NextContract}",
+                            currentContract, (int)daysUntilExpiration, nextContract);
+                        
+                        // Update active contract
+                        _rolloverState.ActiveContracts[symbol] = nextContract;
+                        _rolloverState.LastRolloverDate = today;
+                        _rolloverState.RolloverHistory.Add(new RolloverRecord
+                        {
+                            FromContract = currentContract,
+                            ToContract = nextContract,
+                            RolloverDate = today,
+                            DaysBeforeExpiration = (int)daysUntilExpiration
+                        });
+                        
+                        stateChanged = true;
+                        
+                        await NotifyRolloverNeeded(currentContract, nextContract, cancellationToken).ConfigureAwait(false);
+                    }
+                    else if (daysUntilExpiration <= 0)
+                    {
+                        _logger.LogError("❌ [ROLLOVER-MGR] CONTRACT EXPIRED: {Contract} expired {Days} days ago!", 
+                            currentContract, (int)Math.Abs(daysUntilExpiration));
+                    }
+                    else
+                    {
+                        _logger.LogDebug("📅 [ROLLOVER-MGR] {Contract} expires in {Days} days - no action needed yet", 
+                            currentContract, (int)daysUntilExpiration);
                     }
                 }
+                else
+                {
+                    _logger.LogWarning("⚠️ [ROLLOVER-MGR] No expiration date found for {Contract} in calendar", currentContract);
+                }
+            }
+            
+            // Save state if changed
+            if (stateChanged)
+            {
+                await SaveRolloverStateAsync(cancellationToken).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -2031,71 +2294,126 @@ public class ContractRolloverManager
         }
     }
     
-    private Task<List<string>> GetActiveContractsAsync(CancellationToken cancellationToken)
+    private string DetermineNextContract(string currentContract, DateTime currentExpiration)
     {
-        // Get list of actively traded contracts from known symbols
-        // In production, this would query position management or market data service
-        var contracts = new List<string>
-        {
-            "ESZ25", // E-mini S&P 500 December 2025
-            "NQZ25", // E-mini Nasdaq December 2025  
-            "ESH26"  // E-mini S&P 500 March 2026
-        };
+        // Extract symbol prefix (ES, NQ, etc.)
+        var prefix = currentContract.Substring(0, currentContract.Length - 3);
         
-        _logger.LogDebug("📅 [ROLLOVER-MGR] Monitoring {Count} contracts for rollover", contracts.Count);
-        return Task.FromResult(contracts);
+        // Determine next quarter month
+        var nextMonth = currentExpiration.AddMonths(3); // Quarterly contracts
+        var monthCode = GetMonthCode(nextMonth.Month);
+        var yearCode = (nextMonth.Year % 100).ToString("D2");
+        
+        return $"{prefix}{monthCode}{yearCode}";
     }
     
-    private bool IsApproachingExpiration(string contractSymbol)
+    private static char GetMonthCode(int month)
     {
-        // Parse contract symbol to determine expiration
-        // E.g., ESZ25 = ES (E-mini S&P), Z (December), 25 (2025)
-        // This is a simplified check - production would use contract metadata service
-        
-        if (string.IsNullOrEmpty(contractSymbol) || contractSymbol.Length < 5)
+        return month switch
         {
-            return false;
+            1 => 'F', 2 => 'G', 3 => 'H', 4 => 'J', 5 => 'K', 6 => 'M',
+            7 => 'N', 8 => 'Q', 9 => 'U', 10 => 'V', 11 => 'X', 12 => 'Z',
+            _ => 'Z'
+        };
+    }
+    
+    private Task NotifyRolloverNeeded(string fromContract, string toContract, CancellationToken cancellationToken)
+    {
+        _logger.LogWarning("📅 [ROLLOVER-MGR] CONTRACT ROLLOVER EXECUTED: {From} → {To}", fromContract, toContract);
+        _logger.LogWarning("⚠️ [ROLLOVER-MGR] ACTION REQUIRED: Update trading systems to use {Contract}", toContract);
+        _logger.LogCritical("🚨 [ROLLOVER-MGR] URGENT: Contract rolled from {From} to {To}", fromContract, toContract);
+        
+        return Task.CompletedTask;
+    }
+    
+    private ContractCalendar CreateDefaultCalendar()
+    {
+        var calendar = new ContractCalendar();
+        var today = DateTime.UtcNow.Date;
+        
+        // Generate next 12 months of quarterly expirations for ES and NQ
+        for (int i = 0; i < 12; i++)
+        {
+            var date = today.AddMonths(i);
+            // Quarterly months: Mar, Jun, Sep, Dec (3, 6, 9, 12)
+            if (date.Month % 3 == 0)
+            {
+                // Futures expire on 3rd Friday of the month
+                var thirdFriday = GetThirdFriday(date.Year, date.Month);
+                var monthCode = GetMonthCode(date.Month);
+                var yearCode = (date.Year % 100).ToString("D2");
+                
+                calendar.Expirations[$"ES{monthCode}{yearCode}"] = thirdFriday;
+                calendar.Expirations[$"NQ{monthCode}{yearCode}"] = thirdFriday;
+            }
         }
         
+        return calendar;
+    }
+    
+    private static DateTime GetThirdFriday(int year, int month)
+    {
+        var firstDay = new DateTime(year, month, 1);
+        var firstFriday = firstDay.AddDays((DayOfWeek.Friday - firstDay.DayOfWeek + 7) % 7);
+        return firstFriday.AddDays(14); // Third Friday
+    }
+    
+    private RolloverState CreateDefaultRolloverState()
+    {
+        var state = new RolloverState();
+        var today = DateTime.UtcNow.Date;
+        
+        // Determine current quarterly contract
+        var currentQuarter = ((today.Month - 1) / 3) * 3 + 3; // Mar=3, Jun=6, Sep=9, Dec=12
+        if (currentQuarter < today.Month)
+        {
+            currentQuarter += 3;
+            if (currentQuarter > 12)
+            {
+                currentQuarter = 3;
+            }
+        }
+        
+        var monthCode = GetMonthCode(currentQuarter);
+        var yearCode = (today.Year % 100).ToString("D2");
+        
+        state.ActiveContracts["ES"] = $"ES{monthCode}{yearCode}";
+        state.ActiveContracts["NQ"] = $"NQ{monthCode}{yearCode}";
+        state.LastUpdated = today;
+        
+        return state;
+    }
+    
+    private async Task SaveCalendarAsync(CancellationToken cancellationToken)
+    {
         try
         {
-            // Extract month code and year from contract symbol
-            var monthCode = contractSymbol[^3]; // 3rd char from end (Z in ESZ25)
-            var year = contractSymbol.Substring(contractSymbol.Length - 2); // Last 2 chars (25 in ESZ25)
-            
-            // Month codes: F=Jan, G=Feb, H=Mar, J=Apr, K=May, M=Jun, N=Jul, Q=Aug, U=Sep, V=Oct, X=Nov, Z=Dec
-            var monthMapping = new Dictionary<char, int>
-            {
-                {'F', 1}, {'G', 2}, {'H', 3}, {'J', 4}, {'K', 5}, {'M', 6},
-                {'N', 7}, {'Q', 8}, {'U', 9}, {'V', 10}, {'X', 11}, {'Z', 12}
-            };
-            
-            if (monthMapping.TryGetValue(monthCode, out int expirationMonth))
-            {
-                var expirationYear = 2000 + int.Parse(year);
-                var estimatedExpiration = new DateTime(expirationYear, expirationMonth, 15); // Approximate mid-month expiration
-                
-                var daysUntilExpiration = (estimatedExpiration - DateTime.UtcNow).TotalDays;
-                return daysUntilExpiration <= DaysBeforeExpirationToRollover && daysUntilExpiration > 0;
-            }
+            var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
+            var json = JsonSerializer.Serialize(_calendar, jsonOptions);
+            await File.WriteAllTextAsync(_calendarPath, json, cancellationToken).ConfigureAwait(false);
+            _logger.LogDebug("💾 [ROLLOVER-MGR] Contract calendar saved");
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "⚠️ [ROLLOVER-MGR] Could not parse contract expiration for {Contract}", contractSymbol);
+            _logger.LogError(ex, "❌ [ROLLOVER-MGR] Failed to save contract calendar");
         }
-        
-        return false;
     }
     
-    private Task NotifyRolloverNeeded(string contractSymbol, CancellationToken cancellationToken)
+    private async Task SaveRolloverStateAsync(CancellationToken cancellationToken)
     {
-        _logger.LogWarning("📅 [ROLLOVER-MGR] CONTRACT ROLLOVER NEEDED: {Contract} approaching expiration", contractSymbol);
-        _logger.LogWarning("⚠️ [ROLLOVER-MGR] ACTION REQUIRED: Review and execute rollover to next contract for {Contract}", contractSymbol);
-        
-        // Log critical alert that operators should see in monitoring
-        _logger.LogCritical("🚨 [ROLLOVER-MGR] URGENT: Contract {Contract} expiring soon - rollover required", contractSymbol);
-        
-        return Task.CompletedTask;
+        try
+        {
+            var tmpPath = _rolloverStatePath + ".tmp";
+            var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
+            var json = JsonSerializer.Serialize(_rolloverState, jsonOptions);
+            await File.WriteAllTextAsync(tmpPath, json, cancellationToken).ConfigureAwait(false);
+            File.Move(tmpPath, _rolloverStatePath, overwrite: true);
+            _logger.LogDebug("💾 [ROLLOVER-MGR] Rollover state saved");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ [ROLLOVER-MGR] Failed to save rollover state");
+        }
     }
 }
 
@@ -2247,6 +2565,74 @@ internal sealed class CanaryTradeRecord
     public double PnL { get; set; }
     public string Outcome { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; }
+}
+
+/// <summary>
+/// Learning state with decision history and performance metrics - persisted to JSON
+/// </summary>
+public class LearningState
+{
+    public List<DecisionRecord> DecisionHistory { get; set; } = new();
+    public LearningPerformanceMetrics PerformanceMetrics { get; set; } = new();
+    public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
+/// Decision record for learning history
+/// </summary>
+public class DecisionRecord
+{
+    public string DecisionId { get; set; } = string.Empty;
+    public DateTime Timestamp { get; set; }
+    public string Action { get; set; } = string.Empty;
+    public decimal Confidence { get; set; }
+    public string DecisionSource { get; set; } = string.Empty;
+    public string Strategy { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Learning performance metrics calculated from learning events
+/// </summary>
+public class LearningPerformanceMetrics
+{
+    public int TotalDecisions { get; set; }
+    public int CorrectDecisions { get; set; }
+    public double WinRate { get; set; }
+    public decimal TotalPnL { get; set; }
+    public decimal AveragePnL { get; set; }
+    public double SharpeRatio { get; set; }
+    public List<decimal> IndividualPnLs { get; set; } = new();
+}
+
+/// <summary>
+/// Contract expiration calendar - persisted to JSON
+/// </summary>
+public class ContractCalendar
+{
+    public Dictionary<string, DateTime> Expirations { get; set; } = new();
+    public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
+/// Rollover state tracking current active contracts - persisted to JSON
+/// </summary>
+public class RolloverState
+{
+    public Dictionary<string, string> ActiveContracts { get; set; } = new();
+    public DateTime LastRolloverDate { get; set; } = DateTime.MinValue;
+    public List<RolloverRecord> RolloverHistory { get; set; } = new();
+    public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
+/// Rollover history record
+/// </summary>
+public class RolloverRecord
+{
+    public string FromContract { get; set; } = string.Empty;
+    public string ToContract { get; set; } = string.Empty;
+    public DateTime RolloverDate { get; set; }
+    public int DaysBeforeExpiration { get; set; }
 }
 
 #endregion
