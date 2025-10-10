@@ -477,10 +477,7 @@ public class MemoryHealthCheck : IHealthCheck
             var workingSetMb = process.WorkingSet64 / (1024.0 * 1024.0);
             var privateMemoryMb = process.PrivateMemorySize64 / (1024.0 * 1024.0);
 
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-
+            // Get current managed memory without forcing collection - real-world usage is more meaningful for health checks
             var managedMemoryMb = GC.GetTotalMemory(false) / (1024.0 * 1024.0);
 
             var data = new Dictionary<string, object>

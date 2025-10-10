@@ -675,8 +675,8 @@ public class RedundantDataFeedManager : IDisposable
         }
     }
 
-    // Data structures for consistency checking
-    public class DataConsistencyResult
+    // Data structures for consistency checking - internal to avoid CA1034 (nested public types)
+    internal sealed class DataConsistencyResult
     {
         public string Symbol { get; set; } = string.Empty;
         public DateTime CheckTime { get; set; }
@@ -696,7 +696,7 @@ public class RedundantDataFeedManager : IDisposable
         internal void AddIssue(string issue) => _issues.Add(issue);
     }
 
-    public class MarketDataSnapshot
+    internal sealed class MarketDataSnapshot
     {
         public string FeedName { get; set; } = string.Empty;
         public decimal Price { get; set; }
