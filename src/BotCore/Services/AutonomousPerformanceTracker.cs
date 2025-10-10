@@ -394,7 +394,7 @@ public class AutonomousPerformanceTracker
         
         _winningTrades = winningTrades.Length;
         _losingTrades = losingTrades.Length;
-        _winRate = _totalTrades > 0 ? (decimal)_winningTrades / _totalTrades : 0m;
+        _winRate = (decimal)_winningTrades / _totalTrades; // _totalTrades > 0 is guaranteed by early return
         
         _avgWin = _winningTrades > 0 ? winningTrades.Average(t => t.PnL) : 0m;
         _avgLoss = _losingTrades > 0 ? losingTrades.Average(t => t.PnL) : 0m;
