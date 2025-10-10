@@ -406,6 +406,50 @@ namespace BotCore.Brain
         private static readonly Action<ILogger, Exception?> LogLearningInvalidArgument =
             LoggerMessage.Define(LogLevel.Error, new EventId(29, nameof(LogLearningInvalidArgument)),
                 "❌ [UNIFIED-LEARNING] Invalid argument during learning from result");
+        
+        private static readonly Action<ILogger, string, Exception?> LogLearningCommentary =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(30, nameof(LogLearningCommentary)),
+                "📚 [LEARNING-COMMENTARY] {Commentary}");
+        
+        private static readonly Action<ILogger, string, Exception?> LogRiskCommentary =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(31, nameof(LogRiskCommentary)),
+                "🧠 [RISK-COMMENTARY] {Commentary}");
+        
+        private static readonly Action<ILogger, string, Exception?> LogHistoricalPattern =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(32, nameof(LogHistoricalPattern)),
+                "🔍 [HISTORICAL-PATTERN] {Context}");
+        
+        private static readonly Action<ILogger, string, Exception?> LogMarketRegimeExplanation =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(33, nameof(LogMarketRegimeExplanation)),
+                "📈 [MARKET-REGIME] {Explanation}");
+        
+        private static readonly Action<ILogger, string, Exception?> LogStrategyConflict =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(34, nameof(LogStrategyConflict)),
+                "💬 [BOT-COMMENTARY] {Conflict}");
+        
+        private static readonly Action<ILogger, string, Exception?> LogStrategySelectionExplanation =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(35, nameof(LogStrategySelectionExplanation)),
+                "🧠 [STRATEGY-SELECTION] {Explanation}");
+        
+        private static readonly Action<ILogger, Exception?> LogMetaClassifierFallback =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(36, nameof(LogMetaClassifierFallback)),
+                "Meta classifier failed, using fallback");
+        
+        private static readonly Action<ILogger, Exception?> LogNeuralUcbFallback =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(37, nameof(LogNeuralUcbFallback)),
+                "Neural UCB failed, using fallback");
+        
+        private static readonly Action<ILogger, Exception?> LogLstmPredictionFallback =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(38, nameof(LogLstmPredictionFallback)),
+                "LSTM prediction failed, using fallback");
+        
+        private static readonly Action<ILogger, Exception?> LogThinkingError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(39, nameof(LogThinkingError)),
+                "❌ [BOT-THINKING] Error during AI thinking");
+        
+        private static readonly Action<ILogger, Exception?> LogReflectionError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(40, nameof(LogReflectionError)),
+                "❌ [BOT-REFLECTION] Error during AI reflection");
 
         public UnifiedTradingBrain(
             ILogger<UnifiedTradingBrain> logger,
@@ -1094,7 +1138,7 @@ namespace BotCore.Brain
                                     
                                 if (!string.IsNullOrEmpty(riskContext))
                                 {
-                                    _logger.LogInformation("🧠 [RISK-COMMENTARY] {Commentary}", riskContext);
+                                    LogRiskCommentary(_logger, riskContext, null);
                                 }
                             }
                         }
@@ -1202,7 +1246,7 @@ namespace BotCore.Brain
                             historicalContext = await _historicalPatterns.ExplainSimilarConditionsAsync(analysis).ConfigureAwait(false);
                             if (!string.IsNullOrEmpty(historicalContext))
                             {
-                                _logger.LogInformation("🔍 [HISTORICAL-PATTERN] {Context}", historicalContext);
+                                LogHistoricalPattern(_logger, historicalContext, null);
                             }
                         }
                     }
@@ -1238,22 +1282,22 @@ Current context: {currentContext}
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-THINKING] Error during AI thinking - invalid operation");
+                LogThinkingError(_logger, ex);
                 return string.Empty;
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-THINKING] Error during AI thinking - HTTP request failed");
+                LogThinkingError(_logger, ex);
                 return string.Empty;
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-THINKING] Error during AI thinking - task cancelled");
+                LogThinkingError(_logger, ex);
                 return string.Empty;
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-THINKING] Error during AI thinking - invalid argument");
+                LogThinkingError(_logger, ex);
                 return string.Empty;
             }
         }
@@ -1314,7 +1358,7 @@ Current context: {currentContext}
                             
                             if (!string.IsNullOrEmpty(learningContext))
                             {
-                                _logger.LogInformation("📚 [LEARNING-COMMENTARY] {Commentary}", learningContext);
+                                LogLearningCommentary(_logger, learningContext, null);
                             }
                         }
                     }
@@ -1347,22 +1391,22 @@ Reason closed: {reason}
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-REFLECTION] Error during AI reflection - invalid operation");
+                LogReflectionError(_logger, ex);
                 return string.Empty;
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-REFLECTION] Error during AI reflection - HTTP request failed");
+                LogReflectionError(_logger, ex);
                 return string.Empty;
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-REFLECTION] Error during AI reflection - task cancelled");
+                LogReflectionError(_logger, ex);
                 return string.Empty;
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "❌ [BOT-REFLECTION] Error during AI reflection - invalid argument");
+                LogReflectionError(_logger, ex);
                 return string.Empty;
             }
         }
@@ -1476,7 +1520,7 @@ Reason closed: {reason}
                         var explanation = await ExplainMarketRegimeAsync(detectedRegime, context).ConfigureAwait(false);
                         if (!string.IsNullOrEmpty(explanation))
                         {
-                            _logger.LogInformation("📈 [MARKET-REGIME] {Explanation}", explanation);
+                            LogMarketRegimeExplanation(_logger, explanation, null);
                         }
                     });
                 }
@@ -1485,17 +1529,17 @@ Reason closed: {reason}
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Meta classifier invalid operation, using fallback");
+                LogMetaClassifierFallback(_logger, ex);
                 return Task.FromResult(MarketRegime.Normal);
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning(ex, "Meta classifier invalid arguments, using fallback");
+                LogMetaClassifierFallback(_logger, ex);
                 return Task.FromResult(MarketRegime.Normal);
             }
             catch (TimeoutException ex)
             {
-                _logger.LogWarning(ex, "Meta classifier timeout, using fallback");
+                LogMetaClassifierFallback(_logger, ex);
                 return Task.FromResult(MarketRegime.Normal);
             }
         }
@@ -1542,7 +1586,7 @@ Reason closed: {reason}
                         var conflictExplanation = await ExplainConflictAsync(allScores, context).ConfigureAwait(false);
                         if (!string.IsNullOrEmpty(conflictExplanation))
                         {
-                            _logger.LogInformation("💬 [BOT-COMMENTARY] {Conflict}", conflictExplanation);
+                            LogStrategyConflict(_logger, conflictExplanation, null);
                         }
                     }
                     else
@@ -1550,7 +1594,7 @@ Reason closed: {reason}
                         var explanation = await ExplainStrategySelectionAsync(selection.SelectedArm, allScores, context).ConfigureAwait(false);
                         if (!string.IsNullOrEmpty(explanation))
                         {
-                            _logger.LogInformation("🧠 [STRATEGY-SELECTION] {Explanation}", explanation);
+                            LogStrategySelectionExplanation(_logger, explanation, null);
                         }
                     }
                 }
@@ -1559,7 +1603,7 @@ Reason closed: {reason}
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "Neural UCB invalid operation, using fallback");
+                LogNeuralUcbFallback(_logger, ex);
                 
                 // Fallback: time-based strategy selection from your existing logic
                 var hour = context.TimeOfDay.Hours;
@@ -1647,7 +1691,7 @@ Reason closed: {reason}
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(ex, "LSTM prediction failed - invalid operation, using fallback");
+                LogLstmPredictionFallback(_logger, ex);
                 return Task.FromResult(new PricePrediction
                 {
                     Direction = PriceDirection.Sideways,
@@ -1658,7 +1702,7 @@ Reason closed: {reason}
             }
             catch (OnnxRuntimeException ex)
             {
-                _logger.LogWarning(ex, "LSTM prediction failed - ONNX runtime error, using fallback");
+                LogLstmPredictionFallback(_logger, ex);
                 return Task.FromResult(new PricePrediction
                 {
                     Direction = PriceDirection.Sideways,
@@ -1669,7 +1713,7 @@ Reason closed: {reason}
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning(ex, "LSTM prediction failed - invalid argument, using fallback");
+                LogLstmPredictionFallback(_logger, ex);
                 return Task.FromResult(new PricePrediction
                 {
                     Direction = PriceDirection.Sideways,
