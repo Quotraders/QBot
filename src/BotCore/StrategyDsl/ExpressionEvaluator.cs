@@ -16,6 +16,25 @@ public class ExpressionEvaluator
     // Numeric comparison tolerance constant
     private const double NumericComparisonTolerance = 0.0001;   // Tolerance for floating-point equality comparisons
 
+    // LoggerMessage delegates for performance
+    private static readonly Action<ILogger, string, Exception?> LogEvaluationWarning =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(7201, nameof(LogEvaluationWarning)),
+            "Error evaluating expression: {Expression}");
+
+    private static readonly Action<ILogger, string, Exception?> LogEvaluationError =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(7202, nameof(LogEvaluationError)),
+            "Failed to evaluate expression: {Expression}");
+
+    private static readonly Action<ILogger, string, Exception?> LogUnrecognizedCondition =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(7203, nameof(LogUnrecognizedCondition)),
+            "Unrecognized condition format: {Condition}");
+
     // Regex patterns for parsing expressions
     private static readonly Regex ComparisonRegex = new(
         @"^(\w+(?:\.\w+)*)\s*(>=|<=|>|<|==|!=)\s*(.+)$", 
@@ -85,22 +104,22 @@ public class ExpressionEvaluator
         }
         catch (ArgumentException ex)
         {
-            _logger.LogWarning(ex, "Error evaluating expression: {Expression}", expression);
+            LogEvaluationWarning(_logger, expression, ex);
             return false;
         }
         catch (FormatException ex)
         {
-            _logger.LogWarning(ex, "Error evaluating expression: {Expression}", expression);
+            LogEvaluationWarning(_logger, expression, ex);
             return false;
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Error evaluating expression: {Expression}", expression);
+            LogEvaluationWarning(_logger, expression, ex);
             return false;
         }
         catch (KeyNotFoundException ex)
         {
-            _logger.LogWarning(ex, "Error evaluating expression: {Expression}", expression);
+            LogEvaluationWarning(_logger, expression, ex);
             return false;
         }
     }
@@ -158,22 +177,22 @@ public class ExpressionEvaluator
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "Failed to evaluate expression: {Expression}", expression);
+                LogEvaluationError(_logger, expression, ex);
                 return new ExpressionResult { IsSuccess = false, ErrorMessage = ex.Message };
             }
             catch (FormatException ex)
             {
-                _logger.LogError(ex, "Failed to evaluate expression: {Expression}", expression);
+                LogEvaluationError(_logger, expression, ex);
                 return new ExpressionResult { IsSuccess = false, ErrorMessage = ex.Message };
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "Failed to evaluate expression: {Expression}", expression);
+                LogEvaluationError(_logger, expression, ex);
                 return new ExpressionResult { IsSuccess = false, ErrorMessage = ex.Message };
             }
             catch (KeyNotFoundException ex)
             {
-                _logger.LogError(ex, "Failed to evaluate expression: {Expression}", expression);
+                LogEvaluationError(_logger, expression, ex);
                 return new ExpressionResult { IsSuccess = false, ErrorMessage = ex.Message };
             }
         });
@@ -259,7 +278,7 @@ public class ExpressionEvaluator
             return featureValue != null;
         }
 
-        _logger.LogWarning("Unrecognized condition format: {Condition}", condition);
+        LogUnrecognizedCondition(_logger, condition, null);
         return false;
     }
 

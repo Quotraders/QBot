@@ -617,6 +617,25 @@ public sealed class MtfFeatureResolver : IFeatureResolver
     private readonly IServiceProvider _serviceProvider;
     private readonly string _featureKey;
     private readonly ILogger<MtfFeatureResolver> _logger;
+
+    // LoggerMessage delegates for performance
+    private static readonly Action<ILogger, string, string, double, Exception?> LogMtfValueAvailable =
+        LoggerMessage.Define<string, string, double>(
+            LogLevel.Trace,
+            new EventId(7301, nameof(LogMtfValueAvailable)),
+            "MTF feature {FeatureKey} for {Symbol}: {Value}");
+
+    private static readonly Action<ILogger, string, string, Exception?> LogMtfNoValue =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Trace,
+            new EventId(7302, nameof(LogMtfNoValue)),
+            "MTF feature {FeatureKey} for {Symbol}: no value available");
+
+    private static readonly Action<ILogger, string, string, Exception?> LogMtfError =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Error,
+            new EventId(7303, nameof(LogMtfError)),
+            "Failed to resolve MTF feature {FeatureKey} for symbol {Symbol}");
     
     public MtfFeatureResolver(IServiceProvider serviceProvider, string featureKey)
     {
@@ -634,18 +653,18 @@ public sealed class MtfFeatureResolver : IFeatureResolver
             
             if (value.HasValue)
             {
-                _logger.LogTrace("MTF feature {FeatureKey} for {Symbol}: {Value}", _featureKey, symbol, value.Value);
+                LogMtfValueAvailable(_logger, _featureKey, symbol, value.Value, null);
             }
             else
             {
-                _logger.LogTrace("MTF feature {FeatureKey} for {Symbol}: no value available", _featureKey, symbol);
+                LogMtfNoValue(_logger, _featureKey, symbol, null);
             }
             
             return value;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to resolve MTF feature {FeatureKey} for symbol {Symbol}", _featureKey, symbol);
+            LogMtfError(_logger, _featureKey, symbol, ex);
             throw new InvalidOperationException($"Production MTF feature resolution failed for '{symbol}.{_featureKey}': {ex.Message}", ex);
         }
     }
@@ -659,6 +678,25 @@ public sealed class LiquidityAbsorptionFeatureResolver : IFeatureResolver
     private readonly IServiceProvider _serviceProvider;
     private readonly string _featureKey;
     private readonly ILogger<LiquidityAbsorptionFeatureResolver> _logger;
+
+    // LoggerMessage delegates for performance
+    private static readonly Action<ILogger, string, string, double, Exception?> LogLiquidityValueAvailable =
+        LoggerMessage.Define<string, string, double>(
+            LogLevel.Trace,
+            new EventId(7311, nameof(LogLiquidityValueAvailable)),
+            "Liquidity feature {FeatureKey} for {Symbol}: {Value}");
+
+    private static readonly Action<ILogger, string, string, Exception?> LogLiquidityNoValue =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Trace,
+            new EventId(7312, nameof(LogLiquidityNoValue)),
+            "Liquidity feature {FeatureKey} for {Symbol}: no value available");
+
+    private static readonly Action<ILogger, string, string, Exception?> LogLiquidityError =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Error,
+            new EventId(7313, nameof(LogLiquidityError)),
+            "Failed to resolve liquidity feature {FeatureKey} for symbol {Symbol}");
     
     public LiquidityAbsorptionFeatureResolver(IServiceProvider serviceProvider, string featureKey)
     {
@@ -676,18 +714,18 @@ public sealed class LiquidityAbsorptionFeatureResolver : IFeatureResolver
             
             if (value.HasValue)
             {
-                _logger.LogTrace("Liquidity feature {FeatureKey} for {Symbol}: {Value}", _featureKey, symbol, value.Value);
+                LogLiquidityValueAvailable(_logger, _featureKey, symbol, value.Value, null);
             }
             else
             {
-                _logger.LogTrace("Liquidity feature {FeatureKey} for {Symbol}: no value available", _featureKey, symbol);
+                LogLiquidityNoValue(_logger, _featureKey, symbol, null);
             }
             
             return value;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to resolve liquidity feature {FeatureKey} for symbol {Symbol}", _featureKey, symbol);
+            LogLiquidityError(_logger, _featureKey, symbol, ex);
             throw new InvalidOperationException($"Production liquidity feature resolution failed for '{symbol}.{_featureKey}': {ex.Message}", ex);
         }
     }
@@ -700,6 +738,25 @@ public sealed class OfiProxyFeatureResolver : IFeatureResolver
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<OfiProxyFeatureResolver> _logger;
+
+    // LoggerMessage delegates for performance
+    private static readonly Action<ILogger, string, double, Exception?> LogOfiValueAvailable =
+        LoggerMessage.Define<string, double>(
+            LogLevel.Trace,
+            new EventId(7321, nameof(LogOfiValueAvailable)),
+            "OFI proxy for {Symbol}: {Value}");
+
+    private static readonly Action<ILogger, string, Exception?> LogOfiNoValue =
+        LoggerMessage.Define<string>(
+            LogLevel.Trace,
+            new EventId(7322, nameof(LogOfiNoValue)),
+            "OFI proxy for {Symbol}: no value available");
+
+    private static readonly Action<ILogger, string, Exception?> LogOfiError =
+        LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(7323, nameof(LogOfiError)),
+            "Failed to resolve OFI proxy for symbol {Symbol}");
     
     public OfiProxyFeatureResolver(IServiceProvider serviceProvider)
     {
@@ -716,18 +773,18 @@ public sealed class OfiProxyFeatureResolver : IFeatureResolver
             
             if (value.HasValue)
             {
-                _logger.LogTrace("OFI proxy for {Symbol}: {Value}", symbol, value.Value);
+                LogOfiValueAvailable(_logger, symbol, value.Value, null);
             }
             else
             {
-                _logger.LogTrace("OFI proxy for {Symbol}: no value available", symbol);
+                LogOfiNoValue(_logger, symbol, null);
             }
             
             return value;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to resolve OFI proxy for symbol {Symbol}", symbol);
+            LogOfiError(_logger, symbol, ex);
             throw new InvalidOperationException($"Production OFI proxy resolution failed for '{symbol}': {ex.Message}", ex);
         }
     }
