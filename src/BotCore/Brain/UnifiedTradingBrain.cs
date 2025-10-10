@@ -664,6 +664,143 @@ namespace BotCore.Brain
             LoggerMessage.Define<int, string>(LogLevel.Information, new EventId(92, nameof(LogCrossPollination)),
                 "🌱 [CROSS-POLLINATION] Shared {Count} successful patterns from {BestStrategy} to other strategies");
 
+        // Gate4 validation logging (EventId 93-120)
+        private static readonly Action<ILogger, Exception?> LogGate4Start =
+            LoggerMessage.Define(LogLevel.Information, new EventId(93, nameof(LogGate4Start)),
+                "=== GATE 4: UNIFIED TRADING BRAIN MODEL RELOAD VALIDATION ===");
+
+        private static readonly Action<ILogger, string, Exception?> LogGate4NewModel =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(94, nameof(LogGate4NewModel)),
+                "New model: {NewPath}");
+
+        private static readonly Action<ILogger, string, Exception?> LogGate4CurrentModel =
+            LoggerMessage.Define<string>(LogLevel.Information, new EventId(95, nameof(LogGate4CurrentModel)),
+                "Current model: {CurrentPath}");
+
+        private static readonly Action<ILogger, Exception?> LogGate4FeatureCheck =
+            LoggerMessage.Define(LogLevel.Information, new EventId(96, nameof(LogGate4FeatureCheck)),
+                "[1/4] Validating feature specification compatibility...");
+
+        private static readonly Action<ILogger, string, Exception?> LogGate4Failed =
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(97, nameof(LogGate4Failed)),
+                "✗ GATE 4 FAILED: {Reason}");
+
+        private static readonly Action<ILogger, Exception?> LogGate4FeatureMatch =
+            LoggerMessage.Define(LogLevel.Information, new EventId(98, nameof(LogGate4FeatureMatch)),
+                "  ✓ Feature specification matches");
+
+        private static readonly Action<ILogger, Exception?> LogGate4SanityCheck =
+            LoggerMessage.Define(LogLevel.Information, new EventId(99, nameof(LogGate4SanityCheck)),
+                "[2/4] Running sanity tests with deterministic dataset...");
+
+        private static readonly Action<ILogger, int, Exception?> LogGate4SanityVectors =
+            LoggerMessage.Define<int>(LogLevel.Information, new EventId(100, nameof(LogGate4SanityVectors)),
+                "  Loaded {Count} sanity test vectors");
+
+        private static readonly Action<ILogger, Exception?> LogGate4DistributionCheck =
+            LoggerMessage.Define(LogLevel.Information, new EventId(101, nameof(LogGate4DistributionCheck)),
+                "[3/4] Comparing prediction distributions...");
+
+        private static readonly Action<ILogger, double, Exception?> LogGate4DistributionValid =
+            LoggerMessage.Define<double>(LogLevel.Information, new EventId(102, nameof(LogGate4DistributionValid)),
+                "  ✓ Distribution divergence acceptable: {Divergence:F4}");
+
+        private static readonly Action<ILogger, Exception?> LogGate4DistributionSkip =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(103, nameof(LogGate4DistributionSkip)),
+                "  Current model not found - skipping distribution comparison (first deployment)");
+
+        private static readonly Action<ILogger, Exception?> LogGate4OutputCheck =
+            LoggerMessage.Define(LogLevel.Information, new EventId(104, nameof(LogGate4OutputCheck)),
+                "[4/4] Validating model outputs for NaN/Infinity...");
+
+        private static readonly Action<ILogger, Exception?> LogGate4OutputValid =
+            LoggerMessage.Define(LogLevel.Information, new EventId(105, nameof(LogGate4OutputValid)),
+                "  ✓ All outputs valid (no NaN/Infinity)");
+
+        private static readonly Action<ILogger, Exception?> LogGate4SimulationStart =
+            LoggerMessage.Define(LogLevel.Information, new EventId(106, nameof(LogGate4SimulationStart)),
+                "[5/5] Running historical replay simulation...");
+
+        private static readonly Action<ILogger, double, Exception?> LogGate4SimulationPassed =
+            LoggerMessage.Define<double>(LogLevel.Information, new EventId(107, nameof(LogGate4SimulationPassed)),
+                "  ✓ Simulation passed - drawdown ratio: {Ratio:F2}x");
+
+        private static readonly Action<ILogger, Exception?> LogGate4SimulationSkip =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(108, nameof(LogGate4SimulationSkip)),
+                "  Current model not found - skipping simulation (first deployment)");
+
+        private static readonly Action<ILogger, Exception?> LogGate4Passed =
+            LoggerMessage.Define(LogLevel.Information, new EventId(109, nameof(LogGate4Passed)),
+                "=== GATE 4 PASSED - Model validated for hot-reload ===");
+
+        private static readonly Action<ILogger, string, Exception?> LogGate4Exception =
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(110, nameof(LogGate4Exception)),
+                "Gate 4 validation error: {Message}");
+
+        private static readonly Action<ILogger, Exception?> LogGate4FileNotFound =
+            LoggerMessage.Define(LogLevel.Error, new EventId(111, nameof(LogGate4FileNotFound)),
+                "✗ GATE 4 FAILED: Model file not found during validation");
+
+        private static readonly Action<ILogger, Exception?> LogGate4OnnxError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(112, nameof(LogGate4OnnxError)),
+                "✗ GATE 4 FAILED: ONNX runtime error during model validation");
+
+        private static readonly Action<ILogger, Exception?> LogGate4InvalidOperation =
+            LoggerMessage.Define(LogLevel.Error, new EventId(113, nameof(LogGate4InvalidOperation)),
+                "✗ GATE 4 FAILED: Invalid operation during model validation");
+
+        private static readonly Action<ILogger, Exception?> LogGate4IOError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(114, nameof(LogGate4IOError)),
+                "✗ GATE 4 FAILED: I/O error during model validation");
+
+        private static readonly Action<ILogger, Exception?> LogFeatureSpecMissing =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(115, nameof(LogFeatureSpecMissing)),
+                "Feature specification not found - creating default");
+
+        private static readonly Action<ILogger, string, Exception?> LogValidationModelFileNotFound =
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(116, nameof(LogValidationModelFileNotFound)),
+                "Model file not found: {Path}");
+
+        private static readonly Action<ILogger, string, Exception?> LogValidationModelFileEmpty =
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(117, nameof(LogValidationModelFileEmpty)),
+                "Model file is empty: {Path}");
+
+        private static readonly Action<ILogger, long, Exception?> LogModelFileSize =
+            LoggerMessage.Define<long>(LogLevel.Information, new EventId(118, nameof(LogModelFileSize)),
+                "  Model file size: {Size} bytes");
+
+        private static readonly Action<ILogger, Exception?> LogFeatureValidationFileNotFound =
+            LoggerMessage.Define(LogLevel.Error, new EventId(119, nameof(LogFeatureValidationFileNotFound)),
+                "Feature specification validation failed - file not found");
+
+        private static readonly Action<ILogger, Exception?> LogFeatureValidationJsonError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(120, nameof(LogFeatureValidationJsonError)),
+                "Feature specification validation failed - invalid JSON");
+
+        private static readonly Action<ILogger, Exception?> LogFeatureValidationIOError =
+            LoggerMessage.Define(LogLevel.Error, new EventId(121, nameof(LogFeatureValidationIOError)),
+                "Feature specification validation failed - I/O error");
+
+        private static readonly Action<ILogger, Exception?> LogFeatureValidationAccessDenied =
+            LoggerMessage.Define(LogLevel.Error, new EventId(122, nameof(LogFeatureValidationAccessDenied)),
+                "Feature specification validation failed - access denied");
+
+        private static readonly Action<ILogger, int, Exception?> LogSanityVectorsCached =
+            LoggerMessage.Define<int>(LogLevel.Information, new EventId(123, nameof(LogSanityVectorsCached)),
+                "  Loaded {Count} cached sanity test vectors");
+
+        private static readonly Action<ILogger, Exception?> LogSanityVectorsCacheFileNotFound =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(124, nameof(LogSanityVectorsCacheFileNotFound)),
+                "Failed to load cached sanity test vectors - file not found, generating new ones");
+
+        private static readonly Action<ILogger, Exception?> LogSanityVectorsCacheJsonError =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(125, nameof(LogSanityVectorsCacheJsonError)),
+                "Failed to load cached sanity test vectors - invalid JSON, generating new ones");
+
+        private static readonly Action<ILogger, Exception?> LogSanityVectorsCacheIOError =
+            LoggerMessage.Define(LogLevel.Warning, new EventId(126, nameof(LogSanityVectorsCacheIOError)),
+                "Failed to load cached sanity test vectors - I/O error, generating new ones");
+
         public UnifiedTradingBrain(
             ILogger<UnifiedTradingBrain> logger,
             IMLMemoryManager memoryManager,
@@ -2083,7 +2220,7 @@ Reason closed: {reason}
                 ).ConfigureAwait(false);
                 
                 contracts = (int)(contracts * Math.Clamp(rlMultiplier, TopStepConfig.MinRlMultiplier, TopStepConfig.MaxRlMultiplier));
-                LogLegacyRlMultiplier(_logger, rlMultiplier, null);
+                LogLegacyRlMultiplier(_logger, (double)rlMultiplier, null);
             }
 
             LogPositionSize(_logger, instrument, (double)confidence, _currentDrawdown, contracts, riskAmount, null);
@@ -2365,7 +2502,7 @@ Reason closed: {reason}
                 availableStrategies = timeBasedStrategies.ToList();
             }
             
-            LogStrategySelection(_logger, hour, regime, string.Join(",", availableStrategies), null);
+            LogStrategySelection(_logger, hour, regime.ToString(), string.Join(",", availableStrategies), null);
             
             return availableStrategies;
         }
@@ -2825,28 +2962,28 @@ Reason closed: {reason}
         {
             try
             {
-                _logger.LogInformation("=== GATE 4: UNIFIED TRADING BRAIN MODEL RELOAD VALIDATION ===");
-                _logger.LogInformation("New model: {NewPath}", newModelPath);
-                _logger.LogInformation("Current model: {CurrentPath}", currentModelPath);
+                LogGate4Start(_logger, null);
+                LogGate4NewModel(_logger, newModelPath, null);
+                LogGate4CurrentModel(_logger, currentModelPath, null);
 
                 // Check 1: Feature specification compatibility
-                _logger.LogInformation("[1/4] Validating feature specification compatibility...");
+                LogGate4FeatureCheck(_logger, null);
                 var featureCheckPassed = await ValidateFeatureSpecificationAsync(newModelPath, cancellationToken).ConfigureAwait(false);
                 if (!featureCheckPassed)
                 {
                     var reason = "Feature specification mismatch - new model expects different input features";
-                    _logger.LogError("✗ GATE 4 FAILED: {Reason}", reason);
+                    LogGate4Failed(_logger, reason, null);
                     return (false, reason);
                 }
-                _logger.LogInformation("  ✓ Feature specification matches");
+                LogGate4FeatureMatch(_logger, null);
 
                 // Check 2: Sanity test with deterministic dataset
-                _logger.LogInformation("[2/4] Running sanity tests with deterministic dataset...");
+                LogGate4SanityCheck(_logger, null);
                 var sanityTestVectors = LoadOrGenerateSanityTestVectors(_gate4Config.SanityTestVectors);
-                _logger.LogInformation("  Loaded {Count} sanity test vectors", sanityTestVectors.Count);
+                LogGate4SanityVectors(_logger, sanityTestVectors.Count, null);
 
                 // Check 3: Prediction distribution comparison
-                _logger.LogInformation("[3/4] Comparing prediction distributions...");
+                LogGate4DistributionCheck(_logger, null);
                 if (File.Exists(currentModelPath))
                 {
                     var (distributionValid, divergence) = await ComparePredictionDistributionsAsync(
@@ -2855,68 +2992,68 @@ Reason closed: {reason}
                     if (!distributionValid)
                     {
                         var reason = $"Prediction distribution divergence too high: {divergence:F4} > 0.20";
-                        _logger.LogError("✗ GATE 4 FAILED: {Reason}", reason);
+                        LogGate4Failed(_logger, reason, null);
                         return (false, reason);
                     }
-                    _logger.LogInformation("  ✓ Distribution divergence acceptable: {Divergence:F4}", divergence);
+                    LogGate4DistributionValid(_logger, divergence, null);
                 }
                 else
                 {
-                    _logger.LogWarning("  Current model not found - skipping distribution comparison (first deployment)");
+                    LogGate4DistributionSkip(_logger, null);
                 }
 
                 // Check 4: NaN/Infinity validation
-                _logger.LogInformation("[4/4] Validating model outputs for NaN/Infinity...");
+                LogGate4OutputCheck(_logger, null);
                 var outputValidationPassed = await ValidateModelOutputsAsync(newModelPath, sanityTestVectors, cancellationToken).ConfigureAwait(false);
                 if (!outputValidationPassed)
                 {
                     var reason = "Model produces NaN or Infinity values - unstable model";
-                    _logger.LogError("✗ GATE 4 FAILED: {Reason}", reason);
+                    LogGate4Failed(_logger, reason, null);
                     return (false, reason);
                 }
-                _logger.LogInformation("  ✓ All outputs valid (no NaN/Infinity)");
+                LogGate4OutputValid(_logger, null);
 
                 // Check 5: Historical replay simulation with drawdown check
                 if (File.Exists(currentModelPath))
                 {
-                    _logger.LogInformation("[5/5] Running historical replay simulation...");
+                    LogGate4SimulationStart(_logger, null);
                     var (simulationPassed, drawdownRatio) = await RunHistoricalSimulationAsync(
                         currentModelPath, newModelPath, cancellationToken).ConfigureAwait(false);
                     
                     if (!simulationPassed)
                     {
                         var reason = $"Simulation drawdown ratio too high: {drawdownRatio:F2}x > 2.0x baseline";
-                        _logger.LogError("✗ GATE 4 FAILED: {Reason}", reason);
+                        LogGate4Failed(_logger, reason, null);
                         return (false, reason);
                     }
-                    _logger.LogInformation("  ✓ Simulation passed - drawdown ratio: {Ratio:F2}x", drawdownRatio);
+                    LogGate4SimulationPassed(_logger, drawdownRatio, null);
                 }
                 else
                 {
-                    _logger.LogWarning("  Current model not found - skipping simulation (first deployment)");
+                    LogGate4SimulationSkip(_logger, null);
                 }
 
-                _logger.LogInformation("=== GATE 4 PASSED - Model validated for hot-reload ===");
+                LogGate4Passed(_logger, null);
                 return (true, "All validation checks passed");
             }
             catch (FileNotFoundException ex)
             {
-                _logger.LogError(ex, "✗ GATE 4 FAILED: Model file not found during validation");
+                LogGate4FileNotFound(_logger, ex);
                 return (false, $"Validation exception: {ex.Message}");
             }
             catch (OnnxRuntimeException ex)
             {
-                _logger.LogError(ex, "✗ GATE 4 FAILED: ONNX runtime error during model validation");
+                LogGate4OnnxError(_logger, ex);
                 return (false, $"Validation exception: {ex.Message}");
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "✗ GATE 4 FAILED: Invalid operation during model validation");
+                LogGate4InvalidOperation(_logger, ex);
                 return (false, $"Validation exception: {ex.Message}");
             }
             catch (IOException ex)
             {
-                _logger.LogError(ex, "✗ GATE 4 FAILED: I/O error during model validation");
+                LogGate4IOError(_logger, ex);
                 return (false, $"Validation exception: {ex.Message}");
             }
         }
@@ -2929,7 +3066,7 @@ Reason closed: {reason}
                 var featureSpecPath = Path.Combine("config", "feature_specification.json");
                 if (!File.Exists(featureSpecPath))
                 {
-                    _logger.LogWarning("Feature specification not found - creating default");
+                    LogFeatureSpecMissing(_logger, null);
                     await CreateDefaultFeatureSpecificationAsync(featureSpecPath, cancellationToken).ConfigureAwait(false);
                 }
 
@@ -2940,38 +3077,38 @@ Reason closed: {reason}
                 // Full ONNX metadata inspection would require Microsoft.ML.OnnxRuntime
                 if (!File.Exists(modelPath))
                 {
-                    _logger.LogError("Model file not found: {Path}", modelPath);
+                    LogValidationModelFileNotFound(_logger, modelPath, null);
                     return false;
                 }
 
                 var fileInfo = new FileInfo(modelPath);
                 if (fileInfo.Length == 0)
                 {
-                    _logger.LogError("Model file is empty: {Path}", modelPath);
+                    LogValidationModelFileEmpty(_logger, modelPath, null);
                     return false;
                 }
 
-                _logger.LogInformation("  Model file size: {Size} bytes", fileInfo.Length);
+                LogModelFileSize(_logger, fileInfo.Length, null);
                 return true;
             }
             catch (FileNotFoundException ex)
             {
-                _logger.LogError(ex, "Feature specification validation failed - file not found");
+                LogFeatureValidationFileNotFound(_logger, ex);
                 return false;
             }
             catch (JsonException ex)
             {
-                _logger.LogError(ex, "Feature specification validation failed - invalid JSON");
+                LogFeatureValidationJsonError(_logger, ex);
                 return false;
             }
             catch (IOException ex)
             {
-                _logger.LogError(ex, "Feature specification validation failed - I/O error");
+                LogFeatureValidationIOError(_logger, ex);
                 return false;
             }
             catch (UnauthorizedAccessException ex)
             {
-                _logger.LogError(ex, "Feature specification validation failed - access denied");
+                LogFeatureValidationAccessDenied(_logger, ex);
                 return false;
             }
         }
@@ -2990,22 +3127,22 @@ Reason closed: {reason}
                     var cached = JsonSerializer.Deserialize<List<float[]>>(json);
                     if (cached != null && cached.Count >= count)
                     {
-                        _logger.LogInformation("  Loaded {Count} cached sanity test vectors", count);
+                        LogSanityVectorsCached(_logger, count, null);
                         return cached.Take(count).ToList();
                     }
                 }
             }
             catch (FileNotFoundException ex)
             {
-                _logger.LogWarning(ex, "Failed to load cached sanity test vectors - file not found, generating new ones");
+                LogSanityVectorsCacheFileNotFound(_logger, ex);
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "Failed to load cached sanity test vectors - invalid JSON, generating new ones");
+                LogSanityVectorsCacheJsonError(_logger, ex);
             }
             catch (IOException ex)
             {
-                _logger.LogWarning(ex, "Failed to load cached sanity test vectors - I/O error, generating new ones");
+                LogSanityVectorsCacheIOError(_logger, ex);
             }
 
             // Generate deterministic test vectors
