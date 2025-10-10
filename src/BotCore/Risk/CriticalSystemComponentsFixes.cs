@@ -232,7 +232,7 @@ namespace BotCore.Risk
         {
             _cancellationTokenSource?.Dispose();
             base.Dispose();
-            // GC.SuppressFinalize not needed - no finalizer defined
+            GC.SuppressFinalize(this);
         }
     }
 }
