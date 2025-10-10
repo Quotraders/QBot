@@ -33,6 +33,85 @@ namespace BotCore.Features
         private long _publishErrors;
         private long _missingFeatures;
 
+        // LoggerMessage delegates for performance
+        private static readonly Action<ILogger, int?, Exception?> LogInvalidConfiguration =
+            LoggerMessage.Define<int?>(
+                LogLevel.Error,
+                new EventId(7501, nameof(LogInvalidConfiguration)),
+                "[FEATURE-PUBLISHER] FAIL-CLOSED: Invalid/missing FeaturePublishingIntervalMinutes configuration: {Interval}. Must be > 0");
+
+        private static readonly Action<ILogger, int, Exception?> LogConfiguredInterval =
+            LoggerMessage.Define<int>(
+                LogLevel.Information,
+                new EventId(7502, nameof(LogConfiguredInterval)),
+                "[FEATURE-PUBLISHER] Configured publish interval: {Interval}m");
+
+        private static readonly Action<ILogger, int, Exception?> LogStarting =
+            LoggerMessage.Define<int>(
+                LogLevel.Information,
+                new EventId(7503, nameof(LogStarting)),
+                "[FEATURE-PUBLISHER] Starting feature publisher with {ResolverCount} resolvers");
+
+        private static readonly Action<ILogger, string, string, Exception?> LogResolverFeatures =
+            LoggerMessage.Define<string, string>(
+                LogLevel.Information,
+                new EventId(7504, nameof(LogResolverFeatures)),
+                "[FEATURE-PUBLISHER] Resolver {ResolverType} provides features: {Features}");
+
+        private static readonly Action<ILogger, long, long, long, long, Exception?> LogStopping =
+            LoggerMessage.Define<long, long, long, long>(
+                LogLevel.Information,
+                new EventId(7505, nameof(LogStopping)),
+                "[FEATURE-PUBLISHER] Stopping feature publisher - Stats: Cycles={Cycles}, Published={Published}, Errors={Errors}, Missing={Missing}");
+
+        private static readonly Action<ILogger, Exception?> LogPublishFailed =
+            LoggerMessage.Define(
+                LogLevel.Error,
+                new EventId(7506, nameof(LogPublishFailed)),
+                "[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Feature publishing failed - FAIL-CLOSED + TELEMETRY");
+
+        private static readonly Action<ILogger, string, Exception?> LogPublishingSymbols =
+            LoggerMessage.Define<string>(
+                LogLevel.Trace,
+                new EventId(7507, nameof(LogPublishingSymbols)),
+                "[FEATURE-PUBLISHER] Publishing features for symbols: {Symbols}");
+
+        private static readonly Action<ILogger, string, string, double, Exception?> LogPublished =
+            LoggerMessage.Define<string, string, double>(
+                LogLevel.Trace,
+                new EventId(7508, nameof(LogPublished)),
+                "[FEATURE-PUBLISHER] Published {Symbol}.{FeatureKey}={Value:F6}");
+
+        private static readonly Action<ILogger, string, string, Exception?> LogMissingFeature =
+            LoggerMessage.Define<string, string>(
+                LogLevel.Warning,
+                new EventId(7509, nameof(LogMissingFeature)),
+                "[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Missing feature {Symbol}.{FeatureKey} - emitted fusion.feature_missing telemetry");
+
+        private static readonly Action<ILogger, string, string, Exception?> LogResolverFailed =
+            LoggerMessage.Define<string, string>(
+                LogLevel.Error,
+                new EventId(7510, nameof(LogResolverFailed)),
+                "[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Resolver {ResolverType} failed for {Symbol} - FAIL-CLOSED + TELEMETRY");
+
+        private static readonly Action<ILogger, Exception?> LogFeatureBusFailed =
+            LoggerMessage.Define(
+                LogLevel.Error,
+                new EventId(7511, nameof(LogFeatureBusFailed)),
+                "[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Feature bus publish failed - CRITICAL SYSTEM FAILURE");
+
+        private static readonly Action<ILogger, int, int, int, double, Exception?> LogPublishCycleComplete =
+            LoggerMessage.Define<int, int, int, double>(
+                LogLevel.Debug,
+                new EventId(7512, nameof(LogPublishCycleComplete)),
+                "[FEATURE-PUBLISHER] Publish cycle complete: Published={Published}, Errors={Errors}, Missing={Missing}, Latency={Latency}ms");
+
+        private static readonly Action<ILogger, long, long, long, long, Exception?> LogDisposed =
+            LoggerMessage.Define<long, long, long, long>(
+                LogLevel.Information,
+                new EventId(7513, nameof(LogDisposed)),
+                "[FEATURE-PUBLISHER] Disposed - Final stats: Cycles={Cycles}, Published={Published}, Errors={Errors}, Missing={Missing}");
+
         public FeaturePublisher(
             ILogger<FeaturePublisher> logger,
             IOptions<S7Configuration> s7Config,
@@ -50,27 +129,25 @@ namespace BotCore.Features
             // FAIL-CLOSED: Reject missing/invalid configuration 
             if (!publishIntervalMinutes.HasValue || publishIntervalMinutes <= 0)
             {
-                _logger.LogError("[FEATURE-PUBLISHER] FAIL-CLOSED: Invalid/missing FeaturePublishingIntervalMinutes configuration: {Interval}. Must be > 0", publishIntervalMinutes);
+                LogInvalidConfiguration(_logger, publishIntervalMinutes, null);
                 throw new InvalidOperationException($"[FEATURE-PUBLISHER] FAIL-CLOSED: Invalid/missing FeaturePublishingIntervalMinutes configuration: {publishIntervalMinutes}. Must be > 0.");
             }
             
             var publishInterval = TimeSpan.FromMinutes(publishIntervalMinutes.Value);
-            _logger.LogInformation("[FEATURE-PUBLISHER] Configured publish interval: {Interval}m", publishIntervalMinutes.Value);
+            LogConfiguredInterval(_logger, publishIntervalMinutes.Value, null);
             
             _publishTimer = new Timer(PublishFeaturesCallback, null, publishInterval, publishInterval);
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("[FEATURE-PUBLISHER] Starting feature publisher with {ResolverCount} resolvers", 
-                _resolvers.Count());
+            LogStarting(_logger, _resolvers.Count(), null);
             
             // Log available feature keys for audit compliance
             foreach (var resolver in _resolvers)
             {
                 var featureKeys = resolver.GetAvailableFeatureKeys();
-                _logger.LogInformation("[FEATURE-PUBLISHER] Resolver {ResolverType} provides features: {Features}", 
-                    resolver.GetType().Name, string.Join(", ", featureKeys));
+                LogResolverFeatures(_logger, resolver.GetType().Name, string.Join(", ", featureKeys), null);
             }
 
             return Task.CompletedTask;
@@ -78,8 +155,7 @@ namespace BotCore.Features
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("[FEATURE-PUBLISHER] Stopping feature publisher - Stats: Cycles={Cycles}, Published={Published}, Errors={Errors}, Missing={Missing}", 
-                _publishCycles, _featurePublished, _publishErrors, _missingFeatures);
+            LogStopping(_logger, _publishCycles, _featurePublished, _publishErrors, _missingFeatures, null);
             
             _publishTimer?.Change(Timeout.Infinite, 0);
             return Task.CompletedTask;
@@ -103,7 +179,7 @@ namespace BotCore.Features
                     // Catch all exceptions to ensure fail-closed behavior in fire-and-forget context
                     // This includes: HttpRequestException, JsonException, IOException, InvalidOperationException, etc.
                     // All exceptions are logged; none escape to become unobserved task faults
-                    _logger.LogError(ex, "[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Feature publishing failed - FAIL-CLOSED + TELEMETRY");
+                    LogPublishFailed(_logger, ex);
                     // Log but don't rethrow in fire-and-forget context
                 }
             });
@@ -123,7 +199,7 @@ namespace BotCore.Features
             // Get symbols from S7 configuration to avoid hardcoding
             var symbols = _s7Config.Value?.Symbols ?? new[] { "ES", "NQ" };
             
-            _logger.LogTrace("[FEATURE-PUBLISHER] Publishing features for symbols: {Symbols}", string.Join(", ", symbols));
+            LogPublishingSymbols(_logger, string.Join(", ", symbols), null);
 
             var currentTime = DateTime.UtcNow;
             var publishedCount = 0;
@@ -148,8 +224,7 @@ namespace BotCore.Features
                                 _featureBus.Publish(symbol, currentTime, featureKey, value.Value);
                                 publishedCount++;
                                 
-                                _logger.LogTrace("[FEATURE-PUBLISHER] Published {Symbol}.{FeatureKey}={Value:F6}", 
-                                    symbol, featureKey, value.Value);
+                                LogPublished(_logger, symbol, featureKey, value.Value, null);
                             }
                             else
                             {
@@ -157,8 +232,7 @@ namespace BotCore.Features
                                 _featureBus.Publish(symbol, currentTime, "fusion.feature_missing", 1.0);
                                 missingCount++;
                                 
-                                _logger.LogWarning("[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Missing feature {Symbol}.{FeatureKey} - emitted fusion.feature_missing telemetry", 
-                                    symbol, featureKey);
+                                LogMissingFeature(_logger, symbol, featureKey, null);
                             }
                         }
                     }
@@ -167,8 +241,7 @@ namespace BotCore.Features
                         // Catch all exceptions to ensure fail-closed behavior
                         // This includes: HttpRequestException, JsonException, IOException, InvalidOperationException, etc.
                         errorCount++;
-                        _logger.LogError(ex, "[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Resolver {ResolverType} failed for {Symbol} - FAIL-CLOSED + TELEMETRY", 
-                            resolver.GetType().Name, symbol);
+                        LogResolverFailed(_logger, resolver.GetType().Name, symbol, ex);
                         
                         // Emit fusion.feature_missing for resolver failure
                         try
@@ -177,7 +250,7 @@ namespace BotCore.Features
                         }
                         catch (Exception busEx)
                         {
-                            _logger.LogError(busEx, "[FEATURE-PUBLISHER] [AUDIT-VIOLATION] Feature bus publish failed - CRITICAL SYSTEM FAILURE");
+                            LogFeatureBusFailed(_logger, busEx);
                             
                             // Double failure: resolver failed AND feature bus failed
                             // This is a critical system failure - fail closed immediately
@@ -198,8 +271,7 @@ namespace BotCore.Features
                 _missingFeatures += missingCount;
             }
 
-            _logger.LogDebug("[FEATURE-PUBLISHER] Publish cycle complete: Published={Published}, Errors={Errors}, Missing={Missing}, Latency={Latency}ms", 
-                publishedCount, errorCount, missingCount, publishLatency.TotalMilliseconds);
+            LogPublishCycleComplete(_logger, publishedCount, errorCount, missingCount, publishLatency.TotalMilliseconds, null);
         }
 
         public void Dispose()
@@ -209,8 +281,7 @@ namespace BotCore.Features
                 _publishTimer?.Dispose();
                 _disposed = true;
                 
-                _logger.LogInformation("[FEATURE-PUBLISHER] Disposed - Final stats: Cycles={Cycles}, Published={Published}, Errors={Errors}, Missing={Missing}", 
-                    _publishCycles, _featurePublished, _publishErrors, _missingFeatures);
+                LogDisposed(_logger, _publishCycles, _featurePublished, _publishErrors, _missingFeatures, null);
             }
         }
     }

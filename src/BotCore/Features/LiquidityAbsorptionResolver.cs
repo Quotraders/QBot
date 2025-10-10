@@ -24,6 +24,55 @@ namespace BotCore.Features
             "liquidity.vpr"
         };
 
+        // LoggerMessage delegates for performance
+        private static readonly Action<ILogger, Exception?> LogEmptySymbol =
+            LoggerMessage.Define(
+                LogLevel.Error,
+                new EventId(7101, nameof(LogEmptySymbol)),
+                "[LIQUIDITY-RESOLVER] [AUDIT-VIOLATION] Empty symbol provided - FAIL-CLOSED + TELEMETRY");
+
+        private static readonly Action<ILogger, string, Exception?> LogNullBarData =
+            LoggerMessage.Define<string>(
+                LogLevel.Error,
+                new EventId(7102, nameof(LogNullBarData)),
+                "[LIQUIDITY-RESOLVER] [AUDIT-VIOLATION] Null bar data for {Symbol} - FAIL-CLOSED + TELEMETRY");
+
+        private static readonly Action<ILogger, string, Exception?> LogMissingBarProperties =
+            LoggerMessage.Define<string>(
+                LogLevel.Error,
+                new EventId(7103, nameof(LogMissingBarProperties)),
+                "[LIQUIDITY-RESOLVER] [AUDIT-VIOLATION] Missing required bar properties for {Symbol} - FAIL-CLOSED + TELEMETRY");
+
+        private static readonly Action<ILogger, string, Exception?> LogZeroRangeBar =
+            LoggerMessage.Define<string>(
+                LogLevel.Warning,
+                new EventId(7104, nameof(LogZeroRangeBar)),
+                "[LIQUIDITY-RESOLVER] [AUDIT-VIOLATION] Zero range bar for {Symbol} - FAIL-CLOSED + TELEMETRY");
+
+        private static readonly Action<ILogger, string, decimal, decimal, decimal, Exception?> LogUpdated =
+            LoggerMessage.Define<string, decimal, decimal, decimal>(
+                LogLevel.Trace,
+                new EventId(7105, nameof(LogUpdated)),
+                "[LIQUIDITY-RESOLVER] Updated {Symbol}: Bull={BullAbsorption:F4}, Bear={BearAbsorption:F4}, VPR={VPR:F2}");
+
+        private static readonly Action<ILogger, string, Exception?> LogProcessBarError =
+            LoggerMessage.Define<string>(
+                LogLevel.Error,
+                new EventId(7106, nameof(LogProcessBarError)),
+                "[LIQUIDITY-RESOLVER] [AUDIT-VIOLATION] Failed to process bar for {Symbol} - FAIL-CLOSED + TELEMETRY");
+
+        private static readonly Action<ILogger, Exception?> LogInvalidInput =
+            LoggerMessage.Define(
+                LogLevel.Error,
+                new EventId(7107, nameof(LogInvalidInput)),
+                "[LIQUIDITY-RESOLVER] [AUDIT-VIOLATION] Invalid symbol or feature key - FAIL-CLOSED + TELEMETRY");
+
+        private static readonly Action<ILogger, string, Exception?> LogNoStateForSymbol =
+            LoggerMessage.Define<string>(
+                LogLevel.Warning,
+                new EventId(7108, nameof(LogNoStateForSymbol)),
+                "[LIQUIDITY-RESOLVER] [AUDIT-VIOLATION] No state for symbol {Symbol} - FAIL-CLOSED + TELEMETRY");
+
         public LiquidityAbsorptionResolver(ILogger<LiquidityAbsorptionResolver> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -35,13 +84,13 @@ namespace BotCore.Features
         {
             if (string.IsNullOrWhiteSpace(symbol))
             {
-                _logger.LogError("[LIQUIDITY-RESOLVER] [AUDIT-VIOLATION] Empty symbol provided - FAIL-CLOSED + TELEMETRY");
+                LogEmptySymbol(_logger, null);
                 return;
             }
 
             if (barData == null)
             {
-                _logger.LogError("[LIQUIDITY-RESOLVER] [AUDIT-VIOLATION] Null bar data for {Symbol} - FAIL-CLOSED + TELEMETRY", symbol);
+                LogNullBarData(_logger, symbol, null);
                 return;
             }
 
@@ -62,7 +111,7 @@ namespace BotCore.Features
                 if (openProperty == null || highProperty == null || lowProperty == null || 
                     closeProperty == null || volumeProperty == null)
                 {
-                    _logger.LogError("[LIQUIDITY-RESOLVER] [AUDIT-VIOLATION] Missing required bar properties for {Symbol} - FAIL-CLOSED + TELEMETRY", symbol);
+                    LogMissingBarProperties(_logger, symbol, null);
                     return;
                 }
 
@@ -78,7 +127,7 @@ namespace BotCore.Features
                 
                 if (range == 0)
                 {
-                    _logger.LogWarning("[LIQUIDITY-RESOLVER] [AUDIT-VIOLATION] Zero range bar for {Symbol} - FAIL-CLOSED + TELEMETRY", symbol);
+                    LogZeroRangeBar(_logger, symbol, null);
                     return;
                 }
 
@@ -100,12 +149,11 @@ namespace BotCore.Features
                 state.VolumePerRange = (double)vpr;
                 state.LastUpdate = DateTime.UtcNow;
 
-                _logger.LogTrace("[LIQUIDITY-RESOLVER] Updated {Symbol}: Bull={BullAbsorption:F4}, Bear={BearAbsorption:F4}, VPR={VPR:F2}", 
-                    symbol, bullAbsorption, bearAbsorption, vpr);
+                LogUpdated(_logger, symbol, bullAbsorption, bearAbsorption, vpr, null);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[LIQUIDITY-RESOLVER] [AUDIT-VIOLATION] Failed to process bar for {Symbol} - FAIL-CLOSED + TELEMETRY", symbol);
+                LogProcessBarError(_logger, symbol, ex);
                 // Fail-closed: let exception bubble up to crash service rather than silently continue
                 throw new InvalidOperationException($"[LIQUIDITY-RESOLVER] Critical failure processing bar for '{symbol}': {ex.Message}", ex);
             }
@@ -115,7 +163,7 @@ namespace BotCore.Features
         {
             if (string.IsNullOrWhiteSpace(symbol) || string.IsNullOrWhiteSpace(featureKey))
             {
-                _logger.LogError("[LIQUIDITY-RESOLVER] [AUDIT-VIOLATION] Invalid symbol or feature key - FAIL-CLOSED + TELEMETRY");
+                LogInvalidInput(_logger, null);
                 return null;
             }
 
@@ -123,7 +171,7 @@ namespace BotCore.Features
 
             if (!_symbolStates.TryGetValue(symbol, out var state))
             {
-                _logger.LogWarning("[LIQUIDITY-RESOLVER] [AUDIT-VIOLATION] No state for symbol {Symbol} - FAIL-CLOSED + TELEMETRY", symbol);
+                LogNoStateForSymbol(_logger, symbol, null);
                 return null;
             }
 
