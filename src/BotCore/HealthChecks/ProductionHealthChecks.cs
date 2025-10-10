@@ -872,7 +872,7 @@ public class HealthCheckPublisherService : BackgroundService
                             _ => "❓"
                         };
 
-                        LogIndividualCheckStatus(_logger, checkStatus, name, result.Description, null);
+                        LogIndividualCheckStatus(_logger, checkStatus, name, result.Description ?? "No description", null);
                     }
                 }
 
