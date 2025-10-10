@@ -203,6 +203,13 @@ public class TopstepXApiHealthCheck : IHealthCheck
     private readonly ILogger<TopstepXApiHealthCheck> _logger;
     private readonly IOptions<TopstepXConfiguration> _config;
 
+    // LoggerMessage delegate for CA1848 performance compliance
+    private static readonly Action<ILogger, Exception> LogApiHealthCheckFailed =
+        LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(6303, nameof(LogApiHealthCheckFailed)),
+            "TopstepX API health check failed");
+
     public TopstepXApiHealthCheck(
         HttpClient httpClient,
         ILogger<TopstepXApiHealthCheck> logger,
@@ -259,7 +266,7 @@ public class TopstepXApiHealthCheck : IHealthCheck
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "TopstepX API health check failed");
+            LogApiHealthCheckFailed(_logger, ex);
             return HealthCheckResult.Unhealthy(
                 $"TopstepX API error: {ex.Message}",
                 ex);
@@ -274,6 +281,13 @@ public class TopstepXSignalRHealthCheck : IHealthCheck
 {
     private readonly ILogger<TopstepXSignalRHealthCheck> _logger;
     private readonly IOptions<TopstepXConfiguration> _config;
+
+    // LoggerMessage delegate for CA1848 performance compliance
+    private static readonly Action<ILogger, Exception> LogSignalRHealthCheckFailed =
+        LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(6304, nameof(LogSignalRHealthCheckFailed)),
+            "SignalR health check failed");
 
     public TopstepXSignalRHealthCheck(
         ILogger<TopstepXSignalRHealthCheck> logger,
@@ -317,12 +331,12 @@ public class TopstepXSignalRHealthCheck : IHealthCheck
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogWarning(ex, "SignalR health check failed");
+            LogSignalRHealthCheckFailed(_logger, ex);
             return HealthCheckResult.Unhealthy($"SignalR health check error: {ex.Message}", ex);
         }
         catch (TaskCanceledException ex)
         {
-            _logger.LogWarning(ex, "SignalR health check failed");
+            LogSignalRHealthCheckFailed(_logger, ex);
             return HealthCheckResult.Unhealthy($"SignalR health check error: {ex.Message}", ex);
         }
     }
@@ -355,6 +369,13 @@ public class TopstepXSignalRHealthCheck : IHealthCheck
 public class DatabaseHealthCheck : IHealthCheck
 {
     private readonly ILogger<DatabaseHealthCheck> _logger;
+
+    // LoggerMessage delegate for CA1848 performance compliance
+    private static readonly Action<ILogger, Exception> LogDatabaseHealthCheckFailed =
+        LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(6305, nameof(LogDatabaseHealthCheckFailed)),
+            "Database health check failed");
 
     public DatabaseHealthCheck(ILogger<DatabaseHealthCheck> logger)
     {
@@ -398,7 +419,7 @@ public class DatabaseHealthCheck : IHealthCheck
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Database health check failed");
+            LogDatabaseHealthCheckFailed(_logger, ex);
             return HealthCheckResult.Unhealthy($"Database error: {ex.Message}", ex);
         }
     }
@@ -410,6 +431,13 @@ public class DatabaseHealthCheck : IHealthCheck
 public class DiskSpaceHealthCheck : IHealthCheck
 {
     private readonly ILogger<DiskSpaceHealthCheck> _logger;
+
+    // LoggerMessage delegate for CA1848 performance compliance
+    private static readonly Action<ILogger, Exception> LogDiskSpaceHealthCheckFailed =
+        LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(6306, nameof(LogDiskSpaceHealthCheckFailed)),
+            "Disk space health check failed");
 
     public DiskSpaceHealthCheck(ILogger<DiskSpaceHealthCheck> logger)
     {
@@ -455,12 +483,12 @@ public class DiskSpaceHealthCheck : IHealthCheck
         }
         catch (IOException ex)
         {
-            _logger.LogWarning(ex, "Disk space health check failed");
+            LogDiskSpaceHealthCheckFailed(_logger, ex);
             return Task.FromResult(HealthCheckResult.Unhealthy($"Disk space check error: {ex.Message}", ex));
         }
         catch (UnauthorizedAccessException ex)
         {
-            _logger.LogWarning(ex, "Disk space health check failed");
+            LogDiskSpaceHealthCheckFailed(_logger, ex);
             return Task.FromResult(HealthCheckResult.Unhealthy($"Disk space check error: {ex.Message}", ex));
         }
     }
