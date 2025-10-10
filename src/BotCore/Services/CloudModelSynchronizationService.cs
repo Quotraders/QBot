@@ -617,11 +617,14 @@ public class CloudModelSynchronizationService : BackgroundService
     /// <summary>
     /// Get current model information for external services
     /// </summary>
-    public Dictionary<string, ModelInfo> GetCurrentModels()
+    public Dictionary<string, ModelInfo> CurrentModels
     {
-        lock (_syncLock)
+        get
         {
-            return new Dictionary<string, ModelInfo>(_currentModels);
+            lock (_syncLock)
+            {
+                return new Dictionary<string, ModelInfo>(_currentModels);
+            }
         }
     }
 

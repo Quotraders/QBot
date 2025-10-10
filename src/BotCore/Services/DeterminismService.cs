@@ -140,11 +140,14 @@ namespace TradingBot.BotCore.Services
         /// <summary>
         /// Get current seed registry for debugging and QA logs
         /// </summary>
-        public Dictionary<string, int> GetSeedRegistry()
+        public Dictionary<string, int> SeedRegistry
         {
-            lock (_registryLock)
+            get
             {
-                return new Dictionary<string, int>(_seedRegistry);
+                lock (_registryLock)
+                {
+                    return new Dictionary<string, int>(_seedRegistry);
+                }
             }
         }
 
@@ -220,7 +223,7 @@ namespace TradingBot.BotCore.Services
             };
             
             // Set the seed registry using the Replace method
-            result.ReplaceSeedRegistry(GetSeedRegistry());
+            result.ReplaceSeedRegistry(SeedRegistry);
 
             var expectedComponents = new[] { "Strategy", "Portfolio", "Execution", "ML", "Risk" };
             var missingComponents = new List<string>();

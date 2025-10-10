@@ -293,19 +293,22 @@ public class UnifiedModelPathResolver
     /// <summary>
     /// Get resolver statistics
     /// </summary>
-    public ModelResolverStats GetStats()
+    public ModelResolverStats Stats
     {
-        lock (_cacheLock)
+        get
         {
-            return new ModelResolverStats
+            lock (_cacheLock)
             {
-                CachedPaths = _pathCache.Count,
-                ModelRootPath = _modelRootPath,
-                Platform = _isWindows ? "Windows" : "Linux",
-                ValidationEnabled = _config.ValidationEnabled,
-                FallbackEnabled = _config.FallbackEnabled,
-                LastDiscovery = DateTime.UtcNow
-            };
+                return new ModelResolverStats
+                {
+                    CachedPaths = _pathCache.Count,
+                    ModelRootPath = _modelRootPath,
+                    Platform = _isWindows ? "Windows" : "Linux",
+                    ValidationEnabled = _config.ValidationEnabled,
+                    FallbackEnabled = _config.FallbackEnabled,
+                    LastDiscovery = DateTime.UtcNow
+                };
+            }
         }
     }
     

@@ -95,7 +95,7 @@ namespace BotCore.Services
             }
             
             // Get all open positions to monitor
-            var positions = positionTracker.GetAllPositions();
+            var positions = positionTracker.AllPositions;
             if (positions == null || positions.Count == 0)
             {
                 // No positions to monitor

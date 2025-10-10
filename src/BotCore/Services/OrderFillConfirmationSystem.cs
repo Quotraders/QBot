@@ -391,10 +391,7 @@ namespace TopstepX.Bot.Core.Services
         /// <summary>
         /// Get all orders with their current status
         /// </summary>
-        public Dictionary<string, OrderTrackingRecord> GetAllOrders()
-        {
-            return new Dictionary<string, OrderTrackingRecord>(_orderTracking);
-        }
+        public Dictionary<string, OrderTrackingRecord> AllOrders => new Dictionary<string, OrderTrackingRecord>(_orderTracking);
         
         public void Dispose()
         {

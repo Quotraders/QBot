@@ -347,7 +347,7 @@ public class TradingFeedbackService : BackgroundService
         }
         
         // Check for overall model ensemble degradation
-        var ensembleStats = _ensemble.GetModelPerformanceStats();
+        var ensembleStats = _ensemble.ModelPerformanceStats;
         
         // Phase 6A: Exception Guards - Add .Any() check before .Average()
         var validStats = ensembleStats.Values.Where(s => s.PredictionCount >= 10).ToList();
@@ -425,7 +425,7 @@ public class TradingFeedbackService : BackgroundService
             };
             
             // Populate readonly collections
-            var modelPerformanceStats = _ensemble.GetModelPerformanceStats();
+            var modelPerformanceStats = _ensemble.ModelPerformanceStats;
             foreach (var kvp in modelPerformanceStats)
             {
                 ensembleRequest.ModelPerformance[kvp.Key] = kvp.Value;
@@ -552,7 +552,7 @@ public class TradingFeedbackService : BackgroundService
             summary.StrategyMetricsInternal.Add(metric);
         }
         
-        var modelMetrics = _ensemble.GetModelPerformanceStats();
+        var modelMetrics = _ensemble.ModelPerformanceStats;
         foreach (var kvp in modelMetrics)
         {
             summary.ModelMetrics[kvp.Key] = kvp.Value;

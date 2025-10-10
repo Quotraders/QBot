@@ -292,18 +292,12 @@ namespace TopstepX.Bot.Core.Services
         /// <summary>
         /// Get current positions summary
         /// </summary>
-        public Dictionary<string, Position> GetAllPositions()
-        {
-            return new Dictionary<string, Position>(_positions);
-        }
+        public Dictionary<string, Position> AllPositions => new Dictionary<string, Position>(_positions);
         
         /// <summary>
         /// Get pending orders
         /// </summary>
-        public Dictionary<string, PendingOrder> GetPendingOrders()
-        {
-            return new Dictionary<string, PendingOrder>(_pendingOrders);
-        }
+        public Dictionary<string, PendingOrder> PendingOrders => new Dictionary<string, PendingOrder>(_pendingOrders);
         
         /// <summary>
         /// Get account summary

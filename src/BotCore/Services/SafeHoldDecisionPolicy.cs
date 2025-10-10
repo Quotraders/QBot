@@ -289,9 +289,7 @@ public class SafeHoldDecisionPolicy
     /// <summary>
     /// Get neutral band statistics
     /// </summary>
-    public NeutralBandStats GetNeutralBandStats()
-    {
-        return new NeutralBandStats
+    public NeutralBandStats NeutralBandStats => new NeutralBandStats
         {
             BearishThreshold = _config.BearishThreshold,
             BullishThreshold = _config.BullishThreshold,
@@ -299,7 +297,6 @@ public class SafeHoldDecisionPolicy
             EnableHysteresis = _config.EnableHysteresis,
             HysteresisBuffer = _config.HysteresisBuffer
         };
-    }
 
     /// <summary>
     /// Load neutral band configuration from appsettings
