@@ -254,7 +254,7 @@ public class SecurityService : ISecurityService
                 var name = adapter.Name.ToUpperInvariant();
                 var description = adapter.Description.ToUpperInvariant();
 
-                if (vpnIndicators.Exists(indicator => name.Contains(indicator, StringComparison.Ordinal) || description.Contains(indicator, StringComparison.Ordinal)))
+                if (Array.Exists(vpnIndicators, indicator => name.Contains(indicator, StringComparison.Ordinal) || description.Contains(indicator, StringComparison.Ordinal)))
                 {
                     suspiciousAdapters.Add($"{adapter.Name} ({adapter.Description})");
                 }
