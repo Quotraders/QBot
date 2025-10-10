@@ -104,7 +104,7 @@ public sealed class DecisionFusionCoordinator
             
             // Get Knowledge Graph recommendation
             var knowledgeRecommendations = await _graph.EvaluateAsync(symbol, DateTime.UtcNow, cancellationToken).ConfigureAwait(false);
-            var knowledgeRec = knowledgeRecommendations.FirstOrDefault();
+            var knowledgeRec = knowledgeRecommendations.Count > 0 ? knowledgeRecommendations[0] : null;
             
             // Get UCB prediction
             var (ucbStrategy, ucbIntent, ucbScore) = await _ucb.PredictAsync(symbol, cancellationToken).ConfigureAwait(false);
@@ -290,7 +290,7 @@ public sealed class DecisionFusionCoordinator
             }
             
             var value = configuration.GetValue<double>(key);
-            if (value == 0.0 && !configuration.GetSection(key).Exists())
+            if (Math.Abs(value) < double.Epsilon && !configuration.GetSection(key).Exists())
             {
                 _logger.LogTrace("Configuration key {Key} not found - using default {Default}", key, defaultValue);
                 return defaultValue;

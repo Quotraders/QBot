@@ -352,7 +352,7 @@ public class ExpressionEvaluator
     /// <summary>
     /// Get all available feature names for debugging
     /// </summary>
-    public List<string> GetAvailableFeatures()
+    public IReadOnlyList<string> GetAvailableFeatures()
     {
         lock (_featureValues)
         {

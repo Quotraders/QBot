@@ -333,11 +333,7 @@ public sealed class FeatureMapAuthority
         
         lock (_reportingLock)
         {
-            if (!_reportedMissingFeatures.Contains(featureKey))
-            {
-                _reportedMissingFeatures.Add(featureKey);
-                shouldEmit = true;
-            }
+            shouldEmit = _reportedMissingFeatures.Add(featureKey);
         }
         
         if (shouldEmit)
@@ -423,7 +419,7 @@ public sealed class FeatureMapAuthority
         var featureGroups = new Dictionary<string, List<string>>();
         foreach (var feature in report.RegisteredFeatures.Keys)
         {
-            var category = feature.Contains('.') ? feature.Split('.')[0] : "unknown";
+            var category = feature.Contains('.', StringComparison.Ordinal) ? feature.Split('.')[0] : "unknown";
             if (!featureGroups.ContainsKey(category))
                 featureGroups[category] = new List<string>();
             featureGroups[category].Add(feature);

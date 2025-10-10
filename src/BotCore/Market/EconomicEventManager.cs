@@ -236,8 +236,8 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
     {
         // Production implementation: Load from external economic calendar APIs
         // This could integrate with Fed data, economic calendar APIs, etc.
-        var events = new List<EconomicEvent>();
-
+        List<EconomicEvent> events;
+        
         try
         {
             // PHASE 2: Try loading from ForexFactory data first
@@ -352,11 +352,10 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
                         continue;
                     
                     // Parse date and time
-                    if (!DateTime.TryParse($"{dateStr} {timeStr}", out var scheduledTime))
+                    if (!DateTime.TryParse($"{dateStr} {timeStr}", out var scheduledTime) &&
+                        !DateTime.TryParse(dateStr, out scheduledTime))
                     {
-                        // Try just the date
-                        if (!DateTime.TryParse(dateStr, out scheduledTime))
-                            continue;
+                        continue;
                     }
                     
                     // Convert impact string to EventImpact enum
@@ -395,7 +394,6 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "[EconomicEventManager] Error parsing ForexFactory event");
-                    continue;
                 }
             }
             

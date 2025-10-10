@@ -331,17 +331,9 @@ public class ReversalPatternDetector : IPatternDetector
             if (!upBreakout && !downBreakout) continue;
 
             // Check if breakout failed to sustain
-            var failedToSustain = false;
             var avgCloseAfter = followupBars.Select(b => b.Close).Average();
-            
-            if (upBreakout && avgCloseAfter < prevHigh)
-            {
-                failedToSustain = true;
-            }
-            else if (downBreakout && avgCloseAfter > prevLow)
-            {
-                failedToSustain = true;
-            }
+            var failedToSustain = (upBreakout && avgCloseAfter < prevHigh) || 
+                                  (downBreakout && avgCloseAfter > prevLow);
 
             if (failedToSustain)
             {
