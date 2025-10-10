@@ -10,8 +10,30 @@ namespace BotCore.Strategy
     /// Integration layer that connects S1-S14 strategies with ML/RL data collection.
     /// Maps strategy outcomes to the 4 ML strategy types and logs comprehensive features.
     /// </summary>
-    public static class StrategyMlIntegration
+    public static partial class StrategyMlIntegration
     {
+        // High-performance logging using LoggerMessage pattern
+        [LoggerMessage(Level = LogLevel.Debug, Message = "[ML-Integration] Logged {StrategyType} features for {StrategyId} signal {SignalId}")]
+        private static partial void LogFeaturesLogged(ILogger logger, string strategyType, string strategyId, string signalId);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[ML-Integration] Invalid arguments for strategy signal {StrategyId}")]
+        private static partial void LogInvalidArguments(ILogger logger, Exception ex, string strategyId);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[ML-Integration] Invalid operation during feature calculation for {StrategyId}")]
+        private static partial void LogInvalidOperation(ILogger logger, Exception ex, string strategyId);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[ML-Integration] Division by zero in calculations for {StrategyId}")]
+        private static partial void LogDivisionByZero(ILogger logger, Exception ex, string strategyId);
+
+        [LoggerMessage(Level = LogLevel.Debug, Message = "[ML-Integration] Logged trade outcome for {StrategyId} signal {SignalId}: {Result}")]
+        private static partial void LogTradeOutcomeLogged(ILogger logger, string strategyId, string signalId, string result);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[ML-Integration] Invalid operation logging trade outcome for {StrategyId}")]
+        private static partial void LogTradeOutcomeInvalidOperation(ILogger logger, Exception ex, string strategyId);
+
+        [LoggerMessage(Level = LogLevel.Error, Message = "[ML-Integration] Invalid argument logging trade outcome for {StrategyId}")]
+        private static partial void LogTradeOutcomeInvalidArgument(ILogger logger, Exception ex, string strategyId);
+
         // ML integration constants
         private const int ShortEmaWindow = 8;                    // Short-term EMA calculation window
         private const int LongEmaWindow = 21;                    // Long-term EMA calculation window  
@@ -103,20 +125,19 @@ namespace BotCore.Strategy
                 // Log to RL collector
                 MultiStrategyRlCollector.LogComprehensiveFeatures(logger, features);
 
-                logger.LogDebug("[ML-Integration] Logged {StrategyType} features for {StrategyId} signal {SignalId}",
-                    strategyType, strategyId, signalId);
+                LogFeaturesLogged(logger, strategyType.ToString(), strategyId, signalId);
             }
             catch (ArgumentException ex)
             {
-                logger.LogError(ex, "[ML-Integration] Invalid arguments for strategy signal {StrategyId}", strategyId);
+                LogInvalidArguments(logger, ex, strategyId);
             }
             catch (InvalidOperationException ex)
             {
-                logger.LogError(ex, "[ML-Integration] Invalid operation during feature calculation for {StrategyId}", strategyId);
+                LogInvalidOperation(logger, ex, strategyId);
             }
             catch (DivideByZeroException ex)
             {
-                logger.LogError(ex, "[ML-Integration] Division by zero in calculations for {StrategyId}", strategyId);
+                LogDivisionByZero(logger, ex, strategyId);
             }
         }
 
@@ -154,16 +175,15 @@ namespace BotCore.Strategy
 
                 MultiStrategyRlCollector.LogTradeOutcome(logger, outcome);
 
-                logger.LogDebug("[ML-Integration] Logged trade outcome for {StrategyId} signal {SignalId}: {Result}",
-                    strategyId, signalId, isWin ? "WIN" : "LOSS");
+                LogTradeOutcomeLogged(logger, strategyId, signalId, isWin ? "WIN" : "LOSS");
             }
             catch (InvalidOperationException ex)
             {
-                logger.LogError(ex, "[ML-Integration] Invalid operation logging trade outcome for {StrategyId}", strategyId);
+                LogTradeOutcomeInvalidOperation(logger, ex, strategyId);
             }
             catch (ArgumentException ex)
             {
-                logger.LogError(ex, "[ML-Integration] Invalid argument logging trade outcome for {StrategyId}", strategyId);
+                LogTradeOutcomeInvalidArgument(logger, ex, strategyId);
             }
         }
 
