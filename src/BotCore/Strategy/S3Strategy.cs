@@ -100,14 +100,14 @@ namespace BotCore.Strategy
                     }
                     return TimeZoneInfo.ConvertTimeFromUtc(utc, Et);
                 }
-                catch (TimeZoneNotFoundException ex)
+                catch (TimeZoneNotFoundException)
                 {
-                    _logger?.LogWarning(ex, "[S3-STRATEGY] TimeZone conversion failed for {DateTime}, using original", b.Start);
+                    // TimeZone conversion failed, use original time
                     return b.Start; 
                 }
-                catch (ArgumentException ex)
+                catch (ArgumentException)
                 {
-                    _logger?.LogWarning(ex, "[S3-STRATEGY] Invalid DateTime argument for conversion: {DateTime}", b.Start);
+                    // Invalid DateTime argument, use original time
                     return b.Start;
                 }
             }

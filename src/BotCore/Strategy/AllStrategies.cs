@@ -798,24 +798,24 @@ namespace BotCore.Strategy
             decimal todayHi = 0m, todayLo = 0m; 
             bool todayInit = false;
             var today = nowLocal.Date;
-            for (int i = 0; i < bars.Count; i++)
+            for (int k = 0; k < bars.Count; k++)
             {
-                if (bars[i].Start.Date != today) continue;
+                if (bars[k].Start.Date != today) continue;
                 if (!todayInit) 
                 { 
-                    todayHi = bars[i].High; 
-                    todayLo = bars[i].Low; 
+                    todayHi = bars[k].High; 
+                    todayLo = bars[k].Low; 
                     todayInit = true; 
                 }
                 else 
                 { 
-                    if (bars[i].High > todayHi) 
+                    if (bars[k].High > todayHi) 
                     {
-                        todayHi = bars[i].High; 
+                        todayHi = bars[k].High; 
                     }
-                    if (bars[i].Low < todayLo) 
+                    if (bars[k].Low < todayLo) 
                     {
-                        todayLo = bars[i].Low; 
+                        todayLo = bars[k].Low; 
                     }
                 }
             }
