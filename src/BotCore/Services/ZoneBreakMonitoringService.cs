@@ -116,10 +116,6 @@ namespace BotCore.Services
                 {
                     _logger.LogWarning(ex, "⚠️ [ZONE-BREAK] Invalid argument checking zone breaks for position {Symbol}", position.Symbol);
                 }
-                catch (NullReferenceException ex)
-                {
-                    _logger.LogWarning(ex, "⚠️ [ZONE-BREAK] Null reference checking zone breaks for position {Symbol}", position.Symbol);
-                }
             }
             
             // Process any queued zone break events

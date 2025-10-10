@@ -1746,18 +1746,20 @@ namespace TopstepX.Bot.Core.Services
             _isTradingEnabled = false;
         }
 
-        private Task CleanupAsync()
+        private async Task CleanupAsync()
         {
             _logger.LogInformation("🧹 Cleaning up trading system resources...");
             
-            _tradingEvaluationTimer?.Dispose();
+            if (_tradingEvaluationTimer != null)
+            {
+                await _tradingEvaluationTimer.DisposeAsync().ConfigureAwait(false);
+            }
             
             _orderConfirmation?.Dispose();
             
             _riskEngine?.Dispose();
             
             _logger.LogInformation("✅ Trading system cleanup completed");
-            return Task.CompletedTask;
         }
 
         #region Production Readiness Helper Methods
@@ -1886,7 +1888,7 @@ namespace TopstepX.Bot.Core.Services
                 LastMarketDataUpdate = _lastMarketDataUpdate,
                 HubsConnected = true, // TopstepX SDK connections managed internally
                 CanTrade = !_emergencyStop.IsEmergencyStop && !File.Exists("kill.txt"),
-                ContractId = _readinessConfig.SeedingContracts.FirstOrDefault(),
+                ContractId = _readinessConfig.SeedingContracts.Count > 0 ? _readinessConfig.SeedingContracts[0] : null,
                 State = _currentReadinessState
             };
         }

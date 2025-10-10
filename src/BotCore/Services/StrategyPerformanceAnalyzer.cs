@@ -544,7 +544,18 @@ public class StrategyPerformanceAnalyzer
         // Profit factor
         var totalWins = winningTrades.Sum(t => t.PnL);
         var totalLosses = Math.Abs(losingTrades.Sum(t => t.PnL));
-        analysis.ProfitFactor = totalLosses > 0 ? totalWins / totalLosses : totalWins > 0 ? MaxProfitFactorFallback : 0m;
+        if (totalLosses > 0)
+        {
+            analysis.ProfitFactor = totalWins / totalLosses;
+        }
+        else if (totalWins > 0)
+        {
+            analysis.ProfitFactor = MaxProfitFactorFallback;
+        }
+        else
+        {
+            analysis.ProfitFactor = 0m;
+        }
         
         // Max drawdown
         analysis.MaxDrawdown = CalculateMaxDrawdown(analysis.AllTradesInternal);

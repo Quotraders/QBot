@@ -296,7 +296,7 @@ public class MarketConditionAnalyzer
             return new TrendAnalysis
             {
                 Direction = direction,
-                Strength = Math.Min(1m, (decimal)trendStrength * TrendStrengthScalingFactor), // Scale to 0-1
+                Strength = Math.Min(1m, trendStrength * TrendStrengthScalingFactor), // Scale to 0-1
                 ShortTermMA = shortMA,
                 MediumTermMA = mediumMA,
                 LongTermMA = longMA
