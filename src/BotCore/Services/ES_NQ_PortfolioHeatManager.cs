@@ -174,8 +174,6 @@ namespace BotCore.Services
         {
             try
             {
-                await Task.Delay(1).ConfigureAwait(false); // Simulate async operation
-
                 var esPositions = positions.Where(p => p.Symbol == "ES").ToList();
                 var nqPositions = positions.Where(p => p.Symbol == "NQ").ToList();
 
@@ -203,8 +201,6 @@ namespace BotCore.Services
         {
             try
             {
-                await Task.Delay(1).ConfigureAwait(false); // Simulate async operation
-
                 var metrics = new Dictionary<string, decimal>();
 
                 // Total notional exposure
@@ -290,7 +286,7 @@ namespace BotCore.Services
                     throw new InvalidOperationException("Position tracker not available - cannot operate without real position data");
                 }
 
-                var realPositions = _positionTracker.GetAllPositions();
+                var realPositions = _positionTracker.AllPositions;
                 var positionList = new List<Position>();
                 
                 foreach (var kvp in realPositions)
@@ -300,9 +296,15 @@ namespace BotCore.Services
                     {
                         positionList.Add(new Position
                         {
+                            Id = Guid.NewGuid().ToString(),
                             Symbol = pos.Symbol,
-                            Size = (int)pos.NetQuantity, // Convert decimal to int
-                            CurrentPrice = pos.AveragePrice // Use average price as current price
+                            Side = pos.NetQuantity > 0 ? "LONG" : "SHORT",
+                            Quantity = (int)pos.NetQuantity,
+                            AveragePrice = pos.AveragePrice,
+                            UnrealizedPnL = pos.UnrealizedPnL,
+                            RealizedPnL = pos.RealizedPnL,
+                            ConfigSnapshotId = "live-" + DateTime.UtcNow.Ticks,
+                            OpenTime = pos.LastUpdate
                         });
                     }
                 }
