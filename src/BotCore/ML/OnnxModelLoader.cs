@@ -183,6 +183,30 @@ public sealed class OnnxModelLoader : IDisposable
         LoggerMessage.Define<string>(LogLevel.Information, new EventId(30, nameof(LogModelUnloaded)),
             "[ONNX-Loader] Model unloaded: {ModelKey}");
 
+    private static readonly Action<ILogger, int, Exception?> LogDisposingModels =
+        LoggerMessage.Define<int>(LogLevel.Information, new EventId(31, nameof(LogDisposingModels)),
+            "[ONNX-Loader] Disposing {ModelCount} loaded models");
+
+    private static readonly Action<ILogger, Exception?> LogSessionAlreadyDisposed =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(32, nameof(LogSessionAlreadyDisposed)),
+            "[ONNX-Loader] Model session already disposed");
+
+    private static readonly Action<ILogger, Exception?> LogSessionDisposeError =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(33, nameof(LogSessionDisposeError)),
+            "[ONNX-Loader] Error disposing model session - invalid operation");
+
+    private static readonly Action<ILogger, Exception?> LogDisposedSuccessfully =
+        LoggerMessage.Define(LogLevel.Information, new EventId(34, nameof(LogDisposedSuccessfully)),
+            "[ONNX-Loader] Disposed successfully");
+
+    private static readonly Action<ILogger, string, string, string, Exception?> LogModelUpdateDetectedNew =
+        LoggerMessage.Define<string, string, string>(LogLevel.Information, new EventId(35, nameof(LogModelUpdateDetectedNew)),
+            "[ONNX-Loader] Detected model update: {ModelFile} (v{OldVersion} → v{NewVersion})");
+
+    private static readonly Action<ILogger, string, string, Exception?> LogRegistryUpdateNew =
+        LoggerMessage.Define<string, string>(LogLevel.Information, new EventId(36, nameof(LogRegistryUpdateNew)),
+            "[HOT_RELOAD] Registry update detected: {MetadataFile} (modified: {LastWrite})");
+
     public OnnxModelLoader(
         ILogger<OnnxModelLoader> logger, 
         string modelsDirectory = "models",
@@ -590,8 +614,7 @@ public sealed class OnnxModelLoader : IDisposable
                     if (newMetadata != null && 
                         (newMetadata.SemVer > currentMetadata.SemVer || newMetadata.Checksum != currentMetadata.Checksum))
                     {
-                        _logger.LogInformation("[ONNX-Loader] Detected model update: {ModelFile} (v{OldVersion} → v{NewVersion})", 
-                            modelFile, currentMetadata.Version, newMetadata.Version);
+                        LogModelUpdateDetectedNew(_logger, modelFile, currentMetadata.Version, newMetadata.Version, null);
                         
                         // Hot-reload the model
                         await HotReloadModelAsync(modelFile, modelKey).ConfigureAwait(false);
@@ -638,8 +661,7 @@ public sealed class OnnxModelLoader : IDisposable
                 if (!_modelMetadata.TryGetValue(cacheKey, out var metadata) || 
                     metadata.LoadedAt < lastWriteTime)
                 {
-                    _logger.LogInformation("[HOT_RELOAD] Registry update detected: {MetadataFile} (modified: {LastWrite})", 
-                        Path.GetFileName(metadataFile), lastWriteTime);
+                    LogRegistryUpdateNew(_logger, Path.GetFileName(metadataFile), lastWriteTime, null);
                     
                     // Read and parse metadata to trigger model reload if needed
                     var content = await File.ReadAllTextAsync(metadataFile).ConfigureAwait(false);
@@ -1075,7 +1097,7 @@ public sealed class OnnxModelLoader : IDisposable
     {
         if (!_disposed)
         {
-            _logger.LogInformation("[ONNX-Loader] Disposing {ModelCount} loaded models", _loadedSessions.Count);
+            LogDisposingModels(_logger, _loadedSessions.Count, null);
             
             // Stop hot-reload timer
             _hotReloadTimer?.Dispose();
@@ -1089,11 +1111,11 @@ public sealed class OnnxModelLoader : IDisposable
                 }
                 catch (ObjectDisposedException ex)
                 {
-                    _logger.LogWarning(ex, "[ONNX-Loader] Model session already disposed");
+                    LogSessionAlreadyDisposed(_logger, ex);
                 }
                 catch (InvalidOperationException ex)
                 {
-                    _logger.LogWarning(ex, "[ONNX-Loader] Error disposing model session - invalid operation");
+                    LogSessionDisposeError(_logger, ex);
                 }
             }
             
@@ -1102,7 +1124,7 @@ public sealed class OnnxModelLoader : IDisposable
             _sessionOptions.Dispose();
             
             _disposed = true;
-            _logger.LogInformation("[ONNX-Loader] Disposed successfully");
+            LogDisposedSuccessfully(_logger, null);
         }
     }
 
