@@ -127,9 +127,25 @@ public class CandlestickPatternDetector : IPatternDetector
         if (range == 0) return new PatternResult { Score = 0, Confidence = 0 };
 
         var bodyRatio = bodySize / range;
-        var score = bodyRatio < DojiBodyRatioTiny ? DojiScoreTiny : 
-                    bodyRatio < DojiBodyRatioSmall ? DojiScoreSmall : 
-                    bodyRatio < DojiBodyRatioMedium ? DojiScoreMedium : 0.0;
+        
+        // Determine Doji score based on body ratio thresholds
+        double score;
+        if (bodyRatio < DojiBodyRatioTiny)
+        {
+            score = DojiScoreTiny;
+        }
+        else if (bodyRatio < DojiBodyRatioSmall)
+        {
+            score = DojiScoreSmall;
+        }
+        else if (bodyRatio < DojiBodyRatioMedium)
+        {
+            score = DojiScoreMedium;
+        }
+        else
+        {
+            score = 0.0;
+        }
 
         return new PatternResult
         {
@@ -306,10 +322,18 @@ public class CandlestickPatternDetector : IPatternDetector
             _ => DefaultTwoBarScore
         };
 
+        // Calculate direction: bullish patterns (+1), bearish patterns (-1), neutral (0)
+        int direction = 0;
+        if (directional)
+        {
+            bool isBullish = type.Contains("Piercing", StringComparison.Ordinal) || type.Contains("Bottom", StringComparison.Ordinal);
+            direction = isBullish ? 1 : -1;
+        }
+        
         return new PatternResult
         {
             Score = score,
-            Direction = directional ? (type.Contains("Piercing", StringComparison.Ordinal) || type.Contains("Bottom", StringComparison.Ordinal) ? 1 : -1) : 0,
+            Direction = direction,
             Confidence = score,
             Metadata = new Dictionary<string, object> { ["type"] = type }
         };

@@ -185,15 +185,20 @@ public class TopstepXConfiguration
     private const int MIN_SIGNALR_RECONNECT_DELAY_MS = 1000;
     private const int MAX_SIGNALR_RECONNECT_DELAY_MS = 60000;
     private const int DEFAULT_SIGNALR_RECONNECT_DELAY_MS = 5000;
+    
+    // Default TopstepX API URLs
+    private const string DEFAULT_API_BASE_URL = "https://api.topstepx.com";
+    private const string DEFAULT_USER_HUB_URL = "https://rtc.topstepx.com/hubs/user";
+    private const string DEFAULT_MARKET_HUB_URL = "https://rtc.topstepx.com/hubs/market";
 
     [Required]
-    public Uri ApiBaseUrl { get; set; } = new Uri("https://api.topstepx.com");
+    public Uri ApiBaseUrl { get; set; } = new Uri(DEFAULT_API_BASE_URL);
 
     [Required]
-    public Uri UserHubUrl { get; set; } = new Uri("https://rtc.topstepx.com/hubs/user");
+    public Uri UserHubUrl { get; set; } = new Uri(DEFAULT_USER_HUB_URL);
 
     [Required]
-    public Uri MarketHubUrl { get; set; } = new Uri("https://rtc.topstepx.com/hubs/market");
+    public Uri MarketHubUrl { get; set; } = new Uri(DEFAULT_MARKET_HUB_URL);
 
     [Required]
     [Range(MIN_HTTP_TIMEOUT_SECONDS, MAX_HTTP_TIMEOUT_SECONDS)]

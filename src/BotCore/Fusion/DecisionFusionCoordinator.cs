@@ -200,11 +200,20 @@ public sealed class DecisionFusionCoordinator
                 try
                 {
                     // Base position size configuration loaded for future use
-                    _ = finalRec.Intent == StrategyIntent.Buy 
-                        ? GetConfigValue("Fusion:BuyBaseSize", 1.0) 
-                        : finalRec.Intent == StrategyIntent.Sell 
-                            ? GetConfigValue("Fusion:SellBaseSize", -1.0) 
-                            : GetConfigValue("Fusion:NeutralBaseSize", 0.0);
+                    double baseSize;
+                    if (finalRec.Intent == StrategyIntent.Buy)
+                    {
+                        baseSize = GetConfigValue("Fusion:BuyBaseSize", 1.0);
+                    }
+                    else if (finalRec.Intent == StrategyIntent.Sell)
+                    {
+                        baseSize = GetConfigValue("Fusion:SellBaseSize", -1.0);
+                    }
+                    else
+                    {
+                        baseSize = GetConfigValue("Fusion:NeutralBaseSize", 0.0);
+                    }
+                    _ = baseSize; // Suppress unused variable warning
                     
                     // Get risk from real risk management service with fallback handling
                     var riskManager = _serviceProvider.GetService<IRiskManagerForFusion>();

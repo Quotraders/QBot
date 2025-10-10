@@ -14,7 +14,6 @@ namespace BotCore.Integration;
 public sealed class ComprehensiveTelemetryService
 {
     private readonly ILogger<ComprehensiveTelemetryService> _logger;
-    private readonly IServiceProvider _serviceProvider;
     private readonly TradingBot.IntelligenceStack.RealTradingMetricsService? _metricsService;
     
     // Configuration snapshot tracking
@@ -29,8 +28,8 @@ public sealed class ComprehensiveTelemetryService
     public ComprehensiveTelemetryService(ILogger<ComprehensiveTelemetryService> logger, IServiceProvider serviceProvider)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        _metricsService = _serviceProvider.GetService(typeof(TradingBot.IntelligenceStack.RealTradingMetricsService)) as TradingBot.IntelligenceStack.RealTradingMetricsService;
+        ArgumentNullException.ThrowIfNull(serviceProvider);
+        _metricsService = serviceProvider.GetService(typeof(TradingBot.IntelligenceStack.RealTradingMetricsService)) as TradingBot.IntelligenceStack.RealTradingMetricsService;
         
         // Initialize configuration snapshot
         InitializeConfigurationSnapshot();
