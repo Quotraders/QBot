@@ -386,11 +386,13 @@ public class PerformanceTracker
 
     private static double CalculateRMultiple(TradeRecord trade)
     {
+        const double Epsilon = 1e-10;
+        
         if (!trade.StopPrice.HasValue || trade.EntryPrice == 0)
             return 0;
 
         var risk = Math.Abs((double)(trade.EntryPrice - trade.StopPrice.Value));
-        if (risk == 0) return 0;
+        if (Math.Abs(risk) < Epsilon) return 0;
 
         var reward = Math.Abs((double)(trade.ExitPrice - trade.EntryPrice));
         return reward / risk;
@@ -522,6 +524,8 @@ public class PerformanceTracker
         try
         {
             var trades = await LoadTradesForStrategyAsync(strategy).ConfigureAwait(false);
+            const double Epsilon = 1e-10;
+            
             if (trades.Count < 2) return 0.0;
             
             var returns = trades.Select(t => (double)t.PnLDollar).ToArray();
@@ -529,7 +533,7 @@ public class PerformanceTracker
             var variance = returns.Sum(r => Math.Pow(r - avgReturn, 2)) / (returns.Length - 1);
             var stdDev = Math.Sqrt(variance);
             
-            if (stdDev == 0) return 0.0;
+            if (Math.Abs(stdDev) < Epsilon) return 0.0;
             
             // Risk-free rate assumption (can be configured)
             var riskFreeRate = 0.02; // 2% annual

@@ -775,8 +775,9 @@ namespace TradingBot.BotCore.Services.TuningModels
     /// <summary>
     /// History bars response model - used by System.Text.Json for deserialization
     /// This class is instantiated by the JSON deserializer, not directly in code
+    /// Internal: Not part of public API, so List<T> is acceptable for JSON compatibility
     /// </summary>
-    public sealed class HistoryBarsResponse
+    internal sealed class HistoryBarsResponse
     {
         public List<BarData> Bars { get; init; } = new();
     }
@@ -784,8 +785,9 @@ namespace TradingBot.BotCore.Services.TuningModels
     /// <summary>
     /// Bar data model for backtesting - used by System.Text.Json for deserialization
     /// This class is instantiated by the JSON deserializer, not directly in code
+    /// Internal: Not part of public API
     /// </summary>
-    public sealed class BarData
+    internal sealed class BarData
     {
         public decimal Close { get; init; }
     }
