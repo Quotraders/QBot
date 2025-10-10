@@ -9,6 +9,7 @@ using BotCore.Brain.Models;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text.Json;
 using TradingBot.RLAgent; // For CVaRPPO and ActionResult
 using Microsoft.ML.OnnxRuntime;
@@ -2638,23 +2639,24 @@ Reason closed: {reason}
             }
 
             // Generate deterministic test vectors
+            // Use cryptographically secure random for ML training data to prevent adversarial exploitation
+            using var rng = RandomNumberGenerator.Create();
             for (int i = 0; i < count; i++)
             {
                 // Generate feature vector matching expected CVaR-PPO state size (11 features)
-                // Using Random.Shared for thread-safe, secure random generation
                 var features = new float[]
                 {
-                    (float)(Random.Shared.NextDouble() * 2.0 - 1.0), // Volatility normalized
-                    (float)(Random.Shared.NextDouble() * 2.0 - 1.0), // Price change momentum
-                    (float)(Random.Shared.NextDouble() * 2.0 - 1.0), // Volume surge
-                    (float)(Random.Shared.NextDouble() * 2.0 - 1.0), // ATR normalized
-                    (float)(Random.Shared.NextDouble() * 2.0 - 1.0), // UCB value
-                    (float)Random.Shared.NextDouble(),                // Strategy encoding
-                    (float)(Random.Shared.NextDouble() * 2.0 - 1.0), // Direction encoding
-                    (float)Math.Sin(Random.Shared.NextDouble() * Math.PI), // Time of day (cyclical)
-                    (float)Math.Cos(Random.Shared.NextDouble() * Math.PI), // Time of day (cyclical)
-                    (float)(Random.Shared.NextDouble() * 2.0 - 1.0), // Decisions per day
-                    (float)(Random.Shared.NextDouble() * 2.0 - 1.0)  // Risk metric
+                    (float)(GetSecureRandomDouble(rng) * 2.0 - 1.0), // Volatility normalized
+                    (float)(GetSecureRandomDouble(rng) * 2.0 - 1.0), // Price change momentum
+                    (float)(GetSecureRandomDouble(rng) * 2.0 - 1.0), // Volume surge
+                    (float)(GetSecureRandomDouble(rng) * 2.0 - 1.0), // ATR normalized
+                    (float)(GetSecureRandomDouble(rng) * 2.0 - 1.0), // UCB value
+                    (float)GetSecureRandomDouble(rng),                // Strategy encoding
+                    (float)(GetSecureRandomDouble(rng) * 2.0 - 1.0), // Direction encoding
+                    (float)Math.Sin(GetSecureRandomDouble(rng) * Math.PI), // Time of day (cyclical)
+                    (float)Math.Cos(GetSecureRandomDouble(rng) * Math.PI), // Time of day (cyclical)
+                    (float)(GetSecureRandomDouble(rng) * 2.0 - 1.0), // Decisions per day
+                    (float)(GetSecureRandomDouble(rng) * 2.0 - 1.0)  // Risk metric
                 };
                 vectors.Add(features);
             }
@@ -2960,13 +2962,14 @@ Reason closed: {reason}
             }
 
             var historicalData = new List<float[]>();
-            // Using Random.Shared for thread-safe, secure random generation
+            // Using cryptographically secure random for ML simulation data to prevent adversarial exploitation
+            using var rng = RandomNumberGenerator.Create();
             for (int i = 0; i < count; i++)
             {
                 var features = new float[TopStepConfig.FeatureVectorLength];
                 for (int j = 0; j < TopStepConfig.FeatureVectorLength; j++)
                 {
-                    features[j] = (float)(Random.Shared.NextDouble() * TopStepConfig.SimulationFeatureRange - TopStepConfig.SimulationFeatureOffset);
+                    features[j] = (float)(GetSecureRandomDouble(rng) * TopStepConfig.SimulationFeatureRange - TopStepConfig.SimulationFeatureOffset);
                 }
                 historicalData.Add(features);
             }
@@ -3786,6 +3789,19 @@ Explain in 1-2 sentences what I learned and how it will improve my future tradin
         {
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+        
+        /// <summary>
+        /// Generate cryptographically secure random double in [0.0, 1.0)
+        /// Used for ML training data generation to prevent adversarial exploitation
+        /// </summary>
+        private static double GetSecureRandomDouble(RandomNumberGenerator rng)
+        {
+            var bytes = new byte[8];
+            rng.GetBytes(bytes);
+            var value = BitConverter.ToUInt64(bytes, 0);
+            // Convert to [0.0, 1.0) by dividing by UInt64.MaxValue
+            return (double)value / ulong.MaxValue;
         }
     }
 }
