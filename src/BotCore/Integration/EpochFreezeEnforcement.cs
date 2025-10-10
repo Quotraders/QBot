@@ -93,12 +93,12 @@ public sealed class EpochFreezeEnforcement
         catch (ArgumentException ex)
         {
             _logger.LogError(ex, "Invalid argument capturing epoch snapshot for position {PositionId}", positionId);
-            throw;
+            throw new InvalidOperationException($"Failed to capture epoch snapshot for position {positionId} due to invalid argument", ex);
         }
         catch (InvalidOperationException ex)
         {
             _logger.LogError(ex, "Invalid operation capturing epoch snapshot for position {PositionId}", positionId);
-            throw;
+            throw new InvalidOperationException($"Failed to capture epoch snapshot for position {positionId}", ex);
         }
     }
     
