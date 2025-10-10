@@ -381,7 +381,7 @@ public sealed class MLSystemConsolidationService
                 braceCount += line.Count(c => c == '{');
                 braceCount -= line.Count(c => c == '}');
 
-                if (braceCount == 0 && mlMemoryManagerStart != -1)
+                if (braceCount == 0)
                 {
                     // Remove lines from start to current line
                     var linesToRemove = i - mlMemoryManagerStart + 1;

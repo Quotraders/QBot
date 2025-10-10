@@ -422,7 +422,7 @@ public sealed class OnnxModelLoader : IDisposable
                 {
                     _logger.LogError("[ONNX-Loader] Model failed health probe: {ModelPath} - {Error}", 
                         modelPath, healthProbeResult.ErrorMessage);
-                    session.Dispose();
+                    // Dispose will happen in finally block
                     return new ModelLoadResult { Session = null, IsHealthy = false };
                 }
             }
@@ -440,21 +440,23 @@ public sealed class OnnxModelLoader : IDisposable
         }
         catch (OnnxRuntimeException ex)
         {
-            session?.Dispose();
             LogModelLoadError(_logger, modelPath, ex);
             return new ModelLoadResult { Session = null, IsHealthy = false };
         }
         catch (FileNotFoundException ex)
         {
-            session?.Dispose();
             LogModelLoadError(_logger, modelPath, ex);
             return new ModelLoadResult { Session = null, IsHealthy = false };
         }
         catch (InvalidOperationException ex)
         {
-            session?.Dispose();
             LogModelLoadError(_logger, modelPath, ex);
             return new ModelLoadResult { Session = null, IsHealthy = false };
+        }
+        finally
+        {
+            // Dispose session if not transferred (session != null means we're returning due to error)
+            session?.Dispose();
         }
     }
 
@@ -1177,13 +1179,18 @@ public sealed class OnnxModelLoader : IDisposable
                     { 
                         File.Delete(tempModelPath); 
                     } 
-                    catch (Exception cleanupEx)
+                    catch (IOException cleanupEx)
+                    {
+                        // Ignore cleanup errors - temp file deletion is best-effort
+                        _logger.LogDebug(cleanupEx, "[ONNX-Loader] Failed to cleanup temp file: {TempPath}", tempModelPath);
+                    }
+                    catch (UnauthorizedAccessException cleanupEx)
                     {
                         // Ignore cleanup errors - temp file deletion is best-effort
                         _logger.LogDebug(cleanupEx, "[ONNX-Loader] Failed to cleanup temp file: {TempPath}", tempModelPath);
                     }
                 }
-                throw;
+                throw new IOException($"Failed to deploy model atomically from {tempModelPath} to {registryModelPath}", ex);
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -1195,13 +1202,18 @@ public sealed class OnnxModelLoader : IDisposable
                     { 
                         File.Delete(tempModelPath); 
                     } 
-                    catch (Exception cleanupEx)
+                    catch (IOException cleanupEx)
+                    {
+                        // Ignore cleanup errors - temp file deletion is best-effort
+                        _logger.LogDebug(cleanupEx, "[ONNX-Loader] Failed to cleanup temp file: {TempPath}", tempModelPath);
+                    }
+                    catch (UnauthorizedAccessException cleanupEx)
                     {
                         // Ignore cleanup errors - temp file deletion is best-effort
                         _logger.LogDebug(cleanupEx, "[ONNX-Loader] Failed to cleanup temp file: {TempPath}", tempModelPath);
                     }
                 }
-                throw;
+                throw new UnauthorizedAccessException($"Access denied deploying model from {tempModelPath} to {registryModelPath}", ex);
             }
             
             entry.RegistryPath = registryModelPath;
@@ -1227,7 +1239,7 @@ public sealed class OnnxModelLoader : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "[ONNX-Registry] Failed to register model: {ModelName}", modelName);
-            throw;
+            throw new InvalidOperationException($"Failed to register model '{modelName}' in registry", ex);
         }
     }
 
