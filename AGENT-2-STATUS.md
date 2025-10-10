@@ -28,6 +28,18 @@
 
 ## 📝 Recent Work (Continuation Session 2 - October 2025)
 
+### Batch 31: S2583 + S2971 - Logic & LINQ Optimization (11 fixes - COMPLETE ✅)
+- Fixed unnecessary null checks and always-true/false conditions (S2583)
+- Optimized LINQ chains by combining Where + operation (S2971)
+- Files: AutonomousPerformanceTracker.cs, ProductionOrderEvidenceService.cs, TradingFeedbackService.cs, ContractRolloverService.cs, BotPerformanceReporter.cs
+- Result: 4,624 → 4,608 (-16 violations)
+
+### Batch 30: S2589 - Logic Improvements (5 fixes - COMPLETE ✅)
+- Fixed always-true and always-false conditions
+- Simplified conditional logic
+- Files: TimeOptimizedStrategyManager.cs, TradingSystemIntegrationService.cs
+- Result: 4,634 → 4,624 (-10 violations)
+
 ### Batch 29: CA2213 - Disposal Issue Fix (1 fix - COMPLETE ✅)
 - Fixed missing disposal of _riskEngine field in TradingSystemIntegrationService
 - File: TradingSystemIntegrationService.cs
@@ -47,7 +59,7 @@
 
 ## 📊 Violation Analysis - Services Folder
 
-### Current State (4,634 violations)
+### Current State (4,608 violations after Batch 31)
 1. **CA1848** (3,536) - Logging performance (structured logging templates)
    - Too invasive to fix all (~75% of violations)
    - Strategy: Target only error/warning logs in hot paths
