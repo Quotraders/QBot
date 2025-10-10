@@ -1758,6 +1758,8 @@ namespace TopstepX.Bot.Core.Services
             
             _orderConfirmation?.Dispose();
             
+            _riskEngine?.Dispose();
+            
             _logger.LogInformation("✅ Trading system cleanup completed");
             return Task.CompletedTask;
         }
