@@ -171,12 +171,9 @@ namespace BotCore.Services
         {
             if (!_disposed)
             {
-                if (disposing)
+                if (disposing && _marketDataService != null)
                 {
-                    if (_marketDataService != null)
-                    {
-                        _marketDataService.OnMarketDataReceived -= OnMarketDataReceived;
-                    }
+                    _marketDataService.OnMarketDataReceived -= OnMarketDataReceived;
                 }
                 _disposed = true;
             }

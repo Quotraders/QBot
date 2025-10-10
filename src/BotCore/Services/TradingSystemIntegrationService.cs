@@ -380,10 +380,9 @@ namespace TopstepX.Bot.Core.Services
                     return hour < FridayMarketCloseHourEt;
 
                 // Monday-Thursday: daily maintenance break 5-6 PM ET
-                if (dayOfWeek >= DayOfWeek.Monday && dayOfWeek <= DayOfWeek.Thursday)
+                if (dayOfWeek >= DayOfWeek.Monday && dayOfWeek <= DayOfWeek.Thursday && hour == MaintenanceBreakHourEt) // 5 PM ET - maintenance break
                 {
-                    if (hour == MaintenanceBreakHourEt) // 5 PM ET - maintenance break
-                        return false;
+                    return false;
                 }
 
                 // Regular trading hours (continuous except maintenance)

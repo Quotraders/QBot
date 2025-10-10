@@ -159,16 +159,13 @@ namespace TopstepX.Bot.Core.Services
             
             foreach (var position in _positions.Values)
             {
-                if (marketPrices.TryGetValue(position.Symbol, out var marketPrice))
+                if (marketPrices.TryGetValue(position.Symbol, out var marketPrice) && position.NetQuantity != 0)
                 {
-                    if (position.NetQuantity != 0)
-                    {
-                        position.UnrealizedPnL = (marketPrice - position.AveragePrice) * position.NetQuantity;
-                        position.MarketValue = marketPrice * Math.Abs(position.NetQuantity);
-                        
-                        // Calculate daily P&L
-                        position.DailyPnL = position.RealizedPnL + position.UnrealizedPnL;
-                    }
+                    position.UnrealizedPnL = (marketPrice - position.AveragePrice) * position.NetQuantity;
+                    position.MarketValue = marketPrice * Math.Abs(position.NetQuantity);
+                    
+                    // Calculate daily P&L
+                    position.DailyPnL = position.RealizedPnL + position.UnrealizedPnL;
                 }
             }
 
