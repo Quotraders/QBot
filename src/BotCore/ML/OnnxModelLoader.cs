@@ -260,8 +260,7 @@ public sealed class OnnxModelLoader : IDisposable
             _loadedSessions[modelKey] = loadResult.Session;
             _modelMetadata[modelKey] = loadResult.Metadata!;
             
-            _logger.LogInformation("[ONNX-Loader] Model successfully loaded: {ModelPath} (version: {Version})", 
-                modelPath, loadResult.Metadata?.Version ?? "unknown");
+            LogModelLoaded(_logger, modelPath, loadResult.Metadata?.Version ?? "unknown", null);
                 
             // Emit model reload event
             ModelReloaded?.Invoke(this, new ModelHotReloadEventArgs
@@ -408,8 +407,7 @@ public sealed class OnnxModelLoader : IDisposable
             var inputInfo = session.InputMetadata;
             var outputInfo = session.OutputMetadata;
             
-            _logger.LogInformation("[ONNX-Loader] Model loaded in {Duration}ms: {InputCount} inputs, {OutputCount} outputs", 
-                loadDuration.TotalMilliseconds, inputInfo.Count, outputInfo.Count);
+            LogModelLoadSuccess(_logger, loadDuration.TotalMilliseconds, inputInfo.Count, outputInfo.Count, null);
             
             // Health probe: smoke-predict on canned feature row
             var isHealthy = true;
@@ -420,8 +418,7 @@ public sealed class OnnxModelLoader : IDisposable
                 
                 if (!isHealthy)
                 {
-                    _logger.LogError("[ONNX-Loader] Model failed health probe: {ModelPath} - {Error}", 
-                        modelPath, healthProbeResult.ErrorMessage);
+                    LogHealthProbeFailed(_logger, modelPath, healthProbeResult.ErrorMessage, null);
                     // Dispose will happen in finally block
                     return new ModelLoadResult { Session = null, IsHealthy = false };
                 }
@@ -529,8 +526,7 @@ public sealed class OnnxModelLoader : IDisposable
                 }
             }
 
-            _logger.LogDebug("[ONNX-Loader] Health probe passed in {Duration}ms with {OutputCount} outputs", 
-                inferenceDuration.TotalMilliseconds, outputCount);
+            LogHealthProbeSuccess(_logger, inferenceDuration.TotalMilliseconds, outputCount, null);
 
             return Task.FromResult(new HealthProbeResult 
             { 
@@ -701,8 +697,7 @@ public sealed class OnnxModelLoader : IDisposable
                 if (!_modelMetadata.TryGetValue(cacheKey, out var sacMetadata) || 
                     sacMetadata.LoadedAt < lastWriteTime)
                 {
-                    _logger.LogInformation("[HOT_RELOAD] SAC model update detected: {SACFile} (modified: {LastWrite})", 
-                        Path.GetFileName(sacFile), lastWriteTime);
+                    LogSacUpdate(_logger, Path.GetFileName(sacFile), lastWriteTime, null);
                     
                     // Trigger SAC model reload in Python side
                     await TriggerSacModelReloadAsync(sacFile).ConfigureAwait(false);
@@ -755,8 +750,7 @@ public sealed class OnnxModelLoader : IDisposable
                 _loadedSessions[modelKey] = loadResult.Session;
                 _modelMetadata[modelKey] = loadResult.Metadata!;
                 
-                _logger.LogInformation("[ONNX-Loader] ✅ Hot-reload successful: {ModelFile} (version: {Version})", 
-                    modelFile, loadResult.Metadata?.Version ?? "unknown");
+                LogHotReloadSuccess(_logger, modelFile, loadResult.Metadata?.Version ?? "unknown", null);
                 
                 // Emit reload event
                 ModelReloaded?.Invoke(this, new ModelHotReloadEventArgs
