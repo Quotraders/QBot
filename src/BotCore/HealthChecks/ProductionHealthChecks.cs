@@ -115,6 +115,19 @@ public class ProductionHealthCheckEndpoint : IHealthCheckEndpoint
     private readonly ILogger<ProductionHealthCheckEndpoint> _logger;
     private static readonly JsonSerializerOptions s_jsonOptions = new() { WriteIndented = true };
 
+    // LoggerMessage delegates for CA1848 performance compliance
+    private static readonly Action<ILogger, Exception> LogHealthCheckStatusFailed =
+        LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(6301, nameof(LogHealthCheckStatusFailed)),
+            "Failed to get health check status");
+    
+    private static readonly Action<ILogger, Exception> LogHealthReportFailed =
+        LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(6302, nameof(LogHealthReportFailed)),
+            "Failed to generate health report");
+
     public ProductionHealthCheckEndpoint(
         HealthCheckService healthCheckService,
         ILogger<ProductionHealthCheckEndpoint> logger)
@@ -142,7 +155,7 @@ public class ProductionHealthCheckEndpoint : IHealthCheckEndpoint
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get health check status");
+            LogHealthCheckStatusFailed(_logger, ex);
             return HealthCheckResult.Unhealthy("Health check service failed");
         }
     }
@@ -173,7 +186,7 @@ public class ProductionHealthCheckEndpoint : IHealthCheckEndpoint
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to generate health report");
+            LogHealthReportFailed(_logger, ex);
             return JsonSerializer.Serialize(new { status = "Unhealthy", error = ex.Message }, s_jsonOptions);
         }
     }
