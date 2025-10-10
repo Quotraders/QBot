@@ -343,7 +343,7 @@ public sealed class UnifiedBarPipeline
     /// <summary>
     /// Emit comprehensive pipeline telemetry
     /// </summary>
-    private async Task EmitPipelineTelemetryAsync(UnifiedBarProcessingResult result, CancellationToken cancellationToken)
+    private Task EmitPipelineTelemetryAsync(UnifiedBarProcessingResult result, CancellationToken cancellationToken)
     {
         try
         {
@@ -374,7 +374,7 @@ public sealed class UnifiedBarPipeline
             _logger.LogWarning(ex, "Invalid argument emitting pipeline telemetry for {Symbol}", result.Symbol);
         }
         
-        await Task.CompletedTask.ConfigureAwait(false);
+        return Task.CompletedTask;
     }
     
     /// <summary>
