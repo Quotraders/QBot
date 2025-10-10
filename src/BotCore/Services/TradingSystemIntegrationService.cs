@@ -853,22 +853,6 @@ namespace TopstepX.Bot.Core.Services
         }
 
         /// <summary>
-        /// Create market snapshot for strategy processing
-        /// </summary>
-        private static MarketSnapshot CreateMarketSnapshot(string symbol, MarketData marketData)
-        {
-            return new MarketSnapshot
-            {
-                Symbol = symbol,
-                UtcNow = DateTime.UtcNow,
-                LastPrice = marketData.LastPrice,
-                Bid = marketData.BidPrice,
-                Ask = marketData.AskPrice,
-                Volume = marketData.Volume
-            };
-        }
-
-        /// <summary>
         /// Aggregate and validate signals from AllStrategies, ML models, and converted signals
         /// </summary>
         private List<Signal> AggregateAndValidateSignals(

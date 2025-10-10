@@ -181,14 +181,11 @@ namespace TradingBot.BotCore.Services
     public static class ClockHygieneExtensions
     {
         /// <summary>
-        /// BANNED: This method should never be called in production code
+        /// BANNED: This property should never be accessed in production code
         /// Use ClockHygieneService.UtcNow instead
         /// </summary>
         [Obsolete("DateTime.Now is banned in production code. Use ClockHygieneService.UtcNow instead.", true)]
-        public static DateTime GetLocalNow()
-        {
-            throw new InvalidOperationException("DateTime.Now is banned in production code. Use ClockHygieneService.UtcNow instead.");
-        }
+        public static DateTime LocalNow => throw new InvalidOperationException("DateTime.Now is banned in production code. Use ClockHygieneService.UtcNow instead.");
 
         /// <summary>
         /// Safe UTC time for logging and external systems
