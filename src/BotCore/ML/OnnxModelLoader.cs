@@ -364,6 +364,18 @@ public sealed class OnnxModelLoader : IDisposable
         LoggerMessage.Define(LogLevel.Error, new EventId(75, nameof(LogModelNotificationFailedJson)),
             "[MODEL_NOTIFICATION] Failed to create model update notification");
 
+    private static readonly Action<ILogger, string, double, Exception?> LogModelCompressed =
+        LoggerMessage.Define<string, double>(LogLevel.Information, new EventId(76, nameof(LogModelCompressed)),
+            "[ONNX-Registry] Model compressed: {ModelPath} (ratio: {Ratio:P1})");
+
+    private static readonly Action<ILogger, string, object, Exception?> LogModelMetadataParsed =
+        LoggerMessage.Define<string, object>(LogLevel.Information, new EventId(77, nameof(LogModelMetadataParsed)),
+            "[MODEL_RELOAD] Model metadata parsed from {File}, version: {Version}");
+
+    private static readonly Action<ILogger, string, Exception?> LogModelMetadataParseError =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(78, nameof(LogModelMetadataParseError)),
+            "[MODEL_RELOAD] Failed to parse metadata from {File}");
+
     public OnnxModelLoader(
         ILogger<OnnxModelLoader> logger, 
         string modelsDirectory = "models",
