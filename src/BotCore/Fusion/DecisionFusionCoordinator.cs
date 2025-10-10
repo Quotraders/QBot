@@ -53,6 +53,91 @@ public sealed class DecisionFusionCoordinator
     private readonly IMLConfigurationService _cfg;
     private readonly ILogger<DecisionFusionCoordinator> _logger;
     private readonly IServiceProvider _serviceProvider;
+    
+    // CA1848: LoggerMessage delegates for high-performance logging
+    private static readonly Action<ILogger, string, string, string, Exception?> LogCoordinatorInitialized =
+        LoggerMessage.Define<string, string, string>(LogLevel.Information, new EventId(8100, nameof(LogCoordinatorInitialized)),
+            "🔍 [AUDIT] Decision Fusion Coordinator initialized with fail-closed behavior - Knowledge Graph: {GraphType}, UCB: {UcbType}, PPO: {PpoType}");
+    
+    private static readonly Action<ILogger, string, string, DateTime, Exception?> LogDecisionProcessInitiated =
+        LoggerMessage.Define<string, string, DateTime>(LogLevel.Information, new EventId(8101, nameof(LogDecisionProcessInitiated)),
+            "🔍 [AUDIT-{DecisionId}] Decision process initiated for {Symbol} at {Timestamp}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogNoRecommendations =
+        LoggerMessage.Define<string>(LogLevel.Trace, new EventId(8102, nameof(LogNoRecommendations)),
+            "No recommendations from knowledge graph or UCB for {Symbol} - holding");
+    
+    private static readonly Action<ILogger, double, double, string, Exception?> LogConfidenceBelowMin =
+        LoggerMessage.Define<double, double, string>(LogLevel.Trace, new EventId(8103, nameof(LogConfidenceBelowMin)),
+            "Combined confidence {Score:F3} below minimum {MinConfidence:F3} for {Symbol} - holding");
+    
+    private static readonly Action<ILogger, double, string, Exception?> LogFusionConfidenceTooLow =
+        LoggerMessage.Define<double, string>(LogLevel.Information, new EventId(8104, nameof(LogFusionConfidenceTooLow)),
+            "📊 Fusion confidence too low: {Score:F3} for symbol {Symbol}");
+    
+    private static readonly Action<ILogger, string, string, double, Exception?> LogUsingKnowledgeGraph =
+        LoggerMessage.Define<string, string, double>(LogLevel.Debug, new EventId(8105, nameof(LogUsingKnowledgeGraph)),
+            "Using knowledge graph recommendation for {Symbol}: {Strategy} (score: {Score:F3})");
+    
+    private static readonly Action<ILogger, string, string, double, Exception?> LogUsingUcb =
+        LoggerMessage.Define<string, string, double>(LogLevel.Debug, new EventId(8106, nameof(LogUsingUcb)),
+            "Using UCB recommendation for {Symbol}: {Strategy} (score: {Score:F3})");
+    
+    private static readonly Action<ILogger, string, Exception?> LogSystemsDisagree =
+        LoggerMessage.Define<string>(LogLevel.Trace, new EventId(8107, nameof(LogSystemsDisagree)),
+            "Systems disagree or low individual confidence for {Symbol} - holding per configuration");
+    
+    private static readonly Action<ILogger, Exception?> LogRiskManagerUnavailable =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(8108, nameof(LogRiskManagerUnavailable)),
+            "Risk manager unavailable for PPO sizing, using confidence-based risk");
+    
+    private static readonly Action<ILogger, Exception?> LogNoRiskManagerService =
+        LoggerMessage.Define(LogLevel.Trace, new EventId(8109, nameof(LogNoRiskManagerService)),
+            "No risk manager service available, using confidence-based risk calculation");
+    
+    private static readonly Action<ILogger, string, double, double, string, Exception?> LogPpoPositionSizing =
+        LoggerMessage.Define<string, double, double, string>(LogLevel.Debug, new EventId(8110, nameof(LogPpoPositionSizing)),
+            "PPO position sizing for {Symbol}: original_risk={Risk:P2}, adjusted_size={Size:F4}, strategy={Strategy}");
+    
+    private static readonly Action<ILogger, string, double, double, Exception?> LogAppliedPpoSizing =
+        LoggerMessage.Define<string, double, double>(LogLevel.Debug, new EventId(8111, nameof(LogAppliedPpoSizing)),
+            "Applied PPO sizing for {Symbol}: adjusted_size={AdjustedSize}, fusion_score={Score:F3}");
+    
+    private static readonly Action<ILogger, string, Exception?> LogFailedToApplyPpo =
+        LoggerMessage.Define<string>(LogLevel.Warning, new EventId(8112, nameof(LogFailedToApplyPpo)),
+            "Failed to apply PPO sizing for {Symbol}, using original recommendation");
+    
+    private static readonly Action<ILogger, double, string, string, Exception?> LogFusionCombinedScore =
+        LoggerMessage.Define<double, string, string>(LogLevel.Information, new EventId(8113, nameof(LogFusionCombinedScore)),
+            "📊 Fusion combined score: {Score:F3} for symbol {Symbol}, strategy {Strategy}");
+    
+    private static readonly Action<ILogger, string, string, Exception?> LogFusionRecommendationCount =
+        LoggerMessage.Define<string, string>(LogLevel.Information, new EventId(8114, nameof(LogFusionRecommendationCount)),
+            "📊 Fusion recommendation count for symbol {Symbol}, decision {Decision}");
+    
+    private static readonly Action<ILogger, string, string, string, string, double, string, double, Exception?> LogDecisionCompleted =
+        LoggerMessage.Define<string, string, string, string, double, string, double>(LogLevel.Information, new EventId(8115, nameof(LogDecisionCompleted)),
+            "🔍 [AUDIT-{DecisionId}] Decision completed for {Symbol}: Strategy={Strategy}, Intent={Intent}, Confidence={Confidence:F3}, Size={Size:F4}, Duration={Duration}ms");
+    
+    private static readonly Action<ILogger, string, string, string, long, Exception?> LogCriticalDecisionFailure =
+        LoggerMessage.Define<string, string, string, long>(LogLevel.Error, new EventId(8116, nameof(LogCriticalDecisionFailure)),
+            "🚨 [AUDIT-{DecisionId}] CRITICAL: Decision failure for {Symbol} - ErrorId={ErrorId}, Duration={Duration}ms");
+    
+    private static readonly Action<ILogger, string, string, string, string, Exception?> LogFusionErrorCount =
+        LoggerMessage.Define<string, string, string, string>(LogLevel.Error, new EventId(8117, nameof(LogFusionErrorCount)),
+            "📊 Fusion error count for symbol {Symbol}, decision_id {DecisionId}, error_id {ErrorId}, error_type {ErrorType}");
+    
+    private static readonly Action<ILogger, string, double, Exception?> LogConfigServiceUnavailableForKey =
+        LoggerMessage.Define<string, double>(LogLevel.Warning, new EventId(8118, nameof(LogConfigServiceUnavailableForKey)),
+            "🚨 [AUDIT-FAIL-CLOSED] Configuration service unavailable for key {Key} - using safe default {Default}");
+    
+    private static readonly Action<ILogger, string, double, Exception?> LogConfigKeyNotFound =
+        LoggerMessage.Define<string, double>(LogLevel.Trace, new EventId(8119, nameof(LogConfigKeyNotFound)),
+            "Configuration key {Key} not found - using default {Default}");
+    
+    private static readonly Action<ILogger, string, double, Exception?> LogErrorReadingConfigKey =
+        LoggerMessage.Define<string, double>(LogLevel.Error, new EventId(8120, nameof(LogErrorReadingConfigKey)),
+            "🚨 [AUDIT-FAIL-CLOSED] Error reading configuration key {Key} - using safe default {Default}");
 
     public DecisionFusionCoordinator(
         IStrategyKnowledgeGraph graph, 
@@ -72,8 +157,7 @@ public sealed class DecisionFusionCoordinator
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         
         // Log initialization for audit trail
-        _logger.LogInformation("🔍 [AUDIT] Decision Fusion Coordinator initialized with fail-closed behavior - Knowledge Graph: {GraphType}, UCB: {UcbType}, PPO: {PpoType}", 
-            graph.GetType().Name, ucb.GetType().Name, ppo.GetType().Name);
+        LogCoordinatorInitialized(_logger, graph.GetType().Name, ucb.GetType().Name, ppo.GetType().Name, null);
     }
 
     /// <summary>
@@ -90,8 +174,7 @@ public sealed class DecisionFusionCoordinator
         var decisionId = Guid.NewGuid().ToString("N")[..8];
         
         // Audit log: Decision process initiated
-        _logger.LogInformation("🔍 [AUDIT-{DecisionId}] Decision process initiated for {Symbol} at {Timestamp}", 
-            decisionId, symbol, startTime);
+        LogDecisionProcessInitiated(_logger, decisionId, symbol, startTime, null);
 
         try
         {
@@ -112,7 +195,7 @@ public sealed class DecisionFusionCoordinator
             // If neither system has a recommendation, hold
             if (knowledgeRec is null && string.IsNullOrEmpty(ucbStrategy))
             {
-                _logger.LogTrace("No recommendations from knowledge graph or UCB for {Symbol} - holding", symbol);
+                LogNoRecommendations(_logger, symbol, null);
                 return null;
             }
 
@@ -123,11 +206,10 @@ public sealed class DecisionFusionCoordinator
             // Check minimum confidence threshold
             if (combinedScore < minConfidence)
             {
-                _logger.LogTrace("Combined confidence {Score:F3} below minimum {MinConfidence:F3} for {Symbol} - holding",
-                    combinedScore, minConfidence, symbol);
+                LogConfidenceBelowMin(_logger, combinedScore, minConfidence, symbol, null);
                 
                 // Record metric without async call since RecordGaugeAsync doesn't exist
-                _logger.LogInformation("📊 Fusion confidence too low: {Score:F3} for symbol {Symbol}", combinedScore, symbol);
+                LogFusionConfidenceTooLow(_logger, combinedScore, symbol, null);
                 
                 return null;
             }
@@ -139,8 +221,7 @@ public sealed class DecisionFusionCoordinator
             {
                 // Use Knowledge Graph recommendation
                 finalRec = knowledgeRec;
-                _logger.LogDebug("Using knowledge graph recommendation for {Symbol}: {Strategy} (score: {Score:F3})",
-                    symbol, knowledgeRec.StrategyName, knowledgeScore);
+                LogUsingKnowledgeGraph(_logger, symbol, knowledgeRec.StrategyName, knowledgeScore, null);
             }
             else if (!string.IsNullOrEmpty(ucbStrategy) && ucbScore >= minConfidence)
             {
@@ -158,8 +239,7 @@ public sealed class DecisionFusionCoordinator
                     },
                     TelemetryTags: new List<string> { "UCB", "fusion" });
                     
-                _logger.LogDebug("Using UCB recommendation for {Symbol}: {Strategy} (score: {Score:F3})",
-                    symbol, ucbStrategy, ucbScore);
+                LogUsingUcb(_logger, symbol, ucbStrategy, ucbScore, null);
             }
             else
             {
@@ -168,7 +248,7 @@ public sealed class DecisionFusionCoordinator
                 
                 if (holdOnDisagree > 0)
                 {
-                    _logger.LogTrace("Systems disagree or low individual confidence for {Symbol} - holding per configuration", symbol);
+                    LogSystemsDisagree(_logger, symbol, null);
                     return null;
                 }
                 
@@ -225,42 +305,36 @@ public sealed class DecisionFusionCoordinator
                     }
                     catch (Exception riskEx)
                     {
-                        _logger.LogWarning(riskEx, "Risk manager unavailable for PPO sizing, using confidence-based risk");
+                        LogRiskManagerUnavailable(_logger, riskEx);
                         actualRisk = GetConfigValue("Risk:ConfidenceBasedRisk", 1.0) - finalRec.Confidence; // Fallback to confidence-based risk from config
                     }
                 }
                 else
                 {
-                    _logger.LogTrace("No risk manager service available, using confidence-based risk calculation");
+                    LogNoRiskManagerService(_logger, null);
                     actualRisk = GetConfigValue("Risk:ConfidenceBasedRisk", 1.0) - finalRec.Confidence; // Higher confidence = lower risk from config
                 }
                 
                 var adjustedSize = await _ppo.PredictSizeAsync(symbol, finalRec.Intent, actualRisk, cancellationToken).ConfigureAwait(false);
                 
                 // Log PPO sizing information since StrategyRecommendation is immutable
-                _logger.LogDebug("PPO position sizing for {Symbol}: original_risk={Risk:P2}, adjusted_size={Size:F4}, strategy={Strategy}", 
-                    symbol, actualRisk, adjustedSize, finalRec.StrategyName);
+                LogPpoPositionSizing(_logger, symbol, actualRisk, adjustedSize, finalRec.StrategyName, null);
                 
-                _logger.LogDebug("Applied PPO sizing for {Symbol}: adjusted_size={AdjustedSize}, fusion_score={Score:F3}",
-                    symbol, adjustedSize, combinedScore);
+                LogAppliedPpoSizing(_logger, symbol, adjustedSize, combinedScore, null);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to apply PPO sizing for {Symbol}, using original recommendation", symbol);
+                LogFailedToApplyPpo(_logger, symbol, ex);
             }
 
             // Record fusion metrics using logging since RecordGaugeAsync doesn't exist
-            _logger.LogInformation("📊 Fusion combined score: {Score:F3} for symbol {Symbol}, strategy {Strategy}", 
-                combinedScore, symbol, finalRec.StrategyName);
+            LogFusionCombinedScore(_logger, combinedScore, symbol, finalRec.StrategyName, null);
                 
-            _logger.LogInformation("📊 Fusion recommendation count for symbol {Symbol}, decision {Decision}", 
-                symbol, finalRec.Intent.ToString());
+            LogFusionRecommendationCount(_logger, symbol, finalRec.Intent.ToString(), null);
 
             // Audit log: Final decision with comprehensive details
-            _logger.LogInformation("🔍 [AUDIT-{DecisionId}] Decision completed for {Symbol}: Strategy={Strategy}, Intent={Intent}, Confidence={Confidence:F3}, " +
-                "Score={Score:F3}, Duration={Duration}ms", 
-                decisionId, symbol, finalRec.StrategyName, finalRec.Intent.ToString(), finalRec.Confidence, 
-                combinedScore, (DateTime.UtcNow - startTime).TotalMilliseconds);
+            LogDecisionCompleted(_logger, decisionId, symbol, finalRec.StrategyName, finalRec.Intent.ToString(), 
+                finalRec.Confidence, combinedScore.ToString("F3"), (DateTime.UtcNow - startTime).TotalMilliseconds, null);
 
             return finalRec;
         }
@@ -269,12 +343,10 @@ public sealed class DecisionFusionCoordinator
             var errorId = Guid.NewGuid().ToString("N")[..8];
             
             // Audit log: Critical decision failure
-            _logger.LogError(ex, "🚨 [AUDIT-{DecisionId}] CRITICAL: Decision failure for {Symbol} - ErrorId={ErrorId}, Duration={Duration}ms", 
-                decisionId, symbol, errorId, (DateTime.UtcNow - startTime).TotalMilliseconds);
+            LogCriticalDecisionFailure(_logger, decisionId, symbol, errorId, (long)(DateTime.UtcNow - startTime).TotalMilliseconds, ex);
             
             // Record error metrics using logging since RecordCounterAsync doesn't exist
-            _logger.LogError("📊 Fusion error count for symbol {Symbol}, decision_id {DecisionId}, error_id {ErrorId}, error_type {ErrorType}", 
-                symbol, decisionId, errorId, ex.GetType().Name);
+            LogFusionErrorCount(_logger, symbol, decisionId, errorId, ex.GetType().Name, null);
                 
             // Fail-closed behavior: Return null to prevent trading on corrupted decisions
             return null;
@@ -291,14 +363,14 @@ public sealed class DecisionFusionCoordinator
             var configuration = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
             if (configuration == null)
             {
-                _logger.LogWarning("🚨 [AUDIT-FAIL-CLOSED] Configuration service unavailable for key {Key} - using safe default {Default}", key, defaultValue);
+                LogConfigServiceUnavailableForKey(_logger, key, defaultValue, null);
                 return defaultValue;
             }
             
             var value = configuration.GetValue<double>(key);
             if (Math.Abs(value) < double.Epsilon && !configuration.GetSection(key).Exists())
             {
-                _logger.LogTrace("Configuration key {Key} not found - using default {Default}", key, defaultValue);
+                LogConfigKeyNotFound(_logger, key, defaultValue, null);
                 return defaultValue;
             }
             
@@ -306,7 +378,7 @@ public sealed class DecisionFusionCoordinator
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "🚨 [AUDIT-FAIL-CLOSED] Error reading configuration key {Key} - using safe default {Default}", key, defaultValue);
+            LogErrorReadingConfigKey(_logger, key, defaultValue, ex);
             return defaultValue;
         }
     }
