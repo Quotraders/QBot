@@ -701,12 +701,13 @@ public class NightlyParameterTuner
                 parameters["gate5_enabled"] = gate5Config.Enabled ? 1.0 : 0.0;
             }
             
-            // Add ML model parameters from config
-            parameters["learning_rate"] = _config.LearningRate;
-            parameters["l2_regularization"] = _config.L2Regularization;
-            parameters["dropout_rate"] = _config.DropoutRate;
-            parameters["hidden_size"] = _networkConfig.HiddenSize;
-            parameters["ensemble_size"] = _config.EnsembleSize;
+            // Add ML model parameters using default constants
+            // Note: These are baseline defaults; actual tuning parameters may vary per optimization
+            parameters["learning_rate"] = DefaultLearningRate;
+            parameters["l2_regularization"] = MinL2Regularization;
+            parameters["dropout_rate"] = DefaultDropoutRate;
+            parameters["hidden_size"] = DefaultHiddenSize;
+            parameters["ensemble_size"] = MinEnsembleSize;
             
             _logger.LogInformation("[NIGHTLY_TUNING] Collected {Count} real trading parameters", parameters.Count);
         }
@@ -736,13 +737,8 @@ public class NightlyParameterTuner
                 _logger.LogInformation("[NIGHTLY_TUNING] Using real performance data from DecisionLogger");
             }
             
-            // Try to get PerformanceMetricsService for real metrics
-            var performanceService = _serviceProvider.GetService(typeof(BotCore.Services.PerformanceMetricsService));
-            if (performanceService != null)
-            {
-                _logger.LogInformation("[NIGHTLY_TUNING] Found PerformanceMetricsService for real metrics");
-            }
-            
+            // Note: PerformanceMetricsService is in BotCore.Services which is not referenced by IntelligenceStack
+            // Real performance metrics would be queried here if available
             // For now, return placeholder metrics since we don't have a unified performance query API
             // In production, this would query actual trade results from the last 30 days
             _logger.LogWarning("[NIGHTLY_TUNING] Real performance API not yet implemented, using placeholder metrics");
@@ -1118,7 +1114,7 @@ public class NightlyParameterTuner
         registration.Metadata["improved_auc"] = result.BestMetrics.AUC;
         registration.Metadata["tuning_date"] = DateTime.UtcNow;
 
-        return _modelRegistry.RegisterModelAsync(registration, cancellationToken);
+        return await _modelRegistry.RegisterModelAsync(registration, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<bool> ShouldRollbackAsync(
