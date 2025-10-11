@@ -322,6 +322,75 @@ namespace TopstepX.Bot.Core.Services
             };
         }
         
+        /// <summary>
+        /// Get all positions (for reconciliation and monitoring)
+        /// </summary>
+        public List<TopstepX.Bot.Abstractions.Position> GetAllPositions()
+        {
+            // Convert internal positions to abstraction positions
+            return _positions.Values.Select(p => new TopstepX.Bot.Abstractions.Position
+            {
+                Symbol = p.Symbol,
+                NetQuantity = p.NetQuantity,
+                AveragePrice = p.AveragePrice,
+                UnrealizedPnL = p.UnrealizedPnL,
+                RealizedPnL = p.RealizedPnL,
+                LastUpdate = p.LastUpdate
+            }).ToList();
+        }
+        
+        /// <summary>
+        /// Sync position from broker (for reconciliation corrections)
+        /// </summary>
+        public void SyncPositionFromBroker(string symbol, int brokerQuantity, decimal brokerAvgPrice)
+        {
+            lock (_lockObject)
+            {
+                if (!_positions.TryGetValue(symbol, out var position))
+                {
+                    position = new Position
+                    {
+                        Symbol = symbol,
+                        NetQuantity = 0,
+                        AveragePrice = 0,
+                        UnrealizedPnL = 0,
+                        RealizedPnL = 0,
+                        LastUpdate = DateTime.UtcNow
+                    };
+                    _positions[symbol] = position;
+                }
+                
+                position.NetQuantity = brokerQuantity;
+                position.AveragePrice = brokerAvgPrice;
+                position.LastUpdate = DateTime.UtcNow;
+                
+                _logger.LogInformation(
+                    "🔄 Position synced from broker: {Symbol} {Qty}@{Price}",
+                    symbol, brokerQuantity, brokerAvgPrice);
+            }
+        }
+        
+        /// <summary>
+        /// Clear phantom position (for reconciliation when broker doesn't have it)
+        /// </summary>
+        public void ClearPosition(string symbol)
+        {
+            lock (_lockObject)
+            {
+                if (_positions.TryGetValue(symbol, out var position))
+                {
+                    position.NetQuantity = 0;
+                    position.AveragePrice = 0;
+                    position.UnrealizedPnL = 0;
+                    position.LastUpdate = DateTime.UtcNow;
+                    
+                    _logger.LogInformation(
+                        "🧹 Position cleared: {Symbol} (phantom position removed)",
+                        symbol);
+                }
+            }
+        }
+        
         public void Dispose()
         {
             Dispose(true);

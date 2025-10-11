@@ -650,6 +650,37 @@ Please check the configuration and ensure all required services are registered.
         Console.WriteLine("   ✅ ML/RL integration - SessionEnd exits feed into optimizer for learning");
         
         // ================================================================================
+        // STUCK POSITION RECOVERY SYSTEM - THREE-LAYER DEFENSE
+        // ================================================================================
+        
+        // Configure stuck position recovery settings
+        services.Configure<BotCore.Configuration.StuckPositionRecoveryConfiguration>(
+            configuration.GetSection("StuckPositionRecovery"));
+        
+        // Register Emergency Exit Executor (Layer 3) - must be registered first as dependency
+        services.AddSingleton<BotCore.Services.EmergencyExitExecutor>();
+        
+        // Register Position Reconciliation Service (Layer 1) - runs every 60s
+        services.AddSingleton<BotCore.Services.PositionReconciliationService>();
+        services.AddHostedService<BotCore.Services.PositionReconciliationService>(provider => 
+            provider.GetRequiredService<BotCore.Services.PositionReconciliationService>());
+        
+        // Register Stuck Position Monitor (Layer 2) - runs every 30s
+        services.AddSingleton<BotCore.Services.StuckPositionMonitor>();
+        services.AddHostedService<BotCore.Services.StuckPositionMonitor>(provider => 
+            provider.GetRequiredService<BotCore.Services.StuckPositionMonitor>());
+        
+        Console.WriteLine("🛡️ [STUCK-POSITION-RECOVERY] Three-layer defense system registered");
+        Console.WriteLine("   🔄 Layer 1: Position Reconciliation - Compares bot vs broker every 60s");
+        Console.WriteLine("   👁️ Layer 2: Stuck Position Monitor - Detects stuck/aged/runaway positions every 30s");
+        Console.WriteLine("   🚨 Layer 3: Emergency Exit Executor - 5-level escalation for position recovery");
+        Console.WriteLine("   ⚡ Level 1 (T+0s): Smart Retry with improved pricing");
+        Console.WriteLine("   🔄 Level 2 (T+30s): Fresh Start with market-based pricing");
+        Console.WriteLine("   🚨 Level 3 (T+60s): Market Order for guaranteed fill");
+        Console.WriteLine("   🚨🚨 Level 4 (T+120s): Human Escalation with alerts");
+        Console.WriteLine("   🛑 Level 5 (T+300s): System Shutdown via kill.txt");
+        
+        // ================================================================================
         // ZONE AWARENESS SERVICES - PRODUCTION-READY SUPPLY/DEMAND INTEGRATION
         // ================================================================================
         
