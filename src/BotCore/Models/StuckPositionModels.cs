@@ -141,7 +141,7 @@ namespace BotCore.Models
         public int BotPositionCount { get; set; }
         public int DiscrepancyCount { get; set; }
         public List<PositionDiscrepancy> Discrepancies { get; set; } = new();
-        public List<string> ActionsT aken { get; set; } = new();
+        public List<string> ActionsTaken { get; set; } = new();
     }
     
     /// <summary>
