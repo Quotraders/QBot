@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
+using System.Net.Http;
 using System.Text.Json;
 
 namespace BotCore.Market;
@@ -17,6 +18,7 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
 {
     private readonly ILogger<EconomicEventManager> _logger;
     private readonly BotCore.Services.BotAlertService? _botAlertService;
+    private readonly HttpClient _httpClient; // Kept for future API integrations
     private readonly List<EconomicEvent> _events = new();
     private readonly ConcurrentDictionary<string, TradingRestriction> _tradingRestrictions = new();
     private readonly Timer _eventMonitor;
@@ -41,16 +43,18 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
 
     public EconomicEventManager(
         ILogger<EconomicEventManager> logger,
+        HttpClient httpClient,
         BotCore.Services.BotAlertService? botAlertService = null)
     {
         _logger = logger;
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _botAlertService = botAlertService;
         
         // Initialize monitoring timers
         _eventMonitor = new Timer(CheckUpcomingEvents, null, Timeout.Infinite, Timeout.Infinite);
         _restrictionUpdater = new Timer(UpdateTradingRestrictions, null, Timeout.Infinite, Timeout.Infinite);
         
-        _logger.LogInformation("[EconomicEventManager] Economic Event Filter initialized");
+        _logger.LogInformation("[EconomicEventManager] Economic Event Filter initialized with HTTP client");
     }
 
     public async Task InitializeAsync()
@@ -234,78 +238,72 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
 
     private async Task<List<EconomicEvent>> LoadRealEconomicEventsAsync()
     {
-        // Production implementation: Load from external economic calendar APIs
-        // This could integrate with Fed data, economic calendar APIs, etc.
-        List<EconomicEvent> events;
+        // Production implementation: Load from ForexFactory JSON file (no API needed)
+        // This file is manually updated monthly with FOMC, NFP, CPI dates
         
         try
         {
-            // PHASE 2: Try loading from ForexFactory data first
+            // Load from ForexFactory data file
             var forexFactoryPath = Path.Combine(Directory.GetCurrentDirectory(), "datasets", "economic_calendar", "calendar.json");
-            if (File.Exists(forexFactoryPath))
+            
+            if (!File.Exists(forexFactoryPath))
             {
-                events = await LoadFromForexFactoryAsync(forexFactoryPath).ConfigureAwait(false);
-                if (events.Count > 0)
-                {
-                    _logger.LogInformation("[EconomicEventManager] Loaded {Count} events from ForexFactory calendar", events.Count);
-                    return events;
-                }
+                _logger.LogWarning("[EconomicEventManager] ForexFactory calendar file not found at: {Path}. Economic event monitoring disabled.", forexFactoryPath);
+                _logger.LogWarning("[EconomicEventManager] To enable economic calendar, update the file: datasets/economic_calendar/calendar.json");
+                return new List<EconomicEvent>();
             }
 
-            // Try to load from environment configuration first
-            var economicDataSource = Environment.GetEnvironmentVariable("ECONOMIC_DATA_SOURCE");
-            var economicApiKey = Environment.GetEnvironmentVariable("ECONOMIC_API_KEY");
-
-            if (!string.IsNullOrEmpty(economicDataSource) && !string.IsNullOrEmpty(economicApiKey))
+            var events = await LoadFromForexFactoryAsync(forexFactoryPath).ConfigureAwait(false);
+            
+            if (events.Count > 0)
             {
-                events = await LoadFromExternalSourceAsync(economicDataSource).ConfigureAwait(false);
+                _logger.LogInformation("[EconomicEventManager] ✅ Successfully loaded {Count} events from ForexFactory calendar", events.Count);
+                
+                // Log upcoming high-impact events for visibility
+                var upcomingEvents = events
+                    .Where(e => e.EventTime > DateTime.UtcNow && e.Impact >= EventImpact.Medium)
+                    .OrderBy(e => e.EventTime)
+                    .Take(3)
+                    .ToList();
+                
+                if (upcomingEvents.Any())
+                {
+                    _logger.LogInformation("[EconomicEventManager] 📅 Upcoming high-impact events:");
+                    foreach (var evt in upcomingEvents)
+                    {
+                        _logger.LogInformation("[EconomicEventManager]    {Date} - {Event} ({Impact})", 
+                            evt.EventTime.ToString("yyyy-MM-dd HH:mm"), evt.EventName, evt.Impact);
+                    }
+                }
+                
+                return events;
             }
             else
             {
-                // Fallback to loading from local data file if available
-                var dataFile = Path.Combine(Directory.GetCurrentDirectory(), "data", "economic_events.json");
-                if (File.Exists(dataFile))
-                {
-                    events = await LoadFromLocalFileAsync(dataFile).ConfigureAwait(false);
-                }
-                else
-                {
-                    // No API configured and no local data - return empty list
-                    // Do not use hardcoded fallback data
-                    _logger.LogWarning("[EconomicEventManager] No economic calendar API configured and no local data file found. Economic event monitoring disabled.");
-                    return new List<EconomicEvent>();
-                }
+                _logger.LogWarning("[EconomicEventManager] ForexFactory calendar file is empty or contains no valid events");
+                return new List<EconomicEvent>();
             }
-
-            _logger.LogInformation("[EconomicEventManager] Successfully loaded {Count} events from real data source", events.Count);
         }
         catch (IOException ex)
         {
-            _logger.LogError(ex, "[EconomicEventManager] I/O error loading from primary source. Economic event monitoring disabled.");
+            _logger.LogError(ex, "[EconomicEventManager] I/O error loading ForexFactory calendar. Economic event monitoring disabled.");
             return new List<EconomicEvent>();
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "[EconomicEventManager] JSON error loading from primary source. Economic event monitoring disabled.");
+            _logger.LogError(ex, "[EconomicEventManager] JSON parsing error loading ForexFactory calendar. Economic event monitoring disabled.");
             return new List<EconomicEvent>();
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            _logger.LogError(ex, "[EconomicEventManager] Invalid operation loading from primary source. Economic event monitoring disabled.");
+            _logger.LogError(ex, "[EconomicEventManager] Unexpected error loading ForexFactory calendar. Economic event monitoring disabled.");
             return new List<EconomicEvent>();
         }
-
-        return events;
     }
 
-    private async Task<List<EconomicEvent>> LoadFromExternalSourceAsync(string dataSource)
-    {
-        // This would integrate with real economic calendar APIs
-        // For production readiness, implement actual API integration
-        _logger.LogWarning("[EconomicEventManager] External API source configured but not implemented: {Source}. Economic event monitoring disabled.", dataSource);
-        await Task.Yield(); // Maintain async signature
-        return new List<EconomicEvent>();
-    }
+    // REMOVED: LoadFromExternalSourceAsync() - No longer using external APIs
+    // REMOVED: LoadFromFinnHubAsync() - FinnHub economic calendar requires paid subscription
+    // Bot now uses ForexFactory JSON file (free, manually updated monthly)
 
     private async Task<List<EconomicEvent>> LoadFromLocalFileAsync(string filePath)
     {
@@ -709,3 +707,9 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
         GC.SuppressFinalize(this);
     }
 }
+
+// ================================================================================
+// FOREXFACTORY DATA MODELS
+// ================================================================================
+// Bot uses ForexFactory JSON file format (manually updated monthly)
+// No external API required - see datasets/economic_calendar/calendar.json

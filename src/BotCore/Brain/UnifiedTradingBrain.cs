@@ -20,6 +20,7 @@ using TradingBot.Abstractions;
 using MarketContext = BotCore.Brain.Models.MarketContext;
 using MarketRegime = BotCore.Brain.Models.MarketRegime;
 using TradingDecision = BotCore.Brain.Models.TradingDecision;
+using NewsContext = BotCore.Services.NewsContext; // For NewsMonitorService integration
 
 namespace BotCore.Brain
 {
@@ -177,6 +178,7 @@ namespace BotCore.Brain
         private readonly BotCore.Services.MarketSnapshotStore? _snapshotStore;
         private readonly BotCore.Services.HistoricalPatternRecognitionService? _historicalPatterns;
         private readonly BotCore.Services.ParameterChangeTracker? _parameterTracker;
+        private readonly BotCore.Services.INewsMonitorService? _newsMonitor; // Optional real-time news monitoring
         
         // Latest market data for risk analysis (updated in MakeIntelligentDecisionAsync)
         private Env? _latestEnv;
@@ -1131,7 +1133,8 @@ namespace BotCore.Brain
             BotCore.Services.AdaptiveLearningCommentary? learningCommentary = null,
             BotCore.Services.MarketSnapshotStore? snapshotStore = null,
             BotCore.Services.HistoricalPatternRecognitionService? historicalPatterns = null,
-            BotCore.Services.ParameterChangeTracker? parameterTracker = null)
+            BotCore.Services.ParameterChangeTracker? parameterTracker = null,
+            BotCore.Services.INewsMonitorService? newsMonitor = null)
         {
             _logger = logger;
             _memoryManager = memoryManager;
@@ -1146,6 +1149,7 @@ namespace BotCore.Brain
             _snapshotStore = snapshotStore;
             _historicalPatterns = historicalPatterns;
             _parameterTracker = parameterTracker;
+            _newsMonitor = newsMonitor; // Optional real-time news monitoring
             
             // Initialize Neural UCB for strategy selection using ONNX-based neural network
             var onnxLoader = new OnnxModelLoader(new Microsoft.Extensions.Logging.Abstractions.NullLogger<OnnxModelLoader>());
@@ -1309,6 +1313,85 @@ namespace BotCore.Brain
                     }
                 }
                 
+                // PRODUCTION: Get current news context and form trading bias
+                NewsContext? newsContext = null;
+                decimal newsBias = 0.0m; // -1.0 (bearish) to +1.0 (bullish)
+                decimal newsConfidenceMultiplier = 1.0m; // 0.8 to 1.2
+                
+                if (_newsMonitor != null && _newsMonitor.IsHealthy)
+                {
+                    try
+                    {
+                        newsContext = await _newsMonitor.GetCurrentNewsContextAsync().ConfigureAwait(false);
+                        
+                        if (newsContext.HasBreakingNews)
+                        {
+                            // BREAKING NEWS: Form strong directional bias
+                            // Sentiment: 0.0 = max bearish, 0.5 = neutral, 1.0 = max bullish
+                            // Convert to bias: -1.0 to +1.0
+                            newsBias = (newsContext.SentimentScore - 0.5m) * 2.0m;
+                            
+                            // High volatility period = reduce confidence (wider stops needed)
+                            if (newsContext.IsHighVolatilityPeriod)
+                            {
+                                newsConfidenceMultiplier = 0.85m; // Reduce confidence 15%
+                                _logger.LogWarning(
+                                    "[Brain] 🔥 BREAKING NEWS + HIGH VOLATILITY: {Headline} | Sentiment: {Sentiment:F2} ({Bias}) | Reducing confidence to {Mult:F2}x",
+                                    newsContext.LatestHeadline,
+                                    newsContext.SentimentScore,
+                                    newsBias > 0 ? "BULLISH" : "BEARISH",
+                                    newsConfidenceMultiplier);
+                            }
+                            else
+                            {
+                                // Breaking news without high vol = opportunity (increase confidence slightly)
+                                newsConfidenceMultiplier = 1.05m; // Increase confidence 5%
+                                _logger.LogWarning(
+                                    "[Brain] 🔥 BREAKING NEWS (Controlled Vol): {Headline} | Sentiment: {Sentiment:F2} ({Bias}) | Boosting confidence to {Mult:F2}x",
+                                    newsContext.LatestHeadline,
+                                    newsContext.SentimentScore,
+                                    newsBias > 0 ? "BULLISH" : "BEARISH",
+                                    newsConfidenceMultiplier);
+                            }
+                        }
+                        else if (newsContext.RecentHeadlines.Count > 0)
+                        {
+                            // RECENT NEWS (not breaking): Subtle bias based on sentiment
+                            // Less aggressive than breaking news
+                            newsBias = (newsContext.SentimentScore - 0.5m) * 1.0m; // 50% strength vs breaking news
+                            
+                            // Slight confidence adjustment based on how far from neutral
+                            var sentimentStrength = Math.Abs(newsContext.SentimentScore - 0.5m) * 2.0m; // 0.0 to 1.0
+                            if (sentimentStrength > 0.6m)
+                            {
+                                // Strong sentiment (even if not "breaking") = small confidence boost
+                                newsConfidenceMultiplier = 1.02m;
+                                _logger.LogInformation(
+                                    "[Brain] 📰 Strong news sentiment: {Sentiment:F2} ({Bias}) | {Count} recent headlines | Boosting confidence to {Mult:F2}x",
+                                    newsContext.SentimentScore,
+                                    newsBias > 0 ? "BULLISH" : "BEARISH",
+                                    newsContext.RecentHeadlines.Count,
+                                    newsConfidenceMultiplier);
+                            }
+                            else
+                            {
+                                // Weak/neutral sentiment = no adjustment
+                                _logger.LogDebug(
+                                    "[Brain] 📰 Neutral news sentiment: {Sentiment:F2} | {Count} headlines | No bias adjustment",
+                                    newsContext.SentimentScore,
+                                    newsContext.RecentHeadlines.Count);
+                            }
+                        }
+                    }
+                    catch (Exception newsEx)
+                    {
+                        // News monitoring is non-critical - log and continue with neutral bias
+                        _logger.LogDebug(newsEx, "[Brain] News context fetch failed - continuing with neutral news bias");
+                        newsBias = 0.0m;
+                        newsConfidenceMultiplier = 1.0m;
+                    }
+                }
+                
                 // 1. CREATE MARKET CONTEXT from current data
                 var context = CreateMarketContext(symbol, env, bars);
                 _marketContexts[symbol] = context;
@@ -1319,11 +1402,87 @@ namespace BotCore.Brain
                 // 3. SELECT OPTIMAL STRATEGY using Neural UCB
                 var optimalStrategy = await SelectOptimalStrategyAsync(context, marketRegime, cancellationToken).ConfigureAwait(false);
                 
-                // 4. PREDICT PRICE MOVEMENT using LSTM
+                // 4. PREDICT PRICE MOVEMENT using LSTM + NEWS BIAS
                 var priceDirection = await PredictPriceDirectionAsync(context, bars).ConfigureAwait(false);
                 
-                // 5. OPTIMIZE POSITION SIZE using RL
-                var optimalSize = await OptimizePositionSizeAsync(context, optimalStrategy, priceDirection, cancellationToken).ConfigureAwait(false);
+                // APPLY NEWS BIAS TO PRICE DIRECTION
+                // News bias influences directional probability but doesn't override model completely
+                if (Math.Abs(newsBias) > 0.1m) // Only apply if bias is meaningful (>10%)
+                {
+                    var originalDirection = priceDirection.Direction;
+                    var originalProbability = priceDirection.Probability;
+                    
+                    // Adjust probability based on news sentiment alignment
+                    // If news agrees with model: boost probability
+                    // If news disagrees with model: reduce probability (but don't flip unless extremely strong)
+                    if ((newsBias > 0 && priceDirection.Direction == PriceDirection.Up) ||
+                        (newsBias < 0 && priceDirection.Direction == PriceDirection.Down))
+                    {
+                        // NEWS AGREES WITH MODEL: Boost confidence
+                        var biasStrength = Math.Abs(newsBias); // 0.0 to 1.0
+                        var probabilityBoost = biasStrength * 0.10m; // Up to 10% boost
+                        priceDirection = new PricePrediction
+                        {
+                            Direction = priceDirection.Direction,
+                            Probability = Math.Min(0.95m, priceDirection.Probability + probabilityBoost)
+                        };
+                        
+                        _logger.LogInformation(
+                            "[Brain] 📊 News AGREES with model: {Original} {OrigProb:F2} → {New} {NewProb:F2} (bias: {Bias:F2})",
+                            originalDirection, originalProbability, 
+                            priceDirection.Direction, priceDirection.Probability, 
+                            newsBias);
+                    }
+                    else if ((newsBias > 0 && priceDirection.Direction == PriceDirection.Down) ||
+                             (newsBias < 0 && priceDirection.Direction == PriceDirection.Up))
+                    {
+                        // NEWS DISAGREES WITH MODEL: Reduce confidence or flip if bias extremely strong
+                        var biasStrength = Math.Abs(newsBias); // 0.0 to 1.0
+                        
+                        if (biasStrength > 0.8m && newsContext?.HasBreakingNews == true)
+                        {
+                            // EXTREMELY strong breaking news: Override model (rare case)
+                            priceDirection = new PricePrediction
+                            {
+                                Direction = newsBias > 0 ? PriceDirection.Up : PriceDirection.Down,
+                                Probability = 0.60m // Modest probability when overriding model
+                            };
+                            
+                            _logger.LogWarning(
+                                "[Brain] 🔥 BREAKING NEWS OVERRIDE: {Original} {OrigProb:F2} → {New} {NewProb:F2} (bias: {Bias:F2})",
+                                originalDirection, originalProbability,
+                                priceDirection.Direction, priceDirection.Probability,
+                                newsBias);
+                        }
+                        else
+                        {
+                            // Moderate disagreement: Reduce confidence
+                            var probabilityReduction = biasStrength * 0.15m; // Up to 15% reduction
+                            priceDirection = new PricePrediction
+                            {
+                                Direction = priceDirection.Direction,
+                                Probability = Math.Max(0.50m, priceDirection.Probability - probabilityReduction)
+                            };
+                            
+                            _logger.LogInformation(
+                                "[Brain] ⚠️ News CONFLICTS with model: {Original} {OrigProb:F2} → {New} {NewProb:F2} (bias: {Bias:F2})",
+                                originalDirection, originalProbability,
+                                priceDirection.Direction, priceDirection.Probability,
+                                newsBias);
+                        }
+                    }
+                }
+                
+                // 5. OPTIMIZE POSITION SIZE using RL + NEWS CONFIDENCE MULTIPLIER
+                var basePositionSize = await OptimizePositionSizeAsync(context, optimalStrategy, priceDirection, cancellationToken).ConfigureAwait(false);
+                var optimalSize = basePositionSize * newsConfidenceMultiplier;
+                
+                if (Math.Abs(newsConfidenceMultiplier - 1.0m) > 0.01m)
+                {
+                    _logger.LogInformation(
+                        "[Brain] 💰 Position size adjusted by news: {Base:F2} × {Mult:F2} = {Final:F2}",
+                        basePositionSize, newsConfidenceMultiplier, optimalSize);
+                }
                 
                 // 6. GENERATE ENHANCED CANDIDATES using brain intelligence
                 var enhancedCandidates = await GenerateEnhancedCandidatesAsync(
@@ -1333,7 +1492,7 @@ namespace BotCore.Brain
                 {
                     Symbol = symbol,
                     RecommendedStrategy = optimalStrategy.SelectedStrategy,
-                    StrategyConfidence = optimalStrategy.Confidence,
+                    StrategyConfidence = optimalStrategy.Confidence * newsConfidenceMultiplier, // Apply news multiplier to overall confidence
                     PriceDirection = priceDirection.Direction,
                     PriceProbability = priceDirection.Probability,
                     OptimalPositionMultiplier = optimalSize,

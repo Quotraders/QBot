@@ -26,7 +26,8 @@ public static class AdvancedSystemConfiguration
     /// </summary>
     public static IServiceCollection AddEconomicEventManagement(this IServiceCollection services)
     {
-        services.AddSingleton<IEconomicEventManager, EconomicEventManager>();
+        // Ensure HttpClient is registered
+        services.AddHttpClient<IEconomicEventManager, EconomicEventManager>();
         
         return services;
     }

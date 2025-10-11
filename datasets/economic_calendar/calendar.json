@@ -1,11 +1,425 @@
 [
   {
-    "date": "2025-10-17",
+    "date": "2025-10-15",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Retail Sales",
+    "forecast": "0.3%",
+    "previous": "0.1%"
+  },
+  {
+    "date": "2025-10-16",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "Medium",
+    "event": "Initial Jobless Claims",
+    "forecast": "230K",
+    "previous": "225K"
+  },
+  {
+    "date": "2025-10-23",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "Medium",
+    "event": "Durable Goods Orders",
+    "forecast": "0.5%",
+    "previous": "0.2%"
+  },
+  {
+    "date": "2025-10-30",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "GDP Advance Estimate Q3",
+    "forecast": "2.8%",
+    "previous": "3.0%"
+  },
+  {
+    "date": "2025-10-31",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Core PCE Price Index",
+    "forecast": "0.3%",
+    "previous": "0.2%"
+  },
+  {
+    "date": "2025-11-01",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Non-Farm Payrolls NFP",
+    "forecast": "150K",
+    "previous": "254K"
+  },
+  {
+    "date": "2025-11-01",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Unemployment Rate",
+    "forecast": "4.1%",
+    "previous": "4.1%"
+  },
+  {
+    "date": "2025-11-06",
     "time": "14:00",
     "currency": "USD",
     "impact": "High",
     "event": "FOMC Interest Rate Decision",
+    "forecast": "4.50%",
+    "previous": "4.75%"
+  },
+  {
+    "date": "2025-11-06",
+    "time": "14:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "FOMC Press Conference",
     "forecast": "",
     "previous": ""
+  },
+  {
+    "date": "2025-11-13",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Consumer Price Index CPI",
+    "forecast": "2.4%",
+    "previous": "2.4%"
+  },
+  {
+    "date": "2025-11-13",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Core CPI",
+    "forecast": "3.2%",
+    "previous": "3.3%"
+  },
+  {
+    "date": "2025-11-14",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "Medium",
+    "event": "Producer Price Index PPI",
+    "forecast": "1.8%",
+    "previous": "1.8%"
+  },
+  {
+    "date": "2025-11-20",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "Medium",
+    "event": "Initial Jobless Claims",
+    "forecast": "230K",
+    "previous": "225K"
+  },
+  {
+    "date": "2025-11-26",
+    "time": "10:00",
+    "currency": "USD",
+    "impact": "Medium",
+    "event": "Consumer Confidence",
+    "forecast": "108.5",
+    "previous": "108.7"
+  },
+  {
+    "date": "2025-12-06",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Non-Farm Payrolls NFP",
+    "forecast": "160K",
+    "previous": "150K"
+  },
+  {
+    "date": "2025-12-06",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Unemployment Rate",
+    "forecast": "4.1%",
+    "previous": "4.1%"
+  },
+  {
+    "date": "2025-12-11",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Consumer Price Index CPI",
+    "forecast": "2.5%",
+    "previous": "2.4%"
+  },
+  {
+    "date": "2025-12-11",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Core CPI",
+    "forecast": "3.3%",
+    "previous": "3.2%"
+  },
+  {
+    "date": "2025-12-12",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "Medium",
+    "event": "Producer Price Index PPI",
+    "forecast": "1.9%",
+    "previous": "1.8%"
+  },
+  {
+    "date": "2025-12-15",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "Medium",
+    "event": "Retail Sales",
+    "forecast": "0.4%",
+    "previous": "0.3%"
+  },
+  {
+    "date": "2025-12-18",
+    "time": "14:00",
+    "currency": "USD",
+    "impact": "High",
+    "event": "FOMC Interest Rate Decision",
+    "forecast": "4.25%",
+    "previous": "4.50%"
+  },
+  {
+    "date": "2025-12-18",
+    "time": "14:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "FOMC Press Conference",
+    "forecast": "",
+    "previous": ""
+  },
+  {
+    "date": "2025-12-23",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "Medium",
+    "event": "GDP Final Q3",
+    "forecast": "2.9%",
+    "previous": "2.8%"
+  },
+  {
+    "date": "2026-01-10",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Non-Farm Payrolls NFP",
+    "forecast": "170K",
+    "previous": "160K"
+  },
+  {
+    "date": "2026-01-10",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Unemployment Rate",
+    "forecast": "4.2%",
+    "previous": "4.1%"
+  },
+  {
+    "date": "2026-01-14",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Consumer Price Index CPI",
+    "forecast": "2.6%",
+    "previous": "2.5%"
+  },
+  {
+    "date": "2026-01-14",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Core CPI",
+    "forecast": "3.4%",
+    "previous": "3.3%"
+  },
+  {
+    "date": "2026-01-15",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "Medium",
+    "event": "Retail Sales",
+    "forecast": "0.5%",
+    "previous": "0.4%"
+  },
+  {
+    "date": "2026-01-29",
+    "time": "14:00",
+    "currency": "USD",
+    "impact": "High",
+    "event": "FOMC Interest Rate Decision",
+    "forecast": "4.00%",
+    "previous": "4.25%"
+  },
+  {
+    "date": "2026-01-29",
+    "time": "14:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "FOMC Press Conference",
+    "forecast": "",
+    "previous": ""
+  },
+  {
+    "date": "2026-01-30",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "GDP Advance Q4 2025",
+    "forecast": "2.5%",
+    "previous": "2.9%"
+  },
+  {
+    "date": "2026-01-31",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Core PCE Price Index",
+    "forecast": "0.3%",
+    "previous": "0.3%"
+  },
+  {
+    "date": "2026-02-07",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Non-Farm Payrolls NFP",
+    "forecast": "175K",
+    "previous": "170K"
+  },
+  {
+    "date": "2026-02-07",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Unemployment Rate",
+    "forecast": "4.2%",
+    "previous": "4.2%"
+  },
+  {
+    "date": "2026-02-11",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Consumer Price Index CPI",
+    "forecast": "2.7%",
+    "previous": "2.6%"
+  },
+  {
+    "date": "2026-02-11",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Core CPI",
+    "forecast": "3.5%",
+    "previous": "3.4%"
+  },
+  {
+    "date": "2026-02-13",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "Medium",
+    "event": "Retail Sales",
+    "forecast": "0.4%",
+    "previous": "0.5%"
+  },
+  {
+    "date": "2026-02-27",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "Medium",
+    "event": "GDP Preliminary Q4 2025",
+    "forecast": "2.6%",
+    "previous": "2.5%"
+  },
+  {
+    "date": "2026-03-06",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Non-Farm Payrolls NFP",
+    "forecast": "180K",
+    "previous": "175K"
+  },
+  {
+    "date": "2026-03-06",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Unemployment Rate",
+    "forecast": "4.2%",
+    "previous": "4.2%"
+  },
+  {
+    "date": "2026-03-11",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Consumer Price Index CPI",
+    "forecast": "2.8%",
+    "previous": "2.7%"
+  },
+  {
+    "date": "2026-03-11",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Core CPI",
+    "forecast": "3.5%",
+    "previous": "3.5%"
+  },
+  {
+    "date": "2026-03-13",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "Medium",
+    "event": "Retail Sales",
+    "forecast": "0.5%",
+    "previous": "0.4%"
+  },
+  {
+    "date": "2026-03-18",
+    "time": "14:00",
+    "currency": "USD",
+    "impact": "High",
+    "event": "FOMC Interest Rate Decision",
+    "forecast": "3.75%",
+    "previous": "4.00%"
+  },
+  {
+    "date": "2026-03-18",
+    "time": "14:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "FOMC Press Conference",
+    "forecast": "",
+    "previous": ""
+  },
+  {
+    "date": "2026-03-26",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "GDP Final Q4 2025",
+    "forecast": "2.7%",
+    "previous": "2.6%"
+  },
+  {
+    "date": "2026-03-27",
+    "time": "08:30",
+    "currency": "USD",
+    "impact": "High",
+    "event": "Core PCE Price Index",
+    "forecast": "0.3%",
+    "previous": "0.3%"
   }
 ]

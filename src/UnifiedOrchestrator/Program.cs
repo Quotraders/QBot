@@ -1287,13 +1287,15 @@ Please check the configuration and ensure all required services are registered.
         // Register WorkflowOrchestrationManager (466 lines)
         services.AddSingleton<WorkflowOrchestrationManager>();
         
-        // Register EconomicEventManager with BotAlertService integration (Phase 2 + Phase 3)
+        // Register EconomicEventManager with BotAlertService integration and HttpClient (Phase 2 + Phase 3)
         services.AddSingleton<BotCore.Market.IEconomicEventManager>(provider =>
         {
             var logger = provider.GetRequiredService<ILogger<BotCore.Market.EconomicEventManager>>();
+            var httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
+            var httpClient = httpClientFactory.CreateClient();
             var botAlertService = provider.GetService<BotCore.Services.BotAlertService>();
             
-            return new BotCore.Market.EconomicEventManager(logger, botAlertService);
+            return new BotCore.Market.EconomicEventManager(logger, httpClient, botAlertService);
         });
         
         // Register RedundantDataFeedManager (442 lines)
@@ -1424,10 +1426,13 @@ Please check the configuration and ensure all required services are registered.
                     services.TryAddSingleton<BotCore.Services.ExecutionAnalyzer>();
                     // OrderFillConfirmationSystem already registered above with proper factory
                     // PositionTrackingSystem already registered above
-                    services.TryAddSingleton<BotCore.Services.NewsIntelligenceEngine>();
+                    // NewsIntelligenceEngine REMOVED - replaced by AI-powered NewsMonitorService
                     services.TryAddSingleton<BotCore.Services.ZoneService>();
                     services.TryAddSingleton<BotCore.EnhancedTrainingDataService>();
                     services.TryAddSingleton<TopstepX.Bot.Core.Services.TradingSystemIntegrationService>();
+                    
+                    // Real-time news monitoring with AI sentiment analysis (NewsAPI.org + Ollama LLM)
+                    services.TryAddSingleton<BotCore.Services.INewsMonitorService, BotCore.Services.NewsMonitorService>();
                     
                 }
                 catch (Exception ex)
@@ -2158,6 +2163,45 @@ internal class AdvancedSystemInitializationService : IHostedService
             {
                 _logger.LogInformation("🧠 Initializing Intelligence Orchestrator...");
                 // Intelligence orchestrator initialization handled internally
+            }
+
+            // Initialize Economic Event Manager (ForexFactory calendar)
+            var economicEventManager = _serviceProvider.GetService<BotCore.Market.IEconomicEventManager>();
+            if (economicEventManager != null)
+            {
+                _logger.LogInformation("📅 Initializing Economic Event Manager (ForexFactory calendar)...");
+                try
+                {
+                    await economicEventManager.InitializeAsync().ConfigureAwait(false);
+                    _logger.LogInformation("✅ Economic calendar loaded successfully from ForexFactory");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "⚠️ Economic calendar initialization failed - will retry periodically");
+                }
+            }
+
+            // Initialize News Monitor Service (NewsAPI.org real-time monitoring)
+            var newsMonitor = _serviceProvider.GetService<BotCore.Services.INewsMonitorService>();
+            if (newsMonitor != null)
+            {
+                _logger.LogInformation("📰 Initializing News Monitor Service (NewsAPI.org)...");
+                try
+                {
+                    await newsMonitor.InitializeAsync().ConfigureAwait(false);
+                    if (newsMonitor.IsHealthy)
+                    {
+                        _logger.LogInformation("✅ News monitoring initialized - polling every 5 minutes");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("⚠️ News monitoring disabled (NEWSAPI_KEY not configured)");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "⚠️ News monitoring initialization failed - continuing without real-time news");
+                }
             }
 
             // Run startup health check for bot alert system
