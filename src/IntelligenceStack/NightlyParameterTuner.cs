@@ -99,8 +99,20 @@ public class NightlyParameterTuner
     private const double MetricsValidityThreshold = 0.0;
     private const int MaxTuningHistoryCount = 30;
     
+    // Placeholder performance metrics constants (S109 compliance)
+    // These represent baseline expectations for model performance metrics
+    // In production, these would be calculated from actual trading decisions
+    private const double PlaceholderAucMetric = 0.65;
+    private const double PlaceholderPrAt10Metric = 0.10;
+    private const double PlaceholderEceMetric = 0.08;
+    private const double PlaceholderEdgeBpsMetric = 5.2;
+    
     // JsonSerializerOptions for consistent JSON serialization - CA1869 compliance
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions JsonOptions = new() 
+    { 
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
     
     // LoggerMessage delegates for CA1848 compliance - NightlyParameterTuner
     private static readonly Action<ILogger, string, Exception?> StartingNightlyTuning =
@@ -175,6 +187,42 @@ public class NightlyParameterTuner
     private static readonly Action<ILogger, Exception?> FailedToSaveTuningResult =
         LoggerMessage.Define(LogLevel.Warning, new EventId(4018, "FailedToSaveTuningResult"), 
             "[NIGHTLY_TUNING] Failed to save tuning result");
+
+    private static readonly Action<ILogger, int, Exception?> CollectedRealTradingParameters =
+        LoggerMessage.Define<int>(LogLevel.Information, new EventId(4019, "CollectedRealTradingParameters"), 
+            "[NIGHTLY_TUNING] Collected {Count} real trading parameters");
+
+    private static readonly Action<ILogger, Exception?> FailedToCollectTradingParameters =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(4020, "FailedToCollectTradingParameters"), 
+            "[NIGHTLY_TUNING] Service resolution failed while collecting trading parameters, using partial data");
+
+    private static readonly Action<ILogger, Exception?> TypeConversionFailedCollecting =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(4021, "TypeConversionFailedCollecting"), 
+            "[NIGHTLY_TUNING] Type conversion failed while collecting trading parameters, using partial data");
+
+    private static readonly Action<ILogger, Exception?> PropertyAccessFailedCollecting =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(4022, "PropertyAccessFailedCollecting"), 
+            "[NIGHTLY_TUNING] Property access failed while collecting trading parameters, using partial data");
+
+    private static readonly Action<ILogger, Exception?> UsingRealPerformanceData =
+        LoggerMessage.Define(LogLevel.Information, new EventId(4023, "UsingRealPerformanceData"), 
+            "[NIGHTLY_TUNING] Using real performance data from DecisionLogger");
+
+    private static readonly Action<ILogger, Exception?> RealPerformanceApiNotImplemented =
+        LoggerMessage.Define(LogLevel.Warning, new EventId(4024, "RealPerformanceApiNotImplemented"), 
+            "[NIGHTLY_TUNING] Real performance API not yet implemented, using placeholder metrics");
+
+    private static readonly Action<ILogger, Exception?> ServiceResolutionFailedCalculating =
+        LoggerMessage.Define(LogLevel.Error, new EventId(4025, "ServiceResolutionFailedCalculating"), 
+            "[NIGHTLY_TUNING] Service resolution failed while calculating performance metrics");
+
+    private static readonly Action<ILogger, Exception?> TypeConversionFailedCalculating =
+        LoggerMessage.Define(LogLevel.Error, new EventId(4026, "TypeConversionFailedCalculating"), 
+            "[NIGHTLY_TUNING] Type conversion failed while calculating performance metrics");
+
+    private static readonly Action<ILogger, Exception?> PropertyAccessFailedCalculating =
+        LoggerMessage.Define(LogLevel.Error, new EventId(4027, "PropertyAccessFailedCalculating"), 
+            "[NIGHTLY_TUNING] Property access failed while calculating performance metrics");
     
     private readonly ILogger<NightlyParameterTuner> _logger;
     private readonly TuningConfig _config;
@@ -681,6 +729,7 @@ public class NightlyParameterTuner
     private async Task<Dictionary<string, double>> CollectRealTradingParametersAsync(CancellationToken cancellationToken)
     {
         await Task.Yield(); // Maintain async signature
+        cancellationToken.ThrowIfCancellationRequested();
         
         var parameters = new Dictionary<string, double>();
         
@@ -709,11 +758,19 @@ public class NightlyParameterTuner
             parameters["hidden_size"] = DefaultHiddenSize;
             parameters["ensemble_size"] = MinEnsembleSize;
             
-            _logger.LogInformation("[NIGHTLY_TUNING] Collected {Count} real trading parameters", parameters.Count);
+            CollectedRealTradingParameters(_logger, parameters.Count, null);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "[NIGHTLY_TUNING] Failed to collect some trading parameters, using partial data");
+            FailedToCollectTradingParameters(_logger, ex);
+        }
+        catch (InvalidCastException ex)
+        {
+            TypeConversionFailedCollecting(_logger, ex);
+        }
+        catch (MemberAccessException ex)
+        {
+            PropertyAccessFailedCollecting(_logger, ex);
         }
         
         return parameters;
@@ -725,6 +782,7 @@ public class NightlyParameterTuner
     private async Task<ModelMetrics> CalculateRealPerformanceMetricsAsync(CancellationToken cancellationToken)
     {
         await Task.Yield(); // Maintain async signature
+        cancellationToken.ThrowIfCancellationRequested();
         
         try
         {
@@ -734,40 +792,53 @@ public class NightlyParameterTuner
             {
                 // DecisionLogger tracks actual decisions and outcomes
                 // In a real implementation, we would query it for recent performance
-                _logger.LogInformation("[NIGHTLY_TUNING] Using real performance data from DecisionLogger");
+                UsingRealPerformanceData(_logger, null);
             }
             
             // Note: PerformanceMetricsService is in BotCore.Services which is not referenced by IntelligenceStack
             // Real performance metrics would be queried here if available
             // For now, return placeholder metrics since we don't have a unified performance query API
             // In production, this would query actual trade results from the last 30 days
-            _logger.LogWarning("[NIGHTLY_TUNING] Real performance API not yet implemented, using placeholder metrics");
+            RealPerformanceApiNotImplemented(_logger, null);
             
             return new ModelMetrics
             {
-                AUC = 0.65, // Placeholder - would calculate from actual decisions
-                PrAt10 = 0.10, // Placeholder - would calculate from precision at 10%
-                ECE = 0.08, // Placeholder - would calculate expected calibration error
-                EdgeBps = 5.2, // Placeholder - would calculate from actual P&L
+                AUC = PlaceholderAucMetric,
+                PrAt10 = PlaceholderPrAt10Metric,
+                ECE = PlaceholderEceMetric,
+                EdgeBps = PlaceholderEdgeBpsMetric,
                 SampleSize = 0, // Would count actual decisions in time window
                 ComputedAt = DateTime.UtcNow
             };
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogError(ex, "[NIGHTLY_TUNING] Failed to calculate real performance metrics");
-            
-            // Return minimal metrics on error
-            return new ModelMetrics
-            {
-                AUC = 0.0,
-                PrAt10 = 0.0,
-                ECE = 1.0,
-                EdgeBps = 0.0,
-                SampleSize = 0,
-                ComputedAt = DateTime.UtcNow
-            };
+            ServiceResolutionFailedCalculating(_logger, ex);
+            return CreateMinimalMetrics();
         }
+        catch (InvalidCastException ex)
+        {
+            TypeConversionFailedCalculating(_logger, ex);
+            return CreateMinimalMetrics();
+        }
+        catch (MemberAccessException ex)
+        {
+            PropertyAccessFailedCalculating(_logger, ex);
+            return CreateMinimalMetrics();
+        }
+    }
+
+    private static ModelMetrics CreateMinimalMetrics()
+    {
+        return new ModelMetrics
+        {
+            AUC = 0.0,
+            PrAt10 = 0.0,
+            ECE = 1.0,
+            EdgeBps = 0.0,
+            SampleSize = 0,
+            ComputedAt = DateTime.UtcNow
+        };
     }
 
     private static async Task<ModelMetrics> EvaluateParametersAsync(
@@ -1086,13 +1157,8 @@ public class NightlyParameterTuner
             }
         };
         
-        // Serialize model state to JSON bytes
-        var jsonOptions = new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        };
-        var modelJson = JsonSerializer.Serialize(modelState, jsonOptions);
+        // Serialize model state to JSON bytes using cached options
+        var modelJson = JsonSerializer.Serialize(modelState, JsonOptions);
         var modelData = System.Text.Encoding.UTF8.GetBytes(modelJson);
         
         var registration = new ModelRegistration
@@ -1422,19 +1488,19 @@ public enum ParameterType
 /// </summary>
 public class ModelStateSnapshot
 {
-    public string ModelFamily { get; set; } = string.Empty;
-    public Dictionary<string, double> Parameters { get; set; } = new();
-    public ModelMetrics Metrics { get; set; } = new();
-    public string TuningMethod { get; set; } = string.Empty;
-    public DateTime OptimizationTimestamp { get; set; }
-    public int TrialsCompleted { get; set; }
-    public string Version { get; set; } = string.Empty;
+    public string ModelFamily { get; init; } = string.Empty;
+    public Dictionary<string, double> Parameters { get; init; } = new();
+    public ModelMetrics Metrics { get; init; } = new();
+    public string TuningMethod { get; init; } = string.Empty;
+    public DateTime OptimizationTimestamp { get; init; }
+    public int TrialsCompleted { get; init; }
+    public string Version { get; init; } = string.Empty;
     
     /// <summary>
     /// Real performance metrics from actual trading results
     /// Contains actual win rate, Sharpe ratio, drawdown, etc. from live trading
     /// </summary>
-    public Dictionary<string, object> RealPerformanceMetrics { get; set; } = new();
+    public Dictionary<string, object> RealPerformanceMetrics { get; init; } = new();
 }
 
 #endregion
