@@ -183,6 +183,7 @@ namespace BotCore.Brain
         // Latest market data for risk analysis (updated in MakeIntelligentDecisionAsync)
         private Env? _latestEnv;
         private IList<Bar>? _latestBars;
+        private BotCore.Intelligence.Models.MarketIntelligence? _latestIntelligence;
         
         // ML Models for different decision points
         private object? _lstmPricePredictor;
@@ -1265,6 +1266,7 @@ namespace BotCore.Brain
             Levels levels,
             IList<Bar> bars,
             RiskEngine risk,
+            BotCore.Intelligence.Models.MarketIntelligence? intelligence = null,
             CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(symbol);
@@ -1273,9 +1275,10 @@ namespace BotCore.Brain
             ArgumentNullException.ThrowIfNull(bars);
             ArgumentNullException.ThrowIfNull(risk);
             
-            // Store latest market data for use in risk analysis and commentary
+            // Store latest market data and intelligence for use in risk analysis and commentary
             _latestEnv = env;
             _latestBars = bars;
+            _latestIntelligence = intelligence;
             
             var startTime = DateTime.UtcNow;
             LastDecision = startTime;
@@ -1488,14 +1491,66 @@ namespace BotCore.Brain
                 var enhancedCandidates = await GenerateEnhancedCandidatesAsync(
                     symbol, env, levels, bars, risk, optimalStrategy, priceDirection, optimalSize).ConfigureAwait(false);
                 
+                // Apply intelligence-based adjustments if available
+                var adjustedConfidence = optimalStrategy.Confidence * newsConfidenceMultiplier;
+                var adjustedSize = optimalSize;
+                
+                if (_latestIntelligence != null)
+                {
+                    // Adjust based on recommended bias
+                    if (_latestIntelligence.RecommendedBias == BotCore.Intelligence.Models.MarketBias.Bearish &&
+                        priceDirection.Direction == PriceDirection.Up)
+                    {
+                        // LLM says bearish but model says long - reduce size and increase confidence threshold
+                        adjustedSize *= 0.7m;
+                        adjustedConfidence *= 0.85m;
+                        _logger.LogInformation("[Brain] 🤖 Intelligence adjustment: Bearish bias vs Long signal - reducing size to {Size:F2} and confidence to {Conf:P1}",
+                            adjustedSize, adjustedConfidence);
+                    }
+                    else if (_latestIntelligence.RecommendedBias == BotCore.Intelligence.Models.MarketBias.Bullish &&
+                             priceDirection.Direction == PriceDirection.Down)
+                    {
+                        // LLM says bullish but model says short - reduce size and increase confidence threshold
+                        adjustedSize *= 0.7m;
+                        adjustedConfidence *= 0.85m;
+                        _logger.LogInformation("[Brain] 🤖 Intelligence adjustment: Bullish bias vs Short signal - reducing size to {Size:F2} and confidence to {Conf:P1}",
+                            adjustedSize, adjustedConfidence);
+                    }
+                    
+                    // Check for high-impact events and reduce exposure
+                    if (_latestIntelligence.EventRisks.Count > 0)
+                    {
+                        var hasHighImpactEvent = _latestIntelligence.EventRisks.Any(e => 
+                            e.Contains("CPI", StringComparison.OrdinalIgnoreCase) || 
+                            e.Contains("FOMC", StringComparison.OrdinalIgnoreCase) ||
+                            e.Contains("NFP", StringComparison.OrdinalIgnoreCase));
+                        
+                        if (hasHighImpactEvent)
+                        {
+                            adjustedSize *= 0.5m;
+                            _logger.LogWarning("[Brain] ⚠️ High-impact event detected - reducing position size by 50% to {Size:F2}",
+                                adjustedSize);
+                        }
+                    }
+                    
+                    // Check for elevated risk factors
+                    if (_latestIntelligence.RiskFactors.Count > 2)
+                    {
+                        // Multiple risk factors - be more conservative
+                        adjustedSize *= 0.75m;
+                        _logger.LogInformation("[Brain] 🤖 Multiple risk factors ({Count}) detected - reducing size to {Size:F2}",
+                            _latestIntelligence.RiskFactors.Count, adjustedSize);
+                    }
+                }
+                
                 var decision = new BrainDecision
                 {
                     Symbol = symbol,
                     RecommendedStrategy = optimalStrategy.SelectedStrategy,
-                    StrategyConfidence = optimalStrategy.Confidence * newsConfidenceMultiplier, // Apply news multiplier to overall confidence
+                    StrategyConfidence = adjustedConfidence,
                     PriceDirection = priceDirection.Direction,
                     PriceProbability = priceDirection.Probability,
-                    OptimalPositionMultiplier = optimalSize,
+                    OptimalPositionMultiplier = adjustedSize,
                     MarketRegime = marketRegime,
                     EnhancedCandidates = enhancedCandidates,
                     DecisionTime = startTime,

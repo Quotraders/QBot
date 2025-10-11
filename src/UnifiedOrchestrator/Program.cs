@@ -968,6 +968,19 @@ Please check the configuration and ensure all required services are registered.
             Console.WriteLine("🔇 [OLLAMA] Bot voice disabled - will operate silently");
         }
         
+        // Register Intelligence Services - LLM-powered market intelligence
+        var intelligenceEnabled = configuration["INTELLIGENCE_SYNTHESIS_ENABLED"]?.Equals("true", StringComparison.OrdinalIgnoreCase) ?? true;
+        if (intelligenceEnabled && ollamaEnabled)
+        {
+            services.AddSingleton<BotCore.Intelligence.MarketDataReader>();
+            services.AddSingleton<BotCore.Intelligence.IntelligenceSynthesizerService>();
+            Console.WriteLine("🧠 [INTELLIGENCE] LLM intelligence synthesis enabled - market data integration active");
+        }
+        else
+        {
+            Console.WriteLine("🔇 [INTELLIGENCE] Intelligence synthesis disabled");
+        }
+        
         // Register AI Commentary Services - Enhanced self-awareness features
         services.AddSingleton<BotCore.Services.ParameterChangeTracker>();
         services.AddSingleton<BotCore.Services.MarketSnapshotStore>();
