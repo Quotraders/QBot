@@ -1,0 +1,20 @@
+[
+  {
+    "title": "FOMC Meeting Minutes",
+    "date": "2025-10-15T14:00:00Z",
+    "impact": "high",
+    "currency": "USD"
+  },
+  {
+    "title": "CPI Report",
+    "date": "2025-10-17T08:30:00Z",
+    "impact": "high",
+    "currency": "USD"
+  },
+  {
+    "title": "Retail Sales",
+    "date": "2025-10-18T08:30:00Z",
+    "impact": "medium",
+    "currency": "USD"
+  }
+]
