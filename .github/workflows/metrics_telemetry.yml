@@ -40,6 +40,8 @@ jobs:
           pip install requests pandas pyarrow
 
       - name: "📊 Aggregate Workflow Metrics"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "📊 Aggregating workflow metrics..."
           python << 'EOF'
@@ -50,10 +52,16 @@ jobs:
           
           print("[METRICS-TELEMETRY] 📊 Aggregating Workflow Metrics")
           
-          # GitHub API to get workflow runs (simulated for demo)
-          # In production, this would use actual GitHub API calls
+          # GitHub API to get real workflow runs
+          GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN', '')
+          REPO_OWNER = 'c-trading-bo'
+          REPO_NAME = 'trading-bot-c-'
           
-          # Simulate workflow metrics
+          headers = {
+              'Authorization': f'token {GITHUB_TOKEN}',
+              'Accept': 'application/vnd.github.v3+json'
+          } if GITHUB_TOKEN else {}
+          
           workflows = [
               'data_feature_build.yml',
               'news_macro.yml', 
@@ -66,61 +74,76 @@ jobs:
               'build_ci.yml'
           ]
           
-          # Simulate metrics for each workflow
           workflow_metrics = {}
           total_runtime_minutes = 0
           
           for workflow in workflows:
-              # Simulate workflow run data
-              if 'data_feature_build' in workflow:
-                  runtime = 2.5
-                  success_rate = 0.98
-                  runs_per_day = 96  # Every 15 minutes
-              elif 'news_macro' in workflow:
-                  runtime = 2.8
-                  success_rate = 0.95
-                  runs_per_day = 6   # 6 times daily
-              elif 'train_models' in workflow:
-                  runtime = 280
-                  success_rate = 0.92
-                  runs_per_day = 3.4  # 3 times weekdays + Saturday
-              elif 'promote_manifest' in workflow:
-                  runtime = 3.2
-                  success_rate = 0.97
-                  runs_per_day = 3.4  # After each training
-              elif 'backtest_sweep' in workflow:
-                  runtime = 340
-                  success_rate = 0.88
-                  runs_per_day = 1   # Daily
-              elif 'regime_refresh' in workflow:
-                  runtime = 6.5
-                  success_rate = 0.99
-                  runs_per_day = 4   # Every 6 hours
-              elif 'metrics_telemetry' in workflow:
-                  runtime = 0.8
-                  success_rate = 0.99
-                  runs_per_day = 24  # Hourly
-              elif 'qa_tests' in workflow:
-                  runtime = 10
-                  success_rate = 0.94
-                  runs_per_day = 1   # Daily
-              elif 'build_ci' in workflow:
-                  runtime = 5
-                  success_rate = 0.96
-                  runs_per_day = 2   # Varies with PRs
-              
-              daily_runtime = runtime * runs_per_day
-              total_runtime_minutes += daily_runtime
-              
-              workflow_metrics[workflow] = {
-                  'avg_runtime_minutes': runtime,
-                  'success_rate': success_rate,
-                  'runs_per_day': runs_per_day,
-                  'daily_runtime_minutes': daily_runtime,
-                  'monthly_runtime_minutes': daily_runtime * 30,
-                  'last_run_status': 'success' if success_rate > 0.9 else 'failure',
-                  'efficiency_score': success_rate * (1 - runtime / 360)  # Penalize long runtimes
-              }
+              try:
+                  # Get real workflow runs from GitHub API
+                  url = f'https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/actions/workflows/{workflow}/runs'
+                  params = {'per_page': 30, 'status': 'completed'}
+                  
+                  response = requests.get(url, headers=headers, params=params, timeout=10)
+                  
+                  if response.status_code == 200:
+                      runs_data = response.json()
+                      runs = runs_data.get('workflow_runs', [])
+                      
+                      if runs:
+                          # Calculate real metrics from actual runs
+                          total_runs = len(runs)
+                          successful_runs = sum(1 for r in runs if r['conclusion'] == 'success')
+                          success_rate = successful_runs / total_runs if total_runs > 0 else 0
+                          
+                          # Calculate average runtime (convert from milliseconds to minutes)
+                          runtimes = []
+                          for r in runs:
+                              if r.get('run_started_at') and r.get('updated_at'):
+                                  try:
+                                      start = datetime.fromisoformat(r['run_started_at'].replace('Z', '+00:00'))
+                                      end = datetime.fromisoformat(r['updated_at'].replace('Z', '+00:00'))
+                                      runtime_seconds = (end - start).total_seconds()
+                                      runtimes.append(runtime_seconds / 60)
+                                  except:
+                                      pass
+                          
+                          avg_runtime = sum(runtimes) / len(runtimes) if runtimes else 0
+                          
+                          # Estimate runs per day from recent history
+                          if len(runs) > 1:
+                              first_run = datetime.fromisoformat(runs[-1]['created_at'].replace('Z', '+00:00'))
+                              last_run = datetime.fromisoformat(runs[0]['created_at'].replace('Z', '+00:00'))
+                              days_span = max((last_run - first_run).total_seconds() / 86400, 1)
+                              runs_per_day = total_runs / days_span
+                          else:
+                              runs_per_day = 1
+                          
+                          daily_runtime = avg_runtime * runs_per_day
+                          total_runtime_minutes += daily_runtime
+                          
+                          workflow_metrics[workflow] = {
+                              'avg_runtime_minutes': round(avg_runtime, 2),
+                              'success_rate': round(success_rate, 4),
+                              'runs_per_day': round(runs_per_day, 1),
+                              'daily_runtime_minutes': round(daily_runtime, 2),
+                              'monthly_runtime_minutes': round(daily_runtime * 30, 2),
+                              'total_runs': total_runs,
+                              'successful_runs': successful_runs,
+                              'last_run': runs[0].get('updated_at', 'N/A'),
+                              'last_run_status': 'success' if success_rate > 0.9 else 'needs_attention',
+                              'efficiency_score': success_rate * (1 - min(avg_runtime / 360, 1))
+                          }
+                          
+                          print(f"[METRICS] {workflow}: {success_rate:.1%} success, {avg_runtime:.1f}m avg, {runs_per_day:.1f} runs/day")
+                      else:
+                          print(f"[METRICS] ⚠️ No runs found for {workflow}")
+                          workflow_metrics[workflow] = {'error': 'No runs found'}
+                  else:
+                      print(f"[METRICS] ⚠️ HTTP {response.status_code} for {workflow}")
+                      workflow_metrics[workflow] = {'error': f'HTTP {response.status_code}'}
+              except Exception as e:
+                  print(f"[METRICS] ❌ Error fetching {workflow}: {e}")
+                  workflow_metrics[workflow] = {'error': str(e)}
           
           # Calculate resource utilization
           monthly_limit = 50000  # GitHub Actions limit

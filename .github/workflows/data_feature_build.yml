@@ -139,33 +139,75 @@ jobs:
           EOF
 
       - name: "🏦 Collect Federal Reserve Balance Sheet Data"
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: |
           echo "🏦 Collecting Federal Reserve balance sheet data..."
           python << 'EOF'
           import pandas as pd
+          import requests
           import json
           import os
           from datetime import datetime
           
           print("[FED-DATA] 🏦 Federal Reserve Balance Sheet Collection")
           
-          # Note: In production, this would use FRED API with proper authentication
-          # For now, we'll create a structure for the data
-          fed_data = {
-              'timestamp': datetime.utcnow().isoformat(),
-              'total_assets': 'would_fetch_from_fred_api',
-              'securities_held': 'would_fetch_from_fred_api',
-              'reserve_balances': 'would_fetch_from_fred_api',
-              'note': 'Requires FRED API key for production implementation',
-              'data_source': 'FRED API (Federal Reserve Economic Data)',
-              'update_frequency': 'weekly'
-          }
+          # FRED API for Federal Reserve balance sheet data
+          FRED_API_KEY = os.environ.get('FRED_API_KEY', '')
+          fed_data = {'timestamp': datetime.utcnow().isoformat()}
+          
+          if FRED_API_KEY:
+              fred_series = {
+                  'total_assets': 'WALCL',      # Total Assets (All Federal Reserve Banks)
+                  'securities_held': 'WSHOSHO',  # Securities Held Outright
+                  'reserve_balances': 'WRESBAL'  # Reserve Balances with Federal Reserve Banks
+              }
+              
+              for key, series_id in fred_series.items():
+                  try:
+                      url = f'https://api.stlouisfed.org/fred/series/observations'
+                      params = {
+                          'series_id': series_id,
+                          'api_key': FRED_API_KEY,
+                          'file_type': 'json',
+                          'sort_order': 'desc',
+                          'limit': 1
+                      }
+                      response = requests.get(url, params=params, timeout=10)
+                      if response.status_code == 200:
+                          data = response.json()
+                          if 'observations' in data and len(data['observations']) > 0:
+                              value = data['observations'][0]['value']
+                              date = data['observations'][0]['date']
+                              fed_data[key] = float(value) if value != '.' else None
+                              fed_data[f'{key}_date'] = date
+                              print(f"[FED-DATA] {key}: ${value}M (as of {date})")
+                      else:
+                          print(f"[FED-DATA] ⚠️ Error fetching {key}: HTTP {response.status_code}")
+                          fed_data[key] = None
+                  except Exception as e:
+                      print(f"[FED-DATA] ❌ Error fetching {key}: {e}")
+                      fed_data[key] = None
+              
+              fed_data['data_source'] = 'FRED API (Federal Reserve Economic Data)'
+              fed_data['update_frequency'] = 'weekly'
+              print("[FED-DATA] ✅ Real Federal Reserve data fetched successfully")
+          else:
+              fed_data = {
+                  'total_assets': None,
+                  'securities_held': None,
+                  'reserve_balances': None,
+                  'note': 'FRED_API_KEY not configured',
+                  'data_source': 'FRED API (not configured)',
+                  'update_frequency': 'weekly'
+              }
+              print("[FED-DATA] ⚠️ FRED_API_KEY not set - using placeholder")
           
           # Save as DataFrame for parquet storage
           df = pd.DataFrame([fed_data])
           df.to_parquet('datasets/features/fed_balance_sheet.parquet', index=False)
           
-          print("[FED-DATA] ✅ Federal Reserve data structure created")
+          print(f"[FED-DATA] 💾 Saved to datasets/features/fed_balance_sheet.parquet")
           
           EOF
 
