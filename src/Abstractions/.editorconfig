@@ -1,3 +1,0 @@
-# Disable analyzer warnings for Abstractions (interface definitions only)
-[*.cs]
-dotnet_analyzer_diagnostic.severity = none
