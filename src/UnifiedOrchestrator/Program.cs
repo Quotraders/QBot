@@ -541,7 +541,20 @@ Please check the configuration and ensure all required services are registered.
         });
         
         // Register Enhanced Trading Brain Integration BEFORE UnifiedDecisionRouter (dependency order)
-        services.AddSingleton<BotCore.Services.EnhancedTradingBrainIntegration>();
+        // NOTE: Intelligence services are registered later, so we need to resolve them explicitly
+        services.AddSingleton<BotCore.Services.EnhancedTradingBrainIntegration>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<BotCore.Services.EnhancedTradingBrainIntegration>>();
+            var tradingBrain = provider.GetRequiredService<BotCore.Brain.UnifiedTradingBrain>();
+            var ensembleService = provider.GetRequiredService<BotCore.ML.ModelEnsembleService>();
+            var feedbackService = provider.GetRequiredService<BotCore.Services.TradingFeedbackService>();
+            var cloudSync = provider.GetRequiredService<BotCore.Services.CloudModelSynchronizationService>();
+            var serviceProvider = provider;
+            var intelligenceService = provider.GetService<BotCore.Intelligence.IntelligenceSynthesizerService>();
+            
+            return new BotCore.Services.EnhancedTradingBrainIntegration(
+                logger, tradingBrain, ensembleService, feedbackService, cloudSync, serviceProvider, intelligenceService);
+        });
         
         // Register UnifiedDecisionRouter before AutonomousDecisionEngine (dependency order)
         services.AddSingleton<BotCore.Services.UnifiedDecisionRouter>();
