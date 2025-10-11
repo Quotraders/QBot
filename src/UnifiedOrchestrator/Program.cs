@@ -541,7 +541,20 @@ Please check the configuration and ensure all required services are registered.
         });
         
         // Register Enhanced Trading Brain Integration BEFORE UnifiedDecisionRouter (dependency order)
-        services.AddSingleton<BotCore.Services.EnhancedTradingBrainIntegration>();
+        // NOTE: Intelligence services are registered later, so we need to resolve them explicitly
+        services.AddSingleton<BotCore.Services.EnhancedTradingBrainIntegration>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<BotCore.Services.EnhancedTradingBrainIntegration>>();
+            var tradingBrain = provider.GetRequiredService<BotCore.Brain.UnifiedTradingBrain>();
+            var ensembleService = provider.GetRequiredService<BotCore.ML.ModelEnsembleService>();
+            var feedbackService = provider.GetRequiredService<BotCore.Services.TradingFeedbackService>();
+            var cloudSync = provider.GetRequiredService<BotCore.Services.CloudModelSynchronizationService>();
+            var serviceProvider = provider;
+            var intelligenceService = provider.GetService<BotCore.Intelligence.IntelligenceSynthesizerService>();
+            
+            return new BotCore.Services.EnhancedTradingBrainIntegration(
+                logger, tradingBrain, ensembleService, feedbackService, cloudSync, serviceProvider, intelligenceService);
+        });
         
         // Register UnifiedDecisionRouter before AutonomousDecisionEngine (dependency order)
         services.AddSingleton<BotCore.Services.UnifiedDecisionRouter>();
@@ -966,6 +979,19 @@ Please check the configuration and ensure all required services are registered.
         else
         {
             Console.WriteLine("🔇 [OLLAMA] Bot voice disabled - will operate silently");
+        }
+        
+        // Register Intelligence Services - LLM-powered market intelligence
+        var intelligenceEnabled = configuration["INTELLIGENCE_SYNTHESIS_ENABLED"]?.Equals("true", StringComparison.OrdinalIgnoreCase) ?? true;
+        if (intelligenceEnabled && ollamaEnabled)
+        {
+            services.AddSingleton<BotCore.Intelligence.MarketDataReader>();
+            services.AddSingleton<BotCore.Intelligence.IntelligenceSynthesizerService>();
+            Console.WriteLine("🧠 [INTELLIGENCE] LLM intelligence synthesis enabled - market data integration active");
+        }
+        else
+        {
+            Console.WriteLine("🔇 [INTELLIGENCE] Intelligence synthesis disabled");
         }
         
         // Register AI Commentary Services - Enhanced self-awareness features
