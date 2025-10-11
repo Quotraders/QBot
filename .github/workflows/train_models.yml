@@ -54,7 +54,7 @@ jobs:
           pip install onnx onnxruntime skl2onnx
           pip install bayesian-optimization optuna
           pip install joblib dill
-          pip install yfinance pandas_ta
+          pip install yfinance pandas-ta
 
       - name: "📊 Prepare Training Data"
         run: |
