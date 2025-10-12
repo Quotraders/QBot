@@ -160,7 +160,7 @@ internal class TrainingBrain : ITrainingBrain
             // Validate artifact
             if (!await artifactBuilder.ValidateArtifactAsync(finalArtifactPath, cancellationToken).ConfigureAwait(false))
             {
-                throw new InvalidOperationException($"Artifact validation failed for {finalArtifactPath}").ConfigureAwait(false);
+                throw new InvalidOperationException($"Artifact validation failed for {finalArtifactPath}");
             }
 
             // Get artifact metadata

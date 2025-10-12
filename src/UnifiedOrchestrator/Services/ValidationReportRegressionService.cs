@@ -67,7 +67,7 @@ internal class ValidationReportRegressionService
 
     private async Task TestPromotionTestReportCreationAsync(RegressionTestReport report)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         var testCase = new RegressionTestCase
         {
@@ -118,7 +118,7 @@ internal class ValidationReportRegressionService
 
     private async Task TestDownstreamAnalyticsAsync(RegressionTestReport report)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         var testCase = new RegressionTestCase
         {
@@ -169,7 +169,7 @@ internal class ValidationReportRegressionService
 
     private async Task TestReportingPipelineAsync(RegressionTestReport report)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         var testCase = new RegressionTestCase
         {
@@ -210,7 +210,7 @@ internal class ValidationReportRegressionService
 
     private async Task TestBackwardCompatibilityAsync(RegressionTestReport report)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         var testCase = new RegressionTestCase
         {

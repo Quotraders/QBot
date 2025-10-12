@@ -100,7 +100,7 @@ internal class SystemHealthMonitoringService : IHostedService
                 connections = await CheckConnectionHealth().ConfigureAwait(false),
                 memory = await CheckMemoryHealth().ConfigureAwait(false),
                 threadPool = await GetThreadPoolStatus().ConfigureAwait(false)
-            }.ConfigureAwait(false);
+            };
 
             await _tradingLogger.LogSystemAsync(TradingLogLevel.DEBUG, "HealthMonitor", 
                 "Health check completed", healthData).ConfigureAwait(false);
@@ -159,7 +159,7 @@ internal class SystemHealthMonitoringService : IHostedService
             tokenProvider = tokenProvider?.IsTokenValid ?? false,
             topstepXAdapter = CheckTopstepXAdapterHealth(),
             authenticationService = await CheckAuthenticationHealthAsync().ConfigureAwait(false)
-        }.ConfigureAwait(false);
+        };
 
         return serviceChecks;
     }
@@ -200,7 +200,7 @@ internal class SystemHealthMonitoringService : IHostedService
             userHub = await CheckHubConnection("User").ConfigureAwait(false),
             marketHub = await CheckHubConnection("Market").ConfigureAwait(false),
             httpClient = await CheckHttpClientHealth().ConfigureAwait(false)
-        }.ConfigureAwait(false);
+        };
 
         return connectionHealth;
     }

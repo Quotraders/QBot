@@ -320,7 +320,7 @@ internal class ProductionReadinessValidationService : IProductionReadinessValida
     /// </summary>
     private async Task<AcceptanceCriteriaResult> VerifyAcceptanceCriteriaAsync()
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         var result = new AcceptanceCriteriaResult
         {
@@ -454,7 +454,7 @@ internal class ProductionReadinessValidationService : IProductionReadinessValida
         await Task.CompletedTask.ConfigureAwait(false); // Add await for async compliance
         
         // Safe windows: market open, low volatility periods, when positions are flat
-        var isMarketOpen = _marketHours.IsMarketOpen(time, "ES").ConfigureAwait(false);
+        var isMarketOpen = _marketHours.IsMarketOpen(time, "ES");
         var isLowVolatilityPeriod = time.Hour is >= 11 and <= 13; // Lunch period
         var arePositionsFlat = true; // Would check actual positions in production
         

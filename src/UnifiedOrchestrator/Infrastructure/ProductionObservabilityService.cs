@@ -312,7 +312,7 @@ internal class TopstepXAdapterMonitor
     // Legacy methods removed - now handled by TopstepX SDK adapter
     private async Task<int> GetPositionCountAsync()
     {
-        await Task.Yield().ConfigureAwait(false);
+        await Task.Yield();
         return 0; // Legacy method - position tracking now via TopstepX SDK adapter
     }
 
@@ -321,7 +321,7 @@ internal class TopstepXAdapterMonitor
     /// </summary>
     private async Task<int> GetActiveOrderCountAsync()
     {
-        await Task.Yield().ConfigureAwait(false);
+        await Task.Yield();
         return 0; // Legacy method - order tracking now via TopstepX SDK adapter
     }
 
@@ -418,7 +418,7 @@ internal class HealthMonitor
         try
         {
             // Ensure async execution
-            await Task.Yield().ConfigureAwait(false);
+            await Task.Yield();
             
             // Check memory usage
             var memoryUsage = GC.GetTotalMemory(false);
@@ -493,7 +493,7 @@ internal class PerformanceCounter
 
     public async Task<ProductionPerformanceMetrics> GetMetricsAsync()
     {
-        await Task.Yield().ConfigureAwait(false);
+        await Task.Yield();
 
         var metrics = new ProductionPerformanceMetrics();
 

@@ -26,7 +26,7 @@ internal class HealthMonitorAdapter : Trading.Safety.IHealthMonitor
     public async Task StartMonitoringAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("🔍 Starting health monitoring");
-        await Task.Yield().ConfigureAwait(false);
+        await Task.Yield();
 
         // Start background monitoring
         _ = Task.Run(async () =>

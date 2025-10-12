@@ -231,7 +231,7 @@ internal class FuturesMarketHours : IMarketHoursService
         // Check if we're already in a safe window
         if (await IsInSafePromotionWindowAsync(cancellationToken).ConfigureAwait(false))
         {
-            return etNow.ConfigureAwait(false); // Already in safe window
+            return etNow; // Already in safe window
         }
 
         // Try to find next safe window today
@@ -602,7 +602,7 @@ internal class FuturesMarketHours : IMarketHoursService
         // If currently in background window, return now
         if (await IsInBackgroundTrainingWindowAsync(cancellationToken).ConfigureAwait(false))
         {
-            return ConvertFromEasternTime(etNow).ConfigureAwait(false);
+            return ConvertFromEasternTime(etNow);
         }
 
         // Check if background window is later today

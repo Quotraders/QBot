@@ -49,7 +49,7 @@ internal class ProductionValidationService : IValidationService
         TimeSpan testPeriod, 
         CancellationToken cancellationToken = default)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         _logger.LogInformation(

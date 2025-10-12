@@ -746,7 +746,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         HistoricalDataPoint dataPoint
         )
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         var previousPosition = state.Position;
         var positionChange = decision.Size - previousPosition;
@@ -837,7 +837,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         HistoricalReplayContext context
         )
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         var totalPnL = state.RealizedPnL + state.UnrealizedPnL;
         var totalReturn = state.StartingCapital > 0 ? totalPnL / state.StartingCapital : 0;
@@ -980,7 +980,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
 
     private async Task AnalyzeBacktestResultsAsync(BacktestResult[] results, CancellationToken cancellationToken)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         if (!results.Any())
         {
@@ -1045,7 +1045,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
     /// </summary>
     private async Task<Dictionary<string, object>> AnalyzeSuccessfulPatternsAsync(BacktestResult result)
     {
-        await Task.Yield().ConfigureAwait(false);
+        await Task.Yield();
         
         var patterns = new Dictionary<string, object>
         {
@@ -1083,7 +1083,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
     /// </summary>
     private async Task<Dictionary<string, object>> AnalyzeFailurePatternsAsync(BacktestResult[] failedResults)
     {
-        await Task.Yield().ConfigureAwait(false);
+        await Task.Yield();
         
         var patterns = new Dictionary<string, object>();
         
@@ -1267,7 +1267,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
     /// </summary>
     private async Task<List<Bar>> LoadHistoricalBarsAsync(UnifiedBacktestConfig config, CancellationToken cancellationToken)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         try
         {
@@ -1478,7 +1478,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         UnifiedBacktestState state
         )
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior for proper execution simulation
+        await Task.Yield(); // Ensure async behavior for proper execution simulation
         
         // Real-time execution simulation with market microstructure
         var marketImpact = CalculateMarketImpact(decision, state);
@@ -1585,7 +1585,7 @@ Based on this, what should I change about my own code or parameters to improve? 
     /// </summary>
     private async Task FeedResultsToUnifiedBrainAsync(UnifiedBacktestResult[] results, CancellationToken cancellationToken)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         _logger.LogInformation("[UNIFIED-BACKTEST] Feeding {Count} backtest results to UnifiedTradingBrain for learning", results.Length);
         

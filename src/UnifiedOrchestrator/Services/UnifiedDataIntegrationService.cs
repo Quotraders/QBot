@@ -320,7 +320,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     /// </summary>
     private async Task VerifyUnifiedPipelineAsync()
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         _logger.LogInformation("[DATA-INTEGRATION] Verifying unified data pipeline");
         
@@ -376,7 +376,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     /// </summary>
     private async Task ProcessHistoricalDataForTrainingAsync()
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         // Simulate processing historical data
         _lastHistoricalDataSync = DateTime.UtcNow;
@@ -396,7 +396,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     /// </summary>
     private async Task ProcessLiveDataForInferenceAsync()
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         // Simulate processing live data
         _lastLiveDataReceived = DateTime.UtcNow;
@@ -416,7 +416,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     /// </summary>
     private async Task EnsureDataFlowToBrainsAsync()
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         _dataFlowEvents.Add(new DataFlowEvent
         {
@@ -458,7 +458,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     /// </summary>
     public async Task<bool> ValidateDataConsistencyAsync(CancellationToken cancellationToken = default)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         _logger.LogInformation("[UNIFIED-DATA] Validating data consistency between historical and live pipelines");
         
@@ -520,7 +520,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     /// </summary>
     public async Task<bool> CheckHistoricalDataAsync(CancellationToken cancellationToken = default)
     {
-        await Task.Yield().ConfigureAwait(false); 
+        await Task.Yield(); 
         return _isHistoricalDataConnected;
     }
     
@@ -529,7 +529,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     /// </summary>
     public async Task<bool> CheckLiveDataAsync(CancellationToken cancellationToken = default)
     {
-        await Task.Yield().ConfigureAwait(false);
+        await Task.Yield();
         return _isLiveDataConnected;
     }
     
@@ -538,7 +538,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     /// </summary>
     public async Task<object> GetDataIntegrationStatusAsync(CancellationToken cancellationToken = default)
     {
-        await Task.Yield().ConfigureAwait(false);
+        await Task.Yield();
         return new 
         {
             IsHistoricalDataConnected = _isHistoricalDataConnected,
@@ -556,7 +556,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     /// </summary>
     public async Task<HistoricalDataStatus> GetHistoricalDataStatusAsync(CancellationToken cancellationToken = default)
     {
-        await Task.Yield().ConfigureAwait(false);
+        await Task.Yield();
         return new HistoricalDataStatus
         {
             IsConnected = _isHistoricalDataConnected,
@@ -572,7 +572,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     /// </summary>
     public async Task<LiveDataStatus> GetLiveDataStatusAsync(CancellationToken cancellationToken = default)
     {
-        await Task.Yield().ConfigureAwait(false);
+        await Task.Yield();
         var liveEvents = _dataFlowEvents.Where(e => e.Source.Contains("Live") || e.Source.Contains("TopStep")).ToList();
         var messagesPerSecond = 0.0;
         
@@ -601,7 +601,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     /// </summary>
     private async Task ProcessHistoricalDataBatch()
     {
-        await Task.Yield().ConfigureAwait(false);
+        await Task.Yield();
         
         _logger.LogDebug("[DATA-INTEGRATION] Processing historical data batch for training");
         
@@ -621,7 +621,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     /// </summary>
     private async Task FeedHistoricalDataToBrain(CancellationToken cancellationToken)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         try
         {
@@ -707,7 +707,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     /// </summary>
     private async Task FeedLiveDataToBrain(CancellationToken cancellationToken)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         try
         {
@@ -748,7 +748,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     /// </summary>
     private async Task MonitorDataFlow()
     {
-        await Task.Yield().ConfigureAwait(false);
+        await Task.Yield();
         
         var recentEvents = _dataFlowEvents.Where(e => e.Timestamp > DateTime.UtcNow.AddMinutes(-5)).ToList();
         var successRate = recentEvents.Count > 0 ? recentEvents.Count(e => e.Success) / (double)recentEvents.Count : 1.0;
@@ -767,7 +767,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     /// </summary>
     private async Task<List<MarketDataPoint>> LoadRecentHistoricalDataAsync()
     {
-        await Task.Yield().ConfigureAwait(false);
+        await Task.Yield();
         
         try
         {
@@ -804,7 +804,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     /// </summary>
     private async Task<LiveDataPoint?> GetLatestLiveDataAsync()
     {
-        await Task.Yield().ConfigureAwait(false);
+        await Task.Yield();
         
         try
         {

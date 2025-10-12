@@ -312,7 +312,7 @@ internal class TradingBrainAdapter : ITradingBrainAdapter
     /// </summary>
     private async Task TrackUnifiedDecisionComparisonAsync(UnifiedTradingDecision championDecision, UnifiedTradingDecision challengerDecision, TradingContext context)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         var comparison = new UnifiedDecisionComparison
         {
@@ -353,7 +353,7 @@ internal class TradingBrainAdapter : ITradingBrainAdapter
     /// </summary>
     private async Task TrackDecisionComparisonAsync(AbstractionsTradingDecision championDecision, AbstractionsTradingDecision challengerDecision, TradingContext context)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         var comparison = new DecisionComparison
         {
@@ -400,7 +400,7 @@ internal class TradingBrainAdapter : ITradingBrainAdapter
     /// </summary>
     private async Task CheckPromotionOpportunityAsync()
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         try
         {
@@ -439,7 +439,7 @@ internal class TradingBrainAdapter : ITradingBrainAdapter
     /// </summary>
     public async Task<bool> PromoteToChallengerAsync(CancellationToken cancellationToken = default)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         try
         {
@@ -463,7 +463,7 @@ internal class TradingBrainAdapter : ITradingBrainAdapter
     /// </summary>
     public async Task<bool> RollbackToChampionAsync(CancellationToken cancellationToken = default)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         try
         {
