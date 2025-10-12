@@ -98,7 +98,7 @@ internal class ShadowTestStatus
     public decimal Progress { get; set; } // 0.0 to 1.0
     public int TradesRecorded { get; set; }
     public int SessionsRecorded { get; set; }
-    public Dictionary<string, object> IntermediateResults { get; } = new();
+    public Dictionary<string, object> IntermediateResults { get; set; } = new();
 }
 
 /// <summary>
@@ -113,7 +113,7 @@ internal class PromotionStatus
     public bool HasPendingPromotion { get; set; }
     public string? PendingChallengerVersionId { get; set; }
     public DateTime? ScheduledPromotionTime { get; set; }
-    public List<string> RecentPromotions { get; } = new();
+    public List<string> RecentPromotions { get; set; } = new();
     public bool CanRollback { get; set; }
 }
 
