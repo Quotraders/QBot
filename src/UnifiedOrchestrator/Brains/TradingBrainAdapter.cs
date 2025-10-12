@@ -9,13 +9,13 @@ using TradingBot.UnifiedOrchestrator.Interfaces;
 using TradingBot.UnifiedOrchestrator.Models;
 using TradingBot.UnifiedOrchestrator.Configuration;
 using TradingBot.Abstractions; // For TradingAction
-using BotCore.Brain;
-using BotCore.Brain.Models; // For BrainDecision, PriceDirection
-using BotCore.Models;
-using BotCore.Risk;
-using BotCore.Strategy;
+using global::BotCore.Brain;
+using global::BotCore.Brain.Models; // For BrainDecision, PriceDirection
+using global::BotCore.Models;
+using global::BotCore.Risk;
+using global::BotCore.Strategy;
 using System.Globalization;
-using MarketBar = BotCore.Market.Bar; // Alias to resolve ambiguity
+using MarketBar = global::BotCore.Market.Bar; // Alias to resolve ambiguity
 using AbstractionsTradingDecision = TradingBot.Abstractions.TradingDecision; // Alias for clarity
 using UnifiedTradingDecision = TradingBot.UnifiedOrchestrator.Interfaces.TradingDecision; // Alias for UnifiedOrchestrator type
 
@@ -140,9 +140,9 @@ internal class TradingBrainAdapter : ITradingBrainAdapter
             // Note: Support and Resistance may not exist on Levels - using calculated values
         };
         
-        var bars = new List<BotCore.Models.Bar>
+        var bars = new List<global::BotCore.Models.Bar>
         {
-            new BotCore.Models.Bar
+            new global::BotCore.Models.Bar
             {
                 Start = context.Timestamp,
                 Ts = ((DateTimeOffset)context.Timestamp).ToUnixTimeMilliseconds(),

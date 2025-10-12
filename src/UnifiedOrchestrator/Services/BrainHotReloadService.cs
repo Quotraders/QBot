@@ -5,7 +5,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using TradingBot.UnifiedOrchestrator.Services;
-using BotCore.ML;
+using global::BotCore.ML;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 

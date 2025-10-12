@@ -8,6 +8,7 @@ using TradingBot.UnifiedOrchestrator.Interfaces;
 using TradingBot.UnifiedOrchestrator.Models;
 using TradingBot.Abstractions;
 using MathNet.Numerics.Statistics;
+using ValidationResult = TradingBot.UnifiedOrchestrator.Models.ValidationResult;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 

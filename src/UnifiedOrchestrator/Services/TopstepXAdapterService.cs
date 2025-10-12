@@ -8,9 +8,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using BotCore.Helpers;
-using BotCore.Configuration;
-using BotCore.Services;
+using global::BotCore.Helpers;
+using global::BotCore.Configuration;
+using global::BotCore.Services;
 using TradingBot.Abstractions;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
@@ -48,10 +48,10 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
     // PHASE 2: Fill event subscription infrastructure
     private readonly CancellationTokenSource _fillEventCts = new();
     private Task? _fillEventListenerTask;
-    private readonly ConcurrentQueue<BotCore.Services.FillEventData> _fillEventQueue = new();
+    private readonly ConcurrentQueue<FillEventData> _fillEventQueue = new();
 
     // PHASE 2: Fill event callback for OrderExecutionService
-    public event EventHandler<BotCore.Services.FillEventData>? FillEventReceived;
+    public event EventHandler<FillEventData>? FillEventReceived;
 
     public TopstepXAdapterService(
         ILogger<TopstepXAdapterService> logger,
@@ -846,7 +846,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
     /// <summary>
     /// Parse fill event from JSON
     /// </summary>
-    private BotCore.Services.FillEventData? ParseFillEvent(JsonElement fillElement)
+    private FillEventData? ParseFillEvent(JsonElement fillElement)
     {
         try
         {
@@ -870,7 +870,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 ? parsedTs
                 : DateTime.UtcNow;
             
-            return new BotCore.Services.FillEventData
+            return new FillEventData
             {
                 OrderId = orderId,
                 Symbol = symbol,
@@ -893,7 +893,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
     /// <summary>
     /// Subscribe to fill events with a callback
     /// </summary>
-    public void SubscribeToFillEvents(Action<BotCore.Services.FillEventData> callback)
+    public void SubscribeToFillEvents(Action<FillEventData> callback)
     {
         if (callback == null)
         {

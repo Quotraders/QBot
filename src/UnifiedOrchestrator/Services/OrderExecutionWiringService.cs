@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using TradingBot.Abstractions;
-using BotCore.Services;
+using global::BotCore.Services;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 

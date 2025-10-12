@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using TradingBot.Abstractions;
+using TradingDecision = TradingBot.Abstractions.TradingDecision;
+using TradeSide = TradingBot.Abstractions.TradeSide;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 

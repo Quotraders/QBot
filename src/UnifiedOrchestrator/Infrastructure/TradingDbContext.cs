@@ -8,6 +8,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 using TradingBot.UnifiedOrchestrator.Services;
+using TradeRecord = TradingBot.UnifiedOrchestrator.Services.TradeRecord;
 
 namespace TradingBot.UnifiedOrchestrator.Infrastructure;
 

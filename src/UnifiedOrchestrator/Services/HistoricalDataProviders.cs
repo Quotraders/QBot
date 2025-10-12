@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using TradingBot.Backtest;
 using TradingBot.Abstractions;
+using Quote = TradingBot.Abstractions.Quote;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 
