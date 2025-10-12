@@ -46,6 +46,7 @@ public class ExecutionSimulation
     public string Symbol { get; set; } = string.Empty;
     
     // Execution Results
+    public decimal ExpectedFillPrice { get; set; } // Price before slippage
     public decimal ExecutedPrice { get; set; }
     public decimal ExecutedQuantity { get; set; }
     public decimal Slippage { get; set; } // Difference from expected price
@@ -218,6 +219,7 @@ public class SlippageLatencyModel : ISlippageLatencyModel, IHostedService
             {
                 OrderId = Guid.NewGuid().ToString("N")[..8],
                 Symbol = request.Symbol,
+                ExpectedFillPrice = request.Price,
                 ExecutedPrice = slippageResult.ExecutedPrice,
                 ExecutedQuantity = fillResult.FilledQuantity,
                 Slippage = slippageResult.Slippage,

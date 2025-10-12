@@ -67,11 +67,12 @@ namespace TradingBot.Backtest.ExecutionSimulators
                     OrderType = MapOrderType(order.Type),
                     Side = MapOrderSide(order.Side),
                     Quantity = order.Quantity,
-                    LimitPrice = order.LimitPrice,
-                    MarketPrice = currentQuote.Last,
-                    BidPrice = currentQuote.Bid,
-                    AskPrice = currentQuote.Ask,
-                    Timestamp = DateTime.UtcNow
+                    Price = order.LimitPrice ?? currentQuote.Last,
+                    CurrentMarketPrice = currentQuote.Last,
+                    Volatility = 0.02m, // Default volatility estimate
+                    Volume = currentQuote.Volume,
+                    RequestTime = DateTime.UtcNow,
+                    Strategy = ExtractStrategyFromOrder(order)
                 };
 
                 var executionSim = await _slippageModel.SimulateExecutionAsync(simulationRequest).ConfigureAwait(false);
@@ -591,6 +592,6 @@ namespace TradingBot.Backtest.ExecutionSimulators
         public decimal ActualPrice { get; set; }
         public decimal Slippage { get; set; }
         public TimeSpan FillTime { get; set; }
-        public Dictionary<string, object> MarketConditions { get; } = new();
+        public Dictionary<string, object> MarketConditions { get; set; } = new();
     }
 }
