@@ -130,7 +130,7 @@ internal class RollbackDrillService : IRollbackDrillService
         await _brainAdapter.RollbackToChampionAsync(cancellationToken).ConfigureAwait(false);
         
         // Generate baseline decisions
-        for (int i; i < 20; i++)
+        for (int i = 0; i < 20; i++)
         {
             var context = CreateTestTradingContext(i);
             var decisionStart = DateTime.UtcNow;
@@ -292,7 +292,7 @@ internal class RollbackDrillService : IRollbackDrillService
         var postRollbackDecisions = new List<(DateTime, AbstractionsTradingDecision, double)>();
 
         // Generate post-rollback decisions to verify stability
-        for (int i; i < 10; i++)
+        for (int i = 0; i < 10; i++)
         {
             var context = CreateTestTradingContext(i + 1000);
             var decisionStart = DateTime.UtcNow;

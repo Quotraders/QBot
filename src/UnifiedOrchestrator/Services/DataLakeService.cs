@@ -242,7 +242,7 @@ namespace UnifiedOrchestrator.Services
 
                 // Simple statistical drift detection
                 double totalDrift = 0.0;
-                int numericFeatureCount;
+                int numericFeatureCount = 0;
 
                 foreach (var feature in currentFeatures)
                 {
@@ -318,7 +318,7 @@ namespace UnifiedOrchestrator.Services
                 return 0.0;
 
             double totalDrift = 0.0;
-            int comparisons;
+            int comparisons = 0;
 
             for (int i = 1; i < featureSets.Count; i++)
             {

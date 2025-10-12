@@ -161,7 +161,7 @@ internal class ProductionReadinessValidationService : IProductionReadinessValida
 
         // Test 3: Test multiple decisions and track consistency
         var decisions = new List<TradingBot.Abstractions.TradingDecision>();
-        for (int i; i < 10; i++)
+        for (int i = 0; i < 10; i++)
         {
             var testDecision = await _brainAdapter.DecideAsync(testContext, cancellationToken).ConfigureAwait(false);
             decisions.Add(ConvertToAbstractionsDecision(testDecision));

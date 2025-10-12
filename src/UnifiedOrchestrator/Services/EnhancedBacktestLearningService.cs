@@ -424,7 +424,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         UnifiedHistoricalReplayContext replayContext,
         CancellationToken cancellationToken)
     {
-        for (int i; i < dailyBars.Count; i++)
+        for (int i = 0; i < dailyBars.Count; i++)
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
@@ -844,7 +844,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         
         // Calculate REAL performance metrics from actual trading decisions and results
         var returns = new List<decimal>();
-        var cumulativePnL;
+        decimal cumulativePnL = 0m;
         var dailyReturns = new List<decimal>();
         
         // Group decisions by day to calculate daily returns
@@ -855,7 +855,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         
         foreach (var dayGroup in decisionsByDay)
         {
-            var dayPnL;
+            decimal dayPnL = 0m;
             
             foreach (var decision in dayGroup)
             {
@@ -959,7 +959,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         
         var endDate = DateTime.UtcNow.Date.AddDays(-1); // Yesterday
         
-        for (int i; i < configCount; i++)
+        for (int i = 0; i < configCount; i++)
         {
             var daysBack = 30 + (i * 30); // 30, 60, 90, etc. days
             var startDate = endDate.AddDays(-daysBack);
@@ -1496,7 +1496,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         var tradeValue = tradeSize * executionPrice;
         
         // Calculate PnL for position changes
-        var pnl;
+        decimal pnl = 0m;
         if (decision.Action == "BUY")
         {
             pnl = (state.Position < 0) ? Math.Abs(state.Position) * (state.AverageEntryPrice - executionPrice) : 0;

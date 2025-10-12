@@ -776,7 +776,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
             var data = new List<MarketDataPoint>();
             var baseTime = DateTime.UtcNow.AddDays(-1);
             
-            for (int i; i < 5; i++)
+            for (int i = 0; i < 5; i++)
             {
                 data.Add(new MarketDataPoint
                 {

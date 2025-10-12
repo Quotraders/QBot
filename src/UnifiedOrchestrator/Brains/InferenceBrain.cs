@@ -312,8 +312,8 @@ internal class InferenceBrain : IInferenceBrain
             
             // PPO decision based on policy gradient and market momentum
             var action = "HOLD";
-            var size;
-            var confidence = 0.5m;
+            int size = 0;
+            decimal confidence = 0.5m;
             
             // Trend-following logic with momentum analysis
             if (ppoAnalysis.MomentumStrength > 0.7m && ppoAnalysis.TrendDirection > 0)
@@ -378,8 +378,8 @@ internal class InferenceBrain : IInferenceBrain
             
             // UCB explores vs exploits based on confidence intervals
             var action = "HOLD";
-            var size;
-            var confidence = 0.5m;
+            int size = 0;
+            decimal confidence = 0.5m;
             
             // UCB arms: BUY, SELL, HOLD with confidence bounds
             var bestArm = ucbAnalysis.Arms.OrderByDescending(a => a.UpperConfidenceBound).FirstOrDefault();
@@ -440,8 +440,8 @@ internal class InferenceBrain : IInferenceBrain
             
             // LSTM decision based on sequential pattern recognition
             var action = "HOLD";
-            var size;
-            var confidence = 0.5m;
+            int size = 0;
+            decimal confidence = 0.5m;
             
             // Pattern-based decision making
             if (lstmAnalysis.PredictedDirection > 0.6m && lstmAnalysis.PatternConfidence > 0.7m)
@@ -517,12 +517,12 @@ internal class InferenceBrain : IInferenceBrain
         var lstmWeight = regimeWeights["LSTM"];
         
         // Calculate weighted action scores
-        var buyScore;
-        var sellScore;
-        var holdScore;
-        var totalWeight;
-        var totalSize;
-        var avgConfidence;
+        decimal buyScore = 0;
+        decimal sellScore = 0;
+        decimal holdScore = 0;
+        decimal totalWeight = 0;
+        int totalSize = 0;
+        decimal avgConfidence = 0;
         var participatingStrategies = new List<string>();
         
         if (ppoDecision != null)

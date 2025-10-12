@@ -216,7 +216,7 @@ internal class ProductionValidationService : IValidationService
         var majorDisagreements;
         var confidenceDifferences = new List<double>();
 
-        for (int i; i < totalDecisions; i++)
+        for (int i = 0; i < totalDecisions; i++)
         {
             var champDecision = champion[i].Decision;
             var challDecision = challenger[i].Decision;

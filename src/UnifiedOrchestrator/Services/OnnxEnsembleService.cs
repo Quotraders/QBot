@@ -435,7 +435,7 @@ internal class OnnxEnsembleService : IDisposable
             double weightedSum = 0.0;
             double usedWeight = 0.0;
 
-            for (int i; i < predictions.Count && i < models.Count; i++)
+            for (int i = 0; i < predictions.Count && i < models.Count; i++)
             {
                 if (predictions[i].TryGetValue(key, out var value))
                 {
