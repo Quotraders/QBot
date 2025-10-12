@@ -176,14 +176,14 @@ internal class IntelligenceOrchestratorService : BackgroundService, IIntelligenc
     {
         try
         {
-            return action switch
+            return await (action switch
             {
-                "run_ml_models" => await RunMLModelsActionAsync(context, cancellationToken).ConfigureAwait(false),
-                "update_rl_training" => await UpdateRLTrainingActionAsync(context, cancellationToken).ConfigureAwait(false),
-                "generate_predictions" => await GeneratePredictionsActionAsync(context, cancellationToken).ConfigureAwait(false),
-                "analyze_correlations" => await AnalyzeCorrelationsActionAsync(context, cancellationToken).ConfigureAwait(false),
-                _ => new WorkflowExecutionResult { Success = false, ErrorMessage = $"Unsupported action: {action}" }
-            };
+                "run_ml_models" => RunMLModelsActionAsync(context, cancellationToken),
+                "update_rl_training" => UpdateRLTrainingActionAsync(context, cancellationToken),
+                "generate_predictions" => GeneratePredictionsActionAsync(context, cancellationToken),
+                "analyze_correlations" => AnalyzeCorrelationsActionAsync(context, cancellationToken),
+                _ => Task.FromResult(new WorkflowExecutionResult { Success = false, ErrorMessage = $"Unsupported action: {action}" })
+            }).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

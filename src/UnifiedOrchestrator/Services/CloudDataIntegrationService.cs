@@ -55,7 +55,7 @@ internal class CloudDataIntegrationService : ICloudDataIntegration
             var initialDelay = TimeSpan.FromMilliseconds(250);
             var maxDelay = TimeSpan.FromSeconds(30);
             
-            for (int attempt; attempt <= maxRetries; attempt++)
+            for (int attempt = 0; attempt <= maxRetries; attempt++)
             {
                 try
                 {

@@ -209,12 +209,12 @@ internal class FuturesMarketHours : IMarketHoursService
         
         var etNow = GetEasternTime();
         
-        return trainingType.ToUpperInvariant() switch
+        return await (trainingType.ToUpperInvariant() switch
         {
-            "INTENSIVE" => await GetNextIntensiveTrainingWindowAsync(etNow, cancellationToken).ConfigureAwait(false),
-            "BACKGROUND" => await GetNextBackgroundTrainingWindowAsync(etNow, cancellationToken).ConfigureAwait(false),
-            _ => await GetNextSafeWindowAsync(cancellationToken).ConfigureAwait(false)
-        };
+            "INTENSIVE" => GetNextIntensiveTrainingWindowAsync(etNow),
+            "BACKGROUND" => GetNextBackgroundTrainingWindowAsync(etNow, cancellationToken),
+            _ => GetNextSafeWindowAsync(cancellationToken)
+        }).ConfigureAwait(false);
     }
 
     /// <summary>
