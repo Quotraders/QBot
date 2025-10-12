@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using TradingBot.UnifiedOrchestrator.Models;
+using ValidationResult = TradingBot.UnifiedOrchestrator.Models.ValidationResult;
 
 namespace TradingBot.UnifiedOrchestrator.Interfaces;
 

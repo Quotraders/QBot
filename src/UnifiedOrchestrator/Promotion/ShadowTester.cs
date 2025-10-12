@@ -14,6 +14,7 @@ using TradingBot.UnifiedOrchestrator.Models;
 using TradingBot.UnifiedOrchestrator.Services;
 using IModelRegistry = TradingBot.UnifiedOrchestrator.Interfaces.IModelRegistry;
 using IModelRouterFactory = TradingBot.UnifiedOrchestrator.Interfaces.IModelRouterFactory;
+using Quote = TradingBot.Abstractions.Quote;
 
 namespace TradingBot.UnifiedOrchestrator.Promotion;
 

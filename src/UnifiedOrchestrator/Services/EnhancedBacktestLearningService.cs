@@ -19,6 +19,7 @@ using TradingBot.UnifiedOrchestrator.Interfaces;
 using TradingBot.UnifiedOrchestrator.Models;
 using TradingBot.Abstractions;
 using BacktestResult = TradingBot.UnifiedOrchestrator.Models.BacktestResult;
+using Bar = BotCore.Models.Bar;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 

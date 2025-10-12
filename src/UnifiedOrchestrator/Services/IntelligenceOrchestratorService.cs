@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using MarketContext = TradingBot.Abstractions.MarketContext;
 using TradingDecision = TradingBot.Abstractions.TradingDecision;
 using ModelPerformance = TradingBot.Abstractions.ModelPerformance;
+using MarketData = TradingBot.Abstractions.MarketData;
+using TradeSide = TradingBot.Abstractions.TradeSide;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 
