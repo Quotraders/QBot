@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 using System.Net.Http;
-using BotCore.Services;
+using global::BotCore.Services;
 using TradingBot.Abstractions;
 using System.Globalization;
 
@@ -86,11 +86,11 @@ internal class DecisionServiceRouter
             // Step 3: Fall back to C# UnifiedDecisionRouter
             _logger.LogDebug("🔄 [DECISION-SERVICE-ROUTER] Python service unavailable, using C# unified router");
             
-            // No conversion needed - both are BotCore.Services.MarketContext
+            // No conversion needed - both are global::BotCore.Services.MarketContext
             var csharpDecision = await _unifiedRouter.RouteDecisionAsync(symbol, marketContext, cancellationToken).ConfigureAwait(false);
             csharpDecision.DecisionSource = $"CSharp_{csharpDecision.DecisionSource}";
             
-            // Convert from BotCore.Services.UnifiedTradingDecision to local UnifiedTradingDecision
+            // Convert from global::BotCore.Services.UnifiedTradingDecision to local UnifiedTradingDecision
             return new UnifiedTradingDecision
             {
                 DecisionId = csharpDecision.DecisionId,
@@ -112,7 +112,7 @@ internal class DecisionServiceRouter
             // Ultimate fallback to C# system
             var fallbackDecision = await _unifiedRouter.RouteDecisionAsync(symbol, marketContext, cancellationToken).ConfigureAwait(false);
             
-            // Convert from BotCore.Services.UnifiedTradingDecision to local UnifiedTradingDecision  
+            // Convert from global::BotCore.Services.UnifiedTradingDecision to local UnifiedTradingDecision  
             return new UnifiedTradingDecision
             {
                 DecisionId = fallbackDecision.DecisionId,

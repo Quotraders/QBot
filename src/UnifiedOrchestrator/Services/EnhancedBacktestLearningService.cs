@@ -11,15 +11,15 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using BotCore.Brain;
-using BotCore.Brain.Models;
-using BotCore.Models;
-using BotCore.Services;
+using global::BotCore.Brain;
+using global::BotCore.Brain.Models;
+using global::BotCore.Models;
+using global::BotCore.Services;
 using TradingBot.UnifiedOrchestrator.Interfaces;
 using TradingBot.UnifiedOrchestrator.Models;
 using TradingBot.Abstractions;
 using BacktestResult = TradingBot.UnifiedOrchestrator.Models.BacktestResult;
-using Bar = BotCore.Models.Bar;
+using Bar = global::BotCore.Models.Bar;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 
@@ -446,7 +446,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
                 };
                 
                 var levels = new Levels(); // Initialize as needed
-                var riskEngine = new BotCore.Risk.RiskEngine();
+                var riskEngine = new global::BotCore.Risk.RiskEngine();
                 
                 // 🚀 CRITICAL: Use SAME UnifiedTradingBrain as live trading
                 var brainDecision = await _unifiedBrain.MakeIntelligentDecisionAsync(
@@ -560,7 +560,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
                 volz = tradingContext.TechnicalIndicators.GetValueOrDefault("VolZ", 0)
             };
             var levels = new Levels(); // Initialize as needed
-            var riskEngine = new BotCore.Risk.RiskEngine();
+            var riskEngine = new global::BotCore.Risk.RiskEngine();
             var bars = new List<Bar> 
             { 
                 new Bar 

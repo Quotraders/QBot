@@ -5,10 +5,10 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using TradingBot.UnifiedOrchestrator.Interfaces;
 using TradingBot.Abstractions;
-using BotCore.Brain;
-using BotCore.Brain.Models;
+using global::BotCore.Brain;
+using global::BotCore.Brain.Models;
 using AbstractionsMarketRegime = TradingBot.Abstractions.MarketRegime;
-using BotCoreMarketRegime = BotCore.Brain.Models.MarketRegime;
+using BotCoreMarketRegime = global::BotCore.Brain.Models.MarketRegime;
 using IMLConfigurationService = TradingBot.Abstractions.IMLConfigurationService;
 
 namespace TradingBot.UnifiedOrchestrator.Services;

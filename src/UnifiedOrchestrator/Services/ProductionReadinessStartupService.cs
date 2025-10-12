@@ -192,7 +192,7 @@ internal class ProductionReadinessStartupService : IHostedService
         try
         {
             // Verify TopstepX HTTP client
-            var httpClient = _serviceProvider.GetService<BotCore.Services.TopstepXHttpClient>();
+            var httpClient = _serviceProvider.GetService<global::BotCore.Services.TopstepXHttpClient>();
             if (httpClient != null)
             {
                 _logger.LogInformation("✅ [API-PROOF] TopstepXHttpClient registered: {ClientType}", httpClient.GetType().Name);
@@ -204,7 +204,7 @@ internal class ProductionReadinessStartupService : IHostedService
             }
 
             // Verify BotCore API client
-            var apiClient = _serviceProvider.GetService<BotCore.ApiClient>();
+            var apiClient = _serviceProvider.GetService<global::BotCore.ApiClient>();
             if (apiClient != null)
             {
                 _logger.LogInformation("✅ [API-PROOF] BotCore ApiClient registered: {ClientType}", apiClient.GetType().Name);

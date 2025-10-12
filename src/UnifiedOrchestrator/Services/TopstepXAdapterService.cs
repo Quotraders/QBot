@@ -8,9 +8,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using BotCore.Helpers;
-using BotCore.Configuration;
-using BotCore.Services;
+using global::BotCore.Helpers;
+using global::BotCore.Configuration;
+using global::BotCore.Services;
 using TradingBot.Abstractions;
 
 namespace TradingBot.UnifiedOrchestrator.Services;

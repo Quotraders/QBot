@@ -138,7 +138,7 @@ namespace TradingBot.UnifiedOrchestrator.Health
         {
             try
             {
-                var brain = _serviceProvider.GetService<BotCore.Brain.UnifiedTradingBrain>();
+                var brain = _serviceProvider.GetService<global::BotCore.Brain.UnifiedTradingBrain>();
                 return brain != null;
             }
             catch
