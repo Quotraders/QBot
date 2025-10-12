@@ -228,7 +228,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
                 "models/training_data",
             };
             
-            var connectedSources;
+            int connectedSources = 0;
             foreach (var path in historicalDataPaths)
             {
                 if (Directory.Exists(path) || File.Exists($"{path}.csv"))

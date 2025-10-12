@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.DependencyInjection;
 using TradingBot.Abstractions;
 using System.Text.Json;
 using System.Diagnostics;

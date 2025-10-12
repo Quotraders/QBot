@@ -131,7 +131,7 @@ internal class CentralMessageBus : ICentralMessageBus
     {
         var action = TradingAction.Hold;
         var side = TradeSide.Hold;
-        var quantity;
+        int quantity = 0;
         
         // Convert signal direction to trading decision
         switch (signal.Direction.ToUpperInvariant())

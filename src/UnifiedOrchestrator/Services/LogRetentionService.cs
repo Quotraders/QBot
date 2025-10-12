@@ -127,7 +127,7 @@ internal class LogRetentionService : IHostedService
             .Where(f => File.GetCreationTimeUtc(f) < cutoffDate)
             .ToArray();
 
-        var removedCount;
+        int removedCount = 0;
         foreach (var file in files)
         {
             try

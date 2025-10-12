@@ -24,7 +24,7 @@ namespace TradingBot.BotCore.Services
     /// Provides production-ready backtesting and strategy tuning capabilities
     /// All parameters are configuration-driven with no hardcoded business values
     /// </summary>
-    internal static class TradingBotTuningRunner
+    public static class TradingBotTuningRunner
     {
         // LoggerMessage delegates for high-performance logging
         private static readonly Action<ILogger, string, string, string, DateTime, DateTime, Exception?> BacktestStartLog =
