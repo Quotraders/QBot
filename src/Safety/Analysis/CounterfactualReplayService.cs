@@ -530,7 +530,7 @@ namespace TradingBot.Safety.Analysis
         public decimal ExpectedEntry { get; set; }
         public DateTime ExpectedExit { get; set; }
         public decimal RiskAmount { get; set; }
-        public Dictionary<string, object> Metadata { get; } = new();
+        public Dictionary<string, object> Metadata { get; set; } = new();
     }
 
     /// <summary>

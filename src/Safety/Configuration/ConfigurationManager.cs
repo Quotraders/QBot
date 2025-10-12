@@ -827,7 +827,7 @@ public class ValidationResult
     public string ValidationId { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; }
     public bool IsValid { get; set; }
-    public List<ValidationIssue> Issues { get; } = new();
+    public List<ValidationIssue> Issues { get; set; } = new();
 }
 
 public class ValidationIssue

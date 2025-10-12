@@ -61,8 +61,8 @@ public class ExecutionSimulation
     
     // Simulation Details
     public string SimulationMethod { get; set; } = string.Empty;
-    public Dictionary<string, object> SimulationFactors { get; } = new();
-    public List<string> WarningFlags { get; } = new();
+    public Dictionary<string, object> SimulationFactors { get; set; } = new();
+    public List<string> WarningFlags { get; set; } = new();
     
     // Performance Metrics
     public decimal EstimatedTransactionCost { get; set; }
@@ -83,7 +83,7 @@ public class LatencyMetrics
     public TimeSpan MaxLatency { get; set; }
     public int SampleCount { get; set; }
     public bool IsUnderStress { get; set; }
-    public List<LatencyOutlier> RecentOutliers { get; } = new();
+    public List<LatencyOutlier> RecentOutliers { get; set; } = new();
 }
 
 /// <summary>

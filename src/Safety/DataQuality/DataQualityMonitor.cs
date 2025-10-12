@@ -684,7 +684,7 @@ public class DataQualityReport
     public string Symbol { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; }
     public string CorrelationId { get; set; } = string.Empty;
-    public List<DataQualityIssue> Issues { get; } = new();
+    public List<DataQualityIssue> Issues { get; set; } = new();
     public bool HasIssues => Issues.Any();
     public int CriticalIssueCount => Issues.Count(i => i.Severity == DataQualitySeverity.Critical);
 }
