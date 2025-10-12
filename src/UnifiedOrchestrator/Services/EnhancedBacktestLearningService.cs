@@ -822,7 +822,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         }
         else
         {
-            state.UnrealizedPnL;
+            state.UnrealizedPnL = 0;
         }
         
         // Update capital to reflect current total value

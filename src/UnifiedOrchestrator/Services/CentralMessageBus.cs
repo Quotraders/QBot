@@ -159,7 +159,7 @@ internal class CentralMessageBus : ICentralMessageBus
             default:
                 action = TradingAction.Hold;
                 side = TradeSide.Hold;
-                quantity;
+                quantity = 0;
                 break;
         }
         

@@ -377,7 +377,7 @@ internal class TradingLogger : ITradingLogger, IAsyncDisposable, IDisposable
         });
         
         // Reset size tracking
-        _currentFileSizes[category];
+        _currentFileSizes[category] = 0;
         
         // Add a small delay to make this method async-worthy
         await Task.Delay(1).ConfigureAwait(false);

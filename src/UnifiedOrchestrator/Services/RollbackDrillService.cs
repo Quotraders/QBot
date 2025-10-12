@@ -86,7 +86,7 @@ internal class RollbackDrillService : IRollbackDrillService
         }
         catch (Exception ex)
         {
-            result.Success;
+            result.Success = false;
             result.ErrorMessage = ex.Message;
             result.EndTime = DateTime.UtcNow;
             result.TotalDurationMs = stopwatch.Elapsed.TotalMilliseconds;

@@ -115,7 +115,7 @@ internal class ErrorHandlingService : IHostedService
             // Reset error counter on success
             lock (_lockObject)
             {
-                _consecutiveFileErrors;
+                _consecutiveFileErrors = 0;
                 _fileSystemAvailable = true;
             }
         }
@@ -153,7 +153,7 @@ internal class ErrorHandlingService : IHostedService
             
             if (_consecutiveFileErrors >= 5)
             {
-                _fileSystemAvailable;
+                _fileSystemAvailable = false;
                 _logger.LogError("File system logging circuit breaker activated after {Errors} consecutive failures", 
                     _consecutiveFileErrors);
             }
@@ -220,7 +220,7 @@ internal class ErrorHandlingService : IHostedService
                     if (!_fileSystemAvailable)
                     {
                         _fileSystemAvailable = true;
-                        _consecutiveFileErrors;
+                        _consecutiveFileErrors = 0;
                         _logger.LogInformation("File system logging circuit breaker reset - logging restored");
                     }
                 }
@@ -230,7 +230,7 @@ internal class ErrorHandlingService : IHostedService
                 // File system still not available
                 lock (_lockObject)
                 {
-                    _fileSystemAvailable;
+                    _fileSystemAvailable = false;
                 }
             }
         }
@@ -262,7 +262,7 @@ internal class ErrorHandlingService : IHostedService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to setup file logging fallback - error handling will be limited");
-            _fileLoggingFallbackAvailable;
+            _fileLoggingFallbackAvailable = false;
         }
     }
 
@@ -293,7 +293,7 @@ internal class ErrorHandlingService : IHostedService
         {
             // If file logging also fails, we can only log to the regular logger
             _logger.LogError(ex, "File logging fallback failed for message: {Message}", message);
-            _fileLoggingFallbackAvailable;
+            _fileLoggingFallbackAvailable = false;
         }
     }
 

@@ -207,7 +207,7 @@ internal class CentralizedTokenProvider : ITokenProvider, IHostedService
         }
         finally
         {
-            _isRefreshing;
+            _isRefreshing = false;
             _refreshLock.Release();
         }
     }
