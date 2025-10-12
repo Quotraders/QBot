@@ -9,7 +9,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TradingBot.Abstractions;
-using TradingBot.Backtest;
 using Trading.Safety.Journaling;
 
 namespace TradingBot.Safety.Analysis

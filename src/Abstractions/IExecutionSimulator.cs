@@ -2,10 +2,26 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using TradingBot.Abstractions;
 
-namespace TradingBot.Backtest
+namespace TradingBot.Abstractions
 {
+    /// <summary>
+    /// Quote data structure for market data simulation
+    /// Maps to market data structure in the trading system
+    /// </summary>
+    public record Quote(
+        DateTime Time,
+        string Symbol,
+        decimal Bid,
+        decimal Ask,
+        decimal Last,
+        int Volume,
+        decimal Open,
+        decimal High,
+        decimal Low,
+        decimal Close
+    );
+
     /// <summary>
     /// Order type enumeration for backtest simulation
     /// </summary>

@@ -45,9 +45,15 @@ namespace BotCore.Infra
 
             // Check health every 30 minutes
             var interval = TimeSpan.FromMinutes(30);
-            _checkTimer = new Timer(CheckHealthAsync, null, TimeSpan.Zero, interval);
+            _checkTimer = new Timer(CheckHealthCallback, null, TimeSpan.Zero, interval);
 
             _log.LogInformation("[ML-Health] Started monitoring pipeline health every {Interval}", interval);
+        }
+
+        private void CheckHealthCallback(object? state)
+        {
+            // Fire and forget - don't await
+            _ = CheckHealthAsync(state);
         }
 
         private async Task CheckHealthAsync(object? state)
@@ -85,7 +91,7 @@ namespace BotCore.Infra
             // Report results
             if (issues.Any())
             {
-                _lastHealthCheckPassed;
+                _lastHealthCheckPassed = false;
                 _log.LogError("[ML-Health] ❌ Pipeline health check failed with {Count} critical issues: {Issues}",
                     issues.Count, string.Join("; ", issues));
 
@@ -129,7 +135,7 @@ namespace BotCore.Infra
                 }
                 else
                 {
-                    _consecutiveDataCollectionFailures;
+                    _consecutiveDataCollectionFailures = 0;
                     _lastDataCollection = recentFiles.Max(f => File.GetLastWriteTime(f));
 
                     // Check data quality

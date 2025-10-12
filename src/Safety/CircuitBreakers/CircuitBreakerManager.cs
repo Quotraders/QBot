@@ -322,7 +322,7 @@ public class CircuitBreakerState
 
     public void Reset()
     {
-        IsTriggered;
+        IsTriggered = false;
         ResetTime = DateTime.MinValue;
         LastTriggerReason = string.Empty;
     }

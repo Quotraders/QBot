@@ -39,7 +39,8 @@
 
   <ItemGroup>
     <ProjectReference Include="../Abstractions/Abstractions.csproj" />
-    <ProjectReference Include="../Backtest/Backtest.csproj" />
+    <ProjectReference Include="..\BotCore\BotCore.csproj" />
+
   </ItemGroup>
 
   <!-- Package the analyzer -->
