@@ -150,7 +150,7 @@ public class RiskBreachEvent
     public decimal CurrentValue { get; set; }
     public decimal LimitValue { get; set; }
     public decimal UtilizationPercent { get; set; }
-    public Dictionary<string, object> Context { get; } = new();
+    public Dictionary<string, object> Context { get; set; } = new();
     public bool RequiresImmediateAction { get; set; }
-    public List<string> RecommendedActions { get; } = new();
+    public List<string> RecommendedActions { get; set; } = new();
 }

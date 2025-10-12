@@ -225,7 +225,7 @@ public class ProductionResilienceService
         var baseDelay = TimeSpan.FromMilliseconds(_config.BaseRetryDelayMs);
         var maxDelay = TimeSpan.FromMilliseconds(_config.MaxRetryDelayMs);
         var exponentialDelay = TimeSpan.FromMilliseconds(baseDelay.TotalMilliseconds * Math.Pow(2, attempt - 1));
-        var jitteredDelay = TimeSpan.FromMilliseconds(exponentialDelay.TotalMilliseconds * (0.8 + Random.Shared.NextDouble() * 0.4));
+        var jitteredDelay = TimeSpan.FromMilliseconds(exponentialDelay.TotalMilliseconds * (0.8 + System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0 * 0.4));
         
         return jitteredDelay > maxDelay ? maxDelay : jitteredDelay;
     }

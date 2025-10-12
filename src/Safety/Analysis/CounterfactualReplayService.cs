@@ -439,7 +439,7 @@ namespace TradingBot.Safety.Analysis
 
         private Quote? GetQuoteAtTime(List<Quote> quotes, DateTime timestamp)
         {
-            return quotes.FirstOrDefault(q => Math.Abs((q.Timestamp - timestamp).TotalSeconds) < 60);
+            return quotes.FirstOrDefault(q => Math.Abs((q.Time - timestamp).TotalSeconds) < 60);
         }
 
         private OrderSpec CreateEntryOrder(BlockedSignal signal)

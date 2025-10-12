@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using TradingBot.Abstractions;
 
 namespace TradingBot.Backtest.ExecutionSimulators
 {
@@ -14,12 +15,11 @@ namespace TradingBot.Backtest.ExecutionSimulators
     public class SimpleExecutionSimulator : IExecutionSimulator
     {
         private readonly ILogger<SimpleExecutionSimulator> _logger;
-        private readonly Random _random;
+        // Removed _random field - using System.Security.Cryptography.RandomNumberGenerator for secure randomness
         
         public SimpleExecutionSimulator(ILogger<SimpleExecutionSimulator> logger)
         {
             _logger = logger;
-            _random = new Random();
         }
 
         /// <summary>
@@ -148,6 +148,7 @@ namespace TradingBot.Backtest.ExecutionSimulators
             state.RealizedPnL = 0m;
             state.TotalCommissions = 0m;
             state.RoundTripTrades = 0;
+            state.WinningTrades = 0;
             state.LastMarketPrice = 0m;
             state.ActiveBrackets.Clear();
         }
@@ -159,7 +160,7 @@ namespace TradingBot.Backtest.ExecutionSimulators
                 case OrderType.Market:
                     // Market orders get filled at bid/ask with small slippage
                     var marketPrice = order.Side == OrderSide.Buy ? currentQuote.Ask : currentQuote.Bid;
-                    var slippagePercent = (_random.NextDouble() * 0.002) - 0.001; // -0.1% to +0.1%
+                    var slippagePercent = (System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0 * 0.002) - 0.001; // -0.1% to +0.1%
                     return marketPrice * (1m + (decimal)slippagePercent);
 
                 case OrderType.Limit:
@@ -243,8 +244,12 @@ namespace TradingBot.Backtest.ExecutionSimulators
 
                 if (Math.Abs(oldPosition) == Math.Abs(fillQuantity))
                 {
-                    // Position closed
+                    // Position closed - track if it was a winning trade
                     state.RoundTripTrades++;
+                    if (realizedPnL > 0)
+                    {
+                        state.WinningTrades++;
+                    }
                     state.AverageEntryPrice = 0m;
                 }
 

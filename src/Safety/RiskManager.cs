@@ -1,4 +1,5 @@
 using System;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -61,7 +62,7 @@ public class RiskManager : TradingBot.Abstractions.IRiskManager
             CurrentExposure = Math.Abs(_largestPosition),
             VaR = Math.Abs(_maxDrawdown),
             RiskLevel = _isBreached ? "HIGH" : (_dailyPnL < _config.MaxDailyLoss / 2 ? "MEDIUM" : "LOW"),
-            Warnings = new List<string>(),
+            Warnings = new Collection<string>(),
             Timestamp = DateTime.UtcNow
         };
 

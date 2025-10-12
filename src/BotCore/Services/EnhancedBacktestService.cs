@@ -193,7 +193,7 @@ namespace BotCore.Services
             slippageAmount *= (decimal)quantityMultiplier;
             
             // Add random variance (±20% of calculated slippage)
-            var variance = 1.0 + (Random.Shared.NextDouble() - 0.5) * 0.4;
+            var variance = 1.0 + (System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0 - 0.5) * 0.4;
             slippageAmount *= (decimal)variance;
             
             // Ensure minimum tick size
@@ -327,9 +327,9 @@ namespace BotCore.Services
             {
                 Timestamp = timestamp,
                 Symbol = symbol,
-                VolatilityScore = BaseVolatilityScore + Random.Shared.NextDouble() * VolatilityScoreRange, // 0.5 to 1.0
-                LiquidityScore = isMarketOpen ? MarketOpenLiquidityBase + Random.Shared.NextDouble() * MarketOpenLiquidityRange : MarketClosedLiquidityBase + Random.Shared.NextDouble() * MarketClosedLiquidityRange,
-                MarketStress = Random.Shared.NextDouble() * MaxMarketStress, // 0 to 0.3
+                VolatilityScore = BaseVolatilityScore + System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0 * VolatilityScoreRange, // 0.5 to 1.0
+                LiquidityScore = isMarketOpen ? MarketOpenLiquidityBase + System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0 * MarketOpenLiquidityRange : MarketClosedLiquidityBase + System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0 * MarketClosedLiquidityRange,
+                MarketStress = System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0 * MaxMarketStress, // 0 to 0.3
                 IsMarketOpen = isMarketOpen
             };
         }

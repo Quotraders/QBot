@@ -697,7 +697,7 @@ public class DataQualityIssue
     public string Symbol { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; }
     public string CorrelationId { get; set; } = string.Empty;
-    public Dictionary<string, object> Metadata { get; } = new();
+    public Dictionary<string, object> Metadata { get; set; } = new();
 }
 
 public class DataQualityMetrics

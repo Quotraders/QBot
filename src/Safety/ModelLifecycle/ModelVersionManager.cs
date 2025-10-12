@@ -45,7 +45,7 @@ public class ModelVersionManager : IModelVersionManager, IDisposable
                 // Validate integrity before returning
                 if (await ValidateModelIntegrityAsync(modelHash, cancellationToken).ConfigureAwait(false))
                 {
-                    _logger.LogInformation("Loaded model {ModelHash} from cache with integrity validation", modelHash).ConfigureAwait(false);
+                    _logger.LogInformation("Loaded model {ModelHash} from cache with integrity validation", modelHash);
                     return cached;
                 }
                 
@@ -59,7 +59,7 @@ public class ModelVersionManager : IModelVersionManager, IDisposable
             {
                 if (await ValidateModelIntegrityAsync(modelHash, cancellationToken).ConfigureAwait(false))
                 {
-                    _logger.LogInformation("Loaded model {ModelHash} with version {Version}", modelHash, metadata.Version).ConfigureAwait(false);
+                    _logger.LogInformation("Loaded model {ModelHash} with version {Version}", modelHash, metadata.Version);
                     return metadata;
                 }
             }
@@ -127,7 +127,7 @@ public class ModelVersionManager : IModelVersionManager, IDisposable
             // Validate integrity before activation
             if (!await ValidateModelIntegrityAsync(modelHash, cancellationToken).ConfigureAwait(false))
             {
-                _logger.LogError("Cannot set active model: {ModelHash} failed integrity validation", modelHash).ConfigureAwait(false);
+                _logger.LogError("Cannot set active model: {ModelHash} failed integrity validation", modelHash);
                 throw new InvalidOperationException($"Model {modelHash} failed integrity validation");
             }
             
@@ -194,7 +194,7 @@ public class ModelVersionManager : IModelVersionManager, IDisposable
     private async Task<string> CalculateFileHashAsync(string filePath)
     {
         using var sha256 = SHA256.Create();
-        await using var stream = File.OpenRead(filePath).ConfigureAwait(false);
+        await using var stream = File.OpenRead(filePath);
         var hashBytes = await sha256.ComputeHashAsync(stream).ConfigureAwait(false);
         return Convert.ToHexString(hashBytes).ToLowerInvariant();
     }

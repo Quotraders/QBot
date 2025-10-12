@@ -164,7 +164,7 @@ public class HealthMonitor : TradingBot.Abstractions.IHealthMonitor
             var previouslyAllowedTrading = _tradingAllowed;
 
             // Check hub connections
-            var connectedHubs;
+            var connectedHubs = 0;
             var totalHubs = _hubConnections.Count;
             foreach (var connection in _hubConnections.Values)
             {

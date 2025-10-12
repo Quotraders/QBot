@@ -360,7 +360,7 @@ public class ConfigurationManager : IConfigurationManager, IHostedService
             {
                 _logger.LogCritical("[CONFIG_MANAGER] Configuration validation FAILED: {CriticalIssues} critical, {Warnings} warnings [CorrelationId: {CorrelationId}]",
                     criticalIssueCount, warningIssueCount, correlationId);
-                result.IsValid;
+                result.IsValid = false;
             }
             else if (warningIssueCount > 0)
             {
@@ -379,7 +379,7 @@ public class ConfigurationManager : IConfigurationManager, IHostedService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[CONFIG_MANAGER] Error during configuration validation [CorrelationId: {CorrelationId}]", correlationId);
-            result.IsValid;
+            result.IsValid = false;
             result.Issues.Add(new ValidationIssue
             {
                 Key = "VALIDATION_ERROR",
@@ -842,9 +842,9 @@ public class ConfigurationExport
     public string ExportId { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; }
     public string ExportedBy { get; set; } = string.Empty;
-    public List<ConfigurationItem> Configurations { get; } = new();
-    public List<FeatureFlag> FeatureFlags { get; } = new();
-    public List<RolloutConfig> Rollouts { get; } = new();
+    public List<ConfigurationItem> Configurations { get; set; } = new();
+    public List<FeatureFlag> FeatureFlags { get; set; } = new();
+    public List<RolloutConfig> Rollouts { get; set; } = new();
 }
 
 public enum ConfigurationChangeType

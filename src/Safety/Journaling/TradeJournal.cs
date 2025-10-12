@@ -215,8 +215,8 @@ public class TradeJournal : ITradeJournal
     public async Task ValidateIntegrityAsync()
     {
         var journalFiles = Directory.GetFiles(_journalDirectory, "trade_journal_*.json");
-        var totalEntries;
-        var corruptedEntries;
+        var totalEntries = 0;
+        var corruptedEntries = 0;
 
         foreach (var file in journalFiles)
         {
@@ -412,7 +412,7 @@ public class TradingDecisionEvent
     public string Strategy { get; set; } = string.Empty;
     public decimal Confidence { get; set; }
     public string Regime { get; set; } = string.Empty;
-    public Dictionary<string, object> Context { get; } = new();
+    public Dictionary<string, object> Context { get; set; } = new();
 }
 
 public class OrderEvent
@@ -423,7 +423,7 @@ public class OrderEvent
     public DateTime Timestamp { get; set; }
     public string Status { get; set; } = string.Empty; // NEW/OPEN/FILLED/CANCELLED/REJECTED
     public string? RejectReason { get; set; }
-    public Dictionary<string, object> Metadata { get; } = new();
+    public Dictionary<string, object> Metadata { get; set; } = new();
 }
 
 public class FillEvent
@@ -435,7 +435,7 @@ public class FillEvent
     public decimal FilledQuantity { get; set; }
     public decimal FillPrice { get; set; }
     public decimal Commission { get; set; }
-    public Dictionary<string, object> Metadata { get; } = new();
+    public Dictionary<string, object> Metadata { get; set; } = new();
 }
 
 public class OutcomeEvent

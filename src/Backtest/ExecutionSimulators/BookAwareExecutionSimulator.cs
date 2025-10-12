@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TradingBot.Abstractions;
-using TradingBot.Safety.Simulation;
+using Trading.Safety.Simulation;
 using Trading.Safety.Journaling;
 
 namespace TradingBot.Backtest.ExecutionSimulators
@@ -22,7 +22,7 @@ namespace TradingBot.Backtest.ExecutionSimulators
         private readonly ISlippageLatencyModel _slippageModel;
         private readonly ITradeJournal _tradeJournal;
         private readonly BookAwareSimulatorConfig _config;
-        private readonly Random _random;
+        // Removed _random field - using System.Security.Cryptography.RandomNumberGenerator for secure randomness
         private readonly Dictionary<string, FillDistribution> _fillDistributions;
         private readonly object _distributionLock = new();
 
@@ -36,7 +36,6 @@ namespace TradingBot.Backtest.ExecutionSimulators
             _slippageModel = slippageModel;
             _tradeJournal = tradeJournal;
             _config = config.Value;
-            _random = new Random();
             _fillDistributions = new Dictionary<string, FillDistribution>();
             
             // Initialize fill distributions from historical data
@@ -68,11 +67,12 @@ namespace TradingBot.Backtest.ExecutionSimulators
                     OrderType = MapOrderType(order.Type),
                     Side = MapOrderSide(order.Side),
                     Quantity = order.Quantity,
-                    LimitPrice = order.LimitPrice,
-                    MarketPrice = currentQuote.Last,
-                    BidPrice = currentQuote.Bid,
-                    AskPrice = currentQuote.Ask,
-                    Timestamp = DateTime.UtcNow
+                    Price = order.LimitPrice ?? currentQuote.Last,
+                    CurrentMarketPrice = currentQuote.Last,
+                    Volatility = 0.02m, // Default volatility estimate
+                    Volume = currentQuote.Volume,
+                    RequestTime = DateTime.UtcNow,
+                    Strategy = ExtractStrategyFromOrder(order)
                 };
 
                 var executionSim = await _slippageModel.SimulateExecutionAsync(simulationRequest).ConfigureAwait(false);
@@ -182,6 +182,7 @@ namespace TradingBot.Backtest.ExecutionSimulators
             state.RealizedPnL = 0;
             state.TotalCommissions = 0;
             state.RoundTripTrades = 0;
+            state.WinningTrades = 0;
             state.LastMarketPrice = 0;
             state.ActiveBrackets.Clear();
         }
@@ -300,8 +301,8 @@ namespace TradingBot.Backtest.ExecutionSimulators
         private double SampleFromDistribution(DistributionStats stats)
         {
             // Box-Muller transform for normal distribution
-            var u1 = 1.0 - _random.NextDouble();
-            var u2 = 1.0 - _random.NextDouble();
+            var u1 = 1.0 - System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0;
+            var u2 = 1.0 - System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0;
             var standardNormal = Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2);
             
             return stats.Mean + standardNormal * stats.StandardDeviation;
@@ -515,13 +516,18 @@ namespace TradingBot.Backtest.ExecutionSimulators
                 // Reducing or reversing position
                 var closedQuantity = Math.Min(Math.Abs(oldPosition), Math.Abs(fillQuantity));
                 var pnlPerContract = (fillPrice - state.AverageEntryPrice) * Math.Sign(oldPosition);
-                state.RealizedPnL += pnlPerContract * closedQuantity;
+                var tradePnL = pnlPerContract * closedQuantity;
+                state.RealizedPnL += tradePnL;
                 state.Position = newPosition;
 
                 if (Math.Abs(oldPosition) == Math.Abs(fillQuantity))
                 {
-                    // Position closed
+                    // Position closed - track if it was a winning trade
                     state.RoundTripTrades++;
+                    if (tradePnL > 0)
+                    {
+                        state.WinningTrades++;
+                    }
                     state.AverageEntryPrice = 0m;
                 }
                 else if (newPosition != 0 && Math.Sign(oldPosition) != Math.Sign(newPosition))
@@ -592,6 +598,6 @@ namespace TradingBot.Backtest.ExecutionSimulators
         public decimal ActualPrice { get; set; }
         public decimal Slippage { get; set; }
         public TimeSpan FillTime { get; set; }
-        public Dictionary<string, object> MarketConditions { get; } = new();
+        public Dictionary<string, object> MarketConditions { get; set; } = new();
     }
 }

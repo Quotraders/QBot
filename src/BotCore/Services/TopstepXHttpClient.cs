@@ -28,7 +28,7 @@ public class TopstepXHttpClient : ITopstepXHttpClient, IDisposable
     private readonly HttpClient _httpClient;
     private readonly ILogger<TopstepXHttpClient> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
-    private readonly Random _jitterRandom = new();
+    // Removed _jitterRandom field - using System.Security.Cryptography.RandomNumberGenerator for secure randomness
     private readonly ITopstepAuth? _authService;
 
     public TopstepXHttpClient(HttpClient httpClient, ILogger<TopstepXHttpClient> logger, ITopstepAuth? authService = null)
@@ -270,7 +270,7 @@ public class TopstepXHttpClient : ITopstepXHttpClient, IDisposable
         var baseDelay = TimeSpan.FromMilliseconds(1000 * Math.Pow(2, attempt));
         
         // Add jitter: ±25% of base delay
-        var jitterMs = (int)(baseDelay.TotalMilliseconds * 0.25 * (_jitterRandom.NextDouble() * 2 - 1));
+        var jitterMs = (int)(baseDelay.TotalMilliseconds * 0.25 * (System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0 * 2 - 1));
         var finalDelay = baseDelay.Add(TimeSpan.FromMilliseconds(jitterMs));
         
         // Cap at 30 seconds

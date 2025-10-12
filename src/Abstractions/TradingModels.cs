@@ -294,7 +294,7 @@ public class RiskAssessment
     public decimal CurrentExposure { get; set; }
     public decimal VaR { get; set; } // Value at Risk
     public string RiskLevel { get; set; } = "LOW"; // LOW/MEDIUM/HIGH
-    public Collection<string> Warnings { get; } = new();
+    public Collection<string> Warnings { get; set; } = new();
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }
 
@@ -668,7 +668,7 @@ public class RiskBreach
     public decimal Limit { get; set; }
     public decimal Severity { get; set; }
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
-    public Dictionary<string, object> Details { get; } = new();
+    public Dictionary<string, object> Details { get; set; } = new();
 }
 
 // Health Status Model

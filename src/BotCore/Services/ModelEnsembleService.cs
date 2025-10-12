@@ -35,7 +35,7 @@ public class ModelEnsembleService : IDisposable
     private const double MinLogProbabilityEpsilon = 1e-8;           // Epsilon to avoid log(0)
     private const double ContextFeatureAdjustment = 0.1;            // Context adjustment for confidence
     private const double VolatilityProbabilityBoost = 0.1;          // Probability boost with volatility data
-    private static readonly Random SharedRandom = new();
+    // Removed SharedRandom - using System.Security.Cryptography.RandomNumberGenerator for secure randomness
     
     public ModelEnsembleService(
         ILogger<ModelEnsembleService> logger,
@@ -676,7 +676,7 @@ public class ModelEnsembleService : IDisposable
         // Use cancellationToken for proper async pattern
         cancellationToken.ThrowIfCancellationRequested();
         
-        var strategy = availableStrategies[SharedRandom.Next(availableStrategies.Count)];
+        var strategy = availableStrategies[System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, availableStrategies.Count)];
         
         // Production model inference with calibrated confidence
         // Confidence derived from model's softmax output and validation metrics
@@ -684,7 +684,7 @@ public class ModelEnsembleService : IDisposable
         
         // Use contextVector to adjust confidence based on market conditions
         var contextAdjustment = contextVector.Features.Count > 0 ? ContextFeatureAdjustment : 0.0;
-        var confidenceVariation = SharedRandom.NextDouble() * RandomPredictionRange;
+        var confidenceVariation = (System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0) * RandomPredictionRange;
         
         return Task.FromResult<StrategyPrediction?>(new StrategyPrediction
         {
@@ -703,7 +703,7 @@ public class ModelEnsembleService : IDisposable
         // Implementation would depend on model type
         // For now, return a simple prediction
         var directions = new[] { "Up", "Down", "Sideways" };
-        var direction = directions[SharedRandom.Next(directions.Length)];
+        var direction = directions[System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, directions.Length)];
         
         // Use marketFeatures to adjust probability (simple heuristic)
         var baseProb = RandomPredictionBase;
@@ -715,7 +715,7 @@ public class ModelEnsembleService : IDisposable
         return Task.FromResult<PriceDirectionPrediction?>(new PriceDirectionPrediction
         {
             Direction = direction,
-            Probability = baseProb + SharedRandom.NextDouble() * RandomPredictionRange,
+            Probability = baseProb + (System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0) * RandomPredictionRange,
             Weight = model.Weight,
             ModelName = model.Name
         });

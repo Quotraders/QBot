@@ -1744,7 +1744,7 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
     
     private static string GenerateDecisionId()
     {
-        return $"MD{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}_{Random.Shared.Next(DecisionIdRandomMin, DecisionIdRandomMax)}";
+        return $"MD{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}_{System.Security.Cryptography.RandomNumberGenerator.GetInt32(DecisionIdRandomMin, DecisionIdRandomMax)}";
     }
     
     /// <summary>

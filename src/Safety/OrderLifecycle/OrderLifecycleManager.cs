@@ -56,7 +56,7 @@ public class OrderLifecycleManager : IOrderLifecycleManager, IHostedService
         if (await IsCustomTagUsedAsync(request.CustomTag).ConfigureAwait(false))
         {
             _logger.LogWarning("[ORDER_LIFECYCLE] Duplicate customTag detected: {CustomTag} - blocking replay", 
-                request.CustomTag).ConfigureAwait(false);
+                request.CustomTag);
             throw new InvalidOperationException($"CustomTag {request.CustomTag} already used - preventing duplicate order");
         }
 
@@ -165,7 +165,7 @@ public class OrderLifecycleManager : IOrderLifecycleManager, IHostedService
                         Commission = updateEvent.Commission ?? 0m
                     });
                     evidence.TotalFilled += updateEvent.FilledQuantity;
-                    evidence.RemainingQuantity;
+                    evidence.RemainingQuantity = evidence.Quantity - evidence.TotalFilled;
                     evidence.Status = OrderEvidenceStatus.FullyFilled;
                     evidence.CompletedAt = updateEvent.Timestamp;
                     evidence.LastFillAt = updateEvent.Timestamp;
@@ -367,8 +367,8 @@ public class OrderEvidence
     public string Strategy { get; set; } = string.Empty;
     
     public List<FillEvidence>? Fills { get; set; }
-    public Dictionary<string, object> DecisionContext { get; } = new();
-    public Dictionary<string, object> Metadata { get; } = new();
+    public Dictionary<string, object> DecisionContext { get; set; } = new();
+    public Dictionary<string, object> Metadata { get; set; } = new();
     
     public string? RejectReason { get; set; }
     public string? CancelReason { get; set; }

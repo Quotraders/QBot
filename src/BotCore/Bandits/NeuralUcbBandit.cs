@@ -492,7 +492,7 @@ public class OnnxNeuralNetwork : INeuralNetwork, IDisposable
     private readonly TradingBot.Abstractions.RlRuntimeMode _runtimeMode;
     private InferenceSession? _session;
     private readonly string _modelPath;
-    private readonly Random _random = new();
+    // Removed _random field - using System.Security.Cryptography.RandomNumberGenerator for secure randomness
     private bool _isInitialized;
 
     public OnnxNeuralNetwork(OnnxModelLoader onnxLoader, ILogger<OnnxNeuralNetwork> logger, TradingBot.Abstractions.RlRuntimeMode runtimeMode, string modelPath = "models/neural_ucb_model.onnx")
@@ -577,7 +577,7 @@ public class OnnxNeuralNetwork : INeuralNetwork, IDisposable
     {
         // For ONNX models, dropout is handled during training, not inference
         // For uncertainty estimation, we can add noise to input features
-        var noisyFeatures = features.Select(f => f + (decimal)(_random.NextDouble() - 0.5) * 0.01m).ToArray();
+        var noisyFeatures = features.Select(f => f + (decimal)(System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0 - 0.5) * 0.01m).ToArray();
         return PredictAsync(noisyFeatures, ct);
     }
 
