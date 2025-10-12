@@ -1723,9 +1723,9 @@ Based on this, what should I change about my own code or parameters to improve? 
     {
         if (!returns.Any()) return 0;
         
-        var peak;
-        var maxDrawdown;
-        var cumulative;
+        decimal peak = 0;
+        decimal maxDrawdown = 0;
+        decimal cumulative = 0;
         
         foreach (var ret in returns)
         {

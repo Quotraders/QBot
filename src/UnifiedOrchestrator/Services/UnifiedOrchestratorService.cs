@@ -138,7 +138,7 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ TopstepX SDK adapter initialization failed");
-            _adapterInitialized;
+            _adapterInitialized = false;
         }
         
         // Initialize all subsystems
@@ -164,7 +164,7 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "TopstepX connection check failed - running in offline mode");
-            _isConnectedToTopstep;
+            _isConnectedToTopstep = false;
         }
         
         await Task.CompletedTask.ConfigureAwait(false);

@@ -107,7 +107,7 @@ internal class ValidationReportRegressionService
         }
         catch (Exception ex)
         {
-            testCase.TestPassed;
+            testCase.TestPassed = false;
             testCase.ErrorMessage = ex.Message;
             testCase.ActualResult = $"Failed to create PromotionTestReport: {ex.Message}";
             _logger.LogWarning("❌ [REGRESSION] PromotionTestReport creation test failed: {Error}", ex.Message);
@@ -158,7 +158,7 @@ internal class ValidationReportRegressionService
         }
         catch (Exception ex)
         {
-            testCase.TestPassed;
+            testCase.TestPassed = false;
             testCase.ErrorMessage = ex.Message;
             testCase.ActualResult = $"Analytics processing failed: {ex.Message}";
             _logger.LogWarning("❌ [REGRESSION] Downstream analytics test failed: {Error}", ex.Message);
@@ -199,7 +199,7 @@ internal class ValidationReportRegressionService
         }
         catch (Exception ex)
         {
-            testCase.TestPassed;
+            testCase.TestPassed = false;
             testCase.ErrorMessage = ex.Message;
             testCase.ActualResult = $"Report generation failed: {ex.Message}";
             _logger.LogWarning("❌ [REGRESSION] Reporting pipeline test failed: {Error}", ex.Message);
@@ -245,7 +245,7 @@ internal class ValidationReportRegressionService
         }
         catch (Exception ex)
         {
-            testCase.TestPassed;
+            testCase.TestPassed = false;
             testCase.ErrorMessage = ex.Message;
             testCase.ActualResult = $"Compatibility test failed: {ex.Message}";
             _logger.LogWarning("❌ [REGRESSION] Backward compatibility test failed: {Error}", ex.Message);
