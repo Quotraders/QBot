@@ -148,10 +148,9 @@ namespace BotCore.Configuration
         /// <summary>
         /// Calculate total latency with random jitter
         /// </summary>
-        public int CalculateLatency(Random? random = null)
+        public int CalculateLatency()
         {
-            random ??= Random.Shared;
-            var jitter = random.Next(-NetworkJitterMs, NetworkJitterMs + 1);
+            var jitter = System.Security.Cryptography.RandomNumberGenerator.GetInt32(-NetworkJitterMs, NetworkJitterMs + 1);
             var totalLatency = BaseLatencyMs + OrderProcessingMs + jitter;
             return Math.Min(totalLatency, MaxLatencyMs);
         }

@@ -189,8 +189,7 @@ public sealed class ProductionUcbStrategyChooser : IUcbStrategyChooser
                 // No history - get configured initial score from service provider
                 var initialConfig = _serviceProvider.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
                 var initialScore = initialConfig?.GetValue<double>("ML:UCB:InitialStrategyScore", 0.5) ?? 0.5;
-                var random = Random.Shared;
-                var selected = strategies[random.Next(strategies.Length)];
+                var selected = strategies[System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, strategies.Length)];
                 LogUcbStrategyNoHistory(_logger, symbol, selected.Item1, initialScore, null);
                 return (selected.Item1, selected.Item2, initialScore);
             }

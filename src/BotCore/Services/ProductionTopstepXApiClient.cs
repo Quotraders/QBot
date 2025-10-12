@@ -204,7 +204,7 @@ namespace BotCore.Services
                 if (attempt < maxRetries)
                 {
                     var delay = TimeSpan.FromMilliseconds(baseDelay.TotalMilliseconds * Math.Pow(2, attempt - 1));
-                    var jitter = TimeSpan.FromMilliseconds(Random.Shared.Next(0, RetryJitterMaxMilliseconds));
+                    var jitter = TimeSpan.FromMilliseconds(System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, RetryJitterMaxMilliseconds));
                     var totalDelay = delay + jitter;
 
                     _logger.LogInformation("[API-CLIENT] Retrying request to {Endpoint} in {DelayMs}ms",

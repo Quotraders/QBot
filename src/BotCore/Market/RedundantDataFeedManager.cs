@@ -804,7 +804,7 @@ public class TopstepXDataFeed : IDataFeed
         return new MarketData
         {
             Symbol = symbol,
-            Price = ES_BASE_PRICE + (decimal)(Random.Shared.NextDouble() * (double)PRICE_VARIATION_RANGE - (double)PRICE_VARIATION_OFFSET),
+            Price = ES_BASE_PRICE + (decimal)(System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0 * (double)PRICE_VARIATION_RANGE - (double)PRICE_VARIATION_OFFSET),
             Volume = DEFAULT_VOLUME,
             Bid = ES_BID_PRICE,
             Ask = ES_ASK_PRICE,
@@ -865,7 +865,7 @@ public class BackupDataFeed : IDataFeed
         return new MarketData
         {
             Symbol = symbol,
-            Price = BasePrice + (decimal)(Random.Shared.NextDouble() * PriceVariationRange - PriceVariationOffset),
+            Price = BasePrice + (decimal)(System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0 * PriceVariationRange - PriceVariationOffset),
             Volume = VolumeAmount,
             Bid = BidPrice,
             Ask = AskPrice,

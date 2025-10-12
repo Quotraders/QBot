@@ -305,8 +305,8 @@ namespace BotCore.Configuration
         /// </summary>
         public int GenerateNewSeed()
         {
-            // Use Random.Shared for non-cryptographic random number generation
-            return Random.Shared.Next(BaseSeed, BaseSeed + MaxSeedRange);
+            // Use cryptographically secure random number generation
+            return System.Security.Cryptography.RandomNumberGenerator.GetInt32(BaseSeed, BaseSeed + MaxSeedRange);
         }
     }
 

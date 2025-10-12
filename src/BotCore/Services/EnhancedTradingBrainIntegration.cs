@@ -767,9 +767,9 @@ public class EnhancedTradingBrainIntegration
         // Generate recent bars with realistic variations
         for (int i = 0; i < DefaultMaxPositions; i++)
         {
-            var variation = (decimal)(Random.Shared.NextDouble() - 0.5) * (basePrice * 0.001m); // 0.1% variation
+            var variation = (decimal)(System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0 - 0.5) * (basePrice * 0.001m); // 0.1% variation
             var openPrice = basePrice + variation;
-            var closePrice = openPrice + (decimal)(Random.Shared.NextDouble() - 0.5) * (basePrice * 0.0005m);
+            var closePrice = openPrice + (decimal)(System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0 - 0.5) * (basePrice * 0.0005m);
             
             bars.Add(new Bar
             {
@@ -780,7 +780,7 @@ public class EnhancedTradingBrainIntegration
                 High = Math.Max(openPrice, closePrice) + (basePrice * 0.0002m),
                 Low = Math.Min(openPrice, closePrice) - (basePrice * 0.0002m),
                 Close = closePrice,
-                Volume = DefaultBarCount + Random.Shared.Next(DefaultBarVolume / MinimumFeaturesRequired)
+                Volume = DefaultBarCount + System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, DefaultBarVolume / MinimumFeaturesRequired)
             });
         }
         

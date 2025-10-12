@@ -181,7 +181,7 @@ public class EnhancedProductionResilienceService
         var exponentialDelay = TimeSpan.FromMilliseconds(baseDelay.TotalMilliseconds * Math.Pow(2, retryAttempt - 1));
         
         // Add jitter (±20%)
-        var jitter = Random.Shared.NextDouble() * 0.4 - 0.2; // -0.2 to +0.2
+        var jitter = System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0 * 0.4 - 0.2; // -0.2 to +0.2
         var jitteredDelay = TimeSpan.FromMilliseconds(exponentialDelay.TotalMilliseconds * (1 + jitter));
         
         // Cap at maximum delay
@@ -299,7 +299,7 @@ public static class ResilienceExtensions
             .HandleTransientHttpError()
             .WaitAndRetryAsync(
                 retryCount: 3,
-                sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(ExponentialBackoffBase, retryAttempt)) + TimeSpan.FromMilliseconds(Random.Shared.Next(0, JitterMaxDelayMs)),
+                sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(ExponentialBackoffBase, retryAttempt)) + TimeSpan.FromMilliseconds(System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, JitterMaxDelayMs)),
                 onRetry: (outcome, timespan, retryCount, context) =>
                 {
                     // Simple logging without context dependency

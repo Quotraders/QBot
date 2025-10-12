@@ -86,7 +86,7 @@ public class UnifiedDecisionRouter
     private readonly TradingBot.IntelligenceStack.IntelligenceOrchestrator _intelligenceOrchestrator;
     
     // Strategy routing configuration
-    private readonly Random _random = new();
+    // Removed _random field - using System.Security.Cryptography.RandomNumberGenerator for secure randomness
     
     // Decision tracking for learning
     private readonly List<DecisionOutcome> _decisionHistory = new();
@@ -677,7 +677,7 @@ public class UnifiedDecisionRouter
         // Create synthetic bars for the brain
         for (int i = 0; i < SYNTHETIC_BAR_COUNT; i++)
         {
-            var variation = (decimal)(_random.NextDouble() - 0.5) * SYNTHETIC_BAR_VARIATION;
+            var variation = (decimal)(System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0 - 0.5) * SYNTHETIC_BAR_VARIATION;
             bars.Add(new ModelBar
             {
                 Symbol = context.Symbol,
@@ -687,7 +687,7 @@ public class UnifiedDecisionRouter
                 High = price + variation + SYNTHETIC_BAR_RANGE,
                 Low = price + variation - SYNTHETIC_BAR_RANGE,
                 Close = price + variation,
-                Volume = (int)(volume * (MIN_VOLUME_MULTIPLIER + (decimal)_random.NextDouble() * VOLUME_MULTIPLIER_RANGE))
+                Volume = (int)(volume * (MIN_VOLUME_MULTIPLIER + (decimal)(System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0) * VOLUME_MULTIPLIER_RANGE))
             });
         }
         
@@ -814,7 +814,7 @@ public class UnifiedDecisionRouter
     
     private static string GenerateDecisionId()
     {
-        return $"UD{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}_{Random.Shared.Next(DECISION_ID_RANDOM_MIN, DECISION_ID_RANDOM_MAX)}";
+        return $"UD{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}_{System.Security.Cryptography.RandomNumberGenerator.GetInt32(DECISION_ID_RANDOM_MIN, DECISION_ID_RANDOM_MAX)}";
     }
     
     #endregion
