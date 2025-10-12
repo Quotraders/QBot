@@ -150,7 +150,7 @@ internal static class Program
             await ValidateStartupServicesAsync(host.Services).ConfigureAwait(false);
             
             // Initialize ML parameter provider for TradingBot classes
-            global::BotCore.Services.TradingBotParameterProvider.Initialize(host.Services);
+            TradingBot.BotCore.Services.TradingBotParameterProvider.Initialize(host.Services);
             
             // Display startup information
             // Note: DisplayStartupInfo() temporarily disabled during build phase
@@ -209,7 +209,7 @@ Artifacts will be saved to: artifacts/production-demo/
             var host = CreateHostBuilder(args).Build();
             
             // Initialize ML parameter provider for TradingBot classes
-            global::BotCore.Services.TradingBotParameterProvider.Initialize(host.Services);
+            TradingBot.BotCore.Services.TradingBotParameterProvider.Initialize(host.Services);
             
             // Get the production demonstration runner
             var demoRunner = host.Services.GetRequiredService<ProductionDemonstrationRunner>();
@@ -293,7 +293,7 @@ This replaces individual SimpleBot/MinimalDemo/TradingBot smoke tests
             var host = CreateHostBuilder(args).Build();
             
             // Initialize ML parameter provider for TradingBot classes
-            global::BotCore.Services.TradingBotParameterProvider.Initialize(host.Services);
+            TradingBot.BotCore.Services.TradingBotParameterProvider.Initialize(host.Services);
             
             // Validate service registration and configuration
             await ValidateStartupServicesAsync(host.Services).ConfigureAwait(false);
@@ -328,9 +328,9 @@ This replaces individual SimpleBot/MinimalDemo/TradingBot smoke tests
                 
             // Test 3: Parameter provider functionality
             logger.LogInformation("🧪 [SMOKE] Test 3: Parameter provider functionality");
-            var confidenceThreshold = global::BotCore.Services.TradingBotParameterProvider.GetAIConfidenceThreshold();
-            var positionMultiplier = global::BotCore.Services.TradingBotParameterProvider.GetPositionSizeMultiplier();
-            var fallbackConfidence = global::BotCore.Services.TradingBotParameterProvider.GetFallbackConfidence();
+            var confidenceThreshold = TradingBot.BotCore.Services.TradingBotParameterProvider.GetAIConfidenceThreshold();
+            var positionMultiplier = TradingBot.BotCore.Services.TradingBotParameterProvider.GetPositionSizeMultiplier();
+            var fallbackConfidence = TradingBot.BotCore.Services.TradingBotParameterProvider.GetFallbackConfidence();
             
             logger.LogInformation("🧪 [SMOKE] ✅ AI Confidence Threshold: {Threshold}", confidenceThreshold);
             logger.LogInformation("🧪 [SMOKE] ✅ Position Size Multiplier: {Multiplier}", positionMultiplier);

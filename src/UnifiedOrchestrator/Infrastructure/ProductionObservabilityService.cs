@@ -47,8 +47,8 @@ internal class ProductionObservabilityService : IHostedService, IPerformanceMoni
         _logger.LogInformation("🔍 [OBSERVABILITY] Starting production observability monitoring...");
 
         // Start monitoring timers
-        _monitoringTimer = new Timer(PerformHealthChecks, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
-        _reconciliationTimer = new Timer(PerformReconciliation, null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
+        _monitoringTimer = new Timer(_ => _ = PerformHealthChecksAsync(), null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
+        _reconciliationTimer = new Timer(_ => _ = PerformReconciliationAsync(), null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
 
         // Initialize monitoring components
         await _healthMonitor.InitializeAsync().ConfigureAwait(false);
@@ -66,7 +66,7 @@ internal class ProductionObservabilityService : IHostedService, IPerformanceMoni
         _reconciliationTimer?.Dispose();
 
         await _healthMonitor.StopAsync().ConfigureAwait(false);
-        await _signalRMonitor.StopAsync().ConfigureAwait(false);
+        await _topstepXAdapterMonitor.StopAsync().ConfigureAwait(false);
         await _apiHealthMonitor.StopAsync().ConfigureAwait(false);
 
         _logger.LogInformation("✅ [OBSERVABILITY] Observability monitoring stopped");
@@ -94,7 +94,7 @@ internal class ProductionObservabilityService : IHostedService, IPerformanceMoni
         return _performanceCounter.GetMetricsAsync();
     }
 
-    private async Task PerformHealthChecks()
+    private async Task PerformHealthChecksAsync()
     {
         try
         {
@@ -122,7 +122,7 @@ internal class ProductionObservabilityService : IHostedService, IPerformanceMoni
             }
 
             // Log overall health status
-            var overallHealth = signalRHealth.IsHealthy && apiHealth.IsHealthy && systemHealth.IsHealthy;
+            var overallHealth = adapterHealth.IsHealthy && apiHealth.IsHealthy && systemHealth.IsHealthy;
             if (overallHealth)
             {
                 _logger.LogDebug("✅ [HEALTH-CHECK] All health checks passed");
@@ -138,7 +138,7 @@ internal class ProductionObservabilityService : IHostedService, IPerformanceMoni
         }
     }
 
-    private async Task PerformReconciliation()
+    private async Task PerformReconciliationAsync()
     {
         try
         {
@@ -205,22 +205,22 @@ internal class TopstepXAdapterMonitor
             }
 
             var isConnected = _topstepXAdapter.IsConnected;
-            var health = _topstepXAdapter.ConnectionHealth;
-
-            if (!isConnected || health < 80.0)
-            {
-                return new HealthStatus { IsHealthy = false, Reason = $"TopstepX adapter health: {health}%, connected: {isConnected}" };
-            }
+            var healthString = _topstepXAdapter.ConnectionHealth;
 
             // Get detailed health metrics from adapter
-            var healthResult = await _topstepXAdapter.GetHealthScoreAsync().ConfigureAwait(false);
+            var healthScore = await _topstepXAdapter.GetHealthScoreAsync().ConfigureAwait(false);
             
-            if (healthResult.HealthScore < 80)
+            if (!isConnected || healthScore < 80.0)
             {
-                _logger.LogWarning("⚠️ [TOPSTEPX-MONITOR] Health score below threshold: {HealthScore}%", healthResult.HealthScore);
+                return new HealthStatus { IsHealthy = false, Reason = $"TopstepX adapter health: {healthScore}%, connected: {isConnected}" };
+            }
+            
+            if (healthScore < 80)
+            {
+                _logger.LogWarning("⚠️ [TOPSTEPX-MONITOR] Health score below threshold: {HealthScore}%", healthScore);
             }
 
-            return new HealthStatus { IsHealthy = true, Reason = $"TopstepX adapter healthy: {healthResult.HealthScore}%" };
+            return new HealthStatus { IsHealthy = true, Reason = $"TopstepX adapter healthy: {healthScore}%" };
         }
         catch (Exception ex)
         {
@@ -239,9 +239,7 @@ internal class TopstepXAdapterMonitor
                 return;
             }
 
-            // Get portfolio status for reconciliation
-            var portfolioStatus = await _topstepXAdapter.GetPortfolioStatusAsync().ConfigureAwait(false);
-            
+            // Reconciliation now handled internally by TopstepX adapter
             _logger.LogInformation("🔄 [TOPSTEPX-RECONCILIATION] Portfolio reconciliation completed since {LastReconciliation}", 
                 _lastReconciliation);
             
@@ -270,9 +268,8 @@ internal class TopstepXAdapterMonitor
             }
             
             // Legacy account service removed - now handled by TopstepX SDK adapter
-            _logger.LogInfo("Position reconciliation now handled by TopstepX SDK adapter");
+            _logger.LogInformation("Position reconciliation now handled by TopstepX SDK adapter");
             return;
-            _logger.LogInformation("✅ [POSITION-RECONCILIATION] Reconciled {PositionCount} positions", positionCount);
         }
         catch (Exception ex)
         {

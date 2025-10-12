@@ -329,9 +329,9 @@ public class StartupValidationResult
 {
     public bool AllTestsPassed { get; set; }
     public bool IsValid { get; set; }
-    public Dictionary<string, TestResult> TestResults { get; } = new();
-    public Collection<string> FailureReasons { get; } = new();
-    public Collection<string> ValidationErrors { get; } = new();
+    public Dictionary<string, TestResult> TestResults { get; set; } = new();
+    public Collection<string> FailureReasons { get; set; } = new();
+    public Collection<string> ValidationErrors { get; set; } = new();
     public TimeSpan TotalDuration { get; set; }
 }
 
