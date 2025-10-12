@@ -1,6 +1,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 
@@ -35,14 +37,14 @@ internal interface ITopstepAuth
 /// </summary>
 internal sealed class TopstepAuth : ITopstepAuth
 {
-    private readonly Microsoft.Extensions.Logging.ILogger<TopstepAuth> _logger;
-    private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
+    private readonly ILogger<TopstepAuth> _logger;
+    private readonly IConfiguration _configuration;
     private volatile string? _cachedToken;
     private DateTime _tokenExpiry = DateTime.MinValue;
     
     public TopstepAuth(
-        Microsoft.Extensions.Logging.ILogger<TopstepAuth> logger,
-        Microsoft.Extensions.Configuration.IConfiguration configuration)
+        ILogger<TopstepAuth> logger,
+        IConfiguration configuration)
     {
         _logger = logger;
         _configuration = configuration;

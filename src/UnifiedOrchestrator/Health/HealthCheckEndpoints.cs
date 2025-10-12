@@ -44,7 +44,7 @@ namespace TradingBot.UnifiedOrchestrator.Health
                     uptime = GetUptime()
                 };
 
-                return healthReport.Status == HealthStatus.Healthy 
+                return healthReport.Status == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy 
                     ? Results.Ok(response)
                     : Results.StatusCode(503); // Service Unavailable
             }
