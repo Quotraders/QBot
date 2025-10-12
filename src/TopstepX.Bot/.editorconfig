@@ -1,3 +1,0 @@
-# Disable analyzer warnings for TopstepX.Bot (adapter code)
-[*.cs]
-dotnet_analyzer_diagnostic.severity = none

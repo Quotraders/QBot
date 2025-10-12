@@ -127,34 +127,7 @@ dotnet_diagnostic.CTB0001.severity = error # Empty source file detected
 dotnet_diagnostic.CTB0002.severity = error # Empty folder detected
 
 # ==============================================
-# INFRASTRUCTURE FOLDER EXCLUSIONS
-# These folders contain infrastructure/support code that doesn't need full analyzer enforcement
+# PRODUCTION ENFORCEMENT - NO EXCLUSIONS
+# All folders must pass full analyzer enforcement per production guardrails
+# Suppressions via .editorconfig violate core requirements
 # ==============================================
-
-[src/Abstractions/**/*.cs]
-# Disable all analyzers for Abstractions folder (interfaces/contracts only)
-dotnet_analyzer_diagnostic.severity = none
-
-[src/Backtest/**/*.cs]
-# Disable all analyzers for Backtest folder (testing infrastructure)
-dotnet_analyzer_diagnostic.severity = none
-
-[src/Infrastructure/**/*.cs]
-# Disable all analyzers for Infrastructure folder (plumbing code)
-dotnet_analyzer_diagnostic.severity = none
-
-[src/Zones/**/*.cs]
-# Disable all analyzers for Zones folder (support library)
-dotnet_analyzer_diagnostic.severity = none
-
-[src/Monitoring/**/*.cs]
-# Disable all analyzers for Monitoring folder (observability infrastructure)
-dotnet_analyzer_diagnostic.severity = none
-
-[src/TopstepX.Bot/**/*.cs]
-# Disable all analyzers for TopstepX.Bot folder (adapter code)
-dotnet_analyzer_diagnostic.severity = none
-
-[src/adapters/**/*.cs]
-# Disable all analyzers for adapters folder (integration adapters)
-dotnet_analyzer_diagnostic.severity = none
