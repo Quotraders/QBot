@@ -16,7 +16,6 @@ public static class AdvancedSystemConfiguration
     public static IServiceCollection AddMLMemoryManagement(this IServiceCollection services)
     {
         services.AddSingleton<IMLMemoryManager, MLMemoryManager>();
-        services.AddSingleton<RedundantDataFeedManager>();
         
         return services;
     }
@@ -62,14 +61,6 @@ public static class AdvancedSystemConfiguration
         {
             await memoryManager.InitializeMemoryManagementAsync().ConfigureAwait(false);
             logger.LogInformation("[Advanced-System] ML memory management initialized");
-        }
-        
-        // Initialize data feed management
-        var dataFeedManager = serviceProvider.GetService<RedundantDataFeedManager>();
-        if (dataFeedManager != null)
-        {
-            await dataFeedManager.InitializeDataFeedsAsync().ConfigureAwait(false);
-            logger.LogInformation("[Advanced-System] Redundant data feeds initialized");
         }
         
         // Initialize economic event management

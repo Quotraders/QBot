@@ -1324,9 +1324,6 @@ Please check the configuration and ensure all required services are registered.
             return new BotCore.Market.EconomicEventManager(logger, httpClient, botAlertService);
         });
         
-        // Register RedundantDataFeedManager (442 lines)
-        services.AddSingleton<BotCore.Market.RedundantDataFeedManager>();
-        
         // Register AdvancedSystemIntegrationService (386 lines)
         services.AddSingleton<AdvancedSystemIntegrationService>();
         
@@ -1495,7 +1492,6 @@ Please check the configuration and ensure all required services are registered.
         
         // Register advanced ML/AI system components using extension methods
         // Note: IMLMemoryManager already registered earlier in the service registration
-        // RedundantDataFeedManager already registered above
         // IEconomicEventManager already registered above
         
         // ================================================================================

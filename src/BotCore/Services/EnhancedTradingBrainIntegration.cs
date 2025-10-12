@@ -153,27 +153,17 @@ public class EnhancedTradingBrainIntegration
                 }
             }
             
-            // Step 2: Get original UnifiedTradingBrain decision with real or fallback data
-            Env env;
-            Levels levels;
-            List<Bar> bars;
-            RiskEngine risk;
-            
-            if (intelligence != null && intelligence.DataQuality != DataQuality.Insufficient)
+            // Step 2: Get original UnifiedTradingBrain decision with REAL data only
+            // Intelligence is REQUIRED - no fake data fallback
+            if (intelligence == null || intelligence.DataQuality == DataQuality.Insufficient)
             {
-                env = CreateRealEnvFromIntelligence(intelligence);
-                levels = CreateRealLevelsFromMarketData(intelligence.KeyMetrics);
-                bars = CreateRealBarsFromMarketData(intelligence.KeyMetrics);
-                risk = CreateRealRisk();
+                throw new InvalidOperationException("🧠 [ENHANCED-BRAIN] Intelligence is REQUIRED for trading decisions. No fake data fallback available.");
             }
-            else
-            {
-                // Fallback to sample data
-                env = CreateSampleEnv();
-                levels = CreateSampleLevels();
-                bars = CreateSampleBars();
-                risk = CreateSampleRisk();
-            }
+
+            var env = CreateRealEnvFromIntelligence(intelligence);
+            var levels = CreateRealLevelsFromMarketData(intelligence.KeyMetrics);
+            var bars = CreateRealBarsFromMarketData(intelligence.KeyMetrics);
+            var risk = CreateRealRisk();
             
             var originalBrainDecision = await _tradingBrain.MakeIntelligentDecisionAsync(
                 symbol, env, levels, bars, risk, intelligence, cancellationToken).ConfigureAwait(false);
@@ -234,42 +224,8 @@ public class EnhancedTradingBrainIntegration
         {
             _logger.LogError(ex, "🧠 [ENHANCED-BRAIN] Error in enhanced decision making for {Symbol}", symbol);
             
-            // Fallback to original decision on error
-            try
-            {
-                var env = CreateSampleEnv();
-                var levels = CreateSampleLevels();
-                var bars = CreateSampleBars();
-                using var risk = CreateSampleRisk();
-                
-                var originalBrainDecision = await _tradingBrain.MakeIntelligentDecisionAsync(
-                    symbol, env, levels, bars, risk, null, cancellationToken).ConfigureAwait(false);
-                
-                return new EnhancedTradingDecision
-                {
-                    OriginalDecision = ConvertBrainToTradingDecision(originalBrainDecision),
-                    EnhancedStrategy = originalBrainDecision.RecommendedStrategy,
-                    EnhancedConfidence = originalBrainDecision.StrategyConfidence,
-                    EnhancedPositionSize = DefaultPositionSize,
-                    EnhancementApplied = false,
-                    ErrorMessage = ex.Message,
-                    Timestamp = DateTime.UtcNow
-                };
-            }
-            catch
-            {
-                // Ultimate fallback
-                return new EnhancedTradingDecision
-                {
-                    OriginalDecision = CreateFallbackTradingDecision(),
-                    EnhancedStrategy = "S3", // Safe default
-                    EnhancedConfidence = DefaultFallbackConfidence,
-                    EnhancedPositionSize = DefaultPositionSize,
-                    EnhancementApplied = false,
-                    ErrorMessage = ex.Message,
-                    Timestamp = DateTime.UtcNow
-                };
-            }
+            // NO FALLBACK - Throw exception instead of using fake data
+            throw new InvalidOperationException($"🧠 [ENHANCED-BRAIN] Failed to make decision for {symbol}. No fake data fallback available.", ex);
         }
     }
 
@@ -875,71 +831,6 @@ public class EnhancedTradingBrainIntegration
         riskEngine.cfg.RiskPerTrade = 500; // $500 risk per trade for TopStep
         riskEngine.cfg.MaxDailyDrawdown = 1000; // TopStep safe daily loss limit
         riskEngine.cfg.MaxOpenPositions = 1; // Conservative position limit
-        return riskEngine;
-    }
-    
-    private static Env CreateSampleEnv()
-    {
-        return new Env
-        {
-            Symbol = "ES",
-            atr = DefaultPriceLevel + (decimal)(Random.Shared.NextDouble() * DefaultPositionCount), // ATR around 5-7
-            volz = AccuracyTrackingThreshold + (decimal)(Random.Shared.NextDouble() * (double)MinimumConfidence) // Volume Z-score
-        };
-    }
-
-    private static Levels CreateSampleLevels()
-    {
-        var basePrice = 4500.0m;
-        return new Levels
-        {
-            Support1 = basePrice - PredictionCacheExpirationSeconds,
-            Support2 = basePrice - MinimumTradesForAccuracy,
-            Support3 = basePrice - EnsemblePredictionWindowSeconds,
-            Resistance1 = basePrice + PredictionCacheExpirationSeconds,
-            Resistance2 = basePrice + MinimumTradesForAccuracy,
-            Resistance3 = basePrice + EnsemblePredictionWindowSeconds,
-            VWAP = basePrice,
-            DailyPivot = basePrice,
-            WeeklyPivot = basePrice + MinimumFeaturesRequired,
-            MonthlyPivot = basePrice - MinimumFeaturesRequired
-        };
-    }
-
-    private static List<Bar> CreateSampleBars()
-    {
-        var bars = new List<Bar>();
-        var basePrice = 4500.0m;
-        var currentTime = DateTime.UtcNow;
-        
-        for (int i = 0; i < DefaultMaxPositions; i++)
-        {
-            var variation = (decimal)(Random.Shared.NextDouble() - 0.5) * MinimumFeaturesRequired;
-            var openPrice = basePrice + variation;
-            var closePrice = openPrice + (decimal)(Random.Shared.NextDouble() - 0.5) * DefaultPositionCount;
-            
-            bars.Add(new Bar
-            {
-                Symbol = "ES",
-                Start = currentTime.AddMinutes(-i),
-                Ts = ((DateTimeOffset)currentTime.AddMinutes(-i)).ToUnixTimeMilliseconds(),
-                Open = openPrice,
-                High = Math.Max(openPrice, closePrice) + (decimal)Random.Shared.NextDouble(),
-                Low = Math.Min(openPrice, closePrice) - (decimal)Random.Shared.NextDouble(),
-                Close = closePrice,
-                Volume = DefaultBarCount + Random.Shared.Next(DefaultBarVolume / MinimumFeaturesRequired)
-            });
-        }
-        
-        return bars;
-    }
-
-    private static RiskEngine CreateSampleRisk()
-    {
-        var riskEngine = new RiskEngine();
-        riskEngine.cfg.RiskPerTrade = DefaultBarCount; // $100 risk per trade
-        riskEngine.cfg.MaxDailyDrawdown = DefaultBarVolume;
-        riskEngine.cfg.MaxOpenPositions = 1;
         return riskEngine;
     }
 

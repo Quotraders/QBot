@@ -172,12 +172,9 @@ namespace BotCore.Services
                     return correlationBars;
                 }
 
-                // Last resort: Generate recent synthetic bars for warm-up
-                var syntheticBars = GenerateWarmupBars(contractId, barCount);
-                _logger.LogWarning("[HISTORICAL-BRIDGE] Using synthetic bars for {ContractId} - {BarCount} bars generated", 
-                    contractId, syntheticBars.Count);
-                
-                return syntheticBars;
+                // NO SYNTHETIC DATA - Fail if no real historical data available
+                _logger.LogError("[HISTORICAL-BRIDGE] NO real historical data available for {ContractId}. Cannot proceed without real data.", contractId);
+                throw new InvalidOperationException($"[HISTORICAL-BRIDGE] No real historical data available for {contractId}. Synthetic data generation removed.");
             }
             catch (InvalidOperationException ex)
             {
@@ -554,38 +551,6 @@ namespace BotCore.Services
                 }
             }
             return 0;
-        }
-
-        private static List<BotCore.Models.Bar> GenerateWarmupBars(string contractId, int barCount)
-        {
-            var bars = new List<BotCore.Models.Bar>();
-            var basePrice = GetBasePriceForContract(contractId);
-            var currentTime = DateTime.UtcNow;
-            
-            // Generate bars going backwards in time (1-minute bars)
-            for (int i = barCount - 1; i >= 0; i--)
-            {
-                var barStart = currentTime.AddMinutes(-i - 1);
-                
-                // Simple price movement simulation for warm-up
-                var priceVariation = (decimal)(Random.Shared.NextDouble() - 0.5) * (basePrice * 0.001m);
-                var price = basePrice + priceVariation;
-                
-                var bar = new BotCore.Models.Bar
-                {
-                    Symbol = GetSymbolFromContractId(contractId),
-                    Ts = ((DateTimeOffset)barStart).ToUnixTimeMilliseconds(),
-                    Open = price,
-                    High = price + Math.Abs(priceVariation) * 0.5m,
-                    Low = price - Math.Abs(priceVariation) * 0.5m,
-                    Close = price,
-                    Volume = 100 + Random.Shared.Next(1, 500) // Synthetic volume
-                };
-                
-                bars.Add(bar);
-            }
-
-            return bars.OrderBy(b => b.Ts).ToList();
         }
 
         private static decimal GetBasePriceForContract(string contractId)

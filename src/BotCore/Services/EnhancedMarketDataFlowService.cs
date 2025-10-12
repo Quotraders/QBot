@@ -249,33 +249,8 @@ namespace BotCore.Services
         {
             ArgumentNullException.ThrowIfNull(symbols);
             
-            try
-            {
-                if (!_config.EnableSnapshotRequests)
-                {
-                    _logger.LogDebug("[SNAPSHOT-REQUEST] Snapshot requests disabled in configuration");
-                    return;
-                }
-
-                _logger.LogInformation("[SNAPSHOT-REQUEST] Requesting snapshot data for symbols: {Symbols}", string.Join(", ", symbols));
-
-                // Wait for configured delay before requesting snapshots
-                if (_config.SnapshotRequestDelay > 0)
-                {
-                    await Task.Delay(_config.SnapshotRequestDelay).ConfigureAwait(false);
-                }
-
-                foreach (var symbol in symbols)
-                {
-                    await RequestSymbolSnapshotAsync(symbol).ConfigureAwait(false);
-                }
-
-                _logger.LogInformation("[SNAPSHOT-REQUEST] ✅ Snapshot data requests completed");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[SNAPSHOT-REQUEST] Error requesting snapshot data");
-            }
+            _logger.LogDebug("[SNAPSHOT-REQUEST] Snapshot requests disabled - real market data comes from MarketDataReader + GitHub workflows");
+            await Task.CompletedTask;
         }
 
         /// <summary>
@@ -564,44 +539,6 @@ namespace BotCore.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[DATA-RECOVERY] Error during data flow recovery attempt {Attempt}", _recoveryAttempts);
-            }
-        }
-
-        /// <summary>
-        /// Request snapshot data for a specific symbol
-        /// </summary>
-        private async Task RequestSymbolSnapshotAsync(string symbol)
-        {
-            try
-            {
-                _logger.LogDebug("[SYMBOL-SNAPSHOT] Requesting snapshot for {Symbol}", symbol);
-
-                // In production, this would make an actual API call to TopstepX
-                // For now, we'll simulate the request
-                
-                // Small async yield to maintain async pattern
-                await Task.Yield();
-                
-                // Simulate successful snapshot response
-                var snapshotData = new
-                {
-                    Symbol = symbol,
-                    Timestamp = DateTime.UtcNow,
-                    Bid = 4500.25m + (decimal)(Random.Shared.NextDouble() * 10),
-                    Ask = 4500.50m + (decimal)(Random.Shared.NextDouble() * 10),
-                    Last = 4500.375m + (decimal)(Random.Shared.NextDouble() * 10),
-                    Volume = Random.Shared.Next(1000, 10000)
-                };
-
-                // Process the snapshot data
-                SimulateMarketDataReceived(symbol, snapshotData);
-                OnSnapshotDataReceived?.Invoke(symbol);
-
-                _logger.LogDebug("[SYMBOL-SNAPSHOT] ✅ Snapshot received for {Symbol}", symbol);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[SYMBOL-SNAPSHOT] Error requesting snapshot for {Symbol}", symbol);
             }
         }
 
