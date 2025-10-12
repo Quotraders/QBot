@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using TradingBot.Abstractions;
+using TradingDecision = TradingBot.Abstractions.TradingDecision;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 

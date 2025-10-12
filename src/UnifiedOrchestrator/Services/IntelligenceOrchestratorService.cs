@@ -4,6 +4,9 @@ using TradingBot.Abstractions;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using MarketContext = TradingBot.Abstractions.MarketContext;
+using TradingDecision = TradingBot.Abstractions.TradingDecision;
+using ModelPerformance = TradingBot.Abstractions.ModelPerformance;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 
