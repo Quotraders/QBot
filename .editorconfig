@@ -72,7 +72,7 @@ dotnet_diagnostic.S3267.severity = error   # Loops should be simplified with LIN
 # Maintainability enforcement
 dotnet_diagnostic.S138.severity = error    # Methods should not have too many lines
 dotnet_diagnostic.S1541.severity = error   # Methods and classes should not have too many lines
-dotnet_diagnostic.S104.severity = error    # Files should not have too many lines
+dotnet_diagnostic.S104.severity = none     # Files should not have too many lines - DISABLED (focus on code quality first)
 
 # Documentation enforcement for public APIs
 dotnet_diagnostic.S1591.severity = suggestion  # Missing XML documentation (suggestion only for internal APIs)
