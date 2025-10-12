@@ -187,7 +187,7 @@ internal class TradingLogger : ITradingLogger, IAsyncDisposable, IDisposable
                 {
                     return; // Skip logging until we reach aggregation count
                 }
-                _mlPredictionCounter; // Reset counter
+                _mlPredictionCounter = 0; // Reset counter
             }
         }
 

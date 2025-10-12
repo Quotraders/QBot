@@ -255,7 +255,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
         catch (Exception ex)
         {
             _logger.LogError(ex, "[DATA-INTEGRATION] Failed to connect historical data");
-            _isHistoricalDataConnected;
+            _isHistoricalDataConnected = false;
         }
     }
 
@@ -311,7 +311,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
         catch (Exception ex)
         {
             _logger.LogError(ex, "[DATA-INTEGRATION] Failed to connect live TopStep data");
-            _isLiveDataConnected;
+            _isLiveDataConnected = false;
         }
     }
 

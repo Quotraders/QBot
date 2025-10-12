@@ -470,7 +470,7 @@ internal class TradingBrainAdapter : ITradingBrainAdapter
             _logger.LogWarning("[ADAPTER] Rollback to UnifiedTradingBrain requested");
             
             // Perform rollback with atomic swap
-            _useInferenceBrainPrimary;
+            _useInferenceBrainPrimary = false;
             
             _logger.LogWarning("[ADAPTER] Rolled back to UnifiedTradingBrain as primary decision maker");
             return true;
