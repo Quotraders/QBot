@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using TradingBot.Backtest;
+using TradingBot.Abstractions;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 
