@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using TradingBot.Abstractions;
 
 namespace BotCore.Services.PositionMonitoring
 {
@@ -16,7 +15,7 @@ namespace BotCore.Services.PositionMonitoring
         /// <summary>
         /// Get time-based exposure for a session (native + inherited positions)
         /// </summary>
-        Task<double> GetSessionTimeExposureAsync(List<Position> positions, string session);
+        Task<double> GetSessionTimeExposureAsync(List<TradingBot.Abstractions.Position> positions, string session);
         
         /// <summary>
         /// Get full lifecycle history for a position

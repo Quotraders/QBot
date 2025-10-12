@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using TradingBot.Abstractions;
+using Position = TradingBot.Abstractions.Position;
 
 namespace BotCore.Services.PositionMonitoring
 {
@@ -28,7 +28,7 @@ namespace BotCore.Services.PositionMonitoring
         /// <summary>
         /// Get time-based exposure for session (native + inherited)
         /// </summary>
-        public async Task<double> GetSessionTimeExposureAsync(List<Position> positions, string session)
+        public async Task<double> GetSessionTimeExposureAsync(List<TradingBot.Abstractions.Position> positions, string session)
         {
             if (positions == null || positions.Count == 0)
                 return 0.0;
@@ -128,7 +128,7 @@ namespace BotCore.Services.PositionMonitoring
         /// <summary>
         /// Track position lifecycle
         /// </summary>
-        private void TrackPosition(Position position)
+        private void TrackPosition(TradingBot.Abstractions.Position position)
         {
             var posId = GetPositionId(position);
             
@@ -196,7 +196,7 @@ namespace BotCore.Services.PositionMonitoring
         /// <summary>
         /// Generate position ID from position data
         /// </summary>
-        private static string GetPositionId(Position position)
+        private static string GetPositionId(TradingBot.Abstractions.Position position)
         {
             return $"{position.Symbol}_{position.OpenTime:yyyyMMddHHmmss}";
         }

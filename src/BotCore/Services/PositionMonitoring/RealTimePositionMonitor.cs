@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using TradingBot.Abstractions;
+using Position = TradingBot.Abstractions.Position;
 
 namespace BotCore.Services.PositionMonitoring
 {
@@ -28,7 +28,7 @@ namespace BotCore.Services.PositionMonitoring
         /// <summary>
         /// Get session exposure with time-decay weighting
         /// </summary>
-        public async Task<double> GetSessionExposureAsync(string session, List<Position> positions)
+        public async Task<double> GetSessionExposureAsync(string session, List<TradingBot.Abstractions.Position> positions)
         {
             if (positions == null || positions.Count == 0)
                 return 0.0;
@@ -78,7 +78,7 @@ namespace BotCore.Services.PositionMonitoring
         /// <summary>
         /// Get all session exposures
         /// </summary>
-        public async Task<Dictionary<string, double>> GetAllSessionExposuresAsync(List<Position> positions)
+        public async Task<Dictionary<string, double>> GetAllSessionExposuresAsync(List<TradingBot.Abstractions.Position> positions)
         {
             var sessions = new[] { "Asian", "European", "USMorning", "USAfternoon", "Evening" };
             var result = new Dictionary<string, double>();

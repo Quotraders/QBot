@@ -76,7 +76,7 @@ internal class DecisionServiceIntegration : IHostedService
         }
     }
 
-    public bool IsConnected { get; private set; };
+    public bool IsConnected { get; private set; }
 
     // IHostedService implementation
     public Task StartAsync(CancellationToken cancellationToken)

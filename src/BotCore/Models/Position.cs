@@ -17,6 +17,7 @@ namespace BotCore.Models
         public decimal UnrealizedPnL { get; set; }
         public decimal RealizedPnL { get; set; }
         public DateTime LastUpdate { get; set; }
+        public DateTime OpenTime { get; set; } = DateTime.UtcNow;
         public IReadOnlyList<Fill> Fills => _fills;
         public decimal MarketValue { get; set; }
         public decimal DailyPnL { get; set; }

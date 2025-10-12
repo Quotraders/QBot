@@ -349,7 +349,7 @@ public class UnifiedDecisionRouter
             using var risk = CreateRiskEngine();
             
             var brainDecision = await _unifiedBrain.MakeIntelligentDecisionAsync(
-                symbol, env, levels, bars, risk, cancellationToken).ConfigureAwait(false);
+                symbol, env, levels, bars, risk, null, cancellationToken).ConfigureAwait(false);
             
             return ConvertFromBrainDecision(brainDecision);
         }

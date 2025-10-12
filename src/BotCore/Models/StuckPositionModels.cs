@@ -95,6 +95,7 @@ namespace BotCore.Models
         public DateTime? ResolvedTime { get; set; }
         public decimal? FinalExitPrice { get; set; }
         public decimal? SlippageCost { get; set; }
+        public bool RequiredHumanIntervention { get; set; }
     }
     
     /// <summary>

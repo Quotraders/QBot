@@ -58,7 +58,7 @@ public class MarketDataReader
             for (int i = 0; i < parquetReader.RowGroupCount; i++)
             {
                 using var groupReader = parquetReader.OpenRowGroupReader(i);
-                var fields = await parquetReader.Schema.GetDataFieldsAsync().ConfigureAwait(false);
+                var fields = parquetReader.Schema.GetDataFields();
                 
                 foreach (var field in fields)
                 {
@@ -145,7 +145,7 @@ public class MarketDataReader
             for (int i = 0; i < parquetReader.RowGroupCount; i++)
             {
                 using var groupReader = parquetReader.OpenRowGroupReader(i);
-                var fields = await parquetReader.Schema.GetDataFieldsAsync().ConfigureAwait(false);
+                var fields = parquetReader.Schema.GetDataFields();
                 
                 // Read all columns for this group
                 var columns = new Dictionary<string, Array>();

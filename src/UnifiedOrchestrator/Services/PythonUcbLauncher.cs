@@ -41,7 +41,7 @@ internal class PythonUcbLauncher : IHostedService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[PYTHON_UCB] Failed to launch Python UCB process");
-            IsRunning;
+            IsRunning = false;
             return false;
         }
     }
@@ -66,7 +66,7 @@ internal class PythonUcbLauncher : IHostedService
             // 4. Clean up IPC resources
             
             await Task.Delay(50).ConfigureAwait(false); // Simulate graceful shutdown
-            IsRunning;
+            IsRunning = false;
             
             _logger.LogInformation("[PYTHON_UCB] Python UCB process stopped successfully");
             return true;
@@ -74,12 +74,12 @@ internal class PythonUcbLauncher : IHostedService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[PYTHON_UCB] Error stopping Python UCB process");
-            IsRunning;
+            IsRunning = false;
             return false;
         }
     }
 
-    public bool IsRunning { get; private set; };
+    public bool IsRunning { get; private set; }
 
     // IHostedService implementation
     public Task StartAsync(CancellationToken cancellationToken)

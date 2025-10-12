@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using TradingBot.Abstractions;
 
 namespace BotCore.Services.PositionMonitoring
 {
@@ -15,7 +14,7 @@ namespace BotCore.Services.PositionMonitoring
         /// <summary>
         /// Calculate risk-adjusted exposure for a session
         /// </summary>
-        Task<double> CalculateSessionExposureAsync(List<Position> positions, string session);
+        Task<double> CalculateSessionExposureAsync(List<TradingBot.Abstractions.Position> positions, string session);
         
         /// <summary>
         /// Get volatility multiplier for a session
@@ -25,7 +24,7 @@ namespace BotCore.Services.PositionMonitoring
         /// <summary>
         /// Get correlation adjustment for positions in a session
         /// </summary>
-        double GetCorrelationAdjustment(List<Position> positions, string session);
+        double GetCorrelationAdjustment(List<TradingBot.Abstractions.Position> positions, string session);
         
         /// <summary>
         /// Get liquidity discount for a session

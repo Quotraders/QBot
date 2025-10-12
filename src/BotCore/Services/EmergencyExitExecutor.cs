@@ -584,7 +584,7 @@ namespace BotCore.Services
                 Classification = state.Alert.Classification,
                 AllActions = new List<RecoveryAction>(state.Actions),
                 FinalOutcome = state.IsResolved ? "Resolved" : "Unresolved",
-                TotalRecoveryTimeSeconds = (state.ResolvedTime ?? DateTime.UtcNow - state.RecoveryStartTime).TotalSeconds,
+                TotalRecoveryTimeSeconds = ((state.ResolvedTime ?? DateTime.UtcNow) - state.RecoveryStartTime).TotalSeconds,
                 SlippageCost = state.SlippageCost,
                 MaxLevelReached = state.CurrentLevel,
                 RequiredHumanIntervention = state.RequiredHumanIntervention

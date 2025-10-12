@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using TradingBot.Abstractions;
+using Position = TradingBot.Abstractions.Position;
 
 namespace BotCore.Services.PositionMonitoring
 {
@@ -55,7 +55,7 @@ namespace BotCore.Services.PositionMonitoring
         /// <summary>
         /// Calculate risk-adjusted exposure for a session
         /// </summary>
-        public async Task<double> CalculateSessionExposureAsync(List<Position> positions, string session)
+        public async Task<double> CalculateSessionExposureAsync(List<TradingBot.Abstractions.Position> positions, string session)
         {
             if (positions == null || positions.Count == 0)
                 return 0.0;
@@ -104,7 +104,7 @@ namespace BotCore.Services.PositionMonitoring
         /// <summary>
         /// Get correlation adjustment based on position concentration
         /// </summary>
-        public double GetCorrelationAdjustment(List<Position> positions, string session)
+        public double GetCorrelationAdjustment(List<TradingBot.Abstractions.Position> positions, string session)
         {
             if (positions == null || positions.Count == 0)
                 return 1.0;

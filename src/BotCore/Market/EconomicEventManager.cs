@@ -261,8 +261,8 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
                 
                 // Log upcoming high-impact events for visibility
                 var upcomingEvents = events
-                    .Where(e => e.EventTime > DateTime.UtcNow && e.Impact >= EventImpact.Medium)
-                    .OrderBy(e => e.EventTime)
+                    .Where(e => e.ScheduledTime > DateTime.UtcNow && e.Impact >= EventImpact.Medium)
+                    .OrderBy(e => e.ScheduledTime)
                     .Take(3)
                     .ToList();
                 
@@ -272,7 +272,7 @@ public class EconomicEventManager : IEconomicEventManager, IDisposable
                     foreach (var evt in upcomingEvents)
                     {
                         _logger.LogInformation("[EconomicEventManager]    {Date} - {Event} ({Impact})", 
-                            evt.EventTime.ToString("yyyy-MM-dd HH:mm"), evt.EventName, evt.Impact);
+                            evt.ScheduledTime.ToString("yyyy-MM-dd HH:mm"), evt.Name, evt.Impact);
                     }
                 }
                 
