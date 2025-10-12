@@ -63,7 +63,7 @@ internal class InferenceBrain : IInferenceBrain
             // Reset daily counters if new day
             if (DateTime.UtcNow.Date > _lastResetDate)
             {
-                _decisionsToday;
+                _decisionsToday = 0;
                 _lastResetDate = DateTime.UtcNow.Date;
             }
 
@@ -281,14 +281,14 @@ internal class InferenceBrain : IInferenceBrain
         if (context.DailyPnL <= context.DailyLossLimit)
         {
             warnings.Add($"CRITICAL: Daily loss limit exceeded: {context.DailyPnL:C} <= {context.DailyLossLimit:C}");
-            passed;
+            passed = false;
         }
         
         // Max drawdown check
         if (context.UnrealizedPnL <= -Math.Abs(context.MaxDrawdown))
         {
             warnings.Add($"CRITICAL: Max drawdown exceeded: {context.UnrealizedPnL:C} <= {-Math.Abs(context.MaxDrawdown):C}");
-            passed;
+            passed = false;
         }
         
         // Position size sanity check
@@ -599,7 +599,7 @@ internal class InferenceBrain : IInferenceBrain
         else
         {
             finalAction = "HOLD";
-            totalSize;
+            totalSize = 0;
             ensembleMethod = $"WEIGHTED_HOLD_{holdScore:F2}";
         }
         
@@ -608,7 +608,7 @@ internal class InferenceBrain : IInferenceBrain
         if (actionConflict > 0.4m && (buyScore > 0.3m && sellScore > 0.3m))
         {
             finalAction = "HOLD";
-            totalSize;
+            totalSize = 0;
             finalConfidence *= 0.5m; // Reduce confidence due to conflict
             ensembleMethod = $"CONFLICT_RESOLUTION_HOLD_{actionConflict:F2}";
         }
