@@ -405,6 +405,7 @@ namespace TradingBot.Backtest
             report.UnrealizedPnL = simState.UnrealizedPnL;
             report.TotalCommissions = simState.TotalCommissions;
             report.TotalTrades = simState.RoundTripTrades;
+            report.WinningTrades = simState.WinningTrades;
             report.TotalReturn = _options.InitialCapital != 0 ? report.TotalPnL / _options.InitialCapital : 0m;
 
             await _metricSink.FlushAsync(cancellationToken);

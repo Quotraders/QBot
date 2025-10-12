@@ -182,6 +182,7 @@ namespace TradingBot.Backtest.ExecutionSimulators
             state.RealizedPnL = 0;
             state.TotalCommissions = 0;
             state.RoundTripTrades = 0;
+            state.WinningTrades = 0;
             state.LastMarketPrice = 0;
             state.ActiveBrackets.Clear();
         }
@@ -515,13 +516,18 @@ namespace TradingBot.Backtest.ExecutionSimulators
                 // Reducing or reversing position
                 var closedQuantity = Math.Min(Math.Abs(oldPosition), Math.Abs(fillQuantity));
                 var pnlPerContract = (fillPrice - state.AverageEntryPrice) * Math.Sign(oldPosition);
-                state.RealizedPnL += pnlPerContract * closedQuantity;
+                var tradePnL = pnlPerContract * closedQuantity;
+                state.RealizedPnL += tradePnL;
                 state.Position = newPosition;
 
                 if (Math.Abs(oldPosition) == Math.Abs(fillQuantity))
                 {
-                    // Position closed
+                    // Position closed - track if it was a winning trade
                     state.RoundTripTrades++;
+                    if (tradePnL > 0)
+                    {
+                        state.WinningTrades++;
+                    }
                     state.AverageEntryPrice = 0m;
                 }
                 else if (newPosition != 0 && Math.Sign(oldPosition) != Math.Sign(newPosition))

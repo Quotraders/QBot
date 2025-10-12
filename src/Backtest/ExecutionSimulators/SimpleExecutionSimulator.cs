@@ -148,6 +148,7 @@ namespace TradingBot.Backtest.ExecutionSimulators
             state.RealizedPnL = 0m;
             state.TotalCommissions = 0m;
             state.RoundTripTrades = 0;
+            state.WinningTrades = 0;
             state.LastMarketPrice = 0m;
             state.ActiveBrackets.Clear();
         }
@@ -243,8 +244,12 @@ namespace TradingBot.Backtest.ExecutionSimulators
 
                 if (Math.Abs(oldPosition) == Math.Abs(fillQuantity))
                 {
-                    // Position closed
+                    // Position closed - track if it was a winning trade
                     state.RoundTripTrades++;
+                    if (realizedPnL > 0)
+                    {
+                        state.WinningTrades++;
+                    }
                     state.AverageEntryPrice = 0m;
                 }
 

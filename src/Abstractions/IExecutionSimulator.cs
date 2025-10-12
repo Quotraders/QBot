@@ -126,6 +126,11 @@ namespace TradingBot.Abstractions
         /// Number of round-trip trades completed
         /// </summary>
         public int RoundTripTrades { get; set; }
+
+        /// <summary>
+        /// Number of winning trades (trades with positive realized PnL)
+        /// </summary>
+        public int WinningTrades { get; set; }
     }
 
     /// <summary>
