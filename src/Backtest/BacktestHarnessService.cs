@@ -175,7 +175,7 @@ namespace TradingBot.Backtest
                     await RecordDecisionAsync(decision, quote, cancellationToken);
 
                     // Execute decision if action required
-                    if (decision.Decision != TradingDecision.Hold)
+                    if (decision.Action != TradingAction.Hold)
                     {
                         await ExecuteTradingDecisionAsync(decision, quote, simState, cancellationToken);
                     }

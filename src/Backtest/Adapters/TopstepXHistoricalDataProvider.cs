@@ -99,9 +99,13 @@ namespace TradingBot.Backtest.Adapters
                     return GetEmptyQuoteStream();
                 }
 
+                // Convert DateTime to Unix milliseconds for comparison
+                var startTimeMs = new DateTimeOffset(startTime).ToUnixTimeMilliseconds();
+                var endTimeMs = new DateTimeOffset(endTime).ToUnixTimeMilliseconds();
+
                 // Filter bars to requested time range with additional validation
                 var filteredBars = historicalBars
-                    .Where(bar => bar?.Ts != null && bar.Ts >= startTime && bar.Ts <= endTime)
+                    .Where(bar => bar?.Ts != null && bar.Ts >= startTimeMs && bar.Ts <= endTimeMs)
                     .Where(bar => bar.Open > 0 && bar.High > 0 && bar.Low > 0 && bar.Close > 0) // SECURITY: Validate data integrity
                     .OrderBy(bar => bar.Ts)
                     .ToList();
@@ -219,8 +223,11 @@ namespace TradingBot.Backtest.Adapters
                     return fallbackRange;
                 }
 
-                var earliestData = validBars.Min(b => b.Ts);
-                var latestData = validBars.Max(b => b.Ts);
+                // Convert Unix milliseconds to DateTime
+                var earliestDataMs = validBars.Min(b => b.Ts);
+                var latestDataMs = validBars.Max(b => b.Ts);
+                var earliestData = DateTimeOffset.FromUnixTimeMilliseconds(earliestDataMs).UtcDateTime;
+                var latestData = DateTimeOffset.FromUnixTimeMilliseconds(latestDataMs).UtcDateTime;
                 
                 // SECURITY: Ensure reasonable bounds
                 if (earliestData > DateTime.UtcNow || latestData > DateTime.UtcNow)
@@ -278,33 +285,11 @@ namespace TradingBot.Backtest.Adapters
                 if (bar.Close < bar.Low || bar.Close > bar.High) continue;
                 if (bar.Volume < 0) continue;
 
+                // Convert bar to quote (no try-catch in yield return method)
+                Quote? quote = null;
                 try
                 {
-                    // Convert bar data to quote format
-                    // Estimate bid/ask from OHLC data (in real system, would have tick data)
-                    var spread = CalculateSpreadEstimate(bar.Close, symbol);
-                    var midPrice = bar.Close;
-                    var bid = midPrice - (spread / 2);
-                    var ask = midPrice + (spread / 2);
-
-                    // SECURITY: Ensure reasonable price bounds
-                    if (bid <= 0 || ask <= 0 || ask <= bid) continue;
-                    
-                    // SECURITY: Validate volume bounds
-                    var safeVolume = Math.Max(0, Math.Min(bar.Volume, int.MaxValue));
-
-                    yield return new Quote(
-                        Time: bar.Ts,
-                        Symbol: symbol,
-                        Bid: Math.Round(Math.Max(0, bid), 2),
-                        Ask: Math.Round(Math.Max(0, ask), 2),
-                        Last: Math.Round(Math.Max(0, bar.Close), 2),
-                        Volume: (int)safeVolume,
-                        Open: Math.Round(Math.Max(0, bar.Open), 2),
-                        High: Math.Round(Math.Max(0, bar.High), 2),
-                        Low: Math.Round(Math.Max(0, bar.Low), 2),
-                        Close: Math.Round(Math.Max(0, bar.Close), 2)
-                    );
+                    quote = ConvertBarToQuote(bar, symbol);
                 }
                 catch (Exception ex)
                 {
@@ -312,7 +297,41 @@ namespace TradingBot.Backtest.Adapters
                     // Continue processing other bars
                     continue;
                 }
+
+                if (quote != null)
+                {
+                    yield return quote;
+                }
             }
+        }
+
+        /// <summary>
+        /// Convert a bar to a quote
+        /// </summary>
+        private Quote ConvertBarToQuote(Bar bar, string symbol)
+        {
+            // Convert bar data to quote format
+            // Estimate bid/ask from OHLC data (in real system, would have tick data)
+            var spread = CalculateSpreadEstimate(bar.Close, symbol);
+            var midPrice = bar.Close;
+            var bid = midPrice - (spread / 2);
+            var ask = midPrice + (spread / 2);
+
+            // Convert Unix milliseconds timestamp to DateTime
+            var barTime = DateTimeOffset.FromUnixTimeMilliseconds(bar.Ts).UtcDateTime;
+
+            return new Quote(
+                Time: barTime,
+                Symbol: symbol,
+                Bid: Math.Round(Math.Max(0, bid), 2),
+                Ask: Math.Round(Math.Max(0, ask), 2),
+                Last: Math.Round(Math.Max(0, bar.Close), 2),
+                Volume: (int)Math.Max(0, Math.Min(bar.Volume, int.MaxValue)),
+                Open: Math.Round(Math.Max(0, bar.Open), 2),
+                High: Math.Round(Math.Max(0, bar.High), 2),
+                Low: Math.Round(Math.Max(0, bar.Low), 2),
+                Close: Math.Round(Math.Max(0, bar.Close), 2)
+            );
         }
 
         /// <summary>
