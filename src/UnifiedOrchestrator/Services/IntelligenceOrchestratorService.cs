@@ -183,7 +183,7 @@ internal class IntelligenceOrchestratorService : BackgroundService, IIntelligenc
                 "generate_predictions" => await GeneratePredictionsActionAsync(context, cancellationToken).ConfigureAwait(false),
                 "analyze_correlations" => await AnalyzeCorrelationsActionAsync(context, cancellationToken).ConfigureAwait(false),
                 _ => new WorkflowExecutionResult { Success = false, ErrorMessage = $"Unsupported action: {action}" }
-            }.ConfigureAwait(false);
+            };
         }
         catch (Exception ex)
         {

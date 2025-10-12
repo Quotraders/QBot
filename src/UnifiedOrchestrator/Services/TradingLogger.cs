@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -389,7 +390,6 @@ internal class TradingLogger : ITradingLogger, IAsyncDisposable, IDisposable
         using var originalStream = File.OpenRead(filePath);
         using var compressedStream = File.Create(compressedPath);
         using var gzipStream = new GZipStream(compressedStream, CompressionMode.Compress);
-using System.Globalization;
         
         await originalStream.CopyToAsync(gzipStream).ConfigureAwait(false);
     }

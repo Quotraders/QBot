@@ -214,7 +214,7 @@ internal class FuturesMarketHours : IMarketHoursService
             "INTENSIVE" => await GetNextIntensiveTrainingWindowAsync(etNow, cancellationToken).ConfigureAwait(false),
             "BACKGROUND" => await GetNextBackgroundTrainingWindowAsync(etNow, cancellationToken).ConfigureAwait(false),
             _ => await GetNextSafeWindowAsync(cancellationToken).ConfigureAwait(false)
-        }.ConfigureAwait(false);
+        };
     }
 
     /// <summary>

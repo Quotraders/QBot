@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
@@ -233,7 +234,6 @@ internal class SystemHealthMonitoringService : IHostedService
         {
             // Quick health check to TopstepX API
             using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
-using System.Globalization;
             var response = await httpClient.GetAsync("https://api.topstepx.com/health").ConfigureAwait(false);
             
             return new 

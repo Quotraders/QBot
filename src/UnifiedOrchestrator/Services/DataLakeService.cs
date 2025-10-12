@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using System.Threading;
@@ -165,7 +166,6 @@ namespace UnifiedOrchestrator.Services
                     command.Parameters.AddWithValue("@endTime", endTime.ToString("O", CultureInfo.InvariantCulture));
 
                     using var reader = command.ExecuteReader();
-using System.Globalization;
                     while (reader.Read())
                     {
                         var featuresJson = reader.GetString(1); // features column

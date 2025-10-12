@@ -134,7 +134,7 @@ internal class DataOrchestratorService : BackgroundService, IDataOrchestrator
                 "store_historical_data" => await StoreHistoricalDataActionAsync(context, cancellationToken).ConfigureAwait(false),
                 "generate_daily_report" => await GenerateDailyReportActionAsync(context, cancellationToken).ConfigureAwait(false),
                 _ => new WorkflowExecutionResult { Success = false, ErrorMessage = $"Unsupported action: {action}" }
-            }.ConfigureAwait(false);
+            };
         }
         catch (Exception ex)
         {
