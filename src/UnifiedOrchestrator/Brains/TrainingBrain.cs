@@ -160,7 +160,7 @@ internal class TrainingBrain : ITrainingBrain
             // Validate artifact
             if (!await artifactBuilder.ValidateArtifactAsync(finalArtifactPath, cancellationToken).ConfigureAwait(false))
             {
-                throw new InvalidOperationException($"Artifact validation failed for {finalArtifactPath}").ConfigureAwait(false);
+                throw new InvalidOperationException($"Artifact validation failed for {finalArtifactPath}");
             }
 
             // Get artifact metadata
@@ -393,16 +393,16 @@ internal class TrainingBrain : ITrainingBrain
         var weights = new double[4, 3]; // 4 features, 3 actions
         
         // Generate normalized weights that sum to 1.0 for each feature
-        for (int i; i < 4; i++)
+        for (int i = 0; i < 4; i++)
         {
             var rawWeights = new double[3];
-            for (int j; j < 3; j++)
+            for (int j = 0; j < 3; j++)
             {
                 rawWeights[j] = random.NextDouble();
             }
             
             var sum = rawWeights.Sum();
-            for (int j; j < 3; j++)
+            for (int j = 0; j < 3; j++)
             {
                 weights[i, j] = Math.Round(rawWeights[j] / sum, 3);
             }
@@ -601,7 +601,7 @@ internal class TrainingJob
     public DateTime StartTime { get; set; }
     public DateTime? EndTime { get; set; }
     public string CurrentStage { get; set; } = string.Empty;
-    public List<string> Logs { get; } = new();
-    public Dictionary<string, object> StageData { get; } = new();
+    public List<string> Logs { get; set; } = new();
+    public Dictionary<string, object> StageData { get; set; } = new();
     public string? ErrorMessage { get; set; }
 }

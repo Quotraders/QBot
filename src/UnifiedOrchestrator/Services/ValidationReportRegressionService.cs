@@ -67,7 +67,7 @@ internal class ValidationReportRegressionService
 
     private async Task TestPromotionTestReportCreationAsync(RegressionTestReport report)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         var testCase = new RegressionTestCase
         {
@@ -107,7 +107,7 @@ internal class ValidationReportRegressionService
         }
         catch (Exception ex)
         {
-            testCase.TestPassed;
+            testCase.TestPassed = false;
             testCase.ErrorMessage = ex.Message;
             testCase.ActualResult = $"Failed to create PromotionTestReport: {ex.Message}";
             _logger.LogWarning("❌ [REGRESSION] PromotionTestReport creation test failed: {Error}", ex.Message);
@@ -118,7 +118,7 @@ internal class ValidationReportRegressionService
 
     private async Task TestDownstreamAnalyticsAsync(RegressionTestReport report)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         var testCase = new RegressionTestCase
         {
@@ -158,7 +158,7 @@ internal class ValidationReportRegressionService
         }
         catch (Exception ex)
         {
-            testCase.TestPassed;
+            testCase.TestPassed = false;
             testCase.ErrorMessage = ex.Message;
             testCase.ActualResult = $"Analytics processing failed: {ex.Message}";
             _logger.LogWarning("❌ [REGRESSION] Downstream analytics test failed: {Error}", ex.Message);
@@ -169,7 +169,7 @@ internal class ValidationReportRegressionService
 
     private async Task TestReportingPipelineAsync(RegressionTestReport report)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         var testCase = new RegressionTestCase
         {
@@ -199,7 +199,7 @@ internal class ValidationReportRegressionService
         }
         catch (Exception ex)
         {
-            testCase.TestPassed;
+            testCase.TestPassed = false;
             testCase.ErrorMessage = ex.Message;
             testCase.ActualResult = $"Report generation failed: {ex.Message}";
             _logger.LogWarning("❌ [REGRESSION] Reporting pipeline test failed: {Error}", ex.Message);
@@ -210,7 +210,7 @@ internal class ValidationReportRegressionService
 
     private async Task TestBackwardCompatibilityAsync(RegressionTestReport report)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         var testCase = new RegressionTestCase
         {
@@ -245,7 +245,7 @@ internal class ValidationReportRegressionService
         }
         catch (Exception ex)
         {
-            testCase.TestPassed;
+            testCase.TestPassed = false;
             testCase.ErrorMessage = ex.Message;
             testCase.ActualResult = $"Compatibility test failed: {ex.Message}";
             _logger.LogWarning("❌ [REGRESSION] Backward compatibility test failed: {Error}", ex.Message);
@@ -271,7 +271,7 @@ internal class RegressionTestReport
     public int PassedTests { get; set; }
     public int FailedTests { get; set; }
     public bool RegressionDetected { get; set; }
-    public List<RegressionTestCase> TestResults { get; } = new();
+    public List<RegressionTestCase> TestResults { get; set; } = new();
     public string? ErrorMessage { get; set; }
 }
 

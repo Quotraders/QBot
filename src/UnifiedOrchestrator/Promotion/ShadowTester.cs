@@ -1064,9 +1064,9 @@ internal class ShadowTest
     public DateTime StartTime { get; set; }
     public DateTime? EndTime { get; set; }
     public int SessionsRecorded { get; set; }
-    public List<ShadowDecision> ChampionDecisions { get; } = new();
-    public List<ShadowDecision> ChallengerDecisions { get; } = new();
-    public Dictionary<string, object> IntermediateResults { get; } = new();
+    public List<ShadowDecision> ChampionDecisions { get; set; } = new();
+    public List<ShadowDecision> ChallengerDecisions { get; set; } = new();
+    public Dictionary<string, object> IntermediateResults { get; set; } = new();
     public CancellationTokenSource? CancellationToken { get; set; }
 }
 

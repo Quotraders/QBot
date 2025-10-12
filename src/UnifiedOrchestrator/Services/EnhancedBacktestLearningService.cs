@@ -424,7 +424,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         UnifiedHistoricalReplayContext replayContext,
         CancellationToken cancellationToken)
     {
-        for (int i; i < dailyBars.Count; i++)
+        for (int i = 0; i < dailyBars.Count; i++)
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
@@ -746,7 +746,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         HistoricalDataPoint dataPoint
         )
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         var previousPosition = state.Position;
         var positionChange = decision.Size - previousPosition;
@@ -837,14 +837,14 @@ internal class EnhancedBacktestLearningService : BackgroundService
         HistoricalReplayContext context
         )
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         var totalPnL = state.RealizedPnL + state.UnrealizedPnL;
         var totalReturn = state.StartingCapital > 0 ? totalPnL / state.StartingCapital : 0;
         
         // Calculate REAL performance metrics from actual trading decisions and results
         var returns = new List<decimal>();
-        var cumulativePnL;
+        decimal cumulativePnL = 0m;
         var dailyReturns = new List<decimal>();
         
         // Group decisions by day to calculate daily returns
@@ -855,7 +855,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         
         foreach (var dayGroup in decisionsByDay)
         {
-            var dayPnL;
+            decimal dayPnL = 0m;
             
             foreach (var decision in dayGroup)
             {
@@ -959,7 +959,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         
         var endDate = DateTime.UtcNow.Date.AddDays(-1); // Yesterday
         
-        for (int i; i < configCount; i++)
+        for (int i = 0; i < configCount; i++)
         {
             var daysBack = 30 + (i * 30); // 30, 60, 90, etc. days
             var startDate = endDate.AddDays(-daysBack);
@@ -980,7 +980,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
 
     private async Task AnalyzeBacktestResultsAsync(BacktestResult[] results, CancellationToken cancellationToken)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         if (!results.Any())
         {
@@ -1045,7 +1045,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
     /// </summary>
     private async Task<Dictionary<string, object>> AnalyzeSuccessfulPatternsAsync(BacktestResult result)
     {
-        await Task.Yield().ConfigureAwait(false);
+        await Task.Yield();
         
         var patterns = new Dictionary<string, object>
         {
@@ -1083,7 +1083,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
     /// </summary>
     private async Task<Dictionary<string, object>> AnalyzeFailurePatternsAsync(BacktestResult[] failedResults)
     {
-        await Task.Yield().ConfigureAwait(false);
+        await Task.Yield();
         
         var patterns = new Dictionary<string, object>();
         
@@ -1267,7 +1267,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
     /// </summary>
     private async Task<List<Bar>> LoadHistoricalBarsAsync(UnifiedBacktestConfig config, CancellationToken cancellationToken)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         try
         {
@@ -1478,7 +1478,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         UnifiedBacktestState state
         )
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior for proper execution simulation
+        await Task.Yield(); // Ensure async behavior for proper execution simulation
         
         // Real-time execution simulation with market microstructure
         var marketImpact = CalculateMarketImpact(decision, state);
@@ -1496,7 +1496,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         var tradeValue = tradeSize * executionPrice;
         
         // Calculate PnL for position changes
-        var pnl;
+        decimal pnl = 0m;
         if (decision.Action == "BUY")
         {
             pnl = (state.Position < 0) ? Math.Abs(state.Position) * (state.AverageEntryPrice - executionPrice) : 0;
@@ -1585,7 +1585,7 @@ Based on this, what should I change about my own code or parameters to improve? 
     /// </summary>
     private async Task FeedResultsToUnifiedBrainAsync(UnifiedBacktestResult[] results, CancellationToken cancellationToken)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         _logger.LogInformation("[UNIFIED-BACKTEST] Feeding {Count} backtest results to UnifiedTradingBrain for learning", results.Length);
         
@@ -1723,9 +1723,9 @@ Based on this, what should I change about my own code or parameters to improve? 
     {
         if (!returns.Any()) return 0;
         
-        var peak;
-        var maxDrawdown;
-        var cumulative;
+        decimal peak = 0;
+        decimal maxDrawdown = 0;
+        decimal cumulative = 0;
         
         foreach (var ret in returns)
         {
@@ -1946,7 +1946,7 @@ internal class BacktestState
     public int TotalTrades { get; set; }
     public int WinningTrades { get; set; }
     public int LosingTrades { get; set; }
-    public List<HistoricalDecision> Decisions { get; } = new();
+    public List<HistoricalDecision> Decisions { get; set; } = new();
 }
 
 /// <summary>
@@ -1963,10 +1963,10 @@ internal class HistoricalDecision
     public string Strategy { get; set; } = string.Empty;
     
     // Brain attribution
-    public Dictionary<string, string> AlgorithmVersions { get; } = new();
+    public Dictionary<string, string> AlgorithmVersions { get; set; } = new();
     public decimal ProcessingTimeMs { get; set; }
     public bool PassedRiskChecks { get; set; }
-    public List<string> RiskWarnings { get; } = new();
+    public List<string> RiskWarnings { get; set; } = new();
     
     // Backtest context
     public string BacktestId { get; set; } = string.Empty;

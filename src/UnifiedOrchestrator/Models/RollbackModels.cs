@@ -41,7 +41,7 @@ internal class RollbackDrillResult
     public bool Success { get; set; }
     public string? ErrorMessage { get; set; }
     public RollbackDrillConfig Config { get; set; } = null!;
-    public List<RollbackEvent> Events { get; } = new();
+    public List<RollbackEvent> Events { get; set; } = new();
     public RollbackMetrics Metrics { get; set; } = null!;
     
     // Required properties per production specification

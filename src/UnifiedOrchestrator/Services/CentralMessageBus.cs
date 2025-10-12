@@ -34,8 +34,8 @@ internal class CentralMessageBus : ICentralMessageBus
     public Task StopAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Stopping Central Message Bus");
-        _isStarted;
-        _brainState.IsActive;
+        _isStarted = false;
+        _brainState.IsActive = false;
         return Task.CompletedTask;
     }
 

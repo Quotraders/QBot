@@ -161,7 +161,7 @@ internal class ProductionReadinessValidationService : IProductionReadinessValida
 
         // Test 3: Test multiple decisions and track consistency
         var decisions = new List<TradingBot.Abstractions.TradingDecision>();
-        for (int i; i < 10; i++)
+        for (int i = 0; i < 10; i++)
         {
             var testDecision = await _brainAdapter.DecideAsync(testContext, cancellationToken).ConfigureAwait(false);
             decisions.Add(ConvertToAbstractionsDecision(testDecision));
@@ -320,7 +320,7 @@ internal class ProductionReadinessValidationService : IProductionReadinessValida
     /// </summary>
     private async Task<AcceptanceCriteriaResult> VerifyAcceptanceCriteriaAsync()
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         var result = new AcceptanceCriteriaResult
         {
@@ -454,7 +454,7 @@ internal class ProductionReadinessValidationService : IProductionReadinessValida
         await Task.CompletedTask.ConfigureAwait(false); // Add await for async compliance
         
         // Safe windows: market open, low volatility periods, when positions are flat
-        var isMarketOpen = _marketHours.IsMarketOpen(time, "ES").ConfigureAwait(false);
+        var isMarketOpen = _marketHours.IsMarketOpen(time, "ES");
         var isLowVolatilityPeriod = time.Hour is >= 11 and <= 13; // Lunch period
         var arePositionsFlat = true; // Would check actual positions in production
         
@@ -491,7 +491,7 @@ internal class ProductionReadinessReport
     public TimeSpan Duration { get; set; }
     public bool Success { get; set; }
     public string? ErrorMessage { get; set; }
-    public Dictionary<string, object> TestResults { get; } = new();
+    public Dictionary<string, object> TestResults { get; set; } = new();
 }
 
 internal class UnifiedTradingBrainIntegrationResult
@@ -507,7 +507,7 @@ internal class UnifiedTradingBrainIntegrationResult
 internal class SafeWindowEnforcementResult
 {
     public DateTime TestTime { get; set; }
-    public List<SafeWindowTest> TestResults { get; } = new();
+    public List<SafeWindowTest> TestResults { get; set; } = new();
     public double SafeWindowDetectionAccuracy { get; set; }
     public bool IsValid { get; set; }
 }
@@ -544,7 +544,7 @@ internal class DataSourceStatus
 internal class AcceptanceCriteriaResult
 {
     public DateTime TestTime { get; set; }
-    public Dictionary<string, AcceptanceCriteriaItem> Criteria { get; } = new();
+    public Dictionary<string, AcceptanceCriteriaItem> Criteria { get; set; } = new();
     public int TotalCriteria { get; set; }
     public int MetCriteria { get; set; }
     public double ComplianceRate { get; set; }

@@ -14,9 +14,8 @@ using TradingBot.UnifiedOrchestrator.Services;
 using TradingBot.Abstractions;
 using TradingBot.IntelligenceStack;
 using TradingBot.Backtest;
-using global::BotCore.Services;
-using global::BotCore.Extensions;  // Add this for ProductionReadinessServiceExtensions
-using global::BotCore.Extensions;  // Add this for EnhancedTradingBotServiceExtensions
+using TradingBot.BotCore.Services;
+using TradingBot.BotCore.Extensions;
 using UnifiedOrchestrator.Services;  // Add this for BacktestLearningService
 using TopstepX.Bot.Authentication;
 using TradingBot.RLAgent;  // Add this for ModelHotReloadManager

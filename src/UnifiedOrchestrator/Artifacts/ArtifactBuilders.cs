@@ -56,7 +56,7 @@ internal class OnnxArtifactBuilder : IArtifactBuilder
             // Validate the copied ONNX model
             if (!await ValidateOnnxModelAsync(tempOutputPath, cancellationToken).ConfigureAwait(false))
             {
-                File.Delete(tempOutputPath).ConfigureAwait(false);
+                File.Delete(tempOutputPath);
                 throw new InvalidOperationException("ONNX model validation failed");
             }
 
@@ -453,7 +453,7 @@ internal class UcbSerializer : IArtifactBuilder
             var arms = GetPropertyValue(ucbModel, "arms", Array.Empty<object>()) as object[];
             if (arms != null)
             {
-                for (int i; i < arms.Length; i++)
+                for (int i = 0; i < arms.Length; i++)
                 {
                     var arm = arms[i];
                     var armName = GetPropertyValue(arm, "name", $"arm_{i}").ToString() ?? $"arm_{i}";
@@ -520,7 +520,7 @@ internal class UcbModelArtifact
     public string Version { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public TrainingMetadata TrainingMetadata { get; set; } = new();
-    public Dictionary<string, object> ArmStatistics { get; } = new();
-    public Dictionary<string, object> ExplorationParameters { get; } = new();
+    public Dictionary<string, object> ArmStatistics { get; set; } = new();
+    public Dictionary<string, object> ExplorationParameters { get; set; } = new();
     public object ModelParameters { get; set; } = new();
 }

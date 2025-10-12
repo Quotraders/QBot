@@ -63,7 +63,7 @@ internal class InferenceBrain : IInferenceBrain
             // Reset daily counters if new day
             if (DateTime.UtcNow.Date > _lastResetDate)
             {
-                _decisionsToday;
+                _decisionsToday = 0;
                 _lastResetDate = DateTime.UtcNow.Date;
             }
 
@@ -82,7 +82,7 @@ internal class InferenceBrain : IInferenceBrain
             // Ensure all models are ready
             if (!await IsReadyAsync(cancellationToken).ConfigureAwait(false))
             {
-                riskWarnings.Add("One or more champion models not ready").ConfigureAwait(false);
+                riskWarnings.Add("One or more champion models not ready");
                 return CreateFallbackDecision(context, stopwatch.Elapsed, riskWarnings);
             }
 
@@ -281,14 +281,14 @@ internal class InferenceBrain : IInferenceBrain
         if (context.DailyPnL <= context.DailyLossLimit)
         {
             warnings.Add($"CRITICAL: Daily loss limit exceeded: {context.DailyPnL:C} <= {context.DailyLossLimit:C}");
-            passed;
+            passed = false;
         }
         
         // Max drawdown check
         if (context.UnrealizedPnL <= -Math.Abs(context.MaxDrawdown))
         {
             warnings.Add($"CRITICAL: Max drawdown exceeded: {context.UnrealizedPnL:C} <= {-Math.Abs(context.MaxDrawdown):C}");
-            passed;
+            passed = false;
         }
         
         // Position size sanity check
@@ -312,8 +312,8 @@ internal class InferenceBrain : IInferenceBrain
             
             // PPO decision based on policy gradient and market momentum
             var action = "HOLD";
-            var size;
-            var confidence = 0.5m;
+            int size = 0;
+            decimal confidence = 0.5m;
             
             // Trend-following logic with momentum analysis
             if (ppoAnalysis.MomentumStrength > 0.7m && ppoAnalysis.TrendDirection > 0)
@@ -378,8 +378,8 @@ internal class InferenceBrain : IInferenceBrain
             
             // UCB explores vs exploits based on confidence intervals
             var action = "HOLD";
-            var size;
-            var confidence = 0.5m;
+            int size = 0;
+            decimal confidence = 0.5m;
             
             // UCB arms: BUY, SELL, HOLD with confidence bounds
             var bestArm = ucbAnalysis.Arms.OrderByDescending(a => a.UpperConfidenceBound).FirstOrDefault();
@@ -440,8 +440,8 @@ internal class InferenceBrain : IInferenceBrain
             
             // LSTM decision based on sequential pattern recognition
             var action = "HOLD";
-            var size;
-            var confidence = 0.5m;
+            int size = 0;
+            decimal confidence = 0.5m;
             
             // Pattern-based decision making
             if (lstmAnalysis.PredictedDirection > 0.6m && lstmAnalysis.PatternConfidence > 0.7m)
@@ -517,12 +517,12 @@ internal class InferenceBrain : IInferenceBrain
         var lstmWeight = regimeWeights["LSTM"];
         
         // Calculate weighted action scores
-        var buyScore;
-        var sellScore;
-        var holdScore;
-        var totalWeight;
-        var totalSize;
-        var avgConfidence;
+        decimal buyScore = 0;
+        decimal sellScore = 0;
+        decimal holdScore = 0;
+        decimal totalWeight = 0;
+        int totalSize = 0;
+        decimal avgConfidence = 0;
         var participatingStrategies = new List<string>();
         
         if (ppoDecision != null)
@@ -599,7 +599,7 @@ internal class InferenceBrain : IInferenceBrain
         else
         {
             finalAction = "HOLD";
-            totalSize;
+            totalSize = 0;
             ensembleMethod = $"WEIGHTED_HOLD_{holdScore:F2}";
         }
         
@@ -608,7 +608,7 @@ internal class InferenceBrain : IInferenceBrain
         if (actionConflict > 0.4m && (buyScore > 0.3m && sellScore > 0.3m))
         {
             finalAction = "HOLD";
-            totalSize;
+            totalSize = 0;
             finalConfidence *= 0.5m; // Reduce confidence due to conflict
             ensembleMethod = $"CONFLICT_RESOLUTION_HOLD_{actionConflict:F2}";
         }
@@ -1167,7 +1167,7 @@ internal class PPOAnalysis
 /// </summary>
 internal class UCBAnalysis
 {
-    public List<UCBArm> Arms { get; } = new();
+    public List<UCBArm> Arms { get; set; } = new();
     public int TotalPulls { get; set; }
     public decimal ExplorationThreshold { get; set; }
     public decimal MarketVolatility { get; set; }
@@ -1194,7 +1194,7 @@ internal class LSTMAnalysis
     public decimal PredictedMagnitude { get; set; }
     public decimal PatternConfidence { get; set; }
     public decimal SequenceReliability { get; set; }
-    public List<MarketPattern> RecognizedPatterns { get; } = new();
+    public List<MarketPattern> RecognizedPatterns { get; set; } = new();
     public string TimeHorizon { get; set; } = string.Empty;
 }
 

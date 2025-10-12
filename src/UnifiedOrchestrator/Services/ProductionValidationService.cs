@@ -49,7 +49,7 @@ internal class ProductionValidationService : IValidationService
         TimeSpan testPeriod, 
         CancellationToken cancellationToken = default)
     {
-        await Task.Yield().ConfigureAwait(false); // Ensure async behavior
+        await Task.Yield(); // Ensure async behavior
         
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         _logger.LogInformation(
@@ -216,7 +216,7 @@ internal class ProductionValidationService : IValidationService
         var majorDisagreements;
         var confidenceDifferences = new List<double>();
 
-        for (int i; i < totalDecisions; i++)
+        for (int i = 0; i < totalDecisions; i++)
         {
             var champDecision = champion[i].Decision;
             var challDecision = challenger[i].Decision;

@@ -152,7 +152,7 @@ internal class WorkflowOrchestrationManager : IWorkflowOrchestrationManager
     {
         public bool IsResolved { get; set; }
         public int ConflictCount { get; set; }
-        public List<string> Conflicts { get; } = new();
+        public List<string> Conflicts { get; set; } = new();
     }
 
     internal class WorkflowOrchestrationStatus
@@ -160,6 +160,6 @@ internal class WorkflowOrchestrationManager : IWorkflowOrchestrationManager
         public bool IsActive { get; set; }
         public int ActiveWorkflows { get; set; }
         public DateTime LastUpdate { get; set; }
-        public Dictionary<string, object> Statistics { get; } = new();
+        public Dictionary<string, object> Statistics { get; set; } = new();
     }
 }

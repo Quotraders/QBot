@@ -26,7 +26,7 @@ internal class TelemetryData
 {
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     public string Source { get; set; } = string.Empty;
-    public Dictionary<string, object> Metrics { get; } = new();
+    public Dictionary<string, object> Metrics { get; set; } = new();
     public string SessionId { get; set; } = string.Empty;
 }
 
@@ -42,7 +42,7 @@ internal class TradeData
     public decimal Price { get; set; }
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     public string Status { get; set; } = string.Empty;
-    public Dictionary<string, object> Metadata { get; } = new();
+    public Dictionary<string, object> Metadata { get; set; } = new();
 }
 
 /// <summary>
@@ -51,7 +51,7 @@ internal class TradeData
 internal class SystemStatus
 {
     public bool IsHealthy { get; set; }
-    public Dictionary<string, string> ComponentStatuses { get; } = new();
+    public Dictionary<string, string> ComponentStatuses { get; set; } = new();
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
     public string OverallStatus { get; set; } = "Unknown";
 }
@@ -64,7 +64,7 @@ internal class CloudMetrics
     public DateTime LastSync { get; set; }
     public string Status { get; set; } = string.Empty;
     public TimeSpan Latency { get; set; }
-    public Dictionary<string, object> AdditionalMetrics { get; } = new();
+    public Dictionary<string, object> AdditionalMetrics { get; set; } = new();
 }
 
 /// <summary>
@@ -75,7 +75,7 @@ internal class WorkflowDefinition
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public Dictionary<string, object> Parameters { get; } = new();
+    public Dictionary<string, object> Parameters { get; set; } = new();
     public bool Enabled { get; set; } = true;
 }
 
@@ -88,7 +88,7 @@ internal class WorkflowStatus
     public string Status { get; set; } = string.Empty;
     public DateTime LastRun { get; set; }
     public DateTime NextRun { get; set; }
-    public Dictionary<string, object> Metadata { get; } = new();
+    public Dictionary<string, object> Metadata { get; set; } = new();
 }
 
 /// <summary>

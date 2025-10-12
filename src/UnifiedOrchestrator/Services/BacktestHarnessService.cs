@@ -39,7 +39,7 @@ namespace UnifiedOrchestrator.Services
         public string ModelName { get; set; } = "";
         public DateTime BacktestStart { get; set; }
         public DateTime BacktestEnd { get; set; }
-        public List<BacktestWindowResult> WindowResults { get; } = new();
+        public List<BacktestWindowResult> WindowResults { get; set; } = new();
         public BacktestWindowResult OverallMetrics { get; set; } = new();
         public bool WasSuccessful { get; set; }
         public string ErrorMessage { get; set; } = "";

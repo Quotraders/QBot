@@ -37,15 +37,15 @@ internal class EnsembleStatus
     public long TotalPredictions { get; set; }
     public double AverageLatencyMs { get; set; }
     public DateTime LastPrediction { get; set; }
-    public List<EnsembleModelInfo> Models { get; } = new();
+    public List<EnsembleModelInfo> Models { get; set; } = new();
 }
 
 internal class PredictionResult
 {
-    public Dictionary<string, double> Outputs { get; } = new();
+    public Dictionary<string, double> Outputs { get; set; } = new();
     public double Confidence { get; set; }
     public double LatencyMs { get; set; }
-    public List<string> ModelsUsed { get; } = new();
+    public List<string> ModelsUsed { get; set; } = new();
     public bool WasBlocked { get; set; }
     public string BlockedReason { get; set; } = "";
 }
@@ -435,7 +435,7 @@ internal class OnnxEnsembleService : IDisposable
             double weightedSum = 0.0;
             double usedWeight = 0.0;
 
-            for (int i; i < predictions.Count && i < models.Count; i++)
+            for (int i = 0; i < predictions.Count && i < models.Count; i++)
             {
                 if (predictions[i].TryGetValue(key, out var value))
                 {

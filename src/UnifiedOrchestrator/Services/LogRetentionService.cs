@@ -72,7 +72,7 @@ internal class LogRetentionService : IHostedService
             await _tradingLogger.LogSystemAsync(TradingLogLevel.INFO, "LogRetention", 
                 "Starting log cleanup process").ConfigureAwait(false);
 
-            var totalFilesRemoved;
+            int totalFilesRemoved = 0;
             var totalSizeFreed = 0L;
 
             // Clean up trading logs (30 days retention)

@@ -50,7 +50,7 @@ namespace UnifiedOrchestrator.Services
         public string Symbol { get; set; } = "";
         public DateTime GeneratedAt { get; set; }
         public MicrostructureFeatures MicrostructureFeatures { get; set; } = new();
-        public Dictionary<TimeSpan, TimeWindowFeatures> TimeWindowFeatures { get; } = new();
+        public Dictionary<TimeSpan, TimeWindowFeatures> TimeWindowFeatures { get; set; } = new();
     }
 
     internal class StreamingFeatureAggregator : IDisposable

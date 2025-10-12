@@ -85,7 +85,7 @@ internal class EnumMappingValidationService
                     }
                     catch (Exception ex)
                     {
-                        testCase.TestPassed;
+            testCase.TestPassed = false;
                         testCase.ErrorMessage = ex.Message;
                         _logger.LogWarning("❌ [ENUM-TEST] {Direction} x {Multiplier} failed: {Error}", 
                             direction, multiplier, ex.Message);
@@ -187,7 +187,7 @@ internal class EnumMappingValidationService
             }
             catch (Exception ex)
             {
-                testCase.TestPassed;
+            testCase.TestPassed = false;
                 testCase.ErrorMessage = ex.Message;
                 _logger.LogWarning("❌ [EDGE-CASE] {Direction} x {Multiplier} failed: {Error}", 
                     direction, multiplier, ex.Message);
@@ -208,7 +208,7 @@ internal class EnumMappingCoverageReport
     public int PassedTests { get; set; }
     public int FailedTests { get; set; }
     public double Coverage { get; set; }
-    public List<EnumMappingTestCase> TestResults { get; } = new();
+    public List<EnumMappingTestCase> TestResults { get; set; } = new();
     public string? ErrorMessage { get; set; }
 }
 

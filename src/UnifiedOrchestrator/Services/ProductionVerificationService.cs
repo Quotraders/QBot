@@ -363,8 +363,8 @@ internal interface IPerformanceMonitor
 /// </summary>
 internal class ProductionPerformanceMetrics
 {
-    public Dictionary<string, TimeSpan> AverageLatencies { get; } = new();
-    public Dictionary<string, int> ThroughputCounts { get; } = new();
+    public Dictionary<string, TimeSpan> AverageLatencies { get; set; } = new();
+    public Dictionary<string, int> ThroughputCounts { get; set; } = new();
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }
 

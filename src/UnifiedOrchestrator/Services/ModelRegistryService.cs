@@ -20,7 +20,7 @@ namespace UnifiedOrchestrator.Services
     internal class ModelMetadata
     {
         public DateTime TrainingDate { get; set; }
-        public Dictionary<string, object> Hyperparams { get; } = new();
+        public Dictionary<string, object> Hyperparams { get; set; } = new();
         public double ValidationAccuracy { get; set; }
         public string Description { get; set; } = "";
         public string Version { get; set; } = "";
