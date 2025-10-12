@@ -154,7 +154,7 @@ public class SlippageLatencyModel : ISlippageLatencyModel, IHostedService
     private readonly Dictionary<string, SlippageProfile> _slippageProfiles = new();
     private readonly List<TimeSpan> _latencyHistory = new();
     private readonly List<LatencyOutlier> _latencyOutliers = new();
-    private readonly Random _random = new();
+    // Removed _random field - using System.Security.Cryptography.RandomNumberGenerator for secure randomness
     private readonly object _lock = new object();
     private readonly Timer _metricsUpdateTimer;
     
@@ -358,7 +358,7 @@ public class SlippageLatencyModel : ISlippageLatencyModel, IHostedService
         var sizeMultiplier = 1.0 + (double)(request.Quantity / 1000m); // Large orders take longer
         
         // Add random component (log-normal distribution for realistic tail)
-        var randomFactor = Math.Exp(_random.NextDouble() * 0.5 - 0.25); // 0.78 to 1.28 roughly
+        var randomFactor = Math.Exp(System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0 * 0.5 - 0.25); // 0.78 to 1.28 roughly
         
         var totalLatencyMs = baseMs * marketMultiplier * sizeMultiplier * randomFactor;
         
@@ -423,10 +423,10 @@ public class SlippageLatencyModel : ISlippageLatencyModel, IHostedService
         // Higher chance of partial fill for large orders
         var partialFillProbability = Math.Min(0.8, (double)relativeSize);
         
-        if (_random.NextDouble() < partialFillProbability)
+        if (System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0 < partialFillProbability)
         {
             // Simulate partial fill (50% to 90% typically)
-            var fillRatio = 0.5m + (decimal)_random.NextDouble() * 0.4m;
+            var fillRatio = 0.5m + (decimal)(System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0) * 0.4m;
             var filledQuantity = request.Quantity * fillRatio;
             
             return (filledQuantity, true, fillRatio);
@@ -599,8 +599,8 @@ public class SlippageLatencyModel : ISlippageLatencyModel, IHostedService
     private double NextGaussian()
     {
         // Box-Muller transformation for normal distribution
-        var u1 = 1.0 - _random.NextDouble();
-        var u2 = 1.0 - _random.NextDouble();
+        var u1 = 1.0 - System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0;
+        var u2 = 1.0 - System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0;
         return Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2);
     }
 

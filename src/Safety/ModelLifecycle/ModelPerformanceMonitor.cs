@@ -228,8 +228,8 @@ public class ModelPerformanceMonitor : IModelPerformanceMonitor
     
     private bool ShouldRecommendRollback(Dictionary<string, ModelMetricComparison> comparisons)
     {
-        var significantDegradations;
-        var significantImprovements;
+        var significantDegradations = 0;
+        var significantImprovements = 0;
         
         foreach (var comparison in comparisons.Values)
         {
@@ -361,7 +361,7 @@ public class ModelPerformanceMonitor : IModelPerformanceMonitor
         return maxDrawdown;
     }
     
-    private double GetPredictionReturn(ModelPrediction prediction)
+    private static double GetPredictionReturn(ModelPrediction prediction)
     {
         // Simplified return calculation - would depend on actual prediction/outcome format
         if (prediction.ActualOutcome is double outcome && prediction.Prediction is double pred)

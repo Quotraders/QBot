@@ -1,4 +1,5 @@
 using System;
+using BotCore.Services;
 
 namespace TradingBot.Safety
 {
@@ -36,7 +37,7 @@ namespace TradingBot.Safety
             }
 
             // Check if kill switch is active
-            if (BotCore.Services.ProductionKillSwitchService.IsKillSwitchActive())
+            if (ProductionKillSwitchService.IsKillSwitchActive())
             {
                 return false;
             }

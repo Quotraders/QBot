@@ -18,7 +18,7 @@ namespace TradingBot.Safety.Explainability
     {
         private readonly ILogger<ExplainabilityStampService> _logger;
         private readonly ExplainabilityConfig _config;
-        private readonly object _writeLock = new();
+        private readonly SemaphoreSlim _writeSemaphore = new(1, 1);
 
         public ExplainabilityStampService(
             ILogger<ExplainabilityStampService> logger,
@@ -53,9 +53,14 @@ namespace TradingBot.Safety.Explainability
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 });
 
-                lock (_writeLock)
+                await _writeSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+                try
                 {
                     await File.WriteAllTextAsync(filePath, json, cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    _writeSemaphore.Release();
                 }
 
                 // Log at debug level to avoid noise in production
