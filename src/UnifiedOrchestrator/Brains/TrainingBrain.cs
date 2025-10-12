@@ -481,7 +481,7 @@ internal class TrainingBrain : ITrainingBrain
             
             var adjustedSamples = (int)(totalSamples * marketDaysRatio * marketHoursRatio);
             
-            job.Logs.Add($"[{DateTime.UtcNow:HH:mm:ss}] Data samples calculated: {adjustedSamples:N0} ({config.DataSource} frequency)");
+            _logger.LogDebug("[TRAINING] Data samples calculated: {Samples:N0} ({DataSource} frequency)", adjustedSamples, config.DataSource);
             return Math.Max(100, adjustedSamples); // Minimum 100 samples for training
         }
         catch (Exception ex)

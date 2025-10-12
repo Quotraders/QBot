@@ -33,6 +33,11 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
     private bool _isConnectedToTopstep;
     private bool _adapterInitialized;
     
+    // Workflow tracking
+    private readonly object _workflowLock = new();
+    private readonly HashSet<string> _activeWorkflows = new();
+    private readonly Dictionary<string, UnifiedWorkflow> _registeredWorkflows = new();
+    
     // Emergency controls and resource monitoring (read from environment)
     private readonly bool _enableEmergencyStop;
     private readonly long _maxMemoryUsageMb;
@@ -150,16 +155,12 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         // Check actual TopstepX connection status via SDK
         try
         {
-            // Get actual connection status from TopstepX SDK
-            var userHubConnected = _signalRManager.IsUserHubConnected;
-            var marketHubConnected = _signalRManager.IsMarketHubConnected;
-            _isConnectedToTopstep = userHubConnected && marketHubConnected;
+            // Get actual connection status from TopstepX adapter
+            var isConnected = _topstepXAdapter.IsConnected;
+            _isConnectedToTopstep = isConnected;
             
-            _logger.LogInformation("🔗 TopstepX connection status - User Hub: {UserHub}, Market Hub: {MarketHub}, Overall: {Overall}, SDK: {SDK}", 
-                userHubConnected, marketHubConnected, _isConnectedToTopstep, _adapterInitialized);
-                
-            // Subscribe to connection state changes for real-time updates
-            _signalRManager.ConnectionStateChanged += OnConnectionStateChanged;
+            _logger.LogInformation("🔗 TopstepX connection status - Connected: {Connected}, SDK: {SDK}", 
+                isConnected, _adapterInitialized);
         }
         catch (Exception ex)
         {
@@ -410,15 +411,14 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         // Update connection status when TopstepX SDK connection state changes
         try
         {
-            var userHubConnected = _signalRManager.IsUserHubConnected;
-            var marketHubConnected = _signalRManager.IsMarketHubConnected;
+            var isConnected = _topstepXAdapter.IsConnected;
             var previousStatus = _isConnectedToTopstep;
-            _isConnectedToTopstep = userHubConnected && marketHubConnected;
+            _isConnectedToTopstep = isConnected;
             
             if (_isConnectedToTopstep != previousStatus)
             {
-                _logger.LogInformation("🔗 TopstepX connection status updated - User Hub: {UserHub}, Market Hub: {MarketHub}, Overall: {Overall}", 
-                    userHubConnected, marketHubConnected, _isConnectedToTopstep);
+                _logger.LogInformation("🔗 TopstepX connection status updated - Connected: {Connected}", 
+                    _isConnectedToTopstep);
             }
         }
         catch (Exception ex)
