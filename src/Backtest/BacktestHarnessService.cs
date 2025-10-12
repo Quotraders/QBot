@@ -175,7 +175,7 @@ namespace TradingBot.Backtest
                     await RecordDecisionAsync(decision, quote, cancellationToken);
 
                     // Execute decision if action required
-                    if (decision.Action != TradingAction.Hold)
+                    if (decision.Decision != TradingAction.Hold)
                     {
                         await ExecuteTradingDecisionAsync(decision, quote, simState, cancellationToken);
                     }
@@ -232,8 +232,9 @@ namespace TradingBot.Backtest
             if (spreadPercent < 0.001m && quote.Volume > 1000) // Good liquidity conditions
             {
                 // Deterministic signal generation for backtesting
-                var random = new Random(quote.Time.GetHashCode());
-                var signal = random.NextDouble();
+                // Use hash-based deterministic value instead of Random for reproducible results
+                var hashCode = quote.Time.GetHashCode();
+                var signal = (double)((uint)hashCode % 10000) / 10000.0; // 0.0 to 0.9999
                 
                 if (signal > 0.6)
                 {
@@ -360,10 +361,10 @@ namespace TradingBot.Backtest
             await _metricSink.RecordFillAsync(fillLog, cancellationToken);
         }
 
-        private async Task AddBracketOrdersAsync(FillResult fill, DecisionLog decision, SimState simState)
+        private Task AddBracketOrdersAsync(FillResult fill, DecisionLog decision, SimState simState)
         {
             if (!decision.StopLoss.HasValue && !decision.TakeProfit.HasValue)
-                return;
+                return Task.CompletedTask;
 
             var stopLoss = decision.StopLoss.HasValue ? new OrderSpec(
                 Symbol: decision.Symbol,
@@ -391,6 +392,8 @@ namespace TradingBot.Backtest
             {
                 simState.ActiveBrackets.Add((stopLoss, takeProfit));
             }
+            
+            return Task.CompletedTask;
         }
 
         private async Task CalculateFinalMetricsAsync(BacktestReport report, SimState simState, CancellationToken cancellationToken)
@@ -427,6 +430,7 @@ namespace TradingBot.Backtest
         public decimal UnrealizedPnL { get; set; }
         public decimal TotalCommissions { get; set; }
         public int TotalTrades { get; set; }
+        public int WinningTrades { get; set; }
         public decimal TotalReturn { get; set; }
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }

@@ -62,8 +62,15 @@ namespace TradingBot.Backtest
                 // 2. Unload historical model to free memory
                 // 3. Validate live model is working correctly
                 
-                SwapToOriginalModel(_originalModelSession);
-                UnloadHistoricalModel(_historicalModelSession);
+                if (_originalModelSession != null)
+                {
+                    SwapToOriginalModel(_originalModelSession);
+                }
+                
+                if (_historicalModelSession != null)
+                {
+                    UnloadHistoricalModel(_historicalModelSession);
+                }
                 
                 _logger.LogDebug("LiveLikeScope: Successfully restored live model");
             }

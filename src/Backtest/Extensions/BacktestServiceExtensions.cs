@@ -68,8 +68,9 @@ namespace TradingBot.Backtest.Extensions
                 options.MinTradesPerFold = 10;
             });
 
-            // Integration service that bridges old and new systems
-            services.AddSingleton<TradingBot.UnifiedOrchestrator.Services.BacktestIntegrationService>();
+            // Integration service registration removed - prevents circular dependency
+            // UnifiedOrchestrator should register this service when it uses Backtest services
+            // services.AddSingleton<TradingBot.UnifiedOrchestrator.Services.BacktestIntegrationService>();
 
             return services;
         }

@@ -228,7 +228,7 @@ namespace TradingBot.Backtest
                 }
 
                 // 5. Extract model performance metrics from model metadata
-                var modelCard = await _modelRegistry.GetModelAsOfDateAsync(modelFamily, foldStart, cancellationToken);
+                var modelCard = await _modelRegistry.GetModelAsOfDateAsync(modelFamily, fold.TrainingStart, cancellationToken);
                 if (modelCard != null)
                 {
                     // Extract actual training metrics from model metadata instead of hardcoded values
