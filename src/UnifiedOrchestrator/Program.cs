@@ -17,7 +17,7 @@ using TradingBot.Backtest;
 using BotCore.Services;
 using BotCore.Extensions;  // Add this for ProductionReadinessServiceExtensions
 using BotCore.Compatibility;  // Add this for CompatibilityKitServiceExtensions
-using TradingBot.BotCore.Extensions;  // Add this for EnhancedTradingBotServiceExtensions
+using BotCore.Extensions;  // Add this for EnhancedTradingBotServiceExtensions
 using UnifiedOrchestrator.Services;  // Add this for BacktestLearningService
 using TopstepX.Bot.Authentication;
 using TradingBot.RLAgent;  // Add this for ModelHotReloadManager
@@ -153,7 +153,7 @@ internal static class Program
             await ValidateStartupServicesAsync(host.Services).ConfigureAwait(false);
             
             // Initialize ML parameter provider for TradingBot classes
-            TradingBot.BotCore.Services.TradingBotParameterProvider.Initialize(host.Services);
+            BotCore.Services.TradingBotParameterProvider.Initialize(host.Services);
             
             // Display startup information
             // Note: DisplayStartupInfo() temporarily disabled during build phase
@@ -212,7 +212,7 @@ Artifacts will be saved to: artifacts/production-demo/
             var host = CreateHostBuilder(args).Build();
             
             // Initialize ML parameter provider for TradingBot classes
-            TradingBot.BotCore.Services.TradingBotParameterProvider.Initialize(host.Services);
+            BotCore.Services.TradingBotParameterProvider.Initialize(host.Services);
             
             // Get the production demonstration runner
             var demoRunner = host.Services.GetRequiredService<ProductionDemonstrationRunner>();
@@ -296,7 +296,7 @@ This replaces individual SimpleBot/MinimalDemo/TradingBot smoke tests
             var host = CreateHostBuilder(args).Build();
             
             // Initialize ML parameter provider for TradingBot classes
-            TradingBot.BotCore.Services.TradingBotParameterProvider.Initialize(host.Services);
+            BotCore.Services.TradingBotParameterProvider.Initialize(host.Services);
             
             // Validate service registration and configuration
             await ValidateStartupServicesAsync(host.Services).ConfigureAwait(false);
@@ -331,9 +331,9 @@ This replaces individual SimpleBot/MinimalDemo/TradingBot smoke tests
                 
             // Test 3: Parameter provider functionality
             logger.LogInformation("🧪 [SMOKE] Test 3: Parameter provider functionality");
-            var confidenceThreshold = TradingBot.BotCore.Services.TradingBotParameterProvider.GetAIConfidenceThreshold();
-            var positionMultiplier = TradingBot.BotCore.Services.TradingBotParameterProvider.GetPositionSizeMultiplier();
-            var fallbackConfidence = TradingBot.BotCore.Services.TradingBotParameterProvider.GetFallbackConfidence();
+            var confidenceThreshold = BotCore.Services.TradingBotParameterProvider.GetAIConfidenceThreshold();
+            var positionMultiplier = BotCore.Services.TradingBotParameterProvider.GetPositionSizeMultiplier();
+            var fallbackConfidence = BotCore.Services.TradingBotParameterProvider.GetFallbackConfidence();
             
             logger.LogInformation("🧪 [SMOKE] ✅ AI Confidence Threshold: {Threshold}", confidenceThreshold);
             logger.LogInformation("🧪 [SMOKE] ✅ Position Size Multiplier: {Multiplier}", positionMultiplier);
@@ -341,7 +341,7 @@ This replaces individual SimpleBot/MinimalDemo/TradingBot smoke tests
             
             // Test 4: Symbol session management
             logger.LogInformation("🧪 [SMOKE] Test 4: Symbol session management");
-            var symbolSessionManager = host.Services.GetService<TradingBot.BotCore.Services.TradingBotSymbolSessionManager>();
+            var symbolSessionManager = host.Services.GetService<BotCore.Services.TradingBotSymbolSessionManager>();
             if (symbolSessionManager != null)
             {
                 logger.LogInformation("🧪 [SMOKE] ✅ Symbol session manager available");
@@ -533,11 +533,11 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<BotCore.Services.IZoneAwareBracketManager, BotCore.Services.ZoneAwareBracketManager>();
         
         // Register Per-Symbol Session Lattices with neutral band integration
-        services.AddSingleton<TradingBot.BotCore.Services.TradingBotSymbolSessionManager>(provider =>
+        services.AddSingleton<BotCore.Services.TradingBotSymbolSessionManager>(provider =>
         {
             var neutralBandService = provider.GetService<SafeHoldDecisionPolicy>();
-            var logger = provider.GetRequiredService<ILogger<TradingBot.BotCore.Services.TradingBotSymbolSessionManager>>();
-            return new TradingBot.BotCore.Services.TradingBotSymbolSessionManager(neutralBandService, logger);
+            var logger = provider.GetRequiredService<ILogger<BotCore.Services.TradingBotSymbolSessionManager>>();
+            return new BotCore.Services.TradingBotSymbolSessionManager(neutralBandService, logger);
         });
         
         // Register Enhanced Trading Brain Integration BEFORE UnifiedDecisionRouter (dependency order)
@@ -1781,45 +1781,45 @@ Please check the configuration and ensure all required services are registered.
         
         // Register ML Configuration Service for hardcoded value replacement
         services.AddProductionConfigurationValidation(configuration);
-        services.AddScoped<TradingBot.BotCore.Services.MLConfigurationService>();
-        services.AddScoped<TradingBot.Abstractions.IMLConfigurationService, TradingBot.BotCore.Services.MLConfigurationService>();
+        services.AddScoped<BotCore.Services.MLConfigurationService>();
+        services.AddScoped<TradingBot.Abstractions.IMLConfigurationService, BotCore.Services.MLConfigurationService>();
         
         // Register Execution Configuration Services - Replace hardcoded execution parameters
-        services.AddScoped<TradingBot.Abstractions.IExecutionGuardsConfig, TradingBot.BotCore.Services.ExecutionGuardsConfigService>();
-        services.AddScoped<TradingBot.Abstractions.IExecutionCostConfig, TradingBot.BotCore.Services.ExecutionCostConfigService>();
-        services.AddScoped<TradingBot.Abstractions.IExecutionPolicyConfig, TradingBot.BotCore.Services.ExecutionPolicyConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IExecutionGuardsConfig, BotCore.Services.ExecutionGuardsConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IExecutionCostConfig, BotCore.Services.ExecutionCostConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IExecutionPolicyConfig, BotCore.Services.ExecutionPolicyConfigService>();
         
         // Register Risk and Sizing Configuration Services - Replace hardcoded risk/sizing parameters
-        services.AddScoped<TradingBot.Abstractions.IRiskConfig, TradingBot.BotCore.Services.RiskConfigService>();
-        services.AddScoped<TradingBot.Abstractions.ISizerConfig, TradingBot.BotCore.Services.SizerConfigService>();
-        services.AddScoped<TradingBot.Abstractions.IMetaCostConfig, TradingBot.BotCore.Services.MetaCostConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IRiskConfig, BotCore.Services.RiskConfigService>();
+        services.AddScoped<TradingBot.Abstractions.ISizerConfig, BotCore.Services.SizerConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IMetaCostConfig, BotCore.Services.MetaCostConfigService>();
         
         // Register Trading Flow Configuration Services - Replace hardcoded trading flow parameters
-        services.AddScoped<TradingBot.Abstractions.IBracketConfig, TradingBot.BotCore.Services.BracketConfigService>();
-        services.AddScoped<TradingBot.Abstractions.ISessionConfig, TradingBot.BotCore.Services.SessionConfigService>();
-        services.AddScoped<TradingBot.Abstractions.IControllerOptionsService, TradingBot.BotCore.Services.ControllerOptionsService>();
+        services.AddScoped<TradingBot.Abstractions.IBracketConfig, BotCore.Services.BracketConfigService>();
+        services.AddScoped<TradingBot.Abstractions.ISessionConfig, BotCore.Services.SessionConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IControllerOptionsService, BotCore.Services.ControllerOptionsService>();
         
         // Register Event and Calendar Configuration Services - Replace hardcoded event handling
-        services.AddScoped<TradingBot.Abstractions.IEventTemperingConfig, TradingBot.BotCore.Services.EventTemperingConfigService>();
-        services.AddScoped<TradingBot.Abstractions.IRollConfig, TradingBot.BotCore.Services.RollConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IEventTemperingConfig, BotCore.Services.EventTemperingConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IRollConfig, BotCore.Services.RollConfigService>();
         
         // Register Infrastructure Configuration Services - Replace hardcoded paths and endpoints
-        services.AddScoped<TradingBot.Abstractions.IEndpointConfig, TradingBot.BotCore.Services.EndpointConfigService>();
-        services.AddScoped<TradingBot.Abstractions.IPathConfig, TradingBot.BotCore.Services.PathConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IEndpointConfig, BotCore.Services.EndpointConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IPathConfig, BotCore.Services.PathConfigService>();
         
         // Register Configuration Safety and Management Services
-        services.AddSingleton<TradingBot.BotCore.Services.ConfigurationFailureSafetyService>();
-        services.AddSingleton<TradingBot.BotCore.Services.ConfigurationSnapshotService>();
-        services.AddSingleton<TradingBot.BotCore.Services.ConfigurationSchemaService>();
-        services.AddHostedService<TradingBot.BotCore.Services.StateDurabilityService>();
+        services.AddSingleton<BotCore.Services.ConfigurationFailureSafetyService>();
+        services.AddSingleton<BotCore.Services.ConfigurationSnapshotService>();
+        services.AddSingleton<BotCore.Services.ConfigurationSchemaService>();
+        services.AddHostedService<BotCore.Services.StateDurabilityService>();
         
         // Register Last-Mile Production Safety Services
-        services.AddSingleton<TradingBot.BotCore.Services.OnnxModelCompatibilityService>();
-        services.AddSingleton<TradingBot.BotCore.Services.ClockHygieneService>();
-        services.AddSingleton<TradingBot.BotCore.Services.DeterminismService>();
-        services.AddSingleton<TradingBot.BotCore.Services.SecretsValidationService>();
-        services.AddSingleton<TradingBot.BotCore.Services.IntegritySigningService>();
-        services.AddSingleton<TradingBot.BotCore.Services.SuppressionLedgerService>();
+        services.AddSingleton<BotCore.Services.OnnxModelCompatibilityService>();
+        services.AddSingleton<BotCore.Services.ClockHygieneService>();
+        services.AddSingleton<BotCore.Services.DeterminismService>();
+        services.AddSingleton<BotCore.Services.SecretsValidationService>();
+        services.AddSingleton<BotCore.Services.IntegritySigningService>();
+        services.AddSingleton<BotCore.Services.SuppressionLedgerService>();
         
         // Register Production Guardrail configurations
         services.Configure<BotCore.Configuration.ProductionGuardrailConfiguration>(configuration.GetSection("Guardrails"));

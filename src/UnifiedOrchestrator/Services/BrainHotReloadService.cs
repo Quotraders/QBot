@@ -17,14 +17,14 @@ internal sealed class BrainHotReloadService : BackgroundService
 {
     private readonly ILogger<BrainHotReloadService> _logger;
     private readonly IServiceProvider _serviceProvider;
-    private readonly BotCore.ML.OnnxModelLoader _modelLoader;
+    private readonly OnnxModelLoader _modelLoader;
     private volatile bool _reloadInProgress;
     private readonly SemaphoreSlim _reloadSemaphore = new(1, 1);
 
     public BrainHotReloadService(
         ILogger<BrainHotReloadService> logger,
         IServiceProvider serviceProvider,
-        BotCore.ML.OnnxModelLoader modelLoader)
+        OnnxModelLoader modelLoader)
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
