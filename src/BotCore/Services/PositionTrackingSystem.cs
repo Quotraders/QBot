@@ -325,10 +325,10 @@ namespace TopstepX.Bot.Core.Services
         /// <summary>
         /// Get all positions (for reconciliation and monitoring)
         /// </summary>
-        public List<TopstepX.Bot.Abstractions.Position> GetAllPositions()
+        public List<Position> GetAllPositions()
         {
             // Convert internal positions to abstraction positions
-            return _positions.Values.Select(p => new TopstepX.Bot.Abstractions.Position
+            return _positions.Values.Select(p => new Position
             {
                 Symbol = p.Symbol,
                 NetQuantity = p.NetQuantity,
