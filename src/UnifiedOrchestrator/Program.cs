@@ -21,7 +21,6 @@ using BotCore.Extensions;  // Add this for EnhancedTradingBotServiceExtensions
 using UnifiedOrchestrator.Services;  // Add this for BacktestLearningService
 using TopstepX.Bot.Authentication;
 using TradingBot.RLAgent;  // Add this for ModelHotReloadManager
-using CloudTrainer;  // Add this for CloudRlTrainerV2
 using DotNetEnv;
 using static DotNetEnv.Env;
 
@@ -1887,22 +1886,9 @@ Please check the configuration and ensure all required services are registered.
         services.AddHostedService<TradingBot.RLAgent.ModelHotReloadManager>(provider => 
             provider.GetRequiredService<TradingBot.RLAgent.ModelHotReloadManager>());
         
-        // Register CloudRlTrainerV2 (Cloud Training Service) - Polls GitHub for model updates
-        services.Configure<CloudTrainer.CloudRlTrainerOptions>(configuration.GetSection("CloudRlTrainer"));
-        services.AddSingleton<CloudTrainer.IModelDownloader, CloudTrainer.HttpModelDownloader>();
-        services.AddSingleton<CloudTrainer.IModelHotSwapper, CloudTrainer.DefaultModelHotSwapper>();
-        services.AddSingleton<CloudTrainer.IPerformanceStore>(serviceProvider =>
-        {
-            var options = serviceProvider.GetRequiredService<IOptions<CloudTrainer.CloudRlTrainerOptions>>().Value;
-            var logger = serviceProvider.GetRequiredService<ILogger<CloudTrainer.FileBasedPerformanceStore>>();
-            return new CloudTrainer.FileBasedPerformanceStore(options.Performance.PerformanceStore, logger);
-        });
-        services.AddSingleton<CloudTrainer.CloudRlTrainerV2>();
-        services.AddHostedService<CloudTrainer.CloudRlTrainerV2>(provider => 
-            provider.GetRequiredService<CloudTrainer.CloudRlTrainerV2>());
+        // CloudRlTrainerV2 removed - legacy cloud training infrastructure no longer exists
         
         Console.WriteLine("🔄 [MODEL-HOT-RELOAD] File watching service registered - Monitors models/rl for changes!");
-        Console.WriteLine("☁️ [CLOUD-RL-TRAINER] Cloud model upgrade service registered - Polls GitHub for updates!");
         
         // Register Model Ensemble Service - Intelligent model blending (70% cloud, 30% local)
         services.AddSingleton<BotCore.Services.ModelEnsembleService>();
@@ -2053,8 +2039,7 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<BotCore.ML.OnnxModelLoader>();
         services.AddHostedService<BrainHotReloadService>();
         
-        // Cloud model integration service (CloudRlTrainerV2 already registered above after CloudModelSynchronizationService)
-        services.AddHostedService<CloudModelIntegrationService>();
+        // Cloud model integration service removed - CloudRlTrainerV2 infrastructure no longer exists
 
         // Hosted services (append-only) - Enhanced learning services
         // Conditional registration based on ENABLE_HISTORICAL_LEARNING environment variable

@@ -10,6 +10,7 @@ using TradingBot.UnifiedOrchestrator.Models;
 using TradingBot.UnifiedOrchestrator.Configuration;
 using TradingBot.Abstractions; // For TradingAction
 using BotCore.Brain;
+using BotCore.Brain.Models; // For BrainDecision, PriceDirection
 using BotCore.Models;
 using BotCore.Risk;
 using BotCore.Strategy;
