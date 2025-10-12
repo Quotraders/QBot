@@ -49,8 +49,8 @@ public class HealthMonitor : TradingBot.Abstractions.IHealthMonitor
     private DateTime _lastHealthCheck = DateTime.UtcNow;
     private int _reconnectAttempts;
 
-    public event Action<TradingBot.Abstractions.HealthStatus>? OnHealthChanged;
-    public event Action<TradingBot.Abstractions.HealthStatus>? HealthStatusChanged;
+    public event EventHandler<HealthStatusChangedEventArgs>? OnHealthChanged;
+    public event EventHandler<HealthStatusChangedEventArgs>? HealthStatusChanged;
     public bool IsTradingAllowed => _tradingAllowed;
 
     // Health thresholds
@@ -214,8 +214,10 @@ public class HealthMonitor : TradingBot.Abstractions.IHealthMonitor
                     AverageLatencyMs = status.AverageLatencyMs,
                     StatusMessage = status.StatusMessage
                 };
-                OnHealthChanged?.Invoke(abstractionsStatus);
-                HealthStatusChanged?.Invoke(abstractionsStatus);
+                
+                var eventArgs = new HealthStatusChangedEventArgs(abstractionsStatus);
+                OnHealthChanged?.Invoke(this, eventArgs);
+                HealthStatusChanged?.Invoke(this, eventArgs);
             }
 
             // Handle degraded health
@@ -225,7 +227,7 @@ public class HealthMonitor : TradingBot.Abstractions.IHealthMonitor
             }
             else
             {
-                _reconnectAttempts; // Reset on recovery
+                _reconnectAttempts = 0; // Reset on recovery
             }
 
             _lastHealthCheck = DateTime.UtcNow;

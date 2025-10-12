@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TradingBot.Abstractions;
+using BotCore.Models;
 
 namespace Trading.Safety;
 
@@ -41,8 +42,8 @@ public class RiskManager : TradingBot.Abstractions.IRiskManager
     private decimal _largestPosition;
     private bool _isBreached;
 
-    public event Action<TradingBot.Abstractions.RiskBreach>? OnRiskBreach;
-    public event Action<TradingBot.Abstractions.RiskBreach>? RiskBreachDetected;
+    public event EventHandler<RiskBreachEventArgs>? OnRiskBreach;
+    public event EventHandler<RiskBreachEventArgs>? RiskBreachDetected;
     public bool IsRiskBreached => _isBreached;
 
     public RiskManager(ILogger<RiskManager> logger, IOptions<AppOptions> config)
@@ -453,8 +454,10 @@ public class RiskManager : TradingBot.Abstractions.IRiskManager
                     ["OriginalMessage"] = breach.Message
                 }
             };
-            OnRiskBreach?.Invoke(abstractionsBreach);
-            RiskBreachDetected?.Invoke(abstractionsBreach);
+            
+            var eventArgs = new RiskBreachEventArgs(abstractionsBreach);
+            OnRiskBreach?.Invoke(this, eventArgs);
+            RiskBreachDetected?.Invoke(this, eventArgs);
             
             _logger.LogInformation("[RISK] Risk breach logged and notifications sent");
         }
