@@ -21,14 +21,14 @@ namespace TradingBot.UnifiedOrchestrator.Brains;
 internal class TrainingBrain : ITrainingBrain
 {
     private readonly ILogger<TrainingBrain> _logger;
-    private readonly IModelRegistry _modelRegistry;
+    private readonly IOnnxModelRegistry _modelRegistry;
     private readonly Dictionary<string, IArtifactBuilder> _artifactBuilders;
     private readonly ConcurrentDictionary<string, TrainingJob> _activeJobs = new();
     private readonly string _stagingPath;
 
     public TrainingBrain(
         ILogger<TrainingBrain> logger,
-        IModelRegistry modelRegistry,
+        IOnnxModelRegistry modelRegistry,
         IEnumerable<IArtifactBuilder> artifactBuilders,
         string? stagingPath = null)
     {

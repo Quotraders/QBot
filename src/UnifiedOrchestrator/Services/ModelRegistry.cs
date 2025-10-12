@@ -13,9 +13,9 @@ using Microsoft.Extensions.Configuration;
 namespace TradingBot.UnifiedOrchestrator.Services;
 
 /// <summary>
-/// Model registry interface for comprehensive model lifecycle management
+/// Model registry interface for comprehensive model lifecycle management  
 /// </summary>
-internal interface IModelRegistry 
+internal interface IOnnxModelRegistry 
 { 
     event Action<string>? OnModelsUpdated;
     event Action<string>? OnModelLoadFailed;
@@ -36,7 +36,7 @@ internal interface IModelRegistry
 /// Production-ready model registry with comprehensive lifecycle management
 /// Handles ONNX model registration, activation, metrics tracking, and hot-reload notifications
 /// </summary>
-internal sealed class ModelRegistry : BackgroundService, IModelRegistry
+internal sealed class ModelRegistry : BackgroundService, IOnnxModelRegistry
 {
     private readonly ILogger<ModelRegistry> _logger;
     private readonly IConfiguration _configuration;

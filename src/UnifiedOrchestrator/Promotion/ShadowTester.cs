@@ -8,9 +8,9 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.ML.OnnxRuntime;
 using TradingBot.Backtest;
-using TradingBot.UnifiedOrchestrator.Interfaces;
 using TradingBot.UnifiedOrchestrator.Models;
-using TradingBot.UnifiedOrchestrator.Services;
+using IModelRegistry = TradingBot.UnifiedOrchestrator.Interfaces.IModelRegistry;
+using IModelRouterFactory = TradingBot.UnifiedOrchestrator.Interfaces.IModelRouterFactory;
 
 namespace TradingBot.UnifiedOrchestrator.Promotion;
 

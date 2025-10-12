@@ -36,7 +36,7 @@ internal sealed class BrainHotReloadService : BackgroundService
         _logger.LogInformation("🧠 Brain hot-reload service starting...");
 
         // Subscribe to model registry updates
-        var modelRegistry = _serviceProvider.GetService<IModelRegistry>();
+        var modelRegistry = _serviceProvider.GetService<IOnnxModelRegistry>();
         if (modelRegistry != null)
         {
             modelRegistry.OnModelsUpdated += HandleModelUpdate;
@@ -196,7 +196,7 @@ internal sealed class BrainHotReloadService : BackgroundService
         // Unsubscribe from model registry updates
         try
         {
-            var modelRegistry = _serviceProvider.GetService<IModelRegistry>();
+            var modelRegistry = _serviceProvider.GetService<IOnnxModelRegistry>();
             if (modelRegistry != null)
             {
                 modelRegistry.OnModelsUpdated -= HandleModelUpdate;

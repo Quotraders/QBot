@@ -12,7 +12,7 @@ namespace TradingBot.UnifiedOrchestrator.Services;
 internal class ChampionChallengerValidationService : BackgroundService
 {
     private readonly ILogger<ChampionChallengerValidationService> _logger;
-    private readonly IModelRegistry _modelRegistry;
+    private readonly IOnnxModelRegistry _modelRegistry;
     private readonly IModelRouterFactory _routerFactory;
     private readonly IInferenceBrain _inferenceBrain;
     private readonly ITrainingBrain _trainingBrain;
@@ -21,7 +21,7 @@ internal class ChampionChallengerValidationService : BackgroundService
 
     public ChampionChallengerValidationService(
         ILogger<ChampionChallengerValidationService> logger,
-        IModelRegistry modelRegistry,
+        IOnnxModelRegistry modelRegistry,
         IModelRouterFactory routerFactory,
         IInferenceBrain inferenceBrain,
         ITrainingBrain trainingBrain,

@@ -22,7 +22,7 @@ internal class ContinuousOperationService : BackgroundService
     private readonly IServiceProvider _serviceProvider;
     private readonly IMarketHoursService _marketHours;
     private readonly ITrainingBrain _trainingBrain;
-    private readonly IModelRegistry _modelRegistry;
+    private readonly IOnnxModelRegistry _modelRegistry;
     private readonly IPromotionService _promotionService;
     private readonly EnhancedBacktestLearningService _backtestService;
     private readonly AutomatedPromotionService _promotionSystemService;
@@ -41,7 +41,7 @@ internal class ContinuousOperationService : BackgroundService
         IServiceProvider serviceProvider,
         IMarketHoursService marketHours,
         ITrainingBrain trainingBrain,
-        IModelRegistry modelRegistry,
+        IOnnxModelRegistry modelRegistry,
         IPromotionService promotionService,
         EnhancedBacktestLearningService backtestService,
         AutomatedPromotionService promotionSystemService)

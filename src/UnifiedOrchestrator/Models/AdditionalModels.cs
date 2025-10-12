@@ -4,9 +4,9 @@ using System.Collections.Generic;
 namespace TradingBot.UnifiedOrchestrator.Models;
 
 /// <summary>
-/// Training intensity levels for adaptive learning
+/// Training intensity levels for adaptive learning (renamed to avoid conflict)
 /// </summary>
-internal enum TrainingIntensity
+internal enum AdaptiveLearningIntensity
 {
     /// <summary>
     /// Light learning during market hours (60 min intervals)

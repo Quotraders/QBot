@@ -2045,7 +2045,7 @@ Please check the configuration and ensure all required services are registered.
 
         // Model registry (now a hosted service) and canary watchdog
         services.AddSingleton<ModelRegistry>();
-        services.AddSingleton<IModelRegistry>(provider => provider.GetRequiredService<ModelRegistry>());
+        services.AddSingleton<IOnnxModelRegistry>(provider => provider.GetRequiredService<ModelRegistry>());
         services.AddHostedService(provider => provider.GetRequiredService<ModelRegistry>());
         services.AddHostedService<CanaryWatchdog>();
         
