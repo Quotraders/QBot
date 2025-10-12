@@ -16,7 +16,7 @@ namespace TradingBot.UnifiedOrchestrator.Services;
 internal class EnsembleModelService
 {
     private readonly ILogger<EnsembleModelService> _logger;
-    private readonly Dictionary<string, EnsembleModelInfo> _models = new();
+    private readonly Dictionary<string, EnsembleServiceModelInfo> _models = new();
     private readonly object _lock = new();
 
     public EnsembleModelService(ILogger<EnsembleModelService> logger)
@@ -24,7 +24,7 @@ internal class EnsembleModelService
         _logger = logger;
     }
 
-    public void RegisterModel(string modelId, EnsembleModelInfo modelInfo)
+    public void RegisterModel(string modelId, EnsembleServiceModelInfo modelInfo)
     {
         lock (_lock)
         {
@@ -219,7 +219,7 @@ internal class EnsembleModelService
 /// <summary>
 /// Information about a model in the ensemble
 /// </summary>
-internal class EnsembleModelInfo
+internal class EnsembleServiceModelInfo
 {
     public string ModelId { get; set; } = string.Empty;
     public string ModelType { get; set; } = string.Empty;

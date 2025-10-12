@@ -37,7 +37,7 @@ internal interface IMarketHoursService
     /// <summary>
     /// Get recommended training intensity based on current market conditions
     /// </summary>
-    Task<Models.AdaptiveLearningIntensity> GetRecommendedTrainingIntensityAsync(CancellationToken cancellationToken = default);
+    Task<Models.TrainingIntensity> GetRecommendedTrainingIntensityAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>

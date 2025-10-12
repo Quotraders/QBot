@@ -138,16 +138,16 @@ internal sealed class MarketHoursService : IMarketHoursService
         return true;
     }
     
-    public async Task<AdaptiveLearningIntensity> GetRecommendedTrainingIntensityAsync(CancellationToken cancellationToken = default)
+    public async Task<TrainingIntensity> GetRecommendedTrainingIntensityAsync(CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask.ConfigureAwait(false);
         
         if (await IsMarketOpenAsync(cancellationToken).ConfigureAwait(false))
         {
-            return AdaptiveLearningIntensity.Light; // Light learning during market hours
+            return TrainingIntensity.Light; // Light learning during market hours
         }
         
-        return AdaptiveLearningIntensity.Intensive; // Intensive learning when market closed
+        return TrainingIntensity.Intensive; // Intensive learning when market closed
     }
     
     private DateTime GetEasternTime()
