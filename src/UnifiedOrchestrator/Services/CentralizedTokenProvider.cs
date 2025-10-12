@@ -143,20 +143,8 @@ internal class CentralizedTokenProvider : ITokenProvider, IHostedService
                 return;
             }
 
-            // Try to refresh via object if available
-            if (_autoLoginService != null && !string.IsNullOrEmpty(_autoLoginService.JwtToken))
-            {
-                _currentToken = _autoLoginService.JwtToken;
-                _tokenExpiry = DateTime.UtcNow.AddHours(1);
-                
-                await _tradingLogger.LogSystemAsync(TradingLogLevel.INFO, "TokenProvider", 
-                    "Token refreshed from object").ConfigureAwait(false);
-                
-                TokenRefreshed?.Invoke(_currentToken);
-                return;
-            }
-
-            // If we already have a token from environment, use it even if it's the same
+            // Legacy auto-login service removed - use environment token as primary source
+            // If we already have a token from environment, use it
             if (!string.IsNullOrEmpty(envToken))
             {
                 _currentToken = envToken;
@@ -169,31 +157,11 @@ internal class CentralizedTokenProvider : ITokenProvider, IHostedService
                 return;
             }
 
-            // If we still don't have a valid token, try to trigger authentication
+            // If we still don't have a valid token, log warning
             if (!IsTokenValid)
             {
                 await _tradingLogger.LogSystemAsync(TradingLogLevel.WARN, "TokenProvider", 
-                    "No valid token found, attempting to trigger authentication via object").ConfigureAwait(false);
-                
-                // Force authentication attempt if object is available
-                if (_autoLoginService != null && !_autoLoginService.IsAuthenticated)
-                {
-                    // The object should handle authentication in its background service
-                    // Just wait a bit and check again
-                    await Task.Delay(2000).ConfigureAwait(false);
-                    
-                    if (!string.IsNullOrEmpty(_autoLoginService.JwtToken))
-                    {
-                        _currentToken = _autoLoginService.JwtToken;
-                        _tokenExpiry = DateTime.UtcNow.AddHours(1);
-                        Environment.SetEnvironmentVariable("TOPSTEPX_JWT", _currentToken);
-                        
-                        await _tradingLogger.LogSystemAsync(TradingLogLevel.INFO, "TokenProvider", 
-                            "Token obtained after authentication attempt").ConfigureAwait(false);
-                        
-                        TokenRefreshed?.Invoke(_currentToken);
-                    }
-                }
+                    "No valid token found - authentication required via environment variables").ConfigureAwait(false);
             }
 
             await _tradingLogger.LogSystemAsync(TradingLogLevel.ERROR, "TokenProvider", 

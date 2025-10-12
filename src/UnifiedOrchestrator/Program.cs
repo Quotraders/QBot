@@ -316,7 +316,7 @@ This replaces individual SimpleBot/MinimalDemo/TradingBot smoke tests
             
             // Test 2: Core service availability  
             logger.LogInformation("🧪 [SMOKE] Test 2: Core service availability");
-            var unifiedOrchestrator = host.Services.GetService<IUnifiedOrchestrator>();
+            var unifiedOrchestrator = host.Services.GetService<TradingBot.Abstractions.IUnifiedOrchestrator>();
             var tradingReadiness = host.Services.GetService<ITradingReadinessTracker>();
             var mlConfigService = host.Services.GetService<MLConfigurationService>();
             
@@ -2006,12 +2006,12 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<IRuntimeConfigBus, RuntimeConfigBus>();
 
         // Authentication service
-        services.AddSingleton<ITopstepAuth, TopstepAuth>();
+        services.AddSingleton<TradingBot.UnifiedOrchestrator.Services.ITopstepAuth, TradingBot.UnifiedOrchestrator.Services.TopstepAuth>();
 
         // Model registry (now a hosted service) and canary watchdog
-        services.AddSingleton<ModelRegistry>();
-        services.AddSingleton<IOnnxModelRegistry>(provider => provider.GetRequiredService<ModelRegistry>());
-        services.AddHostedService(provider => provider.GetRequiredService<ModelRegistry>());
+        services.AddSingleton<TradingBot.UnifiedOrchestrator.Services.ModelRegistry>();
+        services.AddSingleton<IOnnxModelRegistry>(provider => provider.GetRequiredService<TradingBot.UnifiedOrchestrator.Services.ModelRegistry>());
+        services.AddHostedService(provider => provider.GetRequiredService<TradingBot.UnifiedOrchestrator.Services.ModelRegistry>());
         services.AddHostedService<CanaryWatchdog>();
         
         // Brain hot-reload service for ONNX session swapping
@@ -2340,7 +2340,7 @@ internal static class EnvironmentLoader
             {
                 if (File.Exists(envFile))
                 {
-                    Env.Load(envFile);
+                    DotNetEnv.Env.Load(envFile);
                     loadedFiles.Add(envFile);
                 }
             }
