@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using TradingBot.UnifiedOrchestrator.Interfaces;
 using TradingBot.Abstractions;
 using BotCore.Brain;
+using BotCore.Brain.Models;
 using AbstractionsMarketRegime = TradingBot.Abstractions.MarketRegime;
 using BotCoreMarketRegime = BotCore.Brain.MarketRegime;
 

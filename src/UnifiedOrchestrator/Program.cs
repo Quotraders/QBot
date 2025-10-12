@@ -16,7 +16,6 @@ using TradingBot.IntelligenceStack;
 using TradingBot.Backtest;
 using BotCore.Services;
 using BotCore.Extensions;  // Add this for ProductionReadinessServiceExtensions
-using BotCore.Compatibility;  // Add this for CompatibilityKitServiceExtensions
 using BotCore.Extensions;  // Add this for EnhancedTradingBotServiceExtensions
 using UnifiedOrchestrator.Services;  // Add this for BacktestLearningService
 using TopstepX.Bot.Authentication;
