@@ -271,7 +271,7 @@ internal class RegressionTestReport
     public int PassedTests { get; set; }
     public int FailedTests { get; set; }
     public bool RegressionDetected { get; set; }
-    public List<RegressionTestCase> TestResults { get; } = new();
+    public List<RegressionTestCase> TestResults { get; set; } = new();
     public string? ErrorMessage { get; set; }
 }
 

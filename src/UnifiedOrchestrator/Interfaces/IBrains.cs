@@ -105,9 +105,9 @@ internal class InferenceStats
     public DateTime LastDecisionTime { get; set; }
     
     // Model health
-    public Dictionary<string, bool> ModelHealth { get; } = new();
-    public Dictionary<string, DateTime> ModelLoadTimes { get; } = new();
-    public Dictionary<string, int> ModelSwapCounts { get; } = new();
+    public Dictionary<string, bool> ModelHealth { get; set; } = new();
+    public Dictionary<string, DateTime> ModelLoadTimes { get; set; } = new();
+    public Dictionary<string, int> ModelSwapCounts { get; set; } = new();
     
     // Performance
     public decimal TodayWinRate { get; set; }
@@ -148,7 +148,7 @@ internal class TrainingResult
     public decimal FinalLoss { get; set; }
     public decimal BestValidationScore { get; set; }
     public int EpochsCompleted { get; set; }
-    public Dictionary<string, decimal> Metrics { get; } = new();
+    public Dictionary<string, decimal> Metrics { get; set; } = new();
     
     // Model metadata
     public TrainingMetadata Metadata { get; set; } = new();
@@ -166,8 +166,8 @@ internal class TrainingMetadata
     public int DataSamples { get; set; }
     public string GitSha { get; set; } = string.Empty;
     public string CreatedBy { get; set; } = Environment.UserName;
-    public Dictionary<string, object> Parameters { get; } = new();
-    public Dictionary<string, decimal> PerformanceMetrics { get; } = new();
+    public Dictionary<string, object> Parameters { get; set; } = new();
+    public Dictionary<string, decimal> PerformanceMetrics { get; set; } = new();
 }
 
 /// <summary>
@@ -182,8 +182,8 @@ internal class TrainingStatus
     public DateTime StartTime { get; set; }
     public DateTime? EndTime { get; set; }
     public string CurrentStage { get; set; } = string.Empty;
-    public Dictionary<string, object> StageData { get; } = new();
-    public List<string> Logs { get; } = new();
+    public Dictionary<string, object> StageData { get; set; } = new();
+    public List<string> Logs { get; set; } = new();
     public string? ErrorMessage { get; set; }
 }
 

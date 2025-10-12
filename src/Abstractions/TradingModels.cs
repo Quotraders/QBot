@@ -256,7 +256,12 @@ public class TradingDecision
     public decimal RegimeConfidence { get; set; }
     public string Strategy { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
-    public Dictionary<string, object> Reasoning { get; } = new();
+    public Dictionary<string, object> Reasoning { get; set; } = new();
+    public Dictionary<string, string> AlgorithmVersions { get; set; } = new();
+    public Dictionary<string, string> AlgorithmHashes { get; set; } = new();
+    public Dictionary<string, decimal> AlgorithmConfidences { get; set; } = new();
+    public List<string> RiskWarnings { get; set; } = new();
+    public Dictionary<string, object> DecisionMetadata { get; set; } = new();
 }
 
 /// <summary>

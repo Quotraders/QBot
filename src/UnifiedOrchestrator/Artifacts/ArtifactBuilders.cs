@@ -520,7 +520,7 @@ internal class UcbModelArtifact
     public string Version { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public TrainingMetadata TrainingMetadata { get; set; } = new();
-    public Dictionary<string, object> ArmStatistics { get; } = new();
-    public Dictionary<string, object> ExplorationParameters { get; } = new();
+    public Dictionary<string, object> ArmStatistics { get; set; } = new();
+    public Dictionary<string, object> ExplorationParameters { get; set; } = new();
     public object ModelParameters { get; set; } = new();
 }

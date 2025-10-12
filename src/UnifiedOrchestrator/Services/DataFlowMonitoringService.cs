@@ -413,7 +413,7 @@ internal class DataFlowStatusReport
     public DateTime LastHistoricalDataProcessed { get; set; }
     public double LiveDataRatePerMinute { get; set; }
     public double HistoricalDataRatePerFiveMinutes { get; set; }
-    public Dictionary<string, ConnectionHealth> ConnectionHealthStatus { get; } = new();
+    public Dictionary<string, ConnectionHealth> ConnectionHealthStatus { get; set; } = new();
     public int HealthyConnectionCount { get; set; }
     public int TotalConnectionCount { get; set; }
 }

@@ -1946,7 +1946,7 @@ internal class BacktestState
     public int TotalTrades { get; set; }
     public int WinningTrades { get; set; }
     public int LosingTrades { get; set; }
-    public List<HistoricalDecision> Decisions { get; } = new();
+    public List<HistoricalDecision> Decisions { get; set; } = new();
 }
 
 /// <summary>
@@ -1963,10 +1963,10 @@ internal class HistoricalDecision
     public string Strategy { get; set; } = string.Empty;
     
     // Brain attribution
-    public Dictionary<string, string> AlgorithmVersions { get; } = new();
+    public Dictionary<string, string> AlgorithmVersions { get; set; } = new();
     public decimal ProcessingTimeMs { get; set; }
     public bool PassedRiskChecks { get; set; }
-    public List<string> RiskWarnings { get; } = new();
+    public List<string> RiskWarnings { get; set; } = new();
     
     // Backtest context
     public string BacktestId { get; set; } = string.Empty;

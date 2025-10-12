@@ -22,7 +22,7 @@ namespace UnifiedOrchestrator.Services
     internal class FeatureSet
     {
         public string FeatureSetName { get; set; } = "";
-        public Dictionary<string, object> Features { get; } = new();
+        public Dictionary<string, object> Features { get; set; } = new();
         public DateTime Timestamp { get; set; }
         public string InstanceId { get; set; } = "";
     }
@@ -35,7 +35,7 @@ namespace UnifiedOrchestrator.Services
         public double CompletenessScore { get; set; }
         public double DriftScore { get; set; }
         public bool IsHealthy { get; set; }
-        public List<string> Issues { get; } = new();
+        public List<string> Issues { get; set; } = new();
     }
 
     internal class DataLakeService : IDisposable

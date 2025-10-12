@@ -749,8 +749,8 @@ internal class OperationLog
 internal class ContinuousOperationStatus
 {
     public ContinuousOperationState State { get; set; } = new();
-    public List<TrainingJobStatus> ActiveJobs { get; } = new();
-    public List<OperationLog> RecentLogs { get; } = new();
+    public List<TrainingJobStatus> ActiveJobs { get; set; } = new();
+    public List<OperationLog> RecentLogs { get; set; } = new();
     // AutomatedPromotionStatus removed - legacy automation infrastructure no longer exists
 }
 

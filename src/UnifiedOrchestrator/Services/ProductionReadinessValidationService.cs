@@ -491,7 +491,7 @@ internal class ProductionReadinessReport
     public TimeSpan Duration { get; set; }
     public bool Success { get; set; }
     public string? ErrorMessage { get; set; }
-    public Dictionary<string, object> TestResults { get; } = new();
+    public Dictionary<string, object> TestResults { get; set; } = new();
 }
 
 internal class UnifiedTradingBrainIntegrationResult
@@ -507,7 +507,7 @@ internal class UnifiedTradingBrainIntegrationResult
 internal class SafeWindowEnforcementResult
 {
     public DateTime TestTime { get; set; }
-    public List<SafeWindowTest> TestResults { get; } = new();
+    public List<SafeWindowTest> TestResults { get; set; } = new();
     public double SafeWindowDetectionAccuracy { get; set; }
     public bool IsValid { get; set; }
 }
@@ -544,7 +544,7 @@ internal class DataSourceStatus
 internal class AcceptanceCriteriaResult
 {
     public DateTime TestTime { get; set; }
-    public Dictionary<string, AcceptanceCriteriaItem> Criteria { get; } = new();
+    public Dictionary<string, AcceptanceCriteriaItem> Criteria { get; set; } = new();
     public int TotalCriteria { get; set; }
     public int MetCriteria { get; set; }
     public double ComplianceRate { get; set; }

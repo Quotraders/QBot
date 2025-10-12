@@ -601,7 +601,7 @@ internal class TrainingJob
     public DateTime StartTime { get; set; }
     public DateTime? EndTime { get; set; }
     public string CurrentStage { get; set; } = string.Empty;
-    public List<string> Logs { get; } = new();
-    public Dictionary<string, object> StageData { get; } = new();
+    public List<string> Logs { get; set; } = new();
+    public Dictionary<string, object> StageData { get; set; } = new();
     public string? ErrorMessage { get; set; }
 }

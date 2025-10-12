@@ -1167,7 +1167,7 @@ internal class PPOAnalysis
 /// </summary>
 internal class UCBAnalysis
 {
-    public List<UCBArm> Arms { get; } = new();
+    public List<UCBArm> Arms { get; set; } = new();
     public int TotalPulls { get; set; }
     public decimal ExplorationThreshold { get; set; }
     public decimal MarketVolatility { get; set; }
@@ -1194,7 +1194,7 @@ internal class LSTMAnalysis
     public decimal PredictedMagnitude { get; set; }
     public decimal PatternConfidence { get; set; }
     public decimal SequenceReliability { get; set; }
-    public List<MarketPattern> RecognizedPatterns { get; } = new();
+    public List<MarketPattern> RecognizedPatterns { get; set; } = new();
     public string TimeHorizon { get; set; } = string.Empty;
 }
 
