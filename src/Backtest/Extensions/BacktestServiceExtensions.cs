@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using TradingBot.Abstractions;
 using TradingBot.Backtest;
 using TradingBot.Backtest.Adapters;
 using TradingBot.Backtest.Configuration;

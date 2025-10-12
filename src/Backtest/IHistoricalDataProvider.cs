@@ -2,26 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using TradingBot.Abstractions;
 
 namespace TradingBot.Backtest
 {
-    /// <summary>
-    /// Quote data structure for historical market data
-    /// Maps to market data structure in the trading system
-    /// </summary>
-    public record Quote(
-        DateTime Time,
-        string Symbol,
-        decimal Bid,
-        decimal Ask,
-        decimal Last,
-        int Volume,
-        decimal Open,
-        decimal High,
-        decimal Low,
-        decimal Close
-    );
-
     /// <summary>
     /// Interface for providing historical market data to backtesting engine
     /// Connects to existing historical data sources (TopstepX, databases)

@@ -12,6 +12,8 @@ using Microsoft.Extensions.Options;
 using TradingBot.Backtest;
 using TradingBot.Backtest.Configuration;
 using BotCore.Services;
+using BotCore.Models;
+using TradingBot.Abstractions;
 
 namespace TradingBot.Backtest.Adapters
 {
@@ -255,7 +257,7 @@ namespace TradingBot.Backtest.Adapters
         /// Convert BotCore Bar objects to Backtest Quote objects
         /// SECURITY: Enhanced data validation and bounds checking
         /// </summary>
-        private async IAsyncEnumerable<Quote> ConvertBarsToQuotes(string symbol, List<BotCore.Models.Bar> bars)
+        private async IAsyncEnumerable<Quote> ConvertBarsToQuotes(string symbol, List<Bar> bars)
         {
             await Task.CompletedTask; // Satisfy async enumerable requirement
             
