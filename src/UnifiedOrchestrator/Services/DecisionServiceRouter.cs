@@ -386,7 +386,7 @@ internal class PythonDecisionResponse
     public DecisionDetails? Decision { get; set; }
     public double Confidence { get; set; }
     public List<FeatureInfo>? Features { get; set; }
-    public ModelInfo? ModelInfo { get; set; }
+    public DecisionRouterModelInfo? ModelInfo { get; set; }
     public double ProcessingTime { get; set; }
     public string? RequestId { get; set; }
 }
@@ -406,7 +406,7 @@ internal class FeatureInfo
     public double Weight { get; set; }
 }
 
-internal class ModelInfo
+internal class DecisionRouterModelInfo
 {
     public string? ModelName { get; set; }
     public string? Version { get; set; }

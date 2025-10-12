@@ -9,8 +9,9 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using BotCore.Helpers;
+using BotCore.Configuration;
+using BotCore.Services;
 using TradingBot.Abstractions;
-using TradingBot.BotCore.Configuration;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 
@@ -64,14 +65,17 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
     }
 
     public bool IsConnected => _isInitialized && _connectionHealth >= 80.0;
-    public double ConnectionHealth => _connectionHealth;
+    
+    // Interface expects string, provide both for compatibility
+    public string ConnectionHealth => _connectionHealth.ToString("F1");
+    public double ConnectionHealthScore => _connectionHealth;
 
-    public async Task<bool> InitializeAsync(CancellationToken cancellationToken = default)
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         if (_isInitialized)
         {
             _logger.LogWarning("TopstepX adapter already initialized");
-            return true;
+            return;
         }
 
         try
@@ -93,18 +97,18 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 StartFillEventListener();
                 
                 _logger.LogInformation("✅ TopstepX adapter initialized successfully");
-                return true;
             }
             else
             {
-                _logger.LogError("❌ Failed to initialize TopstepX adapter: {Error}", result.Error);
-                return false;
+                var error = $"Failed to initialize TopstepX adapter: {result.Error}";
+                _logger.LogError("❌ {Error}", error);
+                throw new InvalidOperationException(error);
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not InvalidOperationException)
         {
             _logger.LogError(ex, "Exception during TopstepX adapter initialization");
-            return false;
+            throw new InvalidOperationException("Failed to initialize TopstepX adapter", ex);
         }
     }
 

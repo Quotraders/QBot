@@ -642,16 +642,14 @@ internal interface IPositionService
 internal class ProductionPositionService : IPositionService
 {
     private readonly ILogger<ProductionPositionService> _logger;
-    private readonly IAccountService _accountService;
+    // IAccountService removed - interface no longer exists
     private readonly ITopstepXClient _topstepXClient;
 
     public ProductionPositionService(
         ILogger<ProductionPositionService> logger,
-        IAccountService accountService,
         ITopstepXClient topstepXClient)
     {
         _logger = logger;
-        _accountService = accountService;
         _topstepXClient = topstepXClient;
     }
 

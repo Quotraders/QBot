@@ -22,10 +22,10 @@ internal class ContinuousOperationService : BackgroundService
     private readonly IServiceProvider _serviceProvider;
     private readonly IMarketHoursService _marketHours;
     private readonly ITrainingBrain _trainingBrain;
-    private readonly IModelRegistry _modelRegistry;
+    private readonly IOnnxModelRegistry _modelRegistry;
     private readonly IPromotionService _promotionService;
     private readonly EnhancedBacktestLearningService _backtestService;
-    private readonly AutomatedPromotionService _promotionSystemService;
+    // AutomatedPromotionService removed - legacy automation infrastructure no longer exists
     
     // Scheduling state
     private readonly Dictionary<string, TrainingJobStatus> _activeJobs = new();
@@ -41,10 +41,9 @@ internal class ContinuousOperationService : BackgroundService
         IServiceProvider serviceProvider,
         IMarketHoursService marketHours,
         ITrainingBrain trainingBrain,
-        IModelRegistry modelRegistry,
+        IOnnxModelRegistry modelRegistry,
         IPromotionService promotionService,
-        EnhancedBacktestLearningService backtestService,
-        AutomatedPromotionService promotionSystemService)
+        EnhancedBacktestLearningService backtestService)
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
@@ -53,7 +52,6 @@ internal class ContinuousOperationService : BackgroundService
         _modelRegistry = modelRegistry;
         _promotionService = promotionService;
         _backtestService = backtestService;
-        _promotionSystemService = promotionSystemService;
         
         _state.StartTime = DateTime.UtcNow;
     }
@@ -695,8 +693,8 @@ internal class ContinuousOperationService : BackgroundService
         {
             State = _state,
             ActiveJobs = _activeJobs.Values.ToList(),
-            RecentLogs = _operationLogs.TakeLast(50).ToList(),
-            AutomatedPromotionStatus = _promotionSystemService.GetStatus()
+            RecentLogs = _operationLogs.TakeLast(50).ToList()
+            // AutomatedPromotionStatus removed - legacy automation infrastructure no longer exists
         };
     }
 }
@@ -753,7 +751,7 @@ internal class ContinuousOperationStatus
     public ContinuousOperationState State { get; set; } = new();
     public List<TrainingJobStatus> ActiveJobs { get; } = new();
     public List<OperationLog> RecentLogs { get; } = new();
-    public AutomatedPromotionStatus AutomatedPromotionStatus { get; set; } = new();
+    // AutomatedPromotionStatus removed - legacy automation infrastructure no longer exists
 }
 
 #endregion

@@ -33,7 +33,7 @@ internal class CentralizedTokenProvider : ITokenProvider, IHostedService
     private string? _currentToken;
     private DateTime _tokenExpiry = DateTime.MinValue;
     private volatile bool _isRefreshing;
-    private AutoTopstepXLoginService? _autoLoginService;
+    // object removed - legacy auto-login service no longer exists
 
     public event Action<string>? TokenRefreshed;
     public bool IsTokenValid => !string.IsNullOrEmpty(_currentToken) && DateTime.UtcNow < _tokenExpiry.AddMinutes(-5) && IsJwtTokenActuallyValid(_currentToken);
@@ -82,27 +82,6 @@ internal class CentralizedTokenProvider : ITokenProvider, IHostedService
 
     public async Task<string?> GetTokenAsync()
     {
-        // Try to get the AutoTopstepXLoginService if we haven't already
-        if (_autoLoginService == null)
-        {
-            _autoLoginService = _serviceProvider.GetService<AutoTopstepXLoginService>();
-        }
-
-        // First priority: Get token directly from AutoTopstepXLoginService
-        if (_autoLoginService?.JwtToken != null)
-        {
-            _logger.LogInformation("[TOKEN_PROVIDER] Got JWT from AutoTopstepXLoginService: Length={Length}", 
-                _autoLoginService.JwtToken.Length);
-            
-            // Update our cached token if it's different
-            if (_autoLoginService.JwtToken != _currentToken)
-            {
-                _currentToken = _autoLoginService.JwtToken;
-                _tokenExpiry = DateTime.UtcNow.AddHours(1);
-                _logger.LogInformation("[TOKEN_PROVIDER] JWT token updated from AutoTopstepXLoginService");
-            }
-            return _currentToken;
-        }
 
         // Fallback: Check environment variable (for compatibility)
         var envToken = Environment.GetEnvironmentVariable("TOPSTEPX_JWT");
@@ -150,7 +129,7 @@ internal class CentralizedTokenProvider : ITokenProvider, IHostedService
             _isRefreshing = true;
             await _tradingLogger.LogSystemAsync(TradingLogLevel.INFO, "TokenProvider", "Starting token refresh").ConfigureAwait(false);
 
-            // Always check environment variable first as AutoTopstepXLoginService updates it
+            // Always check environment variable first as object updates it
             var envToken = Environment.GetEnvironmentVariable("TOPSTEPX_JWT");
             if (!string.IsNullOrEmpty(envToken) && envToken != _currentToken)
             {
@@ -164,14 +143,14 @@ internal class CentralizedTokenProvider : ITokenProvider, IHostedService
                 return;
             }
 
-            // Try to refresh via AutoTopstepXLoginService if available
+            // Try to refresh via object if available
             if (_autoLoginService != null && !string.IsNullOrEmpty(_autoLoginService.JwtToken))
             {
                 _currentToken = _autoLoginService.JwtToken;
                 _tokenExpiry = DateTime.UtcNow.AddHours(1);
                 
                 await _tradingLogger.LogSystemAsync(TradingLogLevel.INFO, "TokenProvider", 
-                    "Token refreshed from AutoTopstepXLoginService").ConfigureAwait(false);
+                    "Token refreshed from object").ConfigureAwait(false);
                 
                 TokenRefreshed?.Invoke(_currentToken);
                 return;
@@ -194,12 +173,12 @@ internal class CentralizedTokenProvider : ITokenProvider, IHostedService
             if (!IsTokenValid)
             {
                 await _tradingLogger.LogSystemAsync(TradingLogLevel.WARN, "TokenProvider", 
-                    "No valid token found, attempting to trigger authentication via AutoTopstepXLoginService").ConfigureAwait(false);
+                    "No valid token found, attempting to trigger authentication via object").ConfigureAwait(false);
                 
-                // Force authentication attempt if AutoTopstepXLoginService is available
+                // Force authentication attempt if object is available
                 if (_autoLoginService != null && !_autoLoginService.IsAuthenticated)
                 {
-                    // The AutoTopstepXLoginService should handle authentication in its background service
+                    // The object should handle authentication in its background service
                     // Just wait a bit and check again
                     await Task.Delay(2000).ConfigureAwait(false);
                     

@@ -104,7 +104,7 @@ internal sealed class CloudModelIntegrationService : BackgroundService
     {
         try
         {
-            var modelRegistry = _serviceProvider.GetService<IModelRegistry>();
+            var modelRegistry = _serviceProvider.GetService<IOnnxModelRegistry>();
             if (modelRegistry != null)
             {
                 modelRegistry.NotifyUpdated(sha);

@@ -24,7 +24,7 @@ internal class ErrorHandlingService : IHostedService
     private readonly EventLog? _eventLog;
     private readonly Timer _circuitBreakerTimer;
     private volatile bool _fileSystemAvailable = true;
-    private volatile readonly bool _eventLogAvailable;
+    private readonly bool _eventLogAvailable;
     private volatile bool _fileLoggingFallbackAvailable;
     private string? _fallbackLogPath;
     private int _consecutiveFileErrors;

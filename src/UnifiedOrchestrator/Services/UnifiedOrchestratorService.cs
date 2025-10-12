@@ -488,4 +488,41 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
             return new Dictionary<string, DateTime>(_agentSessionStartTimes);
         }
     }
+
+    // IUnifiedOrchestrator interface implementation
+    public IReadOnlyList<UnifiedWorkflow> GetWorkflows()
+    {
+        // Return empty list - workflow management not implemented in this health monitoring service
+        return Array.Empty<UnifiedWorkflow>();
+    }
+
+    public UnifiedWorkflow? GetWorkflow(string workflowId)
+    {
+        // Return null - workflow management not implemented in this health monitoring service
+        return null;
+    }
+
+    public Task RegisterWorkflowAsync(UnifiedWorkflow workflow, CancellationToken cancellationToken = default)
+    {
+        // No-op - workflow management not implemented in this health monitoring service
+        _logger.LogWarning("RegisterWorkflowAsync called but not implemented in health monitoring service");
+        return Task.CompletedTask;
+    }
+
+    public Task<WorkflowExecutionResult> ExecuteWorkflowAsync(string workflowId, Dictionary<string, object>? parameters = null, CancellationToken cancellationToken = default)
+    {
+        // Return failure - workflow execution not implemented in this health monitoring service
+        _logger.LogWarning("ExecuteWorkflowAsync called but not implemented in health monitoring service");
+        return Task.FromResult(new WorkflowExecutionResult
+        {
+            Success = false,
+            Error = "Workflow execution not implemented in health monitoring service"
+        });
+    }
+
+    public IReadOnlyList<WorkflowExecutionContext> GetExecutionHistory(string workflowId, int limit)
+    {
+        // Return empty list - workflow execution history not tracked in this health monitoring service
+        return Array.Empty<WorkflowExecutionContext>();
+    }
 }
