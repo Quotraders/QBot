@@ -56,7 +56,7 @@ internal class OnnxArtifactBuilder : IArtifactBuilder
             // Validate the copied ONNX model
             if (!await ValidateOnnxModelAsync(tempOutputPath, cancellationToken).ConfigureAwait(false))
             {
-                File.Delete(tempOutputPath).ConfigureAwait(false);
+                File.Delete(tempOutputPath);
                 throw new InvalidOperationException("ONNX model validation failed");
             }
 

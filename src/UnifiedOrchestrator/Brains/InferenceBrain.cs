@@ -82,7 +82,7 @@ internal class InferenceBrain : IInferenceBrain
             // Ensure all models are ready
             if (!await IsReadyAsync(cancellationToken).ConfigureAwait(false))
             {
-                riskWarnings.Add("One or more champion models not ready").ConfigureAwait(false);
+                riskWarnings.Add("One or more champion models not ready");
                 return CreateFallbackDecision(context, stopwatch.Elapsed, riskWarnings);
             }
 
