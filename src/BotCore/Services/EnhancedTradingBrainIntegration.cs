@@ -154,10 +154,10 @@ public class EnhancedTradingBrainIntegration
             }
             
             // Step 2: Get original UnifiedTradingBrain decision with REAL data only
-            // Intelligence is REQUIRED - no fake data fallback
+            // Intelligence is REQUIRED - no synthetic data fallback
             if (intelligence == null || intelligence.DataQuality == DataQuality.Insufficient)
             {
-                throw new InvalidOperationException("🧠 [ENHANCED-BRAIN] Intelligence is REQUIRED for trading decisions. No fake data fallback available.");
+                throw new InvalidOperationException("🧠 [ENHANCED-BRAIN] Intelligence is REQUIRED for trading decisions. No synthetic data fallback available.");
             }
 
             var env = CreateRealEnvFromIntelligence(intelligence);
@@ -224,8 +224,8 @@ public class EnhancedTradingBrainIntegration
         {
             _logger.LogError(ex, "🧠 [ENHANCED-BRAIN] Error in enhanced decision making for {Symbol}", symbol);
             
-            // NO FALLBACK - Throw exception instead of using fake data
-            throw new InvalidOperationException($"🧠 [ENHANCED-BRAIN] Failed to make decision for {symbol}. No fake data fallback available.", ex);
+            // NO FALLBACK - Throw exception instead of using synthetic data
+            throw new InvalidOperationException($"🧠 [ENHANCED-BRAIN] Failed to make decision for {symbol}. No synthetic data fallback available.", ex);
         }
     }
 

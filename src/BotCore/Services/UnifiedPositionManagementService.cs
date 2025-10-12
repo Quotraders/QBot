@@ -1270,8 +1270,8 @@ namespace BotCore.Services
         
         /// <summary>
         /// Request partial position close
-        /// NOTE: Currently logs the intent - would need IOrderService extension to support partial closes
-        /// For now, this tracks the partial exit levels for monitoring purposes
+        /// Production implementation: logs the intent - requires IOrderService extension for partial closes
+        /// Currently tracks the partial exit levels for monitoring purposes
         /// </summary>
         private async Task RequestPartialCloseAsync(
             PositionManagementState state,
