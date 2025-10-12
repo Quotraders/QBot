@@ -8,7 +8,7 @@ using TradingBot.Abstractions;
 using BotCore.Brain;
 using BotCore.Brain.Models;
 using AbstractionsMarketRegime = TradingBot.Abstractions.MarketRegime;
-using BotCoreMarketRegime = BotCore.Brain.MarketRegime;
+using BotCoreMarketRegime = BotCore.Brain.Models.MarketRegime;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 

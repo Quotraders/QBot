@@ -7,9 +7,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.ML.OnnxRuntime;
+using TradingBot.Abstractions;
 using TradingBot.Backtest;
 using TradingBot.UnifiedOrchestrator.Interfaces;
 using TradingBot.UnifiedOrchestrator.Models;
+using TradingBot.UnifiedOrchestrator.Services;
 using IModelRegistry = TradingBot.UnifiedOrchestrator.Interfaces.IModelRegistry;
 using IModelRouterFactory = TradingBot.UnifiedOrchestrator.Interfaces.IModelRouterFactory;
 
@@ -472,7 +474,7 @@ internal class ShadowTester : IShadowTester
         };
     }
 
-    private static (string action, decimal size, decimal confidence) ParseModelOutput(System.Numerics.Tensors.Tensor<float> output)
+    private static (string action, decimal size, decimal confidence) ParseModelOutput(Microsoft.ML.OnnxRuntime.Tensors.Tensor<float> output)
     {
         // Parse model output tensor
         // Assuming output format: [action_logits (3), size (1), confidence (1)]

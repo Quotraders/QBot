@@ -11,10 +11,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using BotCore.Brain;
+using BotCore.Brain.Models;
+using BotCore.Models;
 using BotCore.Services;
 using TradingBot.UnifiedOrchestrator.Interfaces;
 using TradingBot.UnifiedOrchestrator.Models;
 using TradingBot.Abstractions;
+using BacktestResult = TradingBot.UnifiedOrchestrator.Models.BacktestResult;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 
@@ -38,10 +42,10 @@ internal class EnhancedBacktestLearningService : BackgroundService
     private readonly ITopstepAuth _authService;
     
     // CRITICAL: Direct injection of UnifiedTradingBrain for identical intelligence
-    private readonly BotCore.Brain.UnifiedTradingBrain _unifiedBrain;
+    private readonly UnifiedTradingBrain _unifiedBrain;
     
     // AI-powered self-improvement capability
-    private readonly BotCore.Services.OllamaClient? _ollamaClient;
+    private readonly OllamaClient? _ollamaClient;
     private readonly IConfiguration _configuration;
     
     // Historical replay state
@@ -53,10 +57,10 @@ internal class EnhancedBacktestLearningService : BackgroundService
         IServiceProvider serviceProvider,
         IMarketHoursService marketHours,
         HttpClient httpClient,
-        BotCore.Brain.UnifiedTradingBrain unifiedBrain,
+        UnifiedTradingBrain unifiedBrain,
         ITopstepAuth authService,
         IConfiguration configuration,
-        BotCore.Services.OllamaClient? ollamaClient = null)
+        OllamaClient? ollamaClient = null)
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
@@ -123,7 +127,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
     /// Focuses on 4 primary strategies: S2 (Mean Reversion), S3 (Compression), S6 (Momentum), S11 (Exhaustion)
     /// </summary>
     private async Task RunUnifiedBacktestLearningAsync(
-        BotCore.Brain.UnifiedSchedulingRecommendation scheduling, 
+        UnifiedSchedulingRecommendation scheduling, 
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("[UNIFIED-BACKTEST] Starting unified backtest learning session with {Intensity} intensity on strategies: {Strategies}", 
@@ -179,7 +183,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
     /// This ensures all 4 strategies (S2, S3, S6, S11) actually execute and generate trades/learning
     /// </summary>
     private async Task RunActualStrategyImplementationsAsync(
-        BotCore.Brain.UnifiedSchedulingRecommendation scheduling, 
+        UnifiedSchedulingRecommendation scheduling, 
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("[STRATEGY-EXECUTION] Running actual strategy implementations for ALL 4 strategies...");
@@ -238,7 +242,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         }
     }
     
-    private List<UnifiedBacktestConfig> GenerateUnifiedBacktestConfigs(BotCore.Brain.UnifiedSchedulingRecommendation scheduling)
+    private List<UnifiedBacktestConfig> GenerateUnifiedBacktestConfigs(UnifiedSchedulingRecommendation scheduling)
     {
         var configs = new List<UnifiedBacktestConfig>();
         var endDate = DateTime.UtcNow.Date;
@@ -414,7 +418,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
     /// This ensures identical decision-making process
     /// </summary>
     private async Task ProcessDailyBarsWithUnifiedBrainAsync(
-        List<BotCore.Models.Bar> dailyBars,
+        List<Bar> dailyBars,
         UnifiedBacktestState backtestState,
         UnifiedHistoricalReplayContext replayContext,
         CancellationToken cancellationToken)
@@ -434,13 +438,13 @@ internal class EnhancedBacktestLearningService : BackgroundService
             try
             {
                 // Create market environment identical to live trading
-                var env = new BotCore.Models.Env
+                var env = new Env
                 {
                     atr = CalculateATR(historicalBars, 14),
                     volz = CalculateVolZ(historicalBars)
                 };
                 
-                var levels = new BotCore.Models.Levels(); // Initialize as needed
+                var levels = new Levels(); // Initialize as needed
                 var riskEngine = new BotCore.Risk.RiskEngine();
                 
                 // 🚀 CRITICAL: Use SAME UnifiedTradingBrain as live trading
@@ -488,8 +492,8 @@ internal class EnhancedBacktestLearningService : BackgroundService
                 {
                     var futureBar = dailyBars[i + 10];
                     var priceMove = futureBar.Close - currentBar.Close;
-                    var wasCorrect = (brainDecision.PriceDirection == BotCore.Brain.PriceDirection.Up && priceMove > 0) ||
-                                   (brainDecision.PriceDirection == BotCore.Brain.PriceDirection.Down && priceMove < 0);
+                    var wasCorrect = (brainDecision.PriceDirection == PriceDirection.Up && priceMove > 0) ||
+                                   (brainDecision.PriceDirection == PriceDirection.Down && priceMove < 0);
                     
                     // Feed learning back to UnifiedTradingBrain
                     await _unifiedBrain.LearnFromResultAsync(
@@ -548,17 +552,17 @@ internal class EnhancedBacktestLearningService : BackgroundService
             };
 
             // Use UnifiedTradingBrain adapter for decision (IDENTICAL to live trading)
-            var env = new BotCore.Models.Env 
+            var env = new Env 
             { 
                 Symbol = tradingContext.Symbol,
                 atr = tradingContext.TechnicalIndicators.GetValueOrDefault("ATR", 0),
                 volz = tradingContext.TechnicalIndicators.GetValueOrDefault("VolZ", 0)
             };
-            var levels = new BotCore.Models.Levels(); // Initialize as needed
+            var levels = new Levels(); // Initialize as needed
             var riskEngine = new BotCore.Risk.RiskEngine();
-            var bars = new List<BotCore.Models.Bar> 
+            var bars = new List<Bar> 
             { 
-                new BotCore.Models.Bar 
+                new Bar 
                 { 
                     Symbol = tradingContext.Symbol,
                     Start = tradingContext.Timestamp,
@@ -666,7 +670,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
             }
             
             // Fallback: Try bridge service
-            var bridgeService = _serviceProvider.GetService<BotCore.Services.IHistoricalDataBridgeService>();
+            var bridgeService = _serviceProvider.GetService<IHistoricalDataBridgeService>();
             if (bridgeService != null)
             {
                 _logger.LogInformation("[HISTORICAL-DATA] Using HistoricalDataBridgeService as fallback for {Symbol}", config.Symbol);
@@ -1179,7 +1183,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
     private UnifiedBacktestResult CreateUnifiedBacktestResult(
         UnifiedBacktestState state, 
         UnifiedHistoricalReplayContext context,
-        List<BotCore.Models.Bar> historicalBars)
+        List<Bar> historicalBars)
     {
         var totalPnL = state.RealizedPnL + state.UnrealizedPnL;
         var totalReturn = totalPnL / state.StartingCapital;
@@ -1260,7 +1264,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
     /// <summary>
     /// Load historical bars using TopstepX API instead of JSON files
     /// </summary>
-    private async Task<List<BotCore.Models.Bar>> LoadHistoricalBarsAsync(UnifiedBacktestConfig config, CancellationToken cancellationToken)
+    private async Task<List<Bar>> LoadHistoricalBarsAsync(UnifiedBacktestConfig config, CancellationToken cancellationToken)
     {
         await Task.Yield().ConfigureAwait(false); // Ensure async behavior
         
@@ -1270,7 +1274,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
                 config.Symbol, config.StartDate, config.EndDate);
                 
             // Use bridge service to get real TopstepX data
-            var bridgeService = _serviceProvider.GetService<BotCore.Services.IHistoricalDataBridgeService>();
+            var bridgeService = _serviceProvider.GetService<IHistoricalDataBridgeService>();
             if (bridgeService != null)
             {
                 var contractId = config.Symbol == "ES" ? 
@@ -1299,14 +1303,14 @@ internal class EnhancedBacktestLearningService : BackgroundService
                 _logger.LogInformation("[UNIFIED-BACKTEST] Using TopstepXHistoricalDataProvider as fallback for {Symbol}", config.Symbol);
                 
                 var quotes = historicalDataProvider.GetHistoricalQuotesAsync(config.Symbol, config.StartDate, config.EndDate, cancellationToken);
-                var bars = new List<BotCore.Models.Bar>();
+                var bars = new List<Bar>();
                 
                 await foreach (var quote in quotes)
                 {
                     if (cancellationToken.IsCancellationRequested) break;
                     
                     // Convert quotes to bars (simplified - group by minute)
-                    bars.Add(new BotCore.Models.Bar
+                    bars.Add(new Bar
                     {
                         Start = quote.Timestamp,
                         End = quote.Timestamp.AddMinutes(1),
@@ -1328,10 +1332,10 @@ internal class EnhancedBacktestLearningService : BackgroundService
             
             // Log that no real bars data was available
             _logger.LogWarning("[UNIFIED-BACKTEST] No TopstepX historical bars available for {Symbol}", config.Symbol);
-            return new List<BotCore.Models.Bar>();
+            return new List<Bar>();
             
             // Return empty list instead of generating synthetic data
-            return new List<BotCore.Models.Bar>();
+            return new List<Bar>();
         }
         catch (Exception ex)
         {
@@ -1343,7 +1347,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
     /// <summary>
     /// Load REAL historical bars from actual market data - NO SYNTHETIC GENERATION ALLOWED
     /// </summary>
-    private async Task<List<BotCore.Models.Bar>> LoadRealHistoricalBarsAsync(UnifiedBacktestConfig config)
+    private async Task<List<Bar>> LoadRealHistoricalBarsAsync(UnifiedBacktestConfig config)
     {
         try
         {
@@ -1351,7 +1355,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
             
             // In a real implementation, this would load from TopstepX historical bars API
             // For now, return empty list since historical bars service is not available
-            var bars = new List<BotCore.Models.Bar>();
+            var bars = new List<Bar>();
             
             // This would be the real implementation:
             // var topstepXClient = GetService<ITopstepXClient>();
@@ -1364,14 +1368,14 @@ internal class EnhancedBacktestLearningService : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[UNIFIED-BACKTEST] Cannot load real historical bars for {Symbol}", config.Symbol);
-            return new List<BotCore.Models.Bar>();
+            return new List<Bar>();
         }
     }
 
     /// <summary>
     /// Calculate ATR using Welles Wilder formula
     /// </summary>
-    private decimal CalculateATR(IList<BotCore.Models.Bar> bars, int period = 14)
+    private decimal CalculateATR(IList<Bar> bars, int period = 14)
     {
         if (bars.Count < period + 1) return 0;
 
@@ -1406,7 +1410,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
     /// <summary>
     /// Calculate VolZ (volatility z-score) using rolling mean and standard deviation
     /// </summary>
-    private decimal CalculateVolZ(IList<BotCore.Models.Bar> bars, int period = 20)
+    private decimal CalculateVolZ(IList<Bar> bars, int period = 20)
     {
         if (bars.Count < period) return 0;
 
@@ -1445,7 +1449,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
     /// <summary>
     /// Create market context from bar data
     /// </summary>
-    private TradingContext CreateMarketContextFromBar(BotCore.Models.Bar bar)
+    private TradingContext CreateMarketContextFromBar(Bar bar)
     {
         return new TradingContext
         {
