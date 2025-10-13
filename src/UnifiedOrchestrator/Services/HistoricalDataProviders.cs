@@ -52,25 +52,27 @@ internal sealed class FeaturesHistoricalProvider : IHistoricalDataProvider
             yield break;
         }
         
+        FeatureData[]? features = null;
         try
         {
             await using var fileStream = new FileStream(featureFile, FileMode.Open, FileAccess.Read);
-            var features = await JsonSerializer.DeserializeAsync<FeatureData[]>(fileStream, cancellationToken: cancellationToken).ConfigureAwait(false);
-            
-            if (features == null)
-            {
-                yield break;
-            }
-            
-            foreach (var feature in features.Where(f => f.Time >= startTime && f.Time <= endTime))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                yield return ConvertFeatureToQuote(symbol, feature);
-            }
+            features = await JsonSerializer.DeserializeAsync<FeatureData[]>(fileStream, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error reading features from {FeatureFile}", featureFile);
+            yield break;
+        }
+        
+        if (features == null)
+        {
+            yield break;
+        }
+        
+        foreach (var feature in features.Where(f => f.Time >= startTime && f.Time <= endTime))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return ConvertFeatureToQuote(symbol, feature);
         }
     }
     
@@ -166,25 +168,27 @@ internal sealed class LocalQuotesProvider : IHistoricalDataProvider
             yield break;
         }
         
+        Quote[]? quotes = null;
         try
         {
             await using var fileStream = new FileStream(quoteFile, FileMode.Open, FileAccess.Read);
-            var quotes = await JsonSerializer.DeserializeAsync<Quote[]>(fileStream, cancellationToken: cancellationToken).ConfigureAwait(false);
-            
-            if (quotes == null)
-            {
-                yield break;
-            }
-            
-            foreach (var quote in quotes.Where(q => q.Time >= startTime && q.Time <= endTime))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                yield return quote;
-            }
+            quotes = await JsonSerializer.DeserializeAsync<Quote[]>(fileStream, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error reading quotes from {QuoteFile}", quoteFile);
+            yield break;
+        }
+        
+        if (quotes == null)
+        {
+            yield break;
+        }
+        
+        foreach (var quote in quotes.Where(q => q.Time >= startTime && q.Time <= endTime))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return quote;
         }
     }
     

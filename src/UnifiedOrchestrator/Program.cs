@@ -640,7 +640,7 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<global::BotCore.Services.PositionMonitoring.SessionDetectionService>();
         
         // Register ES/NQ Portfolio Heat Manager with position monitoring services
-        services.AddSingleton<ES_NQ_PortfolioHeatManager>();
+        services.AddSingleton<global::BotCore.Services.ES_NQ_PortfolioHeatManager>();
         
         Console.WriteLine("📊 [POSITION-MONITORING] Registered position monitoring services");
         Console.WriteLine("   ✅ Real-time session exposure tracking - Monitors exposure by trading session");
