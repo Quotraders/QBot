@@ -29,9 +29,9 @@ internal class AdvancedSystemIntegrationService
             _logger.LogInformation("Initializing advanced system integrations...");
             
             // Initialize various system integrations
-            await InitializeMLIntegrationAsync(cancellationToken).ConfigureAwait(false);
-            await InitializeRLIntegrationAsync(cancellationToken).ConfigureAwait(false);
-            await InitializeCloudIntegrationAsync(cancellationToken).ConfigureAwait(false);
+            await InitializeMLIntegrationAsync().ConfigureAwait(false);
+            await InitializeRLIntegrationAsync().ConfigureAwait(false);
+            await InitializeCloudIntegrationAsync().ConfigureAwait(false);
             
             _logger.LogInformation("✅ Advanced system integrations initialized successfully");
         }
@@ -89,13 +89,13 @@ internal class AdvancedSystemIntegrationService
             var isValid = true;
             
             // Validate ML integration
-            isValid &= await ValidateMLIntegrationAsync(cancellationToken).ConfigureAwait(false);
+            isValid &= await ValidateMLIntegrationAsync().ConfigureAwait(false);
             
             // Validate RL integration  
-            isValid &= await ValidateRLIntegrationAsync(cancellationToken).ConfigureAwait(false);
+            isValid &= await ValidateRLIntegrationAsync().ConfigureAwait(false);
             
             // Validate cloud integration
-            isValid &= await ValidateCloudIntegrationAsync(cancellationToken).ConfigureAwait(false);
+            isValid &= await ValidateCloudIntegrationAsync().ConfigureAwait(false);
             
             if (isValid)
             {
