@@ -46,11 +46,10 @@ internal class EnhancedAuthenticationService : IHostedService
         await _tradingLogger.LogSystemAsync(TradingLogLevel.INFO, "AuthService", 
             "Enhanced authentication service started").ConfigureAwait(false);
 
-        // Log credential discovery
-        var credentialDiscovery = _credentialManager.DiscoverAllCredentialSources();
+        // Credential discovery not available (legacy credential manager removed)
         
         await _tradingLogger.LogSystemAsync(TradingLogLevel.INFO, "AuthService", 
-            "Credential discovery completed", new
+            "Enhanced authentication service initialized", new
             {
                 totalSourcesFound = credentialDiscovery.TotalSourcesFound,
                 hasEnvironmentCredentials = credentialDiscovery.HasEnvironmentCredentials,

@@ -455,13 +455,13 @@ internal class ContinuousOperationService : BackgroundService
             var syncTasks = algorithms.Select(async algorithm =>
             {
                 var champion = await _modelRegistry.GetActiveModelAsync(algorithm, cancellationToken).ConfigureAwait(false);
-                if (champion != null && champion.ModelPath != null)
+                if (champion != null && !string.IsNullOrEmpty(champion.FilePath))
                 {
-                    var isValid = await _modelRegistry.ValidateModelAsync(champion.ModelPath, cancellationToken).ConfigureAwait(false);
+                    var isValid = await _modelRegistry.ValidateModelAsync(champion.FilePath, cancellationToken).ConfigureAwait(false);
                     if (!isValid)
                     {
-                        _logger.LogWarning("[24/7-OPS] Champion model validation failed for {Algorithm}: {ModelPath}",
-                            algorithm, champion.ModelPath);
+                        _logger.LogWarning("[24/7-OPS] Champion model validation failed for {Algorithm}: {FilePath}",
+                            algorithm, champion.FilePath);
                     }
                 }
             });

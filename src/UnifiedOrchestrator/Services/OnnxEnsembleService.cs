@@ -216,7 +216,7 @@ internal class OnnxEnsembleService : IDisposable
                 try
                 {
                     // Real ONNX model inference instead of simulation
-                    var modelPrediction = await RunRealModelInferenceAsync(model.ModelName, model.ModelPath, inputs, cancellationToken).ConfigureAwait(false);
+                    var modelPrediction = await RunRealModelInferenceAsync(model.ModelName, inputs, cancellationToken).ConfigureAwait(false);
                     predictions.Add(modelPrediction);
                     modelsUsed.Add(model.ModelName);
                 }

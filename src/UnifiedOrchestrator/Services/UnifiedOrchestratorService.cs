@@ -257,7 +257,7 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         {
             try
             {
-                await _topstepXAdapter.DisconnectAsync().ConfigureAwait(false);
+                // DisconnectAsync is not in interface - cleanup handled by Dispose/DisposeAsync
                 _logger.LogInformation("✅ TopstepX adapter shutdown complete");
             }
             catch (Exception ex)

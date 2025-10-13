@@ -37,7 +37,7 @@ internal class IntelligenceOrchestratorService : BackgroundService, IIntelligenc
             try
             {
                 // Main intelligence processing loop
-                await ProcessIntelligenceOperationsAsync(stoppingToken).ConfigureAwait(false);
+                await ProcessIntelligenceOperationsAsync().ConfigureAwait(false);
                 
                 // Wait before next iteration
                 await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken).ConfigureAwait(false);
