@@ -4,6 +4,7 @@ using TradingBot.Abstractions;
 using TradingBot.UnifiedOrchestrator.Models;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -309,7 +310,7 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         var isHealthy = healthScore >= 80.0;
         var status = isHealthy ? "healthy" : "degraded";
         
-        return new HealthScoreResult(healthScore, status, new(), new(), DateTime.UtcNow, isHealthy);
+        return new HealthScoreResult((int)healthScore, status, new(), new(), DateTime.UtcNow, isHealthy);
     }
 
     /// <summary>
@@ -325,7 +326,10 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         
         // Portfolio status is monitored internally by TopstepX adapter
         // This method returns a basic status result
-        return Task.FromResult(new PortfolioStatusResult());
+        return Task.FromResult(new PortfolioStatusResult(
+            new Dictionary<string, object>(),
+            new Dictionary<string, PositionInfo>(),
+            DateTime.UtcNow));
     }
 
     public async Task<bool> ExecuteEmergencyShutdownAsync(CancellationToken cancellationToken = default)

@@ -191,7 +191,7 @@ internal class EnhancedAuthenticationService : IHostedService
     {
         try
         {
-            await _tradingLogger.LogSystemAsync(TradingLogLevel.CRITICAL, "AuthService", 
+            await _tradingLogger.LogSystemAsync(TradingLogLevel.ERROR, "AuthService", 
                 "TRIGGERING GUARDRAIL HALT due to authentication failure", new
                 {
                     reason,
