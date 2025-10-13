@@ -268,7 +268,7 @@ internal class IntelligenceOrchestratorService : BackgroundService, IIntelligenc
     {
         _logger.LogInformation("[INTELLIGENCE] Running startup validation...");
         await Task.Delay(100, cancellationToken).ConfigureAwait(false); // Simulate validation
-        return new StartupValidationResult { IsValid = true, ValidationErrors = new List<string>() };
+        return new StartupValidationResult { IsValid = true, ValidationErrors = new System.Collections.ObjectModel.Collection<string>() };
     }
 
     public Task ProcessMarketDataAsync(MarketData data, CancellationToken cancellationToken = default)
