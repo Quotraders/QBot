@@ -1010,6 +1010,7 @@ Please check the configuration and ensure all required services are registered.
             var memoryManager = provider.GetRequiredService<global::BotCore.ML.IMLMemoryManager>();
             var modelManager = provider.GetRequiredService<global::BotCore.ML.StrategyMlModelManager>();
             var cvarPPO = provider.GetRequiredService<TradingBot.RLAgent.CVaRPPO>();
+            var mlConfigService = provider.GetRequiredService<TradingBot.Abstractions.IMLConfigurationService>();
             var gate4Config = provider.GetService<TradingBot.Abstractions.IGate4Config>();
             var ollamaClient = provider.GetService<global::BotCore.Services.OllamaClient>();
             var economicEventManager = provider.GetService<global::BotCore.Market.IEconomicEventManager>();
@@ -1024,6 +1025,7 @@ Please check the configuration and ensure all required services are registered.
                 memoryManager,
                 modelManager,
                 cvarPPO,
+                mlConfigService,
                 gate4Config,
                 ollamaClient,
                 economicEventManager,
