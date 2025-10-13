@@ -217,7 +217,7 @@ internal class PromotionService : IPromotionService
                     ["atomic_swap_success"] = swapSuccess,
                     ["validation_decision"] = decision
                 }
-            }.ConfigureAwait(false);
+            };
 
             var registrySuccess = await _modelRegistry.PromoteToChampionAsync(algorithm, challengerVersionId, promotionRecord, cancellationToken).ConfigureAwait(false);
             if (!registrySuccess)

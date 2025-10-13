@@ -198,7 +198,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         var lookbackDays = scheduling.LearningIntensity == "INTENSIVE" ? 30 : 7;
         var startDate = endDate.AddDays(-lookbackDays);
         
-        var getJwt = async () => 
+        var getJwt = new Func<Task<string>>(async () => 
         {
             try
             {
@@ -211,7 +211,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
                 // Fallback to environment variable if auth service fails
                 return Environment.GetEnvironmentVariable("TOPSTEPX_JWT") ?? "demo-jwt-token";
             }
-        };
+        });
         
         try
         {
