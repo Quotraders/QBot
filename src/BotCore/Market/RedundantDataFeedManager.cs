@@ -858,7 +858,7 @@ public class TopstepXDataFeed : IDataFeed
         };
     }
 
-    public async Task<OrderBook?> GetOrderBookAsync(string symbol)
+    public Task<OrderBook?> GetOrderBookAsync(string symbol)
     {
         // PRODUCTION MODE: Order book not yet implemented for TopstepX
         // This would require Level 2 market data integration
