@@ -637,36 +637,77 @@ internal interface IPositionService
 
 /// <summary>
 /// Production position service implementation
-/// Provides real position tracking via TopstepX API
+/// Provides real position tracking via PositionTrackingSystem
 /// </summary>
 internal class ProductionPositionService : IPositionService
 {
     private readonly ILogger<ProductionPositionService> _logger;
+    private readonly TopstepX.Bot.Core.Services.PositionTrackingSystem _positionTracker;
 
-    public ProductionPositionService(ILogger<ProductionPositionService> logger)
+    public ProductionPositionService(
+        ILogger<ProductionPositionService> logger,
+        TopstepX.Bot.Core.Services.PositionTrackingSystem positionTracker)
     {
         _logger = logger;
+        _positionTracker = positionTracker;
     }
 
     public Task<bool> IsCurrentlyFlatAsync(CancellationToken cancellationToken = default)
     {
-        // Default to flat for promotion safety - actual position tracking would be implemented here
-        _logger.LogDebug("IsCurrentlyFlatAsync called - returning flat (true) for promotion safety");
-        return Task.FromResult(true);
+        try
+        {
+            var positions = _positionTracker.GetAllPositions();
+            var isFlat = positions.All(p => p.NetQuantity == 0);
+            
+            _logger.LogDebug("IsCurrentlyFlatAsync: {IsFlat} (positions: {PositionCount})", 
+                isFlat, positions.Count);
+            
+            return Task.FromResult(isFlat);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking if positions are flat, assuming not flat for safety");
+            return Task.FromResult(false); // Fail-safe: assume not flat if error
+        }
     }
 
     public Task<decimal> GetCurrentPositionAsync(string symbol, CancellationToken cancellationToken = default)
     {
-        // Default to no position - actual position tracking would be implemented here
-        _logger.LogDebug("GetCurrentPositionAsync called for {Symbol} - returning 0", symbol);
-        return Task.FromResult(0m);
+        try
+        {
+            var positions = _positionTracker.GetAllPositions();
+            var position = positions.FirstOrDefault(p => p.Symbol == symbol);
+            
+            var quantity = position?.NetQuantity ?? 0;
+            _logger.LogDebug("GetCurrentPositionAsync for {Symbol}: {Quantity}", symbol, quantity);
+            
+            return Task.FromResult((decimal)quantity);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting position for {Symbol}, returning 0", symbol);
+            return Task.FromResult(0m);
+        }
     }
 
     public Task<Dictionary<string, decimal>> GetAllPositionsAsync(CancellationToken cancellationToken = default)
     {
-        // Default to no positions - actual position tracking would be implemented here
-        _logger.LogDebug("GetAllPositionsAsync called - returning empty dictionary");
-        return Task.FromResult(new Dictionary<string, decimal>());
+        try
+        {
+            var positions = _positionTracker.GetAllPositions();
+            var positionDict = positions
+                .Where(p => p.NetQuantity != 0)
+                .ToDictionary(p => p.Symbol, p => (decimal)p.NetQuantity);
+            
+            _logger.LogDebug("GetAllPositionsAsync: {PositionCount} non-zero positions", positionDict.Count);
+            
+            return Task.FromResult(positionDict);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting all positions, returning empty dictionary");
+            return Task.FromResult(new Dictionary<string, decimal>());
+        }
     }
 }
 
