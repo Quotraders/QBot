@@ -16,8 +16,6 @@ using TradingBot.UnifiedOrchestrator.Configuration;
 using TradingBot.Abstractions;
 using TradingBot.IntelligenceStack;
 using TradingBot.Backtest;
-using TradingBot.BotCore.Services;
-using TradingBot.BotCore.Extensions;
 using UnifiedOrchestrator.Services;  // Add this for BacktestLearningService
 using TopstepX.Bot.Authentication;
 using TradingBot.RLAgent;  // Add this for ModelHotReloadManager
@@ -29,8 +27,13 @@ using BotCore.Patterns;
 using BotCore.Execution;
 using BotCore.Features;
 using BotCore.Configuration;
+using BotCore.Extensions;
 using DotNetEnv;
 using static DotNetEnv.Env;
+// Specific imports from TradingBot.BotCore.Services namespace
+using TradingBotParameterProvider = TradingBot.BotCore.Services.TradingBotParameterProvider;
+using TradingBotSymbolSessionManager = TradingBot.BotCore.Services.TradingBotSymbolSessionManager;
+using BracketConfigService = TradingBot.BotCore.Services.BracketConfigService;
 
 // Import types from aliased projects
 using UnifiedTradingBrain = BotCore.Brain.UnifiedTradingBrain;
@@ -541,7 +544,7 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<IBracketConfig, TradingBot.BotCore.Services.BracketConfigService>();
         
         // Register zone-aware bracket manager
-        services.AddSingleton<TradingBot.BotCore.Services.IZoneAwareBracketManager, TradingBot.BotCore.Services.ZoneAwareBracketManager>();
+        services.AddSingleton<BotCore.Services.IZoneAwareBracketManager, BotCore.Services.ZoneAwareBracketManager>();
         
         // Register Per-Symbol Session Lattices with neutral band integration
         services.AddSingleton<TradingBot.BotCore.Services.TradingBotSymbolSessionManager>(provider =>
