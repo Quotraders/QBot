@@ -106,10 +106,10 @@ internal class DataFlowMonitoringService : BackgroundService
             }
 
             var isConnected = topstepXAdapter.IsConnected;
-            var health = topstepXAdapter.ConnectionHealth;
+            var health = topstepXAdapter.ConnectionHealthScore;
             
             RecordConnectionHealth("TopstepXAdapter", isConnected && health >= 80, 
-                $"Connected: {isConnected}, Health: {health}%");
+                $"Connected: {isConnected}, Health: {health:F1}%");
             
             // If adapter is connected but we're not receiving data, this indicates a data flow issue
             if (isConnected)

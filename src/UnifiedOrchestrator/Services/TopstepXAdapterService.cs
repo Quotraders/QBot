@@ -129,9 +129,9 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             var command = new { action = "get_price", symbol };
             var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
             
-            if (result.Success && result.Data != null)
+            if (result.Success && result.Data.HasValue)
             {
-                if (result.Data.TryGetProperty("price", out var priceElement))
+                if (result.Data.Value.TryGetProperty("price", out var priceElement))
                 {
                     var price = priceElement.GetDecimal();
                     _logger.LogDebug("[PRICE] {Symbol}: ${Price:F2}", symbol, price);
@@ -201,12 +201,12 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
 
             var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
             
-            if (result.Success && result.Data != null)
+            if (result.Success && result.Data.HasValue)
             {
-                var success = result.Data.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
-                var orderId = result.Data.TryGetProperty("order_id", out var orderIdElement) ? orderIdElement.GetString() : null;
-                var error = result.Data.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : null;
-                var timestamp = result.Data.TryGetProperty("timestamp", out var tsElement) ? 
+                var success = result.Data.Value.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
+                var orderId = result.Data.Value.TryGetProperty("order_id", out var orderIdElement) ? orderIdElement.GetString() : null;
+                var error = result.Data.Value.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : null;
+                var timestamp = result.Data.Value.TryGetProperty("timestamp", out var tsElement) ? 
                     DateTime.Parse(tsElement.GetString()!) : DateTime.UtcNow;
 
                 var orderResult = new OrderExecutionResult(
@@ -257,17 +257,17 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             var command = new { action = "get_health_score" };
             var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
             
-            if (result.Success && result.Data != null)
+            if (result.Success && result.Data.HasValue)
             {
-                var healthScore = result.Data.TryGetProperty("health_score", out var scoreElement) ? scoreElement.GetInt32() : 0;
-                var status = result.Data.TryGetProperty("status", out var statusElement) ? statusElement.GetString()! : "unknown";
-                var lastCheck = result.Data.TryGetProperty("last_check", out var checkElement) ? 
+                var healthScore = result.Data.Value.TryGetProperty("health_score", out var scoreElement) ? scoreElement.GetInt32() : 0;
+                var status = result.Data.Value.TryGetProperty("status", out var statusElement) ? statusElement.GetString()! : "unknown";
+                var lastCheck = result.Data.Value.TryGetProperty("last_check", out var checkElement) ? 
                     DateTime.Parse(checkElement.GetString()!) : DateTime.UtcNow;
-                var initialized = result.Data.TryGetProperty("initialized", out var initElement) && initElement.GetBoolean();
+                var initialized = result.Data.Value.TryGetProperty("initialized", out var initElement) && initElement.GetBoolean();
 
                 // Extract instrument health
                 var instrumentHealth = new Dictionary<string, object>();
-                if (result.Data.TryGetProperty("instruments", out var instrumentsElement))
+                if (result.Data.Value.TryGetProperty("instruments", out var instrumentsElement))
                 {
                     foreach (var property in instrumentsElement.EnumerateObject())
                     {
@@ -277,7 +277,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
 
                 // Extract suite stats
                 var suiteStats = new Dictionary<string, object>();
-                if (result.Data.TryGetProperty("suite_stats", out var statsElement))
+                if (result.Data.Value.TryGetProperty("suite_stats", out var statsElement))
                 {
                     foreach (var property in statsElement.EnumerateObject())
                     {
@@ -329,13 +329,13 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             var command = new { action = "get_portfolio_status" };
             var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
             
-            if (result.Success && result.Data != null)
+            if (result.Success && result.Data.HasValue)
             {
                 var portfolio = new Dictionary<string, object>();
                 var positions = new Dictionary<string, PositionInfo>();
                 var timestamp = DateTime.UtcNow;
 
-                if (result.Data.TryGetProperty("portfolio", out var portfolioElement))
+                if (result.Data.Value.TryGetProperty("portfolio", out var portfolioElement))
                 {
                     foreach (var property in portfolioElement.EnumerateObject())
                     {
@@ -343,7 +343,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                     }
                 }
 
-                if (result.Data.TryGetProperty("positions", out var positionsElement))
+                if (result.Data.Value.TryGetProperty("positions", out var positionsElement))
                 {
                     foreach (var property in positionsElement.EnumerateObject())
                     {
@@ -360,7 +360,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                     }
                 }
 
-                if (result.Data.TryGetProperty("timestamp", out var tsElement))
+                if (result.Data.Value.TryGetProperty("timestamp", out var tsElement))
                 {
                     timestamp = DateTime.Parse(tsElement.GetString()!);
                 }
@@ -400,9 +400,9 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
 
             var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
             
-            if (result.Success && result.Data != null)
+            if (result.Success && result.Data.HasValue)
             {
-                var success = result.Data.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
+                var success = result.Data.Value.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
                 
                 if (success)
                 {
@@ -410,7 +410,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 }
                 else
                 {
-                    var error = result.Data.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : "Unknown error";
+                    var error = result.Data.Value.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : "Unknown error";
                     _logger.LogError("❌ Position close failed: {Error}", error);
                 }
                 
@@ -453,9 +453,9 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
 
             var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
             
-            if (result.Success && result.Data != null)
+            if (result.Success && result.Data.HasValue)
             {
-                var success = result.Data.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
+                var success = result.Data.Value.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
                 
                 if (success)
                 {
@@ -463,7 +463,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 }
                 else
                 {
-                    var error = result.Data.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : "Unknown error";
+                    var error = result.Data.Value.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : "Unknown error";
                     _logger.LogError("❌ Stop loss modification failed: {Error}", error);
                 }
                 
@@ -506,9 +506,9 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
 
             var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
             
-            if (result.Success && result.Data != null)
+            if (result.Success && result.Data.HasValue)
             {
-                var success = result.Data.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
+                var success = result.Data.Value.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
                 
                 if (success)
                 {
@@ -516,7 +516,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 }
                 else
                 {
-                    var error = result.Data.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : "Unknown error";
+                    var error = result.Data.Value.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : "Unknown error";
                     _logger.LogError("❌ Take profit modification failed: {Error}", error);
                 }
                 
@@ -555,9 +555,9 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
 
             var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
             
-            if (result.Success && result.Data != null)
+            if (result.Success && result.Data.HasValue)
             {
-                var success = result.Data.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
+                var success = result.Data.Value.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
                 
                 if (success)
                 {
@@ -565,7 +565,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 }
                 else
                 {
-                    var error = result.Data.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : "Unknown error";
+                    var error = result.Data.Value.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : "Unknown error";
                     _logger.LogError("❌ Order cancellation failed: {Error}", error);
                 }
                 
@@ -813,7 +813,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             var command = new { action = "get_fill_events" };
             var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
             
-            if (result.Success && result.Data != null)
+            if (result.Success && result.Data.HasValue)
             {
                 // Check if we got fill events
                 var data = result.Data.Value;

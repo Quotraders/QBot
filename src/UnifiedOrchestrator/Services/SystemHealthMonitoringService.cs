@@ -38,12 +38,18 @@ internal class SystemHealthMonitoringService : IHostedService
         _currentProcess = Process.GetCurrentProcess();
         
         // Health checks every 60 seconds
-        _healthCheckTimer = new Timer(PerformHealthCheck, null, 
-            TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
+        _healthCheckTimer = new Timer(
+            callback: state => { _ = PerformHealthCheck(); },
+            state: null, 
+            dueTime: (int)TimeSpan.FromSeconds(60).TotalMilliseconds,
+            period: (int)TimeSpan.FromSeconds(60).TotalMilliseconds);
             
         // Performance metrics every 5 minutes
-        _performanceTimer = new Timer(CollectPerformanceMetrics, null,
-            TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(5));
+        _performanceTimer = new Timer(
+            callback: state => { _ = CollectPerformanceMetrics(); },
+            state: null,
+            dueTime: (int)TimeSpan.FromMinutes(1).TotalMilliseconds,
+            period: (int)TimeSpan.FromMinutes(5).TotalMilliseconds);
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)

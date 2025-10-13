@@ -20,15 +20,15 @@ using TradingBot.Backtest;
 using UnifiedOrchestrator.Services;  // Add this for BacktestLearningService
 using TopstepX.Bot.Authentication;
 using TradingBot.RLAgent;  // Add this for ModelHotReloadManager
-using BotCore.Brain;
-using BotCore.Market;
-using BotCore.ML;
-using BotCore.Services;
-using BotCore.Patterns;
-using BotCore.Execution;
-using BotCore.Features;
-using BotCore.Configuration;
-using BotCore.Extensions;
+using global::BotCore.Brain;
+using global::BotCore.Market;
+using global::BotCore.ML;
+using global::BotCore.Services;
+using global::BotCore.Patterns;
+using global::BotCore.Execution;
+using global::BotCore.Features;
+using global::BotCore.Configuration;
+using global::BotCore.Extensions;
 using DotNetEnv;
 using static DotNetEnv.Env;
 // Specific imports from TradingBot.BotCore.Services namespace
@@ -37,8 +37,8 @@ using TradingBotSymbolSessionManager = TradingBot.BotCore.Services.TradingBotSym
 using BracketConfigService = TradingBot.BotCore.Services.BracketConfigService;
 
 // Import types from aliased projects
-using UnifiedTradingBrain = BotCore.Brain.UnifiedTradingBrain;
-using Bar = BotCore.Market.Bar;
+using UnifiedTradingBrain = global::BotCore.Brain.UnifiedTradingBrain;
+using Bar = global::BotCore.Market.Bar;
 
 namespace TradingBot.UnifiedOrchestrator;
 
@@ -425,7 +425,11 @@ Please check the configuration and ensure all required services are registered.
             .ConfigureWebHostDefaults(webBuilder =>
             {
                 webBuilder.UseUrls("http://localhost:5000");
-                webBuilder.UseStartup<Startup>();
+                webBuilder.Configure(app =>
+                {
+                    // Minimal web host configuration - just needs to start
+                    app.UseRouting();
+                });
             })
             .ConfigureLogging(logging =>
             {
@@ -545,7 +549,7 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<IBracketConfig, TradingBot.BotCore.Services.BracketConfigService>();
         
         // Register zone-aware bracket manager
-        services.AddSingleton<BotCore.Services.IZoneAwareBracketManager, BotCore.Services.ZoneAwareBracketManager>();
+        services.AddSingleton<global::BotCore.Services.IZoneAwareBracketManager, global::BotCore.Services.ZoneAwareBracketManager>();
         
         // Register Per-Symbol Session Lattices with neutral band integration
         services.AddSingleton<TradingBot.BotCore.Services.TradingBotSymbolSessionManager>(provider =>
@@ -557,22 +561,22 @@ Please check the configuration and ensure all required services are registered.
         
         // Register Enhanced Trading Brain Integration BEFORE UnifiedDecisionRouter (dependency order)
         // NOTE: Intelligence services are registered later, so we need to resolve them explicitly
-        services.AddSingleton<BotCore.Services.EnhancedTradingBrainIntegration>(provider =>
+        services.AddSingleton<global::BotCore.Services.EnhancedTradingBrainIntegration>(provider =>
         {
-            var logger = provider.GetRequiredService<ILogger<BotCore.Services.EnhancedTradingBrainIntegration>>();
-            var tradingBrain = provider.GetRequiredService<BotCore.Brain.UnifiedTradingBrain>();
-            var ensembleService = provider.GetRequiredService<BotCore.ML.ModelEnsembleService>();
-            var feedbackService = provider.GetRequiredService<BotCore.Services.TradingFeedbackService>();
-            var cloudSync = provider.GetRequiredService<BotCore.Services.CloudModelSynchronizationService>();
+            var logger = provider.GetRequiredService<ILogger<global::BotCore.Services.EnhancedTradingBrainIntegration>>();
+            var tradingBrain = provider.GetRequiredService<global::BotCore.Brain.UnifiedTradingBrain>();
+            var ensembleService = provider.GetRequiredService<global::BotCore.Services.ModelEnsembleService>();
+            var feedbackService = provider.GetRequiredService<global::BotCore.Services.TradingFeedbackService>();
+            var cloudSync = provider.GetRequiredService<global::BotCore.Services.CloudModelSynchronizationService>();
             var serviceProvider = provider;
-            var intelligenceService = provider.GetService<BotCore.Intelligence.IntelligenceSynthesizerService>();
+            var intelligenceService = provider.GetService<global::BotCore.Intelligence.IntelligenceSynthesizerService>();
             
-            return new BotCore.Services.EnhancedTradingBrainIntegration(
+            return new global::BotCore.Services.EnhancedTradingBrainIntegration(
                 logger, tradingBrain, ensembleService, feedbackService, cloudSync, serviceProvider, intelligenceService);
         });
         
         // Register UnifiedDecisionRouter before AutonomousDecisionEngine (dependency order)
-        services.AddSingleton<BotCore.Services.UnifiedDecisionRouter>();
+        services.AddSingleton<global::BotCore.Services.UnifiedDecisionRouter>();
         
         // Register the main autonomous decision engine as hosted service
         services.AddSingleton<AutonomousDecisionEngine>();
@@ -587,7 +591,7 @@ Please check the configuration and ensure all required services are registered.
         // ================================================================================
         
         // Register Regime Detection Service for market regime classification (required by UnifiedPositionManagementService)
-        services.AddSingleton<BotCore.Services.RegimeDetectionService>();
+        services.AddSingleton<global::BotCore.Services.RegimeDetectionService>();
         
         Console.WriteLine("📊 [REGIME-DETECTION] Registered regime detection service");
         Console.WriteLine("   ✅ Market regime classification - Detects Trending, Ranging, and Transition regimes");
@@ -600,9 +604,9 @@ Please check the configuration and ensure all required services are registered.
         // ================================================================================
         
         // Register Unified Position Management Service for all strategies
-        services.AddSingleton<BotCore.Services.UnifiedPositionManagementService>();
-        services.AddHostedService<BotCore.Services.UnifiedPositionManagementService>(provider => 
-            provider.GetRequiredService<BotCore.Services.UnifiedPositionManagementService>());
+        services.AddSingleton<global::BotCore.Services.UnifiedPositionManagementService>();
+        services.AddHostedService<global::BotCore.Services.UnifiedPositionManagementService>(provider => 
+            provider.GetRequiredService<global::BotCore.Services.UnifiedPositionManagementService>());
         
         Console.WriteLine("🎯 [POSITION-MGMT] Registered unified position management service");
         Console.WriteLine("   ✅ Breakeven protection - Moves stop to entry + 1 tick when profitable");
@@ -615,9 +619,9 @@ Please check the configuration and ensure all required services are registered.
         // ================================================================================
         
         // Register Zone Break Monitoring Service for supply/demand zone break detection
-        services.AddSingleton<BotCore.Services.ZoneBreakMonitoringService>();
-        services.AddHostedService<BotCore.Services.ZoneBreakMonitoringService>(provider => 
-            provider.GetRequiredService<BotCore.Services.ZoneBreakMonitoringService>());
+        services.AddSingleton<global::BotCore.Services.ZoneBreakMonitoringService>();
+        services.AddHostedService<global::BotCore.Services.ZoneBreakMonitoringService>(provider => 
+            provider.GetRequiredService<global::BotCore.Services.ZoneBreakMonitoringService>());
         
         Console.WriteLine("🔍 [ZONE-BREAK] Registered zone break monitoring service (PHASE 2)");
         Console.WriteLine("   ✅ Real-time zone break detection - Monitors supply/demand zone violations");
@@ -630,13 +634,13 @@ Please check the configuration and ensure all required services are registered.
         // ================================================================================
         
         // Register position monitoring services for real-time session exposure tracking
-        services.AddSingleton<BotCore.Services.PositionMonitoring.IRealTimePositionMonitor, BotCore.Services.PositionMonitoring.RealTimePositionMonitor>();
-        services.AddSingleton<BotCore.Services.PositionMonitoring.ISessionExposureCalculator, BotCore.Services.PositionMonitoring.SessionExposureCalculator>();
-        services.AddSingleton<BotCore.Services.PositionMonitoring.IPositionTimeTracker, BotCore.Services.PositionMonitoring.PositionTimeTracker>();
-        services.AddSingleton<BotCore.Services.PositionMonitoring.SessionDetectionService>();
+        services.AddSingleton<global::BotCore.Services.PositionMonitoring.IRealTimePositionMonitor, global::BotCore.Services.PositionMonitoring.RealTimePositionMonitor>();
+        services.AddSingleton<global::BotCore.Services.PositionMonitoring.ISessionExposureCalculator, global::BotCore.Services.PositionMonitoring.SessionExposureCalculator>();
+        services.AddSingleton<global::BotCore.Services.PositionMonitoring.IPositionTimeTracker, global::BotCore.Services.PositionMonitoring.PositionTimeTracker>();
+        services.AddSingleton<global::BotCore.Services.PositionMonitoring.SessionDetectionService>();
         
         // Register ES/NQ Portfolio Heat Manager with position monitoring services
-        services.AddSingleton<BotCore.Services.IPortfolioHeatManager, BotCore.Services.ES_NQ_PortfolioHeatManager>();
+        services.AddSingleton<ES_NQ_PortfolioHeatManager>();
         
         Console.WriteLine("📊 [POSITION-MONITORING] Registered position monitoring services");
         Console.WriteLine("   ✅ Real-time session exposure tracking - Monitors exposure by trading session");
@@ -650,9 +654,9 @@ Please check the configuration and ensure all required services are registered.
         // ================================================================================
         
         // Register Position Management Optimizer for ML/RL parameter learning
-        services.AddSingleton<BotCore.Services.PositionManagementOptimizer>();
-        services.AddHostedService<BotCore.Services.PositionManagementOptimizer>(provider => 
-            provider.GetRequiredService<BotCore.Services.PositionManagementOptimizer>());
+        services.AddSingleton<global::BotCore.Services.PositionManagementOptimizer>();
+        services.AddHostedService<global::BotCore.Services.PositionManagementOptimizer>(provider => 
+            provider.GetRequiredService<global::BotCore.Services.PositionManagementOptimizer>());
         
         Console.WriteLine("🧠 [PM-OPTIMIZER] Registered position management optimizer (PHASE 3)");
         Console.WriteLine("   ✅ Breakeven timing optimization - Learn optimal BE trigger (6 vs 8 vs 10 ticks)");
@@ -665,9 +669,9 @@ Please check the configuration and ensure all required services are registered.
         // ================================================================================
         
         // Register Session-End Position Flattener for automatic position closes before market close
-        services.AddSingleton<BotCore.Services.SessionEndPositionFlattener>();
-        services.AddHostedService<BotCore.Services.SessionEndPositionFlattener>(provider => 
-            provider.GetRequiredService<BotCore.Services.SessionEndPositionFlattener>());
+        services.AddSingleton<global::BotCore.Services.SessionEndPositionFlattener>();
+        services.AddHostedService<global::BotCore.Services.SessionEndPositionFlattener>(provider => 
+            provider.GetRequiredService<global::BotCore.Services.SessionEndPositionFlattener>());
         
         Console.WriteLine("✅ [STARTUP] SessionEndPositionFlattener registered");
         Console.WriteLine("🔄 [SESSION-FLATTEN] Automatic position flatten before market close (PHASE 2)");
@@ -682,21 +686,21 @@ Please check the configuration and ensure all required services are registered.
         // ================================================================================
         
         // Configure stuck position recovery settings
-        services.Configure<BotCore.Configuration.StuckPositionRecoveryConfiguration>(
+        services.Configure<global::BotCore.Configuration.StuckPositionRecoveryConfiguration>(
             configuration.GetSection("StuckPositionRecovery"));
         
         // Register Emergency Exit Executor (Layer 3) - must be registered first as dependency
-        services.AddSingleton<BotCore.Services.EmergencyExitExecutor>();
+        services.AddSingleton<global::BotCore.Services.EmergencyExitExecutor>();
         
         // Register Position Reconciliation Service (Layer 1) - runs every 60s
-        services.AddSingleton<BotCore.Services.PositionReconciliationService>();
-        services.AddHostedService<BotCore.Services.PositionReconciliationService>(provider => 
-            provider.GetRequiredService<BotCore.Services.PositionReconciliationService>());
+        services.AddSingleton<global::BotCore.Services.PositionReconciliationService>();
+        services.AddHostedService<global::BotCore.Services.PositionReconciliationService>(provider => 
+            provider.GetRequiredService<global::BotCore.Services.PositionReconciliationService>());
         
         // Register Stuck Position Monitor (Layer 2) - runs every 30s
-        services.AddSingleton<BotCore.Services.StuckPositionMonitor>();
-        services.AddHostedService<BotCore.Services.StuckPositionMonitor>(provider => 
-            provider.GetRequiredService<BotCore.Services.StuckPositionMonitor>());
+        services.AddSingleton<global::BotCore.Services.StuckPositionMonitor>();
+        services.AddHostedService<global::BotCore.Services.StuckPositionMonitor>(provider => 
+            provider.GetRequiredService<global::BotCore.Services.StuckPositionMonitor>());
         
         Console.WriteLine("🛡️ [STUCK-POSITION-RECOVERY] Three-layer defense system registered");
         Console.WriteLine("   🔄 Layer 1: Position Reconciliation - Compares bot vs broker every 60s");
@@ -713,7 +717,7 @@ Please check the configuration and ensure all required services are registered.
         // ================================================================================
         
         // Register ProductionFeatureBus for zone telemetry
-        services.AddSingleton<Zones.IFeatureBus, BotCore.Services.ProductionFeatureBus>();
+        services.AddSingleton<Zones.IFeatureBus, global::BotCore.Services.ProductionFeatureBus>();
         
         // Register ZoneService with production implementation (Modern provider)
         services.AddSingleton<Zones.IZoneService, Zones.ZoneServiceProduction>();
@@ -721,19 +725,19 @@ Please check the configuration and ensure all required services are registered.
             (Zones.IZoneFeatureSource)provider.GetRequiredService<Zones.IZoneService>());
         
         // Register zone telemetry service
-        services.AddSingleton<BotCore.Services.IZoneTelemetryService, BotCore.Services.ZoneTelemetryService>();
+        services.AddSingleton<global::BotCore.Services.IZoneTelemetryService, global::BotCore.Services.ZoneTelemetryService>();
         
         // Register zone providers (modern-only)
-        services.AddSingleton<BotCore.Services.ModernZoneProvider>();
-        services.AddSingleton<BotCore.Services.HybridZoneProvider>();
-        services.AddSingleton<BotCore.Services.IZoneProvider>(provider => 
-            provider.GetRequiredService<BotCore.Services.HybridZoneProvider>());
+        services.AddSingleton<global::BotCore.Services.ModernZoneProvider>();
+        services.AddSingleton<global::BotCore.Services.HybridZoneProvider>();
+        services.AddSingleton<global::BotCore.Services.IZoneProvider>(provider => 
+            provider.GetRequiredService<global::BotCore.Services.HybridZoneProvider>());
         
         // Register ZoneFeaturePublisher for telemetry emission
         services.AddHostedService<Zones.ZoneFeaturePublisher>();
         
         // Register market data to zone service bridge
-        services.AddHostedService<BotCore.Services.ZoneMarketDataBridge>();
+        services.AddHostedService<global::BotCore.Services.ZoneMarketDataBridge>();
         
         Console.WriteLine("🎯 [ZONE-AWARENESS] Modern zone awareness services registered - Modern-only provider active!");
         
@@ -755,7 +759,7 @@ Please check the configuration and ensure all required services are registered.
         // Register IBreadthFeed implementation with fail-closed behavior
         // BREADTH FEED INTENTIONALLY DISABLED: Using NullBreadthDataSource until real market breadth subscription is active
         // Prevents live workflows from consuming CSV simplified data and ensures fail-closed behavior for breadth.* features
-        services.AddSingleton<TradingBot.Abstractions.IBreadthFeed, BotCore.Services.NullBreadthDataSource>();
+        services.AddSingleton<TradingBot.Abstractions.IBreadthFeed, global::BotCore.Services.NullBreadthDataSource>();
         
         // Register S7 market data bridge for live data integration
         services.AddHostedService<TradingBot.S7.S7MarketDataBridge>();
@@ -767,26 +771,26 @@ Please check the configuration and ensure all required services are registered.
         // AUTOMATION-FIRST UPGRADE SCOPE - Feature Engineering Pipeline
         // Register feature resolvers as singletons for fail-closed feature extraction
         
-        services.Configure<BotCore.Configuration.OfiConfiguration>(configuration.GetSection("Features:Ofi"));
-        services.Configure<BotCore.Configuration.BarDispatcherConfiguration>(configuration.GetSection("Features:BarDispatcher"));
+        services.Configure<global::BotCore.Configuration.OfiConfiguration>(configuration.GetSection("Features:Ofi"));
+        services.Configure<global::BotCore.Configuration.BarDispatcherConfiguration>(configuration.GetSection("Features:BarDispatcher"));
         
-        services.AddSingleton<BotCore.Features.IFeatureResolver, BotCore.Features.LiquidityAbsorptionResolver>();
-        services.AddSingleton<BotCore.Features.IFeatureResolver, BotCore.Features.MtfStructureResolver>();
-        services.AddSingleton<BotCore.Features.IFeatureResolver, BotCore.Features.OfiProxyResolver>();
+        services.AddSingleton<global::BotCore.Features.IFeatureResolver, global::BotCore.Features.LiquidityAbsorptionResolver>();
+        services.AddSingleton<global::BotCore.Features.IFeatureResolver, global::BotCore.Features.MtfStructureResolver>();
+        services.AddSingleton<global::BotCore.Features.IFeatureResolver, global::BotCore.Features.OfiProxyResolver>();
         
         // Register feature publisher hosted service for automated feature publishing
-        services.AddHostedService<BotCore.Features.FeaturePublisher>();
+        services.AddHostedService<global::BotCore.Features.FeaturePublisher>();
         
         // ================================================================================
         // EXECUTION ALPHA UPGRADES - S7 Execution Path Enhancement
         // Advanced execution services for intelligent order type selection and management
         
-        services.Configure<BotCore.Execution.S7ExecutionConfiguration>(configuration.GetSection("S7:Execution"));
-        services.Configure<BotCore.Execution.BracketConfiguration>(configuration.GetSection("S7:Brackets"));
+        services.Configure<global::BotCore.Execution.S7ExecutionConfiguration>(configuration.GetSection("S7:Execution"));
+        services.Configure<global::BotCore.Execution.BracketConfiguration>(configuration.GetSection("S7:Brackets"));
         
-        services.AddSingleton<BotCore.Execution.S7OrderTypeSelector>();
-        services.AddSingleton<BotCore.Execution.ChildOrderScheduler>();
-        services.AddSingleton<BotCore.Execution.BracketAdjustmentService>();
+        services.AddSingleton<global::BotCore.Execution.S7OrderTypeSelector>();
+        services.AddSingleton<global::BotCore.Execution.ChildOrderScheduler>();
+        services.AddSingleton<global::BotCore.Execution.BracketAdjustmentService>();
         
         Console.WriteLine("⚡ [EXECUTION-ALPHA] S7 execution enhancements registered - Order type selection, child scheduling, bracket adjustment ready!");
         Console.WriteLine("🔧 [AUTOMATION-UPGRADE] Feature engineering pipeline registered - Liquidity, MTF, OFI resolvers ready!");
@@ -795,23 +799,23 @@ Please check the configuration and ensure all required services are registered.
         // REGIME-TAGGED MODEL ROTATION & PORTFOLIO RISK TILTS
         // Advanced model rotation and portfolio risk management services
         
-        services.Configure<BotCore.Services.ModelRotationConfiguration>(configuration.GetSection("Rotation"));
-        services.Configure<BotCore.Services.BreadthReallocationConfiguration>(configuration.GetSection("Portfolio:BreadthReallocation"));
-        services.Configure<BotCore.Services.CorrelationCapConfiguration>(configuration.GetSection("CorrelationCapConfiguration"));
-        services.Configure<BotCore.Services.VolOfVolConfiguration>(configuration.GetSection("VolOfVolConfiguration"));
-        services.Configure<BotCore.Services.DriftMonitorConfiguration>(configuration.GetSection("DataHygiene:DriftMonitor"));
+        services.Configure<global::BotCore.Services.ModelRotationConfiguration>(configuration.GetSection("Rotation"));
+        services.Configure<global::BotCore.Services.BreadthReallocationConfiguration>(configuration.GetSection("Portfolio:BreadthReallocation"));
+        services.Configure<global::BotCore.Services.CorrelationCapConfiguration>(configuration.GetSection("CorrelationCapConfiguration"));
+        services.Configure<global::BotCore.Services.VolOfVolConfiguration>(configuration.GetSection("VolOfVolConfiguration"));
+        services.Configure<global::BotCore.Services.DriftMonitorConfiguration>(configuration.GetSection("DataHygiene:DriftMonitor"));
         
-        services.AddSingleton<BotCore.Services.ModelRotationService>();
+        services.AddSingleton<global::BotCore.Services.ModelRotationService>();
         // S7 BREADTH REALLOCATION INTENTIONALLY DISABLED: Keep breadth adjustments switched off
         // Commenting out S7BreadthReallocationService registration until real breadth feed is active
-        // services.AddSingleton<BotCore.Services.S7BreadthReallocationService>();
-        services.AddSingleton<BotCore.Services.CorrelationAwareCapService>();
-        services.AddSingleton<BotCore.Services.VolOfVolGuardService>();
-        services.AddSingleton<BotCore.Services.FeatureDriftMonitorService>();
+        // services.AddSingleton<global::BotCore.Services.S7BreadthReallocationService>();
+        services.AddSingleton<global::BotCore.Services.CorrelationAwareCapService>();
+        services.AddSingleton<global::BotCore.Services.VolOfVolGuardService>();
+        services.AddSingleton<global::BotCore.Services.FeatureDriftMonitorService>();
         
         // Register model rotation as hosted service
-        services.AddHostedService<BotCore.Services.ModelRotationService>(provider => 
-            provider.GetRequiredService<BotCore.Services.ModelRotationService>());
+        services.AddHostedService<global::BotCore.Services.ModelRotationService>(provider => 
+            provider.GetRequiredService<global::BotCore.Services.ModelRotationService>());
         
         Console.WriteLine("🔄 [MODEL-ROTATION] Regime-tagged model rotation service registered - Automatic model switching per market regime!");
         Console.WriteLine("📊 [PORTFOLIO-TILTS] Risk management services registered - Breadth reallocation, correlation caps, vol-of-vol guard!");
@@ -853,17 +857,18 @@ Please check the configuration and ensure all required services are registered.
         });
         
         // Register TopstepXService for real client
-        services.AddSingleton<BotCore.Services.ITopstepXService, BotCore.Services.TopstepXService>();
+        // TODO: ITopstepXService and TopstepXService don't exist - need to be implemented or use ITopstepXAdapterService directly
+        // services.AddSingleton<global::BotCore.Services.ITopstepXService, global::BotCore.Services.TopstepXService>();
         
         // TopstepX SDK Adapter Service - Production-ready Python SDK integration
         services.AddSingleton<TradingBot.Abstractions.ITopstepXAdapterService, TopstepXAdapterService>();
         
         // PHASE 1: Order Execution Metrics - Tracks latency, slippage, and fill statistics
-        services.AddSingleton<BotCore.Services.OrderExecutionMetrics>();
+        services.AddSingleton<global::BotCore.Services.OrderExecutionMetrics>();
         
         // Order Execution Service - Implements IOrderService for position management
         // Integrates with TopstepX adapter for order execution and partial closes
-        services.AddSingleton<TradingBot.Abstractions.IOrderService, BotCore.Services.OrderExecutionService>();
+        services.AddSingleton<TradingBot.Abstractions.IOrderService, global::BotCore.Services.OrderExecutionService>();
         
         // PHASE 2: Wiring Service - Connects fill events from TopstepXAdapter to OrderExecutionService
         services.AddHostedService<OrderExecutionWiringService>();
@@ -934,7 +939,7 @@ Please check the configuration and ensure all required services are registered.
 
         // Register required interfaces with PRODUCTION Safety implementations (aligned with guardrail orchestrator)
         services.AddSingleton<IKillSwitchWatcher>(serviceProvider => 
-            serviceProvider.GetRequiredService<BotCore.Services.ProductionKillSwitchService>());
+            serviceProvider.GetRequiredService<global::BotCore.Services.ProductionKillSwitchService>());
         services.AddSingleton<IRiskManager, Trading.Safety.RiskManager>();
         services.AddSingleton<IHealthMonitor, Trading.Safety.HealthMonitor>();
 
@@ -967,7 +972,7 @@ Please check the configuration and ensure all required services are registered.
         var ollamaEnabled = configuration["OLLAMA_ENABLED"]?.Equals("true", StringComparison.OrdinalIgnoreCase) ?? true;
         if (ollamaEnabled)
         {
-            services.AddSingleton<BotCore.Services.OllamaClient>();
+            services.AddSingleton<global::BotCore.Services.OllamaClient>();
             Console.WriteLine("🗣️ [OLLAMA] Bot voice enabled - conversational AI features active");
         }
         else
@@ -979,8 +984,8 @@ Please check the configuration and ensure all required services are registered.
         var intelligenceEnabled = configuration["INTELLIGENCE_SYNTHESIS_ENABLED"]?.Equals("true", StringComparison.OrdinalIgnoreCase) ?? true;
         if (intelligenceEnabled && ollamaEnabled)
         {
-            services.AddSingleton<BotCore.Intelligence.MarketDataReader>();
-            services.AddSingleton<BotCore.Intelligence.IntelligenceSynthesizerService>();
+            services.AddSingleton<global::BotCore.Intelligence.MarketDataReader>();
+            services.AddSingleton<global::BotCore.Intelligence.IntelligenceSynthesizerService>();
             Console.WriteLine("🧠 [INTELLIGENCE] LLM intelligence synthesis enabled - market data integration active");
         }
         else
@@ -989,36 +994,38 @@ Please check the configuration and ensure all required services are registered.
         }
         
         // Register AI Commentary Services - Enhanced self-awareness features
-        services.AddSingleton<BotCore.Services.ParameterChangeTracker>();
-        services.AddSingleton<BotCore.Services.MarketSnapshotStore>();
-        services.AddSingleton<BotCore.Services.RiskAssessmentCommentary>();
-        services.AddSingleton<BotCore.Services.AdaptiveLearningCommentary>();
-        services.AddSingleton<BotCore.Services.HistoricalPatternRecognitionService>();
+        services.AddSingleton<global::BotCore.Services.ParameterChangeTracker>();
+        services.AddSingleton<global::BotCore.Services.MarketSnapshotStore>();
+        services.AddSingleton<global::BotCore.Services.RiskAssessmentCommentary>();
+        services.AddSingleton<global::BotCore.Services.AdaptiveLearningCommentary>();
+        services.AddSingleton<global::BotCore.Services.HistoricalPatternRecognitionService>();
         
         // Register BotAlertService - Proactive alerting system for bot self-awareness
-        services.AddSingleton<BotCore.Services.BotAlertService>();
+        services.AddSingleton<global::BotCore.Services.BotAlertService>();
         
         // Register UnifiedTradingBrain - The main AI brain with calendar integration (Phase 2)
-        services.AddSingleton<BotCore.Brain.UnifiedTradingBrain>(provider =>
+        services.AddSingleton<global::BotCore.Brain.UnifiedTradingBrain>(provider =>
         {
-            var logger = provider.GetRequiredService<ILogger<BotCore.Brain.UnifiedTradingBrain>>();
-            var memoryManager = provider.GetRequiredService<BotCore.ML.IMLMemoryManager>();
-            var modelManager = provider.GetRequiredService<BotCore.ML.StrategyMlModelManager>();
+            var logger = provider.GetRequiredService<ILogger<global::BotCore.Brain.UnifiedTradingBrain>>();
+            var memoryManager = provider.GetRequiredService<global::BotCore.ML.IMLMemoryManager>();
+            var modelManager = provider.GetRequiredService<global::BotCore.ML.StrategyMlModelManager>();
             var cvarPPO = provider.GetRequiredService<TradingBot.RLAgent.CVaRPPO>();
+            var mlConfigService = provider.GetRequiredService<TradingBot.Abstractions.IMLConfigurationService>();
             var gate4Config = provider.GetService<TradingBot.Abstractions.IGate4Config>();
-            var ollamaClient = provider.GetService<BotCore.Services.OllamaClient>();
-            var economicEventManager = provider.GetService<BotCore.Market.IEconomicEventManager>();
-            var riskCommentary = provider.GetService<BotCore.Services.RiskAssessmentCommentary>();
-            var learningCommentary = provider.GetService<BotCore.Services.AdaptiveLearningCommentary>();
-            var snapshotStore = provider.GetService<BotCore.Services.MarketSnapshotStore>();
-            var historicalPatterns = provider.GetService<BotCore.Services.HistoricalPatternRecognitionService>();
-            var parameterTracker = provider.GetService<BotCore.Services.ParameterChangeTracker>();
+            var ollamaClient = provider.GetService<global::BotCore.Services.OllamaClient>();
+            var economicEventManager = provider.GetService<global::BotCore.Market.IEconomicEventManager>();
+            var riskCommentary = provider.GetService<global::BotCore.Services.RiskAssessmentCommentary>();
+            var learningCommentary = provider.GetService<global::BotCore.Services.AdaptiveLearningCommentary>();
+            var snapshotStore = provider.GetService<global::BotCore.Services.MarketSnapshotStore>();
+            var historicalPatterns = provider.GetService<global::BotCore.Services.HistoricalPatternRecognitionService>();
+            var parameterTracker = provider.GetService<global::BotCore.Services.ParameterChangeTracker>();
             
-            return new BotCore.Brain.UnifiedTradingBrain(
+            return new global::BotCore.Brain.UnifiedTradingBrain(
                 logger,
                 memoryManager,
                 modelManager,
                 cvarPPO,
+                mlConfigService,
                 gate4Config,
                 ollamaClient,
                 economicEventManager,
@@ -1030,12 +1037,12 @@ Please check the configuration and ensure all required services are registered.
         });
         
         // Register BotPerformanceReporter - AI-generated performance summaries (Feature 3)
-        services.AddSingleton<BotCore.Services.BotPerformanceReporter>(provider =>
+        services.AddSingleton<global::BotCore.Services.BotPerformanceReporter>(provider =>
         {
-            var logger = provider.GetRequiredService<ILogger<BotCore.Services.BotPerformanceReporter>>();
-            var ollamaClient = provider.GetService<BotCore.Services.OllamaClient>();
+            var logger = provider.GetRequiredService<ILogger<global::BotCore.Services.BotPerformanceReporter>>();
+            var ollamaClient = provider.GetService<global::BotCore.Services.OllamaClient>();
             
-            return new BotCore.Services.BotPerformanceReporter(logger, ollamaClient);
+            return new global::BotCore.Services.BotPerformanceReporter(logger, ollamaClient);
         });
         
         // ================================================================================
@@ -1043,33 +1050,33 @@ Please check the configuration and ensure all required services are registered.
         // ================================================================================
         
         // Register Component Discovery Service - Automatically discovers all bot components
-        services.AddSingleton<BotCore.Services.ComponentDiscoveryService>();
+        services.AddSingleton<global::BotCore.Services.ComponentDiscoveryService>();
         
         // Register Generic Health Check Service - Checks health of any component type
-        services.AddSingleton<BotCore.Services.GenericHealthCheckService>();
+        services.AddSingleton<global::BotCore.Services.GenericHealthCheckService>();
         
         // Register Bot Health Reporter - Converts health data to natural language using AI
-        services.AddSingleton<BotCore.Services.BotHealthReporter>(provider =>
+        services.AddSingleton<global::BotCore.Services.BotHealthReporter>(provider =>
         {
-            var logger = provider.GetRequiredService<ILogger<BotCore.Services.BotHealthReporter>>();
+            var logger = provider.GetRequiredService<ILogger<global::BotCore.Services.BotHealthReporter>>();
             var configuration = provider.GetRequiredService<IConfiguration>();
-            var ollamaClient = provider.GetService<BotCore.Services.OllamaClient>();
+            var ollamaClient = provider.GetService<global::BotCore.Services.OllamaClient>();
             
-            return new BotCore.Services.BotHealthReporter(logger, configuration, ollamaClient);
+            return new global::BotCore.Services.BotHealthReporter(logger, configuration, ollamaClient);
         });
         
         // Register Component Health Monitoring Service - Basic continuous health monitoring with AI explanations
-        services.AddHostedService<BotCore.Services.ComponentHealthMonitoringService>();
+        services.AddHostedService<global::BotCore.Services.ComponentHealthMonitoringService>();
         
         // Register Bot Self-Awareness Service - Advanced orchestration with change detection and alerting
-        services.AddHostedService<BotCore.Services.BotSelfAwarenessService>();
+        services.AddHostedService<global::BotCore.Services.BotSelfAwarenessService>();
         
         // Register UCB Manager - C# client for Python UCB service (175 lines)
-        services.AddSingleton<BotCore.ML.UcbManager>();
+        services.AddSingleton<global::BotCore.ML.UcbManager>();
         
         // Register ML Memory Manager - Sophisticated ML model management (458 lines)
-        services.AddSingleton<BotCore.ML.OnnxModelLoader>();
-        services.AddSingleton<BotCore.ML.IMLMemoryManager, BotCore.ML.MLMemoryManager>();
+        services.AddSingleton<global::BotCore.ML.OnnxModelLoader>();
+        services.AddSingleton<global::BotCore.ML.IMLMemoryManager, global::BotCore.ML.MLMemoryManager>();
 
         // ================================================================================
         // 🏆 CHAMPION/CHALLENGER ARCHITECTURE - SAFE MODEL MANAGEMENT 🏆
@@ -1173,25 +1180,25 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<DecisionServiceRouter>();
         
         // Register unified model path resolver for cross-platform ONNX loading
-        services.AddSingleton<BotCore.Services.UnifiedModelPathResolver>();
+        services.AddSingleton<global::BotCore.Services.UnifiedModelPathResolver>();
         
         // REMOVED DUPLICATE: Different UnifiedDataIntegrationService implementation conflicts with primary
-        // services.AddSingleton<BotCore.Services.UnifiedDataIntegrationService>();
-        // services.AddHostedService<BotCore.Services.UnifiedDataIntegrationService>(provider => 
-        //     provider.GetRequiredService<BotCore.Services.UnifiedDataIntegrationService>());
+        // services.AddSingleton<global::BotCore.Services.UnifiedDataIntegrationService>();
+        // services.AddHostedService<global::BotCore.Services.UnifiedDataIntegrationService>(provider => 
+        //     provider.GetRequiredService<global::BotCore.Services.UnifiedDataIntegrationService>());
         
         // Register the MASTER DECISION ORCHESTRATOR - The ONE always-learning brain with alert integration
-        services.AddSingleton<BotCore.Services.MasterDecisionOrchestrator>(provider =>
+        services.AddSingleton<global::BotCore.Services.MasterDecisionOrchestrator>(provider =>
         {
-            var logger = provider.GetRequiredService<ILogger<BotCore.Services.MasterDecisionOrchestrator>>();
+            var logger = provider.GetRequiredService<ILogger<global::BotCore.Services.MasterDecisionOrchestrator>>();
             var serviceProvider = provider.GetRequiredService<IServiceProvider>();
-            var unifiedRouter = provider.GetRequiredService<BotCore.Services.UnifiedDecisionRouter>();
-            var unifiedBrain = provider.GetRequiredService<BotCore.Brain.UnifiedTradingBrain>();
+            var unifiedRouter = provider.GetRequiredService<global::BotCore.Services.UnifiedDecisionRouter>();
+            var unifiedBrain = provider.GetRequiredService<global::BotCore.Brain.UnifiedTradingBrain>();
             var gate5Config = provider.GetService<TradingBot.Abstractions.IGate5Config>();
-            var ollamaClient = provider.GetService<BotCore.Services.OllamaClient>();
-            var botAlertService = provider.GetService<BotCore.Services.BotAlertService>();
+            var ollamaClient = provider.GetService<global::BotCore.Services.OllamaClient>();
+            var botAlertService = provider.GetService<global::BotCore.Services.BotAlertService>();
             
-            return new BotCore.Services.MasterDecisionOrchestrator(
+            return new global::BotCore.Services.MasterDecisionOrchestrator(
                 logger,
                 serviceProvider,
                 unifiedRouter,
@@ -1200,8 +1207,8 @@ Please check the configuration and ensure all required services are registered.
                 ollamaClient,
                 botAlertService);
         });
-        services.AddHostedService<BotCore.Services.MasterDecisionOrchestrator>(provider => 
-            provider.GetRequiredService<BotCore.Services.MasterDecisionOrchestrator>());
+        services.AddHostedService<global::BotCore.Services.MasterDecisionOrchestrator>(provider => 
+            provider.GetRequiredService<global::BotCore.Services.MasterDecisionOrchestrator>());
         
         Console.WriteLine("🎯 Master Decision Orchestrator registered - Always-learning system that NEVER returns HOLD!");
         Console.WriteLine("🔄 Unified data integration registered - Fixes contract mismatch and bar seeding issues!");
@@ -1210,7 +1217,7 @@ Please check the configuration and ensure all required services are registered.
         // ================================================================================
         
         // Register EmergencyStopSystem (209 lines) from Safety project
-        services.AddSingleton<TopstepX.Bot.Core.Services.EmergencyStopSystem>();
+        services.AddSingleton<global::BotCore.Services.EmergencyStopSystem>();
         
         // Register ErrorHandlingMonitoringSystem (529 lines) from BotCore  
         services.AddSingleton<TopstepX.Bot.Core.Services.ErrorHandlingMonitoringSystem>();
@@ -1222,7 +1229,7 @@ Please check the configuration and ensure all required services are registered.
             var logger = provider.GetRequiredService<ILogger<TopstepX.Bot.Core.Services.OrderFillConfirmationSystem>>();
             var httpClient = provider.GetRequiredService<HttpClient>();
             var positionTracker = provider.GetRequiredService<TopstepX.Bot.Core.Services.PositionTrackingSystem>();
-            var emergencyStop = provider.GetRequiredService<TopstepX.Bot.Core.Services.EmergencyStopSystem>();
+            var emergencyStop = provider.GetRequiredService<global::BotCore.Services.EmergencyStopSystem>();
             var topstepXAdapter = provider.GetRequiredService<ITopstepXAdapterService>();
             
             // Use the new constructor that accepts ITopstepXAdapterService
@@ -1258,10 +1265,10 @@ Please check the configuration and ensure all required services are registered.
         // ================================================================================
         
         // Register BarPyramid as singleton after production readiness services
-        services.AddSingleton<BotCore.Market.BarPyramid>();
+        services.AddSingleton<global::BotCore.Market.BarPyramid>();
         
         // Register bar dispatcher hook AFTER bar infrastructure is available
-        services.AddHostedService<BotCore.Features.BarDispatcherHook>();
+        services.AddHostedService<global::BotCore.Features.BarDispatcherHook>();
         
         Console.WriteLine("✅ [BAR-INFRASTRUCTURE] BarPyramid and BarDispatcherHook registered - bar aggregation and dispatching ready");
         
@@ -1308,14 +1315,14 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<WorkflowOrchestrationManager>();
         
         // Register EconomicEventManager with BotAlertService integration and HttpClient (Phase 2 + Phase 3)
-        services.AddSingleton<BotCore.Market.IEconomicEventManager>(provider =>
+        services.AddSingleton<global::BotCore.Market.IEconomicEventManager>(provider =>
         {
-            var logger = provider.GetRequiredService<ILogger<BotCore.Market.EconomicEventManager>>();
+            var logger = provider.GetRequiredService<ILogger<global::BotCore.Market.EconomicEventManager>>();
             var httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
             var httpClient = httpClientFactory.CreateClient();
-            var botAlertService = provider.GetService<BotCore.Services.BotAlertService>();
+            var botAlertService = provider.GetService<global::BotCore.Services.BotAlertService>();
             
-            return new BotCore.Market.EconomicEventManager(logger, httpClient, botAlertService);
+            return new global::BotCore.Market.EconomicEventManager(logger, httpClient, botAlertService);
         });
         
         // Register AdvancedSystemIntegrationService (386 lines)
@@ -1428,12 +1435,12 @@ Please check the configuration and ensure all required services are registered.
                 // Try to register sophisticated services, with fallbacks for missing dependencies
                 
                 // Register EmergencyStopSystem (fewer dependencies) from BotCore
-                services.TryAddSingleton<TopstepX.Bot.Core.Services.EmergencyStopSystem>();
+                services.TryAddSingleton<global::BotCore.Services.EmergencyStopSystem>();
                 
                 // Register services with fewer dependencies first
-                services.TryAddSingleton<BotCore.Services.PerformanceTracker>();
-                services.TryAddSingleton<BotCore.Services.TradingProgressMonitor>();
-                services.TryAddSingleton<BotCore.Services.TimeOptimizedStrategyManager>();
+                services.TryAddSingleton<global::BotCore.Services.PerformanceTracker>();
+                services.TryAddSingleton<global::BotCore.Services.TradingProgressMonitor>();
+                services.TryAddSingleton<global::BotCore.Services.TimeOptimizedStrategyManager>();
                 // NOTE: TopstepXService disabled to avoid connection conflicts
                 
                 
@@ -1441,16 +1448,16 @@ Please check the configuration and ensure all required services are registered.
                 try 
                 {
                     services.TryAddSingleton<TopstepX.Bot.Core.Services.ErrorHandlingMonitoringSystem>();
-                    services.TryAddSingleton<BotCore.Services.ExecutionAnalyzer>();
+                    services.TryAddSingleton<global::BotCore.Services.ExecutionAnalyzer>();
                     // OrderFillConfirmationSystem already registered above with proper factory
                     // PositionTrackingSystem already registered above
                     // NewsIntelligenceEngine REMOVED - replaced by AI-powered NewsMonitorService
-                    services.TryAddSingleton<BotCore.Services.ZoneService>();
-                    services.TryAddSingleton<BotCore.EnhancedTrainingDataService>();
+                    services.TryAddSingleton<Zones.IZoneService, Zones.ZoneServiceProduction>();
+                    services.TryAddSingleton<global::BotCore.EnhancedTrainingDataService>();
                     services.TryAddSingleton<TopstepX.Bot.Core.Services.TradingSystemIntegrationService>();
                     
                     // Real-time news monitoring with AI sentiment analysis (NewsAPI.org + Ollama LLM)
-                    services.TryAddSingleton<BotCore.Services.INewsMonitorService, BotCore.Services.NewsMonitorService>();
+                    services.TryAddSingleton<global::BotCore.Services.INewsMonitorService, global::BotCore.Services.NewsMonitorService>();
                     
                 }
                 catch (Exception ex)
@@ -1575,16 +1582,16 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<TradingBot.RLAgent.FeatureEngineering>();
         
         // Register FeatureSpec and FeatureBuilder for standardized feature engineering
-        services.AddSingleton<BotCore.Features.FeatureSpec>(provider =>
+        services.AddSingleton<global::BotCore.Features.FeatureSpec>(provider =>
         {
-            var logger = provider.GetRequiredService<ILogger<BotCore.Features.FeatureBuilder>>();
+            var logger = provider.GetRequiredService<ILogger<global::BotCore.Features.FeatureBuilder>>();
             var featureSpecPath = Path.Combine("artifacts", "current", "feature_spec.json");
             
             try
             {
                 if (File.Exists(featureSpecPath))
                 {
-                    var spec = BotCore.Features.FeatureSpecLoader.Load(featureSpecPath);
+                    var spec = global::BotCore.Features.FeatureSpecLoader.Load(featureSpecPath);
                     logger.LogInformation("✅ [FEATURE-SPEC] Loaded feature specification: {Version} with {ColumnCount} columns", 
                         spec.Version, spec.Columns.Count);
                     return spec;
@@ -1600,10 +1607,10 @@ Please check the configuration and ensure all required services are registered.
             }
             
             // Return default spec if loading fails (12 features for S2/S3/S6/S11 optimization)
-            return new BotCore.Features.FeatureSpec
+            return new global::BotCore.Features.FeatureSpec
             {
                 Version = "features:v1",
-                Columns = new List<BotCore.Features.Column>
+                Columns = new List<global::BotCore.Features.Column>
                 {
                     new() { Name = "ret_1m", Index = 0, FillValue = 0 },
                     new() { Name = "ret_5m", Index = 1, FillValue = 0 },
@@ -1618,12 +1625,12 @@ Please check the configuration and ensure all required services are registered.
                     new() { Name = "pos", Index = 10, FillValue = 0 },
                     new() { Name = "s7_regime", Index = 11, FillValue = 0 }
                 },
-                Scaler = new BotCore.Features.Scaler
+                Scaler = new global::BotCore.Features.Scaler
                 {
                     Mean = new decimal[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
                     Std = new decimal[] { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }
                 },
-                Inference = new BotCore.Features.InferenceConfig
+                Inference = new global::BotCore.Features.InferenceConfig
                 {
                     LogitToAction = new Dictionary<int, int> { { 0, -1 }, { 1, 0 }, { 2, 1 } }
                 }
@@ -1631,9 +1638,9 @@ Please check the configuration and ensure all required services are registered.
         });
         
         // Register FeatureComputationConfig with bounds validation
-        services.AddSingleton<BotCore.Features.FeatureComputationConfig>(provider =>
+        services.AddSingleton<global::BotCore.Features.FeatureComputationConfig>(provider =>
         {
-            var config = new BotCore.Features.FeatureComputationConfig
+            var config = new global::BotCore.Features.FeatureComputationConfig
             {
                 RsiPeriod = 14,
                 AtrPeriod = 14,
@@ -1654,14 +1661,14 @@ Please check the configuration and ensure all required services are registered.
             return config;
         });
         
-        services.AddSingleton<BotCore.Features.FeatureBuilder>(provider =>
+        services.AddSingleton<global::BotCore.Features.FeatureBuilder>(provider =>
         {
-            var spec = provider.GetRequiredService<BotCore.Features.FeatureSpec>();
-            var config = provider.GetRequiredService<BotCore.Features.FeatureComputationConfig>();
-            var logger = provider.GetRequiredService<ILogger<BotCore.Features.FeatureBuilder>>();
+            var spec = provider.GetRequiredService<global::BotCore.Features.FeatureSpec>();
+            var config = provider.GetRequiredService<global::BotCore.Features.FeatureComputationConfig>();
+            var logger = provider.GetRequiredService<ILogger<global::BotCore.Features.FeatureBuilder>>();
             var s7Service = provider.GetService<TradingBot.Abstractions.IS7Service>();
-            var marketTimeService = provider.GetService<BotCore.Services.MarketTimeService>();
-            return new BotCore.Features.FeatureBuilder(spec, config, logger, s7Service, marketTimeService);
+            var marketTimeService = provider.GetService<global::BotCore.Services.MarketTimeService>();
+            return new global::BotCore.Features.FeatureBuilder(spec, config, logger, s7Service, marketTimeService);
         });
         
         // ================================================================================
@@ -1669,10 +1676,10 @@ Please check the configuration and ensure all required services are registered.
         // ================================================================================
         
         // Register OnnxRlPolicy for S15_RL strategy with startup validation
-        services.AddSingleton<BotCore.Strategy.IRlPolicy>(provider =>
+        services.AddSingleton<global::BotCore.Strategy.IRlPolicy>(provider =>
         {
-            var logger = provider.GetRequiredService<ILogger<BotCore.Strategy.OnnxRlPolicy>>();
-            var featureSpec = provider.GetRequiredService<BotCore.Features.FeatureSpec>();
+            var logger = provider.GetRequiredService<ILogger<global::BotCore.Strategy.OnnxRlPolicy>>();
+            var featureSpec = provider.GetRequiredService<global::BotCore.Features.FeatureSpec>();
             
             // Paths for RL model and manifest
             var rlModelPath = Path.Combine("artifacts", "current", "rl_policy.onnx");
@@ -1748,7 +1755,7 @@ Please check the configuration and ensure all required services are registered.
             // Load ONNX policy
             try
             {
-                var policy = new BotCore.Strategy.OnnxRlPolicy(rlModelPath, featureSpec);
+                var policy = new global::BotCore.Strategy.OnnxRlPolicy(rlModelPath, featureSpec);
                 logger.LogInformation("✅ [S15-RL] Policy loaded successfully from {Path}", rlModelPath);
                 return policy;
             }
@@ -1759,11 +1766,11 @@ Please check the configuration and ensure all required services are registered.
             }
         });
         
-        services.AddSingleton<BotCore.ML.StrategyMlModelManager>(provider =>
+        services.AddSingleton<global::BotCore.ML.StrategyMlModelManager>(provider =>
         {
-            var logger = provider.GetRequiredService<ILogger<BotCore.ML.StrategyMlModelManager>>();
-            var memoryManager = provider.GetService<BotCore.ML.IMLMemoryManager>();
-            return new BotCore.ML.StrategyMlModelManager(logger, memoryManager);
+            var logger = provider.GetRequiredService<ILogger<global::BotCore.ML.StrategyMlModelManager>>();
+            var memoryManager = provider.GetService<global::BotCore.ML.IMLMemoryManager>();
+            return new global::BotCore.ML.StrategyMlModelManager(logger, memoryManager);
         });
 
         // ================================================================================
@@ -1771,82 +1778,82 @@ Please check the configuration and ensure all required services are registered.
         // ================================================================================
         
         // Register Production Configuration Service - Environment-specific settings
-        services.Configure<BotCore.Services.ProductionTradingConfig>(configuration.GetSection("TradingBot"));
-        services.AddSingleton<BotCore.Services.ProductionConfigurationService>();
+        services.Configure<global::BotCore.Services.ProductionTradingConfig>(configuration.GetSection("TradingBot"));
+        services.AddSingleton<global::BotCore.Services.ProductionConfigurationService>();
         
         // Register ML Configuration Service for hardcoded value replacement
         services.AddProductionConfigurationValidation(configuration);
-        services.AddScoped<BotCore.Services.MLConfigurationService>();
-        services.AddScoped<TradingBot.Abstractions.IMLConfigurationService, BotCore.Services.MLConfigurationService>();
+        services.AddScoped<TradingBot.BotCore.Services.MLConfigurationService>();
+        services.AddScoped<TradingBot.Abstractions.IMLConfigurationService, TradingBot.BotCore.Services.MLConfigurationService>();
         
         // Register Execution Configuration Services - Replace hardcoded execution parameters
-        services.AddScoped<TradingBot.Abstractions.IExecutionGuardsConfig, BotCore.Services.ExecutionGuardsConfigService>();
-        services.AddScoped<TradingBot.Abstractions.IExecutionCostConfig, BotCore.Services.ExecutionCostConfigService>();
-        services.AddScoped<TradingBot.Abstractions.IExecutionPolicyConfig, BotCore.Services.ExecutionPolicyConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IExecutionGuardsConfig, TradingBot.BotCore.Services.ExecutionGuardsConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IExecutionCostConfig, TradingBot.BotCore.Services.ExecutionCostConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IExecutionPolicyConfig, TradingBot.BotCore.Services.ExecutionPolicyConfigService>();
         
         // Register Risk and Sizing Configuration Services - Replace hardcoded risk/sizing parameters
-        services.AddScoped<TradingBot.Abstractions.IRiskConfig, BotCore.Services.RiskConfigService>();
-        services.AddScoped<TradingBot.Abstractions.ISizerConfig, BotCore.Services.SizerConfigService>();
-        services.AddScoped<TradingBot.Abstractions.IMetaCostConfig, BotCore.Services.MetaCostConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IRiskConfig, TradingBot.BotCore.Services.RiskConfigService>();
+        services.AddScoped<TradingBot.Abstractions.ISizerConfig, TradingBot.BotCore.Services.SizerConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IMetaCostConfig, TradingBot.BotCore.Services.MetaCostConfigService>();
         
         // Register Trading Flow Configuration Services - Replace hardcoded trading flow parameters
         services.AddScoped<TradingBot.Abstractions.IBracketConfig, TradingBot.BotCore.Services.BracketConfigService>();
-        services.AddScoped<TradingBot.Abstractions.ISessionConfig, BotCore.Services.SessionConfigService>();
-        services.AddScoped<TradingBot.Abstractions.IControllerOptionsService, BotCore.Services.ControllerOptionsService>();
+        services.AddScoped<TradingBot.Abstractions.ISessionConfig, TradingBot.BotCore.Services.SessionConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IControllerOptionsService, TradingBot.BotCore.Services.ControllerOptionsService>();
         
         // Register Event and Calendar Configuration Services - Replace hardcoded event handling
-        services.AddScoped<TradingBot.Abstractions.IEventTemperingConfig, BotCore.Services.EventTemperingConfigService>();
-        services.AddScoped<TradingBot.Abstractions.IRollConfig, BotCore.Services.RollConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IEventTemperingConfig, TradingBot.BotCore.Services.EventTemperingConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IRollConfig, TradingBot.BotCore.Services.RollConfigService>();
         
         // Register Infrastructure Configuration Services - Replace hardcoded paths and endpoints
-        services.AddScoped<TradingBot.Abstractions.IEndpointConfig, BotCore.Services.EndpointConfigService>();
-        services.AddScoped<TradingBot.Abstractions.IPathConfig, BotCore.Services.PathConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IEndpointConfig, TradingBot.BotCore.Services.EndpointConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IPathConfig, TradingBot.BotCore.Services.PathConfigService>();
         
         // Register Configuration Safety and Management Services
-        services.AddSingleton<BotCore.Services.ConfigurationFailureSafetyService>();
-        services.AddSingleton<BotCore.Services.ConfigurationSnapshotService>();
-        services.AddSingleton<BotCore.Services.ConfigurationSchemaService>();
-        services.AddHostedService<BotCore.Services.StateDurabilityService>();
+        services.AddSingleton<TradingBot.BotCore.Services.ConfigurationFailureSafetyService>();
+        services.AddSingleton<TradingBot.BotCore.Services.ConfigurationSnapshotService>();
+        services.AddSingleton<TradingBot.BotCore.Services.ConfigurationSchemaService>();
+        services.AddHostedService<TradingBot.BotCore.Services.StateDurabilityService>();
         
         // Register Last-Mile Production Safety Services
-        services.AddSingleton<BotCore.Services.OnnxModelCompatibilityService>();
-        services.AddSingleton<BotCore.Services.ClockHygieneService>();
-        services.AddSingleton<BotCore.Services.DeterminismService>();
-        services.AddSingleton<BotCore.Services.SecretsValidationService>();
-        services.AddSingleton<BotCore.Services.IntegritySigningService>();
-        services.AddSingleton<BotCore.Services.SuppressionLedgerService>();
+        services.AddSingleton<TradingBot.BotCore.Services.OnnxModelCompatibilityService>();
+        services.AddSingleton<TradingBot.BotCore.Services.ClockHygieneService>();
+        services.AddSingleton<TradingBot.BotCore.Services.DeterminismService>();
+        services.AddSingleton<TradingBot.BotCore.Services.SecretsValidationService>();
+        services.AddSingleton<TradingBot.BotCore.Services.IntegritySigningService>();
+        services.AddSingleton<TradingBot.BotCore.Services.SuppressionLedgerService>();
         
         // Register Production Guardrail configurations
-        services.Configure<BotCore.Configuration.ProductionGuardrailConfiguration>(configuration.GetSection("Guardrails"));
-        services.Configure<BotCore.Configuration.KillSwitchConfiguration>(configuration.GetSection("KillSwitch"));
-        services.Configure<BotCore.Configuration.EmergencyStopConfiguration>(configuration.GetSection("EmergencyStop"));
+        services.Configure<global::BotCore.Configuration.ProductionGuardrailConfiguration>(configuration.GetSection("Guardrails"));
+        services.Configure<global::BotCore.Configuration.KillSwitchConfiguration>(configuration.GetSection("KillSwitch"));
+        services.Configure<global::BotCore.Configuration.EmergencyStopConfiguration>(configuration.GetSection("EmergencyStop"));
         
         // Note: ResilienceConfiguration is already configured by ProductionConfigurationExtensions
         
         // Register Production Resilience Service - Retry logic, circuit breakers, graceful degradation
-        services.AddSingleton<BotCore.Services.ProductionResilienceService>();
+        services.AddSingleton<global::BotCore.Services.ProductionResilienceService>();
         
         // Register Production Guardrail Services - Live trading gates, order evidence, kill switch monitoring
-        services.AddSingleton<BotCore.Services.ProductionKillSwitchService>();
-        services.AddSingleton<BotCore.Services.ProductionOrderEvidenceService>();
-        services.AddSingleton<BotCore.Services.ProductionGuardrailOrchestrator>();
-        services.AddHostedService<BotCore.Services.ProductionKillSwitchService>();
+        services.AddSingleton<global::BotCore.Services.ProductionKillSwitchService>();
+        services.AddSingleton<global::BotCore.Services.ProductionOrderEvidenceService>();
+        services.AddSingleton<global::BotCore.Services.ProductionGuardrailOrchestrator>();
+        services.AddHostedService<global::BotCore.Services.ProductionKillSwitchService>();
         
         // Register Emergency Stop System with proper namespace and dependencies
-        services.AddSingleton<BotCore.Services.EmergencyStopSystem>();
-        services.AddHostedService<BotCore.Services.EmergencyStopSystem>();
+        services.AddSingleton<global::BotCore.Services.EmergencyStopSystem>();
+        services.AddHostedService<global::BotCore.Services.EmergencyStopSystem>();
         
         // Register Production Monitoring Service - Health checks, metrics, performance tracking
-        services.AddSingleton<BotCore.Services.ProductionMonitoringService>();
+        services.AddSingleton<global::BotCore.Services.ProductionMonitoringService>();
         services.AddHealthChecks()
-            .AddCheck<BotCore.Services.ProductionMonitoringService>("ml-rl-system");
+            .AddCheck<global::BotCore.Services.ProductionMonitoringService>("ml-rl-system");
 
         // ================================================================================
         // �🚀 ENHANCED ML/RL/CLOUD INTEGRATION SERVICES - PRODUCTION AUTOMATION 🚀
         // ================================================================================
         
         // Register HttpClient for Cloud Model Synchronization Service - GitHub API access
-        services.AddHttpClient<BotCore.Services.CloudModelSynchronizationService>(client =>
+        services.AddHttpClient<global::BotCore.Services.CloudModelSynchronizationService>(client =>
         {
             var githubApiUrl = Environment.GetEnvironmentVariable("GITHUB_API_URL") ?? "https://api.github.com/";
             client.BaseAddress = new Uri(githubApiUrl);
@@ -1855,22 +1862,22 @@ Please check the configuration and ensure all required services are registered.
         });
         
         // Register Cloud Model Synchronization Service - Automated GitHub model downloads with hot-swap
-        services.AddSingleton<BotCore.Services.CloudModelSynchronizationService>(provider =>
+        services.AddSingleton<global::BotCore.Services.CloudModelSynchronizationService>(provider =>
         {
-            var logger = provider.GetRequiredService<ILogger<BotCore.Services.CloudModelSynchronizationService>>();
+            var logger = provider.GetRequiredService<ILogger<global::BotCore.Services.CloudModelSynchronizationService>>();
             var httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
-            var httpClient = httpClientFactory.CreateClient(nameof(BotCore.Services.CloudModelSynchronizationService));
-            var memoryManager = provider.GetRequiredService<BotCore.ML.IMLMemoryManager>();
+            var httpClient = httpClientFactory.CreateClient(nameof(global::BotCore.Services.CloudModelSynchronizationService));
+            var memoryManager = provider.GetRequiredService<global::BotCore.ML.IMLMemoryManager>();
             var configuration = provider.GetRequiredService<IConfiguration>();
-            var tradingBrain = provider.GetService<BotCore.Brain.UnifiedTradingBrain>();
-            var resilienceService = provider.GetService<BotCore.Services.ProductionResilienceService>();
-            var monitoringService = provider.GetService<BotCore.Services.ProductionMonitoringService>();
+            var tradingBrain = provider.GetService<global::BotCore.Brain.UnifiedTradingBrain>();
+            var resilienceService = provider.GetService<global::BotCore.Services.ProductionResilienceService>();
+            var monitoringService = provider.GetService<global::BotCore.Services.ProductionMonitoringService>();
             
-            return new BotCore.Services.CloudModelSynchronizationService(
+            return new global::BotCore.Services.CloudModelSynchronizationService(
                 logger, httpClient, memoryManager, configuration, tradingBrain, resilienceService, monitoringService);
         });
-        services.AddHostedService<BotCore.Services.CloudModelSynchronizationService>(provider => 
-            provider.GetRequiredService<BotCore.Services.CloudModelSynchronizationService>());
+        services.AddHostedService<global::BotCore.Services.CloudModelSynchronizationService>(provider => 
+            provider.GetRequiredService<global::BotCore.Services.CloudModelSynchronizationService>());
         
         // Register OnnxEnsembleWrapper for model hot-reload support
         services.Configure<TradingBot.RLAgent.OnnxEnsembleOptions>(configuration.GetSection("OnnxEnsemble"));
@@ -1887,21 +1894,21 @@ Please check the configuration and ensure all required services are registered.
         Console.WriteLine("🔄 [MODEL-HOT-RELOAD] File watching service registered - Monitors models/rl for changes!");
         
         // Register Model Ensemble Service - Intelligent model blending (70% cloud, 30% local)
-        services.AddSingleton<BotCore.Services.ModelEnsembleService>();
+        services.AddSingleton<global::BotCore.Services.ModelEnsembleService>();
         
         // Register Trading Feedback Service - Automated learning loops and retraining triggers
-        services.AddSingleton<BotCore.Services.TradingFeedbackService>();
-        services.AddHostedService<BotCore.Services.TradingFeedbackService>(provider => 
-            provider.GetRequiredService<BotCore.Services.TradingFeedbackService>());
+        services.AddSingleton<global::BotCore.Services.TradingFeedbackService>();
+        services.AddHostedService<global::BotCore.Services.TradingFeedbackService>(provider => 
+            provider.GetRequiredService<global::BotCore.Services.TradingFeedbackService>());
         
         // Gate 2: Register CloudModelDownloader - ONNX model validation before deployment
-        services.AddSingleton<BotCore.Services.ICloudModelDownloader, BotCore.Services.CloudModelDownloader>();
+        services.AddSingleton<global::BotCore.Services.ICloudModelDownloader, global::BotCore.Services.CloudModelDownloader>();
         Console.WriteLine("🔒 [GATE-2] CloudModelDownloader with validation gates registered!");
         
         // Gate 3: Register S15 Shadow Learning Service - Validates S15 before promotion
-        services.AddSingleton<BotCore.Services.S15ShadowLearningService>();
-        services.AddHostedService<BotCore.Services.S15ShadowLearningService>(provider => 
-            provider.GetRequiredService<BotCore.Services.S15ShadowLearningService>());
+        services.AddSingleton<global::BotCore.Services.S15ShadowLearningService>();
+        services.AddHostedService<global::BotCore.Services.S15ShadowLearningService>(provider => 
+            provider.GetRequiredService<global::BotCore.Services.S15ShadowLearningService>());
         Console.WriteLine("🔒 [GATE-3] S15ShadowLearningService with promotion validation registered!");
         
         // Enhanced Trading Brain Integration already registered above with UnifiedDecisionRouter dependencies
@@ -1915,10 +1922,10 @@ Please check the configuration and ensure all required services are registered.
         // Register core agents and clients that exist in BotCore
         // NOTE: Hub-creating services disabled - functionality provided by TopstepX adapter
         
-        services.AddSingleton<BotCore.PositionAgent>();
+        services.AddSingleton<global::BotCore.PositionAgent>();
         
         // NOTE: MarketDataAgent disabled - functionality provided by TopstepX adapter
-        services.AddSingleton<BotCore.ModelUpdaterService>();
+        services.AddSingleton<global::BotCore.ModelUpdaterService>();
         
         // Register advanced orchestrator services that will be coordinated by MasterOrchestrator
         // DISABLED: Fake prototype services - shadowing real implementations
@@ -1945,7 +1952,7 @@ Please check the configuration and ensure all required services are registered.
         
         if (enableUcb)
         {
-            services.AddSingleton<BotCore.ML.UcbManager>();
+            services.AddSingleton<global::BotCore.ML.UcbManager>();
         }
 
         // Auto-detect paper trading mode
@@ -2032,7 +2039,7 @@ Please check the configuration and ensure all required services are registered.
         services.AddHostedService<CanaryWatchdog>();
         
         // Brain hot-reload service for ONNX session swapping
-        services.AddSingleton<BotCore.ML.OnnxModelLoader>();
+        services.AddSingleton<global::BotCore.ML.OnnxModelLoader>();
         services.AddHostedService<BrainHotReloadService>();
         
         // Cloud model integration service removed - CloudRlTrainerV2 infrastructure no longer exists
@@ -2075,7 +2082,8 @@ Please check the configuration and ensure all required services are registered.
         // - Calculates rolling 3-day Sharpe ratio
         // - Rolls back if >20% degradation for 3 consecutive days
         // - Archives failed parameters and logs rollback events
-        services.AddHostedService<TradingBot.Monitoring.ParameterPerformanceMonitor>();
+        // TODO: TradingBot.Monitoring.ParameterPerformanceMonitor doesn't exist - need to implement or remove
+        // services.AddHostedService<TradingBot.Monitoring.ParameterPerformanceMonitor>();
 
     }
 
@@ -2233,7 +2241,7 @@ internal class AdvancedSystemInitializationService : IHostedService
     {
         try
         {
-            var botAlerts = _serviceProvider.GetService<BotCore.Services.BotAlertService>();
+            var botAlerts = _serviceProvider.GetService<global::BotCore.Services.BotAlertService>();
             if (botAlerts == null)
             {
                 _logger.LogWarning("⚠️ BotAlertService not available - skipping startup health check");
@@ -2243,7 +2251,7 @@ internal class AdvancedSystemInitializationService : IHostedService
             _logger.LogInformation("🔍 Running startup health check...");
 
             // Check Ollama connectivity
-            var ollamaClient = _serviceProvider.GetService<BotCore.Services.OllamaClient>();
+            var ollamaClient = _serviceProvider.GetService<global::BotCore.Services.OllamaClient>();
             var ollamaConnected = false;
             if (ollamaClient != null)
             {
@@ -2251,7 +2259,7 @@ internal class AdvancedSystemInitializationService : IHostedService
             }
 
             // Check if economic calendar is loaded
-            var economicEventManager = _serviceProvider.GetService<BotCore.Market.IEconomicEventManager>();
+            var economicEventManager = _serviceProvider.GetService<global::BotCore.Market.IEconomicEventManager>();
             var calendarLoaded = economicEventManager != null;
             if (economicEventManager != null)
             {
@@ -2267,11 +2275,11 @@ internal class AdvancedSystemInitializationService : IHostedService
             }
 
             // Check Python UCB service
-            var ucbManager = _serviceProvider.GetService<BotCore.ML.UcbManager>();
+            var ucbManager = _serviceProvider.GetService<global::BotCore.ML.UcbManager>();
             var pythonUcbRunning = ucbManager != null;
 
             // Check cloud models downloaded
-            var cloudDownloader = _serviceProvider.GetService<BotCore.Services.CloudModelDownloader>();
+            var cloudDownloader = _serviceProvider.GetService<global::BotCore.Services.CloudModelDownloader>();
             var cloudModelsDownloaded = cloudDownloader != null;
 
             // Report startup health
@@ -2413,7 +2421,7 @@ internal static class EnvironmentLoader
             switch (cmd)
             {
                 case "/risk":
-                    var riskCommentary = services.GetService<BotCore.Services.RiskAssessmentCommentary>();
+                    var riskCommentary = services.GetService<global::BotCore.Services.RiskAssessmentCommentary>();
                     if (riskCommentary != null)
                     {
                         var zoneService = services.GetService<Zones.IZoneService>();
@@ -2428,7 +2436,7 @@ internal static class EnvironmentLoader
                     return "Risk assessment service not available";
 
                 case "/patterns":
-                    var patternEngine = services.GetService<BotCore.Patterns.PatternEngine>();
+                    var patternEngine = services.GetService<global::BotCore.Patterns.PatternEngine>();
                     if (patternEngine != null)
                     {
                         var scores = await patternEngine.GetCurrentScoresAsync(symbol);
@@ -2459,7 +2467,7 @@ internal static class EnvironmentLoader
                     return "Zone service not available";
 
                 case "/status":
-                    var brain = services.GetService<BotCore.Brain.UnifiedTradingBrain>();
+                    var brain = services.GetService<global::BotCore.Brain.UnifiedTradingBrain>();
                     if (brain != null)
                     {
                         var method = brain.GetType().GetMethod("GatherCurrentContext",
@@ -2473,7 +2481,7 @@ internal static class EnvironmentLoader
                     return "Status not available";
 
                 case "/health":
-                    var healthMonitor = services.GetService<BotCore.Services.ComponentHealthMonitoringService>();
+                    var healthMonitor = services.GetService<global::BotCore.Services.ComponentHealthMonitoringService>();
                     if (healthMonitor != null)
                     {
                         return "**Component Health:**\nHealth monitoring service available. Check logs for detailed status.";
@@ -2481,7 +2489,7 @@ internal static class EnvironmentLoader
                     return "Health monitoring not available";
 
                 case "/learning":
-                    var learningCommentary = services.GetService<BotCore.Services.AdaptiveLearningCommentary>();
+                    var learningCommentary = services.GetService<global::BotCore.Services.AdaptiveLearningCommentary>();
                     if (learningCommentary != null)
                     {
                         var summary = learningCommentary.GetLearningSummary(DefaultLookbackMinutes);
@@ -2549,8 +2557,8 @@ internal static class EnvironmentLoader
                         var userMessage = requestData["message"].GetString();
                         
                         // Get services
-                        var ollamaClient = context.RequestServices.GetService<BotCore.Services.OllamaClient>();
-                        var brain = context.RequestServices.GetService<BotCore.Brain.UnifiedTradingBrain>();
+                        var ollamaClient = context.RequestServices.GetService<global::BotCore.Services.OllamaClient>();
+                        var brain = context.RequestServices.GetService<global::BotCore.Brain.UnifiedTradingBrain>();
                         
                         // Check for command syntax (starts with /)
                         if (!string.IsNullOrEmpty(userMessage) && userMessage.StartsWith("/"))

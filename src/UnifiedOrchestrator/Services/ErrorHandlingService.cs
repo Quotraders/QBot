@@ -69,8 +69,11 @@ internal class ErrorHandlingService : IHostedService
         }
 
         // Circuit breaker timer - check every 60 seconds
-        _circuitBreakerTimer = new Timer(CheckCircuitBreaker, null, 
-            TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
+        _circuitBreakerTimer = new Timer(
+            callback: state => { _ = CheckCircuitBreaker(); },
+            state: null, 
+            dueTime: (int)TimeSpan.FromSeconds(60).TotalMilliseconds,
+            period: (int)TimeSpan.FromSeconds(60).TotalMilliseconds);
     }
 
     public Task StartAsync(CancellationToken cancellationToken)

@@ -173,9 +173,9 @@ internal class EnhancedAuthenticationService : IHostedService
         }
     }
 
-    private Task OnTokenRefreshed(string newToken)
+    private void OnTokenRefreshed(string newToken)
     {
-        return _tradingLogger.LogSystemAsync(TradingLogLevel.INFO, "AuthService",
+        _ = _tradingLogger.LogSystemAsync(TradingLogLevel.INFO, "AuthService",
             "JWT token refreshed successfully", new
             {
                 tokenLength = newToken.Length,

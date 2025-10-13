@@ -198,12 +198,12 @@ internal class EnhancedBacktestLearningService : BackgroundService
         var lookbackDays = scheduling.LearningIntensity == "INTENSIVE" ? 30 : 7;
         var startDate = endDate.AddDays(-lookbackDays);
         
-        var getJwt = async () => 
+        var getJwt = new Func<Task<string>>(async () => 
         {
             try
             {
-                var (jwt, _) = await _authService.GetFreshJwtAsync(cancellationToken).ConfigureAwait(false);
-                return jwt;
+                var result = await _authService.GetFreshJwtAsync(cancellationToken).ConfigureAwait(false);
+                return result.jwt;
             }
             catch (Exception ex)
             {
@@ -211,7 +211,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
                 // Fallback to environment variable if auth service fails
                 return Environment.GetEnvironmentVariable("TOPSTEPX_JWT") ?? "demo-jwt-token";
             }
-        };
+        });
         
         try
         {
@@ -645,7 +645,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
             var historicalDataProvider = _serviceProvider.GetService<TradingBot.Backtest.Adapters.TopstepXHistoricalDataProvider>();
             if (historicalDataProvider != null)
             {
-                var quotes = historicalDataProvider.GetHistoricalQuotesAsync(config.Symbol, config.StartDate, config.EndDate, cancellationToken);
+                var quotes = await historicalDataProvider.GetHistoricalQuotesAsync(config.Symbol, config.StartDate, config.EndDate, cancellationToken).ConfigureAwait(false);
                 var dataPoints = new List<HistoricalDataPoint>();
                 
                 await foreach (var quote in quotes)
@@ -654,12 +654,13 @@ internal class EnhancedBacktestLearningService : BackgroundService
                     
                     dataPoints.Add(new HistoricalDataPoint
                     {
-                        Timestamp = quote.Timestamp,
+                        Timestamp = quote.Time,
                         Symbol = quote.Symbol,
-                        Price = quote.Price,
+                        Close = quote.Last,  // Map Last to Close
                         Volume = quote.Volume,
-                        Bid = quote.Bid,
-                        Ask = quote.Ask
+                        High = quote.High,
+                        Low = quote.Low,
+                        Open = quote.Open
                     });
                 }
                 
@@ -680,15 +681,16 @@ internal class EnhancedBacktestLearningService : BackgroundService
                     Environment.GetEnvironmentVariable("TOPSTEPX_EVAL_ES_ID") ?? "default-es" :
                     Environment.GetEnvironmentVariable("TOPSTEPX_EVAL_NQ_ID") ?? "default-nq";
                 
-                var bars = await bridgeService.GetHistoricalBarsAsync(contractId, 1000, cancellationToken).ConfigureAwait(false);
+                var bars = await bridgeService.GetRecentHistoricalBarsAsync(contractId, 1000, cancellationToken).ConfigureAwait(false);
                 var dataPoints = bars.Select(bar => new HistoricalDataPoint
                 {
-                    Timestamp = bar.End,
+                    Timestamp = bar.Start,  // Use Start instead of End
                     Symbol = config.Symbol,
-                    Price = bar.Close,
-                    Volume = (int)bar.Volume,
-                    Bid = bar.Close - 0.25m, // ES/NQ tick size
-                    Ask = bar.Close + 0.25m
+                    Close = bar.Close,
+                    Volume = bar.Volume,
+                    Low = bar.Low,
+                    High = bar.High,
+                    Open = bar.Open
                 }).ToList();
                 
                 if (dataPoints.Any())
@@ -1303,7 +1305,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
             {
                 _logger.LogInformation("[UNIFIED-BACKTEST] Using TopstepXHistoricalDataProvider as fallback for {Symbol}", config.Symbol);
                 
-                var quotes = historicalDataProvider.GetHistoricalQuotesAsync(config.Symbol, config.StartDate, config.EndDate, cancellationToken);
+                var quotes = await historicalDataProvider.GetHistoricalQuotesAsync(config.Symbol, config.StartDate, config.EndDate, cancellationToken).ConfigureAwait(false);
                 var bars = new List<Bar>();
                 
                 await foreach (var quote in quotes)
@@ -1313,13 +1315,13 @@ internal class EnhancedBacktestLearningService : BackgroundService
                     // Convert quotes to bars (simplified - group by minute)
                     bars.Add(new Bar
                     {
-                        Start = quote.Timestamp,
-                        End = quote.Timestamp.AddMinutes(1),
+                        Start = quote.Time,
+                        Ts = new DateTimeOffset(quote.Time).ToUnixTimeMilliseconds(),
                         Symbol = quote.Symbol,
-                        Open = quote.Price,
-                        High = quote.Price,
-                        Low = quote.Price,
-                        Close = quote.Price,
+                        Open = quote.Open,
+                        High = quote.High,
+                        Low = quote.Low,
+                        Close = quote.Close,
                         Volume = quote.Volume
                     });
                 }
