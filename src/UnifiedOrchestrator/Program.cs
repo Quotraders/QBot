@@ -1048,8 +1048,8 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IMarketHoursService, TradingBot.UnifiedOrchestrator.Scheduling.FuturesMarketHours>();
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Scheduling.FuturesMarketHours>();
         
-        // REMOVED: Shadow Tester - simulation/testing service not needed for live trading
-        // services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IShadowTester, TradingBot.UnifiedOrchestrator.Promotion.ShadowTester>();
+        // Register Shadow Tester for A/B validation and model promotion
+        services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IShadowTester, TradingBot.UnifiedOrchestrator.Promotion.ShadowTester>();
         
         // Register Position Service for real position tracking
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Promotion.IPositionService, TradingBot.UnifiedOrchestrator.Promotion.ProductionPositionService>();
@@ -1075,8 +1075,8 @@ Please check the configuration and ensure all required services are registered.
         // REMOVED: Production Validation Service - simulation service deleted
         // services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IValidationService, TradingBot.UnifiedOrchestrator.Services.ProductionValidationService>();
         
-        // REMOVED: Rollback Drill Service - simulation/testing service not needed for live trading
-        // services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IRollbackDrillService, TradingBot.UnifiedOrchestrator.Services.RollbackDrillService>();
+        // Register Rollback Drill Service for production safety validation
+        services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IRollbackDrillService, TradingBot.UnifiedOrchestrator.Services.RollbackDrillService>();
         
         // AUDIT-CLEAN: Configure TradingBrainAdapter with configuration-driven thresholds instead of hardcoded values
         services.Configure<TradingBot.UnifiedOrchestrator.Configuration.TradingBrainAdapterConfiguration>(options =>
@@ -1100,8 +1100,8 @@ Please check the configuration and ensure all required services are registered.
         // Register Production Readiness Validation Service for complete runtime proof
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IProductionReadinessValidationService, TradingBot.UnifiedOrchestrator.Services.ProductionReadinessValidationService>();
         
-        // REMOVED: Production Demonstration Runner - simulation service not needed for live trading
-        // services.AddSingleton<TradingBot.UnifiedOrchestrator.Services.ProductionDemonstrationRunner>();
+        // Register Production Demonstration Runner for production validation
+        services.AddSingleton<TradingBot.UnifiedOrchestrator.Services.ProductionDemonstrationRunner>();
         
         // Register specialized validation services for PR review requirements
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Services.EnumMappingValidationService>();
