@@ -636,7 +636,7 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<global::BotCore.Services.PositionMonitoring.SessionDetectionService>();
         
         // Register ES/NQ Portfolio Heat Manager with position monitoring services
-        services.AddSingleton<global::BotCore.Services.IPortfolioHeatManager, global::BotCore.Services.ES_NQ_PortfolioHeatManager>();
+        services.AddSingleton<IPortfolioHeatManager, ES_NQ_PortfolioHeatManager>();
         
         Console.WriteLine("📊 [POSITION-MONITORING] Registered position monitoring services");
         Console.WriteLine("   ✅ Real-time session exposure tracking - Monitors exposure by trading session");
@@ -853,7 +853,8 @@ Please check the configuration and ensure all required services are registered.
         });
         
         // Register TopstepXService for real client
-        services.AddSingleton<global::BotCore.Services.ITopstepXService, global::BotCore.Services.TopstepXService>();
+        // TODO: ITopstepXService and TopstepXService don't exist - need to be implemented or use ITopstepXAdapterService directly
+        // services.AddSingleton<global::BotCore.Services.ITopstepXService, global::BotCore.Services.TopstepXService>();
         
         // TopstepX SDK Adapter Service - Production-ready Python SDK integration
         services.AddSingleton<TradingBot.Abstractions.ITopstepXAdapterService, TopstepXAdapterService>();
@@ -1445,7 +1446,7 @@ Please check the configuration and ensure all required services are registered.
                     // OrderFillConfirmationSystem already registered above with proper factory
                     // PositionTrackingSystem already registered above
                     // NewsIntelligenceEngine REMOVED - replaced by AI-powered NewsMonitorService
-                    services.TryAddSingleton<global::Zones.ZoneService>();
+                    services.TryAddSingleton<Zones.IZoneService, Zones.ZoneServiceProduction>();
                     services.TryAddSingleton<global::BotCore.EnhancedTrainingDataService>();
                     services.TryAddSingleton<TopstepX.Bot.Core.Services.TradingSystemIntegrationService>();
                     
@@ -2075,7 +2076,8 @@ Please check the configuration and ensure all required services are registered.
         // - Calculates rolling 3-day Sharpe ratio
         // - Rolls back if >20% degradation for 3 consecutive days
         // - Archives failed parameters and logs rollback events
-        services.AddHostedService<TradingBot.Monitoring.ParameterPerformanceMonitor>();
+        // TODO: TradingBot.Monitoring.ParameterPerformanceMonitor doesn't exist - need to implement or remove
+        // services.AddHostedService<TradingBot.Monitoring.ParameterPerformanceMonitor>();
 
     }
 
