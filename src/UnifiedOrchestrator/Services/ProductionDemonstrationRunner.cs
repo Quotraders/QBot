@@ -81,11 +81,11 @@ internal class ProductionDemonstrationRunner
 
             // 4. Safe Window Enforcement
             _logger.LogWarning("✅ [DEMO-STEP-4] Testing safe window enforcement...");
-            await DemonstrateSafeWindowEnforcementAsync(demoId, cancellationToken).ConfigureAwait(false);
+            await DemonstrateSafeWindowEnforcementAsync(demoId).ConfigureAwait(false);
 
             // 5. Data Integration Status
             _logger.LogWarning("✅ [DEMO-STEP-5] Validating data integration...");
-            await DemonstrateDataIntegrationAsync(demoId, cancellationToken).ConfigureAwait(false);
+            await DemonstrateDataIntegrationAsync(demoId).ConfigureAwait(false);
 
             // 6. Enum Mapping Coverage Validation (REQUESTED IN PR REVIEW)
             _logger.LogWarning("✅ [DEMO-STEP-6] Testing ConvertPriceDirectionToTradingAction() enum mapping coverage...");

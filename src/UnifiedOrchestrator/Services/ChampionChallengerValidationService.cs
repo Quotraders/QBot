@@ -76,23 +76,31 @@ internal class ChampionChallengerValidationService : BackgroundService
     {
         _logger.LogInformation("🔍 Testing Model Registry...");
         
-        // Create test model version
-        var testModel = new ModelVersion
+        // Create test model as ModelInfo for registry
+        var testModel = new TradingBot.UnifiedOrchestrator.Services.ModelInfo
         {
-            Algorithm = "PPO",
-            ArtifactPath = "/tmp/test_model.onnx",
-            GitSha = "test123",
-            CreatedBy = "validation_test",
-            Sharpe = 1.5m,
-            CVaR = -0.02m,
-            SchemaVersion = "1.0",
-            ModelType = "ONNX"
+            Id = Guid.NewGuid().ToString(),
+            Type = "PPO",
+            FilePath = "/tmp/test_model.onnx",
+            Version = "1.0",
+            RegisteredAt = DateTime.UtcNow,
+            IsActive = false,
+            Metadata = new Dictionary<string, object>
+            {
+                ["git_sha"] = "test123",
+                ["created_by"] = "validation_test",
+                ["sharpe"] = 1.5m,
+                ["cvar"] = -0.02m,
+                ["schema_version"] = "1.0",
+                ["model_type"] = "ONNX"
+            }
         };
         
-        var versionId = await _modelRegistry.RegisterModelAsync(testModel, cancellationToken).ConfigureAwait(false);
-        _logger.LogInformation("✅ Model registered with version: {VersionId}", versionId);
+        var registered = await _modelRegistry.RegisterModelAsync(testModel, cancellationToken).ConfigureAwait(false);
+        _logger.LogInformation("✅ Model registered: {Success}", registered);
         
-        var retrievedModel = await _modelRegistry.GetModelAsync(versionId, cancellationToken).ConfigureAwait(false);
+        // GetModelAsync doesn't exist, use GetActiveModelAsync instead
+        var retrievedModel = await _modelRegistry.GetActiveModelAsync("PPO", cancellationToken).ConfigureAwait(false);
         if (retrievedModel != null)
         {
             _logger.LogInformation("✅ Model retrieved successfully");

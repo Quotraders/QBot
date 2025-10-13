@@ -55,7 +55,7 @@ internal class EnsembleModelService
             {
                 try
                 {
-                    var prediction = await GetModelPredictionAsync(modelId, modelInfo, features, cancellationToken).ConfigureAwait(false);
+                    var prediction = await GetModelPredictionAsync(modelId, cancellationToken).ConfigureAwait(false);
                     predictions.Add(prediction);
                     totalWeight += modelInfo.Weight;
                 }
@@ -71,7 +71,7 @@ internal class EnsembleModelService
             }
 
             // Calculate weighted ensemble prediction
-            var ensembleResult = CalculateWeightedEnsemble(predictions, totalWeight, anomalyScore);
+            var ensembleResult = CalculateWeightedEnsemble(predictions, anomalyScore);
 
             _logger.LogDebug("Ensemble prediction: {Prediction:F3} confidence: {Confidence:F3} from {ModelCount} models", 
                 ensembleResult.Prediction, ensembleResult.Confidence, predictions.Count);

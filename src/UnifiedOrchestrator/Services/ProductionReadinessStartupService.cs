@@ -109,11 +109,11 @@ internal class ProductionReadinessStartupService : IHostedService
                 
                 if (result.IsProductionReady)
                 {
-                    _logger.LogInformation("✅ [SERVICE-PROOF] Intelligence stack verification PASSED: {Summary}", result.GetSummary());
+                    _logger.LogInformation("✅ [SERVICE-PROOF] Intelligence stack verification PASSED");
                 }
                 else
                 {
-                    _logger.LogError("❌ [SERVICE-PROOF] Intelligence stack verification FAILED: {Summary}", result.GetSummary());
+                    _logger.LogError("❌ [SERVICE-PROOF] Intelligence stack verification FAILED - {ErrorCount} errors", result.Errors.Count);
                     foreach (var error in result.Errors)
                     {
                         _logger.LogError("   ❌ {Error}", error);

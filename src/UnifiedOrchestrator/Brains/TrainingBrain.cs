@@ -205,7 +205,7 @@ internal class TrainingBrain : ITrainingBrain
             };
 
             // Convert to ModelInfo for registry
-            var modelInfo = new ModelInfo
+            var modelInfo = new TradingBot.UnifiedOrchestrator.Services.ModelInfo
             {
                 Id = versionId,
                 Type = algorithm,
