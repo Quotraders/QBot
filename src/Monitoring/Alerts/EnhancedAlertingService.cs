@@ -551,15 +551,6 @@ namespace TradingBot.Monitoring.Alerts
             
             return new List<double>();
         }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                _monitoringTimer?.Dispose();
-            }
-            base.Dispose(disposing);
-        }
     }
 
     /// <summary>

@@ -27,6 +27,10 @@
   <ItemGroup>
     <ProjectReference Include="../../src/UnifiedOrchestrator/UnifiedOrchestrator.csproj" />
     <ProjectReference Include="../../src/BotCore/BotCore.csproj" />
+    <ProjectReference Include="../../src/Monitoring/Monitoring.csproj" />
+    <ProjectReference Include="../../src/Cloud/Cloud.csproj" />
+    <ProjectReference Include="../../src/RLAgent/RLAgent.csproj" />
+    <ProjectReference Include="../../src/S7/S7.csproj" />
   </ItemGroup>
 
 </Project>

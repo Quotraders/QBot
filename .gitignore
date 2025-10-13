@@ -75,6 +75,10 @@ tools/cs_error_counts.txt
 tools/analyzers/*.sarif
 tools/analyzers/*.tsv
 
+# Large training data files (use external storage like S3/Azure Blob for production)
+data/rl_training/*_training_*.jsonl
+data/rl_training/*_training_*.csv
+
 # Automated artifacts and generated files
 artifacts_backup/
 trading.db*
