@@ -141,7 +141,7 @@ namespace UnifiedOrchestrator.Services
                 .ToList();
         }
 
-        private async Task<StreamingFeatures> GenerateFeaturesAsync(string symbol, DateTime timestamp)
+        private async Task<StreamingFeatures> GenerateFeaturesAsync(string symbol, DateTime timestamp, CancellationToken cancellationToken = default)
         {
             var features = new StreamingFeatures
             {

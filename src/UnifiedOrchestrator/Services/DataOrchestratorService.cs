@@ -35,7 +35,7 @@ internal class DataOrchestratorService : BackgroundService, IDataOrchestrator
             try
             {
                 // Main data processing loop
-                await ProcessDataOperationsAsync(stoppingToken).ConfigureAwait(false);
+                await ProcessDataOperationsAsync().ConfigureAwait(false);
                 
                 // Wait before next iteration
                 await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken).ConfigureAwait(false);

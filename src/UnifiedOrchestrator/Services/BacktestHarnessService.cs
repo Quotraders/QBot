@@ -196,13 +196,9 @@ namespace UnifiedOrchestrator.Services
                 
                 if (integrationService != null)
                 {
-                    // Call the REAL backtest system with historical data processing
-                    var realResults = await integrationService.RunRealModelTestingAsync(modelName, testStart, testEnd, cancellationToken).ConfigureAwait(false);
-                    
-                    _logger.LogInformation("REAL BACKTEST COMPLETE: Accuracy={Accuracy:P2}, Sharpe={Sharpe:F2}, Trades={Trades}", 
-                        realResults.accuracy, realResults.sharpeRatio, realResults.totalPredictions);
-                    
-                    return realResults;
+                    // REMOVED: BacktestIntegrationService was deleted (simulation service)
+                    // Integration service returns null, so skip this path
+                    _logger.LogWarning("Backtest integration service not available (simulation removed)");
                 }
                 else
                 {
@@ -218,12 +214,12 @@ namespace UnifiedOrchestrator.Services
             return GenerateDeterministicResults(modelName, testStart, testEnd);
         }
 
-        // Helper method to get the real backtest integration service
+        // Helper method to get the real backtest integration service  
+        // REMOVED: BacktestIntegrationService was a simulation service
         // In production: This would be injected via constructor dependency injection
-        private BacktestIntegrationService? GetBacktestIntegrationService()
+        private object? GetBacktestIntegrationService()
         {
-            // For now, return null - this will be wired up via DI in production
-            // This allows the existing code to still function while we integrate
+            // Simulation service removed - returns null
             return null;
         }
 

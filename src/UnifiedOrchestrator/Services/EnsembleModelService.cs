@@ -1,11 +1,13 @@
 using Microsoft.Extensions.Logging;
-using TradingBot.Abstractions;
-using TradingBot.UnifiedOrchestrator.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
+using TradingBot.Abstractions;
+using TradingBot.UnifiedOrchestrator.Models;
+using System.Security.Cryptography;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 
@@ -55,7 +57,7 @@ internal class EnsembleModelService
             {
                 try
                 {
-                    var prediction = await GetModelPredictionAsync(modelId, modelInfo, features, cancellationToken).ConfigureAwait(false);
+                    var prediction = await GetModelPredictionAsync(modelId, cancellationToken).ConfigureAwait(false);
                     predictions.Add(prediction);
                     totalWeight += modelInfo.Weight;
                 }
@@ -71,7 +73,7 @@ internal class EnsembleModelService
             }
 
             // Calculate weighted ensemble prediction
-            var ensembleResult = CalculateWeightedEnsemble(predictions, totalWeight, anomalyScore);
+            var ensembleResult = CalculateWeightedEnsemble(predictions, anomalyScore);
 
             _logger.LogDebug("Ensemble prediction: {Prediction:F3} confidence: {Confidence:F3} from {ModelCount} models", 
                 ensembleResult.Prediction, ensembleResult.Confidence, predictions.Count);
@@ -138,11 +140,11 @@ internal class EnsembleModelService
             
             // In production, this would load and run actual ONNX models
             // For safety, we return neutral/conservative predictions
-            var random = new Random(modelId.GetHashCode());
             
             // Conservative prediction logic - bias toward neutral positions
             var basePrediction = 0.5; // Neutral baseline
-            var noise = (random.NextDouble() - 0.5) * 0.1; // Small random component
+            // Use cryptographic RNG for prediction noise
+            var noise = (RandomNumberGenerator.GetInt32(0, 1000) / 1000.0 - 0.5) * 0.1; // Small random component
             var prediction = Math.Max(0.0, Math.Min(1.0, basePrediction + noise));
             
             // High confidence for conservative predictions, lower for extreme ones
@@ -154,7 +156,7 @@ internal class EnsembleModelService
                 ModelId = modelId,
                 Prediction = prediction,
                 Confidence = confidence,
-                InferenceTime = TimeSpan.FromMilliseconds(random.Next(10, 30))
+                InferenceTime = TimeSpan.FromMilliseconds(RandomNumberGenerator.GetInt32(10, 30))
             };
         }
         catch (Exception ex)

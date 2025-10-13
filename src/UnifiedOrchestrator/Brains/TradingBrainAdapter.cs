@@ -157,7 +157,7 @@ internal class TradingBrainAdapter : ITradingBrainAdapter
         
         var riskEngine = new RiskEngine();
         
-        return _unifiedBrain.MakeIntelligentDecisionAsync(symbol, env, levels, bars, riskEngine, cancellationToken);
+        return _unifiedBrain.MakeIntelligentDecisionAsync(symbol, env, levels, bars, riskEngine, null, cancellationToken);
     }
 
     /// <summary>

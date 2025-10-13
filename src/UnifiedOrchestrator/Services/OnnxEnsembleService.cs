@@ -2,10 +2,12 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Security.Cryptography;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 
@@ -216,7 +218,7 @@ internal class OnnxEnsembleService : IDisposable
                 try
                 {
                     // Real ONNX model inference instead of simulation
-                    var modelPrediction = await RunRealModelInferenceAsync(model.ModelName, model.ModelPath, inputs, cancellationToken).ConfigureAwait(false);
+                    var modelPrediction = await RunRealModelInferenceAsync(model.ModelName, inputs, cancellationToken).ConfigureAwait(false);
                     predictions.Add(modelPrediction);
                     modelsUsed.Add(model.ModelName);
                 }
@@ -311,7 +313,7 @@ internal class OnnxEnsembleService : IDisposable
         {
             // In a production environment, this would use Microsoft.ML.OnnxRuntime
             // For now, implementing a realistic inference simulation that could be real data
-            await Task.Delay(Random.Shared.Next(5, 25), cancellationToken).ConfigureAwait(false); // Realistic inference latency
+            await Task.Delay(RandomNumberGenerator.GetInt32(5, 25), cancellationToken).ConfigureAwait(false); // Realistic inference latency
             
             _logger.LogDebug("Running ONNX inference for model {ModelName} with {InputCount} inputs", modelName, inputs.Count);
 

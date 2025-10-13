@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace TradingBot.UnifiedOrchestrator.Runtime;
@@ -164,9 +165,8 @@ internal class MicrostructureCalibrationService : BackgroundService
     private async Task<CalibrationData> AnalyzeHistoricalDataAsync(string symbol, int windowDays)
     {
         // In production, this would analyze actual historical market data
-        // For now, simulate with realistic values
+        // For now, simulate with realistic values using cryptographic RNG
         
-        var random = new Random();
         var baseSpread = symbol switch
         {
             "ES" => 0.50m, // ES base spread
@@ -180,14 +180,14 @@ internal class MicrostructureCalibrationService : BackgroundService
         {
             Symbol = symbol,
             WindowDays = windowDays,
-            SampleSize = random.Next(500, 2000),
-            AverageSpreadTicks = baseSpread / 0.25m + (decimal)(random.NextDouble() - 0.5),
-            P95SpreadTicks = baseSpread / 0.25m * 1.8m + (decimal)(random.NextDouble() - 0.5),
-            AverageLatencyMs = random.Next(15, 45),
-            P95LatencyMs = random.Next(60, 120),
-            AverageVolume = random.Next(1000, 5000),
-            MinVolume = random.Next(100, 500),
-            SuccessfulTradeRate = 0.85m + (decimal)(random.NextDouble() * 0.1 - 0.05)
+            SampleSize = RandomNumberGenerator.GetInt32(500, 2000),
+            AverageSpreadTicks = baseSpread / 0.25m + (decimal)(RandomNumberGenerator.GetInt32(0, 1000) / 1000.0 - 0.5),
+            P95SpreadTicks = baseSpread / 0.25m * 1.8m + (decimal)(RandomNumberGenerator.GetInt32(0, 1000) / 1000.0 - 0.5),
+            AverageLatencyMs = RandomNumberGenerator.GetInt32(15, 45),
+            P95LatencyMs = RandomNumberGenerator.GetInt32(60, 120),
+            AverageVolume = RandomNumberGenerator.GetInt32(1000, 5000),
+            MinVolume = RandomNumberGenerator.GetInt32(100, 500),
+            SuccessfulTradeRate = 0.85m + (decimal)(RandomNumberGenerator.GetInt32(0, 1000) / 1000.0 * 0.1 - 0.05)
         };
     }
 

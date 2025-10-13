@@ -3,19 +3,28 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using TradingBot.Abstractions;
+using System.Security.Cryptography;
 using TradingBot.Backtest;
+using System.Security.Cryptography;
 using TradingBot.UnifiedOrchestrator.Interfaces;
+using System.Security.Cryptography;
 using TradingBot.UnifiedOrchestrator.Models;
+using System.Security.Cryptography;
 using TradingBot.UnifiedOrchestrator.Services;
+using System.Security.Cryptography;
 using IModelRegistry = TradingBot.UnifiedOrchestrator.Interfaces.IModelRegistry;
+using System.Security.Cryptography;
 using IModelRouterFactory = TradingBot.UnifiedOrchestrator.Interfaces.IModelRouterFactory;
+using System.Security.Cryptography;
 using Quote = TradingBot.Abstractions.Quote;
+using System.Security.Cryptography;
 
 namespace TradingBot.UnifiedOrchestrator.Promotion;
 
@@ -314,7 +323,7 @@ internal class ShadowTester : IShadowTester
     private async Task RunHistoricalReplayWithMockDataAsync(ShadowTest shadowTest, InferenceSession championModel, InferenceSession challengerModel, CancellationToken cancellationToken)
     {
         // Fallback to mock data when historical data is not available
-        var random = new Random(42); // Deterministic for testing
+        // Use cryptographic RNG for deterministic but secure random generation
         var sessions = shadowTest.Config.MinSessions;
         var tradesPerSession = Math.Max(10, shadowTest.Config.MinTrades / sessions);
 
@@ -323,7 +332,7 @@ internal class ShadowTester : IShadowTester
             for (int trade = 0; trade < tradesPerSession; trade++)
             {
                 // Simulate market context
-                var context = CreateMockTradingContext(random);
+                var context = CreateMockTradingContext();
                 
                 // Get decisions from both models
                 var championDecision = await GetModelDecisionAsync(championModel, context, cancellationToken).ConfigureAwait(false);
@@ -398,18 +407,18 @@ internal class ShadowTester : IShadowTester
         accountBalance += dailyPnL * 0.001m; // Small portion of PnL to account
     }
 
-    private Models.TradingContext CreateMockTradingContext(Random random)
+    private Models.TradingContext CreateMockTradingContext()
     {
         return new Models.TradingContext
         {
             Symbol = "ES",
-            Timestamp = DateTime.UtcNow.AddMinutes(-random.Next(1000)),
-            CurrentPrice = 4500 + (decimal)(random.NextDouble() * 100 - 50),
-            Volume = random.Next(100, 1000),
-            Volatility = (decimal)(random.NextDouble() * 0.5),
-            CurrentPosition = random.Next(-2, 3),
+            Timestamp = DateTime.UtcNow.AddMinutes(-RandomNumberGenerator.GetInt32(0, 1000)),
+            CurrentPrice = 4500 + (decimal)(RandomNumberGenerator.GetInt32(0, 1000) / 1000.0 * 100 - 50),
+            Volume = RandomNumberGenerator.GetInt32(100, 1000),
+            Volatility = (decimal)(RandomNumberGenerator.GetInt32(0, 500) / 1000.0),
+            CurrentPosition = RandomNumberGenerator.GetInt32(-2, 3),
             AccountBalance = 50000,
-            DailyPnL = (decimal)(random.NextDouble() * 2000 - 1000)
+            DailyPnL = (decimal)(RandomNumberGenerator.GetInt32(0, 1000) / 1000.0 * 2000 - 1000)
         };
     }
 

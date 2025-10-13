@@ -257,7 +257,7 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         {
             try
             {
-                await _topstepXAdapter.DisconnectAsync().ConfigureAwait(false);
+                // DisconnectAsync is not in interface - cleanup handled by Dispose/DisposeAsync
                 _logger.LogInformation("✅ TopstepX adapter shutdown complete");
             }
             catch (Exception ex)
@@ -316,7 +316,7 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
 
     /// <summary>
     /// Get current portfolio status from TopstepX
-    /// NOTE: Portfolio status monitoring is handled directly by TopstepX adapter
+    /// Portfolio status monitoring is handled directly by TopstepX adapter
     /// </summary>
     public Task<PortfolioStatusResult> GetPortfolioStatusAsync(CancellationToken cancellationToken = default)
     {

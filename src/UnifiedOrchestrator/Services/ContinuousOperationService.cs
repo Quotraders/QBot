@@ -80,7 +80,7 @@ internal class ContinuousOperationService : BackgroundService
                 await PerformDailyRetrainingAsync(stoppingToken).ConfigureAwait(false);
                 
                 // Monitor and cleanup active jobs
-                await MonitorActiveJobsAsync(stoppingToken).ConfigureAwait(false);
+                await MonitorActiveJobsAsync().ConfigureAwait(false);
                 
                 // Weekend intensive training coordination
                 await CoordinateWeekendTrainingAsync(stoppingToken).ConfigureAwait(false);
@@ -94,7 +94,7 @@ internal class ContinuousOperationService : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[24/7-OPS] Error in continuous operation service");
-                await LogOperationAsync("ERROR", $"Operation error: {ex.Message}", stoppingToken).ConfigureAwait(false);
+                await LogOperationAsync("ERROR", $"Operation error: {ex.Message}").ConfigureAwait(false);
                 await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken).ConfigureAwait(false);
             }
         }
@@ -192,7 +192,7 @@ internal class ContinuousOperationService : BackgroundService
             await Task.WhenAll(tasks.Take(intensity.ParallelJobs)).ConfigureAwait(false);
             
             await LogOperationAsync("TRAINING", 
-                $"Scheduled {intensity.ParallelJobs} intensive training jobs", cancellationToken).ConfigureAwait(false);
+                $"Scheduled {intensity.ParallelJobs} intensive training jobs").ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -233,7 +233,7 @@ internal class ContinuousOperationService : BackgroundService
             await Task.WhenAll(tasks).ConfigureAwait(false);
             
             await LogOperationAsync("TRAINING", 
-                $"Scheduled {tasks.Count} moderate training jobs", cancellationToken).ConfigureAwait(false);
+                $"Scheduled {tasks.Count} moderate training jobs").ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -262,7 +262,7 @@ internal class ContinuousOperationService : BackgroundService
                 await ScheduleIncrementalTrainingAsync(cancellationToken).ConfigureAwait(false);
                 
                 await LogOperationAsync("TRAINING", 
-                    "Scheduled 1 background training job", cancellationToken).ConfigureAwait(false);
+                    "Scheduled 1 background training job").ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -389,7 +389,7 @@ internal class ContinuousOperationService : BackgroundService
 
             _state.LastDailyRetraining = now;
             await LogOperationAsync("DAILY_RETRAIN", 
-                $"Initiated daily retraining for {algorithms.Length} algorithms", cancellationToken).ConfigureAwait(false);
+                $"Initiated daily retraining for {algorithms.Length} algorithms").ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -433,7 +433,7 @@ internal class ContinuousOperationService : BackgroundService
 
             _state.LastWeekendTraining = now;
             await LogOperationAsync("WEEKEND_INTENSIVE", 
-                $"Completed weekend intensive training with {weekendTasks.Count} tasks", cancellationToken).ConfigureAwait(false);
+                $"Completed weekend intensive training with {weekendTasks.Count} tasks").ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -454,14 +454,14 @@ internal class ContinuousOperationService : BackgroundService
             var algorithms = new[] { "PPO", "UCB", "LSTM" };
             var syncTasks = algorithms.Select(async algorithm =>
             {
-                var champion = await _modelRegistry.GetChampionAsync(algorithm, cancellationToken).ConfigureAwait(false);
-                if (champion != null)
+                var champion = await _modelRegistry.GetActiveModelAsync(algorithm, cancellationToken).ConfigureAwait(false);
+                if (champion != null && !string.IsNullOrEmpty(champion.FilePath))
                 {
-                    var isValid = await _modelRegistry.ValidateArtifactAsync(champion.VersionId, cancellationToken).ConfigureAwait(false);
+                    var isValid = await _modelRegistry.ValidateModelAsync(champion.FilePath, cancellationToken).ConfigureAwait(false);
                     if (!isValid)
                     {
-                        _logger.LogWarning("[24/7-OPS] Champion model artifact validation failed for {Algorithm}: {VersionId}",
-                            algorithm, champion.VersionId);
+                        _logger.LogWarning("[24/7-OPS] Champion model validation failed for {Algorithm}: {FilePath}",
+                            algorithm, champion.FilePath);
                     }
                 }
             });
@@ -596,7 +596,7 @@ internal class ContinuousOperationService : BackgroundService
         if (nonCriticalJobs.Any())
         {
             await LogOperationAsync("CLEANUP", 
-                $"Cancelled {nonCriticalJobs.Count} non-critical jobs due to market activity", cancellationToken).ConfigureAwait(false);
+                $"Cancelled {nonCriticalJobs.Count} non-critical jobs due to market activity").ConfigureAwait(false);
         }
     }
 
@@ -642,7 +642,7 @@ internal class ContinuousOperationService : BackgroundService
                         $"Active Jobs: {_state.ActiveTrainingJobs}, " +
                         $"Safe Window: {_state.IsInSafeWindow}";
 
-            await LogOperationAsync("STATUS", status, cancellationToken).ConfigureAwait(false);
+            await LogOperationAsync("STATUS", status).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

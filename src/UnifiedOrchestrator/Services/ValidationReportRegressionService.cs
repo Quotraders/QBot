@@ -35,16 +35,16 @@ internal class ValidationReportRegressionService
         try
         {
             // Test 1: Verify PromotionTestReport can be created and serialized
-            await TestPromotionTestReportCreationAsync(report, cancellationToken).ConfigureAwait(false);
+            await TestPromotionTestReportCreationAsync(report).ConfigureAwait(false);
 
             // Test 2: Verify downstream analytics still work
-            await TestDownstreamAnalyticsAsync(report, cancellationToken).ConfigureAwait(false);
+            await TestDownstreamAnalyticsAsync(report).ConfigureAwait(false);
 
             // Test 3: Verify reporting pipeline still functions
-            await TestReportingPipelineAsync(report, cancellationToken).ConfigureAwait(false);
+            await TestReportingPipelineAsync(report).ConfigureAwait(false);
 
             // Test 4: Verify backward compatibility where needed
-            await TestBackwardCompatibilityAsync(report, cancellationToken).ConfigureAwait(false);
+            await TestBackwardCompatibilityAsync(report).ConfigureAwait(false);
 
             report.TotalTests = report.TestResults.Count;
             report.PassedTests = report.TestResults.Count(t => t.TestPassed);

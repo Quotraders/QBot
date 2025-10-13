@@ -51,8 +51,8 @@ internal class DataFlowMonitoringService : BackgroundService
             try
             {
                 await MonitorDataFlows(stoppingToken).ConfigureAwait(false);
-                await CheckConnectionHealth(stoppingToken).ConfigureAwait(false);
-                await ReportDataFlowStatus(stoppingToken).ConfigureAwait(false);
+                await CheckConnectionHealth().ConfigureAwait(false);
+                await ReportDataFlowStatus().ConfigureAwait(false);
                 
                 // Monitor every 30 seconds
                 await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken).ConfigureAwait(false);
@@ -85,7 +85,7 @@ internal class DataFlowMonitoringService : BackgroundService
         await MonitorDataIntegrationService(scope, cancellationToken).ConfigureAwait(false);
         
         // Monitor backtest learning service
-        await MonitorBacktestLearningService(scope, cancellationToken).ConfigureAwait(false);
+        await MonitorBacktestLearningService().ConfigureAwait(false);
         
         // Clean up old metrics (keep last hour only)
         CleanupOldMetrics();
@@ -94,7 +94,7 @@ internal class DataFlowMonitoringService : BackgroundService
     /// <summary>
     /// Monitor SignalR connection status and data reception
     /// </summary>
-    private async Task MonitorSignalRConnections(IServiceScope scope)
+    private async Task MonitorSignalRConnections(IServiceScope scope, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -106,10 +106,10 @@ internal class DataFlowMonitoringService : BackgroundService
             }
 
             var isConnected = topstepXAdapter.IsConnected;
-            var health = topstepXAdapter.ConnectionHealthScore;
+            var healthScore = await topstepXAdapter.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
             
-            RecordConnectionHealth("TopstepXAdapter", isConnected && health >= 80, 
-                $"Connected: {isConnected}, Health: {health:F1}%");
+            RecordConnectionHealth("TopstepXAdapter", isConnected && healthScore >= 80, 
+                $"Connected: {isConnected}, Health: {healthScore:F1}%");
             
             // If adapter is connected but we're not receiving data, this indicates a data flow issue
             if (isConnected)

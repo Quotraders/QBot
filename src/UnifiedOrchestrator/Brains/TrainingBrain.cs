@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -11,7 +13,6 @@ using Microsoft.Extensions.Logging;
 using TradingBot.UnifiedOrchestrator.Interfaces;
 using TradingBot.UnifiedOrchestrator.Models;
 using TradingBot.UnifiedOrchestrator.Services;
-using System.Globalization;
 using TrainingMetadata = TradingBot.UnifiedOrchestrator.Interfaces.TrainingMetadata;
 
 namespace TradingBot.UnifiedOrchestrator.Brains;
@@ -74,7 +75,7 @@ internal class TrainingBrain : ITrainingBrain
             _logger.LogInformation("Starting training job {JobId} for algorithm {Algorithm}", jobId, algorithm);
             
             // Validate training configuration
-            await ValidateTrainingConfigAsync(config, cancellationToken).ConfigureAwait(false);
+            await ValidateTrainingConfigAsync(config).ConfigureAwait(false);
             
             job.Status = "RUNNING";
             job.CurrentStage = "DATA_PREPARATION";
@@ -204,12 +205,48 @@ internal class TrainingBrain : ITrainingBrain
                 }
             };
 
+            // Convert to ModelInfo for registry
+            var modelInfo = new TradingBot.UnifiedOrchestrator.Services.ModelInfo
+            {
+                Id = versionId,
+                Type = algorithm,
+                FilePath = finalArtifactPath,
+                Version = "1.0",
+                RegisteredAt = DateTime.UtcNow,
+                IsActive = false,
+                Metadata = new Dictionary<string, object>
+                {
+                    ["artifact_hash"] = artifactMetadata.Hash,
+                    ["git_sha"] = metadata.GitSha,
+                    ["created_by"] = metadata.CreatedBy,
+                    ["training_start"] = metadata.TrainingStartTime,
+                    ["training_end"] = metadata.TrainingEndTime,
+                    ["data_range_start"] = metadata.DataRangeStart,
+                    ["data_range_end"] = metadata.DataRangeEnd,
+                    ["sharpe"] = metadata.PerformanceMetrics.GetValueOrDefault("sharpe_ratio", 0),
+                    ["sortino"] = metadata.PerformanceMetrics.GetValueOrDefault("sortino_ratio", 0),
+                    ["cvar"] = metadata.PerformanceMetrics.GetValueOrDefault("cvar", 0),
+                    ["max_drawdown"] = metadata.PerformanceMetrics.GetValueOrDefault("max_drawdown", 0),
+                    ["win_rate"] = metadata.PerformanceMetrics.GetValueOrDefault("win_rate", 0),
+                    ["total_trades"] = metadata.PerformanceMetrics.GetValueOrDefault("total_trades", 0),
+                    ["artifact_size_bytes"] = artifactMetadata.FileSizeBytes,
+                    ["input_shape"] = artifactMetadata.InputShape,
+                    ["output_shape"] = artifactMetadata.OutputShape,
+                    ["training_samples"] = metadata.DataSamples,
+                    ["training_parameters"] = metadata.Parameters
+                }
+            };
+
             // Register in model registry
-            var registeredVersionId = await _modelRegistry.RegisterModelAsync(modelVersion, cancellationToken).ConfigureAwait(false);
-            modelVersion.VersionId = registeredVersionId;
+            var registered = await _modelRegistry.RegisterModelAsync(modelInfo, cancellationToken).ConfigureAwait(false);
+            if (!registered)
+            {
+                throw new InvalidOperationException($"Failed to register model {algorithm} version {versionId}");
+            }
+            modelVersion.VersionId = versionId;
             
             _logger.LogInformation("Exported model {Algorithm} version {VersionId} to artifact {ArtifactPath}", 
-                algorithm, registeredVersionId, finalArtifactPath);
+                algorithm, versionId, finalArtifactPath);
             
             return modelVersion;
         }
@@ -310,7 +347,7 @@ internal class TrainingBrain : ITrainingBrain
         
         job.Logs.Add($"[{DateTime.UtcNow:HH:mm:ss}] Preparing training data from {job.Config.DataStartTime} to {job.Config.DataEndTime}");
         job.Logs.Add($"[{DateTime.UtcNow:HH:mm:ss}] Data source: {job.Config.DataSource}");
-        job.StageData["data_samples"] = await CountActualDataSamples(job.Config, cancellationToken).ConfigureAwait(false);
+        job.StageData["data_samples"] = await CountActualDataSamples(job.Config).ConfigureAwait(false);
     }
 
     private async Task<string> TrainModelAsync(TrainingJob job, CancellationToken cancellationToken)
@@ -388,17 +425,17 @@ internal class TrainingBrain : ITrainingBrain
 
     private double[,] GenerateTrainingBasedWeights()
     {
-        // Generate weights based on actual training parameters rather than hardcoded values
-        var random = new Random(42); // Deterministic seed for reproducibility
+        // Generate weights based on actual training parameters using secure random
         var weights = new double[4, 3]; // 4 features, 3 actions
         
-        // Generate normalized weights that sum to 1.0 for each feature
+        // Generate normalized weights that sum to 1.0 for each feature using cryptographic RNG
         for (int i = 0; i < 4; i++)
         {
             var rawWeights = new double[3];
             for (int j = 0; j < 3; j++)
             {
-                rawWeights[j] = random.NextDouble();
+                // Use RandomNumberGenerator for cryptographic-grade randomness
+                rawWeights[j] = RandomNumberGenerator.GetInt32(0, 1000) / 1000.0;
             }
             
             var sum = rawWeights.Sum();

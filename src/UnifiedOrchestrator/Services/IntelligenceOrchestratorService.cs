@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using TradingBot.Abstractions;
 using System;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using MarketContext = TradingBot.Abstractions.MarketContext;
@@ -37,7 +38,7 @@ internal class IntelligenceOrchestratorService : BackgroundService, IIntelligenc
             try
             {
                 // Main intelligence processing loop
-                await ProcessIntelligenceOperationsAsync(stoppingToken).ConfigureAwait(false);
+                await ProcessIntelligenceOperationsAsync().ConfigureAwait(false);
                 
                 // Wait before next iteration
                 await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken).ConfigureAwait(false);
@@ -73,8 +74,8 @@ internal class IntelligenceOrchestratorService : BackgroundService, IIntelligenc
             await Task.Delay(100, cancellationToken).ConfigureAwait(false);
             
             // Generate a more realistic trading decision based on market context
-            var confidence = 0.6m + (decimal)(Random.Shared.NextDouble() * 0.3); // 0.6-0.9 range
-            var isPositive = Random.Shared.NextDouble() > 0.4; // 60% positive bias for testing
+            var confidence = 0.6m + (decimal)(RandomNumberGenerator.GetInt32(0, 300) / 1000.0); // 0.6-0.9 range
+            var isPositive = RandomNumberGenerator.GetInt32(0, 100) > 40; // 60% positive bias for testing
             
             var (action, side, quantity, price) = GenerateDecisionParameters(context, confidence, isPositive);
             
@@ -152,9 +153,9 @@ internal class IntelligenceOrchestratorService : BackgroundService, IIntelligenc
         await Task.Delay(50, cancellationToken).ConfigureAwait(false);
         
         // Generate realistic performance metrics that would come from actual training
-        var accuracy = 0.6 + (Random.Shared.NextDouble() * 0.2); // 0.6-0.8 range
-        var precision = accuracy * (0.95 + Random.Shared.NextDouble() * 0.1); // Slightly higher than accuracy
-        var recall = accuracy * (0.9 + Random.Shared.NextDouble() * 0.15); // Similar to accuracy
+        var accuracy = 0.6 + (RandomNumberGenerator.GetInt32(0, 200) / 1000.0); // 0.6-0.8 range
+        var precision = accuracy * (0.95 + RandomNumberGenerator.GetInt32(0, 100) / 1000.0); // Slightly higher than accuracy
+        var recall = accuracy * (0.9 + RandomNumberGenerator.GetInt32(0, 150) / 1000.0); // Similar to accuracy
         var f1Score = precision > 0 && recall > 0 ? 2.0 * (precision * recall) / (precision + recall) : 0.0;
         
         return new ModelPerformance
@@ -164,10 +165,10 @@ internal class IntelligenceOrchestratorService : BackgroundService, IIntelligenc
             Precision = precision,
             Recall = recall,
             F1Score = f1Score,
-            BrierScore = 0.15 + (Random.Shared.NextDouble() * 0.1), // 0.15-0.25 range (lower is better)
+            BrierScore = 0.15 + (RandomNumberGenerator.GetInt32(0, 100) / 1000.0), // 0.15-0.25 range (lower is better)
             HitRate = accuracy * 0.95, // Slightly lower than accuracy
-            Latency = 50 + (Random.Shared.NextDouble() * 100), // 50-150ms latency
-            SampleSize = 1000 + Random.Shared.Next(500), // 1000-1500 samples
+            Latency = 50 + (RandomNumberGenerator.GetInt32(0, 1000) / 10.0), // 50-150ms latency
+            SampleSize = 1000 + RandomNumberGenerator.GetInt32(0, 500), // 1000-1500 samples
             WindowStart = DateTime.UtcNow.AddDays(-7), // Last week's performance
             WindowEnd = DateTime.UtcNow,
             LastUpdated = DateTime.UtcNow

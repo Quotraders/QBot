@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -81,11 +82,11 @@ internal class ProductionDemonstrationRunner
 
             // 4. Safe Window Enforcement
             _logger.LogWarning("✅ [DEMO-STEP-4] Testing safe window enforcement...");
-            await DemonstrateSafeWindowEnforcementAsync(demoId, cancellationToken).ConfigureAwait(false);
+            await DemonstrateSafeWindowEnforcementAsync(demoId).ConfigureAwait(false);
 
             // 5. Data Integration Status
             _logger.LogWarning("✅ [DEMO-STEP-5] Validating data integration...");
-            await DemonstrateDataIntegrationAsync(demoId, cancellationToken).ConfigureAwait(false);
+            await DemonstrateDataIntegrationAsync(demoId).ConfigureAwait(false);
 
             // 6. Enum Mapping Coverage Validation (REQUESTED IN PR REVIEW)
             _logger.LogWarning("✅ [DEMO-STEP-6] Testing ConvertPriceDirectionToTradingAction() enum mapping coverage...");
@@ -143,7 +144,7 @@ internal class ProductionDemonstrationRunner
         var decisions = new List<object>();
         for (int i = 0; i < 5; i++)
         {
-            testContext.CurrentPrice += (decimal)(new Random().NextDouble() - 0.5) * 2;
+            testContext.CurrentPrice += (decimal)(RandomNumberGenerator.GetInt32(0, 1000) / 1000.0 - 0.5) * 2;
             var decision = await _brainAdapter.DecideAsync(testContext, cancellationToken).ConfigureAwait(false);
             
             decisions.Add(new

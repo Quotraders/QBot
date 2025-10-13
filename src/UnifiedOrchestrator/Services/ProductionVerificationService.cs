@@ -236,7 +236,7 @@ internal class ProductionVerificationService : IHostedService
                 _logger.LogInformation("✅ [API-VERIFICATION] TopstepX Client: {ClientType}", clientType);
 
                 // Verify client has proper error handling (not returning null)
-                await VerifyClientErrorHandlingAsync(topstepClient).ConfigureAwait(false);
+                await VerifyClientErrorHandlingAsync().ConfigureAwait(false);
             }
             else
             {

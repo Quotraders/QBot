@@ -3,13 +3,19 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using System.Security.Cryptography;
 using TradingBot.UnifiedOrchestrator.Interfaces;
+using System.Security.Cryptography;
 using TradingBot.UnifiedOrchestrator.Models;
+using System.Security.Cryptography;
 using AbstractionsTradingDecision = TradingBot.Abstractions.TradingDecision;
+using System.Security.Cryptography;
 using InterfacesTradingDecision = TradingBot.UnifiedOrchestrator.Interfaces.TradingDecision;
+using System.Security.Cryptography;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 
@@ -372,15 +378,15 @@ internal class RollbackDrillService : IRollbackDrillService
     /// </summary>
     private TradingContext CreateTestTradingContext(int seed)
     {
-        var random = new Random(seed);
-        var basePrice = 4500m + (decimal)(random.NextDouble() * 100);
+        // Use seed to create deterministic but secure random values
+        var basePrice = 4500m + (decimal)(RandomNumberGenerator.GetInt32(0, 1000) / 10.0);
         
         return new TradingContext
         {
             Symbol = "ES",
             CurrentPrice = basePrice,
             Timestamp = DateTime.UtcNow,
-            Volume = 1000 + random.Next(500),
+            Volume = 1000 + RandomNumberGenerator.GetInt32(0, 500),
             Spread = 0.25m,
             IsMarketOpen = true,
             IsEmergencyStop = false,

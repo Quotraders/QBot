@@ -98,19 +98,19 @@ internal class ProductionReadinessValidationService : IProductionReadinessValida
 
             // 4. Safe Window Enforcement Proof
             _logger.LogInformation("[VALIDATION-4] Testing safe window enforcement...");
-            var safeWindowResult = await ValidateSafeWindowEnforcementAsync(cancellationToken).ConfigureAwait(false);
+            var safeWindowResult = await ValidateSafeWindowEnforcementAsync().ConfigureAwait(false);
             report.TestResults["SafeWindowEnforcement"] = safeWindowResult;
             await SaveArtifactAsync($"{reportId}-safe-window.json", safeWindowResult).ConfigureAwait(false);
 
             // 5. Data Integration Validation
             _logger.LogInformation("[VALIDATION-5] Validating data integration...");
-            var dataIntegrationResult = await ValidateDataIntegrationAsync(cancellationToken).ConfigureAwait(false);
+            var dataIntegrationResult = await ValidateDataIntegrationAsync().ConfigureAwait(false);
             report.TestResults["DataIntegration"] = dataIntegrationResult;
             await SaveArtifactAsync($"{reportId}-data-integration.json", dataIntegrationResult).ConfigureAwait(false);
 
             // 6. Acceptance Criteria Verification (AC1-AC10)
             _logger.LogInformation("[VALIDATION-6] Verifying acceptance criteria AC1-AC10...");
-            var acceptanceCriteriaResult = await VerifyAcceptanceCriteriaAsync(cancellationToken).ConfigureAwait(false);
+            var acceptanceCriteriaResult = await VerifyAcceptanceCriteriaAsync().ConfigureAwait(false);
             report.TestResults["AcceptanceCriteria"] = acceptanceCriteriaResult;
             await SaveArtifactAsync($"{reportId}-acceptance-criteria.json", acceptanceCriteriaResult).ConfigureAwait(false);
 

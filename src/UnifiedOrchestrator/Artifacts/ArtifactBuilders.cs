@@ -263,7 +263,7 @@ internal class UcbSerializer : IArtifactBuilder
             }
 
             // For UCB, we serialize parameters to JSON format
-            var ucbModel = await LoadUcbModelAsync(modelPath, cancellationToken).ConfigureAwait(false);
+            var ucbModel = await LoadUcbModelAsync(cancellationToken).ConfigureAwait(false);
             var serializedModel = SerializeUcbModel(ucbModel, metadata);
 
             var tempOutputPath = outputPath + ".tmp";

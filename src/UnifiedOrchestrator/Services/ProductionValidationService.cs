@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -573,12 +574,12 @@ internal class ProductionValidationService : IValidationService
 
     private List<ShadowTestResult> GenerateRealisticShadowResults(string algorithm, int count, double avgReturn, double volatility)
     {
-        var random = new Random(algorithm.GetHashCode()); // Deterministic for algorithm
+        // Use cryptographic RNG for secure random generation
         var results = new List<ShadowTestResult>();
         
         for (int i = 0; i < count; i++)
         {
-            var ret = avgReturn + volatility * (random.NextDouble() - 0.5) * 2;
+            var ret = avgReturn + volatility * (RandomNumberGenerator.GetInt32(0, 1000) / 1000.0 - 0.5) * 2;
             var decision = ret > 0 ? TradingAction.Buy : (ret < -0.05 ? TradingAction.Sell : TradingAction.Hold);
             
             results.Add(new ShadowTestResult
@@ -586,7 +587,7 @@ internal class ProductionValidationService : IValidationService
                 Timestamp = DateTime.UtcNow.AddMinutes(-count + i),
                 Algorithm = algorithm,
                 Decision = decision,
-                Confidence = 0.6 + random.NextDouble() * 0.3,
+                Confidence = 0.6 + RandomNumberGenerator.GetInt32(0, 1000) / 1000.0 * 0.3,
                 Return = ret,
                 Success = ret > 0
             });

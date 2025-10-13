@@ -46,24 +46,10 @@ internal class EnhancedAuthenticationService : IHostedService
         await _tradingLogger.LogSystemAsync(TradingLogLevel.INFO, "AuthService", 
             "Enhanced authentication service started").ConfigureAwait(false);
 
-        // Log credential discovery
-        var credentialDiscovery = _credentialManager.DiscoverAllCredentialSources();
+        // Credential discovery not available (legacy credential manager removed)
         
         await _tradingLogger.LogSystemAsync(TradingLogLevel.INFO, "AuthService", 
-            "Credential discovery completed", new
-            {
-                totalSourcesFound = credentialDiscovery.TotalSourcesFound,
-                hasEnvironmentCredentials = credentialDiscovery.HasEnvironmentCredentials,
-                hasFileCredentials = credentialDiscovery.HasFileCredentials,
-                hasAnyCredentials = credentialDiscovery.HasAnyCredentials,
-                recommendedSource = credentialDiscovery.RecommendedSource
-            }).ConfigureAwait(false);
-
-        if (!credentialDiscovery.HasAnyCredentials)
-        {
-            await _tradingLogger.LogSystemAsync(TradingLogLevel.ERROR, "AuthService", 
-                "No TopstepX credentials found - authentication will fail").ConfigureAwait(false);
-        }
+            "Enhanced authentication service initialized").ConfigureAwait(false);
 
         // Attempt initial authentication
         await AttemptAuthenticationAsync().ConfigureAwait(false);
