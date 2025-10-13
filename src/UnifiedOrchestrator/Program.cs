@@ -805,10 +805,6 @@ Please check the configuration and ensure all required services are registered.
             client.Timeout = TimeSpan.FromSeconds(30);
         });
         
-        // Register TopstepXService for real client
-        // TODO: ITopstepXService and TopstepXService don't exist - need to be implemented or use ITopstepXAdapterService directly
-        // services.AddSingleton<global::BotCore.Services.ITopstepXService, global::BotCore.Services.TopstepXService>();
-        
         // TopstepX SDK Adapter Service - Production-ready Python SDK integration
         services.AddSingleton<TradingBot.Abstractions.ITopstepXAdapterService, TopstepXAdapterService>();
         
@@ -2034,8 +2030,7 @@ Please check the configuration and ensure all required services are registered.
         // - Calculates rolling 3-day Sharpe ratio
         // - Rolls back if >20% degradation for 3 consecutive days
         // - Archives failed parameters and logs rollback events
-        // TODO: TradingBot.Monitoring.ParameterPerformanceMonitor doesn't exist - need to implement or remove
-        // services.AddHostedService<TradingBot.Monitoring.ParameterPerformanceMonitor>();
+        // Note: ParameterPerformanceMonitor is planned for future implementation
 
     }
 
