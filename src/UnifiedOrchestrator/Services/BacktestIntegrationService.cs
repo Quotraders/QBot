@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using TradingBot.Backtest;
 using TradingBot.Backtest.ExecutionSimulators;
 using TradingBot.Backtest.Metrics;
+using TradingBot.Backtest.Reports;
 
 namespace TradingBot.UnifiedOrchestrator.Services
 {
