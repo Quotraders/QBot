@@ -35,7 +35,11 @@ internal class LogRetentionService : IHostedService
         var next2AM = now.Date.AddDays(1).AddHours(2);
         var timeUntil2AM = next2AM - now;
         
-        _cleanupTimer = new Timer(PerformCleanup, null, timeUntil2AM, TimeSpan.FromDays(1));
+        _cleanupTimer = new Timer(
+            callback: state => { _ = PerformCleanupAsync(); },
+            state: null,
+            dueTime: (int)timeUntil2AM.TotalMilliseconds,
+            period: (int)TimeSpan.FromDays(1).TotalMilliseconds);
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -53,11 +57,6 @@ internal class LogRetentionService : IHostedService
             "Log retention service stopped").ConfigureAwait(false);
             
         _cleanupTimer?.Dispose();
-    }
-
-    private Task PerformCleanup()
-    {
-        return PerformCleanupAsync();
     }
 
     private async Task PerformCleanupAsync()
