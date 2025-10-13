@@ -2170,7 +2170,7 @@ internal class AdvancedSystemInitializationService : IHostedService
             }
 
             // Initialize Economic Event Manager (ForexFactory calendar)
-            var economicEventManager = _serviceProvider.GetService<BotCore.Market.IEconomicEventManager>();
+            var economicEventManager = _serviceProvider.GetService<IEconomicEventManager>();
             if (economicEventManager != null)
             {
                 _logger.LogInformation("📅 Initializing Economic Event Manager (ForexFactory calendar)...");
@@ -2186,7 +2186,7 @@ internal class AdvancedSystemInitializationService : IHostedService
             }
 
             // Initialize News Monitor Service (NewsAPI.org real-time monitoring)
-            var newsMonitor = _serviceProvider.GetService<BotCore.Services.INewsMonitorService>();
+            var newsMonitor = _serviceProvider.GetService<INewsMonitorService>();
             if (newsMonitor != null)
             {
                 _logger.LogInformation("📰 Initializing News Monitor Service (NewsAPI.org)...");

@@ -117,7 +117,8 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         try
         {
             _logger.LogInformation("🚀 Initializing TopstepX Python SDK adapter...");
-            _adapterInitialized = await _topstepXAdapter.InitializeAsync(cancellationToken).ConfigureAwait(false);
+            await _topstepXAdapter.InitializeAsync(cancellationToken).ConfigureAwait(false);
+            _adapterInitialized = true;
             
             if (_adapterInitialized)
             {
