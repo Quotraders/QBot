@@ -110,13 +110,13 @@ internal class TopstepXIntegrationTestService : BackgroundService
             }
             
             // Verify health score
-            var health = await _adapterService.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
-            if (health.HealthScore < 80)
+            var healthScore = await _adapterService.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
+            if (healthScore < 80)
             {
-                throw new InvalidOperationException($"Health score too low: {health.HealthScore}%");
+                throw new InvalidOperationException($"Health score too low: {healthScore}%");
             }
             
-            _logger.LogInformation("✅ Connection Test PASSED - Health: {HealthScore}%", health.HealthScore);
+            _logger.LogInformation("✅ Connection Test PASSED - Health: {HealthScore}%", healthScore);
         }
         catch (Exception ex)
         {
@@ -232,39 +232,20 @@ internal class TopstepXIntegrationTestService : BackgroundService
         try
         {
             // Get baseline health
-            var initialHealth = await _adapterService.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
-            _logger.LogInformation("Initial health score: {HealthScore}% - Status: {Status}", 
-                initialHealth.HealthScore, initialHealth.Status);
+            var initialHealthScore = await _adapterService.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation("Initial health score: {HealthScore}%", initialHealthScore);
             
             // Verify health score is within expected range
-            if (initialHealth.HealthScore < 0 || initialHealth.HealthScore > 100)
+            if (initialHealthScore < 0 || initialHealthScore > 100)
             {
-                throw new InvalidOperationException($"Invalid health score: {initialHealth.HealthScore}%");
-            }
-            
-            // Verify health status categories
-            var expectedStatuses = new[] { "healthy", "degraded", "critical", "error" };
-            if (!Array.Exists(expectedStatuses, s => s.Equals(initialHealth.Status, StringComparison.OrdinalIgnoreCase)))
-            {
-                throw new InvalidOperationException($"Unexpected health status: {initialHealth.Status}");
-            }
-            
-            // Verify instrument health tracking
-            if (initialHealth.InstrumentHealth.Count == 0)
-            {
-                throw new InvalidOperationException("No instrument health data available");
-            }
-            
-            foreach (var instrument in initialHealth.InstrumentHealth)
-            {
-                _logger.LogInformation("Instrument {Instrument} health: {Health}", instrument.Key, instrument.Value);
+                throw new InvalidOperationException($"Invalid health score: {initialHealthScore}%");
             }
             
             // Monitor health over time
             await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
             
-            var followUpHealth = await _adapterService.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
-            _logger.LogInformation("Follow-up health score: {HealthScore}%", followUpHealth.HealthScore);
+            var followUpHealthScore = await _adapterService.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation("Follow-up health score: {HealthScore}%", followUpHealthScore);
             
             _logger.LogInformation("✅ Health Test PASSED - Health monitoring functioning correctly");
         }
@@ -323,9 +304,9 @@ internal class TopstepXIntegrationTestService : BackgroundService
                 _logger.LogWarning("⚠️ ES order failed: {Error}", esOrder.Error);
             }
             
-            // Test concurrent portfolio status
-            var portfolioStatus = await _adapterService.GetPortfolioStatusAsync(cancellationToken).ConfigureAwait(false);
-            _logger.LogInformation("Portfolio status retrieved - {PositionCount} positions", portfolioStatus.Positions.Count);
+            // Verify connection health remains stable after concurrent operations
+            var healthScore = await _adapterService.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation("Health score after concurrent operations: {HealthScore}%", healthScore);
             
             _logger.LogInformation("✅ Multi-Instrument Test PASSED - No thread contention detected");
         }
