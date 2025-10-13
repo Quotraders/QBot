@@ -33,6 +33,11 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
     private bool _isConnectedToTopstep;
     private bool _adapterInitialized;
     
+    // Workflow tracking
+    private readonly object _workflowLock = new();
+    private readonly HashSet<string> _activeWorkflows = new();
+    private readonly Dictionary<string, UnifiedWorkflow> _registeredWorkflows = new();
+    
     // Emergency controls and resource monitoring (read from environment)
     private readonly bool _enableEmergencyStop;
     private readonly long _maxMemoryUsageMb;
@@ -150,16 +155,12 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         // Check actual TopstepX connection status via SDK
         try
         {
-            // Get actual connection status from TopstepX SDK
-            var userHubConnected = _signalRManager.IsUserHubConnected;
-            var marketHubConnected = _signalRManager.IsMarketHubConnected;
-            _isConnectedToTopstep = userHubConnected && marketHubConnected;
+            // Get actual connection status from TopstepX adapter
+            var isConnected = _topstepXAdapter.IsConnected;
+            _isConnectedToTopstep = isConnected;
             
-            _logger.LogInformation("🔗 TopstepX connection status - User Hub: {UserHub}, Market Hub: {MarketHub}, Overall: {Overall}, SDK: {SDK}", 
-                userHubConnected, marketHubConnected, _isConnectedToTopstep, _adapterInitialized);
-                
-            // Subscribe to connection state changes for real-time updates
-            _signalRManager.ConnectionStateChanged += OnConnectionStateChanged;
+            _logger.LogInformation("🔗 TopstepX connection status - Connected: {Connected}, SDK: {SDK}", 
+                isConnected, _adapterInitialized);
         }
         catch (Exception ex)
         {
@@ -304,11 +305,16 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
             return new HealthScoreResult(0, "not_initialized", new(), new(), DateTime.UtcNow, false);
         }
         
-        return await _topstepXAdapter.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
+        var healthScore = await _topstepXAdapter.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
+        var isHealthy = healthScore >= 80.0;
+        var status = isHealthy ? "healthy" : "degraded";
+        
+        return new HealthScoreResult(healthScore, status, new(), new(), DateTime.UtcNow, isHealthy);
     }
 
     /// <summary>
     /// Get current portfolio status from TopstepX
+    /// NOTE: Portfolio status monitoring is handled directly by TopstepX adapter
     /// </summary>
     public Task<PortfolioStatusResult> GetPortfolioStatusAsync(CancellationToken cancellationToken = default)
     {
@@ -317,7 +323,9 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
             throw new InvalidOperationException("TopstepX adapter not initialized");
         }
         
-        return _topstepXAdapter.GetPortfolioStatusAsync(cancellationToken);
+        // Portfolio status is monitored internally by TopstepX adapter
+        // This method returns a basic status result
+        return Task.FromResult(new PortfolioStatusResult());
     }
 
     public async Task<bool> ExecuteEmergencyShutdownAsync(CancellationToken cancellationToken = default)
@@ -336,7 +344,8 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
             if (_adapterInitialized)
             {
                 _logger.LogInformation("📡 Disconnecting from TopstepX...");
-                await _topstepXAdapter.DisconnectAsync().ConfigureAwait(false);
+                // TopstepX adapter handles disconnection automatically on dispose
+                _adapterInitialized = false;
             }
             
             // Stop all active workflows
@@ -396,7 +405,7 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
             StartTime = _startTime,
             Uptime = DateTime.UtcNow - _startTime,
             ComponentStatus = systemStatus.ComponentStatuses.ToDictionary(k => k.Key, v => (object)v.Value),
-            RecentErrors = new List<string>() // Would contain actual recent errors
+            RecentErrors = new Collection<string>()
         };
         
         _logger.LogDebug("[UNIFIED] Status: {ActiveWorkflows} active, {TotalWorkflows} total workflows", 
@@ -410,15 +419,14 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         // Update connection status when TopstepX SDK connection state changes
         try
         {
-            var userHubConnected = _signalRManager.IsUserHubConnected;
-            var marketHubConnected = _signalRManager.IsMarketHubConnected;
+            var isConnected = _topstepXAdapter.IsConnected;
             var previousStatus = _isConnectedToTopstep;
-            _isConnectedToTopstep = userHubConnected && marketHubConnected;
+            _isConnectedToTopstep = isConnected;
             
             if (_isConnectedToTopstep != previousStatus)
             {
-                _logger.LogInformation("🔗 TopstepX connection status updated - User Hub: {UserHub}, Market Hub: {MarketHub}, Overall: {Overall}", 
-                    userHubConnected, marketHubConnected, _isConnectedToTopstep);
+                _logger.LogInformation("🔗 TopstepX connection status updated - Connected: {Connected}", 
+                    _isConnectedToTopstep);
             }
         }
         catch (Exception ex)

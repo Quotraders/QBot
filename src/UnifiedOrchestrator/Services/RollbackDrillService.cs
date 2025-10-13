@@ -86,7 +86,7 @@ internal class RollbackDrillService : IRollbackDrillService
         }
         catch (Exception ex)
         {
-            result.Success;
+            result.Success = false;
             result.ErrorMessage = ex.Message;
             result.EndTime = DateTime.UtcNow;
             result.TotalDurationMs = stopwatch.Elapsed.TotalMilliseconds;
@@ -339,7 +339,7 @@ internal class RollbackDrillService : IRollbackDrillService
     private async Task GenerateWorkerLoad(int workerId, int decisionsPerSecond, ConcurrentBag<(DateTime, double, bool)> decisions, CancellationToken cancellationToken)
     {
         var delayMs = Math.Max(1, 1000 / decisionsPerSecond);
-        var decisionCounter;
+        int decisionCounter = 0;
 
         while (!cancellationToken.IsCancellationRequested)
         {

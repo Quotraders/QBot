@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.DependencyInjection;
 using TradingBot.Abstractions;
 using System.Text.Json;
 using System.Diagnostics;
@@ -44,7 +45,7 @@ namespace TradingBot.UnifiedOrchestrator.Health
                     uptime = GetUptime()
                 };
 
-                return healthReport.Status == HealthStatus.Healthy 
+                return healthReport.Status == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy 
                     ? Results.Ok(response)
                     : Results.StatusCode(503); // Service Unavailable
             }

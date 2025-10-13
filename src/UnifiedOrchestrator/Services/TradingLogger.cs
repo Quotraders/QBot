@@ -187,7 +187,7 @@ internal class TradingLogger : ITradingLogger, IAsyncDisposable, IDisposable
                 {
                     return; // Skip logging until we reach aggregation count
                 }
-                _mlPredictionCounter; // Reset counter
+                _mlPredictionCounter = 0; // Reset counter
             }
         }
 
@@ -377,7 +377,7 @@ internal class TradingLogger : ITradingLogger, IAsyncDisposable, IDisposable
         });
         
         // Reset size tracking
-        _currentFileSizes[category];
+        _currentFileSizes[category] = 0;
         
         // Add a small delay to make this method async-worthy
         await Task.Delay(1).ConfigureAwait(false);

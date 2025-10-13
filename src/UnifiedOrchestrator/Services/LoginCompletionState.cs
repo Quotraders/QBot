@@ -219,7 +219,7 @@ internal class EnterpriseLoginCompletionState : ILoginCompletionState
         {
             _logger.LogWarning("[LOGIN-STATE] Forcing state reset for session {SessionId}", _loginSessionId);
             
-            _isLoginCompleted;
+            _isLoginCompleted = false;
             _loginStartTime = DateTime.MinValue;
             _loginCompletedTime = DateTime.MinValue;
             _loginSessionId = Guid.NewGuid().ToString("N")[..8];

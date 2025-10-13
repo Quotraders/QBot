@@ -121,7 +121,7 @@ internal class ProductionDemonstrationRunner
             _logger.LogError(ex, "❌ [PRODUCTION-DEMO] Demo failed");
             result.EndTime = DateTime.UtcNow;
             result.Duration = result.EndTime - result.StartTime;
-            result.Success;
+            result.Success = false;
             result.ErrorMessage = ex.Message;
             return result;
         }

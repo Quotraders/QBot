@@ -50,7 +50,7 @@ internal class PythonIntegrationOptions
     public bool Enabled { get; set; } = true;
     public string PythonPath { get; set; } = "/usr/bin/python3";
     public string WorkingDirectory { get; set; } = "./python";
-    public Dictionary<string, string> ScriptPaths { get; } = new();
+    public Dictionary<string, string> ScriptPaths { get; set; } = new();
     public int Timeout { get; set; } = 30;
 }
 

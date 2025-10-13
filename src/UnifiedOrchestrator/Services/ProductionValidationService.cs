@@ -212,8 +212,8 @@ internal class ProductionValidationService : IValidationService
         }
 
         var totalDecisions = champion.Count;
-        var agreementCount;
-        var majorDisagreements;
+        int agreementCount = 0;
+        int majorDisagreements = 0;
         var confidenceDifferences = new List<double>();
 
         for (int i = 0; i < totalDecisions; i++)

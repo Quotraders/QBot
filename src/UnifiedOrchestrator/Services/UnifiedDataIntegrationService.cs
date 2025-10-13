@@ -228,7 +228,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
                 "models/training_data",
             };
             
-            var connectedSources;
+            int connectedSources = 0;
             foreach (var path in historicalDataPaths)
             {
                 if (Directory.Exists(path) || File.Exists($"{path}.csv"))
@@ -255,7 +255,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
         catch (Exception ex)
         {
             _logger.LogError(ex, "[DATA-INTEGRATION] Failed to connect historical data");
-            _isHistoricalDataConnected;
+            _isHistoricalDataConnected = false;
         }
     }
 
@@ -311,7 +311,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
         catch (Exception ex)
         {
             _logger.LogError(ex, "[DATA-INTEGRATION] Failed to connect live TopStep data");
-            _isLiveDataConnected;
+            _isLiveDataConnected = false;
         }
     }
 

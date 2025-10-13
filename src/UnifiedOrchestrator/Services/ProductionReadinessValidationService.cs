@@ -131,7 +131,7 @@ internal class ProductionReadinessValidationService : IProductionReadinessValida
             _logger.LogError(ex, "[PRODUCTION-VALIDATION] Validation failed");
             report.EndTime = DateTime.UtcNow;
             report.Duration = report.EndTime - report.StartTime;
-            report.Success;
+            report.Success = false;
             report.ErrorMessage = ex.Message;
             return report;
         }
@@ -274,7 +274,7 @@ internal class ProductionReadinessValidationService : IProductionReadinessValida
         }
         catch (Exception ex)
         {
-            result.HistoricalDataStatus.IsConnected;
+            result.HistoricalDataStatus.IsConnected = false;
             result.HistoricalDataStatus.ErrorMessage = ex.Message;
         }
 
@@ -293,7 +293,7 @@ internal class ProductionReadinessValidationService : IProductionReadinessValida
         }
         catch (Exception ex)
         {
-            result.LiveDataStatus.IsConnected;
+            result.LiveDataStatus.IsConnected = false;
             result.LiveDataStatus.ErrorMessage = ex.Message;
         }
 

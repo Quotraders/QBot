@@ -319,13 +319,13 @@ internal class InferenceBrain : IInferenceBrain
             if (ppoAnalysis.MomentumStrength > 0.7m && ppoAnalysis.TrendDirection > 0)
             {
                 action = "BUY";
-                size = CalculatePPOPositionSize(ppoAnalysis.TrendStrength, context);
+                size = (int)CalculatePPOPositionSize(ppoAnalysis.TrendStrength, context);
                 confidence = Math.Min(0.95m, ppoAnalysis.MomentumStrength * ppoAnalysis.TrendConfidence);
             }
             else if (ppoAnalysis.MomentumStrength > 0.7m && ppoAnalysis.TrendDirection < 0)
             {
                 action = "SELL";
-                size = CalculatePPOPositionSize(ppoAnalysis.TrendStrength, context);
+                size = (int)CalculatePPOPositionSize(ppoAnalysis.TrendStrength, context);
                 confidence = Math.Min(0.95m, ppoAnalysis.MomentumStrength * ppoAnalysis.TrendConfidence);
             }
             else if (Math.Abs(ppoAnalysis.TrendDirection) < 0.2m && ppoAnalysis.Volatility > 0.6m)
@@ -334,13 +334,13 @@ internal class InferenceBrain : IInferenceBrain
                 if (ppoAnalysis.PriceDivergence > 0.5m)
                 {
                     action = "SELL";
-                    size = CalculatePPOPositionSize(ppoAnalysis.PriceDivergence * 0.5m, context);
+                    size = (int)CalculatePPOPositionSize(ppoAnalysis.PriceDivergence * 0.5m, context);
                     confidence = ppoAnalysis.PriceDivergence * 0.7m;
                 }
                 else if (ppoAnalysis.PriceDivergence < -0.5m)
                 {
                     action = "BUY";
-                    size = CalculatePPOPositionSize(Math.Abs(ppoAnalysis.PriceDivergence) * 0.5m, context);
+                    size = (int)CalculatePPOPositionSize(Math.Abs(ppoAnalysis.PriceDivergence) * 0.5m, context);
                     confidence = Math.Abs(ppoAnalysis.PriceDivergence) * 0.7m;
                 }
             }
@@ -391,7 +391,7 @@ internal class InferenceBrain : IInferenceBrain
                 // Size based on arm's expected value and confidence
                 if (action != "HOLD")
                 {
-                    size = CalculateUCBPositionSize(bestArm.ExpectedValue, bestArm.Confidence, context);
+                    size = (int)CalculateUCBPositionSize(bestArm.ExpectedValue, bestArm.Confidence, context);
                     confidence = Math.Min(0.95m, bestArm.Confidence);
                     
                     // UCB exploration bonus
@@ -403,7 +403,7 @@ internal class InferenceBrain : IInferenceBrain
             // Risk adjustment for high volatility periods
             if (ucbAnalysis.MarketVolatility > 0.8m)
             {
-                size *= 0.5m; // Reduce size in high volatility
+                size = (int)(size * 0.5m); // Reduce size in high volatility
                 confidence *= 0.8m; // Lower confidence in volatile markets
             }
             
@@ -447,13 +447,13 @@ internal class InferenceBrain : IInferenceBrain
             if (lstmAnalysis.PredictedDirection > 0.6m && lstmAnalysis.PatternConfidence > 0.7m)
             {
                 action = "BUY";
-                size = CalculateLSTMPositionSize(lstmAnalysis.PredictedMagnitude, lstmAnalysis.PatternConfidence, context);
+                size = (int)CalculateLSTMPositionSize(lstmAnalysis.PredictedMagnitude, lstmAnalysis.PatternConfidence, context);
                 confidence = Math.Min(0.95m, lstmAnalysis.PatternConfidence * lstmAnalysis.SequenceReliability);
             }
             else if (lstmAnalysis.PredictedDirection < -0.6m && lstmAnalysis.PatternConfidence > 0.7m)
             {
                 action = "SELL";
-                size = CalculateLSTMPositionSize(lstmAnalysis.PredictedMagnitude, lstmAnalysis.PatternConfidence, context);
+                size = (int)CalculateLSTMPositionSize(lstmAnalysis.PredictedMagnitude, lstmAnalysis.PatternConfidence, context);
                 confidence = Math.Min(0.95m, lstmAnalysis.PatternConfidence * lstmAnalysis.SequenceReliability);
             }
             
@@ -534,7 +534,7 @@ internal class InferenceBrain : IInferenceBrain
                 case "SELL": sellScore += actionScore; break;
                 case "HOLD": holdScore += actionScore; break;
             }
-            totalSize += ppoDecision.Size * ppoWeight;
+            totalSize += (int)(ppoDecision.Size * ppoWeight);
             avgConfidence += ppoDecision.Confidence * ppoWeight;
             totalWeight += ppoWeight;
             participatingStrategies.Add($"PPO({ppoDecision.Strategy})");
@@ -549,7 +549,7 @@ internal class InferenceBrain : IInferenceBrain
                 case "SELL": sellScore += actionScore; break;
                 case "HOLD": holdScore += actionScore; break;
             }
-            totalSize += ucbDecision.Size * ucbWeight;
+            totalSize += (int)(ucbDecision.Size * ucbWeight);
             avgConfidence += ucbDecision.Confidence * ucbWeight;
             totalWeight += ucbWeight;
             participatingStrategies.Add($"UCB({ucbDecision.Strategy})");
@@ -564,7 +564,7 @@ internal class InferenceBrain : IInferenceBrain
                 case "SELL": sellScore += actionScore; break;
                 case "HOLD": holdScore += actionScore; break;
             }
-            totalSize += lstmDecision.Size * lstmWeight;
+            totalSize += (int)(lstmDecision.Size * lstmWeight);
             avgConfidence += lstmDecision.Confidence * lstmWeight;
             totalWeight += lstmWeight;
             participatingStrategies.Add($"LSTM({lstmDecision.Strategy})");
@@ -573,7 +573,7 @@ internal class InferenceBrain : IInferenceBrain
         // Normalize weights
         if (totalWeight > 0)
         {
-            totalSize /= totalWeight;
+            totalSize = (int)(totalSize / totalWeight);
             avgConfidence /= totalWeight;
         }
         
@@ -619,7 +619,7 @@ internal class InferenceBrain : IInferenceBrain
             // Check for extreme volatility
             if (context.Volatility > 0.8m)
             {
-                totalSize *= 0.5m; // Reduce size in high volatility
+                totalSize = (int)(totalSize * 0.5m); // Reduce size in high volatility
                 finalConfidence *= 0.8m;
                 ensembleMethod += "_VOL_ADJUSTED";
             }
@@ -627,7 +627,7 @@ internal class InferenceBrain : IInferenceBrain
             // Check for adverse market conditions
             if (context.DailyPnL < context.DailyLossLimit * 0.8m)
             {
-                totalSize *= 0.3m; // Very conservative when approaching daily loss limit
+                totalSize = (int)(totalSize * 0.3m); // Very conservative when approaching daily loss limit
                 finalConfidence *= 0.6m;
                 ensembleMethod += "_CONSERVATIVE";
             }

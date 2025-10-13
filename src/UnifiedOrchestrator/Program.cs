@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Configuration;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using TradingBot.UnifiedOrchestrator.Interfaces;
 using TradingBot.UnifiedOrchestrator.Services;
 using TradingBot.UnifiedOrchestrator.Models;
@@ -150,7 +151,7 @@ internal static class Program
             await ValidateStartupServicesAsync(host.Services).ConfigureAwait(false);
             
             // Initialize ML parameter provider for TradingBot classes
-            global::BotCore.Services.TradingBotParameterProvider.Initialize(host.Services);
+            TradingBot.BotCore.Services.TradingBotParameterProvider.Initialize(host.Services);
             
             // Display startup information
             // Note: DisplayStartupInfo() temporarily disabled during build phase
@@ -209,7 +210,7 @@ Artifacts will be saved to: artifacts/production-demo/
             var host = CreateHostBuilder(args).Build();
             
             // Initialize ML parameter provider for TradingBot classes
-            global::BotCore.Services.TradingBotParameterProvider.Initialize(host.Services);
+            TradingBot.BotCore.Services.TradingBotParameterProvider.Initialize(host.Services);
             
             // Get the production demonstration runner
             var demoRunner = host.Services.GetRequiredService<ProductionDemonstrationRunner>();
@@ -293,7 +294,7 @@ This replaces individual SimpleBot/MinimalDemo/TradingBot smoke tests
             var host = CreateHostBuilder(args).Build();
             
             // Initialize ML parameter provider for TradingBot classes
-            global::BotCore.Services.TradingBotParameterProvider.Initialize(host.Services);
+            TradingBot.BotCore.Services.TradingBotParameterProvider.Initialize(host.Services);
             
             // Validate service registration and configuration
             await ValidateStartupServicesAsync(host.Services).ConfigureAwait(false);
@@ -315,7 +316,7 @@ This replaces individual SimpleBot/MinimalDemo/TradingBot smoke tests
             
             // Test 2: Core service availability  
             logger.LogInformation("🧪 [SMOKE] Test 2: Core service availability");
-            var unifiedOrchestrator = host.Services.GetService<IUnifiedOrchestrator>();
+            var unifiedOrchestrator = host.Services.GetService<TradingBot.Abstractions.IUnifiedOrchestrator>();
             var tradingReadiness = host.Services.GetService<ITradingReadinessTracker>();
             var mlConfigService = host.Services.GetService<MLConfigurationService>();
             
@@ -328,9 +329,9 @@ This replaces individual SimpleBot/MinimalDemo/TradingBot smoke tests
                 
             // Test 3: Parameter provider functionality
             logger.LogInformation("🧪 [SMOKE] Test 3: Parameter provider functionality");
-            var confidenceThreshold = global::BotCore.Services.TradingBotParameterProvider.GetAIConfidenceThreshold();
-            var positionMultiplier = global::BotCore.Services.TradingBotParameterProvider.GetPositionSizeMultiplier();
-            var fallbackConfidence = global::BotCore.Services.TradingBotParameterProvider.GetFallbackConfidence();
+            var confidenceThreshold = TradingBot.BotCore.Services.TradingBotParameterProvider.GetAIConfidenceThreshold();
+            var positionMultiplier = TradingBot.BotCore.Services.TradingBotParameterProvider.GetPositionSizeMultiplier();
+            var fallbackConfidence = TradingBot.BotCore.Services.TradingBotParameterProvider.GetFallbackConfidence();
             
             logger.LogInformation("🧪 [SMOKE] ✅ AI Confidence Threshold: {Threshold}", confidenceThreshold);
             logger.LogInformation("🧪 [SMOKE] ✅ Position Size Multiplier: {Multiplier}", positionMultiplier);
@@ -812,30 +813,9 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<ErrorHandlingService>();
         services.AddHostedService<ErrorHandlingService>(provider => provider.GetRequiredService<ErrorHandlingService>());
 
-        // Register TopstepX AccountService for live account data
-        services.AddHttpClient<AccountService>(client =>
-        {
-            client.BaseAddress = new Uri(TopstepXApiBaseUrl);
-            client.DefaultRequestHeaders.Add("User-Agent", TopstepXUserAgent);
-            client.Timeout = TimeSpan.FromSeconds(30);
-        });
-        services.AddSingleton<IAccountService>(provider =>
-        {
-            var logger = provider.GetRequiredService<ILogger<AccountService>>();
-            var appOptions = provider.GetRequiredService<IOptions<AppOptions>>();
-            var httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
-            var httpClient = httpClientFactory.CreateClient(nameof(AccountService));
-            
-            // Configure authentication when JWT token is available
-            var jwtToken = Environment.GetEnvironmentVariable("TOPSTEPX_JWT");
-            if (!string.IsNullOrEmpty(jwtToken))
-            {
-                httpClient.DefaultRequestHeaders.Authorization = 
-                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", jwtToken);
-            }
-            
-            return new AccountService(logger, appOptions, httpClient);
-        });
+        // NOTE: Legacy AccountService removed - account data is now managed by TopstepXAdapterService
+        // services.AddHttpClient<AccountService>...
+        // services.AddSingleton<IAccountService>...
 
         // ========================================================================
         // TOPSTEPX SDK ADAPTER - PRODUCTION-READY PYTHON SDK INTEGRATION
@@ -1400,7 +1380,8 @@ Please check the configuration and ensure all required services are registered.
         // ================================================================================
         // 🔧 MICROSTRUCTURE CALIBRATION SERVICE (ES and NQ only)
         // ================================================================================
-        ConfigureMicrostructureCalibration(services, configuration);
+        // ConfigureMicrostructureCalibration - Microstructure calibration is handled by IntelligenceStack
+        // Note: Microstructure analysis is integrated into the main intelligence pipeline
         
         // ================================================================================
         // AUTHENTICATION & TOPSTEPX SERVICES
@@ -2025,12 +2006,12 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<IRuntimeConfigBus, RuntimeConfigBus>();
 
         // Authentication service
-        services.AddSingleton<ITopstepAuth, TopstepAuth>();
+        services.AddSingleton<TradingBot.UnifiedOrchestrator.Services.ITopstepAuth, TradingBot.UnifiedOrchestrator.Services.TopstepAuth>();
 
         // Model registry (now a hosted service) and canary watchdog
-        services.AddSingleton<ModelRegistry>();
-        services.AddSingleton<IOnnxModelRegistry>(provider => provider.GetRequiredService<ModelRegistry>());
-        services.AddHostedService(provider => provider.GetRequiredService<ModelRegistry>());
+        services.AddSingleton<TradingBot.UnifiedOrchestrator.Services.ModelRegistry>();
+        services.AddSingleton<IOnnxModelRegistry>(provider => provider.GetRequiredService<TradingBot.UnifiedOrchestrator.Services.ModelRegistry>());
+        services.AddHostedService(provider => provider.GetRequiredService<TradingBot.UnifiedOrchestrator.Services.ModelRegistry>());
         services.AddHostedService<CanaryWatchdog>();
         
         // Brain hot-reload service for ONNX session swapping
@@ -2359,7 +2340,7 @@ internal static class EnvironmentLoader
             {
                 if (File.Exists(envFile))
                 {
-                    Env.Load(envFile);
+                    DotNetEnv.Env.Load(envFile);
                     loadedFiles.Add(envFile);
                 }
             }

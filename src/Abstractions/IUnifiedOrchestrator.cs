@@ -252,6 +252,6 @@ public class OrchestratorStatus
     public int TotalWorkflows { get; set; }
     public DateTime StartTime { get; set; }
     public TimeSpan Uptime { get; set; }
-    public Dictionary<string, object> ComponentStatus { get; } = new();
-    public Collection<string> RecentErrors { get; } = new();
+    public Dictionary<string, object> ComponentStatus { get; set; } = new();
+    public Collection<string> RecentErrors { get; set; } = new();
 }

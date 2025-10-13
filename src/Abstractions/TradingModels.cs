@@ -364,7 +364,7 @@ public class WorkflowExecutionResult
 {
     public bool Success { get; set; }
     public string? ErrorMessage { get; set; }
-    public Dictionary<string, object> Results { get; } = new();
+    public Dictionary<string, object> Results { get; set; } = new();
     public TimeSpan Duration { get; set; }
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }

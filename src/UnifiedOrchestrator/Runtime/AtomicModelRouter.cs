@@ -223,13 +223,13 @@ internal class ModelRouterFactory : IModelRouterFactory
                 }
                 else
                 {
-                    health[kvp.Key];
+                    health[kvp.Key] = false;
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to get health for router {RouterKey}", kvp.Key);
-                health[kvp.Key];
+                health[kvp.Key] = false;
             }
         }
         

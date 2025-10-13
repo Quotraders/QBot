@@ -93,7 +93,7 @@ internal class EnsembleModelService
             // In production, this would use more sophisticated methods like Isolation Forest
             
             var anomalyScore = 0.0;
-            var checkedFeatures;
+            int checkedFeatures = 0;
 
             foreach (var (key, value) in features)
             {

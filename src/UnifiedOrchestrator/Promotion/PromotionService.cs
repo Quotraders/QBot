@@ -64,7 +64,7 @@ internal class PromotionService : IPromotionService
             var challenger = await _modelRegistry.GetModelAsync(challengerVersionId, cancellationToken).ConfigureAwait(false);
             if (challenger == null)
             {
-                decision.ShouldPromote;
+                decision.ShouldPromote = false;
                 decision.Reason = "Challenger model not found";
                 decision.ValidationErrors.Add($"Challenger version {challengerVersionId} does not exist");
                 return decision;
@@ -74,7 +74,7 @@ internal class PromotionService : IPromotionService
             var champion = await _modelRegistry.GetChampionAsync(algorithm, cancellationToken).ConfigureAwait(false);
             if (champion == null)
             {
-                decision.ShouldPromote;
+                decision.ShouldPromote = false;
                 decision.Reason = "No current champion to replace";
                 decision.ValidationErrors.Add($"No champion found for algorithm {algorithm}");
                 return decision;
@@ -83,7 +83,7 @@ internal class PromotionService : IPromotionService
             // 3. Check if challenger has passed validation
             if (!challenger.IsValidated)
             {
-                decision.ShouldPromote;
+                decision.ShouldPromote = false;
                 decision.Reason = "Challenger has not passed validation";
                 decision.ValidationErrors.Add("Challenger must pass shadow testing before promotion");
                 return decision;
@@ -124,7 +124,7 @@ internal class PromotionService : IPromotionService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error evaluating promotion for {Algorithm}", algorithm);
-            decision.ShouldPromote;
+            decision.ShouldPromote = false;
             decision.Reason = $"Evaluation error: {ex.Message}";
             decision.ValidationErrors.Add(ex.Message);
             return decision;
@@ -473,13 +473,13 @@ internal class PromotionService : IPromotionService
                 cancellationToken).ConfigureAwait(false);
 
             // Use REAL metrics from shadow test instead of comparing model metadata
-            decision.SharpeImprovement = (double)(shadowTestReport.ChallengerSharpe - shadowTestReport.ChampionSharpe);
-            decision.SortinoImprovement = (double)(shadowTestReport.ChallengerSortino - shadowTestReport.ChampionSortino);
-            decision.CVaRImprovement = (double)(shadowTestReport.ChallengerCVaR - shadowTestReport.ChampionCVaR);
-            decision.DrawdownImprovement = (double)(shadowTestReport.ChallengerMaxDrawdown - shadowTestReport.ChampionMaxDrawdown);
+            decision.SharpeImprovement = shadowTestReport.ChallengerSharpe - shadowTestReport.ChampionSharpe;
+            decision.SortinoImprovement = shadowTestReport.ChallengerSortino - shadowTestReport.ChampionSortino;
+            decision.CVaRImprovement = shadowTestReport.ChallengerCVaR - shadowTestReport.ChampionCVaR;
+            decision.DrawdownImprovement = shadowTestReport.ChallengerMaxDrawdown - shadowTestReport.ChampionMaxDrawdown;
 
             // Use REAL statistical test results
-            decision.PValue = (double)shadowTestReport.PValue;
+            decision.PValue = shadowTestReport.PValue;
             decision.StatisticallySignificant = shadowTestReport.StatisticallySignificant;
             decision.ConfidenceInterval = 0.95; // Fixed confidence interval
 
@@ -522,11 +522,11 @@ internal class PromotionService : IPromotionService
             _logger.LogError(ex, "Shadow test failed for challenger {ChallengerVersionId}", challenger.VersionId);
             
             // Fall back to metadata comparison if shadow test fails
-            decision.SharpeImprovement = (double)(challenger.Sharpe - champion.Sharpe);
-            decision.SortinoImprovement = (double)(challenger.Sortino - champion.Sortino);
-            decision.CVaRImprovement = (double)(challenger.CVaR - champion.CVaR);
-            decision.DrawdownImprovement = (double)(challenger.MaxDrawdown - champion.MaxDrawdown);
-            decision.PValue = 0.999; // Conservative fallback - assume not significant
+            decision.SharpeImprovement = challenger.Sharpe - champion.Sharpe;
+            decision.SortinoImprovement = challenger.Sortino - champion.Sortino;
+            decision.CVaRImprovement = challenger.CVaR - champion.CVaR;
+            decision.DrawdownImprovement = challenger.MaxDrawdown - champion.MaxDrawdown;
+            decision.PValue = 0.999m; // Conservative fallback - assume not significant
             decision.StatisticallySignificant = false;
             decision.ValidationErrors.Add($"Shadow test failed: {ex.Message} - using conservative metrics");
             

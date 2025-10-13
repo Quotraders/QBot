@@ -60,7 +60,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
         _logger = logger;
         _config = config.Value;
         _instruments = new[] { "MNQ", "ES" }; // Support MNQ and ES as specified
-        _isInitialized;
+        _isInitialized = false;
         _connectionHealth = 0.0;
     }
 
@@ -597,7 +597,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             var command = new { action = "disconnect" };
             await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
             
-            _isInitialized;
+            _isInitialized = false;
             _connectionHealth = 0.0;
             
             lock (_processLock)

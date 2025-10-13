@@ -37,7 +37,7 @@ public class MarketContext
     public double Volume { get; set; }
     public double Bid { get; set; }
     public double Ask { get; set; }
-    public Dictionary<string, double> TechnicalIndicators { get; } = new();
+    public Dictionary<string, double> TechnicalIndicators { get; set; } = new();
     public RegimeState? CurrentRegime { get; set; }
     
     // Additional properties for intelligence integration
@@ -51,7 +51,7 @@ public class MarketContext
     // Required properties mentioned in production readiness requirements
     public double SignalStrength { get; set; }
     public double ConfidenceLevel { get; set; }
-    public Dictionary<string, double> Features { get; } = new();
+    public Dictionary<string, double> Features { get; set; } = new();
 }
 
 public class MarketData
