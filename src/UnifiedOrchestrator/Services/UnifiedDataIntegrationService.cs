@@ -80,7 +80,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
                 if (_isHistoricalDataConnected)
                 {
                     // Process historical data for training
-                    await ProcessHistoricalDataBatch(cancellationToken).ConfigureAwait(false);
+                    await ProcessHistoricalDataBatch().ConfigureAwait(false);
                     _lastHistoricalDataSync = DateTime.UtcNow;
                     
                     // Feed historical data to the trading brain for training
@@ -149,7 +149,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
         {
             try
             {
-                await MonitorDataFlow(cancellationToken).ConfigureAwait(false);
+                await MonitorDataFlow().ConfigureAwait(false);
                 await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
@@ -178,7 +178,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
         await ConnectLiveTopStepDataAsync(cancellationToken).ConfigureAwait(false);
         
         // Verify unified data pipeline
-        await VerifyUnifiedPipelineAsync(cancellationToken).ConfigureAwait(false);
+        await VerifyUnifiedPipelineAsync().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -354,16 +354,16 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
             // Simulate data integration
             if (_isHistoricalDataConnected)
             {
-                await ProcessHistoricalDataForTrainingAsync(cancellationToken).ConfigureAwait(false);
+                await ProcessHistoricalDataForTrainingAsync().ConfigureAwait(false);
             }
             
             if (_isLiveDataConnected)
             {
-                await ProcessLiveDataForInferenceAsync(cancellationToken).ConfigureAwait(false);
+                await ProcessLiveDataForInferenceAsync().ConfigureAwait(false);
             }
             
             // Ensure data flows to both training and inference brains
-            await EnsureDataFlowToBrainsAsync(cancellationToken).ConfigureAwait(false);
+            await EnsureDataFlowToBrainsAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -626,7 +626,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
         try
         {
             // Feed historical data to brain for training via brain adapter
-            var historicalData = await LoadRecentHistoricalDataAsync(cancellationToken).ConfigureAwait(false);
+            var historicalData = await LoadRecentHistoricalDataAsync().ConfigureAwait(false);
             
             if (historicalData.Any())
             {
@@ -712,7 +712,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
         try
         {
             // Feed live data to brain for real-time inference
-            var liveData = await GetLatestLiveDataAsync(cancellationToken).ConfigureAwait(false);
+            var liveData = await GetLatestLiveDataAsync().ConfigureAwait(false);
             
             if (liveData != null)
             {
