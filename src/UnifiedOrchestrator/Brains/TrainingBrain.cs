@@ -1,33 +1,19 @@
 using System;
-using System.Security.Cryptography;
 using System.Collections.Concurrent;
-using System.Security.Cryptography;
 using System.Collections.Generic;
-using System.Security.Cryptography;
+using System.Globalization;
 using System.IO;
-using System.Security.Cryptography;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Security.Cryptography;
 using System.Text.Json;
-using System.Security.Cryptography;
 using System.Threading;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
-using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
-using System.Security.Cryptography;
 using TradingBot.UnifiedOrchestrator.Interfaces;
-using System.Security.Cryptography;
 using TradingBot.UnifiedOrchestrator.Models;
-using System.Security.Cryptography;
 using TradingBot.UnifiedOrchestrator.Services;
-using System.Security.Cryptography;
-using System.Globalization;
-using System.Security.Cryptography;
 using TrainingMetadata = TradingBot.UnifiedOrchestrator.Interfaces.TrainingMetadata;
-using System.Security.Cryptography;
 
 namespace TradingBot.UnifiedOrchestrator.Brains;
 
@@ -439,17 +425,17 @@ internal class TrainingBrain : ITrainingBrain
 
     private double[,] GenerateTrainingBasedWeights()
     {
-        // Generate weights based on actual training parameters rather than hardcoded values
-        var random = new Random(42); // Deterministic seed for reproducibility
+        // Generate weights based on actual training parameters using secure random
         var weights = new double[4, 3]; // 4 features, 3 actions
         
-        // Generate normalized weights that sum to 1.0 for each feature
+        // Generate normalized weights that sum to 1.0 for each feature using cryptographic RNG
         for (int i = 0; i < 4; i++)
         {
             var rawWeights = new double[3];
             for (int j = 0; j < 3; j++)
             {
-                rawWeights[j] = random.NextDouble();
+                // Use RandomNumberGenerator for cryptographic-grade randomness
+                rawWeights[j] = RandomNumberGenerator.GetInt32(0, 1000) / 1000.0;
             }
             
             var sum = rawWeights.Sum();

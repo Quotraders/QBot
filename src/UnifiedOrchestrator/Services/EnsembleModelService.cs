@@ -1,18 +1,12 @@
 using Microsoft.Extensions.Logging;
-using System.Security.Cryptography;
-using TradingBot.Abstractions;
-using System.Security.Cryptography;
-using TradingBot.UnifiedOrchestrator.Models;
-using System.Security.Cryptography;
 using System;
-using System.Security.Cryptography;
 using System.Collections.Generic;
-using System.Security.Cryptography;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
+using TradingBot.Abstractions;
+using TradingBot.UnifiedOrchestrator.Models;
 using System.Security.Cryptography;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
@@ -146,11 +140,11 @@ internal class EnsembleModelService
             
             // In production, this would load and run actual ONNX models
             // For safety, we return neutral/conservative predictions
-            var random = new Random(modelId.GetHashCode());
             
             // Conservative prediction logic - bias toward neutral positions
             var basePrediction = 0.5; // Neutral baseline
-            var noise = (random.NextDouble() - 0.5) * 0.1; // Small random component
+            // Use cryptographic RNG for prediction noise
+            var noise = (RandomNumberGenerator.GetInt32(0, 1000) / 1000.0 - 0.5) * 0.1; // Small random component
             var prediction = Math.Max(0.0, Math.Min(1.0, basePrediction + noise));
             
             // High confidence for conservative predictions, lower for extreme ones
@@ -162,7 +156,7 @@ internal class EnsembleModelService
                 ModelId = modelId,
                 Prediction = prediction,
                 Confidence = confidence,
-                InferenceTime = TimeSpan.FromMilliseconds(random.Next(10, 30))
+                InferenceTime = TimeSpan.FromMilliseconds(RandomNumberGenerator.GetInt32(10, 30))
             };
         }
         catch (Exception ex)

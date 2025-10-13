@@ -1,17 +1,11 @@
 using System;
-using System.Security.Cryptography;
 using System.Collections.Concurrent;
-using System.Security.Cryptography;
 using System.Collections.Generic;
-using System.Security.Cryptography;
 using System.IO;
 using System.Security.Cryptography;
 using System.Threading;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
-using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
-using System.Security.Cryptography;
 using Microsoft.Extensions.Options;
 using System.Security.Cryptography;
 
@@ -319,7 +313,7 @@ internal class OnnxEnsembleService : IDisposable
         {
             // In a production environment, this would use Microsoft.ML.OnnxRuntime
             // For now, implementing a realistic inference simulation that could be real data
-            await Task.Delay(Random.Shared.Next(5, 25), cancellationToken).ConfigureAwait(false); // Realistic inference latency
+            await Task.Delay(RandomNumberGenerator.GetInt32(5, 25), cancellationToken).ConfigureAwait(false); // Realistic inference latency
             
             _logger.LogDebug("Running ONNX inference for model {ModelName} with {InputCount} inputs", modelName, inputs.Count);
 

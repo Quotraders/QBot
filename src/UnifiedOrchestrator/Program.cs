@@ -215,61 +215,16 @@ Artifacts will be saved to: artifacts/production-demo/
             // Initialize ML parameter provider for TradingBot classes
             TradingBot.BotCore.Services.TradingBotParameterProvider.Initialize(host.Services);
             
-            // Get the production demonstration runner
-            var demoRunner = host.Services.GetRequiredService<ProductionDemonstrationRunner>();
-            
-            // Run complete demonstration
-            var result = await demoRunner.RunCompleteProductionDemoAsync(CancellationToken.None).ConfigureAwait(false);
-            
-            if (result.Success)
-            {
-                Console.WriteLine($@"
-🎉 PRODUCTION DEMONSTRATION COMPLETED SUCCESSFULLY!
-================================================================================
-Duration: {result.Duration}
-Artifacts Path: {result.ArtifactsPath}
-
-📋 Generated Artifacts:
-✅ Brain integration proof with 5+ decisions showing UnifiedTradingBrain as primary
-✅ Statistical validation report with p-value < 0.05 and CVaR analysis
-✅ Rollback drill logs showing sub-100ms performance under 50 decisions/sec load
-✅ Safe window enforcement proof with CME trading hours alignment
-✅ Data integration status showing both historical and live TopStep connections
-✅ Complete production readiness report meeting all AC1-AC10 criteria
-
-🔍 Review the artifacts in {result.ArtifactsPath} for runtime proof of all capabilities.
-================================================================================
-                ");
-            }
-            else
-            {
-                Console.WriteLine($@"
-❌ PRODUCTION DEMONSTRATION FAILED
-================================================================================
-Duration: {result.Duration}
-Error: {result.ErrorMessage}
-
-Please check the logs and ensure all services are properly configured.
-================================================================================
-                ");
-                Environment.Exit(1);
-            }
+            // REMOVED: ProductionDemonstrationRunner service deleted (simulation)
+            throw new NotSupportedException("Production demonstration mode has been removed. Use live trading mode only.");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($@"
-❌ CRITICAL ERROR IN PRODUCTION DEMONSTRATION
-================================================================================
-{ex.Message}
-
-Stack Trace:
-{ex.StackTrace}
-================================================================================
-            ");
+            Console.WriteLine($"Error in production demonstration: {ex.Message}");
             Environment.Exit(1);
         }
     }
-
+    
     /// <summary>
     /// Run lightweight smoke test - replaces SimpleBot/MinimalDemo/TradingBot smoke functionality
     /// Validates core services startup and basic functionality in DRY_RUN mode
@@ -1117,8 +1072,8 @@ Please check the configuration and ensure all required services are registered.
         Console.WriteLine("🔄 [COUNTERFACTUAL] Nightly gate analysis with blocked signal replay for effectiveness validation scheduled!");
         Console.WriteLine("🚨 [ENHANCED-ALERTS] Pattern promotion, model rollback, feature drift, and queue ETA breach monitoring configured!");
         
-        // Register Production Validation Service for runtime proof
-        services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IValidationService, TradingBot.UnifiedOrchestrator.Services.ProductionValidationService>();
+        // REMOVED: Production Validation Service - simulation service deleted
+        // services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IValidationService, TradingBot.UnifiedOrchestrator.Services.ProductionValidationService>();
         
         // REMOVED: Rollback Drill Service - simulation/testing service not needed for live trading
         // services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IRollbackDrillService, TradingBot.UnifiedOrchestrator.Services.RollbackDrillService>();
