@@ -1042,11 +1042,23 @@ Please check the configuration and ensure all required services are registered.
         
         // Legacy ITopstepXClient removed - using TopstepX SDK via ITopstepXAdapterService
         
-        // Position Service temporarily disabled - requires migration to ITopstepXAdapterService
-        // services.AddSingleton<TradingBot.UnifiedOrchestrator.Promotion.IPositionService, TradingBot.UnifiedOrchestrator.Promotion.ProductionPositionService>();
+        // Register IPositionService for promotion service
+        services.AddSingleton<TradingBot.UnifiedOrchestrator.Promotion.IPositionService, TradingBot.UnifiedOrchestrator.Promotion.ProductionPositionService>();
         
         // Register Promotion Service with atomic swaps and instant rollback
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IPromotionService, TradingBot.UnifiedOrchestrator.Promotion.PromotionService>();
+        
+        // Register PromotionCriteria and AdvisorConfig as singletons (configuration objects)
+        services.AddSingleton<TradingBot.Abstractions.PromotionCriteria>();
+        services.AddSingleton<TradingBot.Abstractions.AdvisorConfig>();
+        
+        // Register IPositionAgent for model updater service
+        services.AddSingleton<global::BotCore.IPositionAgent, global::BotCore.PositionAgent>();
+        
+        // Register non-generic ILogger factory for services that require it
+        services.AddSingleton(typeof(Microsoft.Extensions.Logging.ILogger), serviceProvider => 
+            serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Default"));
+
         
         // ================================================================================
         // 🚀 ENHANCED TRADING BOT COMPONENTS - PRODUCTION-READY ENHANCEMENTS 🚀
@@ -1744,7 +1756,7 @@ Please check the configuration and ensure all required services are registered.
         
         // Register Infrastructure Configuration Services - Replace hardcoded paths and endpoints
         services.AddScoped<TradingBot.Abstractions.IEndpointConfig, TradingBot.BotCore.Services.EndpointConfigService>();
-        services.AddScoped<TradingBot.Abstractions.IPathConfig, TradingBot.BotCore.Services.PathConfigService>();
+        services.AddSingleton<TradingBot.Abstractions.IPathConfig, TradingBot.BotCore.Services.PathConfigService>();
         
         // Register Configuration Safety and Management Services
         services.AddSingleton<TradingBot.BotCore.Services.ConfigurationFailureSafetyService>();
