@@ -70,6 +70,8 @@ public class DataFeedHealth
 public class RedundantDataFeedManager : IDisposable
 {
     private readonly ILogger<RedundantDataFeedManager> _logger;
+    private readonly TradingBot.Abstractions.ITopstepXAdapterService? _topstepXAdapter;
+    private readonly ILoggerFactory? _loggerFactory;
     private readonly List<IDataFeed> _dataFeeds = new();
     private readonly ConcurrentDictionary<string, DataFeedHealth> _feedHealth = new();
     private readonly ConcurrentDictionary<string, MarketData> _consolidatedData = new();
@@ -112,9 +114,14 @@ public class RedundantDataFeedManager : IDisposable
     public event EventHandler<MarketData>? OnConsolidatedData;
     public event EventHandler<string>? OnFeedFailover;
 
-    public RedundantDataFeedManager(ILogger<RedundantDataFeedManager> logger)
+    public RedundantDataFeedManager(
+        ILogger<RedundantDataFeedManager> logger,
+        TradingBot.Abstractions.ITopstepXAdapterService? topstepXAdapter = null,
+        ILoggerFactory? loggerFactory = null)
     {
         _logger = logger;
+        _topstepXAdapter = topstepXAdapter;
+        _loggerFactory = loggerFactory;
         _healthCheckTimer = new Timer(CheckFeedHealth, null, Timeout.Infinite, Timeout.Infinite);
         _consistencyCheckTimer = new Timer(CheckDataConsistency, null, Timeout.Infinite, Timeout.Infinite);
         
@@ -128,8 +135,9 @@ public class RedundantDataFeedManager : IDisposable
     {
         _logger.LogInformation("[DataFeed] Initializing data feeds");
         
-        // Add data feeds (these would be actual implementations)
-        AddDataFeed(new TopstepXDataFeed { Priority = PRIMARY_FEED_PRIORITY });
+        // Add data feeds with TopstepX adapter for real market data
+        var topstepXLogger = _loggerFactory?.CreateLogger<TopstepXDataFeed>();
+        AddDataFeed(new TopstepXDataFeed(_topstepXAdapter, topstepXLogger) { Priority = PRIMARY_FEED_PRIORITY });
         AddDataFeed(new BackupDataFeed { Priority = BACKUP_FEED_PRIORITY });
         
         // Sort by priority
@@ -785,11 +793,39 @@ public class TopstepXDataFeed : IDataFeed
     private const decimal PRICE_VARIATION_RANGE = 10m;     // Price variation range (+/-)
     private const decimal PRICE_VARIATION_OFFSET = 5m;     // Price variation offset
     
+    // Tick size constants for bid/ask calculation
+    private const decimal ES_TICK_SIZE = 0.25m;            // ES/MNQ tick size
+    
+    private readonly TradingBot.Abstractions.ITopstepXAdapterService? _adapterService;
+    private readonly ILogger<TopstepXDataFeed>? _logger;
+    
     public string FeedName => "TopstepX";
     public int Priority { get; set; } = 1;
     
     public event EventHandler<MarketData>? OnDataReceived;
     public event EventHandler<Exception>? OnError;
+    
+    /// <summary>
+    /// Constructor with optional TopstepX adapter service for real market data
+    /// </summary>
+    /// <param name="adapterService">TopstepX adapter service (optional, falls back to simulation if null)</param>
+    /// <param name="logger">Logger for diagnostics (optional)</param>
+    public TopstepXDataFeed(
+        TradingBot.Abstractions.ITopstepXAdapterService? adapterService = null,
+        ILogger<TopstepXDataFeed>? logger = null)
+    {
+        _adapterService = adapterService;
+        _logger = logger;
+        
+        if (_adapterService != null)
+        {
+            _logger?.LogInformation("[TopstepXDataFeed] Initialized with real TopstepX adapter");
+        }
+        else
+        {
+            _logger?.LogWarning("[TopstepXDataFeed] No adapter service provided - using simulation mode");
+        }
+    }
 
     public async Task<bool> ConnectAsync()
     {
@@ -799,6 +835,48 @@ public class TopstepXDataFeed : IDataFeed
 
     public async Task<MarketData?> GetMarketDataAsync(string symbol)
     {
+        // If we have a TopstepX adapter service, try to get real market data
+        if (_adapterService != null)
+        {
+            try
+            {
+                // Check if adapter is connected before attempting to get price
+                if (_adapterService.IsConnected)
+                {
+                    var price = await _adapterService.GetPriceAsync(symbol, CancellationToken.None).ConfigureAwait(false);
+                    
+                    // Calculate bid/ask as price ± one tick (0.25 for ES/MNQ)
+                    var bid = price - ES_TICK_SIZE;
+                    var ask = price + ES_TICK_SIZE;
+                    
+                    _logger?.LogDebug("[TopstepXDataFeed] Real market data for {Symbol}: Price=${Price:F2}, Bid=${Bid:F2}, Ask=${Ask:F2}", 
+                        symbol, price, bid, ask);
+                    
+                    return new MarketData
+                    {
+                        Symbol = symbol,
+                        Price = price,
+                        Volume = DEFAULT_VOLUME, // Volume not available from basic price query
+                        Bid = bid,
+                        Ask = ask,
+                        Timestamp = DateTime.UtcNow,
+                        Source = FeedName
+                    };
+                }
+                else
+                {
+                    _logger?.LogWarning("[TopstepXDataFeed] TopstepX adapter not connected, falling back to simulation");
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error but fall back to simulation data to prevent bot crashes
+                _logger?.LogWarning(ex, "[TopstepXDataFeed] Failed to get real market data for {Symbol}, falling back to simulation", symbol);
+                OnErrorEvent(ex);
+            }
+        }
+        
+        // Fall back to simulated data if adapter is unavailable or failed
         await Task.Delay(NetworkDelayMs).ConfigureAwait(false); // Simulate network delay
         
         return new MarketData
@@ -809,7 +887,7 @@ public class TopstepXDataFeed : IDataFeed
             Bid = ES_BID_PRICE,
             Ask = ES_ASK_PRICE,
             Timestamp = DateTime.UtcNow,
-            Source = FeedName
+            Source = FeedName + "_Simulation"
         };
     }
 
