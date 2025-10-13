@@ -143,16 +143,16 @@ internal class ProductionReadinessStartupService : IHostedService
         
         try
         {
-            // Test TopstepX client behavior
-            var topstepClient = _serviceProvider.GetService<TradingBot.Abstractions.ITopstepXClient>();
-            if (topstepClient != null)
+            // Legacy ITopstepXClient removed - using TopstepX SDK via ITopstepXAdapterService
+            var topstepAdapter = _serviceProvider.GetService<TradingBot.Abstractions.ITopstepXAdapterService>();
+            if (topstepAdapter != null)
             {
-                var clientType = topstepClient.GetType().Name;
-                _logger.LogInformation("✅ [RUNTIME-PROOF] TopstepX Client Type: {ClientType}", clientType);
+                var adapterType = topstepAdapter.GetType().Name;
+                _logger.LogInformation("✅ [RUNTIME-PROOF] TopstepX Adapter Type: {AdapterType}", adapterType);
                 
-                if (clientType.Contains("Mock", StringComparison.OrdinalIgnoreCase))
+                if (adapterType.Contains("Mock", StringComparison.OrdinalIgnoreCase))
                 {
-                    _logger.LogError("❌ [RUNTIME-PROOF] CRITICAL: TopstepX client is SIMULATION implementation!");
+                    _logger.LogError("❌ [RUNTIME-PROOF] CRITICAL: TopstepX adapter is SIMULATION implementation!");
                 }
                 else
                 {

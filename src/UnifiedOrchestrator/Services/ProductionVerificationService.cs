@@ -69,8 +69,8 @@ internal class ProductionVerificationService : IHostedService
             [typeof(IDecisionLogger)] = new[] { "Mock", "Test", "Fake" },
             [typeof(IIdempotentOrderService)] = new[] { "Mock", "Test", "Fake" },
             [typeof(ILeaderElectionService)] = new[] { "Mock", "Test", "Fake" },
-            [typeof(IStartupValidator)] = new[] { "Mock", "Test", "Fake" },
-            [typeof(ITopstepXClient)] = new[] { "Mock", "Test", "Fake" }
+            [typeof(IStartupValidator)] = new[] { "Mock", "Test", "Fake" }
+            // Legacy ITopstepXClient removed - using TopstepX SDK via ITopstepXAdapterService
         };
 
         foreach (var (serviceType, forbiddenNames) in criticalServices)
@@ -229,14 +229,22 @@ internal class ProductionVerificationService : IHostedService
 
         try
         {
-            var topstepClient = _serviceProvider.GetService<ITopstepXClient>();
-            if (topstepClient != null)
+            // Legacy ITopstepXClient removed - using TopstepX SDK via ITopstepXAdapterService
+            var topstepAdapter = _serviceProvider.GetService<TradingBot.Abstractions.ITopstepXAdapterService>();
+            if (topstepAdapter != null)
             {
-                var clientType = topstepClient.GetType().Name;
-                _logger.LogInformation("✅ [API-VERIFICATION] TopstepX Client: {ClientType}", clientType);
+                var adapterType = topstepAdapter.GetType().Name;
+                _logger.LogInformation("✅ [API-VERIFICATION] TopstepX Adapter: {AdapterType}", adapterType);
 
-                // Verify client has proper error handling (not returning null)
-                await VerifyClientErrorHandlingAsync().ConfigureAwait(false);
+                // Verify adapter connection status
+                if (topstepAdapter.IsConnected)
+                {
+                    _logger.LogInformation("✅ [API-VERIFICATION] TopstepX adapter is connected");
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ [API-VERIFICATION] TopstepX adapter is not connected");
+                }
             }
             else
             {

@@ -791,19 +791,9 @@ Please check the configuration and ensure all required services are registered.
         // TOPSTEPX SDK ADAPTER - PRODUCTION-READY PYTHON SDK INTEGRATION
         // ========================================================================
         
-        // Configure TopstepX client configuration for real connections only
-        services.Configure<TopstepXClientConfiguration>(config =>
-        {
-            config.ClientType = "Real";
-        });
+        // Legacy TopstepXClientConfiguration removed - not needed with SDK adapter
         
-        // Register TopstepXHttpClient for real client
-        services.AddHttpClient("TopstepX", client =>
-        {
-            client.BaseAddress = new Uri(TopstepXApiBaseUrl);
-            client.DefaultRequestHeaders.Add("User-Agent", TopstepXUserAgent);
-            client.Timeout = TimeSpan.FromSeconds(30);
-        });
+        // Legacy TopstepXHttpClient removed - using TopstepX SDK via Python bridge
         
         // TopstepX SDK Adapter Service - Production-ready Python SDK integration
         services.AddSingleton<TradingBot.Abstractions.ITopstepXAdapterService, TopstepXAdapterService>();
@@ -828,7 +818,7 @@ Please check the configuration and ensure all required services are registered.
         var appOptions = new AppOptions
         {
             ApiBase = Environment.GetEnvironmentVariable("TOPSTEPX_API_BASE") ?? TopstepXApiBaseUrl,
-            AuthToken = Environment.GetEnvironmentVariable("TOPSTEPX_JWT") ?? "",
+            AuthToken = "",  // Legacy JWT removed - SDK handles authentication
             AccountId = Environment.GetEnvironmentVariable("TOPSTEPX_ACCOUNT_ID") ?? "",
             EnableDryRunMode = Environment.GetEnvironmentVariable("ENABLE_DRY_RUN") != "false",
             EnableAutoExecution = Environment.GetEnvironmentVariable("ENABLE_AUTO_EXECUTION") == "true",
@@ -1050,11 +1040,10 @@ Please check the configuration and ensure all required services are registered.
         // Register Shadow Tester for A/B validation and model promotion
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IShadowTester, TradingBot.UnifiedOrchestrator.Promotion.ShadowTester>();
         
-        // Register Production TopstepX Client for real API access
-        services.AddSingleton<TradingBot.Abstractions.ITopstepXClient, ProductionTopstepXClient>();
+        // Legacy ITopstepXClient removed - using TopstepX SDK via ITopstepXAdapterService
         
-        // Register Position Service for real position tracking
-        services.AddSingleton<TradingBot.UnifiedOrchestrator.Promotion.IPositionService, TradingBot.UnifiedOrchestrator.Promotion.ProductionPositionService>();
+        // Position Service temporarily disabled - requires migration to ITopstepXAdapterService
+        // services.AddSingleton<TradingBot.UnifiedOrchestrator.Promotion.IPositionService, TradingBot.UnifiedOrchestrator.Promotion.ProductionPositionService>();
         
         // Register Promotion Service with atomic swaps and instant rollback
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IPromotionService, TradingBot.UnifiedOrchestrator.Promotion.PromotionService>();
@@ -1236,7 +1225,7 @@ Please check the configuration and ensure all required services are registered.
                 UserHubUrl = topstepXConfig["UserHubUrl"] ?? Environment.GetEnvironmentVariable("RTC_USER_HUB") ?? "https://rtc.topstepx.com/hubs/user",
                 MarketHubUrl = topstepXConfig["MarketHubUrl"] ?? Environment.GetEnvironmentVariable("RTC_MARKET_HUB") ?? "https://rtc.topstepx.com/hubs/market",
                 AccountId = Environment.GetEnvironmentVariable("TOPSTEPX_ACCOUNT_ID") ?? "",
-                ApiToken = Environment.GetEnvironmentVariable("TOPSTEPX_JWT") ?? "",
+                ApiToken = "",  // Legacy JWT removed - SDK handles authentication
                 EnableDryRunMode = Environment.GetEnvironmentVariable("ENABLE_DRY_RUN") != "false",
                 EnableAutoExecution = Environment.GetEnvironmentVariable("ENABLE_AUTO_EXECUTION") == "true",
                 MaxDailyLoss = decimal.Parse(Environment.GetEnvironmentVariable("DAILY_LOSS_CAP_R") ?? "-1000"),
@@ -1903,10 +1892,9 @@ Please check the configuration and ensure all required services are registered.
             services.AddSingleton<global::BotCore.ML.UcbManager>();
         }
 
-        // Auto-detect paper trading mode
-        var hasCredentials = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TOPSTEPX_JWT")) ||
-                           (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TOPSTEPX_USERNAME")) &&
-                            !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TOPSTEPX_API_KEY")));
+        // Auto-detect paper trading mode - Legacy JWT removed, SDK uses PROJECT_X_* env vars
+        var hasCredentials = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PROJECT_X_API_KEY")) &&
+                           !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PROJECT_X_USERNAME"));
 
         if (hasCredentials)
         {
