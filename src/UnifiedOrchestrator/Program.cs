@@ -1072,8 +1072,8 @@ Please check the configuration and ensure all required services are registered.
         Console.WriteLine("🔄 [COUNTERFACTUAL] Nightly gate analysis with blocked signal replay for effectiveness validation scheduled!");
         Console.WriteLine("🚨 [ENHANCED-ALERTS] Pattern promotion, model rollback, feature drift, and queue ETA breach monitoring configured!");
         
-        // REMOVED: Production Validation Service - simulation service deleted
-        // services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IValidationService, TradingBot.UnifiedOrchestrator.Services.ProductionValidationService>();
+        // Register Production Validation Service for statistical validation and proof generation
+        services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IValidationService, TradingBot.UnifiedOrchestrator.Services.ProductionValidationService>();
         
         // Register Rollback Drill Service for production safety validation
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IRollbackDrillService, TradingBot.UnifiedOrchestrator.Services.RollbackDrillService>();
