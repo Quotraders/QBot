@@ -354,7 +354,7 @@ internal class ProductionTopstepXClient : ITopstepXClient
 
     public Task<bool> SubscribeTradesAsync(string accountId, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Trade subscription requested for account {AccountId}", accountId);
+        _logger.LogInformation("Trade subscription requested for account hash {AccountIdHash}", HashAccountId(accountId));
         // WebSocket subscriptions would be implemented here
         return Task.FromResult(true);
     }
