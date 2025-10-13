@@ -1210,7 +1210,7 @@ Please check the configuration and ensure all required services are registered.
         // ================================================================================
         
         // Register EmergencyStopSystem (209 lines) from Safety project
-        services.AddSingleton<TopstepX.Bot.Core.Services.EmergencyStopSystem>();
+        services.AddSingleton<global::BotCore.Services.EmergencyStopSystem>();
         
         // Register ErrorHandlingMonitoringSystem (529 lines) from BotCore  
         services.AddSingleton<TopstepX.Bot.Core.Services.ErrorHandlingMonitoringSystem>();
@@ -1222,7 +1222,7 @@ Please check the configuration and ensure all required services are registered.
             var logger = provider.GetRequiredService<ILogger<TopstepX.Bot.Core.Services.OrderFillConfirmationSystem>>();
             var httpClient = provider.GetRequiredService<HttpClient>();
             var positionTracker = provider.GetRequiredService<TopstepX.Bot.Core.Services.PositionTrackingSystem>();
-            var emergencyStop = provider.GetRequiredService<TopstepX.Bot.Core.Services.EmergencyStopSystem>();
+            var emergencyStop = provider.GetRequiredService<global::BotCore.Services.EmergencyStopSystem>();
             var topstepXAdapter = provider.GetRequiredService<ITopstepXAdapterService>();
             
             // Use the new constructor that accepts ITopstepXAdapterService
@@ -1428,7 +1428,7 @@ Please check the configuration and ensure all required services are registered.
                 // Try to register sophisticated services, with fallbacks for missing dependencies
                 
                 // Register EmergencyStopSystem (fewer dependencies) from BotCore
-                services.TryAddSingleton<TopstepX.Bot.Core.Services.EmergencyStopSystem>();
+                services.TryAddSingleton<global::BotCore.Services.EmergencyStopSystem>();
                 
                 // Register services with fewer dependencies first
                 services.TryAddSingleton<global::BotCore.Services.PerformanceTracker>();
@@ -1445,7 +1445,7 @@ Please check the configuration and ensure all required services are registered.
                     // OrderFillConfirmationSystem already registered above with proper factory
                     // PositionTrackingSystem already registered above
                     // NewsIntelligenceEngine REMOVED - replaced by AI-powered NewsMonitorService
-                    services.TryAddSingleton<global::BotCore.Services.ZoneService>();
+                    services.TryAddSingleton<global::Zones.ZoneService>();
                     services.TryAddSingleton<global::BotCore.EnhancedTrainingDataService>();
                     services.TryAddSingleton<TopstepX.Bot.Core.Services.TradingSystemIntegrationService>();
                     
@@ -1776,45 +1776,45 @@ Please check the configuration and ensure all required services are registered.
         
         // Register ML Configuration Service for hardcoded value replacement
         services.AddProductionConfigurationValidation(configuration);
-        services.AddScoped<global::BotCore.Services.MLConfigurationService>();
-        services.AddScoped<TradingBot.Abstractions.IMLConfigurationService, global::BotCore.Services.MLConfigurationService>();
+        services.AddScoped<TradingBot.BotCore.Services.MLConfigurationService>();
+        services.AddScoped<TradingBot.Abstractions.IMLConfigurationService, TradingBot.BotCore.Services.MLConfigurationService>();
         
         // Register Execution Configuration Services - Replace hardcoded execution parameters
-        services.AddScoped<TradingBot.Abstractions.IExecutionGuardsConfig, global::BotCore.Services.ExecutionGuardsConfigService>();
-        services.AddScoped<TradingBot.Abstractions.IExecutionCostConfig, global::BotCore.Services.ExecutionCostConfigService>();
-        services.AddScoped<TradingBot.Abstractions.IExecutionPolicyConfig, global::BotCore.Services.ExecutionPolicyConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IExecutionGuardsConfig, TradingBot.BotCore.Services.ExecutionGuardsConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IExecutionCostConfig, TradingBot.BotCore.Services.ExecutionCostConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IExecutionPolicyConfig, TradingBot.BotCore.Services.ExecutionPolicyConfigService>();
         
         // Register Risk and Sizing Configuration Services - Replace hardcoded risk/sizing parameters
-        services.AddScoped<TradingBot.Abstractions.IRiskConfig, global::BotCore.Services.RiskConfigService>();
-        services.AddScoped<TradingBot.Abstractions.ISizerConfig, global::BotCore.Services.SizerConfigService>();
-        services.AddScoped<TradingBot.Abstractions.IMetaCostConfig, global::BotCore.Services.MetaCostConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IRiskConfig, TradingBot.BotCore.Services.RiskConfigService>();
+        services.AddScoped<TradingBot.Abstractions.ISizerConfig, TradingBot.BotCore.Services.SizerConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IMetaCostConfig, TradingBot.BotCore.Services.MetaCostConfigService>();
         
         // Register Trading Flow Configuration Services - Replace hardcoded trading flow parameters
         services.AddScoped<TradingBot.Abstractions.IBracketConfig, TradingBot.BotCore.Services.BracketConfigService>();
-        services.AddScoped<TradingBot.Abstractions.ISessionConfig, global::BotCore.Services.SessionConfigService>();
-        services.AddScoped<TradingBot.Abstractions.IControllerOptionsService, global::BotCore.Services.ControllerOptionsService>();
+        services.AddScoped<TradingBot.Abstractions.ISessionConfig, TradingBot.BotCore.Services.SessionConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IControllerOptionsService, TradingBot.BotCore.Services.ControllerOptionsService>();
         
         // Register Event and Calendar Configuration Services - Replace hardcoded event handling
-        services.AddScoped<TradingBot.Abstractions.IEventTemperingConfig, global::BotCore.Services.EventTemperingConfigService>();
-        services.AddScoped<TradingBot.Abstractions.IRollConfig, global::BotCore.Services.RollConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IEventTemperingConfig, TradingBot.BotCore.Services.EventTemperingConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IRollConfig, TradingBot.BotCore.Services.RollConfigService>();
         
         // Register Infrastructure Configuration Services - Replace hardcoded paths and endpoints
-        services.AddScoped<TradingBot.Abstractions.IEndpointConfig, global::BotCore.Services.EndpointConfigService>();
-        services.AddScoped<TradingBot.Abstractions.IPathConfig, global::BotCore.Services.PathConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IEndpointConfig, TradingBot.BotCore.Services.EndpointConfigService>();
+        services.AddScoped<TradingBot.Abstractions.IPathConfig, TradingBot.BotCore.Services.PathConfigService>();
         
         // Register Configuration Safety and Management Services
-        services.AddSingleton<global::BotCore.Services.ConfigurationFailureSafetyService>();
-        services.AddSingleton<global::BotCore.Services.ConfigurationSnapshotService>();
-        services.AddSingleton<global::BotCore.Services.ConfigurationSchemaService>();
-        services.AddHostedService<global::BotCore.Services.StateDurabilityService>();
+        services.AddSingleton<TradingBot.BotCore.Services.ConfigurationFailureSafetyService>();
+        services.AddSingleton<TradingBot.BotCore.Services.ConfigurationSnapshotService>();
+        services.AddSingleton<TradingBot.BotCore.Services.ConfigurationSchemaService>();
+        services.AddHostedService<TradingBot.BotCore.Services.StateDurabilityService>();
         
         // Register Last-Mile Production Safety Services
-        services.AddSingleton<global::BotCore.Services.OnnxModelCompatibilityService>();
-        services.AddSingleton<global::BotCore.Services.ClockHygieneService>();
-        services.AddSingleton<global::BotCore.Services.DeterminismService>();
-        services.AddSingleton<global::BotCore.Services.SecretsValidationService>();
-        services.AddSingleton<global::BotCore.Services.IntegritySigningService>();
-        services.AddSingleton<global::BotCore.Services.SuppressionLedgerService>();
+        services.AddSingleton<TradingBot.BotCore.Services.OnnxModelCompatibilityService>();
+        services.AddSingleton<TradingBot.BotCore.Services.ClockHygieneService>();
+        services.AddSingleton<TradingBot.BotCore.Services.DeterminismService>();
+        services.AddSingleton<TradingBot.BotCore.Services.SecretsValidationService>();
+        services.AddSingleton<TradingBot.BotCore.Services.IntegritySigningService>();
+        services.AddSingleton<TradingBot.BotCore.Services.SuppressionLedgerService>();
         
         // Register Production Guardrail configurations
         services.Configure<global::BotCore.Configuration.ProductionGuardrailConfiguration>(configuration.GetSection("Guardrails"));
