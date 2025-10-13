@@ -249,6 +249,12 @@ namespace BotCore.Services
         {
             ArgumentNullException.ThrowIfNull(symbols);
             
+            var symbolList = symbols.ToList();
+            foreach (var symbol in symbolList)
+            {
+                OnSnapshotDataReceived?.Invoke(symbol);
+            }
+            
             _logger.LogDebug("[SNAPSHOT-REQUEST] Snapshot requests disabled - real market data comes from MarketDataReader + GitHub workflows");
             await Task.CompletedTask;
         }

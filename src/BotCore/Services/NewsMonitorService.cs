@@ -304,7 +304,7 @@ public class NewsMonitorService : INewsMonitorService, IDisposable
             else
             {
                 _logger.LogDebug("[NewsMonitor] ✅ {Count} articles analyzed, no breaking news", 
-                    newsResponse.Articles.Count);
+                    articles.Count);
             }
         }
         catch (TaskCanceledException)

@@ -253,7 +253,7 @@ namespace BotCore.Services
         /// <summary>
         /// Get positions from TopstepX broker
         /// </summary>
-        private async Task<List<BrokerPosition>?> GetBrokerPositionsAsync(CancellationToken cancellationToken)
+        private Task<List<BrokerPosition>?> GetBrokerPositionsAsync(CancellationToken cancellationToken)
         {
             try
             {
@@ -269,12 +269,12 @@ namespace BotCore.Services
                 
                 // Return empty list for now - this means reconciliation will primarily
                 // validate internal consistency rather than broker discrepancies
-                return new List<BrokerPosition>();
+                return Task.FromResult<List<BrokerPosition>?>(new List<BrokerPosition>());
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ [RECONCILIATION] Error getting broker positions");
-                return null;
+                return Task.FromResult<List<BrokerPosition>?>(null);
             }
         }
         
