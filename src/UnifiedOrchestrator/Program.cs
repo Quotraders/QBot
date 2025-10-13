@@ -953,9 +953,9 @@ Please check the configuration and ensure all required services are registered.
         // ITopstepXAdapterService already registered above
         
         // Register REAL sophisticated orchestrators (NO DUPLICATES)
-        // DISABLED: IntelligenceOrchestratorService - FAKE random trading decisions (real one exists in IntelligenceStack)
+        // DISABLED: IntelligenceOrchestratorService - prototype service (real one exists in IntelligenceStack)
         // services.AddSingleton<TradingBot.Abstractions.IIntelligenceOrchestrator, IntelligenceOrchestratorService>();  
-        // DISABLED: DataOrchestratorService - FAKE hardcoded market data (real data comes from elsewhere)
+        // DISABLED: DataOrchestratorService - prototype service (real data comes from elsewhere)
         // services.AddSingleton<TradingBot.Abstractions.IDataOrchestrator, DataOrchestratorService>();
         
         // Register UnifiedOrchestratorService as singleton and hosted service (SINGLE REGISTRATION)
@@ -1967,8 +1967,8 @@ Please check the configuration and ensure all required services are registered.
         }
         
         // Register distributed orchestrator components for sophisticated system
-        // IIntelligenceOrchestrator already registered above (now disabled - fake service)
-        // IDataOrchestrator already registered above (now disabled - fake service)
+        // IIntelligenceOrchestrator already registered above (now disabled - prototype service)
+        // IDataOrchestrator already registered above (now disabled - prototype service)
         // DISABLED: WorkflowSchedulerService - Empty shell, does nothing, just logs
         // services.AddSingleton<TradingBot.Abstractions.IWorkflowScheduler, WorkflowSchedulerService>();
         

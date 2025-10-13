@@ -316,7 +316,7 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
 
     /// <summary>
     /// Get current portfolio status from TopstepX
-    /// NOTE: Portfolio status monitoring is handled directly by TopstepX adapter
+    /// Portfolio status monitoring is handled directly by TopstepX adapter
     /// </summary>
     public Task<PortfolioStatusResult> GetPortfolioStatusAsync(CancellationToken cancellationToken = default)
     {

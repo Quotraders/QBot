@@ -202,8 +202,8 @@ internal class EnhancedBacktestLearningService : BackgroundService
         {
             try
             {
-                var result = await _authService.GetFreshJwtAsync(cancellationToken).ConfigureAwait(false);
-                return result.jwt;
+                var token = await _authService.GetTokenAsync(cancellationToken).ConfigureAwait(false);
+                return token ?? string.Empty;
             }
             catch (Exception ex)
             {
@@ -450,7 +450,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
                 
                 // 🚀 CRITICAL: Use SAME UnifiedTradingBrain as live trading
                 var brainDecision = await _unifiedBrain.MakeIntelligentDecisionAsync(
-                    replayContext.Symbol, env, levels, historicalBars, riskEngine, cancellationToken).ConfigureAwait(false);
+                    replayContext.Symbol, env, levels, historicalBars, riskEngine, null, cancellationToken).ConfigureAwait(false);
                 
                 // Record the decision for learning
                 var historicalDecision = new UnifiedHistoricalDecision
@@ -485,7 +485,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
                 // Execute trades if brain recommends them
                 if (brainDecision.RecommendedStrategy != "HOLD" && brainDecision.OptimalPositionMultiplier != 0)
                 {
-                    await ExecuteHistoricalTradeAsync(historicalDecision, currentBar.Close, backtestState, cancellationToken).ConfigureAwait(false);
+                    await ExecuteHistoricalTradeAsync(historicalDecision, currentBar.Close, backtestState).ConfigureAwait(false);
                 }
                 
                 // Feed result back to brain for continuous learning (simulate trade outcome)
@@ -576,7 +576,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
             };
             
             var brainDecision = await _unifiedBrain.MakeIntelligentDecisionAsync(
-                tradingContext.Symbol, env, levels, bars, riskEngine, cancellationToken).ConfigureAwait(false);
+                tradingContext.Symbol, env, levels, bars, riskEngine, null, cancellationToken).ConfigureAwait(false);
             
             var historicalDecision = new HistoricalDecision
             {
@@ -681,7 +681,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
                     Environment.GetEnvironmentVariable("TOPSTEPX_EVAL_ES_ID") ?? "default-es" :
                     Environment.GetEnvironmentVariable("TOPSTEPX_EVAL_NQ_ID") ?? "default-nq";
                 
-                var bars = await bridgeService.GetRecentHistoricalBarsAsync(contractId, 1000, cancellationToken).ConfigureAwait(false);
+                var bars = await bridgeService.GetRecentHistoricalBarsAsync(contractId, 1000).ConfigureAwait(false);
                 var dataPoints = bars.Select(bar => new HistoricalDataPoint
                 {
                     Timestamp = bar.Start,  // Use Start instead of End
@@ -1012,7 +1012,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
                 bestResult.SharpeRatio, bestResult.TotalReturn, bestResult.TotalTrades, bestResult.MaxDrawdown);
             
             // Extract and analyze decision patterns from the best result
-            var patternAnalysis = await AnalyzeSuccessfulPatternsAsync(bestResult, cancellationToken).ConfigureAwait(false);
+            var patternAnalysis = await AnalyzeSuccessfulPatternsAsync(bestResult).ConfigureAwait(false);
             
             // Trigger enhanced learning if performance exceeds thresholds
             if (bestResult.SharpeRatio > 1.5m || (bestResult.SharpeRatio > 1.0m && bestResult.MaxDrawdown > -0.10m))
@@ -1026,7 +1026,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         if (failedResults.Any())
         {
             _logger.LogWarning("[ENHANCED-BACKTEST] Analyzing {FailedCount} failed backtests for risk patterns", failedResults.Length);
-            await AnalyzeFailurePatternsAsync(failedResults, cancellationToken).ConfigureAwait(false);
+            await AnalyzeFailurePatternsAsync(failedResults).ConfigureAwait(false);
         }
         
         // Store results for future analysis
@@ -1284,7 +1284,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
                     Environment.GetEnvironmentVariable("TOPSTEPX_EVAL_ES_ID") ?? "default-es" :
                     Environment.GetEnvironmentVariable("TOPSTEPX_EVAL_NQ_ID") ?? "default-nq";
                 
-                var bars = await bridgeService.GetHistoricalBarsAsync(contractId, 2000, cancellationToken).ConfigureAwait(false);
+                var bars = await bridgeService.GetRecentHistoricalBarsAsync(contractId, 2000).ConfigureAwait(false);
                 
                 if (bars.Any())
                 {
@@ -1483,8 +1483,8 @@ internal class EnhancedBacktestLearningService : BackgroundService
         await Task.Yield(); // Ensure async behavior for proper execution simulation
         
         // Real-time execution simulation with market microstructure
-        var marketImpact = CalculateMarketImpact(decision, state);
-        var slippage = CalculateRealisticSlippage(decision, currentPrice, marketImpact);
+        var marketImpact = CalculateMarketImpact(decision);
+        var slippage = CalculateRealisticSlippage(decision, marketImpact);
         var commission = CalculateCommission(decision.Symbol, Math.Abs(decision.Size));
         
         var executionPrice = decision.Action switch
