@@ -1181,20 +1181,8 @@ public class AutonomousDecisionEngine : BackgroundService
     {
         try
         {
-            // Get TopstepX client from service provider
-            var topstepXClient = _serviceProvider.GetService<ITopstepXClient>();
-            if (topstepXClient != null && topstepXClient.IsConnected)
-            {
-                _logger.LogDebug("📊 [AUTONOMOUS-ENGINE] Fetching real volume for {Symbol} from TopstepX", symbol);
-                
-                var marketData = await topstepXClient.GetMarketDataAsync(symbol, cancellationToken).ConfigureAwait(false);
-                if (marketData.ValueKind != JsonValueKind.Null && marketData.TryGetProperty("volume", out var volumeElement))
-                {
-                    var volume = volumeElement.GetInt64();
-                    _logger.LogDebug("✅ [AUTONOMOUS-ENGINE] Retrieved real volume {Volume} for {Symbol}", volume, symbol);
-                    return volume;
-                }
-            }
+            // Legacy ITopstepXClient removed - using TopstepX SDK via ITopstepXAdapterService
+            // Volume data will come from market data service instead
             
             // Try market data service for order book volume
             var marketDataService = _serviceProvider.GetService<IMarketDataService>();

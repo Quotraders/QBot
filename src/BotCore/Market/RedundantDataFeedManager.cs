@@ -70,6 +70,8 @@ public class DataFeedHealth
 public class RedundantDataFeedManager : IDisposable
 {
     private readonly ILogger<RedundantDataFeedManager> _logger;
+    private readonly TradingBot.Abstractions.ITopstepXAdapterService _topstepXAdapter;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly List<IDataFeed> _dataFeeds = new();
     private readonly ConcurrentDictionary<string, DataFeedHealth> _feedHealth = new();
     private readonly ConcurrentDictionary<string, MarketData> _consolidatedData = new();
@@ -112,24 +114,33 @@ public class RedundantDataFeedManager : IDisposable
     public event EventHandler<MarketData>? OnConsolidatedData;
     public event EventHandler<string>? OnFeedFailover;
 
-    public RedundantDataFeedManager(ILogger<RedundantDataFeedManager> logger)
+    public RedundantDataFeedManager(
+        ILogger<RedundantDataFeedManager> logger,
+        TradingBot.Abstractions.ITopstepXAdapterService topstepXAdapter,
+        ILoggerFactory loggerFactory)
     {
         _logger = logger;
+        _topstepXAdapter = topstepXAdapter ?? throw new ArgumentNullException(nameof(topstepXAdapter),
+            "TopstepX adapter is REQUIRED for production. No simulation mode.");
+        _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory),
+            "Logger factory is REQUIRED.");
         _healthCheckTimer = new Timer(CheckFeedHealth, null, Timeout.Infinite, Timeout.Infinite);
         _consistencyCheckTimer = new Timer(CheckDataConsistency, null, Timeout.Infinite, Timeout.Infinite);
         
-        _logger.LogInformation("[DataFeed] RedundantDataFeedManager initialized");
+        _logger.LogInformation("[DataFeed] RedundantDataFeedManager initialized - PRODUCTION MODE (ES/NQ only)");
     }
 
     /// <summary>
     /// Initialize data feeds and start monitoring
+    /// PRODUCTION MODE: TopstepX adapter required, no simulation fallback
     /// </summary>
     public async Task InitializeDataFeedsAsync()
     {
-        _logger.LogInformation("[DataFeed] Initializing data feeds");
+        _logger.LogInformation("[DataFeed] Initializing data feeds - PRODUCTION MODE");
         
-        // Add data feeds (these would be actual implementations)
-        AddDataFeed(new TopstepXDataFeed { Priority = PRIMARY_FEED_PRIORITY });
+        // Add TopstepX data feed with REQUIRED adapter for live market data
+        var topstepXLogger = _loggerFactory.CreateLogger<TopstepXDataFeed>();
+        AddDataFeed(new TopstepXDataFeed(_topstepXAdapter, topstepXLogger) { Priority = PRIMARY_FEED_PRIORITY });
         AddDataFeed(new BackupDataFeed { Priority = BACKUP_FEED_PRIORITY });
         
         // Sort by priority
@@ -772,42 +783,76 @@ public class RedundantDataFeedManager : IDisposable
 /// </summary>
 public class TopstepXDataFeed : IDataFeed
 {
-    // Primary feed simulation constants
-    private const int ConnectionDelayMs = 100;
-    private const int NetworkDelayMs = 50;
-    private const int SIMULATION_DELAY_MS = 50;            // Delay for simulated operations
-    private const int DEFAULT_VOLUME = 1000;               // Default volume for test data
+    // Production constants - ES/NQ only
+    private const int DEFAULT_VOLUME = 1000;               // Default volume (not available from basic price query)
+    private const decimal ES_TICK_SIZE = 0.25m;            // ES/NQ tick size for bid/ask calculation
     
-    // Price-related test data constants
-    private const decimal ES_BASE_PRICE = 4500.00m;        // ES base price for test data
-    private const decimal ES_BID_PRICE = 4499.75m;         // ES bid price for test data
-    private const decimal ES_ASK_PRICE = 4500.25m;         // ES ask price for test data
-    private const decimal PRICE_VARIATION_RANGE = 10m;     // Price variation range (+/-)
-    private const decimal PRICE_VARIATION_OFFSET = 5m;     // Price variation offset
+    private readonly TradingBot.Abstractions.ITopstepXAdapterService _adapterService;
+    private readonly ILogger<TopstepXDataFeed>? _logger;
     
     public string FeedName => "TopstepX";
     public int Priority { get; set; } = 1;
     
     public event EventHandler<MarketData>? OnDataReceived;
     public event EventHandler<Exception>? OnError;
+    
+    /// <summary>
+    /// Constructor with REQUIRED TopstepX adapter service for real market data
+    /// Production mode: No simulation fallback - fails immediately if adapter unavailable
+    /// </summary>
+    /// <param name="adapterService">TopstepX adapter service (REQUIRED for production)</param>
+    /// <param name="logger">Logger for diagnostics</param>
+    public TopstepXDataFeed(
+        TradingBot.Abstractions.ITopstepXAdapterService adapterService,
+        ILogger<TopstepXDataFeed>? logger = null)
+    {
+        _adapterService = adapterService ?? throw new ArgumentNullException(nameof(adapterService), 
+            "TopstepX adapter service is REQUIRED. Bot must connect to live TopstepX data.");
+        _logger = logger;
+        
+        _logger?.LogInformation("[TopstepXDataFeed] Initialized with REQUIRED TopstepX adapter - production mode (ES/NQ only)");
+    }
 
     public async Task<bool> ConnectAsync()
     {
-        await Task.Delay(ConnectionDelayMs).ConfigureAwait(false); // Simulate connection
-        return true;
+        // Production mode: Real connection handled by TopstepX adapter service
+        // No simulation delay
+        return await Task.FromResult(_adapterService.IsConnected).ConfigureAwait(false);
     }
 
     public async Task<MarketData?> GetMarketDataAsync(string symbol)
     {
-        await Task.Delay(NetworkDelayMs).ConfigureAwait(false); // Simulate network delay
+        // PRODUCTION MODE: Only ES and NQ supported - no simulation fallback
+        if (symbol != "ES" && symbol != "NQ")
+        {
+            throw new ArgumentException($"Symbol {symbol} not supported. Bot only trades ES and NQ.", nameof(symbol));
+        }
+        
+        // Require adapter to be connected - fail immediately if not
+        if (!_adapterService.IsConnected)
+        {
+            throw new InvalidOperationException(
+                "TopstepX adapter is not connected. Cannot retrieve live market data. " +
+                "Ensure credentials are configured in .env and adapter is initialized.");
+        }
+        
+        // Get real market data from TopstepX - no error handling, let exceptions propagate
+        var price = await _adapterService.GetPriceAsync(symbol, CancellationToken.None).ConfigureAwait(false);
+        
+        // Calculate bid/ask as price ± one tick (0.25 for ES/NQ)
+        var bid = price - ES_TICK_SIZE;
+        var ask = price + ES_TICK_SIZE;
+        
+        _logger?.LogDebug("[TopstepXDataFeed] Live market data for {Symbol}: Price=${Price:F2}, Bid=${Bid:F2}, Ask=${Ask:F2}", 
+            symbol, price, bid, ask);
         
         return new MarketData
         {
             Symbol = symbol,
-            Price = ES_BASE_PRICE + (decimal)(System.Security.Cryptography.RandomNumberGenerator.GetInt32(0, 10000) / 10000.0 * (double)PRICE_VARIATION_RANGE - (double)PRICE_VARIATION_OFFSET),
-            Volume = DEFAULT_VOLUME,
-            Bid = ES_BID_PRICE,
-            Ask = ES_ASK_PRICE,
+            Price = price,
+            Volume = DEFAULT_VOLUME, // Volume not available from basic price query
+            Bid = bid,
+            Ask = ask,
             Timestamp = DateTime.UtcNow,
             Source = FeedName
         };
@@ -815,8 +860,11 @@ public class TopstepXDataFeed : IDataFeed
 
     public async Task<OrderBook?> GetOrderBookAsync(string symbol)
     {
-        await Task.Delay(SIMULATION_DELAY_MS).ConfigureAwait(false);
-        return new OrderBook { Symbol = symbol, Timestamp = DateTime.UtcNow };
+        // PRODUCTION MODE: Order book not yet implemented for TopstepX
+        // This would require Level 2 market data integration
+        throw new InvalidOperationException(
+            "Order book data not available from TopstepX adapter. " +
+            "Level 2 market data integration required for order book support.");
     }
 
     protected virtual void OnDataReceivedEvent(MarketData data)
