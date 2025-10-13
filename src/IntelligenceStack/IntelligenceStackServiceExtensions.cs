@@ -76,6 +76,8 @@ public static class IntelligenceStackServiceExtensions
             provider.GetRequiredService<IntelligenceStackConfig>().ML.Calibration);
         services.AddSingleton<ConfidenceConfig>(provider => 
             provider.GetRequiredService<IntelligenceStackConfig>().ML.Confidence);
+        services.AddSingleton<DriftMonitoringConfig>(provider => 
+            provider.GetRequiredService<IntelligenceStackConfig>().Observability.DriftMonitoring);
             
         // Configure minimal CloudFlowOptions for compatibility (local definition)
         services.Configure<CloudFlowOptions>(options =>
@@ -85,6 +87,9 @@ public static class IntelligenceStackServiceExtensions
             options.InstanceId = Environment.MachineName;
             options.TimeoutSeconds = DefaultTimeoutSeconds;
         });
+        
+        // Register CloudFlowService for cloud data flow (required by IntelligenceOrchestrator)
+        services.AddSingleton<CloudFlowService>();
         
         // Register HttpClient for IntelligenceOrchestrator
         services.AddHttpClient();

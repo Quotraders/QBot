@@ -1051,6 +1051,9 @@ Please check the configuration and ensure all required services are registered.
         // Register Shadow Tester for A/B validation and model promotion
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IShadowTester, TradingBot.UnifiedOrchestrator.Promotion.ShadowTester>();
         
+        // Register TopstepX Client Adapter to bridge ITopstepXAdapterService to ITopstepXClient
+        services.AddSingleton<TradingBot.Abstractions.ITopstepXClient, TopstepXClientAdapter>();
+        
         // Register Position Service for real position tracking
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Promotion.IPositionService, TradingBot.UnifiedOrchestrator.Promotion.ProductionPositionService>();
         
