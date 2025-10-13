@@ -340,13 +340,13 @@ namespace BotCore.Services
     /// </summary>
     public sealed class ModelRotationConfiguration
     {
-        public bool RotationEnabled { get; set; }
-        public string ManifestPath { get; set; } = string.Empty;
-        public string SelectedPath { get; set; } = string.Empty;
-        public string ActiveModelsDirectory { get; set; } = string.Empty;
-        public int CooldownBars { get; set; }
-        public bool CanaryCheckEnabled { get; set; }
-        public double CanaryAccuracyThreshold { get; set; }
+        public bool RotationEnabled { get; set; } = false;
+        public string ManifestPath { get; set; } = "models/manifest.json";
+        public string SelectedPath { get; set; } = "models/selected.json";
+        public string ActiveModelsDirectory { get; set; } = "models/active";
+        public int CooldownBars { get; set; } = 10;
+        public bool CanaryCheckEnabled { get; set; } = false;
+        public double CanaryAccuracyThreshold { get; set; } = 0.75;
 
         /// <summary>
         /// Validates configuration values with fail-closed behavior

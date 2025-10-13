@@ -430,6 +430,9 @@ Please check the configuration and ensure all required services are registered.
             options.MLPredictionAggregationCount = int.Parse(Environment.GetEnvironmentVariable("ML_PREDICTION_AGGREGATION") ?? "100");
         });
         services.AddSingleton<ITradingLogger, Services.TradingLogger>();
+        
+        // Register memory cache for caching services
+        services.AddMemoryCache();
 
         // Legacy authentication services removed - using environment credentials with TopstepX SDK adapter
 
