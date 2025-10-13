@@ -3,6 +3,8 @@
 // Integration: Used by orchestrator and risk agents for portfolio management.
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using BotCore.Models;
 using Microsoft.Extensions.Logging;
 
@@ -10,11 +12,17 @@ namespace BotCore
 {
     /// <summary>
     /// Tracks open/closed positions and PnL for the account.
+    /// Implements IPositionAgent for position state tracking.
     /// </summary>
-    public sealed class PositionAgent(ILogger<PositionAgent> log)
+    public sealed class PositionAgent : IPositionAgent
     {
-        private readonly ILogger<PositionAgent> _log = log;
-        private readonly List<Bar> _positions = []; // Replace Bar with your Position model if available
+        private readonly ILogger<PositionAgent> _log;
+        private readonly List<Bar> _positions = [];
+
+        public PositionAgent(ILogger<PositionAgent> log)
+        {
+            _log = log;
+        }
 
         public void AddPosition(Bar position)
         {
@@ -39,6 +47,11 @@ namespace BotCore
                 total += pos.Close - pos.Open;
             }
             return total;
+        }
+
+        public Task<bool> HasActivePositionsAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(_positions.Count > 0);
         }
     }
 }

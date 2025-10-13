@@ -40,8 +40,8 @@ namespace BotCore.Extensions
             // Register trading readiness tracker
             services.AddSingleton<ITradingReadinessTracker, TradingReadinessTracker>();
 
-            // Register historical data bridge service
-            services.AddScoped<IHistoricalDataBridgeService, HistoricalDataBridgeService>();
+            // Register historical data bridge service - Singleton for consumption by singleton services
+            services.AddSingleton<IHistoricalDataBridgeService, HistoricalDataBridgeService>();
 
             // Register bar consumer for historical data integration
             services.AddScoped<IHistoricalBarConsumer, TradingSystemBarConsumer>();
