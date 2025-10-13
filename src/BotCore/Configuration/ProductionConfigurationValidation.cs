@@ -105,7 +105,7 @@ public class TradingConfiguration
     /// Safe application data directory for logs and state
     /// </summary>
     [Required]
-    public string DataDirectory { get; set; } = "";
+    public string DataDirectory { get; set; } = "data";
 
     /// <summary>
     /// Backup directory with write permissions
@@ -326,7 +326,7 @@ public class ObservabilityConfiguration
     /// Log output directory with write permissions
     /// </summary>
     [Required]
-    public string LogDirectory { get; set; } = "";
+    public string LogDirectory { get; set; } = "logs";
 
     [Required]
     [Range(MinMetricsIntervalMs, MaxMetricsIntervalMs)]

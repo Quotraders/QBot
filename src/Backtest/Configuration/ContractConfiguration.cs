@@ -45,7 +45,25 @@ namespace TradingBot.Backtest.Configuration
         /// <summary>
         /// Contract configurations keyed by symbol
         /// </summary>
-        public Dictionary<string, ContractConfiguration> Contracts { get; set; } = new();
+        public Dictionary<string, ContractConfiguration> Contracts { get; set; } = new()
+        {
+            ["ES"] = new ContractConfiguration
+            {
+                Symbol = "ES",
+                TickSize = 0.25m,
+                PointValue = 50m,
+                MinSpreadMultiplier = 1.0m,
+                Description = "E-mini S&P 500 Futures"
+            },
+            ["NQ"] = new ContractConfiguration
+            {
+                Symbol = "NQ",
+                TickSize = 0.25m,
+                PointValue = 20m,
+                MinSpreadMultiplier = 1.0m,
+                Description = "E-mini NASDAQ 100 Futures"
+            }
+        };
 
         /// <summary>
         /// Get configuration for a specific contract

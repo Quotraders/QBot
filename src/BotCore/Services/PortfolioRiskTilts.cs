@@ -541,12 +541,12 @@ namespace BotCore.Services
 
     public sealed class CorrelationCapConfiguration
     {
-        public double CorrelationThreshold { get; set; }
-        public int CorrelationWindowMinutes { get; set; }
-        public int MinDataPoints { get; set; }
-        public double DefaultReductionFactor { get; set; }
-        public double MinReductionFactor { get; set; }
-        public double MaxReductionAmount { get; set; }
+        public double CorrelationThreshold { get; set; } = 0.7;
+        public int CorrelationWindowMinutes { get; set; } = 30;
+        public int MinDataPoints { get; set; } = 20;
+        public double DefaultReductionFactor { get; set; } = 0.5;
+        public double MinReductionFactor { get; set; } = 0.3;
+        public double MaxReductionAmount { get; set; } = 0.7;
 
         /// <summary>
         /// Validates configuration values with fail-closed behavior
@@ -564,12 +564,12 @@ namespace BotCore.Services
 
     public sealed class VolOfVolConfiguration
     {
-        public double VolOfVolThreshold { get; set; }
-        public double VolSpikeSizeReduction { get; set; }
-        public double VolSpikeStopWidening { get; set; }
-        public double VolSpikeOffsetTightening { get; set; }
-        public int VolHistoryWindowMinutes { get; set; }
-        public int MinVolDataPoints { get; set; }
+        public double VolOfVolThreshold { get; set; } = 0.15;
+        public double VolSpikeSizeReduction { get; set; } = 0.5;
+        public double VolSpikeStopWidening { get; set; } = 1.5;
+        public double VolSpikeOffsetTightening { get; set; } = 0.8;
+        public int VolHistoryWindowMinutes { get; set; } = 60;
+        public int MinVolDataPoints { get; set; } = 10;
 
         /// <summary>
         /// Validates configuration values with fail-closed behavior

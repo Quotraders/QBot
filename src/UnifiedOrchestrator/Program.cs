@@ -430,6 +430,9 @@ Please check the configuration and ensure all required services are registered.
             options.MLPredictionAggregationCount = int.Parse(Environment.GetEnvironmentVariable("ML_PREDICTION_AGGREGATION") ?? "100");
         });
         services.AddSingleton<ITradingLogger, Services.TradingLogger>();
+        
+        // Register memory cache for caching services
+        services.AddMemoryCache();
 
         // Legacy authentication services removed - using environment credentials with TopstepX SDK adapter
 
@@ -1050,6 +1053,9 @@ Please check the configuration and ensure all required services are registered.
         
         // Register Shadow Tester for A/B validation and model promotion
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IShadowTester, TradingBot.UnifiedOrchestrator.Promotion.ShadowTester>();
+        
+        // Register Production TopstepX Client for real API access
+        services.AddSingleton<TradingBot.Abstractions.ITopstepXClient, ProductionTopstepXClient>();
         
         // Register Position Service for real position tracking
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Promotion.IPositionService, TradingBot.UnifiedOrchestrator.Promotion.ProductionPositionService>();
