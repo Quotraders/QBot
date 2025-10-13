@@ -1732,8 +1732,8 @@ Please check the configuration and ensure all required services are registered.
         
         // Register ML Configuration Service for hardcoded value replacement
         services.AddProductionConfigurationValidation(configuration);
-        services.AddScoped<TradingBot.BotCore.Services.MLConfigurationService>();
-        services.AddScoped<TradingBot.Abstractions.IMLConfigurationService, TradingBot.BotCore.Services.MLConfigurationService>();
+        services.AddSingleton<TradingBot.BotCore.Services.MLConfigurationService>();
+        services.AddSingleton<TradingBot.Abstractions.IMLConfigurationService, TradingBot.BotCore.Services.MLConfigurationService>();
         
         // Register Execution Configuration Services - Replace hardcoded execution parameters
         services.AddScoped<TradingBot.Abstractions.IExecutionGuardsConfig, TradingBot.BotCore.Services.ExecutionGuardsConfigService>();
@@ -1746,7 +1746,7 @@ Please check the configuration and ensure all required services are registered.
         services.AddScoped<TradingBot.Abstractions.IMetaCostConfig, TradingBot.BotCore.Services.MetaCostConfigService>();
         
         // Register Trading Flow Configuration Services - Replace hardcoded trading flow parameters
-        services.AddScoped<TradingBot.Abstractions.IBracketConfig, TradingBot.BotCore.Services.BracketConfigService>();
+        services.AddSingleton<TradingBot.Abstractions.IBracketConfig, TradingBot.BotCore.Services.BracketConfigService>();
         services.AddScoped<TradingBot.Abstractions.ISessionConfig, TradingBot.BotCore.Services.SessionConfigService>();
         services.AddScoped<TradingBot.Abstractions.IControllerOptionsService, TradingBot.BotCore.Services.ControllerOptionsService>();
         

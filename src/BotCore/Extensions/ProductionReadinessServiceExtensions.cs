@@ -44,7 +44,7 @@ namespace BotCore.Extensions
             services.AddSingleton<IHistoricalDataBridgeService, HistoricalDataBridgeService>();
 
             // Register bar consumer for historical data integration
-            services.AddScoped<IHistoricalBarConsumer, TradingSystemBarConsumer>();
+            services.AddSingleton<IHistoricalBarConsumer, TradingSystemBarConsumer>();
 
             // Register enhanced market data flow service
             services.AddScoped<IEnhancedMarketDataFlowService, EnhancedMarketDataFlowService>();
