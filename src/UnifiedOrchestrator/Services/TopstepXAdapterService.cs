@@ -816,7 +816,8 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             if (result.Success && result.Data != null)
             {
                 // Check if we got fill events
-                if (result.Data.TryGetProperty("fills", out var fillsElement) && fillsElement.ValueKind == JsonValueKind.Array)
+                var data = result.Data.Value;
+                if (data.TryGetProperty("fills", out var fillsElement) && fillsElement.ValueKind == JsonValueKind.Array)
                 {
                     foreach (var fillElement in fillsElement.EnumerateArray())
                     {
