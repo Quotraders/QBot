@@ -326,7 +326,7 @@ public class ObservabilityConfiguration
     /// Log output directory with write permissions
     /// </summary>
     [Required]
-    public string LogDirectory { get; set; } = "";
+    public string LogDirectory { get; set; } = "logs";
 
     [Required]
     [Range(MinMetricsIntervalMs, MaxMetricsIntervalMs)]
