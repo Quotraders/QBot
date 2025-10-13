@@ -38,7 +38,7 @@ public static class SimpleDslLoader
                 var yamlContent = File.ReadAllText(file);
                 var strategy = deserializer.Deserialize<YamlStrategy>(yamlContent);
                 
-                if (strategy != null)
+                if (strategy != null && !string.IsNullOrEmpty(strategy.Name))
                 {
                     var dslStrategy = ConvertToDslStrategy(strategy);
                     strategies.Add(dslStrategy);
@@ -46,7 +46,9 @@ public static class SimpleDslLoader
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException($"Failed to load strategy from {file}: {ex.Message}", ex);
+                // Skip strategies that don't match the simple DSL format
+                // Complex strategies (like S7) may have their own loaders
+                Console.WriteLine($"⚠️ [DSL-LOADER] Skipping {Path.GetFileName(file)}: {ex.Message}");
             }
         }
 
@@ -91,10 +93,10 @@ public class YamlStrategy
     public string Family { get; set; } = string.Empty;
     public string Bias { get; set; } = "both";
     public YamlWhen? When { get; set; }
-    public System.Collections.Generic.IReadOnlyList<string>? Contra { get; init; }
-    public System.Collections.Generic.IReadOnlyList<string>? Confluence { get; init; }
+    public List<string>? Contra { get; set; }
+    public List<string>? Confluence { get; set; }
     public YamlPlaybook? Playbook { get; set; }
-    public System.Collections.Generic.IReadOnlyList<string>? TelemetryTags { get; init; }
+    public List<string>? TelemetryTags { get; set; }
 }
 
 /// <summary>
@@ -102,8 +104,8 @@ public class YamlStrategy
 /// </summary>
 public class YamlWhen
 {
-    public System.Collections.Generic.IReadOnlyList<string>? Regime { get; init; }
-    public System.Collections.Generic.IReadOnlyList<string>? Micro { get; init; }
+    public List<string>? Regime { get; set; }
+    public List<string>? Micro { get; set; }
 }
 
 /// <summary>
