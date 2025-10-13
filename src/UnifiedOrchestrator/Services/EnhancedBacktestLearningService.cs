@@ -656,10 +656,10 @@ internal class EnhancedBacktestLearningService : BackgroundService
                     {
                         Timestamp = quote.Timestamp,
                         Symbol = quote.Symbol,
-                        Price = quote.Price,
+                        Close = quote.Price,  // Map Price to Close
                         Volume = quote.Volume,
-                        Bid = quote.Bid,
-                        Ask = quote.Ask
+                        High = quote.Ask,     // Map Ask to High
+                        Low = quote.Bid       // Map Bid to Low
                     });
                 }
                 
@@ -680,15 +680,16 @@ internal class EnhancedBacktestLearningService : BackgroundService
                     Environment.GetEnvironmentVariable("TOPSTEPX_EVAL_ES_ID") ?? "default-es" :
                     Environment.GetEnvironmentVariable("TOPSTEPX_EVAL_NQ_ID") ?? "default-nq";
                 
-                var bars = await bridgeService.GetHistoricalBarsAsync(contractId, 1000, cancellationToken).ConfigureAwait(false);
+                var bars = await bridgeService.GetRecentHistoricalBarsAsync(contractId, 1000, cancellationToken).ConfigureAwait(false);
                 var dataPoints = bars.Select(bar => new HistoricalDataPoint
                 {
-                    Timestamp = bar.End,
+                    Timestamp = bar.Start,  // Use Start instead of End
                     Symbol = config.Symbol,
-                    Price = bar.Close,
-                    Volume = (int)bar.Volume,
-                    Bid = bar.Close - 0.25m, // ES/NQ tick size
-                    Ask = bar.Close + 0.25m
+                    Close = bar.Close,
+                    Volume = bar.Volume,
+                    Low = bar.Low,
+                    High = bar.High,
+                    Open = bar.Open
                 }).ToList();
                 
                 if (dataPoints.Any())
@@ -1314,7 +1315,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
                     bars.Add(new Bar
                     {
                         Start = quote.Timestamp,
-                        End = quote.Timestamp.AddMinutes(1),
+                        Ts = new DateTimeOffset(quote.Timestamp).ToUnixTimeMilliseconds(),
                         Symbol = quote.Symbol,
                         Open = quote.Price,
                         High = quote.Price,

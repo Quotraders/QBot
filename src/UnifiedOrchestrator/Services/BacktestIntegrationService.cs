@@ -106,10 +106,10 @@ namespace TradingBot.UnifiedOrchestrator.Services
                 
                 return new BacktestReport
                 {
-                    Success = false,
+                    WasSuccessful = false,
                     ErrorMessage = ex.Message,
                     Symbol = symbol,
-                    ModelFamily = modelFamily,
+                    ModelName = modelFamily,
                     StartDate = startDate,
                     EndDate = endDate
                 };

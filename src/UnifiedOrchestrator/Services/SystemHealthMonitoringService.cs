@@ -39,14 +39,14 @@ internal class SystemHealthMonitoringService : IHostedService
         
         // Health checks every 60 seconds
         _healthCheckTimer = new Timer(
-            callback: state => { _ = PerformHealthCheckAsync(); },
+            callback: state => { _ = PerformHealthCheck(); },
             state: null, 
             dueTime: (int)TimeSpan.FromSeconds(60).TotalMilliseconds,
             period: (int)TimeSpan.FromSeconds(60).TotalMilliseconds);
             
         // Performance metrics every 5 minutes
         _performanceTimer = new Timer(
-            callback: state => { _ = CollectPerformanceMetricsAsync(); },
+            callback: state => { _ = CollectPerformanceMetrics(); },
             state: null,
             dueTime: (int)TimeSpan.FromMinutes(1).TotalMilliseconds,
             period: (int)TimeSpan.FromMinutes(5).TotalMilliseconds);

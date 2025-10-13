@@ -529,7 +529,7 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         return Task.FromResult(new WorkflowExecutionResult
         {
             Success = false,
-            Error = "Workflow execution not implemented in health monitoring service"
+            ErrorMessage = "Workflow execution not implemented in health monitoring service"
         });
     }
 
