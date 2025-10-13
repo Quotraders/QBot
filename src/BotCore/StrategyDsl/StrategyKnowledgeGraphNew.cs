@@ -587,14 +587,14 @@ public sealed class StrategyKnowledgeGraphNew : IStrategyKnowledgeGraph
 public sealed class ProductionRegimeService : IRegimeService
 {
     private readonly ILogger<ProductionRegimeService> _logger;
-    private readonly RegimeDetectorWithHysteresis _regimeDetector;
+    private readonly IRegimeDetector _regimeDetector;
     private RegimeType _lastRegime = RegimeType.Range;
     private DateTime _lastUpdate = DateTime.MinValue;
     private readonly TimeSpan _cacheTime = TimeSpan.FromSeconds(30);
 
     public ProductionRegimeService(
         ILogger<ProductionRegimeService> logger,
-        RegimeDetectorWithHysteresis regimeDetector)
+        IRegimeDetector regimeDetector)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _regimeDetector = regimeDetector ?? throw new ArgumentNullException(nameof(regimeDetector));
