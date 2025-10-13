@@ -645,7 +645,7 @@ internal class InferenceBrain : IInferenceBrain
         return new EnsembleDecision
         {
             Action = finalAction,
-            Size = Math.Round(totalSize, 2),
+            Size = Math.Round((decimal)totalSize, 2),
             Confidence = Math.Min(0.95m, Math.Max(0.05m, finalConfidence)),
             Strategy = strategyName,
             EnsembleMethod = ensembleMethod

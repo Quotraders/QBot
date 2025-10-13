@@ -389,7 +389,7 @@ internal class TradingBrainAdapter : ITradingBrainAdapter
     /// </summary>
     private bool AreDecisionsEquivalent(AbstractionsTradingDecision decision1, AbstractionsTradingDecision decision2)
     {
-        const double confidenceThreshold = GetDecisionComparisonThreshold(); // Configuration-driven threshold
+        double confidenceThreshold = GetDecisionComparisonThreshold(); // Configuration-driven threshold
         
         return decision1.Action == decision2.Action && 
                Math.Abs((double)(decision1.Confidence - decision2.Confidence)) <= confidenceThreshold;

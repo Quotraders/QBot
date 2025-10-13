@@ -331,7 +331,7 @@ This replaces individual SimpleBot/MinimalDemo/TradingBot smoke tests
             logger.LogInformation("🧪 [SMOKE] Test 2: Core service availability");
             var unifiedOrchestrator = host.Services.GetService<TradingBot.Abstractions.IUnifiedOrchestrator>();
             var tradingReadiness = host.Services.GetService<ITradingReadinessTracker>();
-            var mlConfigService = host.Services.GetService<MLConfigurationService>();
+            var mlConfigService = host.Services.GetService<TradingBot.BotCore.Services.MLConfigurationService>();
             
             logger.LogInformation("🧪 [SMOKE] ✅ UnifiedOrchestrator service: {Status}", 
                 unifiedOrchestrator != null ? "Available" : "Missing");

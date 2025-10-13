@@ -121,18 +121,18 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
             if (_adapterInitialized)
             {
                 // Test health and connectivity
-                var health = await _topstepXAdapter.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
-                if (health.HealthScore >= 80)
+                var healthScore = await _topstepXAdapter.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
+                if (healthScore >= 80)
                 {
-                    _logger.LogInformation("✅ TopstepX SDK adapter initialized - Health: {HealthScore}%", health.HealthScore);
+                    _logger.LogInformation("✅ TopstepX SDK adapter initialized - Health: {HealthScore}%", healthScore);
                     
                     // Test price data for both instruments
                     await TestInstrumentConnectivityAsync(cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
-                    _logger.LogWarning("⚠️ TopstepX adapter health degraded: {HealthScore}% - Status: {Status}", 
-                        health.HealthScore, health.Status);
+                    _logger.LogWarning("⚠️ TopstepX adapter health degraded: {HealthScore}%", 
+                        healthScore);
                 }
             }
             else
@@ -219,11 +219,11 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         {
             try
             {
-                var health = await _topstepXAdapter.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
-                if (health.HealthScore < 80)
+                var healthScore = await _topstepXAdapter.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
+                if (healthScore < 80)
                 {
-                    _logger.LogWarning("⚠️ TopstepX adapter health degraded: {HealthScore}% - Status: {Status}", 
-                        health.HealthScore, health.Status);
+                    _logger.LogWarning("⚠️ TopstepX adapter health degraded: {HealthScore}%", 
+                        healthScore);
                 }
             }
             catch (Exception ex)
