@@ -120,19 +120,9 @@ internal static class Program
         // Load .env files in priority order for auto TopstepX configuration
         EnvironmentLoader.LoadEnvironmentFiles();
         
-        // Check for production demonstration command
-        if (args.Length > 0 && args[0].Equals("--production-demo", StringComparison.OrdinalIgnoreCase))
-        {
-            await RunProductionDemonstrationAsync(args).ConfigureAwait(false);
-            return;
-        }
+        // REMOVED: Production demonstration and smoke test commands - simulation not needed for live trading
+        // All validation happens through production readiness checks
         
-        // Check for smoke test command (replaces SimpleBot/MinimalDemo/TradingBot smoke tests)
-        if (args.Length > 0 && args[0].Equals("--smoke", StringComparison.OrdinalIgnoreCase))
-        {
-            await RunSmokeTestAsync(args).ConfigureAwait(false);
-            return;
-        }
         
         Console.WriteLine(@"
 ================================================================================
@@ -1103,8 +1093,8 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IMarketHoursService, TradingBot.UnifiedOrchestrator.Scheduling.FuturesMarketHours>();
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Scheduling.FuturesMarketHours>();
         
-        // Register Shadow Tester for A/B validation
-        services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IShadowTester, TradingBot.UnifiedOrchestrator.Promotion.ShadowTester>();
+        // REMOVED: Shadow Tester - simulation/testing service not needed for live trading
+        // services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IShadowTester, TradingBot.UnifiedOrchestrator.Promotion.ShadowTester>();
         
         // Register Position Service for real position tracking
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Promotion.IPositionService, TradingBot.UnifiedOrchestrator.Promotion.ProductionPositionService>();
@@ -1130,8 +1120,8 @@ Please check the configuration and ensure all required services are registered.
         // Register Production Validation Service for runtime proof
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IValidationService, TradingBot.UnifiedOrchestrator.Services.ProductionValidationService>();
         
-        // Register Rollback Drill Service for rollback evidence under load
-        services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IRollbackDrillService, TradingBot.UnifiedOrchestrator.Services.RollbackDrillService>();
+        // REMOVED: Rollback Drill Service - simulation/testing service not needed for live trading
+        // services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IRollbackDrillService, TradingBot.UnifiedOrchestrator.Services.RollbackDrillService>();
         
         // AUDIT-CLEAN: Configure TradingBrainAdapter with configuration-driven thresholds instead of hardcoded values
         services.Configure<TradingBot.UnifiedOrchestrator.Configuration.TradingBrainAdapterConfiguration>(options =>
@@ -1155,14 +1145,14 @@ Please check the configuration and ensure all required services are registered.
         // Register Production Readiness Validation Service for complete runtime proof
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IProductionReadinessValidationService, TradingBot.UnifiedOrchestrator.Services.ProductionReadinessValidationService>();
         
-        // Register Production Demonstration Runner for PR review artifacts
-        services.AddSingleton<TradingBot.UnifiedOrchestrator.Services.ProductionDemonstrationRunner>();
+        // REMOVED: Production Demonstration Runner - simulation service not needed for live trading
+        // services.AddSingleton<TradingBot.UnifiedOrchestrator.Services.ProductionDemonstrationRunner>();
         
         // Register specialized validation services for PR review requirements
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Services.EnumMappingValidationService>();
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Services.ValidationReportRegressionService>();
         
-        // Register Validation Service for demonstration
+        // Register Validation Service for production
         services.AddHostedService<TradingBot.UnifiedOrchestrator.Services.ChampionChallengerValidationService>();
         
         Console.WriteLine("🏆 Champion/Challenger Architecture registered successfully - Live trading inference now read-only with atomic model swaps");
