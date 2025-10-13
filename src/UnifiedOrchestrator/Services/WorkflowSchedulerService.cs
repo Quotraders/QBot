@@ -66,7 +66,7 @@ internal class WorkflowSchedulerService : BackgroundService, IWorkflowScheduler
         _logger.LogInformation("Workflow Scheduler Service stopped");
     }
 
-    private Task ProcessScheduledWorkflowsAsync()
+    private Task ProcessScheduledWorkflowsAsync(CancellationToken cancellationToken)
     {
         // Process scheduled workflows
         // This will be implemented based on actual workflow requirements
