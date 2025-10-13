@@ -171,7 +171,7 @@ internal sealed class ModelRegistry : BackgroundService, IOnnxModelRegistry
         }
         
         var result = models.OrderByDescending(m => m.RegisteredAt);
-        return Task.FromResult(result);
+        return Task.FromResult<IEnumerable<ModelInfo>>(result);
     }
     
     public async Task<bool> ActivateModelAsync(string modelId, string modelType, CancellationToken cancellationToken = default)

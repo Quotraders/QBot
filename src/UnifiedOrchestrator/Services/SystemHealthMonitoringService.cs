@@ -169,7 +169,11 @@ internal class SystemHealthMonitoringService : IHostedService
         try
         {
             var topstepXAdapter = _serviceProvider.GetService<ITopstepXAdapterService>();
-            return topstepXAdapter?.IsConnected == true && topstepXAdapter?.ConnectionHealth >= 80.0;
+            if (topstepXAdapter?.IsConnected != true)
+                return false;
+                
+            var healthStr = topstepXAdapter.ConnectionHealth?.TrimEnd('%') ?? "0";
+            return double.TryParse(healthStr, out var health) && health >= 80.0;
         }
         catch
         {

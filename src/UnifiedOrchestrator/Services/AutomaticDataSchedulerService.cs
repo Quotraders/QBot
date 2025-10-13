@@ -300,7 +300,15 @@ internal class AutomaticDataSchedulerService : BackgroundService
                 var isConnected = topstepXAdapter.IsConnected;
                 var health = topstepXAdapter.ConnectionHealth;
                 
-                if (!isConnected || health < 80)
+                // Parse health percentage from string (e.g., "80%" or "80")
+                int healthPercentage = 0;
+                if (!string.IsNullOrEmpty(health))
+                {
+                    var healthStr = health.TrimEnd('%');
+                    int.TryParse(healthStr, out healthPercentage);
+                }
+                
+                if (!isConnected || healthPercentage < 80)
                 {
                     _logger.LogWarning("[AUTO-SCHEDULER] ⚠️ TopstepX adapter not fully connected - Connected: {Connected}, Health: {Health}%", 
                         isConnected, health);

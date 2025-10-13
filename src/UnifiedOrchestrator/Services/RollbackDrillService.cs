@@ -200,7 +200,7 @@ internal class RollbackDrillService : IRollbackDrillService
             .ContinueWith(_ => loadCancellation.Cancel(), TaskScheduler.Default);
 
         // Generate concurrent load
-        for (int worker; worker < Environment.ProcessorCount; worker++)
+        for (int worker = 0; worker < Environment.ProcessorCount; worker++)
         {
             tasks.Add(GenerateWorkerLoad(worker, config.DecisionsPerSecond / Environment.ProcessorCount, 
                 decisions, loadCancellation.Token));

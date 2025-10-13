@@ -4,6 +4,7 @@ using TradingBot.Abstractions;
 using TradingBot.UnifiedOrchestrator.Models;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -116,23 +117,24 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         try
         {
             _logger.LogInformation("🚀 Initializing TopstepX Python SDK adapter...");
-            _adapterInitialized = await _topstepXAdapter.InitializeAsync(cancellationToken).ConfigureAwait(false);
+            await _topstepXAdapter.InitializeAsync(cancellationToken).ConfigureAwait(false);
+            _adapterInitialized = true;
             
             if (_adapterInitialized)
             {
                 // Test health and connectivity
-                var health = await _topstepXAdapter.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
-                if (health.HealthScore >= 80)
+                var healthScore = await _topstepXAdapter.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
+                if (healthScore >= 80)
                 {
-                    _logger.LogInformation("✅ TopstepX SDK adapter initialized - Health: {HealthScore}%", health.HealthScore);
+                    _logger.LogInformation("✅ TopstepX SDK adapter initialized - Health: {HealthScore}%", healthScore);
                     
                     // Test price data for both instruments
                     await TestInstrumentConnectivityAsync(cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
-                    _logger.LogWarning("⚠️ TopstepX adapter health degraded: {HealthScore}% - Status: {Status}", 
-                        health.HealthScore, health.Status);
+                    _logger.LogWarning("⚠️ TopstepX adapter health degraded: {HealthScore}%", 
+                        healthScore);
                 }
             }
             else
@@ -219,11 +221,11 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         {
             try
             {
-                var health = await _topstepXAdapter.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
-                if (health.HealthScore < 80)
+                var healthScore = await _topstepXAdapter.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
+                if (healthScore < 80)
                 {
-                    _logger.LogWarning("⚠️ TopstepX adapter health degraded: {HealthScore}% - Status: {Status}", 
-                        health.HealthScore, health.Status);
+                    _logger.LogWarning("⚠️ TopstepX adapter health degraded: {HealthScore}%", 
+                        healthScore);
                 }
             }
             catch (Exception ex)
@@ -309,7 +311,7 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         var isHealthy = healthScore >= 80.0;
         var status = isHealthy ? "healthy" : "degraded";
         
-        return new HealthScoreResult(healthScore, status, new(), new(), DateTime.UtcNow, isHealthy);
+        return new HealthScoreResult((int)healthScore, status, new(), new(), DateTime.UtcNow, isHealthy);
     }
 
     /// <summary>
@@ -325,7 +327,10 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         
         // Portfolio status is monitored internally by TopstepX adapter
         // This method returns a basic status result
-        return Task.FromResult(new PortfolioStatusResult());
+        return Task.FromResult(new PortfolioStatusResult(
+            new Dictionary<string, object>(),
+            new Dictionary<string, PositionInfo>(),
+            DateTime.UtcNow));
     }
 
     public async Task<bool> ExecuteEmergencyShutdownAsync(CancellationToken cancellationToken = default)

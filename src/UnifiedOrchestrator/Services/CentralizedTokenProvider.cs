@@ -77,7 +77,7 @@ internal class CentralizedTokenProvider : ITokenProvider, IHostedService
         _serviceProvider = serviceProvider;
         
         // Refresh token every 30 minutes
-        _refreshTimer = new Timer(RefreshTimerCallback, null, TimeSpan.Zero, TimeSpan.FromMinutes(30));
+        _refreshTimer = new Timer(RefreshTimerCallback, null, 0, (int)TimeSpan.FromMinutes(30).TotalMilliseconds);
     }
 
     public async Task<string?> GetTokenAsync()
@@ -180,9 +180,19 @@ internal class CentralizedTokenProvider : ITokenProvider, IHostedService
         }
     }
 
-    private Task RefreshTimerCallback()
+    private void RefreshTimerCallback(object? state)
     {
-        return RefreshTokenAsync();
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await RefreshTokenAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error refreshing token in timer callback");
+            }
+        });
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)

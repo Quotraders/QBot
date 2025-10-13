@@ -208,7 +208,7 @@ namespace UnifiedOrchestrator.Services
                     CompletenessScore = CalculateCompletenessScore(featureSets),
                     DriftScore = await CalculateAverageDriftScoreAsync(featureSetName, featureSets, cancellationToken).ConfigureAwait(false),
                     Issues = new List<string>()
-                }.ConfigureAwait(false);
+                };
 
                 report.IsHealthy = report.CompletenessScore > 0.95 && report.DriftScore < _options.DriftThreshold;
 

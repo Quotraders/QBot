@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.ML.OnnxRuntime;
+using Microsoft.ML.OnnxRuntime.Tensors;
 using TradingBot.Abstractions;
 using TradingBot.Backtest;
 using TradingBot.UnifiedOrchestrator.Interfaces;

@@ -481,7 +481,7 @@ internal class PromotionService : IPromotionService
             // Use REAL statistical test results
             decision.PValue = shadowTestReport.PValue;
             decision.StatisticallySignificant = shadowTestReport.StatisticallySignificant;
-            decision.ConfidenceInterval = 0.95; // Fixed confidence interval
+            decision.ConfidenceInterval = 0.95m; // Fixed confidence interval
 
             _logger.LogInformation("Shadow test completed - Sharpe improvement: {SharpeImp:F4}, p-value: {PValue:F4}, significant: {Significant}",
                 decision.SharpeImprovement, decision.PValue, decision.StatisticallySignificant);

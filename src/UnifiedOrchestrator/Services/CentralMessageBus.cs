@@ -140,20 +140,20 @@ internal class CentralMessageBus : ICentralMessageBus
             case "BUY":
                 action = signal.Strength > 0.7m ? TradingAction.Buy : TradingAction.BuySmall;
                 side = TradeSide.Buy;
-                quantity = signal.Strength > 0.7m ? 2m : 1m; // Conservative position sizing
+                quantity = signal.Strength > 0.7m ? 2 : 1; // Conservative position sizing
                 break;
                 
             case "SHORT":
             case "SELL":
                 action = signal.Strength > 0.7m ? TradingAction.Sell : TradingAction.SellSmall;
                 side = TradeSide.Sell;
-                quantity = signal.Strength > 0.7m ? 2m : 1m; // Conservative position sizing
+                quantity = signal.Strength > 0.7m ? 2 : 1; // Conservative position sizing
                 break;
                 
             case "CLOSE":
                 action = TradingAction.Close;
                 side = TradeSide.Close;
-                quantity = 1m; // Close existing position
+                quantity = 1; // Close existing position
                 break;
                 
             default:
