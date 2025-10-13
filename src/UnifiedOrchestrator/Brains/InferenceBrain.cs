@@ -108,23 +108,23 @@ internal class InferenceBrain : IInferenceBrain
             // PPO Decision (if available)
             if (ppoModel != null && ppoVersion != null)
             {
-                decisions["PPO"] = await MakePPODecision(ppoModel, context, cancellationToken).ConfigureAwait(false);
+                decisions["PPO"] = await MakePPODecision(context, cancellationToken).ConfigureAwait(false);
             }
             
             // UCB Decision (if available)
             if (ucbModel != null && ucbVersion != null)
             {
-                decisions["UCB"] = await MakeUCBDecision(ucbModel, context, cancellationToken).ConfigureAwait(false);
+                decisions["UCB"] = await MakeUCBDecision(context, cancellationToken).ConfigureAwait(false);
             }
             
             // LSTM Decision (if available)
             if (lstmModel != null && lstmVersion != null)
             {
-                decisions["LSTM"] = await MakeLSTMDecision(lstmModel, context, cancellationToken).ConfigureAwait(false);
+                decisions["LSTM"] = await MakeLSTMDecision(context, cancellationToken).ConfigureAwait(false);
             }
 
             // Ensemble decision making
-            var finalDecision = await EnsembleDecisions(decisions, context, cancellationToken).ConfigureAwait(false);
+            var finalDecision = await EnsembleDecisions(decisions, context).ConfigureAwait(false);
             
             // Build complete trading decision with full attribution
             var tradingDecision = new TradingDecision
@@ -308,7 +308,7 @@ internal class InferenceBrain : IInferenceBrain
             
             // Real PPO (Proximal Policy Optimization) trading algorithm implementation
             var features = ExtractMarketFeatures(context);
-            var ppoAnalysis = AnalyzePPOSignals(features, context);
+            var ppoAnalysis = AnalyzePPOSignals(features);
             
             // PPO decision based on policy gradient and market momentum
             var action = "HOLD";
@@ -436,7 +436,7 @@ internal class InferenceBrain : IInferenceBrain
             
             // Real LSTM (Long Short-Term Memory) neural network implementation
             var sequenceFeatures = ExtractSequenceFeatures(context);
-            var lstmAnalysis = AnalyzeLSTMPatterns(sequenceFeatures, context);
+            var lstmAnalysis = AnalyzeLSTMPatterns(sequenceFeatures);
             
             // LSTM decision based on sequential pattern recognition
             var action = "HOLD";
@@ -749,7 +749,7 @@ internal class InferenceBrain : IInferenceBrain
     /// </summary>
     private UCBAnalysis AnalyzeUCBBandits(MarketFeatures features, TradingContext context)
     {
-        var decisionCount = CalculateDecisionCount(context);
+        var decisionCount = CalculateDecisionCount();
         var totalPulls = decisionCount + 1;
         var explorationThreshold = 0.6m;
         
@@ -778,8 +778,8 @@ internal class InferenceBrain : IInferenceBrain
         var pullCount = Math.Max(1, (int)(totalPulls * 0.33m)); // Simulate arm history
         var expectedValue = action switch
         {
-            "BUY" => CalculateBuyExpectedValue(features, context),
-            "SELL" => CalculateSellExpectedValue(features, context),
+            "BUY" => CalculateBuyExpectedValue(features),
+            "SELL" => CalculateSellExpectedValue(features),
             "HOLD" => 0.1m, // Small positive value for holding
             _ => 0m
         };
@@ -862,7 +862,7 @@ internal class InferenceBrain : IInferenceBrain
         var predictedDirection = PredictDirectionFromSequence(sequenceFeatures);
         var patternConfidence = CalculatePatternConfidence(patterns);
         var sequenceReliability = CalculateSequenceReliability(sequenceFeatures);
-        var predictedMagnitude = CalculatePredictedMagnitude(sequenceFeatures, predictedDirection);
+        var predictedMagnitude = CalculatePredictedMagnitude(predictedDirection);
         
         return new LSTMAnalysis
         {
