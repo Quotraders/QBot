@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using TradingBot.UnifiedOrchestrator.Interfaces;

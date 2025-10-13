@@ -1719,7 +1719,7 @@ Based on this, what should I change about my own code or parameters to improve? 
     /// <summary>
     /// Calculate real maximum drawdown from returns
     /// </summary>
-    private decimal CalculateRealMaxDrawdown(List<decimal> returns)
+    private static decimal CalculateRealMaxDrawdown(List<decimal> returns)
     {
         if (!returns.Any()) return 0;
         
