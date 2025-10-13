@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -346,7 +347,7 @@ internal class ProductionTopstepXClient : ITopstepXClient
 
     public Task<bool> SubscribeOrdersAsync(string accountId, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Order subscription requested for account {AccountId}", accountId);
+        _logger.LogInformation("Order subscription requested for account hash {AccountIdHash}", HashAccountId(accountId));
         // WebSocket subscriptions would be implemented here
         return Task.FromResult(true);
     }
@@ -388,4 +389,21 @@ internal class ProductionTopstepXClient : ITopstepXClient
     public event EventHandler<TradeConfirmationEventArgs>? OnTradeConfirmed;
     public event EventHandler<TradingBot.Abstractions.ErrorEventArgs>? OnError;
     public event EventHandler<ConnectionStateChangedEventArgs>? OnConnectionStateChanged;
+    /// <summary>
+    /// Returns a SHA-256 hex-encoded hash of the accountId, for safe logging.
+    /// </summary>
+    private static string HashAccountId(string accountId)
+    {
+        if (string.IsNullOrEmpty(accountId))
+            return string.Empty;
+        using (var sha256 = SHA256.Create())
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(accountId);
+            byte[] hash = sha256.ComputeHash(bytes);
+            var sb = new StringBuilder(hash.Length * 2);
+            foreach (var b in hash)
+                sb.Append(b.ToString("x2"));
+            return sb.ToString();
+        }
+    }
 }
