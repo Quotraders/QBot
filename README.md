@@ -137,6 +137,39 @@ cp .env.sample.local .env
 
 ✅ **VERIFIED WORKING**: The bot successfully launches with 0 errors and 0 warnings
 
+## 🔍 **Bot Diagnostics & Monitoring**
+
+### Self-Hosted Bot Launch Diagnostics
+
+For self-hosted runner deployments, use the **Bot Launch Diagnostics** workflow to capture complete startup information and logs:
+
+**GitHub Actions → "🤖 Bot Launch Diagnostics - Self-Hosted"**
+
+**What it captures:**
+- ✅ Complete console output from bot startup
+- ✅ All error messages and stack traces
+- ✅ System and environment information
+- ✅ Structured JSON logs with parsed events
+- ✅ Runtime metrics and performance data
+- ✅ Configuration validation results
+
+**How to use:**
+1. Navigate to **Actions** tab in GitHub
+2. Select **"🤖 Bot Launch Diagnostics - Self-Hosted"** workflow
+3. Click **"Run workflow"**
+4. Configure runtime duration (default: 5 minutes)
+5. Download artifacts after completion
+
+**Artifacts include:**
+- `system-info.json` - System and environment details
+- `console-output-*.log` - Complete console logs
+- `error-output-*.log` - Error stream output
+- `structured-log-*.json` - Parsed startup events with timestamps
+
+**Safety:** Always runs in DRY_RUN mode to prevent live trading during diagnostics.
+
+📚 **Full Documentation**: See [.github/workflows/README-bot-diagnostics.md](.github/workflows/README-bot-diagnostics.md) for detailed usage instructions.
+
 ### Safety Configuration
 ```json
 {
