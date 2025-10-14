@@ -1,4 +1,6 @@
 name: WSL Fix Validation
+permissions:
+  contents: read
 
 on:
   pull_request:
