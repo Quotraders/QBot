@@ -44,24 +44,40 @@ class AdapterRetryPolicy:
     def __init__(self, max_retries: int = None, base_delay: float = None, max_delay: float = None, timeout: float = None):
         # All parameters must come from configuration - fail closed if not provided
         if max_retries is None:
-            max_retries = int(os.getenv('ADAPTER_MAX_RETRIES'))
-            if not max_retries or max_retries <= 0:
-                raise ValueError("ADAPTER_MAX_RETRIES environment variable must be set to positive integer")
+            max_retries_env = os.getenv('ADAPTER_MAX_RETRIES')
+            if max_retries_env:
+                max_retries = int(max_retries_env)
+            else:
+                max_retries = 3  # Default value
+            if max_retries <= 0:
+                raise ValueError("ADAPTER_MAX_RETRIES must be a positive integer")
         
         if base_delay is None:
-            base_delay = float(os.getenv('ADAPTER_BASE_DELAY'))
-            if not base_delay or base_delay <= 0:
-                raise ValueError("ADAPTER_BASE_DELAY environment variable must be set to positive number")
+            base_delay_env = os.getenv('ADAPTER_BASE_DELAY')
+            if base_delay_env:
+                base_delay = float(base_delay_env)
+            else:
+                base_delay = 1.0  # Default value
+            if base_delay <= 0:
+                raise ValueError("ADAPTER_BASE_DELAY must be a positive number")
                 
         if max_delay is None:
-            max_delay = float(os.getenv('ADAPTER_MAX_DELAY'))
-            if not max_delay or max_delay <= 0 or max_delay < base_delay:
-                raise ValueError("ADAPTER_MAX_DELAY environment variable must be set and >= base_delay")
+            max_delay_env = os.getenv('ADAPTER_MAX_DELAY')
+            if max_delay_env:
+                max_delay = float(max_delay_env)
+            else:
+                max_delay = 8.0  # Default value
+            if max_delay <= 0 or max_delay < base_delay:
+                raise ValueError("ADAPTER_MAX_DELAY must be >= base_delay")
                 
         if timeout is None:
-            timeout = float(os.getenv('ADAPTER_TIMEOUT'))
-            if not timeout or timeout <= 0:
-                raise ValueError("ADAPTER_TIMEOUT environment variable must be set to positive number")
+            timeout_env = os.getenv('ADAPTER_TIMEOUT')
+            if timeout_env:
+                timeout = float(timeout_env)
+            else:
+                timeout = 30.0  # Default value
+            if timeout <= 0:
+                raise ValueError("ADAPTER_TIMEOUT must be a positive number")
         
         self.max_retries = max_retries
         self.base_delay = base_delay
@@ -1679,6 +1695,7 @@ async def test_adapter_functionality():
 if __name__ == "__main__":
     import sys
     import json
+    import asyncio
     
     # Check for persistent/streaming mode
     if len(sys.argv) > 1 and sys.argv[1] == "stream":
@@ -1694,15 +1711,21 @@ if __name__ == "__main__":
                 # Send initialization success
                 print(json.dumps({"type": "init", "success": True, "message": "Adapter initialized"}), flush=True)
                 
+                # Create async stdin reader
+                loop = asyncio.get_event_loop()
+                reader = asyncio.StreamReader(loop=loop)
+                protocol = asyncio.StreamReaderProtocol(reader)
+                await loop.connect_read_pipe(lambda: protocol, sys.stdin)
+                
                 # Process commands from stdin
                 while True:
                     try:
-                        # Read command from stdin
-                        line = sys.stdin.readline()
+                        # Read command from stdin asynchronously
+                        line = await reader.readline()
                         if not line:
                             break  # EOF reached
                         
-                        line = line.strip()
+                        line = line.decode('utf-8').strip()
                         if not line:
                             continue
                         

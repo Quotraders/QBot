@@ -54,6 +54,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
     private bool _isInitialized;
     private double _connectionHealth;
     private readonly object _processLock = new();
+    private readonly SemaphoreSlim _initLock = new SemaphoreSlim(1, 1);
     private bool _disposed;
     
     // PERSISTENT PROCESS: stdin/stdout communication
@@ -130,31 +131,40 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        if (_isInitialized)
-        {
-            _logger.LogWarning("TopstepX adapter already initialized");
-            return;
-        }
-
+        // Prevent multiple concurrent initialization attempts
+        await _initLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            _logger.LogInformation("🚀 Initializing TopstepX Python SDK adapter in PERSISTENT mode...");
+            if (_isInitialized)
+            {
+                _logger.LogWarning("[PERSISTENT] Python process already running");
+                return;
+            }
 
-            // Validate Python SDK is available
-            await ValidatePythonSDKAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                _logger.LogInformation("🚀 Initializing TopstepX Python SDK adapter in PERSISTENT mode...");
 
-            // Start persistent Python process
-            await StartPersistentPythonProcessAsync(cancellationToken).ConfigureAwait(false);
-            
-            _isInitialized = true;
-            _connectionHealth = 100.0;
-            
-            _logger.LogInformation("✅ TopstepX adapter initialized successfully in PERSISTENT mode - single Python process running");
+                // Validate Python SDK is available
+                await ValidatePythonSDKAsync(cancellationToken).ConfigureAwait(false);
+
+                // Start persistent Python process
+                await StartPersistentPythonProcessAsync(cancellationToken).ConfigureAwait(false);
+                
+                _isInitialized = true;
+                _connectionHealth = 100.0;
+                
+                _logger.LogInformation("✅ TopstepX adapter initialized successfully in PERSISTENT mode - single Python process running");
+            }
+            catch (Exception ex) when (ex is not InvalidOperationException)
+            {
+                _logger.LogError(ex, "Exception during TopstepX adapter initialization");
+                throw new InvalidOperationException("Failed to initialize TopstepX adapter", ex);
+            }
         }
-        catch (Exception ex) when (ex is not InvalidOperationException)
+        finally
         {
-            _logger.LogError(ex, "Exception during TopstepX adapter initialization");
-            throw new InvalidOperationException("Failed to initialize TopstepX adapter", ex);
+            _initLock.Release();
         }
     }
 
@@ -172,24 +182,22 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
 
         try
         {
-            var command = new { action = "get_price", symbol };
-            var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
+            // FIX: Use persistent connection instead of spawning new ephemeral process
+            var parameters = new { symbol };
+            var result = await SendPersistentCommandAsync("get_price", parameters, cancellationToken).ConfigureAwait(false);
             
-            if (result.Success && result.Data.HasValue)
+            if (result.TryGetProperty("price", out var priceElement))
             {
-                if (result.Data.Value.TryGetProperty("price", out var priceElement))
-                {
-                    var price = priceElement.GetDecimal();
-                    _logger.LogDebug("[PRICE] {Symbol}: ${Price:F2}", symbol, price);
-                    return price;
-                }
+                var price = priceElement.GetDecimal();
+                _logger.LogDebug("💰 [PRICE] {Symbol}: ${Price:F2}", symbol, price);
+                return price;
             }
             
-            throw new InvalidOperationException($"Failed to get price for {symbol}: {result.Error}");
+            throw new InvalidOperationException($"Failed to get price for {symbol}: No price in response");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting price for {Symbol}", symbol);
+            _logger.LogError(ex, "❌ [PRICE] Error getting price for {Symbol}", symbol);
             throw;
         }
     }
@@ -245,40 +253,44 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 max_risk_percent = 0.01 // 1% risk as specified
             };
 
-            var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
-            
-            if (result.Success && result.Data.HasValue)
+            // FIX: Use persistent connection instead of spawning new ephemeral process
+            var parameters = new
             {
-                var success = result.Data.Value.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
-                var orderId = result.Data.Value.TryGetProperty("order_id", out var orderIdElement) ? orderIdElement.GetString() : null;
-                var error = result.Data.Value.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : null;
-                var timestamp = result.Data.Value.TryGetProperty("timestamp", out var tsElement) ? 
-                    DateTime.Parse(tsElement.GetString()!) : DateTime.UtcNow;
-
-                var orderResult = new OrderExecutionResult(
-                    success,
-                    orderId,
-                    error,
-                    symbol,
-                    size,
-                    currentPrice,
-                    stopLoss,
-                    takeProfit,
-                    timestamp);
-
-                if (success)
-                {
-                    _logger.LogInformation("✅ Order placed successfully: {OrderId}", orderId);
-                }
-                else
-                {
-                    _logger.LogError("❌ Order placement failed: {Error}", error);
-                }
-
-                return orderResult;
-            }
+                symbol,
+                size,
+                stop_loss = stopLoss,
+                take_profit = takeProfit,
+                max_risk_percent = 0.01
+            };
+            var result = await SendPersistentCommandAsync("place_order", parameters, cancellationToken).ConfigureAwait(false);
             
-            throw new InvalidOperationException($"Invalid response from Python adapter: {result.Error}");
+            var success = result.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
+            var orderId = result.TryGetProperty("order_id", out var orderIdElement) ? orderIdElement.GetString() : null;
+            var error = result.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : null;
+            var timestamp = result.TryGetProperty("timestamp", out var tsElement) ? 
+                DateTime.Parse(tsElement.GetString()!) : DateTime.UtcNow;
+
+            var orderResult = new OrderExecutionResult(
+                success,
+                orderId,
+                error,
+                symbol,
+                size,
+                currentPrice,
+                stopLoss,
+                takeProfit,
+                timestamp);
+
+            if (success)
+            {
+                _logger.LogInformation("✅ Order placed successfully: {OrderId}", orderId);
+            }
+            else
+            {
+                _logger.LogError("❌ Order placement failed: {Error}", error);
+            }
+
+            return orderResult;
         }
         catch (Exception ex)
         {
@@ -300,67 +312,74 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
     {
         try
         {
-            var command = new { action = "get_health_score" };
-            var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
+            // FIX: Use persistent connection instead of spawning new ephemeral process
+            // This was killing the data stream connection on every health check!
+            JsonElement result;
             
-            if (result.Success && result.Data.HasValue)
+            if (_pythonProcess != null && !_pythonProcess.HasExited)
             {
-                var healthScore = result.Data.Value.TryGetProperty("health_score", out var scoreElement) ? scoreElement.GetInt32() : 0;
-                var status = result.Data.Value.TryGetProperty("status", out var statusElement) ? statusElement.GetString()! : "unknown";
-                var lastCheck = result.Data.Value.TryGetProperty("last_check", out var checkElement) ? 
-                    DateTime.Parse(checkElement.GetString()!) : DateTime.UtcNow;
-                var initialized = result.Data.Value.TryGetProperty("initialized", out var initElement) && initElement.GetBoolean();
-
-                // Extract instrument health
-                var instrumentHealth = new Dictionary<string, object>();
-                if (result.Data.Value.TryGetProperty("instruments", out var instrumentsElement))
-                {
-                    foreach (var property in instrumentsElement.EnumerateObject())
-                    {
-                        instrumentHealth[property.Name] = property.Value.GetDouble();
-                    }
-                }
-
-                // Extract suite stats
-                var suiteStats = new Dictionary<string, object>();
-                if (result.Data.Value.TryGetProperty("suite_stats", out var statsElement))
-                {
-                    foreach (var property in statsElement.EnumerateObject())
-                    {
-                        suiteStats[property.Name] = property.Value.ToString()!;
-                    }
-                }
-
-                // Update internal health tracking
-                _connectionHealth = healthScore;
-
-                var healthResult = new HealthScoreResult(
-                    healthScore,
-                    status,
-                    instrumentHealth,
-                    suiteStats,
-                    lastCheck,
-                    initialized);
-
-                if (healthScore >= 80)
-                {
-                    _logger.LogDebug("System healthy: {HealthScore}%", healthScore);
-                }
-                else
-                {
-                    _logger.LogWarning("System health degraded: {HealthScore}% - Status: {Status}", healthScore, status);
-                }
-
-                return healthResult;
+                // Use persistent process via stdin/stdout communication
+                result = await SendPersistentCommandAsync("get_health_score", cancellationToken: cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                // Fallback: If no persistent process exists, return degraded health
+                _logger.LogWarning("⚠️ [HEALTH] No persistent Python process - returning degraded health");
+                return new HealthScoreResult(0, "no_process", new(), new(), DateTime.UtcNow, false);
             }
             
-            _logger.LogError("Failed to get health score from Python: Success={Success}, Error={Error}", 
-                result.Success, result.Error);
-            throw new InvalidOperationException($"Failed to get health score: {result.Error}");
+            // Parse response
+            var healthScore = result.TryGetProperty("health_score", out var scoreElement) ? scoreElement.GetInt32() : 0;
+            var status = result.TryGetProperty("status", out var statusElement) ? statusElement.GetString()! : "unknown";
+            var lastCheck = result.TryGetProperty("last_check", out var checkElement) ? 
+                DateTime.Parse(checkElement.GetString()!) : DateTime.UtcNow;
+            var initialized = result.TryGetProperty("initialized", out var initElement) && initElement.GetBoolean();
+
+            // Extract instrument health
+            var instrumentHealth = new Dictionary<string, object>();
+            if (result.TryGetProperty("instruments", out var instrumentsElement))
+            {
+                foreach (var property in instrumentsElement.EnumerateObject())
+                {
+                    instrumentHealth[property.Name] = property.Value.GetDouble();
+                }
+            }
+
+            // Extract suite stats
+            var suiteStats = new Dictionary<string, object>();
+            if (result.TryGetProperty("suite_stats", out var statsElement))
+            {
+                foreach (var property in statsElement.EnumerateObject())
+                {
+                    suiteStats[property.Name] = property.Value.ToString()!;
+                }
+            }
+
+            // Update internal health tracking
+            _connectionHealth = healthScore;
+
+            var healthResult = new HealthScoreResult(
+                healthScore,
+                status,
+                instrumentHealth,
+                suiteStats,
+                lastCheck,
+                initialized);
+
+            if (healthScore >= 80)
+            {
+                _logger.LogDebug("✅ [HEALTH] System healthy: {HealthScore}%", healthScore);
+            }
+            else
+            {
+                _logger.LogWarning("⚠️ [HEALTH] System health degraded: {HealthScore}% - Status: {Status}", healthScore, status);
+            }
+
+            return healthResult;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting health score");
+            _logger.LogError(ex, "❌ [HEALTH] Error getting health score");
             return new HealthScoreResult(0, "error", new(), new(), DateTime.UtcNow, false);
         }
     }
@@ -374,49 +393,44 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
 
         try
         {
-            var command = new { action = "get_portfolio_status" };
-            var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
+            // FIX: Use persistent connection instead of spawning new ephemeral process
+            var result = await SendPersistentCommandAsync("get_portfolio_status", cancellationToken: cancellationToken).ConfigureAwait(false);
             
-            if (result.Success && result.Data.HasValue)
+            var portfolio = new Dictionary<string, object>();
+            var positions = new Dictionary<string, PositionInfo>();
+            var timestamp = DateTime.UtcNow;
+
+            if (result.TryGetProperty("portfolio", out var portfolioElement))
             {
-                var portfolio = new Dictionary<string, object>();
-                var positions = new Dictionary<string, PositionInfo>();
-                var timestamp = DateTime.UtcNow;
-
-                if (result.Data.Value.TryGetProperty("portfolio", out var portfolioElement))
+                foreach (var property in portfolioElement.EnumerateObject())
                 {
-                    foreach (var property in portfolioElement.EnumerateObject())
-                    {
-                        portfolio[property.Name] = property.Value.ToString()!;
-                    }
+                    portfolio[property.Name] = property.Value.ToString()!;
                 }
-
-                if (result.Data.Value.TryGetProperty("positions", out var positionsElement))
-                {
-                    foreach (var property in positionsElement.EnumerateObject())
-                    {
-                        var posData = property.Value;
-                        if (!posData.TryGetProperty("error", out _)) // Skip positions with errors
-                        {
-                            var size = posData.TryGetProperty("size", out var sizeElement) ? sizeElement.GetInt32() : 0;
-                            var avgPrice = posData.TryGetProperty("average_price", out var priceElement) ? priceElement.GetDecimal() : 0m;
-                            var unrealizedPnl = posData.TryGetProperty("unrealized_pnl", out var unrealizedElement) ? unrealizedElement.GetDecimal() : 0m;
-                            var realizedPnl = posData.TryGetProperty("realized_pnl", out var realizedElement) ? realizedElement.GetDecimal() : 0m;
-
-                            positions[property.Name] = new PositionInfo(size, avgPrice, unrealizedPnl, realizedPnl);
-                        }
-                    }
-                }
-
-                if (result.Data.Value.TryGetProperty("timestamp", out var tsElement))
-                {
-                    timestamp = DateTime.Parse(tsElement.GetString()!);
-                }
-
-                return new PortfolioStatusResult(portfolio, positions, timestamp);
             }
-            
-            throw new InvalidOperationException($"Failed to get portfolio status: {result.Error}");
+
+            if (result.TryGetProperty("positions", out var positionsElement))
+            {
+                foreach (var property in positionsElement.EnumerateObject())
+                {
+                    var posData = property.Value;
+                    if (!posData.TryGetProperty("error", out _)) // Skip positions with errors
+                    {
+                        var size = posData.TryGetProperty("size", out var sizeElement) ? sizeElement.GetInt32() : 0;
+                        var avgPrice = posData.TryGetProperty("average_price", out var priceElement) ? priceElement.GetDecimal() : 0m;
+                        var unrealizedPnl = posData.TryGetProperty("unrealized_pnl", out var unrealizedElement) ? unrealizedElement.GetDecimal() : 0m;
+                        var realizedPnl = posData.TryGetProperty("realized_pnl", out var realizedElement) ? realizedElement.GetDecimal() : 0m;
+
+                        positions[property.Name] = new PositionInfo(size, avgPrice, unrealizedPnl, realizedPnl);
+                    }
+                }
+            }
+
+            if (result.TryGetProperty("timestamp", out var tsElement))
+            {
+                timestamp = DateTime.Parse(tsElement.GetString()!);
+            }
+
+            return new PortfolioStatusResult(portfolio, positions, timestamp);
         }
         catch (Exception ex)
         {
@@ -880,23 +894,32 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 CreateNoWindow = true
             };
             
-            // Get environment variables
+            // Get environment variables for credentials and retry policy
             var apiKey = Environment.GetEnvironmentVariable("TOPSTEPX_API_KEY");
             var username = Environment.GetEnvironmentVariable("TOPSTEPX_USERNAME");
             var accountId = Environment.GetEnvironmentVariable("TOPSTEPX_ACCOUNT_ID");
+            var maxRetries = Environment.GetEnvironmentVariable("ADAPTER_MAX_RETRIES") ?? "3";
+            var baseDelay = Environment.GetEnvironmentVariable("ADAPTER_BASE_DELAY") ?? "1.0";
+            var maxDelay = Environment.GetEnvironmentVariable("ADAPTER_MAX_DELAY") ?? "8.0";
+            var timeout = Environment.GetEnvironmentVariable("ADAPTER_TIMEOUT") ?? "30.0";
             
             if (isWsl)
             {
                 var wslAdapterPath = adapterPath.Replace("\\", "/").Replace("C:", "/mnt/c").Replace("c:", "/mnt/c");
-                var bashCommand = $"python3 {wslAdapterPath} stream";
+                
+                // WSL mode: Pass environment variables via bash command (processInfo.Environment doesn't work for WSL)
+                var bashCommand = $"PROJECT_X_API_KEY='{apiKey}' PROJECT_X_USERNAME='{username}' " +
+                                  $"TOPSTEPX_API_KEY='{apiKey}' TOPSTEPX_USERNAME='{username}' TOPSTEPX_ACCOUNT_ID='{accountId}' " +
+                                  $"ADAPTER_MAX_RETRIES={maxRetries} ADAPTER_BASE_DELAY={baseDelay} ADAPTER_MAX_DELAY={maxDelay} ADAPTER_TIMEOUT={timeout} " +
+                                  $"python3 {wslAdapterPath} stream";
                 
                 processInfo.FileName = "wsl";
-                processInfo.Arguments = $"bash -c \"{bashCommand}\"";
-                processInfo.Environment["PROJECT_X_API_KEY"] = apiKey ?? "";
-                processInfo.Environment["PROJECT_X_USERNAME"] = username ?? "";
-                processInfo.Environment["TOPSTEPX_API_KEY"] = apiKey ?? "";
-                processInfo.Environment["TOPSTEPX_USERNAME"] = username ?? "";
-                processInfo.Environment["TOPSTEPX_ACCOUNT_ID"] = accountId ?? "";
+                processInfo.ArgumentList.Add("-d");
+                processInfo.ArgumentList.Add("Ubuntu-24.04");
+                processInfo.ArgumentList.Add("-e");
+                processInfo.ArgumentList.Add("bash");
+                processInfo.ArgumentList.Add("-c");
+                processInfo.ArgumentList.Add(bashCommand);
             }
             else
             {
@@ -907,6 +930,10 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 processInfo.Environment["TOPSTEPX_API_KEY"] = apiKey ?? "";
                 processInfo.Environment["TOPSTEPX_USERNAME"] = username ?? "";
                 processInfo.Environment["TOPSTEPX_ACCOUNT_ID"] = accountId ?? "";
+                processInfo.Environment["ADAPTER_MAX_RETRIES"] = maxRetries;
+                processInfo.Environment["ADAPTER_BASE_DELAY"] = baseDelay;
+                processInfo.Environment["ADAPTER_MAX_DELAY"] = maxDelay;
+                processInfo.Environment["ADAPTER_TIMEOUT"] = timeout;
             }
             
             _logger.LogInformation("[PERSISTENT] Starting Python process in stream mode: {FileName} {Arguments}", 
@@ -924,20 +951,21 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 _processStdin = process.StandardInput;
             }
             
-            // Start stdout reader task to handle responses and events
-            _stdoutReaderTask = Task.Run(async () => await ReadStdoutContinuouslyAsync(_processCts.Token).ConfigureAwait(false), _processCts.Token);
+            // Wait for initialization message FIRST (before starting continuous reader)
+            _logger.LogInformation("[PERSISTENT] Waiting for Python adapter initialization...");
+            var initTimeout = TimeSpan.FromSeconds(60); // Increased from 30s - TopstepX WebSocket connection takes 12-15s
+            var initCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            initCts.CancelAfter(initTimeout);
             
-            // Wait for initialization message
-            var initTask = Task.Run(async () =>
+            var initialized = false;
+            try
             {
-                var timeout = TimeSpan.FromSeconds(30);
-                var cts = new CancellationTokenSource(timeout);
-                
-                while (!cts.Token.IsCancellationRequested)
+                while (!initCts.Token.IsCancellationRequested)
                 {
                     var line = await process.StandardOutput.ReadLineAsync().ConfigureAwait(false);
                     if (line != null)
                     {
+                        _logger.LogInformation("[PERSISTENT] Init phase received: {Line}", line);
                         try
                         {
                             var msg = JsonSerializer.Deserialize<JsonElement>(line);
@@ -947,23 +975,37 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                                 successElement.GetBoolean())
                             {
                                 _logger.LogInformation("[PERSISTENT] ✅ Python adapter initialized successfully");
-                                return true;
+                                initialized = true;
+                                break;
                             }
                         }
-                        catch { }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "[PERSISTENT] Failed to parse init message: {Line}", line);
+                        }
                     }
-                    await Task.Delay(100, cts.Token).ConfigureAwait(false);
+                    else
+                    {
+                        // Process stdout closed unexpectedly
+                        _logger.LogError("[PERSISTENT] Python process stdout closed before initialization");
+                        break;
+                    }
                 }
-                return false;
-            }, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogError("[PERSISTENT] Initialization timed out after {Timeout}s", initTimeout.TotalSeconds);
+            }
             
-            var initialized = await initTask.ConfigureAwait(false);
             if (!initialized)
             {
-                throw new TimeoutException("Python adapter did not initialize within 30 seconds");
+                throw new TimeoutException($"Python adapter did not initialize within {initTimeout.TotalSeconds} seconds");
             }
             
             _logger.LogInformation("[PERSISTENT] ✅ Persistent Python process started successfully (PID: {ProcessId})", process.Id);
+            
+            // NOW start stdout reader task for ongoing communication
+            _stdoutReaderTask = Task.Run(async () => await ReadStdoutContinuouslyAsync(_processCts.Token).ConfigureAwait(false), _processCts.Token);
         }
         catch (Exception ex)
         {
