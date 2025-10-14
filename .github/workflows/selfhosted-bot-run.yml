@@ -1,0 +1,259 @@
+name: "🚀 Self-Hosted Bot Execution Test"
+
+on:
+  workflow_dispatch:
+    inputs:
+      timeout_minutes:
+        description: 'Bot execution timeout (minutes)'
+        required: false
+        default: '5'
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  TOPSTEPX_API_BASE: "https://api.topstepx.com"
+
+jobs:
+  run-bot:
+    name: "Run Trading Bot on Self-Hosted Runner"
+    runs-on: self-hosted
+    timeout-minutes: ${{ fromJSON(github.event.inputs.timeout_minutes || '5') }}
+    
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: "🔧 Setup .NET Environment"
+        shell: pwsh
+        run: |
+          Write-Output "=================================================="
+          Write-Output "🔧 .NET Environment Setup"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          # Check .NET installation
+          try {
+            $DotnetVersion = dotnet --version
+            Write-Output "✅ .NET SDK Version: $DotnetVersion"
+          } catch {
+            Write-Output "❌ .NET SDK not found"
+            Write-Output "Error: $($_.Exception.Message)"
+            exit 1
+          }
+          
+          Write-Output ""
+          Write-Output "📦 Restoring NuGet packages..."
+          dotnet restore TopstepX.Bot.sln
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Output "❌ NuGet restore failed"
+            exit 1
+          }
+          
+          Write-Output "✅ NuGet restore completed"
+          Write-Output ""
+          Write-Output "=================================================="
+
+      - name: "🏗️ Build Solution"
+        shell: pwsh
+        run: |
+          Write-Output "=================================================="
+          Write-Output "🏗️ Building Trading Bot Solution"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          dotnet build src/UnifiedOrchestrator/UnifiedOrchestrator.csproj -c Release --no-restore
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Output "❌ Build failed"
+            exit 1
+          }
+          
+          Write-Output ""
+          Write-Output "✅ Build completed successfully"
+          Write-Output ""
+          Write-Output "=================================================="
+
+      - name: "🚀 Run Trading Bot (with Error Capture)"
+        id: bot_run
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          Write-Output "=================================================="
+          Write-Output "🚀 Starting Trading Bot"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          # Set DRY_RUN mode for safety
+          $env:DRY_RUN = "true"
+          Write-Output "⚠️ DRY_RUN mode enabled (safety mode)"
+          Write-Output ""
+          
+          # Create log capture directory
+          $LogDir = "$env:TEMP\qbot-bot-run-logs"
+          New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+          
+          $Timestamp = (Get-Date).ToString("yyyy-MM-dd_HH-mm-ss")
+          $LogFile = "$LogDir\bot-run-$Timestamp.log"
+          
+          Write-Output "📝 Bot output will be captured to: $LogFile"
+          Write-Output ""
+          Write-Output "Starting bot execution..."
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          # Run the bot and capture all output
+          try {
+            # Use Start-Process to capture output
+            $ProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
+            $ProcessInfo.FileName = "dotnet"
+            $ProcessInfo.Arguments = "run --project src/UnifiedOrchestrator/UnifiedOrchestrator.csproj"
+            $ProcessInfo.RedirectStandardOutput = $true
+            $ProcessInfo.RedirectStandardError = $true
+            $ProcessInfo.UseShellExecute = $false
+            $ProcessInfo.CreateNoWindow = $true
+            $ProcessInfo.WorkingDirectory = (Get-Location)
+            
+            $Process = New-Object System.Diagnostics.Process
+            $Process.StartInfo = $ProcessInfo
+            
+            # Event handlers for output
+            $OutputBuilder = New-Object System.Text.StringBuilder
+            $ErrorBuilder = New-Object System.Text.StringBuilder
+            
+            $OutputHandler = {
+              if (-not [string]::IsNullOrEmpty($EventArgs.Data)) {
+                $OutputBuilder.AppendLine($EventArgs.Data)
+                Write-Output $EventArgs.Data
+              }
+            }
+            
+            $ErrorHandler = {
+              if (-not [string]::IsNullOrEmpty($EventArgs.Data)) {
+                $ErrorBuilder.AppendLine($EventArgs.Data)
+                Write-Output "STDERR: $($EventArgs.Data)"
+              }
+            }
+            
+            Register-ObjectEvent -InputObject $Process -EventName OutputDataReceived -Action $OutputHandler | Out-Null
+            Register-ObjectEvent -InputObject $Process -EventName ErrorDataReceived -Action $ErrorHandler | Out-Null
+            
+            $Process.Start() | Out-Null
+            $Process.BeginOutputReadLine()
+            $Process.BeginErrorReadLine()
+            
+            # Wait for process to exit or timeout (2 minutes)
+            $TimeoutSeconds = 120
+            $Process.WaitForExit($TimeoutSeconds * 1000)
+            
+            if (-not $Process.HasExited) {
+              Write-Output ""
+              Write-Output "⏱️ Bot execution timeout after $TimeoutSeconds seconds"
+              Write-Output "Stopping bot process..."
+              $Process.Kill()
+              $ExitCode = -1
+            } else {
+              $ExitCode = $Process.ExitCode
+            }
+            
+            # Save logs
+            $OutputBuilder.ToString() | Out-File -FilePath $LogFile -Encoding utf8
+            
+            Write-Output ""
+            Write-Output "=================================================="
+            Write-Output "Bot Execution Summary:"
+            Write-Output "  Exit Code: $ExitCode"
+            Write-Output "  Log File: $LogFile"
+            Write-Output "=================================================="
+            
+            # Output last 100 lines of log for GitHub Actions
+            Write-Output ""
+            Write-Output "📋 Last 100 lines of bot output:"
+            Write-Output "=================================================="
+            Get-Content $LogFile -Tail 100
+            Write-Output "=================================================="
+            
+            # Set outputs
+            "exit_code=$ExitCode" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            "log_file=$LogFile" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            
+            if ($ExitCode -eq 0) {
+              Write-Output "✅ Bot executed successfully"
+            } else {
+              Write-Output "❌ Bot execution failed with exit code: $ExitCode"
+              exit $ExitCode
+            }
+            
+          } catch {
+            Write-Output ""
+            Write-Output "❌ Critical error during bot execution:"
+            Write-Output "Error: $($_.Exception.Message)"
+            Write-Output "Stack Trace: $($_.Exception.StackTrace)"
+            
+            # Save error to log
+            "CRITICAL ERROR: $($_.Exception.Message)" | Out-File -FilePath $LogFile -Append -Encoding utf8
+            $_.Exception.StackTrace | Out-File -FilePath $LogFile -Append -Encoding utf8
+            
+            exit 1
+          }
+
+      - name: "📊 Execution Summary"
+        if: always()
+        shell: pwsh
+        run: |
+          Write-Output "=================================================="
+          Write-Output "📊 Bot Execution Test Summary"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          $ExitCode = "${{ steps.bot_run.outputs.exit_code }}"
+          $LogFile = "${{ steps.bot_run.outputs.log_file }}"
+          
+          if ($ExitCode -eq "0") {
+            Write-Output "✅ Status: SUCCESS"
+            Write-Output "  Bot executed without errors"
+          } elseif ($ExitCode -eq "-1") {
+            Write-Output "⏱️ Status: TIMEOUT"
+            Write-Output "  Bot execution timed out (expected for continuous operation)"
+          } else {
+            Write-Output "❌ Status: FAILED"
+            Write-Output "  Exit Code: $ExitCode"
+            Write-Output "  Check logs for errors"
+          }
+          
+          Write-Output ""
+          Write-Output "📝 Log Location: $LogFile"
+          Write-Output ""
+          Write-Output "=================================================="
+          
+          # Check for specific error patterns in the log
+          if (Test-Path $LogFile) {
+            Write-Output ""
+            Write-Output "🔍 Error Analysis:"
+            Write-Output "=================================================="
+            
+            $LogContent = Get-Content $LogFile -Raw
+            
+            # Check for common error patterns
+            $ErrorPatterns = @{
+              "NullReferenceException" = "Null reference error detected"
+              "InvalidOperationException" = "Invalid operation error detected"
+              "ArgumentException" = "Argument error detected"
+              "TradingBotParameterProvider" = "Parameter provider error detected"
+              "ML parameter provider" = "ML initialization mentioned"
+              "CRITICAL ERROR" = "Critical error detected"
+              "exit code 1" = "Process exited with error"
+            }
+            
+            foreach ($Pattern in $ErrorPatterns.Keys) {
+              if ($LogContent -match $Pattern) {
+                Write-Output "  ⚠️ $($ErrorPatterns[$Pattern]): '$Pattern' found in logs"
+              }
+            }
+            
+            Write-Output "=================================================="
+          }
