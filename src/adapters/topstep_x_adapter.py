@@ -1680,7 +1680,121 @@ if __name__ == "__main__":
     import sys
     import json
     
-    # Command-line interface for C# integration
+    # Check for persistent/streaming mode
+    if len(sys.argv) > 1 and sys.argv[1] == "stream":
+        # PERSISTENT MODE: Keep adapter alive and process commands via stdin/stdout
+        async def persistent_mode():
+            """Run adapter in persistent mode with stdin/stdout communication."""
+            adapter = None
+            try:
+                # Initialize adapter once
+                adapter = TopstepXAdapter(["ES", "NQ"])
+                await adapter.initialize()
+                
+                # Send initialization success
+                print(json.dumps({"type": "init", "success": True, "message": "Adapter initialized"}), flush=True)
+                
+                # Process commands from stdin
+                while True:
+                    try:
+                        # Read command from stdin
+                        line = sys.stdin.readline()
+                        if not line:
+                            break  # EOF reached
+                        
+                        line = line.strip()
+                        if not line:
+                            continue
+                        
+                        cmd_data = json.loads(line)
+                        action = cmd_data.get("action")
+                        
+                        if action == "shutdown":
+                            print(json.dumps({"type": "response", "action": "shutdown", "success": True}), flush=True)
+                            break
+                        
+                        # Process command and send response
+                        result = None
+                        if action == "get_price":
+                            price = await adapter.get_price(cmd_data["symbol"])
+                            result = {"success": True, "price": price}
+                        
+                        elif action == "get_health_score":
+                            result = await adapter.get_health_score()
+                        
+                        elif action == "get_portfolio_status":
+                            result = await adapter.get_portfolio_status()
+                        
+                        elif action == "get_fill_events":
+                            result = await adapter.get_fill_events()
+                        
+                        elif action == "get_bar_events":
+                            result = await adapter.get_bar_events()
+                        
+                        elif action == "place_order":
+                            result = await adapter.place_order(
+                                cmd_data["symbol"],
+                                cmd_data["size"],
+                                cmd_data["stop_loss"],
+                                cmd_data["take_profit"],
+                                cmd_data.get("max_risk_percent", 0.01)
+                            )
+                        
+                        elif action == "get_positions":
+                            positions = await adapter.get_positions()
+                            result = {"success": True, "positions": positions}
+                        
+                        elif action == "close_position":
+                            result = await adapter.close_position(
+                                cmd_data["symbol"],
+                                cmd_data.get("quantity")
+                            )
+                        
+                        elif action == "modify_stop_loss":
+                            result = await adapter.modify_stop_loss(
+                                cmd_data["symbol"],
+                                float(cmd_data["stop_price"])
+                            )
+                        
+                        elif action == "modify_take_profit":
+                            result = await adapter.modify_take_profit(
+                                cmd_data["symbol"],
+                                float(cmd_data["take_profit_price"])
+                            )
+                        
+                        elif action == "cancel_order":
+                            result = await adapter.cancel_order(cmd_data["order_id"])
+                        
+                        elif action == "cancel_all_orders":
+                            result = await adapter.cancel_all_orders(cmd_data.get("symbol"))
+                        
+                        else:
+                            result = {"success": False, "error": f"Unknown action: {action}"}
+                        
+                        # Send response
+                        response = {"type": "response", "action": action, **result}
+                        print(json.dumps(response), flush=True)
+                    
+                    except json.JSONDecodeError as e:
+                        error_response = {"type": "error", "error": f"Invalid JSON: {str(e)}"}
+                        print(json.dumps(error_response), flush=True)
+                    except Exception as e:
+                        error_response = {"type": "error", "error": str(e)}
+                        print(json.dumps(error_response), flush=True)
+            
+            finally:
+                # Clean disconnect
+                if adapter:
+                    try:
+                        await adapter.disconnect()
+                    except Exception as e:
+                        print(json.dumps({"type": "error", "error": f"Disconnect error: {str(e)}"}), flush=True)
+        
+        # Run persistent mode
+        asyncio.run(persistent_mode())
+        sys.exit(0)
+    
+    # Command-line interface for C# integration (legacy one-shot mode)
     if len(sys.argv) > 1:
         command = sys.argv[1]
         
