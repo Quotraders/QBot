@@ -888,12 +888,15 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             if (isWsl)
             {
                 var wslAdapterPath = adapterPath.Replace("\\", "/").Replace("C:", "/mnt/c").Replace("c:", "/mnt/c");
-                var bashCommand = $"PROJECT_X_API_KEY='{apiKey}' PROJECT_X_USERNAME='{username}' " +
-                                  $"TOPSTEPX_API_KEY='{apiKey}' TOPSTEPX_USERNAME='{username}' TOPSTEPX_ACCOUNT_ID='{accountId}' " +
-                                  $"python3 {wslAdapterPath} stream";
+                var bashCommand = $"python3 {wslAdapterPath} stream";
                 
                 processInfo.FileName = "wsl";
                 processInfo.Arguments = $"bash -c \"{bashCommand}\"";
+                processInfo.Environment["PROJECT_X_API_KEY"] = apiKey ?? "";
+                processInfo.Environment["PROJECT_X_USERNAME"] = username ?? "";
+                processInfo.Environment["TOPSTEPX_API_KEY"] = apiKey ?? "";
+                processInfo.Environment["TOPSTEPX_USERNAME"] = username ?? "";
+                processInfo.Environment["TOPSTEPX_ACCOUNT_ID"] = accountId ?? "";
             }
             else
             {
