@@ -24,219 +24,226 @@ jobs:
           fetch-depth: 1
 
       - name: "🖥️ Print Runner Identity"
+        shell: pwsh
         run: |
-          echo "=================================================="
-          echo "🖥️ Self-Hosted Runner Information"
-          echo "=================================================="
-          echo ""
-          echo "Runner Name: ${{ runner.name }}"
-          echo "Runner OS: ${{ runner.os }}"
-          echo "Runner Architecture: ${{ runner.arch }}"
-          echo "Runner Workspace: ${{ runner.workspace }}"
-          echo ""
-          echo "Machine Identity:"
-          echo "  Hostname: $(hostname)"
-          echo "  User: $(whoami)"
-          echo "  Working Directory: $(pwd)"
-          echo ""
-          if [ -f "/etc/os-release" ]; then
-            echo "OS Information:"
-            grep -E "^(NAME|VERSION|ID)=" /etc/os-release || true
-          fi
-          echo ""
-          echo "Environment Variables (filtered):"
-          env | grep -E "^(RUNNER_|GITHUB_)" | sort || true
-          echo ""
-          echo "=================================================="
+          Write-Output "=================================================="
+          Write-Output "🖥️ Self-Hosted Runner Information"
+          Write-Output "=================================================="
+          Write-Output ""
+          Write-Output "Runner Name: ${{ runner.name }}"
+          Write-Output "Runner OS: ${{ runner.os }}"
+          Write-Output "Runner Architecture: ${{ runner.arch }}"
+          Write-Output "Runner Workspace: ${{ runner.workspace }}"
+          Write-Output ""
+          Write-Output "Machine Identity:"
+          Write-Output "  Hostname: $env:COMPUTERNAME"
+          Write-Output "  User: $env:USERNAME"
+          Write-Output "  Working Directory: $(Get-Location)"
+          Write-Output ""
+          Write-Output "OS Information:"
+          Write-Output "  OS: $([System.Environment]::OSVersion.VersionString)"
+          Write-Output "  Platform: $([System.Environment]::OSVersion.Platform)"
+          Write-Output ""
+          Write-Output "Environment Variables (filtered):"
+          Get-ChildItem Env: | Where-Object { $_.Name -match '^(RUNNER_|GITHUB_)' } | Sort-Object Name | ForEach-Object { Write-Output "  $($_.Name)=$($_.Value)" }
+          Write-Output ""
+          Write-Output "=================================================="
 
       - name: "🌐 Connectivity Check to TopstepX API"
         id: connectivity_check
+        shell: pwsh
         run: |
-          echo "=================================================="
-          echo "🌐 Testing Connectivity to TopstepX API"
-          echo "=================================================="
-          echo ""
+          Write-Output "=================================================="
+          Write-Output "🌐 Testing Connectivity to TopstepX API"
+          Write-Output "=================================================="
+          Write-Output ""
           
-          API_BASE="${{ env.TOPSTEPX_API_BASE }}"
-          echo "Target API: $API_BASE"
-          echo ""
+          $ApiBase = "${{ env.TOPSTEPX_API_BASE }}"
+          Write-Output "Target API: $ApiBase"
+          Write-Output ""
           
           # Initialize result variables
-          CONNECTIVITY_STATUS="UNKNOWN"
-          HTTP_CODE=""
-          RESPONSE_TIME=""
-          DNS_RESOLUTION="UNKNOWN"
+          $ConnectivityStatus = "UNKNOWN"
+          $HttpCode = ""
+          $ResponseTime = ""
+          $DnsResolution = "UNKNOWN"
           
           # DNS Resolution Check
-          echo "🔍 DNS Resolution Test:"
-          API_HOST=$(echo "$API_BASE" | sed -E 's|https?://([^/]+).*|\1|')
-          if nslookup "$API_HOST" > /dev/null 2>&1; then
-            DNS_RESOLUTION="SUCCESS"
-            echo "  ✅ DNS resolution successful for $API_HOST"
-            nslookup "$API_HOST" | grep -A2 "Name:" || true
-          else
-            DNS_RESOLUTION="FAILED"
-            echo "  ❌ DNS resolution failed for $API_HOST"
-          fi
-          echo ""
+          Write-Output "🔍 DNS Resolution Test:"
+          $ApiHost = ([System.Uri]$ApiBase).Host
+          try {
+            $DnsResult = Resolve-DnsName -Name $ApiHost -ErrorAction Stop
+            $DnsResolution = "SUCCESS"
+            Write-Output "  ✅ DNS resolution successful for $ApiHost"
+            Write-Output "  IP Addresses: $($DnsResult.IPAddress -join ', ')"
+          } catch {
+            $DnsResolution = "FAILED"
+            Write-Output "  ❌ DNS resolution failed for $ApiHost"
+            Write-Output "  Error: $($_.Exception.Message)"
+          }
+          Write-Output ""
           
           # HTTP Connectivity Check
-          echo "🔌 HTTP Connectivity Test:"
-          START_TIME=$(date +%s%N)
+          Write-Output "🔌 HTTP Connectivity Test:"
+          $StartTime = Get-Date
           
-          if command -v curl > /dev/null 2>&1; then
-            # Use curl for connectivity check
-            HTTP_RESPONSE=$(curl -w "\n%{http_code}\n%{time_total}" \
-              --connect-timeout 5 \
-              --max-time 10 \
-              -s -o /dev/null \
-              -H "User-Agent: QBot-SelfHosted-Runner-Test/1.0" \
-              "$API_BASE" 2>&1 || echo "000")
+          try {
+            $Response = Invoke-WebRequest -Uri $ApiBase `
+              -Method Get `
+              -TimeoutSec 10 `
+              -UserAgent "QBot-SelfHosted-Runner-Test/1.0" `
+              -ErrorAction Stop
             
-            HTTP_CODE=$(echo "$HTTP_RESPONSE" | tail -n2 | head -n1)
-            RESPONSE_TIME=$(echo "$HTTP_RESPONSE" | tail -n1)
+            $EndTime = Get-Date
+            $ResponseTime = ($EndTime - $StartTime).TotalSeconds
+            $HttpCode = [int]$Response.StatusCode
             
-            echo "  HTTP Status Code: $HTTP_CODE"
-            echo "  Response Time: ${RESPONSE_TIME}s"
+            Write-Output "  HTTP Status Code: $HttpCode"
+            Write-Output "  Response Time: $($ResponseTime.ToString('F3'))s"
             
-            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 500 ]; then
-              CONNECTIVITY_STATUS="SUCCESS"
-              echo "  ✅ API endpoint is reachable (HTTP $HTTP_CODE)"
-            else
-              CONNECTIVITY_STATUS="FAILED"
-              echo "  ❌ API endpoint returned unexpected status (HTTP $HTTP_CODE)"
-            fi
-          else
-            echo "  ⚠️ curl not available, attempting with wget"
-            if command -v wget > /dev/null 2>&1; then
-              if wget --timeout=10 --tries=1 -q --spider "$API_BASE" 2>&1; then
-                CONNECTIVITY_STATUS="SUCCESS"
-                echo "  ✅ API endpoint is reachable (wget check)"
-              else
-                CONNECTIVITY_STATUS="FAILED"
-                echo "  ❌ API endpoint is not reachable (wget check)"
-              fi
-            else
-              CONNECTIVITY_STATUS="SKIPPED"
-              echo "  ⚠️ No HTTP tools available (curl/wget)"
-            fi
-          fi
-          
-          END_TIME=$(date +%s%N)
-          TOTAL_TIME=$(echo "scale=3; ($END_TIME - $START_TIME) / 1000000000" | bc 2>/dev/null || echo "N/A")
-          
-          echo ""
-          echo "📊 Connectivity Summary:"
-          echo "  DNS Resolution: $DNS_RESOLUTION"
-          echo "  HTTP Status: $CONNECTIVITY_STATUS"
-          echo "  HTTP Code: ${HTTP_CODE:-N/A}"
-          echo "  Total Check Time: ${TOTAL_TIME}s"
-          echo ""
-          echo "=================================================="
-          
-          # Export for audit logging
-          echo "connectivity_status=$CONNECTIVITY_STATUS" >> $GITHUB_OUTPUT
-          echo "http_code=${HTTP_CODE:-000}" >> $GITHUB_OUTPUT
-          echo "dns_resolution=$DNS_RESOLUTION" >> $GITHUB_OUTPUT
-          echo "response_time=${RESPONSE_TIME:-N/A}" >> $GITHUB_OUTPUT
-
-      - name: "📋 Generate Audit Log"
-        run: |
-          echo "=================================================="
-          echo "📋 Generating Audit Log"
-          echo "=================================================="
-          echo ""
-          
-          # Create audit log directory
-          AUDIT_DIR="/tmp/qbot-selfhosted-audit"
-          mkdir -p "$AUDIT_DIR"
-          
-          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          AUDIT_FILE="$AUDIT_DIR/selfhosted-connectivity-${TIMESTAMP//:/-}.json"
-          
-          # Generate structured audit log
-          cat > "$AUDIT_FILE" << 'EOF'
-          {
-            "audit_type": "selfhosted_runner_connectivity_test",
-            "timestamp": "TIMESTAMP_PLACEHOLDER",
-            "workflow": {
-              "name": "${{ github.workflow }}",
-              "run_id": "${{ github.run_id }}",
-              "run_number": "${{ github.run_number }}",
-              "run_attempt": "${{ github.run_attempt }}",
-              "triggered_by": "${{ github.actor }}",
-              "event": "${{ github.event_name }}",
-              "ref": "${{ github.ref }}",
-              "sha": "${{ github.sha }}"
-            },
-            "runner": {
-              "name": "${{ runner.name }}",
-              "os": "${{ runner.os }}",
-              "arch": "${{ runner.arch }}",
-              "hostname": "HOSTNAME_PLACEHOLDER",
-              "user": "USER_PLACEHOLDER"
-            },
-            "connectivity_test": {
-              "target_url": "${{ env.TOPSTEPX_API_BASE }}",
-              "status": "${{ steps.connectivity_check.outputs.connectivity_status }}",
-              "http_code": "${{ steps.connectivity_check.outputs.http_code }}",
-              "dns_resolution": "${{ steps.connectivity_check.outputs.dns_resolution }}",
-              "response_time": "${{ steps.connectivity_check.outputs.response_time }}"
-            },
-            "audit_metadata": {
-              "audit_file": "AUDIT_FILE_PLACEHOLDER",
-              "audit_format": "json",
-              "retention_policy": "local_only"
+            if ($HttpCode -ge 200 -and $HttpCode -lt 500) {
+              $ConnectivityStatus = "SUCCESS"
+              Write-Output "  ✅ API endpoint is reachable (HTTP $HttpCode)"
+            } else {
+              $ConnectivityStatus = "FAILED"
+              Write-Output "  ❌ API endpoint returned unexpected status (HTTP $HttpCode)"
+            }
+          } catch {
+            $EndTime = Get-Date
+            $ResponseTime = ($EndTime - $StartTime).TotalSeconds
+            
+            # Try to extract status code from exception
+            if ($_.Exception.Response) {
+              $HttpCode = [int]$_.Exception.Response.StatusCode
+            } else {
+              $HttpCode = 0
+            }
+            
+            Write-Output "  HTTP Status Code: $HttpCode"
+            Write-Output "  Response Time: $($ResponseTime.ToString('F3'))s"
+            
+            if ($HttpCode -ge 200 -and $HttpCode -lt 500) {
+              $ConnectivityStatus = "SUCCESS"
+              Write-Output "  ✅ API endpoint is reachable (HTTP $HttpCode)"
+            } else {
+              $ConnectivityStatus = "FAILED"
+              Write-Output "  ❌ API connectivity failed"
+              Write-Output "  Error: $($_.Exception.Message)"
             }
           }
-          EOF
           
-          # Replace placeholders
-          sed -i "s|TIMESTAMP_PLACEHOLDER|$TIMESTAMP|g" "$AUDIT_FILE"
-          sed -i "s|HOSTNAME_PLACEHOLDER|$(hostname)|g" "$AUDIT_FILE"
-          sed -i "s|USER_PLACEHOLDER|$(whoami)|g" "$AUDIT_FILE"
-          sed -i "s|AUDIT_FILE_PLACEHOLDER|$AUDIT_FILE|g" "$AUDIT_FILE"
+          $TotalTime = ($EndTime - $StartTime).TotalSeconds
           
-          echo "✅ Audit log generated: $AUDIT_FILE"
-          echo ""
-          echo "📄 Audit Log Contents:"
-          cat "$AUDIT_FILE" | jq '.' 2>/dev/null || cat "$AUDIT_FILE"
-          echo ""
-          echo "=================================================="
+          Write-Output ""
+          Write-Output "📊 Connectivity Summary:"
+          Write-Output "  DNS Resolution: $DnsResolution"
+          Write-Output "  HTTP Status: $ConnectivityStatus"
+          Write-Output "  HTTP Code: $(if ($HttpCode) { $HttpCode } else { 'N/A' })"
+          Write-Output "  Total Check Time: $($TotalTime.ToString('F3'))s"
+          Write-Output ""
+          Write-Output "=================================================="
+          
+          # Export for audit logging
+          "connectivity_status=$ConnectivityStatus" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "http_code=$(if ($HttpCode) { $HttpCode } else { '000' })" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "dns_resolution=$DnsResolution" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "response_time=$(if ($ResponseTime) { $ResponseTime.ToString('F3') } else { 'N/A' })" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: "📋 Generate Audit Log"
+        shell: pwsh
+        run: |
+          Write-Output "=================================================="
+          Write-Output "📋 Generating Audit Log"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          # Create audit log directory
+          $AuditDir = "$env:TEMP\qbot-selfhosted-audit"
+          New-Item -ItemType Directory -Path $AuditDir -Force | Out-Null
+          
+          $Timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+          $TimestampFile = $Timestamp -replace ':', '-'
+          $AuditFile = "$AuditDir\selfhosted-connectivity-$TimestampFile.json"
+          
+          # Generate structured audit log
+          $AuditData = @{
+            audit_type = "selfhosted_runner_connectivity_test"
+            timestamp = $Timestamp
+            workflow = @{
+              name = "${{ github.workflow }}"
+              run_id = "${{ github.run_id }}"
+              run_number = "${{ github.run_number }}"
+              run_attempt = "${{ github.run_attempt }}"
+              triggered_by = "${{ github.actor }}"
+              event = "${{ github.event_name }}"
+              ref = "${{ github.ref }}"
+              sha = "${{ github.sha }}"
+            }
+            runner = @{
+              name = "${{ runner.name }}"
+              os = "${{ runner.os }}"
+              arch = "${{ runner.arch }}"
+              hostname = $env:COMPUTERNAME
+              user = $env:USERNAME
+            }
+            connectivity_test = @{
+              target_url = "${{ env.TOPSTEPX_API_BASE }}"
+              status = "${{ steps.connectivity_check.outputs.connectivity_status }}"
+              http_code = "${{ steps.connectivity_check.outputs.http_code }}"
+              dns_resolution = "${{ steps.connectivity_check.outputs.dns_resolution }}"
+              response_time = "${{ steps.connectivity_check.outputs.response_time }}"
+            }
+            audit_metadata = @{
+              audit_file = $AuditFile
+              audit_format = "json"
+              retention_policy = "local_only"
+            }
+          }
+          
+          # Write audit log
+          $AuditData | ConvertTo-Json -Depth 10 | Out-File -FilePath $AuditFile -Encoding utf8
+          
+          Write-Output "✅ Audit log generated: $AuditFile"
+          Write-Output ""
+          Write-Output "📄 Audit Log Contents:"
+          Get-Content $AuditFile | ConvertFrom-Json | ConvertTo-Json -Depth 10
+          Write-Output ""
+          Write-Output "=================================================="
 
       - name: "📊 Connectivity Test Summary"
+        shell: pwsh
         run: |
-          echo "=================================================="
-          echo "📊 Self-Hosted Runner Test Summary"
-          echo "=================================================="
-          echo ""
-          echo "✅ Runner Identity: Verified"
-          echo "  Runner: ${{ runner.name }} (${{ runner.os }}/${{ runner.arch }})"
-          echo "  Host: $(hostname)"
-          echo ""
+          Write-Output "=================================================="
+          Write-Output "📊 Self-Hosted Runner Test Summary"
+          Write-Output "=================================================="
+          Write-Output ""
+          Write-Output "✅ Runner Identity: Verified"
+          Write-Output "  Runner: ${{ runner.name }} (${{ runner.os }}/${{ runner.arch }})"
+          Write-Output "  Host: $env:COMPUTERNAME"
+          Write-Output ""
           
-          CONN_STATUS="${{ steps.connectivity_check.outputs.connectivity_status }}"
-          DNS_STATUS="${{ steps.connectivity_check.outputs.dns_resolution }}"
-          HTTP_CODE="${{ steps.connectivity_check.outputs.http_code }}"
+          $ConnStatus = "${{ steps.connectivity_check.outputs.connectivity_status }}"
+          $DnsStatus = "${{ steps.connectivity_check.outputs.dns_resolution }}"
+          $HttpCode = "${{ steps.connectivity_check.outputs.http_code }}"
           
-          if [ "$CONN_STATUS" = "SUCCESS" ] && [ "$DNS_STATUS" = "SUCCESS" ]; then
-            echo "✅ Connectivity Test: PASSED"
-            echo "  API Endpoint: ${{ env.TOPSTEPX_API_BASE }}"
-            echo "  HTTP Status: $HTTP_CODE"
-            echo "  DNS Resolution: SUCCESS"
-          else
-            echo "❌ Connectivity Test: FAILED"
-            echo "  API Endpoint: ${{ env.TOPSTEPX_API_BASE }}"
-            echo "  HTTP Status: ${HTTP_CODE:-N/A}"
-            echo "  DNS Resolution: $DNS_STATUS"
-            echo ""
-            echo "⚠️ Warning: API connectivity issues detected"
-          fi
-          echo ""
-          echo "✅ Audit Logging: Complete"
-          echo "  Location: /tmp/qbot-selfhosted-audit/"
-          echo "  Format: JSON"
-          echo ""
-          echo "=================================================="
-          echo "🎉 Self-Hosted Runner Test Complete"
-          echo "=================================================="
+          if ($ConnStatus -eq "SUCCESS" -and $DnsStatus -eq "SUCCESS") {
+            Write-Output "✅ Connectivity Test: PASSED"
+            Write-Output "  API Endpoint: ${{ env.TOPSTEPX_API_BASE }}"
+            Write-Output "  HTTP Status: $HttpCode"
+            Write-Output "  DNS Resolution: SUCCESS"
+          } else {
+            Write-Output "❌ Connectivity Test: FAILED"
+            Write-Output "  API Endpoint: ${{ env.TOPSTEPX_API_BASE }}"
+            Write-Output "  HTTP Status: $(if ($HttpCode) { $HttpCode } else { 'N/A' })"
+            Write-Output "  DNS Resolution: $DnsStatus"
+            Write-Output ""
+            Write-Output "⚠️ Warning: API connectivity issues detected"
+          }
+          Write-Output ""
+          Write-Output "✅ Audit Logging: Complete"
+          Write-Output "  Location: $env:TEMP\qbot-selfhosted-audit\"
+          Write-Output "  Format: JSON"
+          Write-Output ""
+          Write-Output "=================================================="
+          Write-Output "🎉 Self-Hosted Runner Test Complete"
+          Write-Output "=================================================="
