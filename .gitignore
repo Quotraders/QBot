@@ -37,8 +37,8 @@ demonstrate_fixes.py
 *.log
 logs/
 journal/
-state/backtest/
-state/tuning/*.tmp
+state/
+reports/
 
 # Python virtual environments and cache
 ml/rl_env/
