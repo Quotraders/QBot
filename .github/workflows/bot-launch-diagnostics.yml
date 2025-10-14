@@ -7,7 +7,13 @@ on:
         description: 'Bot runtime duration (minutes)'
         required: false
         default: '5'
-        type: string
+        type: choice
+        options:
+          - '5'
+          - '10'
+          - '15'
+          - '20'
+          - '30'
       capture_detailed_logs:
         description: 'Capture detailed verbose logs'
         required: false
@@ -26,7 +32,7 @@ jobs:
   bot-launch-diagnostics:
     name: "Launch Bot with Full Diagnostics Capture"
     runs-on: self-hosted
-    timeout-minutes: ${{ fromJSON(github.event.inputs.runtime_minutes || '5') + 5 }}
+    timeout-minutes: 40  # Covers max runtime (30min) + startup/shutdown buffer
     
     steps:
       - name: "📥 Checkout Repository"
