@@ -4,6 +4,37 @@
 
 Implemented a comprehensive GitHub Actions workflow that enables self-hosted runners to launch the entire trading bot and automatically capture all startup information, logs, and diagnostics into downloadable artifacts.
 
+## Recent Updates (2025-10-14)
+
+### Environment Variable Loading Fix
+**Issue**: The diagnostic workflow showed environment variables as `[MISSING]` even when `.env` file was present with correct credentials.
+
+**Root Cause**: The workflow validated environment variables before loading them from the `.env` file.
+
+**Solution**: 
+- Added `.env` file loading logic to "Pre-Launch Environment Validation" step
+- Added `.env` file loading to "Launch Bot with Full Diagnostics" step  
+- Uses same PowerShell logic as `run-bot-wsl.ps1` for consistency
+- Validates variables after loading, showing proper `[SET]` status
+
+**Changes Made**:
+```powershell
+# Load .env file (same logic as run-bot-wsl.ps1)
+Get-Content ".env" | Where-Object { $_ -match '^[A-Z]' -and $_ -notmatch '^#' } | ForEach-Object {
+  if ($_ -match '^([A-Z_]+)=(.*)$') {
+    $key = $matches[1]
+    $value = $matches[2]
+    Set-Item -Path "env:$key" -Value $value
+  }
+}
+```
+
+**Benefits**:
+- Environment variables now properly detected during validation
+- Bot can access all credentials from `.env` file
+- Consistent behavior with local development scripts
+- DRY_RUN mode still enforced for safety (overrides `.env` after loading)
+
 ## Problem Solved
 
 **Original Issue:**
