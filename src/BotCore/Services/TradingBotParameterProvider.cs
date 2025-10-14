@@ -24,6 +24,7 @@ namespace TradingBot.BotCore.Services
         /// </summary>
         public static void Initialize(IServiceProvider serviceProvider)
         {
+            ArgumentNullException.ThrowIfNull(serviceProvider);
             _serviceProvider = serviceProvider;
         }
         
@@ -32,7 +33,7 @@ namespace TradingBot.BotCore.Services
         /// </summary>
         public static double GetAIConfidenceThreshold()
         {
-            return ServiceProviderHelper.ExecuteWithService<MLConfigurationService, double>(
+            return ServiceProviderHelper.ExecuteWithService<TradingBot.Abstractions.IMLConfigurationService, double>(
                 _serviceProvider,
                 service => service.GetAIConfidenceThreshold(),
                 DefaultAIConfidenceThreshold // Conservative fallback
@@ -44,7 +45,7 @@ namespace TradingBot.BotCore.Services
         /// </summary>
         public static double GetPositionSizeMultiplier()
         {
-            return ServiceProviderHelper.ExecuteWithService<MLConfigurationService, double>(
+            return ServiceProviderHelper.ExecuteWithService<TradingBot.Abstractions.IMLConfigurationService, double>(
                 _serviceProvider,
                 service => service.GetPositionSizeMultiplier(),
                 DefaultPositionSizeMultiplier // Conservative fallback
@@ -56,7 +57,7 @@ namespace TradingBot.BotCore.Services
         /// </summary>
         public static double GetFallbackConfidence()
         {
-            return ServiceProviderHelper.ExecuteWithService<MLConfigurationService, double>(
+            return ServiceProviderHelper.ExecuteWithService<TradingBot.Abstractions.IMLConfigurationService, double>(
                 _serviceProvider,
                 service => service.GetMinimumConfidence(),
                 DefaultMinimumConfidence // Conservative fallback
@@ -68,7 +69,7 @@ namespace TradingBot.BotCore.Services
         /// </summary>
         public static double GetRegimeDetectionThreshold()
         {
-            return ServiceProviderHelper.ExecuteWithService<MLConfigurationService, double>(
+            return ServiceProviderHelper.ExecuteWithService<TradingBot.Abstractions.IMLConfigurationService, double>(
                 _serviceProvider,
                 service => service.GetRegimeDetectionThreshold(),
                 1.0 // Conservative fallback
