@@ -76,10 +76,22 @@ jobs:
           }
           Write-Output ""
           
-          # Check for .env file
+          # Check for .env file and load environment variables
           Write-Output "📄 Configuration Files:"
           if (Test-Path ".env") {
             Write-Output "  ✅ .env file: Present"
+            Write-Output "  📥 Loading environment variables from .env..."
+            
+            # Load .env file (same logic as run-bot-wsl.ps1)
+            Get-Content ".env" | Where-Object { $_ -match '^[A-Z]' -and $_ -notmatch '^#' } | ForEach-Object {
+              if ($_ -match '^([A-Z_]+)=(.*)$') {
+                $key = $matches[1]
+                $value = $matches[2]
+                Set-Item -Path "env:$key" -Value $value
+              }
+            }
+            Write-Output "  ✅ Environment variables loaded from .env"
+            Write-Output ""
             
             # Check for required environment variables (without exposing values)
             $RequiredVars = @(
@@ -195,6 +207,20 @@ jobs:
           Write-Output "=================================================="
           Write-Output ""
           
+          # Load .env file to ensure environment variables are available
+          if (Test-Path ".env") {
+            Write-Output "📥 Loading environment variables from .env..."
+            Get-Content ".env" | Where-Object { $_ -match '^[A-Z]' -and $_ -notmatch '^#' } | ForEach-Object {
+              if ($_ -match '^([A-Z_]+)=(.*)$') {
+                $key = $matches[1]
+                $value = $matches[2]
+                Set-Item -Path "env:$key" -Value $value
+              }
+            }
+            Write-Output "✅ Environment variables loaded"
+            Write-Output ""
+          }
+          
           $DiagDir = "${{ steps.env_validation.outputs.diag_dir }}"
           if ([string]::IsNullOrWhiteSpace($DiagDir)) {
             $DiagDir = "$env:RUNNER_TEMP\${{ env.ARTIFACTS_DIR }}"
@@ -214,10 +240,10 @@ jobs:
           Write-Output "  Structured: structured-log-$Timestamp.json"
           Write-Output ""
           
-          # Set environment for safety
+          # Override with DRY_RUN for safety (after loading .env)
           $env:DRY_RUN = "true"
           $env:ENABLE_DRY_RUN = "true"
-          Write-Output "⚠️ DRY_RUN mode: ENABLED (safety mode)"
+          Write-Output "⚠️ DRY_RUN mode: ENABLED (safety mode - overrides .env)"
           Write-Output ""
           
           # Prepare bot launch
