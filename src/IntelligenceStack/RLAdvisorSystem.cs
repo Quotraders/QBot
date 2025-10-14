@@ -883,7 +883,7 @@ public class RLAdvisorSystem
 
         var startInfo = new ProcessStartInfo
         {
-            FileName = "python3",
+            FileName = "python",
             Arguments = $"\"{pythonScript}\" get_historical_bars \"{symbol}\" \"5m\" {estimatedBars}",
             UseShellExecute = false,
             RedirectStandardOutput = true,

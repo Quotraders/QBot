@@ -414,7 +414,7 @@ class TopstepXAdapter:
         
         # PHASE 1: Subscribe to ORDER_FILLED events via WebSocket
         try:
-            self.suite.on(EventType.ORDER_FILLED, self._on_order_filled)
+            await self.suite.on(EventType.ORDER_FILLED, self._on_order_filled)
             self.logger.info("✅ Subscribed to ORDER_FILLED events via WebSocket")
         except Exception as e:
             error_msg = f"FAIL-CLOSED: Failed to subscribe to fill events: {e}"

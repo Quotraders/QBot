@@ -246,7 +246,7 @@ namespace BotCore.Services
 
                 var startInfo = new ProcessStartInfo
                 {
-                    FileName = "python3",
+                    FileName = "python",
                     Arguments = $"\"{pythonScript}\" get_historical_bars \"{contractId}\" \"1m\" {Math.Max(barCount, 100)}",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,

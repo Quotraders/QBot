@@ -117,19 +117,24 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         try
         {
             _logger.LogInformation("🚀 Initializing TopstepX Python SDK adapter...");
-            await _topstepXAdapter.InitializeAsync(cancellationToken).ConfigureAwait(false);
+            
+            // Use a longer timeout (2 minutes) for adapter initialization instead of the stoppingToken
+            // This prevents premature cancellation during startup
+            using var initTimeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+            await _topstepXAdapter.InitializeAsync(initTimeout.Token).ConfigureAwait(false);
             _adapterInitialized = true;
             
             if (_adapterInitialized)
             {
-                // Test health and connectivity
-                var healthScore = await _topstepXAdapter.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
+                // Test health and connectivity with a separate timeout
+                using var healthTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                var healthScore = await _topstepXAdapter.GetHealthScoreAsync(healthTimeout.Token).ConfigureAwait(false);
                 if (healthScore >= 80)
                 {
                     _logger.LogInformation("✅ TopstepX SDK adapter initialized - Health: {HealthScore}%", healthScore);
                     
                     // Test price data for both instruments
-                    await TestInstrumentConnectivityAsync(cancellationToken).ConfigureAwait(false);
+                    await TestInstrumentConnectivityAsync(healthTimeout.Token).ConfigureAwait(false);
                 }
                 else
                 {

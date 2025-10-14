@@ -308,6 +308,8 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 return healthResult;
             }
             
+            _logger.LogError("Failed to get health score from Python: Success={Success}, Error={Error}", 
+                result.Success, result.Error);
             throw new InvalidOperationException($"Failed to get health score: {result.Error}");
         }
         catch (Exception ex)
@@ -683,26 +685,44 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
     {
         try
         {
-            var adapterPath = Path.Combine(AppContext.BaseDirectory, "src", "adapters", "topstep_x_adapter.py");
+            // Find workspace root by looking for .git directory
+            var currentDir = AppContext.BaseDirectory;
+            string? workspaceRoot = null;
+            
+            while (currentDir != null)
+            {
+                if (Directory.Exists(Path.Combine(currentDir, ".git")))
+                {
+                    workspaceRoot = currentDir;
+                    break;
+                }
+                currentDir = Directory.GetParent(currentDir)?.FullName;
+            }
+            
+            if (workspaceRoot == null)
+            {
+                workspaceRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
+            }
+            
+            var adapterPath = Path.Combine(workspaceRoot, "src", "adapters", "topstep_x_adapter.py");
             if (!File.Exists(adapterPath))
             {
-                // Try relative path from current directory
-                adapterPath = Path.Combine("src", "adapters", "topstep_x_adapter.py");
-                if (!File.Exists(adapterPath))
-                {
-                    throw new FileNotFoundException($"TopstepX adapter not found at {adapterPath}");
-                }
+                throw new FileNotFoundException($"TopstepX adapter not found at {adapterPath}");
             }
 
+            var pythonExecutable = Environment.GetEnvironmentVariable("PYTHON_EXECUTABLE") ?? "python";
             var processInfo = new ProcessStartInfo
             {
-                FileName = "python3",
-                Arguments = $"\"{adapterPath}\" \"{command}\"",
+                FileName = pythonExecutable,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+            
+            // Use ArgumentList for proper escaping of JSON command
+            processInfo.ArgumentList.Add(adapterPath);
+            processInfo.ArgumentList.Add(command);
 
             // Set environment variables for credentials if available
             var apiKey = Environment.GetEnvironmentVariable("PROJECT_X_API_KEY");
@@ -712,6 +732,12 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 processInfo.Environment["PROJECT_X_API_KEY"] = apiKey;
             if (!string.IsNullOrEmpty(username))
                 processInfo.Environment["PROJECT_X_USERNAME"] = username;
+            
+            // Set adapter configuration environment variables with safe defaults
+            processInfo.Environment["ADAPTER_MAX_RETRIES"] = Environment.GetEnvironmentVariable("ADAPTER_MAX_RETRIES") ?? "3";
+            processInfo.Environment["ADAPTER_BASE_DELAY"] = Environment.GetEnvironmentVariable("ADAPTER_BASE_DELAY") ?? "1.0";
+            processInfo.Environment["ADAPTER_MAX_DELAY"] = Environment.GetEnvironmentVariable("ADAPTER_MAX_DELAY") ?? "30.0";
+            processInfo.Environment["ADAPTER_TIMEOUT"] = Environment.GetEnvironmentVariable("ADAPTER_TIMEOUT") ?? "60.0";
 
             using var process = Process.Start(processInfo);
             if (process == null)
@@ -742,7 +768,9 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             }
             else
             {
-                var errorMsg = !string.IsNullOrEmpty(error) ? error : $"Process exited with code {process.ExitCode}";
+                var errorMsg = !string.IsNullOrEmpty(error) ? error : 
+                    !string.IsNullOrEmpty(output) ? output : 
+                    $"Process exited with code {process.ExitCode}";
                 _logger.LogError("Python command failed: {Error}", errorMsg);
                 return (false, null, errorMsg);
             }

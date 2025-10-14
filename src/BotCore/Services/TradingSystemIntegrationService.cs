@@ -1639,34 +1639,45 @@ namespace TopstepX.Bot.Core.Services
             
             try
             {
+                // Use a dedicated timeout token instead of the cancellationToken to prevent premature cancellation
+                // The adapter needs time to authenticate, connect WebSocket, and subscribe to events
+                using var initTimeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, initTimeout.Token);
+                
                 // Initialize the TopstepX adapter service
-                await _topstepXAdapter.InitializeAsync(cancellationToken).ConfigureAwait(false);
+                await _topstepXAdapter.InitializeAsync(linkedCts.Token).ConfigureAwait(false);
                 
                 _logger.LogInformation("✅ TopstepX adapter initialized successfully");
                     
-                // Check adapter health
-                var healthScore = await _topstepXAdapter.GetHealthScoreAsync(cancellationToken).ConfigureAwait(false);
+                // Check adapter health with a separate timeout
+                using var healthTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                using var healthLinkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, healthTimeout.Token);
+                var healthScore = await _topstepXAdapter.GetHealthScoreAsync(healthLinkedCts.Token).ConfigureAwait(false);
                 _logger.LogInformation("📊 TopstepX adapter health: {HealthScore}%", healthScore);
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "❌ HTTP error during TopstepX adapter setup");
-                throw new InvalidOperationException("TopstepX adapter setup failed due to HTTP request error", ex);
+                _logger.LogWarning(ex, "⚠️ HTTP error during TopstepX adapter setup - continuing with degraded functionality");
+                _logger.LogInformation("💡 [ADAPTER-SETUP] Will retry adapter connection in background");
+                // Don't throw - allow system to continue without live connection
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogError(ex, "❌ Task cancelled during TopstepX adapter setup");
-                throw new OperationCanceledException("TopstepX adapter setup was cancelled", ex);
+                _logger.LogWarning(ex, "⚠️ Task cancelled during TopstepX adapter setup - continuing with degraded functionality");
+                _logger.LogInformation("💡 [ADAPTER-SETUP] Initialization timed out - adapter may need more time to authenticate");
+                // Don't throw - allow system to continue
             }
             catch (OperationCanceledException ex)
             {
-                _logger.LogError(ex, "❌ Operation cancelled during TopstepX adapter setup");
-                throw new OperationCanceledException("TopstepX adapter setup operation was cancelled", ex);
+                _logger.LogWarning(ex, "⚠️ Operation cancelled during TopstepX adapter setup - continuing with degraded functionality");
+                _logger.LogInformation("💡 [ADAPTER-SETUP] Cancellation detected - check if shutdown was requested");
+                // Don't throw - allow system to continue
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogError(ex, "❌ Invalid operation during TopstepX adapter setup");
-                throw new InvalidOperationException("TopstepX adapter setup failed due to invalid operation", ex);
+                _logger.LogWarning(ex, "⚠️ Invalid operation during TopstepX adapter setup - continuing with degraded functionality");
+                _logger.LogInformation("💡 [ADAPTER-SETUP] Python SDK validation may have failed - check Python environment");
+                // Don't throw - allow system to continue with degraded functionality
             }
         }
 

@@ -47,7 +47,7 @@ namespace BotCore.Extensions
             services.AddSingleton<IHistoricalBarConsumer, TradingSystemBarConsumer>();
 
             // Register enhanced market data flow service
-            services.AddScoped<IEnhancedMarketDataFlowService, EnhancedMarketDataFlowService>();
+            services.AddSingleton<IEnhancedMarketDataFlowService, EnhancedMarketDataFlowService>();
 
             return services;
         }

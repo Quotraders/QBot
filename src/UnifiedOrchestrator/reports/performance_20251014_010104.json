@@ -1,0 +1,10 @@
+{
+  "Timestamp": "2025-10-14T01:01:04.5697297Z",
+  "OverallStats": {
+    "TotalDecisions": 0,
+    "TotalPnL": 0,
+    "OverallWinRate": 0,
+    "ActiveSources": 0
+  },
+  "SourcePerformance": []
+}
