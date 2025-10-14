@@ -35,6 +35,16 @@ internal record PositionInfo(
     decimal UnrealizedPnL,
     decimal RealizedPnL);
 
+internal record BarEventData(
+    string Type,
+    string Instrument,
+    DateTime Timestamp,
+    decimal Open,
+    decimal High,
+    decimal Low,
+    decimal Close,
+    long Volume);
+
 internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapterService, IAsyncDisposable, IDisposable
 {
     private readonly ILogger<TopstepXAdapterService> _logger;
@@ -53,6 +63,14 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
 
     // PHASE 2: Fill event callback for OrderExecutionService
     public event EventHandler<FillEventData>? FillEventReceived;
+    
+    // BAR EVENT STREAMING: Bar event subscription infrastructure
+    private readonly CancellationTokenSource _barEventCts = new();
+    private Task? _barEventListenerTask;
+    private readonly ConcurrentQueue<BarEventData> _barEventQueue = new();
+    
+    // BAR EVENT STREAMING: Bar event callback for data integration
+    public event EventHandler<BarEventData>? BarEventReceived;
 
     public TopstepXAdapterService(
         ILogger<TopstepXAdapterService> logger,
@@ -128,6 +146,9 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 
                 // PHASE 2: Start fill event listener
                 StartFillEventListener();
+                
+                // BAR EVENT STREAMING: Start bar event listener
+                StartBarEventListener();
                 
                 _logger.LogInformation("✅ TopstepX adapter initialized successfully");
             }
@@ -1167,6 +1188,154 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
         
         _logger.LogInformation("✅ [FILL-LISTENER] Callback subscribed to fill events");
     }
+    
+    // ========================================================================
+    // BAR EVENT STREAMING: BAR EVENT LISTENER INFRASTRUCTURE
+    // ========================================================================
+    
+    /// <summary>
+    /// Start background task to listen for bar events from TopstepX SDK
+    /// </summary>
+    private void StartBarEventListener()
+    {
+        _barEventListenerTask = Task.Run(async () =>
+        {
+            _logger.LogInformation("🎧 [BAR-LISTENER] Starting bar event listener...");
+            
+            while (!_barEventCts.Token.IsCancellationRequested)
+            {
+                try
+                {
+                    // Poll for bar events from Python SDK
+                    await PollForBarEventsAsync(_barEventCts.Token).ConfigureAwait(false);
+                    
+                    // Poll every 5 seconds for bar updates (bars complete every minute)
+                    await Task.Delay(TimeSpan.FromSeconds(5), _barEventCts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected when shutting down
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error in bar event listener");
+                    
+                    // Reconnection logic: wait 5 seconds before retrying
+                    try
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(5), _barEventCts.Token).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                }
+            }
+            
+            _logger.LogInformation("🛑 [BAR-LISTENER] Bar event listener stopped");
+        }, _barEventCts.Token);
+    }
+    
+    /// <summary>
+    /// Poll Python SDK for new bar events
+    /// </summary>
+    private async Task PollForBarEventsAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var command = new { action = "get_bar_events" };
+            var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
+            
+            if (result.Success && result.Data.HasValue)
+            {
+                // Check if we got bar events
+                var data = result.Data.Value;
+                if (data.TryGetProperty("bars", out var barsElement) && barsElement.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var barElement in barsElement.EnumerateArray())
+                    {
+                        var barEvent = ParseBarEvent(barElement);
+                        if (barEvent != null)
+                        {
+                            // Add to queue and notify subscribers
+                            _barEventQueue.Enqueue(barEvent);
+                            
+                            _logger.LogInformation("📊 [BAR-LISTENER] Received 1m bar for {Instrument}: O={Open:F2} H={High:F2} L={Low:F2} C={Close:F2} V={Volume}",
+                                barEvent.Instrument, barEvent.Open, barEvent.High, barEvent.Low, barEvent.Close, barEvent.Volume);
+                            
+                            // Notify subscribers
+                            BarEventReceived?.Invoke(this, barEvent);
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error polling for bar events");
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// Parse bar event from JSON
+    /// </summary>
+    private BarEventData? ParseBarEvent(JsonElement barElement)
+    {
+        try
+        {
+            var type = barElement.TryGetProperty("type", out var typeElement) ? typeElement.GetString() : "bar";
+            var instrument = barElement.TryGetProperty("instrument", out var instrElement) ? instrElement.GetString() : null;
+            var timestampStr = barElement.TryGetProperty("timestamp", out var tsElement) ? tsElement.GetString() : null;
+            var open = barElement.TryGetProperty("open", out var openElement) ? openElement.GetDecimal() : 0m;
+            var high = barElement.TryGetProperty("high", out var highElement) ? highElement.GetDecimal() : 0m;
+            var low = barElement.TryGetProperty("low", out var lowElement) ? lowElement.GetDecimal() : 0m;
+            var close = barElement.TryGetProperty("close", out var closeElement) ? closeElement.GetDecimal() : 0m;
+            var volume = barElement.TryGetProperty("volume", out var volumeElement) ? volumeElement.GetInt64() : 0L;
+            
+            if (string.IsNullOrEmpty(instrument))
+            {
+                _logger.LogWarning("Received bar event with missing instrument");
+                return null;
+            }
+            
+            var timestamp = !string.IsNullOrEmpty(timestampStr) && DateTime.TryParse(timestampStr, out var parsedTs)
+                ? parsedTs
+                : DateTime.UtcNow;
+            
+            return new BarEventData(
+                Type: type ?? "bar",
+                Instrument: instrument,
+                Timestamp: timestamp,
+                Open: open,
+                High: high,
+                Low: low,
+                Close: close,
+                Volume: volume
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error parsing bar event");
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// Subscribe to bar events with a callback
+    /// </summary>
+    public void SubscribeToBarEvents(Action<BarEventData> callback)
+    {
+        if (callback == null)
+        {
+            throw new ArgumentNullException(nameof(callback));
+        }
+        
+        BarEventReceived += (sender, barData) => callback(barData);
+        
+        _logger.LogInformation("✅ [BAR-LISTENER] Callback subscribed to bar events");
+    }
 
     public async ValueTask DisposeAsync()
     {
@@ -1181,6 +1350,14 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                     await _fillEventListenerTask.ConfigureAwait(false);
                 }
                 _fillEventCts.Dispose();
+                
+                // BAR EVENT STREAMING: Stop bar event listener
+                _barEventCts.Cancel();
+                if (_barEventListenerTask != null)
+                {
+                    await _barEventListenerTask.ConfigureAwait(false);
+                }
+                _barEventCts.Dispose();
                 
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
                 await DisconnectAsync(cts.Token).ConfigureAwait(false);
