@@ -147,17 +147,53 @@ internal static class Program
 
         try
         {
+            Console.WriteLine("🔧 [STARTUP] Building dependency injection container...");
+            
             // Build the unified host with all services
-            var host = CreateHostBuilder(args).Build();
+            IHost? host = null;
+            try
+            {
+                host = CreateHostBuilder(args).Build();
+                Console.WriteLine("✅ [STARTUP] DI container built successfully");
+            }
+            catch (Exception diEx)
+            {
+                Console.WriteLine($"❌ [STARTUP] FATAL: Failed to build DI container");
+                Console.WriteLine($"   Error: {diEx.Message}");
+                Console.WriteLine($"   Type: {diEx.GetType().Name}");
+                
+                // Check for inner exceptions
+                var innerEx = diEx.InnerException;
+                int depth = 1;
+                while (innerEx != null && depth <= 5)
+                {
+                    Console.WriteLine($"   Inner Exception [{depth}]: {innerEx.Message}");
+                    Console.WriteLine($"   Type: {innerEx.GetType().Name}");
+                    innerEx = innerEx.InnerException;
+                    depth++;
+                }
+                
+                Console.WriteLine($"\nStack Trace:\n{diEx.StackTrace}");
+                throw;
+            }
+            
+            Console.WriteLine("🔍 [STARTUP] Validating service registration...");
             
             // Validate service registration and configuration on startup
             await ValidateStartupServicesAsync(host.Services).ConfigureAwait(false);
             
+            Console.WriteLine("✅ [STARTUP] Service validation completed");
+            Console.WriteLine("⚙️ [STARTUP] Initializing ML parameter provider...");
+            
             // Initialize ML parameter provider for TradingBot classes
             TradingBot.BotCore.Services.TradingBotParameterProvider.Initialize(host.Services);
             
+            Console.WriteLine("✅ [STARTUP] ML parameter provider initialized");
+            
             // Display startup information
             // Note: DisplayStartupInfo() temporarily disabled during build phase
+            
+            Console.WriteLine("🚀 [STARTUP] Starting unified orchestrator...");
             
             // Run the unified orchestrator
             await host.RunAsync().ConfigureAwait(false);
@@ -165,22 +201,43 @@ internal static class Program
         catch (Exception ex)
         {
             var errorMsg = $"❌ CRITICAL ERROR: {ex.Message}";
+            Console.WriteLine("\n" + new string('=', 80));
             Console.WriteLine(errorMsg);
-            Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+            Console.WriteLine(new string('=', 80));
+            Console.WriteLine($"Exception Type: {ex.GetType().FullName}");
+            Console.WriteLine($"Stack Trace:\n{ex.StackTrace}");
+            
+            // Show inner exceptions
+            var innerEx = ex.InnerException;
+            int depth = 1;
+            while (innerEx != null && depth <= 5)
+            {
+                Console.WriteLine($"\n--- Inner Exception [{depth}] ---");
+                Console.WriteLine($"Message: {innerEx.Message}");
+                Console.WriteLine($"Type: {innerEx.GetType().FullName}");
+                Console.WriteLine($"Stack: {innerEx.StackTrace}");
+                innerEx = innerEx.InnerException;
+                depth++;
+            }
+            Console.WriteLine(new string('=', 80));
             
             // Log to file for debugging and monitoring
             try
             {
                 var logPath = Path.Combine(Directory.GetCurrentDirectory(), "critical_errors.log");
-                var logEntry = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss UTC}] {errorMsg}\n{ex.StackTrace}\n\n";
+                var logEntry = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss UTC}] {errorMsg}\n{ex.ToString()}\n\n";
                 File.AppendAllText(logPath, logEntry);
-                Console.WriteLine($"Error logged to: {logPath}");
+                Console.WriteLine($"\n📝 Error logged to: {logPath}");
             }
             catch (Exception logEx)
             {
                 // If logging fails, we still want to continue - just output to console
-                Console.WriteLine($"Warning: Failed to write to error log: {logEx.Message}");
+                Console.WriteLine($"⚠️ Warning: Failed to write to error log: {logEx.Message}");
             }
+            
+            Console.WriteLine("\n💡 Hint: Check environment variables (PYTHON_EXECUTABLE, TOPSTEPX_*, etc.)");
+            Console.WriteLine("💡 Hint: Verify appsettings.json configuration is valid");
+            Console.WriteLine("💡 Hint: Review critical_errors.log for full details");
             
             Environment.Exit(1);
         }
