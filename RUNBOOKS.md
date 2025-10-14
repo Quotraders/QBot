@@ -39,6 +39,39 @@ dotnet build
 
 ## 🔧 Operational Procedures
 
+### Bot Diagnostics & Logging (Self-Hosted Runner)
+
+For self-hosted deployments, use the Bot Launch Diagnostics workflow to capture complete startup information:
+
+**Quick Access:**
+1. Go to GitHub Actions → "🤖 Bot Launch Diagnostics - Self-Hosted"
+2. Click "Run workflow"
+3. Configure runtime (default: 5 minutes)
+4. Download artifacts after completion
+
+**What Gets Captured:**
+- Complete console output from bot startup
+- All error messages and stack traces
+- System and environment information
+- Structured JSON logs with parsed events
+- Runtime metrics and performance data
+
+**Artifact Files:**
+- `system-info.json` - System environment details
+- `console-output-*.log` - Complete console logs
+- `error-output-*.log` - Error stream output
+- `structured-log-*.json` - Parsed startup events
+
+**Use Cases:**
+- 🐛 Troubleshooting startup failures
+- ✅ Validating configuration changes
+- 📊 Performance analysis
+- 📝 Sharing bot behavior with team
+
+**Safety:** Always runs in DRY_RUN mode to prevent live trading.
+
+📚 **Full Guide:** [.github/workflows/README-bot-diagnostics.md](.github/workflows/README-bot-diagnostics.md)
+
 ### Daily Startup Checklist
 1. **Environment Check**
    ```bash

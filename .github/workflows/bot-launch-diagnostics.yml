@@ -1,0 +1,467 @@
+name: "🤖 Bot Launch Diagnostics - Self-Hosted"
+
+on:
+  workflow_dispatch:
+    inputs:
+      runtime_minutes:
+        description: 'Bot runtime duration (minutes)'
+        required: false
+        default: '5'
+        type: string
+      capture_detailed_logs:
+        description: 'Capture detailed verbose logs'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  actions: write
+
+env:
+  TOPSTEPX_API_BASE: "https://api.topstepx.com"
+  ARTIFACTS_DIR: "bot-diagnostics"
+
+jobs:
+  bot-launch-diagnostics:
+    name: "Launch Bot with Full Diagnostics Capture"
+    runs-on: self-hosted
+    timeout-minutes: ${{ fromJSON(github.event.inputs.runtime_minutes || '5') + 5 }}
+    
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: "🔍 Pre-Launch Environment Validation"
+        id: env_validation
+        shell: pwsh
+        run: |
+          Write-Output "=================================================="
+          Write-Output "🔍 PRE-LAUNCH ENVIRONMENT VALIDATION"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          # Create diagnostics directory
+          $DiagDir = "$env:RUNNER_TEMP\${{ env.ARTIFACTS_DIR }}"
+          New-Item -ItemType Directory -Path $DiagDir -Force | Out-Null
+          Write-Output "📁 Diagnostics directory: $DiagDir"
+          Write-Output ""
+          
+          # System Information
+          Write-Output "🖥️ System Information:"
+          Write-Output "  Runner: ${{ runner.name }}"
+          Write-Output "  OS: ${{ runner.os }}"
+          Write-Output "  Architecture: ${{ runner.arch }}"
+          Write-Output "  Hostname: $env:COMPUTERNAME"
+          Write-Output "  User: $env:USERNAME"
+          Write-Output "  Working Directory: $(Get-Location)"
+          Write-Output "  Temp Directory: $DiagDir"
+          Write-Output ""
+          
+          # .NET Environment
+          Write-Output "⚙️ .NET Environment:"
+          try {
+            $DotnetVersion = dotnet --version
+            Write-Output "  ✅ .NET SDK: $DotnetVersion"
+          } catch {
+            Write-Output "  ❌ .NET SDK: Not found"
+          }
+          Write-Output ""
+          
+          # Check for .env file
+          Write-Output "📄 Configuration Files:"
+          if (Test-Path ".env") {
+            Write-Output "  ✅ .env file: Present"
+            
+            # Check for required environment variables (without exposing values)
+            $RequiredVars = @(
+              "TOPSTEPX_API_KEY",
+              "TOPSTEPX_USERNAME", 
+              "TOPSTEPX_ACCOUNT_ID",
+              "DRY_RUN"
+            )
+            
+            Write-Output "  📋 Environment Variables:"
+            foreach ($VarName in $RequiredVars) {
+              $VarValue = [Environment]::GetEnvironmentVariable($VarName)
+              if ($VarValue) {
+                Write-Output "    ✅ $VarName: [SET]"
+              } else {
+                Write-Output "    ❌ $VarName: [MISSING]"
+              }
+            }
+          } else {
+            Write-Output "  ❌ .env file: Missing"
+          }
+          Write-Output ""
+          
+          # Save system info to JSON
+          $SystemInfo = @{
+            timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            runner = @{
+              name = "${{ runner.name }}"
+              os = "${{ runner.os }}"
+              arch = "${{ runner.arch }}"
+              hostname = $env:COMPUTERNAME
+              user = $env:USERNAME
+            }
+            dotnet = @{
+              version = $(try { dotnet --version } catch { "not found" })
+            }
+            workflow = @{
+              name = "${{ github.workflow }}"
+              run_id = "${{ github.run_id }}"
+              run_number = "${{ github.run_number }}"
+              triggered_by = "${{ github.actor }}"
+            }
+          }
+          
+          $SystemInfoFile = "$DiagDir\system-info.json"
+          $SystemInfo | ConvertTo-Json -Depth 10 | Out-File -FilePath $SystemInfoFile -Encoding utf8
+          Write-Output "💾 System info saved to: system-info.json"
+          Write-Output ""
+          Write-Output "=================================================="
+          
+          # Export diagnostics directory for later steps
+          "diag_dir=$DiagDir" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: "🔧 Setup .NET and Restore Packages"
+        shell: pwsh
+        run: |
+          Write-Output "=================================================="
+          Write-Output "🔧 .NET SETUP AND PACKAGE RESTORE"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          Write-Output "📦 Restoring NuGet packages..."
+          $RestoreStart = Get-Date
+          
+          dotnet restore TopstepX.Bot.sln --verbosity minimal
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Output "❌ NuGet restore failed"
+            exit 1
+          }
+          
+          $RestoreEnd = Get-Date
+          $RestoreDuration = ($RestoreEnd - $RestoreStart).TotalSeconds
+          
+          Write-Output "✅ NuGet restore completed in $($RestoreDuration.ToString('F2'))s"
+          Write-Output ""
+          Write-Output "=================================================="
+
+      - name: "🏗️ Build Trading Bot"
+        shell: pwsh
+        run: |
+          Write-Output "=================================================="
+          Write-Output "🏗️ BUILDING TRADING BOT"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          $BuildStart = Get-Date
+          
+          # Build UnifiedOrchestrator
+          Write-Output "🔨 Building UnifiedOrchestrator..."
+          dotnet build src/UnifiedOrchestrator/UnifiedOrchestrator.csproj -c Release --no-restore
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Output "❌ Build failed"
+            exit 1
+          }
+          
+          $BuildEnd = Get-Date
+          $BuildDuration = ($BuildEnd - $BuildStart).TotalSeconds
+          
+          Write-Output ""
+          Write-Output "✅ Build completed successfully in $($BuildDuration.ToString('F2'))s"
+          Write-Output ""
+          Write-Output "=================================================="
+
+      - name: "🚀 Launch Bot with Full Diagnostics"
+        id: bot_launch
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          Write-Output "=================================================="
+          Write-Output "🚀 LAUNCHING TRADING BOT WITH DIAGNOSTICS"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          $DiagDir = "${{ steps.env_validation.outputs.diag_dir }}"
+          $Timestamp = (Get-Date).ToString("yyyy-MM-dd_HH-mm-ss")
+          
+          # Create log files
+          $ConsoleLogFile = "$DiagDir\console-output-$Timestamp.log"
+          $ErrorLogFile = "$DiagDir\error-output-$Timestamp.log"
+          $StructuredLogFile = "$DiagDir\structured-log-$Timestamp.json"
+          
+          Write-Output "📝 Log files:"
+          Write-Output "  Console: console-output-$Timestamp.log"
+          Write-Output "  Errors: error-output-$Timestamp.log"
+          Write-Output "  Structured: structured-log-$Timestamp.json"
+          Write-Output ""
+          
+          # Set environment for safety
+          $env:DRY_RUN = "true"
+          $env:ENABLE_DRY_RUN = "true"
+          Write-Output "⚠️ DRY_RUN mode: ENABLED (safety mode)"
+          Write-Output ""
+          
+          # Prepare bot launch
+          Write-Output "🎯 Bot configuration:"
+          Write-Output "  Runtime: ${{ github.event.inputs.runtime_minutes || '5' }} minutes"
+          Write-Output "  Detailed logging: ${{ github.event.inputs.capture_detailed_logs || 'true' }}"
+          Write-Output ""
+          Write-Output "=================================================="
+          Write-Output ""
+          Write-Output "🤖 STARTING BOT..."
+          Write-Output ""
+          
+          # Capture startup timestamp
+          $StartTime = Get-Date
+          $StartupLog = @{
+            launch_timestamp = $StartTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            runtime_minutes = "${{ github.event.inputs.runtime_minutes || '5' }}"
+            dry_run_enabled = $true
+            workflow_run_id = "${{ github.run_id }}"
+            events = @()
+          }
+          
+          try {
+            # Launch bot with output capture
+            $ProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
+            $ProcessInfo.FileName = "dotnet"
+            $ProcessInfo.Arguments = "run --project src/UnifiedOrchestrator/UnifiedOrchestrator.csproj --no-build"
+            $ProcessInfo.RedirectStandardOutput = $true
+            $ProcessInfo.RedirectStandardError = $true
+            $ProcessInfo.UseShellExecute = $false
+            $ProcessInfo.CreateNoWindow = $true
+            $ProcessInfo.WorkingDirectory = (Get-Location)
+            
+            $Process = New-Object System.Diagnostics.Process
+            $Process.StartInfo = $ProcessInfo
+            
+            # Output capture
+            $OutputBuilder = New-Object System.Text.StringBuilder
+            $ErrorBuilder = New-Object System.Text.StringBuilder
+            $EventsList = New-Object System.Collections.ArrayList
+            
+            $OutputHandler = {
+              if (-not [string]::IsNullOrEmpty($EventArgs.Data)) {
+                $null = $OutputBuilder.AppendLine($EventArgs.Data)
+                Write-Output $EventArgs.Data
+                
+                # Capture key startup events
+                if ($EventArgs.Data -match '(\[STARTUP\]|\[CRITICAL\]|✅|❌|🚀|⚠️)') {
+                  $EventEntry = @{
+                    timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+                    type = "stdout"
+                    message = $EventArgs.Data
+                  }
+                  $null = $EventsList.Add($EventEntry)
+                }
+              }
+            }
+            
+            $ErrorHandler = {
+              if (-not [string]::IsNullOrEmpty($EventArgs.Data)) {
+                $null = $ErrorBuilder.AppendLine($EventArgs.Data)
+                Write-Output "STDERR: $($EventArgs.Data)"
+                
+                $EventEntry = @{
+                  timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+                  type = "stderr"
+                  message = $EventArgs.Data
+                }
+                $null = $EventsList.Add($EventEntry)
+              }
+            }
+            
+            # Register event handlers
+            Register-ObjectEvent -InputObject $Process -EventName OutputDataReceived -Action $OutputHandler | Out-Null
+            Register-ObjectEvent -InputObject $Process -EventName ErrorDataReceived -Action $ErrorHandler | Out-Null
+            
+            # Start process
+            $Process.Start() | Out-Null
+            $Process.BeginOutputReadLine()
+            $Process.BeginErrorReadLine()
+            
+            Write-Output ""
+            Write-Output "⏱️ Bot is running... (will run for ${{ github.event.inputs.runtime_minutes || '5' }} minutes)"
+            Write-Output ""
+            
+            # Wait for specified duration
+            $RuntimeMinutes = [int]"${{ github.event.inputs.runtime_minutes || '5' }}"
+            $TimeoutSeconds = $RuntimeMinutes * 60
+            $Process.WaitForExit($TimeoutSeconds * 1000)
+            
+            $EndTime = Get-Date
+            $ActualRuntime = ($EndTime - $StartTime).TotalSeconds
+            
+            # Stop process if still running
+            if (-not $Process.HasExited) {
+              Write-Output ""
+              Write-Output "⏱️ Runtime limit reached ($RuntimeMinutes minutes)"
+              Write-Output "🛑 Stopping bot gracefully..."
+              $Process.Kill()
+              $ExitCode = 0  # Timeout is expected, not an error
+              $ExitReason = "timeout"
+            } else {
+              $ExitCode = $Process.ExitCode
+              $ExitReason = "exited"
+            }
+            
+            # Save all outputs
+            $OutputBuilder.ToString() | Out-File -FilePath $ConsoleLogFile -Encoding utf8
+            $ErrorBuilder.ToString() | Out-File -FilePath $ErrorLogFile -Encoding utf8
+            
+            # Complete structured log
+            $StartupLog.end_timestamp = $EndTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            $StartupLog.actual_runtime_seconds = [math]::Round($ActualRuntime, 2)
+            $StartupLog.exit_code = $ExitCode
+            $StartupLog.exit_reason = $ExitReason
+            $StartupLog.events = $EventsList.ToArray()
+            
+            $StartupLog | ConvertTo-Json -Depth 10 | Out-File -FilePath $StructuredLogFile -Encoding utf8
+            
+            Write-Output ""
+            Write-Output "=================================================="
+            Write-Output "📊 BOT EXECUTION SUMMARY"
+            Write-Output "=================================================="
+            Write-Output "  Exit Code: $ExitCode"
+            Write-Output "  Exit Reason: $ExitReason"
+            Write-Output "  Actual Runtime: $($ActualRuntime.ToString('F2'))s"
+            Write-Output "  Events Captured: $($EventsList.Count)"
+            Write-Output "=================================================="
+            Write-Output ""
+            
+            # Output last 150 lines for GitHub Actions UI
+            Write-Output "📋 LAST 150 LINES OF OUTPUT:"
+            Write-Output "=================================================="
+            Get-Content $ConsoleLogFile -Tail 150 -ErrorAction SilentlyContinue
+            Write-Output "=================================================="
+            
+            # Set outputs
+            "exit_code=$ExitCode" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            "exit_reason=$ExitReason" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            "runtime_seconds=$([math]::Round($ActualRuntime, 2))" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            "events_captured=$($EventsList.Count)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            
+          } catch {
+            Write-Output ""
+            Write-Output "❌ CRITICAL ERROR DURING BOT EXECUTION"
+            Write-Output "=================================================="
+            Write-Output "Error: $($_.Exception.Message)"
+            Write-Output "Stack Trace:"
+            Write-Output $_.Exception.StackTrace
+            Write-Output "=================================================="
+            
+            # Save error to logs
+            $ErrorInfo = @{
+              error_timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+              error_message = $_.Exception.Message
+              stack_trace = $_.Exception.StackTrace
+            }
+            
+            "CRITICAL ERROR: $($_.Exception.Message)" | Out-File -FilePath $ErrorLogFile -Append -Encoding utf8
+            $_.Exception.StackTrace | Out-File -FilePath $ErrorLogFile -Append -Encoding utf8
+            $ErrorInfo | ConvertTo-Json -Depth 10 | Out-File -FilePath "$DiagDir\critical-error-$Timestamp.json" -Encoding utf8
+            
+            exit 1
+          }
+
+      - name: "📦 Package Diagnostics Artifacts"
+        if: always()
+        shell: pwsh
+        run: |
+          Write-Output "=================================================="
+          Write-Output "📦 PACKAGING DIAGNOSTICS ARTIFACTS"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          $DiagDir = "${{ steps.env_validation.outputs.diag_dir }}"
+          
+          # List all captured files
+          Write-Output "📁 Captured artifacts:"
+          Get-ChildItem -Path $DiagDir | ForEach-Object {
+            $SizeKB = [math]::Round($_.Length / 1KB, 2)
+            Write-Output "  📄 $($_.Name) ($SizeKB KB)"
+          }
+          
+          Write-Output ""
+          Write-Output "✅ Diagnostics packaged and ready for upload"
+          Write-Output ""
+          Write-Output "=================================================="
+
+      - name: "⬆️ Upload Diagnostics Artifacts"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bot-diagnostics-run-${{ github.run_number }}
+          path: ${{ steps.env_validation.outputs.diag_dir }}
+          retention-days: 30
+          compression-level: 6
+
+      - name: "📊 Final Execution Report"
+        if: always()
+        shell: pwsh
+        run: |
+          Write-Output ""
+          Write-Output "=================================================="
+          Write-Output "📊 BOT LAUNCH DIAGNOSTICS - FINAL REPORT"
+          Write-Output "=================================================="
+          Write-Output ""
+          Write-Output "🤖 Bot Launch Summary:"
+          Write-Output "  Workflow: ${{ github.workflow }}"
+          Write-Output "  Run ID: ${{ github.run_id }}"
+          Write-Output "  Run Number: ${{ github.run_number }}"
+          Write-Output "  Triggered By: ${{ github.actor }}"
+          Write-Output ""
+          Write-Output "📊 Execution Results:"
+          Write-Output "  Exit Code: ${{ steps.bot_launch.outputs.exit_code || 'N/A' }}"
+          Write-Output "  Exit Reason: ${{ steps.bot_launch.outputs.exit_reason || 'N/A' }}"
+          Write-Output "  Runtime: ${{ steps.bot_launch.outputs.runtime_seconds || 'N/A' }}s"
+          Write-Output "  Events Captured: ${{ steps.bot_launch.outputs.events_captured || 'N/A' }}"
+          Write-Output ""
+          Write-Output "📦 Artifacts:"
+          Write-Output "  Name: bot-diagnostics-run-${{ github.run_number }}"
+          Write-Output "  Location: GitHub Actions Artifacts (30 day retention)"
+          Write-Output "  Access: Actions → This workflow run → Artifacts section"
+          Write-Output ""
+          Write-Output "📁 Artifact Contents:"
+          Write-Output "  • system-info.json - System and environment information"
+          Write-Output "  • console-output-*.log - Complete console output from bot"
+          Write-Output "  • error-output-*.log - Error stream output"
+          Write-Output "  • structured-log-*.json - Parsed startup events and metrics"
+          Write-Output ""
+          
+          $ExitCode = "${{ steps.bot_launch.outputs.exit_code }}"
+          $ExitReason = "${{ steps.bot_launch.outputs.exit_reason }}"
+          
+          if ($ExitReason -eq "timeout") {
+            Write-Output "✅ Status: SUCCESS (Completed scheduled runtime)"
+            Write-Output ""
+            Write-Output "ℹ️ The bot ran for the configured duration and was stopped gracefully."
+            Write-Output "   This is expected behavior for diagnostic runs."
+          } elseif ($ExitCode -eq "0") {
+            Write-Output "✅ Status: SUCCESS"
+            Write-Output ""
+            Write-Output "ℹ️ The bot completed successfully."
+          } else {
+            Write-Output "⚠️ Status: COMPLETED WITH ISSUES"
+            Write-Output ""
+            Write-Output "ℹ️ The bot may have encountered errors. Check the artifacts for details."
+          }
+          
+          Write-Output ""
+          Write-Output "💡 Next Steps:"
+          Write-Output "  1. Download the artifacts from this workflow run"
+          Write-Output "  2. Review console-output-*.log for complete startup sequence"
+          Write-Output "  3. Check structured-log-*.json for parsed events"
+          Write-Output "  4. Analyze error-output-*.log if issues occurred"
+          Write-Output ""
+          Write-Output "=================================================="
+          Write-Output "✅ DIAGNOSTICS COMPLETE"
+          Write-Output "=================================================="
