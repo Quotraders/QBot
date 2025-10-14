@@ -157,6 +157,10 @@ class TopstepXAdapter:
         self._fill_events_queue: deque = deque(maxlen=1000)  # Keep last 1000 fills
         self._fill_events_lock = asyncio.Lock()
         
+        # BAR EVENT STREAMING: Storage queue for live bar updates
+        self._bar_events_queue: deque = deque(maxlen=100)  # Keep last 100 bars
+        self._bar_events_lock = asyncio.Lock()
+        
         # Configure production logging
         self.logger = logging.getLogger(f"TopstepXAdapter-{'-'.join(instruments)}")
         if not self.logger.handlers:
@@ -351,6 +355,77 @@ class TopstepXAdapter:
         except Exception as e:
             self.logger.error(f"Error processing fill event: {e}", exc_info=True)
 
+    async def _on_bar_update(self, event_data: Any):
+        """
+        BAR EVENT STREAMING: WebSocket callback for bar completion events.
+        
+        This callback is triggered when a new bar (candle) completes via the SDK's
+        real-time WebSocket connection. It transforms the SDK event format into
+        the structure expected by the C# layer for trading decisions.
+        
+        Args:
+            event_data: Bar event data from project-x-py SDK
+        """
+        try:
+            # Extract bar details from SDK event data
+            # The SDK may provide different field names, so we check multiple possibilities
+            contract_id = str(getattr(event_data, 'contractId', getattr(event_data, 'contract_id', '')))
+            symbol = self._extract_symbol_from_contract_id(contract_id)
+            
+            # Get bar OHLCV data
+            timestamp_val = getattr(event_data, 'timestamp', getattr(event_data, 't', None))
+            open_price = float(getattr(event_data, 'open', getattr(event_data, 'o', 0.0)))
+            high_price = float(getattr(event_data, 'high', getattr(event_data, 'h', 0.0)))
+            low_price = float(getattr(event_data, 'low', getattr(event_data, 'l', 0.0)))
+            close_price = float(getattr(event_data, 'close', getattr(event_data, 'c', 0.0)))
+            volume = int(getattr(event_data, 'volume', getattr(event_data, 'v', 0)))
+            
+            # Parse timestamp
+            if timestamp_val:
+                if isinstance(timestamp_val, (int, float)):
+                    # Assume milliseconds timestamp
+                    timestamp = datetime.fromtimestamp(timestamp_val / 1000.0, tz=timezone.utc)
+                elif isinstance(timestamp_val, str):
+                    timestamp = datetime.fromisoformat(timestamp_val.replace('Z', '+00:00'))
+                else:
+                    timestamp = datetime.now(timezone.utc)
+            else:
+                timestamp = datetime.now(timezone.utc)
+            
+            # Transform to C# expected format
+            bar_event = {
+                'type': 'bar',
+                'instrument': symbol,
+                'timestamp': timestamp.isoformat(),
+                'open': open_price,
+                'high': high_price,
+                'low': low_price,
+                'close': close_price,
+                'volume': volume
+            }
+            
+            # Add to queue with thread-safe lock
+            async with self._bar_events_lock:
+                self._bar_events_queue.append(bar_event)
+            
+            self.logger.info(
+                f"[BAR-EVENT] {symbol} 1m bar: O={open_price:.2f} H={high_price:.2f} L={low_price:.2f} C={close_price:.2f} V={volume}"
+            )
+            self._emit_telemetry("bar_completed", {
+                "symbol": symbol,
+                "close": close_price,
+                "volume": volume,
+                "timestamp": timestamp.isoformat()
+            })
+            
+            # STREAMING OUTPUT: Output bar to stdout for C# to read
+            import json
+            import sys
+            print(json.dumps(bar_event), flush=True)
+            
+        except Exception as e:
+            self.logger.error(f"Error processing bar event: {e}", exc_info=True)
+
     async def initialize(self) -> None:
         """Setup structured logging for production use."""
         logger = logging.getLogger(f"TopstepXAdapter.{id(self)}")
@@ -425,6 +500,35 @@ class TopstepXAdapter:
             })
             await self._cleanup_resources()
             raise RuntimeError(error_msg) from e
+        
+        # BAR EVENT STREAMING: Subscribe to bar completion events via WebSocket
+        try:
+            # Try multiple possible event types for bars
+            bar_event_types = []
+            
+            # Check if BAR_UPDATE or CANDLE_UPDATE event types exist
+            if hasattr(EventType, 'BAR_UPDATE'):
+                bar_event_types.append(EventType.BAR_UPDATE)
+            if hasattr(EventType, 'CANDLE_UPDATE'):
+                bar_event_types.append(EventType.CANDLE_UPDATE)
+            if hasattr(EventType, 'BAR_CLOSED'):
+                bar_event_types.append(EventType.BAR_CLOSED)
+            if hasattr(EventType, 'CANDLE_CLOSED'):
+                bar_event_types.append(EventType.CANDLE_CLOSED)
+            
+            # Subscribe to first available bar event type
+            if bar_event_types:
+                await self.suite.on(bar_event_types[0], self._on_bar_update)
+                self.logger.info(f"✅ Subscribed to {bar_event_types[0]} events via WebSocket")
+            else:
+                self.logger.warning("⚠️ No bar event type found in SDK - bar streaming may not work")
+        except Exception as e:
+            # Bar events are not critical for basic trading, so just log warning
+            self.logger.warning(f"Could not subscribe to bar events: {e}")
+            self._emit_telemetry("bar_subscription_failed", {
+                "error": str(e),
+                "severity": "warning"
+            })
         
         # Verify connection to ALL instruments - FAIL CLOSED if any fail
         connection_failures = []
@@ -646,6 +750,39 @@ class TopstepXAdapter:
             self.logger.error(f"Error getting fill events: {e}")
             return {
                 'fills': [],
+                'error': str(e),
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            }
+
+    @requires_initialization
+    async def get_bar_events(self) -> Dict[str, Any]:
+        """
+        BAR EVENT STREAMING: Get recent bar events from TopstepX SDK.
+        
+        This method returns bar events that have been collected via WebSocket
+        subscription to bar completion events. Events are stored in an in-memory
+        queue and retrieved by the C# layer via polling.
+        
+        Returns:
+            Dictionary with bars array containing bar event data
+        """
+        try:
+            # Read all events from queue and clear it (thread-safe)
+            async with self._bar_events_lock:
+                bars = list(self._bar_events_queue)
+                self._bar_events_queue.clear()
+            
+            self.logger.debug(f"[BAR-EVENTS] Returning {len(bars)} bar events")
+            
+            return {
+                'bars': bars,
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error getting bar events: {e}")
+            return {
+                'bars': [],
                 'error': str(e),
                 'timestamp': datetime.now(timezone.utc).isoformat()
             }
@@ -1607,6 +1744,10 @@ if __name__ == "__main__":
                         
                         elif action == "get_fill_events":
                             result = await adapter.get_fill_events()
+                            return result
+                        
+                        elif action == "get_bar_events":
+                            result = await adapter.get_bar_events()
                             return result
                         
                         elif action == "get_positions":
