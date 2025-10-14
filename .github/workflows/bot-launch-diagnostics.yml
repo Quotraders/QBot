@@ -93,9 +93,9 @@ jobs:
             foreach ($VarName in $RequiredVars) {
               $VarValue = [Environment]::GetEnvironmentVariable($VarName)
               if ($VarValue) {
-                Write-Output "    ✅ $VarName: [SET]"
+                Write-Output "    ✅ ${VarName}: [SET]"
               } else {
-                Write-Output "    ❌ $VarName: [MISSING]"
+                Write-Output "    ❌ ${VarName}: [MISSING]"
               }
             }
           } else {
