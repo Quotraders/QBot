@@ -174,6 +174,11 @@ namespace BotCore.Services
 
                 // NO SYNTHETIC DATA - Fail if no real historical data available
                 _logger.LogError("[HISTORICAL-BRIDGE] NO real historical data available for {ContractId}. Cannot proceed without real data.", contractId);
+                _logger.LogWarning("⚠️  [HISTORICAL-BRIDGE] Historical data unavailable. Check:");
+                _logger.LogWarning("   1. TopstepX SDK installed: pip install 'project-x-py[all]'");
+                _logger.LogWarning("   2. Credentials set: TOPSTEPX_API_KEY, TOPSTEPX_USERNAME");
+                _logger.LogWarning("   3. SDK bridge available: python/sdk_bridge.py");
+                _logger.LogWarning("   4. Network connectivity to TopstepX API");
                 throw new InvalidOperationException($"[HISTORICAL-BRIDGE] No real historical data available for {contractId}. Synthetic data generation removed.");
             }
             catch (InvalidOperationException ex)
@@ -237,16 +242,27 @@ namespace BotCore.Services
                 _logger.LogDebug("[HISTORICAL-BRIDGE] Attempting to get historical data via SDK adapter for {ContractId}", contractId);
 
                 // Call Python SDK bridge to get historical bars
-                var pythonScript = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "python", "sdk_bridge.py");
+                // FIX: Resolve path correctly from the project root, not from bin directory
+                var projectRoot = Directory.GetCurrentDirectory();
+                var pythonScript = Path.Combine(projectRoot, "python", "sdk_bridge.py");
+                
+                // Fallback: Try relative to base directory if not found in current directory
                 if (!File.Exists(pythonScript))
                 {
-                    _logger.LogWarning("[HISTORICAL-BRIDGE] SDK bridge script not found at {Path}", pythonScript);
+                    pythonScript = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "python", "sdk_bridge.py");
+                    pythonScript = Path.GetFullPath(pythonScript);
+                }
+                
+                if (!File.Exists(pythonScript))
+                {
+                    _logger.LogWarning("[HISTORICAL-BRIDGE] SDK bridge script not found at {Path}. Ensure python/sdk_bridge.py exists in project root.", pythonScript);
+                    _logger.LogInformation("[HISTORICAL-BRIDGE] Project root: {Root}, Base directory: {Base}", projectRoot, AppDomain.CurrentDomain.BaseDirectory);
                     return new List<BotCore.Models.Bar>();
                 }
 
                 var startInfo = new ProcessStartInfo
                 {
-                    FileName = "python",
+                    FileName = Environment.GetEnvironmentVariable("PYTHON_EXECUTABLE") ?? "python3",  // Use python3 by default
                     Arguments = $"\"{pythonScript}\" get_historical_bars \"{contractId}\" \"1m\" {Math.Max(barCount, 100)}",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
