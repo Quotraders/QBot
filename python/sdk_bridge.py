@@ -12,7 +12,7 @@ import subprocess
 import sys
 import os
 from typing import Dict, List, Optional, Any, Union
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import logging
 
 # Try to import the TopstepX adapter, but gracefully handle missing SDK
@@ -116,12 +116,12 @@ class SDKBridge:
         end_time: Optional[datetime] = None
     ) -> List[Dict[str, Any]]:
         """
-        Get historical bars via SDK adapter.
+        Get historical bars via TopstepX REST API.
         
-        This replaces old historical data fetching methods.
+        This fetches real OHLCV historical data from TopstepX History API.
         
         Args:
-            symbol: Instrument symbol
+            symbol: Instrument symbol (e.g., 'ES', 'MNQ')
             timeframe: Bar timeframe (e.g., '1m', '5m', '1h')
             count: Number of bars to retrieve
             end_time: End time for historical data (defaults to now)
@@ -132,15 +132,8 @@ class SDKBridge:
         if not self._initialized:
             raise RuntimeError("SDK Bridge not initialized. Call initialize() first.")
             
-        if not SDK_AVAILABLE or not self.adapter:
-            # Return simulated historical data for development/testing
-            return self._get_simulated_historical_bars(symbol, timeframe, count, end_time)
-            
-        # Use the SDK adapter for historical data
-        # Note: This would need to be implemented in the TopstepX adapter
-        # For now, returning simulated data
-        logger.warning("Historical bars via SDK adapter not yet implemented - using simulation")
-        return self._get_simulated_historical_bars(symbol, timeframe, count, end_time)
+        # Use real TopstepX API for historical data
+        return await self._fetch_topstepx_historical_bars(symbol, timeframe, count, end_time)
     
     async def get_account_state(self) -> Dict[str, Any]:
         """
@@ -283,6 +276,122 @@ class SDKBridge:
             },
             'timestamp': datetime.now(timezone.utc).isoformat()
         }
+    
+    async def _fetch_topstepx_historical_bars(
+        self,
+        symbol: str,
+        timeframe: str = "1m",
+        count: int = 100,
+        end_time: Optional[datetime] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Fetch historical bars from TopstepX REST API.
+        
+        Args:
+            symbol: Instrument symbol (e.g., 'ES', 'MNQ')
+            timeframe: Bar timeframe (default '1m')
+            count: Number of bars to retrieve
+            end_time: End time for data (defaults to now)
+            
+        Returns:
+            List of bar dictionaries with OHLCV data
+        """
+        try:
+            import aiohttp
+            
+            # Map symbol to TopstepX contract ID
+            contract_id_map = {
+                'ES': 'CON.F.US.EP.U25',
+                'MNQ': 'CON.F.US.MNQ.U25',
+                'NQ': 'CON.F.US.ENQ.U25',
+                'MES': 'CON.F.US.MES.U25'
+            }
+            
+            contract_id = contract_id_map.get(symbol)
+            if not contract_id:
+                logger.warning(f"Unknown symbol {symbol}, using simulated data")
+                return self._get_simulated_historical_bars(symbol, timeframe, count, end_time)
+            
+            # Get JWT token from environment
+            jwt = os.getenv('TOPSTEPX_JWT')
+            if not jwt:
+                logger.warning("No TOPSTEPX_JWT found, using simulated data")
+                return self._get_simulated_historical_bars(symbol, timeframe, count, end_time)
+            
+            # Calculate time range (get more bars than needed to ensure we have enough)
+            if end_time is None:
+                end_time = datetime.now(timezone.utc)
+            
+            # For 1-minute bars, go back count minutes plus buffer
+            start_time = end_time - timedelta(minutes=count * 2)  # 2x buffer
+            
+            # Map timeframe to unit and unitNumber
+            timeframe_map = {
+                '1m': (2, 1),   # Minutes, 1
+                '5m': (2, 5),   # Minutes, 5
+                '1h': (3, 1),   # Hours, 1
+            }
+            unit, unit_number = timeframe_map.get(timeframe, (2, 1))
+            
+            # Build API request
+            url = "https://api.topstepx.com/api/History/retrieveBars"
+            headers = {
+                'Authorization': f'Bearer {jwt}',
+                'Content-Type': 'application/json'
+            }
+            payload = {
+                'contractId': contract_id,
+                'live': True,
+                'startTime': start_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                'endTime': end_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                'unit': unit,
+                'unitNumber': unit_number,
+                'limit': count * 2,  # Request more to ensure we have enough
+                'includePartialBar': False
+            }
+            
+            logger.info(f"Fetching {count} historical bars for {symbol} from TopstepX API")
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=payload, headers=headers) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        logger.error(f"TopstepX API error: {response.status} - {error_text}")
+                        return self._get_simulated_historical_bars(symbol, timeframe, count, end_time)
+                    
+                    data = await response.json()
+                    
+                    # Parse bars from response
+                    bars = []
+                    if isinstance(data, list):
+                        for bar_data in data[:count]:  # Limit to requested count
+                            try:
+                                bar = {
+                                    'timestamp': bar_data.get('t', bar_data.get('time', datetime.now(timezone.utc).isoformat())),
+                                    'open': float(bar_data.get('o', bar_data.get('open', 0))),
+                                    'high': float(bar_data.get('h', bar_data.get('high', 0))),
+                                    'low': float(bar_data.get('l', bar_data.get('low', 0))),
+                                    'close': float(bar_data.get('c', bar_data.get('close', 0))),
+                                    'volume': int(bar_data.get('v', bar_data.get('volume', 0)))
+                                }
+                                bars.append(bar)
+                            except (KeyError, ValueError, TypeError) as e:
+                                logger.warning(f"Error parsing bar data: {e}")
+                                continue
+                    
+                    if bars:
+                        logger.info(f"Successfully fetched {len(bars)} historical bars for {symbol}")
+                        return bars
+                    else:
+                        logger.warning(f"No bars returned from TopstepX API, using simulated data")
+                        return self._get_simulated_historical_bars(symbol, timeframe, count, end_time)
+                        
+        except ImportError:
+            logger.warning("aiohttp not available, using simulated data")
+            return self._get_simulated_historical_bars(symbol, timeframe, count, end_time)
+        except Exception as e:
+            logger.error(f"Error fetching historical bars: {e}")
+            return self._get_simulated_historical_bars(symbol, timeframe, count, end_time)
     
     def _get_simulated_order_result(
         self, 
