@@ -196,6 +196,11 @@ jobs:
           Write-Output ""
           
           $DiagDir = "${{ steps.env_validation.outputs.diag_dir }}"
+          if ([string]::IsNullOrWhiteSpace($DiagDir)) {
+            $DiagDir = "$env:RUNNER_TEMP\${{ env.ARTIFACTS_DIR }}"
+            New-Item -ItemType Directory -Path $DiagDir -Force | Out-Null
+            Write-Output "⚠️ Using fallback diagnostics directory: $DiagDir"
+          }
           $Timestamp = (Get-Date).ToString("yyyy-MM-dd_HH-mm-ss")
           
           # Create log files
@@ -388,6 +393,19 @@ jobs:
           Write-Output ""
           
           $DiagDir = "${{ steps.env_validation.outputs.diag_dir }}"
+          if ([string]::IsNullOrWhiteSpace($DiagDir)) {
+            $DiagDir = "$env:RUNNER_TEMP\${{ env.ARTIFACTS_DIR }}"
+            Write-Output "⚠️ Using fallback diagnostics directory: $DiagDir"
+          }
+          
+          # Check if directory exists and has content
+          if (-not (Test-Path $DiagDir)) {
+            Write-Output "⚠️ Diagnostics directory not found: $DiagDir"
+            Write-Output "   This may indicate the workflow failed early."
+            New-Item -ItemType Directory -Path $DiagDir -Force | Out-Null
+            "Workflow failed during early stage - no diagnostics captured" | Out-File -FilePath "$DiagDir\workflow-failure-note.txt" -Encoding utf8
+            return
+          }
           
           # List all captured files
           Write-Output "📁 Captured artifacts:"
@@ -406,7 +424,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: bot-diagnostics-run-${{ github.run_number }}
-          path: ${{ steps.env_validation.outputs.diag_dir }}
+          path: ${{ steps.env_validation.outputs.diag_dir || format('{0}/{1}', runner.temp, env.ARTIFACTS_DIR) }}
           retention-days: 30
           compression-level: 6
 
