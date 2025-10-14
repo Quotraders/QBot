@@ -35,6 +35,16 @@ internal record PositionInfo(
     decimal UnrealizedPnL,
     decimal RealizedPnL);
 
+internal record BarEventData(
+    string Type,
+    string Instrument,
+    DateTime Timestamp,
+    decimal Open,
+    decimal High,
+    decimal Low,
+    decimal Close,
+    long Volume);
+
 internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapterService, IAsyncDisposable, IDisposable
 {
     private readonly ILogger<TopstepXAdapterService> _logger;
@@ -46,6 +56,13 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
     private readonly object _processLock = new();
     private bool _disposed;
     
+    // PERSISTENT PROCESS: stdin/stdout communication
+    private StreamWriter? _processStdin;
+    private Task? _stdoutReaderTask;
+    private readonly CancellationTokenSource _processCts = new();
+    private readonly ConcurrentDictionary<string, TaskCompletionSource<JsonElement>> _pendingResponses = new();
+    private int _commandIdCounter;
+    
     // PHASE 2: Fill event subscription infrastructure
     private readonly CancellationTokenSource _fillEventCts = new();
     private Task? _fillEventListenerTask;
@@ -53,6 +70,14 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
 
     // PHASE 2: Fill event callback for OrderExecutionService
     public event EventHandler<FillEventData>? FillEventReceived;
+    
+    // BAR EVENT STREAMING: Bar event subscription infrastructure
+    private readonly CancellationTokenSource _barEventCts = new();
+    private Task? _barEventListenerTask;
+    private readonly ConcurrentQueue<BarEventData> _barEventQueue = new();
+    
+    // BAR EVENT STREAMING: Bar event callback for data integration
+    public event EventHandler<BarEventData>? BarEventReceived;
 
     public TopstepXAdapterService(
         ILogger<TopstepXAdapterService> logger,
@@ -90,7 +115,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             throw;
         }
         
-        _instruments = new[] { "MNQ", "ES" }; // Support MNQ and ES as specified
+        _instruments = new[] { "ES", "NQ" }; // Support ES and NQ as specified
         _isInitialized = false;
         _connectionHealth = 0.0;
         
@@ -113,30 +138,18 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
 
         try
         {
-            _logger.LogInformation("🚀 Initializing TopstepX Python SDK adapter...");
+            _logger.LogInformation("🚀 Initializing TopstepX Python SDK adapter in PERSISTENT mode...");
 
             // Validate Python SDK is available
             await ValidatePythonSDKAsync(cancellationToken).ConfigureAwait(false);
 
-            // Initialize adapter through Python process
-            var result = await ExecutePythonCommandAsync("initialize", cancellationToken).ConfigureAwait(false);
+            // Start persistent Python process
+            await StartPersistentPythonProcessAsync(cancellationToken).ConfigureAwait(false);
             
-            if (result.Success)
-            {
-                _isInitialized = true;
-                _connectionHealth = 100.0;
-                
-                // PHASE 2: Start fill event listener
-                StartFillEventListener();
-                
-                _logger.LogInformation("✅ TopstepX adapter initialized successfully");
-            }
-            else
-            {
-                var error = $"Failed to initialize TopstepX adapter: {result.Error}";
-                _logger.LogError("❌ {Error}", error);
-                throw new InvalidOperationException(error);
-            }
+            _isInitialized = true;
+            _connectionHealth = 100.0;
+            
+            _logger.LogInformation("✅ TopstepX adapter initialized successfully in PERSISTENT mode - single Python process running");
         }
         catch (Exception ex) when (ex is not InvalidOperationException)
         {
@@ -810,6 +823,407 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
         return null;
     }
 
+    // ========================================================================
+    // PERSISTENT PROCESS MANAGEMENT
+    // ========================================================================
+    
+    /// <summary>
+    /// Start persistent Python process in "stream" mode with stdin/stdout communication
+    /// </summary>
+    private async Task StartPersistentPythonProcessAsync(CancellationToken cancellationToken)
+    {
+        lock (_processLock)
+        {
+            if (_pythonProcess != null)
+            {
+                _logger.LogWarning("[PERSISTENT] Python process already running");
+                return;
+            }
+        }
+        
+        try
+        {
+            // Find workspace root
+            var currentDir = AppContext.BaseDirectory;
+            string? workspaceRoot = null;
+            
+            while (currentDir != null)
+            {
+                if (Directory.Exists(Path.Combine(currentDir, ".git")))
+                {
+                    workspaceRoot = currentDir;
+                    break;
+                }
+                currentDir = Directory.GetParent(currentDir)?.FullName;
+            }
+            
+            if (workspaceRoot == null)
+            {
+                workspaceRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
+            }
+            
+            var adapterPath = Path.Combine(workspaceRoot, "src", "adapters", "topstep_x_adapter.py");
+            if (!File.Exists(adapterPath))
+            {
+                throw new FileNotFoundException($"TopstepX adapter not found at {adapterPath}");
+            }
+
+            var pythonExecutable = Environment.GetEnvironmentVariable("PYTHON_EXECUTABLE") ?? "python";
+            var isWsl = pythonExecutable.Equals("wsl", StringComparison.OrdinalIgnoreCase);
+            
+            var processInfo = new ProcessStartInfo
+            {
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            
+            // Get environment variables
+            var apiKey = Environment.GetEnvironmentVariable("TOPSTEPX_API_KEY");
+            var username = Environment.GetEnvironmentVariable("TOPSTEPX_USERNAME");
+            var accountId = Environment.GetEnvironmentVariable("TOPSTEPX_ACCOUNT_ID");
+            
+            if (isWsl)
+            {
+                var wslAdapterPath = adapterPath.Replace("\\", "/").Replace("C:", "/mnt/c").Replace("c:", "/mnt/c");
+                var bashCommand = $"python3 {wslAdapterPath} stream";
+                
+                processInfo.FileName = "wsl";
+                processInfo.Arguments = $"bash -c \"{bashCommand}\"";
+                processInfo.Environment["PROJECT_X_API_KEY"] = apiKey ?? "";
+                processInfo.Environment["PROJECT_X_USERNAME"] = username ?? "";
+                processInfo.Environment["TOPSTEPX_API_KEY"] = apiKey ?? "";
+                processInfo.Environment["TOPSTEPX_USERNAME"] = username ?? "";
+                processInfo.Environment["TOPSTEPX_ACCOUNT_ID"] = accountId ?? "";
+            }
+            else
+            {
+                processInfo.FileName = pythonExecutable;
+                processInfo.Arguments = $"\"{adapterPath}\" stream";
+                processInfo.Environment["PROJECT_X_API_KEY"] = apiKey ?? "";
+                processInfo.Environment["PROJECT_X_USERNAME"] = username ?? "";
+                processInfo.Environment["TOPSTEPX_API_KEY"] = apiKey ?? "";
+                processInfo.Environment["TOPSTEPX_USERNAME"] = username ?? "";
+                processInfo.Environment["TOPSTEPX_ACCOUNT_ID"] = accountId ?? "";
+            }
+            
+            _logger.LogInformation("[PERSISTENT] Starting Python process in stream mode: {FileName} {Arguments}", 
+                processInfo.FileName, processInfo.Arguments);
+            
+            var process = Process.Start(processInfo);
+            if (process == null)
+            {
+                throw new InvalidOperationException("Failed to start Python process");
+            }
+            
+            lock (_processLock)
+            {
+                _pythonProcess = process;
+                _processStdin = process.StandardInput;
+            }
+            
+            // Start stdout reader task to handle responses and events
+            _stdoutReaderTask = Task.Run(async () => await ReadStdoutContinuouslyAsync(_processCts.Token).ConfigureAwait(false), _processCts.Token);
+            
+            // Wait for initialization message
+            var initTask = Task.Run(async () =>
+            {
+                var timeout = TimeSpan.FromSeconds(30);
+                var cts = new CancellationTokenSource(timeout);
+                
+                while (!cts.Token.IsCancellationRequested)
+                {
+                    var line = await process.StandardOutput.ReadLineAsync().ConfigureAwait(false);
+                    if (line != null)
+                    {
+                        try
+                        {
+                            var msg = JsonSerializer.Deserialize<JsonElement>(line);
+                            if (msg.TryGetProperty("type", out var typeElement) && 
+                                typeElement.GetString() == "init" &&
+                                msg.TryGetProperty("success", out var successElement) &&
+                                successElement.GetBoolean())
+                            {
+                                _logger.LogInformation("[PERSISTENT] ✅ Python adapter initialized successfully");
+                                return true;
+                            }
+                        }
+                        catch { }
+                    }
+                    await Task.Delay(100, cts.Token).ConfigureAwait(false);
+                }
+                return false;
+            }, cancellationToken);
+            
+            var initialized = await initTask.ConfigureAwait(false);
+            if (!initialized)
+            {
+                throw new TimeoutException("Python adapter did not initialize within 30 seconds");
+            }
+            
+            _logger.LogInformation("[PERSISTENT] ✅ Persistent Python process started successfully (PID: {ProcessId})", process.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[PERSISTENT] Failed to start persistent Python process");
+            await StopPersistentPythonProcessAsync().ConfigureAwait(false);
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// Read stdout continuously to handle both command responses and async events (bars, fills)
+    /// </summary>
+    private async Task ReadStdoutContinuouslyAsync(CancellationToken cancellationToken)
+    {
+        Process? process;
+        lock (_processLock)
+        {
+            process = _pythonProcess;
+        }
+        
+        if (process == null)
+            return;
+        
+        _logger.LogInformation("[PERSISTENT] Started stdout reader task");
+        
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested && !process.HasExited)
+            {
+                var line = await process.StandardOutput.ReadLineAsync().ConfigureAwait(false);
+                if (line == null)
+                    break;
+                
+                try
+                {
+                    var message = JsonSerializer.Deserialize<JsonElement>(line);
+                    var messageType = message.TryGetProperty("type", out var typeElement) ? typeElement.GetString() : null;
+                    
+                    if (messageType == "response")
+                    {
+                        // Command response - complete pending task
+                        var action = message.TryGetProperty("action", out var actionElement) ? actionElement.GetString() : null;
+                        if (action != null && _pendingResponses.TryRemove(action, out var tcs))
+                        {
+                            tcs.SetResult(message);
+                        }
+                    }
+                    else if (messageType == "bar")
+                    {
+                        // Bar event - parse and distribute
+                        var barEvent = ParseBarEventFromMessage(message);
+                        if (barEvent != null)
+                        {
+                            _barEventQueue.Enqueue(barEvent);
+                            BarEventReceived?.Invoke(this, barEvent);
+                            
+                            _logger.LogDebug("[PERSISTENT] 📊 Bar event: {Instrument} C={Close}", 
+                                barEvent.Instrument, barEvent.Close);
+                        }
+                    }
+                    else if (messageType == "fill")
+                    {
+                        // Fill event - parse and distribute
+                        var fillEvent = ParseFillEventFromMessage(message);
+                        if (fillEvent != null)
+                        {
+                            _fillEventQueue.Enqueue(fillEvent);
+                            FillEventReceived?.Invoke(this, fillEvent);
+                            
+                            _logger.LogInformation("[PERSISTENT] 📥 Fill event: {OrderId}", fillEvent.OrderId);
+                        }
+                    }
+                    else if (messageType == "error")
+                    {
+                        var error = message.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : "Unknown error";
+                        _logger.LogWarning("[PERSISTENT] Error from Python: {Error}", error);
+                    }
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(ex, "[PERSISTENT] Failed to parse message from stdout: {Line}", line);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[PERSISTENT] Error in stdout reader task");
+        }
+        
+        _logger.LogInformation("[PERSISTENT] Stdout reader task stopped");
+    }
+    
+    /// <summary>
+    /// Send command to persistent Python process via stdin
+    /// </summary>
+    private async Task<JsonElement> SendPersistentCommandAsync(string action, object? parameters = null, CancellationToken cancellationToken = default)
+    {
+        StreamWriter? stdin;
+        lock (_processLock)
+        {
+            if (_pythonProcess == null || _pythonProcess.HasExited)
+            {
+                throw new InvalidOperationException("Python process is not running");
+            }
+            stdin = _processStdin;
+        }
+        
+        if (stdin == null)
+        {
+            throw new InvalidOperationException("Process stdin is not available");
+        }
+        
+        // Create task completion source for response
+        var tcs = new TaskCompletionSource<JsonElement>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _pendingResponses[action] = tcs;
+        
+        try
+        {
+            // Build command JSON
+            var command = new Dictionary<string, object?> { ["action"] = action };
+            if (parameters != null)
+            {
+                foreach (var prop in parameters.GetType().GetProperties())
+                {
+                    command[prop.Name] = prop.GetValue(parameters);
+                }
+            }
+            
+            var commandJson = JsonSerializer.Serialize(command);
+            
+            // Send command
+            await stdin.WriteLineAsync(commandJson).ConfigureAwait(false);
+            await stdin.FlushAsync().ConfigureAwait(false);
+            
+            _logger.LogDebug("[PERSISTENT] Sent command: {Action}", action);
+            
+            // Wait for response with timeout
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(30));
+            
+            var responseTask = tcs.Task;
+            var completedTask = await Task.WhenAny(responseTask, Task.Delay(Timeout.Infinite, timeoutCts.Token)).ConfigureAwait(false);
+            
+            if (completedTask != responseTask)
+            {
+                throw new TimeoutException($"Command '{action}' timed out after 30 seconds");
+            }
+            
+            return await responseTask.ConfigureAwait(false);
+        }
+        finally
+        {
+            _pendingResponses.TryRemove(action, out _);
+        }
+    }
+    
+    /// <summary>
+    /// Stop persistent Python process gracefully
+    /// </summary>
+    private async Task StopPersistentPythonProcessAsync()
+    {
+        Process? process;
+        lock (_processLock)
+        {
+            process = _pythonProcess;
+            _pythonProcess = null;
+            _processStdin = null;
+        }
+        
+        if (process == null)
+            return;
+        
+        try
+        {
+            // Send shutdown command
+            try
+            {
+                await SendPersistentCommandAsync("shutdown", cancellationToken: CancellationToken.None).ConfigureAwait(false);
+                _logger.LogInformation("[PERSISTENT] Sent shutdown command");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[PERSISTENT] Failed to send shutdown command");
+            }
+            
+            // Wait for process to exit
+            var exited = process.WaitForExit(5000);
+            if (!exited)
+            {
+                _logger.LogWarning("[PERSISTENT] Process did not exit gracefully, killing...");
+                process.Kill();
+            }
+            
+            process.Dispose();
+            _logger.LogInformation("[PERSISTENT] Python process stopped");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[PERSISTENT] Error stopping Python process");
+        }
+    }
+    
+    private BarEventData? ParseBarEventFromMessage(JsonElement message)
+    {
+        try
+        {
+            var instrument = message.TryGetProperty("instrument", out var instrElement) ? instrElement.GetString() : null;
+            var timestampStr = message.TryGetProperty("timestamp", out var tsElement) ? tsElement.GetString() : null;
+            var open = message.TryGetProperty("open", out var openElement) ? openElement.GetDecimal() : 0m;
+            var high = message.TryGetProperty("high", out var highElement) ? highElement.GetDecimal() : 0m;
+            var low = message.TryGetProperty("low", out var lowElement) ? lowElement.GetDecimal() : 0m;
+            var close = message.TryGetProperty("close", out var closeElement) ? closeElement.GetDecimal() : 0m;
+            var volume = message.TryGetProperty("volume", out var volumeElement) ? volumeElement.GetInt64() : 0L;
+            
+            if (string.IsNullOrEmpty(instrument))
+                return null;
+            
+            var timestamp = !string.IsNullOrEmpty(timestampStr) && DateTime.TryParse(timestampStr, out var parsedTs)
+                ? parsedTs
+                : DateTime.UtcNow;
+            
+            return new BarEventData("bar", instrument, timestamp, open, high, low, close, volume);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[PERSISTENT] Error parsing bar event");
+            return null;
+        }
+    }
+    
+    private FillEventData? ParseFillEventFromMessage(JsonElement message)
+    {
+        try
+        {
+            // Parse fill event fields as needed
+            var orderId = message.TryGetProperty("orderId", out var orderIdElement) ? orderIdElement.GetString() : null;
+            var symbol = message.TryGetProperty("symbol", out var symbolElement) ? symbolElement.GetString() : null;
+            var quantity = message.TryGetProperty("quantity", out var qtyElement) ? qtyElement.GetInt32() : 0;
+            var fillPrice = message.TryGetProperty("fillPrice", out var priceElement) ? priceElement.GetDecimal() : 0m;
+            
+            if (string.IsNullOrEmpty(orderId) || string.IsNullOrEmpty(symbol))
+                return null;
+            
+            return new FillEventData
+            {
+                OrderId = orderId,
+                Symbol = symbol,
+                Quantity = quantity,
+                FillPrice = fillPrice,
+                Price = fillPrice,
+                Timestamp = DateTime.UtcNow
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[PERSISTENT] Error parsing fill event");
+            return null;
+        }
+    }
+
     private async Task<(bool Success, JsonElement? Data, string? Error)> ExecutePythonCommandAsync(
         string command, 
         CancellationToken cancellationToken)
@@ -1115,35 +1529,30 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
         {
             var orderId = fillElement.TryGetProperty("order_id", out var orderIdElement) ? orderIdElement.GetString() : null;
             var symbol = fillElement.TryGetProperty("symbol", out var symbolElement) ? symbolElement.GetString() : null;
-            var quantity = fillElement.TryGetProperty("quantity", out var qtyElement) ? qtyElement.GetInt32() : 0;
+            var quantity = fillElement.TryGetProperty("quantity", out var quantityElement) ? quantityElement.GetInt32() : 0;
             var price = fillElement.TryGetProperty("price", out var priceElement) ? priceElement.GetDecimal() : 0m;
             var fillPrice = fillElement.TryGetProperty("fill_price", out var fillPriceElement) ? fillPriceElement.GetDecimal() : price;
-            var commission = fillElement.TryGetProperty("commission", out var commElement) ? commElement.GetDecimal() : 0m;
-            var exchange = fillElement.TryGetProperty("exchange", out var exchElement) ? exchElement.GetString() : "CME";
-            var liquidityType = fillElement.TryGetProperty("liquidity_type", out var liqElement) ? liqElement.GetString() : "TAKER";
-            var timestampStr = fillElement.TryGetProperty("timestamp", out var tsElement) ? tsElement.GetString() : null;
+            var timestamp = fillElement.TryGetProperty("timestamp", out var timestampElement) && DateTime.TryParse(timestampElement.GetString(), out var ts)
+                ? ts
+                : DateTime.UtcNow;
+            var commission = fillElement.TryGetProperty("commission", out var commissionElement) ? commissionElement.GetDecimal() : 0m;
+            var exchange = fillElement.TryGetProperty("exchange", out var exchangeElement) ? exchangeElement.GetString() : string.Empty;
+            var liquidityType = fillElement.TryGetProperty("liquidity_type", out var liquidityElement) ? liquidityElement.GetString() : string.Empty;
             
             if (string.IsNullOrEmpty(orderId) || string.IsNullOrEmpty(symbol))
-            {
-                _logger.LogWarning("Received fill event with missing order_id or symbol");
                 return null;
-            }
-            
-            var timestamp = !string.IsNullOrEmpty(timestampStr) && DateTime.TryParse(timestampStr, out var parsedTs)
-                ? parsedTs
-                : DateTime.UtcNow;
             
             return new FillEventData
             {
-                OrderId = orderId,
-                Symbol = symbol,
+                OrderId = orderId ?? "",
+                Symbol = symbol ?? "",
                 Quantity = quantity,
                 Price = price,
                 FillPrice = fillPrice,
+                Timestamp = timestamp,
                 Commission = commission,
-                Exchange = exchange ?? "CME",
-                LiquidityType = liquidityType ?? "TAKER",
-                Timestamp = timestamp
+                Exchange = exchange ?? "",
+                LiquidityType = liquidityType ?? ""
             };
         }
         catch (Exception ex)
@@ -1167,6 +1576,154 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
         
         _logger.LogInformation("✅ [FILL-LISTENER] Callback subscribed to fill events");
     }
+    
+    // ========================================================================
+    // BAR EVENT STREAMING: BAR EVENT LISTENER INFRASTRUCTURE
+    // ========================================================================
+    
+    /// <summary>
+    /// Start background task to listen for bar events from TopstepX SDK
+    /// </summary>
+    private void StartBarEventListener()
+    {
+        _barEventListenerTask = Task.Run(async () =>
+        {
+            _logger.LogInformation("🎧 [BAR-LISTENER] Starting bar event listener...");
+            
+            while (!_barEventCts.Token.IsCancellationRequested)
+            {
+                try
+                {
+                    // Poll for bar events from Python SDK
+                    await PollForBarEventsAsync(_barEventCts.Token).ConfigureAwait(false);
+                    
+                    // Poll every 5 seconds for bar updates (bars complete every minute)
+                    await Task.Delay(TimeSpan.FromSeconds(5), _barEventCts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected when shutting down
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error in bar event listener");
+                    
+                    // Reconnection logic: wait 5 seconds before retrying
+                    try
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(5), _barEventCts.Token).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                }
+            }
+            
+            _logger.LogInformation("🛑 [BAR-LISTENER] Bar event listener stopped");
+        }, _barEventCts.Token);
+    }
+    
+    /// <summary>
+    /// Poll Python SDK for new bar events
+    /// </summary>
+    private async Task PollForBarEventsAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var command = new { action = "get_bar_events" };
+            var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
+            
+            if (result.Success && result.Data.HasValue)
+            {
+                // Check if we got bar events
+                var data = result.Data.Value;
+                if (data.TryGetProperty("bars", out var barsElement) && barsElement.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var barElement in barsElement.EnumerateArray())
+                    {
+                        var barEvent = ParseBarEvent(barElement);
+                        if (barEvent != null)
+                        {
+                            // Add to queue and notify subscribers
+                            _barEventQueue.Enqueue(barEvent);
+                            
+                            _logger.LogInformation("📊 [BAR-LISTENER] Received 1m bar for {Instrument}: O={Open:F2} H={High:F2} L={Low:F2} C={Close:F2} V={Volume}",
+                                barEvent.Instrument, barEvent.Open, barEvent.High, barEvent.Low, barEvent.Close, barEvent.Volume);
+                            
+                            // Notify subscribers
+                            BarEventReceived?.Invoke(this, barEvent);
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error polling for bar events");
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// Parse bar event from JSON
+    /// </summary>
+    private BarEventData? ParseBarEvent(JsonElement barElement)
+    {
+        try
+        {
+            var type = barElement.TryGetProperty("type", out var typeElement) ? typeElement.GetString() : "bar";
+            var instrument = barElement.TryGetProperty("instrument", out var instrElement) ? instrElement.GetString() : null;
+            var timestampStr = barElement.TryGetProperty("timestamp", out var tsElement) ? tsElement.GetString() : null;
+            var open = barElement.TryGetProperty("open", out var openElement) ? openElement.GetDecimal() : 0m;
+            var high = barElement.TryGetProperty("high", out var highElement) ? highElement.GetDecimal() : 0m;
+            var low = barElement.TryGetProperty("low", out var lowElement) ? lowElement.GetDecimal() : 0m;
+            var close = barElement.TryGetProperty("close", out var closeElement) ? closeElement.GetDecimal() : 0m;
+            var volume = barElement.TryGetProperty("volume", out var volumeElement) ? volumeElement.GetInt64() : 0L;
+            
+            if (string.IsNullOrEmpty(instrument))
+            {
+                _logger.LogWarning("Received bar event with missing instrument");
+                return null;
+            }
+            
+            var timestamp = !string.IsNullOrEmpty(timestampStr) && DateTime.TryParse(timestampStr, out var parsedTs)
+                ? parsedTs
+                : DateTime.UtcNow;
+            
+            return new BarEventData(
+                Type: type ?? "bar",
+                Instrument: instrument,
+                Timestamp: timestamp,
+                Open: open,
+                High: high,
+                Low: low,
+                Close: close,
+                Volume: volume
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error parsing bar event");
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// Subscribe to bar events with a callback
+    /// </summary>
+    public void SubscribeToBarEvents(Action<BarEventData> callback)
+    {
+        if (callback == null)
+        {
+            throw new ArgumentNullException(nameof(callback));
+        }
+        
+        BarEventReceived += (sender, barData) => callback(barData);
+        
+        _logger.LogInformation("✅ [BAR-LISTENER] Callback subscribed to bar events");
+    }
 
     public async ValueTask DisposeAsync()
     {
@@ -1174,13 +1731,30 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
         {
             try
             {
-                // PHASE 2: Stop fill event listener
+                // Stop persistent Python process
+                _processCts.Cancel();
+                if (_stdoutReaderTask != null)
+                {
+                    await _stdoutReaderTask.ConfigureAwait(false);
+                }
+                await StopPersistentPythonProcessAsync().ConfigureAwait(false);
+                _processCts.Dispose();
+                
+                // PHASE 2: Stop fill event listener (no longer needed with persistent mode)
                 _fillEventCts.Cancel();
                 if (_fillEventListenerTask != null)
                 {
                     await _fillEventListenerTask.ConfigureAwait(false);
                 }
                 _fillEventCts.Dispose();
+                
+                // BAR EVENT STREAMING: Stop bar event listener (no longer needed with persistent mode)
+                _barEventCts.Cancel();
+                if (_barEventListenerTask != null)
+                {
+                    await _barEventListenerTask.ConfigureAwait(false);
+                }
+                _barEventCts.Dispose();
                 
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
                 await DisconnectAsync(cts.Token).ConfigureAwait(false);

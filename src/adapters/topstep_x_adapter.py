@@ -132,7 +132,7 @@ class TopstepXAdapter:
         Initialize adapter with specified instruments.
         
         Args:
-            instruments: List of instrument symbols (e.g., ['MNQ', 'ES'])
+            instruments: List of instrument symbols (e.g., ['ES', 'NQ'])
         
         Raises:
             RuntimeError: If required credentials are not found in environment
@@ -156,6 +156,10 @@ class TopstepXAdapter:
         # PHASE 1: Fill event storage queue (thread-safe with asyncio)
         self._fill_events_queue: deque = deque(maxlen=1000)  # Keep last 1000 fills
         self._fill_events_lock = asyncio.Lock()
+        
+        # BAR EVENT STREAMING: Storage queue for live bar updates
+        self._bar_events_queue: deque = deque(maxlen=100)  # Keep last 100 bars
+        self._bar_events_lock = asyncio.Lock()
         
         # Configure production logging
         self.logger = logging.getLogger(f"TopstepXAdapter-{'-'.join(instruments)}")
@@ -271,7 +275,7 @@ class TopstepXAdapter:
                 symbol_map = {
                     "EP": "ES",    # E-mini S&P 500
                     "ENQ": "NQ",   # E-mini NASDAQ
-                    "MNQ": "MNQ",  # Micro E-mini NASDAQ
+                    "MNQ": "NQ",   # Micro E-mini NASDAQ (map to NQ)
                     "MES": "ES",   # Micro E-mini S&P 500
                 }
                 
@@ -351,6 +355,77 @@ class TopstepXAdapter:
         except Exception as e:
             self.logger.error(f"Error processing fill event: {e}", exc_info=True)
 
+    async def _on_bar_update(self, event_data: Any):
+        """
+        BAR EVENT STREAMING: WebSocket callback for bar completion events.
+        
+        This callback is triggered when a new bar (candle) completes via the SDK's
+        real-time WebSocket connection. It transforms the SDK event format into
+        the structure expected by the C# layer for trading decisions.
+        
+        Args:
+            event_data: Bar event data from project-x-py SDK
+        """
+        try:
+            # Extract bar details from SDK event data
+            # The SDK may provide different field names, so we check multiple possibilities
+            contract_id = str(getattr(event_data, 'contractId', getattr(event_data, 'contract_id', '')))
+            symbol = self._extract_symbol_from_contract_id(contract_id)
+            
+            # Get bar OHLCV data
+            timestamp_val = getattr(event_data, 'timestamp', getattr(event_data, 't', None))
+            open_price = float(getattr(event_data, 'open', getattr(event_data, 'o', 0.0)))
+            high_price = float(getattr(event_data, 'high', getattr(event_data, 'h', 0.0)))
+            low_price = float(getattr(event_data, 'low', getattr(event_data, 'l', 0.0)))
+            close_price = float(getattr(event_data, 'close', getattr(event_data, 'c', 0.0)))
+            volume = int(getattr(event_data, 'volume', getattr(event_data, 'v', 0)))
+            
+            # Parse timestamp
+            if timestamp_val:
+                if isinstance(timestamp_val, (int, float)):
+                    # Assume milliseconds timestamp
+                    timestamp = datetime.fromtimestamp(timestamp_val / 1000.0, tz=timezone.utc)
+                elif isinstance(timestamp_val, str):
+                    timestamp = datetime.fromisoformat(timestamp_val.replace('Z', '+00:00'))
+                else:
+                    timestamp = datetime.now(timezone.utc)
+            else:
+                timestamp = datetime.now(timezone.utc)
+            
+            # Transform to C# expected format
+            bar_event = {
+                'type': 'bar',
+                'instrument': symbol,
+                'timestamp': timestamp.isoformat(),
+                'open': open_price,
+                'high': high_price,
+                'low': low_price,
+                'close': close_price,
+                'volume': volume
+            }
+            
+            # Add to queue with thread-safe lock
+            async with self._bar_events_lock:
+                self._bar_events_queue.append(bar_event)
+            
+            self.logger.info(
+                f"[BAR-EVENT] {symbol} 1m bar: O={open_price:.2f} H={high_price:.2f} L={low_price:.2f} C={close_price:.2f} V={volume}"
+            )
+            self._emit_telemetry("bar_completed", {
+                "symbol": symbol,
+                "close": close_price,
+                "volume": volume,
+                "timestamp": timestamp.isoformat()
+            })
+            
+            # STREAMING OUTPUT: Output bar to stdout for C# to read
+            import json
+            import sys
+            print(json.dumps(bar_event), flush=True)
+            
+        except Exception as e:
+            self.logger.error(f"Error processing bar event: {e}", exc_info=True)
+
     async def initialize(self) -> None:
         """Setup structured logging for production use."""
         logger = logging.getLogger(f"TopstepXAdapter.{id(self)}")
@@ -373,7 +448,7 @@ class TopstepXAdapter:
             raise ValueError("At least one instrument must be specified")
             
         # Validate supported instruments
-        supported_instruments = {'MNQ', 'ES', 'NQ', 'RTY', 'YM'}
+        supported_instruments = {'ES', 'NQ', 'RTY', 'YM', 'MNQ', 'MES'}
         for instrument in self.instruments:
             if instrument not in supported_instruments:
                 self.logger.warning(
@@ -425,6 +500,37 @@ class TopstepXAdapter:
             })
             await self._cleanup_resources()
             raise RuntimeError(error_msg) from e
+        
+        # BAR EVENT STREAMING: Subscribe to bar completion events via WebSocket
+        try:
+            # Try NEW_BAR first as per SDK documentation, then fallback to alternatives
+            bar_event_types = []
+            
+            # Check if NEW_BAR or other bar event types exist
+            if hasattr(EventType, 'NEW_BAR'):
+                bar_event_types.append(EventType.NEW_BAR)
+            if hasattr(EventType, 'BAR_UPDATE'):
+                bar_event_types.append(EventType.BAR_UPDATE)
+            if hasattr(EventType, 'CANDLE_UPDATE'):
+                bar_event_types.append(EventType.CANDLE_UPDATE)
+            if hasattr(EventType, 'BAR_CLOSED'):
+                bar_event_types.append(EventType.BAR_CLOSED)
+            if hasattr(EventType, 'CANDLE_CLOSED'):
+                bar_event_types.append(EventType.CANDLE_CLOSED)
+            
+            # Subscribe to first available bar event type
+            if bar_event_types:
+                await self.suite.on(bar_event_types[0], self._on_bar_update)
+                self.logger.info(f"✅ Subscribed to {bar_event_types[0]} events via WebSocket")
+            else:
+                self.logger.warning("⚠️ No bar event type found in SDK - bar streaming may not work")
+        except Exception as e:
+            # Bar events are not critical for basic trading, so just log warning
+            self.logger.warning(f"Could not subscribe to bar events: {e}")
+            self._emit_telemetry("bar_subscription_failed", {
+                "error": str(e),
+                "severity": "warning"
+            })
         
         # Verify connection to ALL instruments - FAIL CLOSED if any fail
         connection_failures = []
@@ -646,6 +752,39 @@ class TopstepXAdapter:
             self.logger.error(f"Error getting fill events: {e}")
             return {
                 'fills': [],
+                'error': str(e),
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            }
+
+    @requires_initialization
+    async def get_bar_events(self) -> Dict[str, Any]:
+        """
+        BAR EVENT STREAMING: Get recent bar events from TopstepX SDK.
+        
+        This method returns bar events that have been collected via WebSocket
+        subscription to bar completion events. Events are stored in an in-memory
+        queue and retrieved by the C# layer via polling.
+        
+        Returns:
+            Dictionary with bars array containing bar event data
+        """
+        try:
+            # Read all events from queue and clear it (thread-safe)
+            async with self._bar_events_lock:
+                bars = list(self._bar_events_queue)
+                self._bar_events_queue.clear()
+            
+            self.logger.debug(f"[BAR-EVENTS] Returning {len(bars)} bar events")
+            
+            return {
+                'bars': bars,
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error getting bar events: {e}")
+            return {
+                'bars': [],
                 'error': str(e),
                 'timestamp': datetime.now(timezone.utc).isoformat()
             }
@@ -1133,9 +1272,9 @@ class TopstepXAdapter:
             # For simplicity, we'll construct it from the symbol
             # In production, this should query the SDK for the actual contract ID
             contract_id_map = {
-                'MNQ': 'CON.F.US.MNQ.Z25',  # Example - should be dynamic
+                'NQ': 'CON.F.US.ENQ.Z25',
+                'MNQ': 'CON.F.US.MNQ.Z25',  # Keep for backward compatibility
                 'ES': 'CON.F.US.EP.Z25',
-                'NQ': 'CON.F.US.ENQ.Z25'
             }
             
             contract_id = contract_id_map.get(symbol)
@@ -1499,7 +1638,7 @@ async def test_adapter_functionality():
     
     try:
         # Test initialization
-        adapter = TopstepXAdapter(["MNQ", "ES"])
+        adapter = TopstepXAdapter(["ES", "NQ"])
         await adapter.initialize()
         
         # Test health check
@@ -1508,15 +1647,15 @@ async def test_adapter_functionality():
         print(f"✅ Health check passed: {health['health_score']}%")
         
         # Test price retrieval
-        mnq_price = await adapter.get_price("MNQ")
-        print(f"✅ MNQ price: ${mnq_price:.2f}")
+        nq_price = await adapter.get_price("NQ")
+        print(f"✅ NQ price: ${nq_price:.2f}")
         
         # Test order placement (demo mode)
         order_result = await adapter.place_order(
-            symbol="MNQ",
+            symbol="NQ",
             size=1,
-            stop_loss=mnq_price - 10,
-            take_profit=mnq_price + 15,
+            stop_loss=nq_price - 10,
+            take_profit=nq_price + 15,
             max_risk_percent=0.005  # 0.5% risk for testing
         )
         assert order_result['success'], f"Order failed: {order_result.get('error')}"
@@ -1541,7 +1680,121 @@ if __name__ == "__main__":
     import sys
     import json
     
-    # Command-line interface for C# integration
+    # Check for persistent/streaming mode
+    if len(sys.argv) > 1 and sys.argv[1] == "stream":
+        # PERSISTENT MODE: Keep adapter alive and process commands via stdin/stdout
+        async def persistent_mode():
+            """Run adapter in persistent mode with stdin/stdout communication."""
+            adapter = None
+            try:
+                # Initialize adapter once
+                adapter = TopstepXAdapter(["ES", "NQ"])
+                await adapter.initialize()
+                
+                # Send initialization success
+                print(json.dumps({"type": "init", "success": True, "message": "Adapter initialized"}), flush=True)
+                
+                # Process commands from stdin
+                while True:
+                    try:
+                        # Read command from stdin
+                        line = sys.stdin.readline()
+                        if not line:
+                            break  # EOF reached
+                        
+                        line = line.strip()
+                        if not line:
+                            continue
+                        
+                        cmd_data = json.loads(line)
+                        action = cmd_data.get("action")
+                        
+                        if action == "shutdown":
+                            print(json.dumps({"type": "response", "action": "shutdown", "success": True}), flush=True)
+                            break
+                        
+                        # Process command and send response
+                        result = None
+                        if action == "get_price":
+                            price = await adapter.get_price(cmd_data["symbol"])
+                            result = {"success": True, "price": price}
+                        
+                        elif action == "get_health_score":
+                            result = await adapter.get_health_score()
+                        
+                        elif action == "get_portfolio_status":
+                            result = await adapter.get_portfolio_status()
+                        
+                        elif action == "get_fill_events":
+                            result = await adapter.get_fill_events()
+                        
+                        elif action == "get_bar_events":
+                            result = await adapter.get_bar_events()
+                        
+                        elif action == "place_order":
+                            result = await adapter.place_order(
+                                cmd_data["symbol"],
+                                cmd_data["size"],
+                                cmd_data["stop_loss"],
+                                cmd_data["take_profit"],
+                                cmd_data.get("max_risk_percent", 0.01)
+                            )
+                        
+                        elif action == "get_positions":
+                            positions = await adapter.get_positions()
+                            result = {"success": True, "positions": positions}
+                        
+                        elif action == "close_position":
+                            result = await adapter.close_position(
+                                cmd_data["symbol"],
+                                cmd_data.get("quantity")
+                            )
+                        
+                        elif action == "modify_stop_loss":
+                            result = await adapter.modify_stop_loss(
+                                cmd_data["symbol"],
+                                float(cmd_data["stop_price"])
+                            )
+                        
+                        elif action == "modify_take_profit":
+                            result = await adapter.modify_take_profit(
+                                cmd_data["symbol"],
+                                float(cmd_data["take_profit_price"])
+                            )
+                        
+                        elif action == "cancel_order":
+                            result = await adapter.cancel_order(cmd_data["order_id"])
+                        
+                        elif action == "cancel_all_orders":
+                            result = await adapter.cancel_all_orders(cmd_data.get("symbol"))
+                        
+                        else:
+                            result = {"success": False, "error": f"Unknown action: {action}"}
+                        
+                        # Send response
+                        response = {"type": "response", "action": action, **result}
+                        print(json.dumps(response), flush=True)
+                    
+                    except json.JSONDecodeError as e:
+                        error_response = {"type": "error", "error": f"Invalid JSON: {str(e)}"}
+                        print(json.dumps(error_response), flush=True)
+                    except Exception as e:
+                        error_response = {"type": "error", "error": str(e)}
+                        print(json.dumps(error_response), flush=True)
+            
+            finally:
+                # Clean disconnect
+                if adapter:
+                    try:
+                        await adapter.disconnect()
+                    except Exception as e:
+                        print(json.dumps({"type": "error", "error": f"Disconnect error: {str(e)}"}), flush=True)
+        
+        # Run persistent mode
+        asyncio.run(persistent_mode())
+        sys.exit(0)
+    
+    # Command-line interface for C# integration (legacy one-shot mode)
     if len(sys.argv) > 1:
         command = sys.argv[1]
         
@@ -1559,7 +1812,7 @@ if __name__ == "__main__":
             # Initialize adapter and return status
             try:
                 async def init_test():
-                    adapter = TopstepXAdapter(["MNQ", "ES"])
+                    adapter = TopstepXAdapter(["ES", "NQ"])
                     await adapter.initialize()
                     health = await adapter.get_health_score()
                     await adapter.disconnect()
@@ -1579,7 +1832,7 @@ if __name__ == "__main__":
                 action = cmd_data.get("action")
                 
                 async def execute_command():
-                    adapter = TopstepXAdapter(["MNQ", "ES"])
+                    adapter = TopstepXAdapter(["ES", "NQ"])
                     await adapter.initialize()
                     
                     try:
@@ -1607,6 +1860,10 @@ if __name__ == "__main__":
                         
                         elif action == "get_fill_events":
                             result = await adapter.get_fill_events()
+                            return result
+                        
+                        elif action == "get_bar_events":
+                            result = await adapter.get_bar_events()
                             return result
                         
                         elif action == "get_positions":

@@ -12,7 +12,7 @@ import subprocess
 import sys
 import os
 from typing import Dict, List, Optional, Any, Union
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import logging
 
 # Try to import the TopstepX adapter, but gracefully handle missing SDK
@@ -57,9 +57,9 @@ class SDKBridge:
         Initialize SDK bridge.
         
         Args:
-            instruments: List of instruments to trade (defaults to ['MNQ', 'ES'])
+            instruments: List of instruments to trade (defaults to ['ES', 'NQ'])
         """
-        self.instruments = instruments or ['MNQ', 'ES']
+        self.instruments = instruments or ['ES', 'NQ']
         self.adapter: Optional[TopstepXAdapter] = None
         self._initialized = False
         
@@ -72,9 +72,9 @@ class SDKBridge:
             return True
             
         if not SDK_AVAILABLE:
-            logger.info("SDK not available - using simulation mode")
-            self._initialized = True
-            return True
+            logger.error("PRODUCTION ERROR: TopstepX SDK (project-x-py) is NOT installed!")
+            logger.error("Install with: pip install project-x-py")
+            raise RuntimeError("TopstepX SDK not available - cannot operate in production mode")
             
         try:
             self.adapter = TopstepXAdapter(self.instruments)
@@ -103,8 +103,7 @@ class SDKBridge:
             raise RuntimeError("SDK Bridge not initialized. Call initialize() first.")
             
         if not SDK_AVAILABLE or not self.adapter:
-            # Return simulated prices for development/testing
-            return self._get_simulated_price(symbol)
+            raise RuntimeError("TopstepX SDK not available - cannot get live prices")
             
         return await self.adapter.get_price(symbol)
     
@@ -116,12 +115,12 @@ class SDKBridge:
         end_time: Optional[datetime] = None
     ) -> List[Dict[str, Any]]:
         """
-        Get historical bars via SDK adapter.
+        Get historical bars via TopstepX REST API.
         
-        This replaces old historical data fetching methods.
+        This fetches real OHLCV historical data from TopstepX History API.
         
         Args:
-            symbol: Instrument symbol
+            symbol: Instrument symbol (e.g., 'ES', 'MNQ')
             timeframe: Bar timeframe (e.g., '1m', '5m', '1h')
             count: Number of bars to retrieve
             end_time: End time for historical data (defaults to now)
@@ -132,15 +131,8 @@ class SDKBridge:
         if not self._initialized:
             raise RuntimeError("SDK Bridge not initialized. Call initialize() first.")
             
-        if not SDK_AVAILABLE or not self.adapter:
-            # Return simulated historical data for development/testing
-            return self._get_simulated_historical_bars(symbol, timeframe, count, end_time)
-            
-        # Use the SDK adapter for historical data
-        # Note: This would need to be implemented in the TopstepX adapter
-        # For now, returning simulated data
-        logger.warning("Historical bars via SDK adapter not yet implemented - using simulation")
-        return self._get_simulated_historical_bars(symbol, timeframe, count, end_time)
+        # Use real TopstepX API for historical data
+        return await self._fetch_topstepx_historical_bars(symbol, timeframe, count, end_time)
     
     async def get_account_state(self) -> Dict[str, Any]:
         """
@@ -153,8 +145,7 @@ class SDKBridge:
             raise RuntimeError("SDK Bridge not initialized. Call initialize() first.")
             
         if not SDK_AVAILABLE or not self.adapter:
-            # Return simulated account state
-            return self._get_simulated_account_state()
+            raise RuntimeError("TopstepX SDK not available - cannot get account state")
             
         try:
             portfolio = await self.adapter.get_portfolio_status()
@@ -167,7 +158,7 @@ class SDKBridge:
             }
         except Exception as e:
             logger.error(f"Failed to get account state: {e}")
-            return self._get_simulated_account_state()
+            raise
     
     async def place_order(
         self,
@@ -194,8 +185,7 @@ class SDKBridge:
             raise RuntimeError("SDK Bridge not initialized. Call initialize() first.")
             
         if not SDK_AVAILABLE or not self.adapter:
-            # Return simulated order result
-            return self._get_simulated_order_result(symbol, size, stop_loss, take_profit)
+            raise RuntimeError("TopstepX SDK not available - cannot place orders")
             
         return await self.adapter.place_order(
             symbol=symbol,
@@ -211,7 +201,7 @@ class SDKBridge:
             return {'health_score': 0, 'status': 'not_initialized'}
             
         if not SDK_AVAILABLE or not self.adapter:
-            return {'health_score': 100, 'status': 'simulation', 'mode': 'development'}
+            raise RuntimeError("TopstepX SDK not available - cannot get health score")
             
         return await self.adapter.get_health_score()
     
@@ -222,87 +212,79 @@ class SDKBridge:
         self._initialized = False
         logger.info("SDK Bridge disconnected")
     
-    # Simulation methods for development/testing
-    def _get_simulated_price(self, symbol: str) -> float:
-        """Return simulated price for development."""
-        prices = {
-            'MNQ': 18500.0,
-            'ES': 4500.0,
-            'NQ': 18500.0,
-            'RTY': 2100.0,
-            'YM': 34000.0
-        }
-        return prices.get(symbol, 1000.0)
-    
-    def _get_simulated_historical_bars(
-        self, 
-        symbol: str, 
-        timeframe: str, 
-        count: int, 
-        end_time: Optional[datetime]
+    async def _fetch_topstepx_historical_bars(
+        self,
+        symbol: str,
+        timeframe: str = "1m",
+        count: int = 100,
+        end_time: Optional[datetime] = None
     ) -> List[Dict[str, Any]]:
-        """Return simulated historical bars for development."""
-        base_price = self._get_simulated_price(symbol)
-        bars = []
+        """
+        Fetch historical bars using project-x-py SDK client.get_bars() method.
         
-        for i in range(count):
-            # Simple simulation with some price movement
-            price_delta = (i % 10 - 5) * 0.25  # ES/MNQ tick size
-            bar = {
-                'timestamp': datetime.now(timezone.utc).isoformat(),
-                'open': base_price + price_delta,
-                'high': base_price + price_delta + 1.0,
-                'low': base_price + price_delta - 1.0,
-                'close': base_price + price_delta + 0.5,
-                'volume': 100 + (i % 50)
-            }
-            bars.append(bar)
+        Args:
+            symbol: Instrument symbol (e.g., 'ES', 'NQ')
+            timeframe: Bar timeframe (default '1m')
+            count: Number of bars to retrieve
+            end_time: End time for data (defaults to now)
             
-        return bars
-    
-    def _get_simulated_account_state(self) -> Dict[str, Any]:
-        """Return simulated account state for development."""
-        return {
-            'portfolio': {
-                'total_trades': 25,
-                'win_rate': 60.0,
-                'total_pnl': 1250.75,
-                'max_drawdown': -150.25
-            },
-            'positions': {
-                instrument: {
-                    'size': 0,
-                    'average_price': 0.0,
-                    'unrealized_pnl': 0.0,
-                    'realized_pnl': 0.0
-                } for instrument in self.instruments
-            },
-            'health': {
-                'health_score': 100,
-                'status': 'simulation'
-            },
-            'timestamp': datetime.now(timezone.utc).isoformat()
-        }
-    
-    def _get_simulated_order_result(
-        self, 
-        symbol: str, 
-        size: int, 
-        stop_loss: float, 
-        take_profit: float
-    ) -> Dict[str, Any]:
-        """Return simulated order result for development."""
-        return {
-            'success': True,
-            'order_id': f'sim_order_{datetime.now().strftime("%Y%m%d_%H%M%S")}',
-            'symbol': symbol,
-            'size': size,
-            'entry_price': self._get_simulated_price(symbol),
-            'stop_loss': stop_loss,
-            'take_profit': take_profit,
-            'timestamp': datetime.now(timezone.utc).isoformat(),
-            'mode': 'simulation'
-        }
+        Returns:
+            List of bar dictionaries with OHLCV data
+        """
+        try:
+            if not SDK_AVAILABLE or not self.adapter:
+                logger.error("PRODUCTION ERROR: TopstepX SDK not available - cannot fetch real historical data")
+                raise RuntimeError("TopstepX SDK not available - historical data requires real SDK connection")
+            
+            # Calculate days needed based on bars and timeframe
+            # 1m bars: 100 bars = ~1-2 hours, use 1 day for safety
+            # 5m bars: 100 bars = ~8 hours, use 1 day
+            # 1h bars: 100 bars = ~4 days, use 5 days
+            timeframe_to_days = {
+                '1m': max(1, count // 720),   # ~720 1m bars per trading day (12 hours)
+                '5m': max(1, count // 144),   # ~144 5m bars per trading day
+                '15m': max(1, count // 48),   # ~48 15m bars per trading day
+                '1h': max(2, count // 12)     # ~12 1h bars per trading day
+            }
+            days = timeframe_to_days.get(timeframe, 1)
+            
+            logger.info(f"Fetching {count} historical bars for {symbol} ({days} days)")
+            
+            # Use SDK's get_bars method via TradingSuite client
+            # The SDK returns a Polars DataFrame which we need to convert to dict
+            bars_data = await self.adapter.suite.client.get_bars(symbol, days=days)
+            
+            # Convert Polars DataFrame to list of dictionaries
+            bars = []
+            if bars_data is not None:
+                # Polars DataFrame has to_dicts() method
+                bars_dict_list = bars_data.to_dicts() if hasattr(bars_data, 'to_dicts') else bars_data.to_dict('records')
+                
+                for bar_data in bars_dict_list[:count]:  # Limit to requested count
+                    try:
+                        bar = {
+                            'timestamp': bar_data.get('timestamp', bar_data.get('time', datetime.now(timezone.utc).isoformat())),
+                            'open': float(bar_data.get('open', 0)),
+                            'high': float(bar_data.get('high', 0)),
+                            'low': float(bar_data.get('low', 0)),
+                            'close': float(bar_data.get('close', 0)),
+                            'volume': int(bar_data.get('volume', 0))
+                        }
+                        bars.append(bar)
+                    except (KeyError, ValueError, TypeError) as e:
+                        logger.warning(f"Error parsing bar data: {e}")
+                        continue
+            
+            if bars:
+                logger.info(f"Successfully fetched {len(bars)} historical bars for {symbol}")
+                return bars
+            else:
+                logger.error(f"No bars returned from SDK for {symbol}")
+                raise RuntimeError(f"No historical bars available from TopstepX SDK for {symbol}")
+                        
+        except Exception as e:
+            logger.error(f"Error fetching historical bars via SDK: {e}")
+            raise
 
     async def __aenter__(self):
         """Async context manager entry."""
@@ -350,7 +332,7 @@ if __name__ == "__main__":
         
         if command == "get_historical_bars":
             # get_historical_bars <symbol> <timeframe> <count>
-            symbol = sys.argv[2] if len(sys.argv) > 2 else 'MNQ'
+            symbol = sys.argv[2] if len(sys.argv) > 2 else 'NQ'
             timeframe = sys.argv[3] if len(sys.argv) > 3 else '1m'
             count = int(sys.argv[4]) if len(sys.argv) > 4 else 100
             
@@ -363,7 +345,7 @@ if __name__ == "__main__":
             
         elif command == "get_live_price":
             # get_live_price <symbol>
-            symbol = sys.argv[2] if len(sys.argv) > 2 else 'MNQ'
+            symbol = sys.argv[2] if len(sys.argv) > 2 else 'NQ'
             
             async def get_price():
                 async with SDKBridge([symbol]) as bridge:
@@ -397,13 +379,13 @@ if __name__ == "__main__":
         """Test SDK bridge functionality."""
         print("🧪 Testing SDK Bridge...")
         
-        async with SDKBridge(['MNQ', 'ES']) as bridge:
+        async with SDKBridge(['ES', 'NQ']) as bridge:
             # Test price retrieval
-            mnq_price = await bridge.get_live_price('MNQ')
-            print(f"MNQ Price: ${mnq_price:.2f}")
+            nq_price = await bridge.get_live_price('NQ')
+            print(f"NQ Price: ${nq_price:.2f}")
             
             # Test historical data
-            bars = await bridge.get_historical_bars('MNQ', '1m', 10)
+            bars = await bridge.get_historical_bars('NQ', '1m', 10)
             print(f"Retrieved {len(bars)} historical bars")
             
             # Test account state
