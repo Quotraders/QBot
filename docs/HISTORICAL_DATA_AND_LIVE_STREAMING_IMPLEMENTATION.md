@@ -117,8 +117,8 @@ PYTHON_EXECUTABLE=python3  # Linux/Mac
 ```python
 contract_id_map = {
     'ES': 'CON.F.US.EP.U25',    # E-mini S&P 500
-    'MNQ': 'CON.F.US.MNQ.U25',  # Micro E-mini NASDAQ
     'NQ': 'CON.F.US.ENQ.U25',   # E-mini NASDAQ
+    'MNQ': 'CON.F.US.MNQ.U25',  # Micro E-mini NASDAQ (backward compat)
     'MES': 'CON.F.US.MES.U25'   # Micro E-mini S&P 500
 }
 ```

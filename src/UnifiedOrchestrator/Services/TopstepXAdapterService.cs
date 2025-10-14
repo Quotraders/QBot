@@ -108,7 +108,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             throw;
         }
         
-        _instruments = new[] { "MNQ", "ES" }; // Support MNQ and ES as specified
+        _instruments = new[] { "ES", "NQ" }; // Support ES and NQ as specified
         _isInitialized = false;
         _connectionHealth = 0.0;
         

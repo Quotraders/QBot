@@ -57,9 +57,9 @@ class SDKBridge:
         Initialize SDK bridge.
         
         Args:
-            instruments: List of instruments to trade (defaults to ['MNQ', 'ES'])
+            instruments: List of instruments to trade (defaults to ['ES', 'NQ'])
         """
-        self.instruments = instruments or ['MNQ', 'ES']
+        self.instruments = instruments or ['ES', 'NQ']
         self.adapter: Optional[TopstepXAdapter] = None
         self._initialized = False
         
@@ -219,9 +219,8 @@ class SDKBridge:
     def _get_simulated_price(self, symbol: str) -> float:
         """Return simulated price for development."""
         prices = {
-            'MNQ': 18500.0,
-            'ES': 4500.0,
             'NQ': 18500.0,
+            'ES': 4500.0,
             'RTY': 2100.0,
             'YM': 34000.0
         }
@@ -285,10 +284,10 @@ class SDKBridge:
         end_time: Optional[datetime] = None
     ) -> List[Dict[str, Any]]:
         """
-        Fetch historical bars from TopstepX REST API.
+        Fetch historical bars using project-x-py SDK client.get_bars() method.
         
         Args:
-            symbol: Instrument symbol (e.g., 'ES', 'MNQ')
+            symbol: Instrument symbol (e.g., 'ES', 'NQ')
             timeframe: Bar timeframe (default '1m')
             count: Number of bars to retrieve
             end_time: End time for data (defaults to now)
@@ -297,100 +296,58 @@ class SDKBridge:
             List of bar dictionaries with OHLCV data
         """
         try:
-            import aiohttp
-            
-            # Map symbol to TopstepX contract ID
-            contract_id_map = {
-                'ES': 'CON.F.US.EP.U25',
-                'MNQ': 'CON.F.US.MNQ.U25',
-                'NQ': 'CON.F.US.ENQ.U25',
-                'MES': 'CON.F.US.MES.U25'
-            }
-            
-            contract_id = contract_id_map.get(symbol)
-            if not contract_id:
-                logger.warning(f"Unknown symbol {symbol}, using simulated data")
+            if not SDK_AVAILABLE or not self.adapter:
+                logger.warning("SDK not available, using simulated data")
                 return self._get_simulated_historical_bars(symbol, timeframe, count, end_time)
             
-            # Get JWT token from environment
-            jwt = os.getenv('TOPSTEPX_JWT')
-            if not jwt:
-                logger.warning("No TOPSTEPX_JWT found, using simulated data")
+            # Calculate days needed based on bars and timeframe
+            # 1m bars: 100 bars = ~1-2 hours, use 1 day for safety
+            # 5m bars: 100 bars = ~8 hours, use 1 day
+            # 1h bars: 100 bars = ~4 days, use 5 days
+            timeframe_to_days = {
+                '1m': max(1, count // 720),   # ~720 1m bars per trading day (12 hours)
+                '5m': max(1, count // 144),   # ~144 5m bars per trading day
+                '15m': max(1, count // 48),   # ~48 15m bars per trading day
+                '1h': max(2, count // 12)     # ~12 1h bars per trading day
+            }
+            days = timeframe_to_days.get(timeframe, 1)
+            
+            logger.info(f"Fetching {count} historical bars for {symbol} ({days} days)")
+            
+            # Use SDK's get_bars method via TradingSuite client
+            # The SDK returns a Polars DataFrame which we need to convert to dict
+            bars_data = await self.adapter.suite.client.get_bars(symbol, days=days)
+            
+            # Convert Polars DataFrame to list of dictionaries
+            bars = []
+            if bars_data is not None:
+                # Polars DataFrame has to_dicts() method
+                bars_dict_list = bars_data.to_dicts() if hasattr(bars_data, 'to_dicts') else bars_data.to_dict('records')
+                
+                for bar_data in bars_dict_list[:count]:  # Limit to requested count
+                    try:
+                        bar = {
+                            'timestamp': bar_data.get('timestamp', bar_data.get('time', datetime.now(timezone.utc).isoformat())),
+                            'open': float(bar_data.get('open', 0)),
+                            'high': float(bar_data.get('high', 0)),
+                            'low': float(bar_data.get('low', 0)),
+                            'close': float(bar_data.get('close', 0)),
+                            'volume': int(bar_data.get('volume', 0))
+                        }
+                        bars.append(bar)
+                    except (KeyError, ValueError, TypeError) as e:
+                        logger.warning(f"Error parsing bar data: {e}")
+                        continue
+            
+            if bars:
+                logger.info(f"Successfully fetched {len(bars)} historical bars for {symbol}")
+                return bars
+            else:
+                logger.warning(f"No bars returned from SDK, using simulated data")
                 return self._get_simulated_historical_bars(symbol, timeframe, count, end_time)
-            
-            # Calculate time range (get more bars than needed to ensure we have enough)
-            if end_time is None:
-                end_time = datetime.now(timezone.utc)
-            
-            # For 1-minute bars, go back count minutes plus buffer
-            start_time = end_time - timedelta(minutes=count * 2)  # 2x buffer
-            
-            # Map timeframe to unit and unitNumber
-            timeframe_map = {
-                '1m': (2, 1),   # Minutes, 1
-                '5m': (2, 5),   # Minutes, 5
-                '1h': (3, 1),   # Hours, 1
-            }
-            unit, unit_number = timeframe_map.get(timeframe, (2, 1))
-            
-            # Build API request
-            url = "https://api.topstepx.com/api/History/retrieveBars"
-            headers = {
-                'Authorization': f'Bearer {jwt}',
-                'Content-Type': 'application/json'
-            }
-            payload = {
-                'contractId': contract_id,
-                'live': True,
-                'startTime': start_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
-                'endTime': end_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
-                'unit': unit,
-                'unitNumber': unit_number,
-                'limit': count * 2,  # Request more to ensure we have enough
-                'includePartialBar': False
-            }
-            
-            logger.info(f"Fetching {count} historical bars for {symbol} from TopstepX API")
-            
-            async with aiohttp.ClientSession() as session:
-                async with session.post(url, json=payload, headers=headers) as response:
-                    if response.status != 200:
-                        error_text = await response.text()
-                        logger.error(f"TopstepX API error: {response.status} - {error_text}")
-                        return self._get_simulated_historical_bars(symbol, timeframe, count, end_time)
-                    
-                    data = await response.json()
-                    
-                    # Parse bars from response
-                    bars = []
-                    if isinstance(data, list):
-                        for bar_data in data[:count]:  # Limit to requested count
-                            try:
-                                bar = {
-                                    'timestamp': bar_data.get('t', bar_data.get('time', datetime.now(timezone.utc).isoformat())),
-                                    'open': float(bar_data.get('o', bar_data.get('open', 0))),
-                                    'high': float(bar_data.get('h', bar_data.get('high', 0))),
-                                    'low': float(bar_data.get('l', bar_data.get('low', 0))),
-                                    'close': float(bar_data.get('c', bar_data.get('close', 0))),
-                                    'volume': int(bar_data.get('v', bar_data.get('volume', 0)))
-                                }
-                                bars.append(bar)
-                            except (KeyError, ValueError, TypeError) as e:
-                                logger.warning(f"Error parsing bar data: {e}")
-                                continue
-                    
-                    if bars:
-                        logger.info(f"Successfully fetched {len(bars)} historical bars for {symbol}")
-                        return bars
-                    else:
-                        logger.warning(f"No bars returned from TopstepX API, using simulated data")
-                        return self._get_simulated_historical_bars(symbol, timeframe, count, end_time)
                         
-        except ImportError:
-            logger.warning("aiohttp not available, using simulated data")
-            return self._get_simulated_historical_bars(symbol, timeframe, count, end_time)
         except Exception as e:
-            logger.error(f"Error fetching historical bars: {e}")
+            logger.error(f"Error fetching historical bars via SDK: {e}")
             return self._get_simulated_historical_bars(symbol, timeframe, count, end_time)
     
     def _get_simulated_order_result(
@@ -459,7 +416,7 @@ if __name__ == "__main__":
         
         if command == "get_historical_bars":
             # get_historical_bars <symbol> <timeframe> <count>
-            symbol = sys.argv[2] if len(sys.argv) > 2 else 'MNQ'
+            symbol = sys.argv[2] if len(sys.argv) > 2 else 'NQ'
             timeframe = sys.argv[3] if len(sys.argv) > 3 else '1m'
             count = int(sys.argv[4]) if len(sys.argv) > 4 else 100
             
@@ -472,7 +429,7 @@ if __name__ == "__main__":
             
         elif command == "get_live_price":
             # get_live_price <symbol>
-            symbol = sys.argv[2] if len(sys.argv) > 2 else 'MNQ'
+            symbol = sys.argv[2] if len(sys.argv) > 2 else 'NQ'
             
             async def get_price():
                 async with SDKBridge([symbol]) as bridge:
@@ -506,13 +463,13 @@ if __name__ == "__main__":
         """Test SDK bridge functionality."""
         print("🧪 Testing SDK Bridge...")
         
-        async with SDKBridge(['MNQ', 'ES']) as bridge:
+        async with SDKBridge(['ES', 'NQ']) as bridge:
             # Test price retrieval
-            mnq_price = await bridge.get_live_price('MNQ')
-            print(f"MNQ Price: ${mnq_price:.2f}")
+            nq_price = await bridge.get_live_price('NQ')
+            print(f"NQ Price: ${nq_price:.2f}")
             
             # Test historical data
-            bars = await bridge.get_historical_bars('MNQ', '1m', 10)
+            bars = await bridge.get_historical_bars('NQ', '1m', 10)
             print(f"Retrieved {len(bars)} historical bars")
             
             # Test account state

@@ -132,7 +132,7 @@ class TopstepXAdapter:
         Initialize adapter with specified instruments.
         
         Args:
-            instruments: List of instrument symbols (e.g., ['MNQ', 'ES'])
+            instruments: List of instrument symbols (e.g., ['ES', 'NQ'])
         
         Raises:
             RuntimeError: If required credentials are not found in environment
@@ -275,7 +275,7 @@ class TopstepXAdapter:
                 symbol_map = {
                     "EP": "ES",    # E-mini S&P 500
                     "ENQ": "NQ",   # E-mini NASDAQ
-                    "MNQ": "MNQ",  # Micro E-mini NASDAQ
+                    "MNQ": "NQ",   # Micro E-mini NASDAQ (map to NQ)
                     "MES": "ES",   # Micro E-mini S&P 500
                 }
                 
@@ -448,7 +448,7 @@ class TopstepXAdapter:
             raise ValueError("At least one instrument must be specified")
             
         # Validate supported instruments
-        supported_instruments = {'MNQ', 'ES', 'NQ', 'RTY', 'YM'}
+        supported_instruments = {'ES', 'NQ', 'RTY', 'YM', 'MNQ', 'MES'}
         for instrument in self.instruments:
             if instrument not in supported_instruments:
                 self.logger.warning(
@@ -503,10 +503,12 @@ class TopstepXAdapter:
         
         # BAR EVENT STREAMING: Subscribe to bar completion events via WebSocket
         try:
-            # Try multiple possible event types for bars
+            # Try NEW_BAR first as per SDK documentation, then fallback to alternatives
             bar_event_types = []
             
-            # Check if BAR_UPDATE or CANDLE_UPDATE event types exist
+            # Check if NEW_BAR or other bar event types exist
+            if hasattr(EventType, 'NEW_BAR'):
+                bar_event_types.append(EventType.NEW_BAR)
             if hasattr(EventType, 'BAR_UPDATE'):
                 bar_event_types.append(EventType.BAR_UPDATE)
             if hasattr(EventType, 'CANDLE_UPDATE'):
@@ -1270,9 +1272,9 @@ class TopstepXAdapter:
             # For simplicity, we'll construct it from the symbol
             # In production, this should query the SDK for the actual contract ID
             contract_id_map = {
-                'MNQ': 'CON.F.US.MNQ.Z25',  # Example - should be dynamic
+                'NQ': 'CON.F.US.ENQ.Z25',
+                'MNQ': 'CON.F.US.MNQ.Z25',  # Keep for backward compatibility
                 'ES': 'CON.F.US.EP.Z25',
-                'NQ': 'CON.F.US.ENQ.Z25'
             }
             
             contract_id = contract_id_map.get(symbol)
@@ -1636,7 +1638,7 @@ async def test_adapter_functionality():
     
     try:
         # Test initialization
-        adapter = TopstepXAdapter(["MNQ", "ES"])
+        adapter = TopstepXAdapter(["ES", "NQ"])
         await adapter.initialize()
         
         # Test health check
@@ -1645,15 +1647,15 @@ async def test_adapter_functionality():
         print(f"✅ Health check passed: {health['health_score']}%")
         
         # Test price retrieval
-        mnq_price = await adapter.get_price("MNQ")
-        print(f"✅ MNQ price: ${mnq_price:.2f}")
+        nq_price = await adapter.get_price("NQ")
+        print(f"✅ NQ price: ${nq_price:.2f}")
         
         # Test order placement (demo mode)
         order_result = await adapter.place_order(
-            symbol="MNQ",
+            symbol="NQ",
             size=1,
-            stop_loss=mnq_price - 10,
-            take_profit=mnq_price + 15,
+            stop_loss=nq_price - 10,
+            take_profit=nq_price + 15,
             max_risk_percent=0.005  # 0.5% risk for testing
         )
         assert order_result['success'], f"Order failed: {order_result.get('error')}"
@@ -1696,7 +1698,7 @@ if __name__ == "__main__":
             # Initialize adapter and return status
             try:
                 async def init_test():
-                    adapter = TopstepXAdapter(["MNQ", "ES"])
+                    adapter = TopstepXAdapter(["ES", "NQ"])
                     await adapter.initialize()
                     health = await adapter.get_health_score()
                     await adapter.disconnect()
@@ -1716,7 +1718,7 @@ if __name__ == "__main__":
                 action = cmd_data.get("action")
                 
                 async def execute_command():
-                    adapter = TopstepXAdapter(["MNQ", "ES"])
+                    adapter = TopstepXAdapter(["ES", "NQ"])
                     await adapter.initialize()
                     
                     try:
