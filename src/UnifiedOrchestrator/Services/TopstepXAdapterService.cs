@@ -923,7 +923,35 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             }
             else
             {
-                processInfo.FileName = pythonExecutable;
+                // Resolve full path to Python executable for non-WSL mode
+                var resolvedPython = FindExecutableInPath(pythonExecutable);
+                if (resolvedPython == null)
+                {
+                    // Fallback: try common Python locations
+                    var commonPaths = new[] { "/usr/bin/python3", "/usr/local/bin/python3", "/usr/bin/python", "/usr/local/bin/python" };
+                    foreach (var path in commonPaths)
+                    {
+                        if (File.Exists(path))
+                        {
+                            resolvedPython = path;
+                            _logger.LogInformation("🐍 [Native] Found Python at fallback location: {PythonPath}", resolvedPython);
+                            break;
+                        }
+                    }
+                }
+                
+                // If still not found, use the original executable name and let the OS find it
+                if (resolvedPython == null)
+                {
+                    resolvedPython = pythonExecutable;
+                    _logger.LogWarning("⚠️ [Native] Could not resolve Python path, using: {PythonPath}", resolvedPython);
+                }
+                else
+                {
+                    _logger.LogInformation("🐍 [Native] Resolved Python path: {PythonPath}", resolvedPython);
+                }
+                
+                processInfo.FileName = resolvedPython;
                 processInfo.Arguments = $"\"{adapterPath}\" stream";
                 processInfo.Environment["PROJECT_X_API_KEY"] = apiKey ?? "";
                 processInfo.Environment["PROJECT_X_USERNAME"] = username ?? "";
