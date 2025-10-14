@@ -138,13 +138,13 @@ class TopstepXAdapter:
             RuntimeError: If required credentials are not found in environment
         """
         # Validate credentials are available immediately - fail hard if not
-        api_key = os.getenv('PROJECT_X_API_KEY')
-        username = os.getenv('PROJECT_X_USERNAME')
+        api_key = os.getenv('TOPSTEPX_API_KEY')
+        username = os.getenv('TOPSTEPX_USERNAME')
         
         if not api_key or not username:
             raise RuntimeError(
                 "Missing required ProjectX credentials in environment. "
-                "Set PROJECT_X_API_KEY and PROJECT_X_USERNAME environment variables."
+                "Set TOPSTEPX_API_KEY and TOPSTEPX_USERNAME environment variables."
             )
         
         self.instruments = instruments

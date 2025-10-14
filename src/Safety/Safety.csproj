@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <NoWarn>$(NoWarn);CS1998</NoWarn>
-    
+
     <!-- Configure this project as an analyzer -->
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
@@ -22,7 +22,7 @@
     <PackageReference Include="System.Text.Json" Version="9.0.0" />
     <PackageReference Include="System.Security.Cryptography.Algorithms" Version="4.3.1" />
     <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="9.0.0" />
-    
+
     <!-- Analyzer packages for custom analyzers -->
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" PrivateAssets="all" />
   </ItemGroup>
@@ -39,8 +39,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../Abstractions/Abstractions.csproj" />
-    <ProjectReference Include="..\BotCore\BotCore.csproj" />
-
+    <ProjectReference Include="../BotCore/BotCore.csproj" />
   </ItemGroup>
 
   <!-- Package the analyzer -->

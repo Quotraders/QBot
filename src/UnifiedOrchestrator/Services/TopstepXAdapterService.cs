@@ -711,39 +711,83 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             }
 
             var pythonExecutable = Environment.GetEnvironmentVariable("PYTHON_EXECUTABLE") ?? "python";
+            var isWsl = pythonExecutable.Equals("wsl", StringComparison.OrdinalIgnoreCase);
+            
             var processInfo = new ProcessStartInfo
             {
-                FileName = pythonExecutable,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
             
-            // Use ArgumentList for proper escaping of JSON command
-            processInfo.ArgumentList.Add(adapterPath);
-            processInfo.ArgumentList.Add(command);
-
-            // Set environment variables for credentials if available
-            var apiKey = Environment.GetEnvironmentVariable("PROJECT_X_API_KEY");
-            var username = Environment.GetEnvironmentVariable("PROJECT_X_USERNAME");
+            // Get environment variables for credentials
+            var apiKey = Environment.GetEnvironmentVariable("TOPSTEPX_API_KEY");
+            var username = Environment.GetEnvironmentVariable("TOPSTEPX_USERNAME");
+            var accountId = Environment.GetEnvironmentVariable("TOPSTEPX_ACCOUNT_ID");
+            var maxRetries = Environment.GetEnvironmentVariable("ADAPTER_MAX_RETRIES") ?? "3";
+            var baseDelay = Environment.GetEnvironmentVariable("ADAPTER_BASE_DELAY") ?? "1.0";
+            var maxDelay = Environment.GetEnvironmentVariable("ADAPTER_MAX_DELAY") ?? "30.0";
+            var timeout = Environment.GetEnvironmentVariable("ADAPTER_TIMEOUT") ?? "60.0";
             
-            if (!string.IsNullOrEmpty(apiKey))
-                processInfo.Environment["PROJECT_X_API_KEY"] = apiKey;
-            if (!string.IsNullOrEmpty(username))
-                processInfo.Environment["PROJECT_X_USERNAME"] = username;
-            
-            // Set adapter configuration environment variables with safe defaults
-            processInfo.Environment["ADAPTER_MAX_RETRIES"] = Environment.GetEnvironmentVariable("ADAPTER_MAX_RETRIES") ?? "3";
-            processInfo.Environment["ADAPTER_BASE_DELAY"] = Environment.GetEnvironmentVariable("ADAPTER_BASE_DELAY") ?? "1.0";
-            processInfo.Environment["ADAPTER_MAX_DELAY"] = Environment.GetEnvironmentVariable("ADAPTER_MAX_DELAY") ?? "30.0";
-            processInfo.Environment["ADAPTER_TIMEOUT"] = Environment.GetEnvironmentVariable("ADAPTER_TIMEOUT") ?? "60.0";
+            if (isWsl)
+            {
+                // WSL mode: Use bash to set environment variables and run Python
+                // Convert Windows path to WSL format: C:\Users\... -> /mnt/c/Users/...
+                var wslAdapterPath = adapterPath.Replace("\\", "/").Replace("C:", "/mnt/c").Replace("c:", "/mnt/c");
+                
+                _logger.LogInformation("🐍 [WSL] Preparing to execute Python command: {Command}", command);
+                _logger.LogInformation("🐍 [WSL] Adapter path: {Path}", wslAdapterPath);
+                
+                // Escape command for bash: replace internal single quotes with '\'' and wrap in single quotes
+                var escapedCommand = command.Replace("'", "'\\''");
+                
+                // Build bash command with environment variables
+                // Pass BOTH PROJECT_X_* (for SDK) and TOPSTEPX_* (for adapter) variables
+                // Wrap command in single quotes to prevent bash from interpreting JSON special chars
+                var bashCommand = $"PROJECT_X_API_KEY='{apiKey}' PROJECT_X_USERNAME='{username}' " +
+                                  $"TOPSTEPX_API_KEY='{apiKey}' TOPSTEPX_USERNAME='{username}' TOPSTEPX_ACCOUNT_ID='{accountId}' " +
+                                  $"ADAPTER_MAX_RETRIES={maxRetries} ADAPTER_BASE_DELAY={baseDelay} ADAPTER_MAX_DELAY={maxDelay} ADAPTER_TIMEOUT={timeout} " +
+                                  $"python3 {wslAdapterPath} '{escapedCommand}'";
+                
+                _logger.LogInformation("🐍 [WSL] Starting WSL process...");
+                
+                processInfo.FileName = "wsl";
+                processInfo.ArgumentList.Add("-d");
+                processInfo.ArgumentList.Add("Ubuntu-24.04");
+                processInfo.ArgumentList.Add("-e");
+                processInfo.ArgumentList.Add("bash");
+                processInfo.ArgumentList.Add("-c");
+                processInfo.ArgumentList.Add(bashCommand);
+            }
+            else
+            {
+                // Native Windows Python
+                processInfo.FileName = pythonExecutable;
+                processInfo.ArgumentList.Add(adapterPath);
+                processInfo.ArgumentList.Add(command);
+                
+                // Set environment variables for non-WSL Python processes
+                if (!string.IsNullOrEmpty(apiKey))
+                    processInfo.Environment["TOPSTEPX_API_KEY"] = apiKey;
+                if (!string.IsNullOrEmpty(username))
+                    processInfo.Environment["TOPSTEPX_USERNAME"] = username;
+                if (!string.IsNullOrEmpty(accountId))
+                    processInfo.Environment["TOPSTEPX_ACCOUNT_ID"] = accountId;
+                
+                processInfo.Environment["ADAPTER_MAX_RETRIES"] = maxRetries;
+                processInfo.Environment["ADAPTER_BASE_DELAY"] = baseDelay;
+                processInfo.Environment["ADAPTER_MAX_DELAY"] = maxDelay;
+                processInfo.Environment["ADAPTER_TIMEOUT"] = timeout;
+            }
 
             using var process = Process.Start(processInfo);
             if (process == null)
             {
                 throw new InvalidOperationException("Failed to start Python process");
             }
+
+            _logger.LogInformation("🐍 Process started (PID: {ProcessId}), waiting for output...", process.Id);
 
             var outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
             var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
@@ -752,6 +796,16 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             
             var output = await outputTask.ConfigureAwait(false);
             var error = await errorTask.ConfigureAwait(false);
+
+            _logger.LogInformation("🐍 Process exited with code {ExitCode}", process.ExitCode);
+            if (!string.IsNullOrEmpty(output))
+            {
+                _logger.LogInformation("🐍 Output: {Output}", output.Length > 200 ? output.Substring(0, 200) + "..." : output);
+            }
+            if (!string.IsNullOrEmpty(error))
+            {
+                _logger.LogWarning("🐍 Error output: {Error}", error);
+            }
 
             if (process.ExitCode == 0 && !string.IsNullOrEmpty(output))
             {
