@@ -136,13 +136,20 @@ When enabled, additional diagnostic information is captured.
 
 The workflow includes multiple safety mechanisms:
 
-### 1. DRY_RUN Mode
-- **Always enabled** during diagnostic runs
+### 1. Environment Variable Loading
+- **Automatically loads** `.env` file before bot launch
+- Ensures all configuration from `.env` is available
+- Validates required credentials (TOPSTEPX_API_KEY, USERNAME, ACCOUNT_ID)
+- Uses same loading logic as production scripts for consistency
+- Environment variables are loaded in both validation and launch steps
+
+### 2. DRY_RUN Mode
+- **Always enabled** during diagnostic runs (overrides `.env` settings)
 - Prevents real trading operations
 - Simulates order execution
 - Safe for testing and diagnostics
 
-### 2. Timeout Protection
+### 3. Timeout Protection
 - Automatic shutdown after configured runtime
 - Prevents runaway processes
 - Graceful termination
@@ -225,6 +232,26 @@ jq '.events[:10]' structured-log-*.json
 ```
 
 ## Troubleshooting
+
+### Environment Variables Show as [MISSING]
+**Problem**: The diagnostic workflow shows `❌ TOPSTEPX_API_KEY: [MISSING]` even though the `.env` file exists and contains the credentials.
+
+**Solution**: As of the latest update, the workflow now automatically loads environment variables from the `.env` file before validation. This issue has been fixed. If you still see missing variables:
+- Ensure the `.env` file exists in the repository root
+- Verify the environment variables use UPPERCASE names (e.g., `TOPSTEPX_API_KEY=...`)
+- Check that lines are not commented out with `#`
+- Confirm variables follow the format: `VARIABLE_NAME=value` (no spaces around `=`)
+
+**How it works**: The workflow uses the same `.env` loading logic as `run-bot-wsl.ps1`:
+```powershell
+Get-Content ".env" | Where-Object { $_ -match '^[A-Z]' -and $_ -notmatch '^#' } | ForEach-Object {
+  if ($_ -match '^([A-Z_]+)=(.*)$') {
+    $key = $matches[1]
+    $value = $matches[2]
+    Set-Item -Path "env:$key" -Value $value
+  }
+}
+```
 
 ### Workflow Not Appearing
 - Ensure you have a self-hosted runner configured
