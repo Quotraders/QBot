@@ -72,9 +72,9 @@ class SDKBridge:
             return True
             
         if not SDK_AVAILABLE:
-            logger.info("SDK not available - using simulation mode")
-            self._initialized = True
-            return True
+            logger.error("PRODUCTION ERROR: TopstepX SDK (project-x-py) is NOT installed!")
+            logger.error("Install with: pip install project-x-py")
+            raise RuntimeError("TopstepX SDK not available - cannot operate in production mode")
             
         try:
             self.adapter = TopstepXAdapter(self.instruments)
@@ -103,8 +103,7 @@ class SDKBridge:
             raise RuntimeError("SDK Bridge not initialized. Call initialize() first.")
             
         if not SDK_AVAILABLE or not self.adapter:
-            # Return simulated prices for development/testing
-            return self._get_simulated_price(symbol)
+            raise RuntimeError("TopstepX SDK not available - cannot get live prices")
             
         return await self.adapter.get_price(symbol)
     
@@ -146,8 +145,7 @@ class SDKBridge:
             raise RuntimeError("SDK Bridge not initialized. Call initialize() first.")
             
         if not SDK_AVAILABLE or not self.adapter:
-            # Return simulated account state
-            return self._get_simulated_account_state()
+            raise RuntimeError("TopstepX SDK not available - cannot get account state")
             
         try:
             portfolio = await self.adapter.get_portfolio_status()
@@ -160,7 +158,7 @@ class SDKBridge:
             }
         except Exception as e:
             logger.error(f"Failed to get account state: {e}")
-            return self._get_simulated_account_state()
+            raise
     
     async def place_order(
         self,
@@ -187,8 +185,7 @@ class SDKBridge:
             raise RuntimeError("SDK Bridge not initialized. Call initialize() first.")
             
         if not SDK_AVAILABLE or not self.adapter:
-            # Return simulated order result
-            return self._get_simulated_order_result(symbol, size, stop_loss, take_profit)
+            raise RuntimeError("TopstepX SDK not available - cannot place orders")
             
         return await self.adapter.place_order(
             symbol=symbol,
@@ -204,7 +201,7 @@ class SDKBridge:
             return {'health_score': 0, 'status': 'not_initialized'}
             
         if not SDK_AVAILABLE or not self.adapter:
-            return {'health_score': 100, 'status': 'simulation', 'mode': 'development'}
+            raise RuntimeError("TopstepX SDK not available - cannot get health score")
             
         return await self.adapter.get_health_score()
     
@@ -214,67 +211,6 @@ class SDKBridge:
             await self.adapter.disconnect()
         self._initialized = False
         logger.info("SDK Bridge disconnected")
-    
-    # Simulation methods for development/testing
-    def _get_simulated_price(self, symbol: str) -> float:
-        """Return simulated price for development."""
-        prices = {
-            'NQ': 18500.0,
-            'ES': 4500.0,
-            'RTY': 2100.0,
-            'YM': 34000.0
-        }
-        return prices.get(symbol, 1000.0)
-    
-    def _get_simulated_historical_bars(
-        self, 
-        symbol: str, 
-        timeframe: str, 
-        count: int, 
-        end_time: Optional[datetime]
-    ) -> List[Dict[str, Any]]:
-        """Return simulated historical bars for development."""
-        base_price = self._get_simulated_price(symbol)
-        bars = []
-        
-        for i in range(count):
-            # Simple simulation with some price movement
-            price_delta = (i % 10 - 5) * 0.25  # ES/MNQ tick size
-            bar = {
-                'timestamp': datetime.now(timezone.utc).isoformat(),
-                'open': base_price + price_delta,
-                'high': base_price + price_delta + 1.0,
-                'low': base_price + price_delta - 1.0,
-                'close': base_price + price_delta + 0.5,
-                'volume': 100 + (i % 50)
-            }
-            bars.append(bar)
-            
-        return bars
-    
-    def _get_simulated_account_state(self) -> Dict[str, Any]:
-        """Return simulated account state for development."""
-        return {
-            'portfolio': {
-                'total_trades': 25,
-                'win_rate': 60.0,
-                'total_pnl': 1250.75,
-                'max_drawdown': -150.25
-            },
-            'positions': {
-                instrument: {
-                    'size': 0,
-                    'average_price': 0.0,
-                    'unrealized_pnl': 0.0,
-                    'realized_pnl': 0.0
-                } for instrument in self.instruments
-            },
-            'health': {
-                'health_score': 100,
-                'status': 'simulation'
-            },
-            'timestamp': datetime.now(timezone.utc).isoformat()
-        }
     
     async def _fetch_topstepx_historical_bars(
         self,
@@ -297,8 +233,8 @@ class SDKBridge:
         """
         try:
             if not SDK_AVAILABLE or not self.adapter:
-                logger.warning("SDK not available, using simulated data")
-                return self._get_simulated_historical_bars(symbol, timeframe, count, end_time)
+                logger.error("PRODUCTION ERROR: TopstepX SDK not available - cannot fetch real historical data")
+                raise RuntimeError("TopstepX SDK not available - historical data requires real SDK connection")
             
             # Calculate days needed based on bars and timeframe
             # 1m bars: 100 bars = ~1-2 hours, use 1 day for safety
@@ -343,32 +279,12 @@ class SDKBridge:
                 logger.info(f"Successfully fetched {len(bars)} historical bars for {symbol}")
                 return bars
             else:
-                logger.warning(f"No bars returned from SDK, using simulated data")
-                return self._get_simulated_historical_bars(symbol, timeframe, count, end_time)
+                logger.error(f"No bars returned from SDK for {symbol}")
+                raise RuntimeError(f"No historical bars available from TopstepX SDK for {symbol}")
                         
         except Exception as e:
             logger.error(f"Error fetching historical bars via SDK: {e}")
-            return self._get_simulated_historical_bars(symbol, timeframe, count, end_time)
-    
-    def _get_simulated_order_result(
-        self, 
-        symbol: str, 
-        size: int, 
-        stop_loss: float, 
-        take_profit: float
-    ) -> Dict[str, Any]:
-        """Return simulated order result for development."""
-        return {
-            'success': True,
-            'order_id': f'sim_order_{datetime.now().strftime("%Y%m%d_%H%M%S")}',
-            'symbol': symbol,
-            'size': size,
-            'entry_price': self._get_simulated_price(symbol),
-            'stop_loss': stop_loss,
-            'take_profit': take_profit,
-            'timestamp': datetime.now(timezone.utc).isoformat(),
-            'mode': 'simulation'
-        }
+            raise
 
     async def __aenter__(self):
         """Async context manager entry."""
