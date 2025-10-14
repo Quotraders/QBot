@@ -54,9 +54,15 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         ICentralMessageBus messageBus,
         ITopstepXAdapterService topstepXAdapter)
     {
-        _logger = logger;
-        _messageBus = messageBus;
-        _topstepXAdapter = topstepXAdapter;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _messageBus = messageBus ?? throw new ArgumentNullException(nameof(messageBus));
+        _topstepXAdapter = topstepXAdapter ?? throw new ArgumentNullException(nameof(topstepXAdapter));
+        
+        _logger.LogInformation("🏗️ [UnifiedOrchestrator] Constructor invoked");
+        _logger.LogInformation("   ✅ Logger: Injected");
+        _logger.LogInformation("   ✅ MessageBus: Injected");
+        _logger.LogInformation("   ✅ TopstepXAdapter: Injected ({Type})", topstepXAdapter.GetType().Name);
+        
         _tradingOrchestrator = null!; // Will be resolved later
         _intelligenceOrchestrator = null!; // Will be resolved later
         _dataOrchestrator = null!; // Will be resolved later
@@ -70,6 +76,8 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
         
         _logger.LogInformation("🛡️ [UNIFIED-ORCHESTRATOR] Emergency controls: EmergencyStop={EmergencyStop}, ResourceMonitoring={ResourceMonitoring}, MaxMemoryMB={MaxMemory}",
             _enableEmergencyStop, _enableResourceMonitoring, _maxMemoryUsageMb);
+        
+        _logger.LogInformation("✅ [UnifiedOrchestrator] Constructor completed successfully");
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -57,11 +58,43 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
         ILogger<TopstepXAdapterService> logger,
         IOptions<TopstepXConfiguration> config)
     {
-        _logger = logger;
-        _config = config.Value;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        
+        // Log constructor entry for debugging DI issues
+        _logger.LogInformation("🏗️ [TopstepXAdapter] Constructor invoked - initializing service");
+        
+        try
+        {
+            if (config == null)
+            {
+                _logger.LogError("❌ [TopstepXAdapter] IOptions<TopstepXConfiguration> is null");
+                throw new ArgumentNullException(nameof(config), "Configuration options cannot be null");
+            }
+            
+            _config = config.Value;
+            
+            if (_config == null)
+            {
+                _logger.LogError("❌ [TopstepXAdapter] TopstepXConfiguration.Value is null - check appsettings.json");
+                throw new InvalidOperationException("TopstepX configuration is missing or invalid in appsettings.json");
+            }
+            
+            _logger.LogInformation("✅ [TopstepXAdapter] Configuration loaded successfully");
+            _logger.LogInformation("   📍 ApiBaseUrl: {ApiBase}", _config.ApiBaseUrl);
+            _logger.LogInformation("   🔌 UserHubUrl: {UserHub}", _config.UserHubUrl);
+            _logger.LogInformation("   📊 MarketHubUrl: {MarketHub}", _config.MarketHubUrl);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex, "💥 [TopstepXAdapter] FATAL ERROR in constructor - service cannot be created");
+            throw;
+        }
+        
         _instruments = new[] { "MNQ", "ES" }; // Support MNQ and ES as specified
         _isInitialized = false;
         _connectionHealth = 0.0;
+        
+        _logger.LogInformation("✅ [TopstepXAdapter] Constructor completed successfully");
     }
 
     public bool IsConnected => _isInitialized && _connectionHealth >= 80.0;
@@ -664,19 +697,117 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
     {
         try
         {
+            // Log environment configuration
+            var pythonExecutable = Environment.GetEnvironmentVariable("PYTHON_EXECUTABLE") ?? "python";
+            var isWsl = pythonExecutable.Equals("wsl", StringComparison.OrdinalIgnoreCase);
+            
+            _logger.LogInformation("🔍 [SDK-VALIDATION] Checking Python SDK installation...");
+            _logger.LogInformation("   🐍 PYTHON_EXECUTABLE: {PythonExec}", pythonExecutable);
+            _logger.LogInformation("   🖥️ Platform: {Platform}", isWsl ? "WSL (Ubuntu 24.04)" : "Native");
+            
+            // Validate credentials are present
+            var apiKey = Environment.GetEnvironmentVariable("TOPSTEPX_API_KEY");
+            var username = Environment.GetEnvironmentVariable("TOPSTEPX_USERNAME");
+            
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                _logger.LogError("❌ [SDK-VALIDATION] TOPSTEPX_API_KEY environment variable is not set");
+                throw new InvalidOperationException("Missing required environment variable: TOPSTEPX_API_KEY");
+            }
+            
+            if (string.IsNullOrEmpty(username))
+            {
+                _logger.LogError("❌ [SDK-VALIDATION] TOPSTEPX_USERNAME environment variable is not set");
+                throw new InvalidOperationException("Missing required environment variable: TOPSTEPX_USERNAME");
+            }
+            
+            _logger.LogInformation("   ✅ TOPSTEPX_API_KEY: [SET]");
+            _logger.LogInformation("   ✅ TOPSTEPX_USERNAME: {Username}", username);
+            
+            if (isWsl)
+            {
+                _logger.LogInformation("🐧 [WSL-MODE] Validating WSL environment...");
+                
+                // Check if WSL is actually available
+                try
+                {
+                    var testProcess = new ProcessStartInfo
+                    {
+                        FileName = "wsl",
+                        ArgumentList = { "--status" },
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    };
+                    
+                    using var proc = Process.Start(testProcess);
+                    if (proc != null)
+                    {
+                        await proc.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+                        if (proc.ExitCode != 0)
+                        {
+                            _logger.LogError("❌ [WSL-MODE] WSL is not properly installed or configured");
+                            throw new InvalidOperationException("WSL is not available. Install WSL with: wsl --install");
+                        }
+                        _logger.LogInformation("   ✅ WSL is available");
+                    }
+                }
+                catch (Exception wslEx)
+                {
+                    _logger.LogError(wslEx, "❌ [WSL-MODE] Failed to verify WSL installation");
+                    throw new InvalidOperationException("WSL validation failed. Ensure WSL is installed and Ubuntu-24.04 is available.", wslEx);
+                }
+            }
+            
             // Check if project-x-py is installed
+            _logger.LogInformation("📦 [SDK-VALIDATION] Checking project-x-py SDK...");
             var result = await ExecutePythonCommandAsync("validate_sdk", cancellationToken).ConfigureAwait(false);
+            
             if (!result.Success)
             {
+                _logger.LogError("❌ [SDK-VALIDATION] project-x-py SDK not found or validation failed");
+                _logger.LogError("   Error: {Error}", result.Error ?? "Unknown error");
                 throw new InvalidOperationException(
                     "project-x-py SDK not found. Install with: pip install 'project-x-py[all]'");
             }
+            
+            _logger.LogInformation("✅ [SDK-VALIDATION] Python SDK validated successfully");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Python SDK validation failed");
+            _logger.LogError(ex, "❌ [SDK-VALIDATION] Python SDK validation failed");
             throw new InvalidOperationException("Failed to validate Python SDK installation", ex);
         }
+    }
+
+    /// <summary>
+    /// Find an executable in the system PATH
+    /// </summary>
+    private static string? FindExecutableInPath(string executableName)
+    {
+        var pathVar = Environment.GetEnvironmentVariable("PATH");
+        if (string.IsNullOrEmpty(pathVar))
+            return null;
+        
+        var paths = pathVar.Split(RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? ';' : ':');
+        
+        foreach (var path in paths)
+        {
+            var fullPath = Path.Combine(path.Trim(), executableName);
+            if (File.Exists(fullPath))
+                return fullPath;
+            
+            // Try with .exe on Windows
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                var exePath = fullPath + ".exe";
+                if (File.Exists(exePath))
+                    return exePath;
+            }
+        }
+        
+        return null;
     }
 
     private async Task<(bool Success, JsonElement? Data, string? Error)> ExecutePythonCommandAsync(
@@ -712,6 +843,18 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
 
             var pythonExecutable = Environment.GetEnvironmentVariable("PYTHON_EXECUTABLE") ?? "python";
             var isWsl = pythonExecutable.Equals("wsl", StringComparison.OrdinalIgnoreCase);
+            
+            // Validate WSL is only used on Windows
+            if (isWsl && !RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                _logger.LogError("❌ [ExecutePython] PYTHON_EXECUTABLE=wsl is only valid on Windows. Current OS: {OS}",
+                    RuntimeInformation.OSDescription);
+                _logger.LogInformation("💡 [ExecutePython] Hint: On Linux, use PYTHON_EXECUTABLE=python3 or leave unset");
+                throw new PlatformNotSupportedException(
+                    "WSL mode (PYTHON_EXECUTABLE=wsl) is only supported on Windows. " +
+                    $"Current platform: {RuntimeInformation.OSDescription}. " +
+                    "Use PYTHON_EXECUTABLE=python3 on Linux.");
+            }
             
             var processInfo = new ProcessStartInfo
             {
@@ -762,10 +905,47 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             }
             else
             {
-                // Native Windows Python
-                processInfo.FileName = pythonExecutable;
+                // Native Windows/Linux Python
+                // Resolve full Python path
+                var resolvedPythonPath = pythonExecutable;
+                if (!Path.IsPathRooted(pythonExecutable))
+                {
+                    // Try to find python3 in PATH
+                    var pythonInPath = FindExecutableInPath(pythonExecutable);
+                    if (pythonInPath != null)
+                    {
+                        resolvedPythonPath = pythonInPath;
+                        _logger.LogInformation("🐍 Resolved Python: {Path}", resolvedPythonPath);
+                    }
+                    else
+                    {
+                        // Try common locations
+                        var commonPaths = new[] { 
+                            "/usr/bin/python3", 
+                            "/usr/local/bin/python3",
+                            "C:\\Python312\\python.exe",
+                            "C:\\Python311\\python.exe",
+                            "C:\\Python310\\python.exe"
+                        };
+                        
+                        foreach (var path in commonPaths)
+                        {
+                            if (File.Exists(path))
+                            {
+                                resolvedPythonPath = path;
+                                _logger.LogInformation("🐍 Found Python at: {Path}", resolvedPythonPath);
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                processInfo.FileName = resolvedPythonPath;
                 processInfo.ArgumentList.Add(adapterPath);
                 processInfo.ArgumentList.Add(command);
+                
+                _logger.LogInformation("🐍 [Native] Starting Python process: {Python} {Args}", 
+                    resolvedPythonPath, string.Join(" ", processInfo.ArgumentList));
                 
                 // Set environment variables for non-WSL Python processes
                 if (!string.IsNullOrEmpty(apiKey))
