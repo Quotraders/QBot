@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using TradingBot.UnifiedOrchestrator.Interfaces;
+using BotCore.Services;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 
@@ -19,6 +20,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     private readonly ILogger<UnifiedDataIntegrationService> _logger;
     private readonly ITradingBrainAdapter _brainAdapter;
     private readonly TopstepXAdapterService? _topstepXAdapter;
+    private readonly IHistoricalDataBridgeService? _historicalDataBridge;
     
     // Data flow tracking
     private readonly List<DataFlowEvent> _dataFlowEvents = new();
@@ -30,14 +32,19 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     private int _historicalBarsReceived;
     private int _liveBarsReceived;
     
+    // Trading instruments
+    private readonly string[] _tradingInstruments = new[] { "ES", "NQ" };
+    
     public UnifiedDataIntegrationService(
         ILogger<UnifiedDataIntegrationService> logger,
         ITradingBrainAdapter brainAdapter,
-        TradingBot.Abstractions.ITopstepXAdapterService? topstepXAdapter = null)
+        TradingBot.Abstractions.ITopstepXAdapterService? topstepXAdapter = null,
+        IHistoricalDataBridgeService? historicalDataBridge = null)
     {
         _logger = logger;
         _brainAdapter = brainAdapter;
         _topstepXAdapter = topstepXAdapter as TopstepXAdapterService;
+        _historicalDataBridge = historicalDataBridge;
         
         // Subscribe to bar events if adapter is available
         if (_topstepXAdapter != null)
@@ -223,7 +230,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     /// </summary>
     private async Task InitializeDataConnectionsAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("[DATA-INTEGRATION] Initializing data connections");
+        _logger.LogInformation("[DATA-INTEGRATION] Initializing data connections for ES and NQ");
         
         // Connect to historical data sources
         await ConnectHistoricalDataAsync(cancellationToken).ConfigureAwait(false);
@@ -233,10 +240,6 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
         
         // Verify unified data pipeline
         await VerifyUnifiedPipelineAsync().ConfigureAwait(false);
-        
-        // Log connection status
-        _logger.LogInformation("[DATA-INTEGRATION] Unified pipeline status - Historical: {Historical}, Live: {Live}",
-            _isHistoricalDataConnected, _isLiveDataConnected);
     }
 
     /// <summary>
@@ -248,14 +251,61 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
         
         try
         {
-            // Placeholder for historical data connection
-            // In production, this would connect to historical data service
-            _isHistoricalDataConnected = false;  // Will be enabled when historical service is available
-            _logger.LogInformation("ℹ️ [DATA-INTEGRATION] Historical data bridge not configured in this service");
+            if (_historicalDataBridge == null)
+            {
+                _logger.LogWarning("⚠️ [DATA-INTEGRATION] Historical data bridge service not available");
+                _isHistoricalDataConnected = false;
+                return;
+            }
+            
+            // Request historical bars for ES and NQ
+            _logger.LogInformation("[DATA-INTEGRATION] Requesting historical data for ES and NQ...");
+            
+            int totalHistoricalBars = 0;
+            foreach (var instrument in _tradingInstruments)
+            {
+                try
+                {
+                    // Request 100 bars for each instrument
+                    var bars = await _historicalDataBridge.GetRecentHistoricalBarsAsync(instrument, 100).ConfigureAwait(false);
+                    
+                    if (bars != null && bars.Count > 0)
+                    {
+                        totalHistoricalBars += bars.Count;
+                        _historicalBarsReceived += bars.Count;
+                        _totalBarsReceived += bars.Count;
+                        
+                        _logger.LogInformation("✅ [DATA-INTEGRATION] Loaded {Count} historical bars for {Instrument}", 
+                            bars.Count, instrument);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("⚠️ [DATA-INTEGRATION] No historical bars available for {Instrument}", instrument);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[DATA-INTEGRATION] Error loading historical bars for {Instrument}", instrument);
+                }
+            }
+            
+            if (totalHistoricalBars > 0)
+            {
+                _isHistoricalDataConnected = true;
+                _lastHistoricalDataSync = DateTime.UtcNow;
+                _logger.LogInformation("✅ [DATA-INTEGRATION] Historical data seeding completed: {TotalBars} bars for ES and NQ", 
+                    totalHistoricalBars);
+            }
+            else
+            {
+                _isHistoricalDataConnected = false;
+                _logger.LogWarning("⚠️ [DATA-INTEGRATION] Historical data seeding failed - no bars loaded");
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[DATA-INTEGRATION] Error connecting to historical data");
+            _isHistoricalDataConnected = false;
         }
     }
     
@@ -326,13 +376,39 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
                 Success = true
             });
             
-            _logger.LogInformation("[DATA-INTEGRATION] ✅ Unified data pipeline verified - both sources connected");
+            _logger.LogInformation("✅ [DATA-INTEGRATION] Unified pipeline complete - Historical: True, Live: True");
+            
+            // Calculate data flow health
+            var healthPercentage = CalculateDataFlowHealth();
+            _logger.LogInformation("✅ [DATA-INTEGRATION] Data flow health: {Health:F2}% - {TotalBars} total bars received",
+                healthPercentage, _totalBarsReceived);
         }
         else
         {
-            _logger.LogWarning("[DATA-INTEGRATION] ⚠️ Unified pipeline incomplete - Historical: {Historical}, Live: {Live}",
+            _logger.LogWarning("⚠️ [DATA-INTEGRATION] Unified pipeline incomplete - Historical: {Historical}, Live: {Live}",
                 _isHistoricalDataConnected, _isLiveDataConnected);
         }
+    }
+    
+    /// <summary>
+    /// Calculate data flow health percentage
+    /// </summary>
+    private double CalculateDataFlowHealth()
+    {
+        // Base health on whether both sources are connected
+        var baseHealth = 0.0;
+        
+        if (_isHistoricalDataConnected) baseHealth += 50.0;
+        if (_isLiveDataConnected) baseHealth += 50.0;
+        
+        // Adjust based on recent activity
+        var timeSinceLastLiveData = DateTime.UtcNow - _lastLiveDataReceived;
+        if (_isLiveDataConnected && timeSinceLastLiveData.TotalMinutes > 5)
+        {
+            baseHealth -= 20.0; // Deduct if no live data in 5 minutes
+        }
+        
+        return Math.Max(0, Math.Min(100, baseHealth));
     }
 
     /// <summary>
