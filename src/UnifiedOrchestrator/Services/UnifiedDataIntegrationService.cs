@@ -18,6 +18,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
 {
     private readonly ILogger<UnifiedDataIntegrationService> _logger;
     private readonly ITradingBrainAdapter _brainAdapter;
+    private readonly TopstepXAdapterService? _topstepXAdapter;
     
     // Data flow tracking
     private readonly List<DataFlowEvent> _dataFlowEvents = new();
@@ -25,13 +26,66 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     private DateTime _lastLiveDataReceived = DateTime.MinValue;
     private bool _isHistoricalDataConnected;
     private bool _isLiveDataConnected;
+    private int _totalBarsReceived;
+    private int _historicalBarsReceived;
+    private int _liveBarsReceived;
     
     public UnifiedDataIntegrationService(
         ILogger<UnifiedDataIntegrationService> logger,
-        ITradingBrainAdapter brainAdapter)
+        ITradingBrainAdapter brainAdapter,
+        TradingBot.Abstractions.ITopstepXAdapterService? topstepXAdapter = null)
     {
         _logger = logger;
         _brainAdapter = brainAdapter;
+        _topstepXAdapter = topstepXAdapter as TopstepXAdapterService;
+        
+        // Subscribe to bar events if adapter is available
+        if (_topstepXAdapter != null)
+        {
+            _topstepXAdapter.SubscribeToBarEvents(OnBarEventReceived);
+            _logger.LogInformation("✅ [DATA-INTEGRATION] Subscribed to live bar events from TopstepX adapter");
+        }
+        else
+        {
+            _logger.LogWarning("⚠️ [DATA-INTEGRATION] TopstepX adapter not available - live bar streaming disabled");
+        }
+    }
+    
+    /// <summary>
+    /// Handle incoming bar events from live stream
+    /// </summary>
+    private void OnBarEventReceived(BarEventData barEvent)
+    {
+        try
+        {
+            _liveBarsReceived++;
+            _totalBarsReceived++;
+            _lastLiveDataReceived = DateTime.UtcNow;
+            _isLiveDataConnected = true;
+            
+            _logger.LogDebug("[DATA-INTEGRATION] Live bar: {Instrument} @ {Timestamp} - C={Close:F2} V={Volume}",
+                barEvent.Instrument, barEvent.Timestamp, barEvent.Close, barEvent.Volume);
+            
+            // Record data flow event
+            _dataFlowEvents.Add(new DataFlowEvent
+            {
+                Timestamp = DateTime.UtcNow,
+                EventType = "LiveBar",
+                Source = $"TopstepX-{barEvent.Instrument}",
+                Details = $"Bar: C={barEvent.Close:F2} V={barEvent.Volume}",
+                Success = true
+            });
+            
+            // Keep only last 1000 events
+            if (_dataFlowEvents.Count > 1000)
+            {
+                _dataFlowEvents.RemoveRange(0, _dataFlowEvents.Count - 1000);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[DATA-INTEGRATION] Error processing bar event");
+        }
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -179,139 +233,76 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
         
         // Verify unified data pipeline
         await VerifyUnifiedPipelineAsync().ConfigureAwait(false);
+        
+        // Log connection status
+        _logger.LogInformation("[DATA-INTEGRATION] Unified pipeline status - Historical: {Historical}, Live: {Live}",
+            _isHistoricalDataConnected, _isLiveDataConnected);
     }
 
     /// <summary>
-    /// Connect to historical data sources for training - REAL implementation
+    /// Connect to historical data sources for training
     /// </summary>
     private async Task ConnectHistoricalDataAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("[DATA-INTEGRATION] Connecting to REAL historical data sources");
+        _logger.LogInformation("[DATA-INTEGRATION] Connecting to historical data sources");
         
         try
         {
-            // Attempt to connect to TopstepX historical data API
-            var httpClient = new HttpClient();
-            httpClient.BaseAddress = new Uri("https://api.topstepx.com");
-            
-            // Add authentication if available
-            var jwtToken = Environment.GetEnvironmentVariable("TOPSTEPX_JWT");
-            if (!string.IsNullOrEmpty(jwtToken))
-            {
-                httpClient.DefaultRequestHeaders.Authorization = 
-                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", jwtToken);
-            }
-            
-            // Test connection to historical data endpoint
-            try
-            {
-                var response = await httpClient.GetAsync("/api/historical/test", cancellationToken).ConfigureAwait(false);
-                if (response.IsSuccessStatusCode)
-                {
-                    _logger.LogInformation("[DATA-INTEGRATION] Successfully connected to TopstepX historical data API");
-                }
-                else
-                {
-                    _logger.LogWarning("[DATA-INTEGRATION] TopstepX historical API returned {StatusCode}", response.StatusCode);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "[DATA-INTEGRATION] Failed to connect to TopstepX historical API, will use local data");
-            }
-            
-            // Check for actual historical data files/directories
-            var historicalDataPaths = new[]
-            {
-                "data/historical",
-                "ml/data", 
-                "models/training_data",
-            };
-            
-            int connectedSources = 0;
-            foreach (var path in historicalDataPaths)
-            {
-                if (Directory.Exists(path) || File.Exists($"{path}.csv"))
-                {
-                    connectedSources++;
-                    _logger.LogInformation("[DATA-INTEGRATION] Found historical data source: {Path}", path);
-                }
-            }
-            
-            _isHistoricalDataConnected = connectedSources > 0;
-            _lastHistoricalDataSync = DateTime.UtcNow;
-            
-            _dataFlowEvents.Add(new DataFlowEvent
-            {
-                Timestamp = DateTime.UtcNow,
-                EventType = "Historical Data Connected",
-                Source = "HistoricalDataProvider",
-                Details = $"Connected to {connectedSources} historical data sources for training data",
-                Success = _isHistoricalDataConnected
-            });
-            
-            _logger.LogInformation("[DATA-INTEGRATION] ✅ Historical data connection established");
+            // Placeholder for historical data connection
+            // In production, this would connect to historical data service
+            _isHistoricalDataConnected = false;  // Will be enabled when historical service is available
+            _logger.LogInformation("ℹ️ [DATA-INTEGRATION] Historical data bridge not configured in this service");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[DATA-INTEGRATION] Failed to connect historical data");
-            _isHistoricalDataConnected = false;
+            _logger.LogError(ex, "[DATA-INTEGRATION] Error connecting to historical data");
         }
     }
-
+    
     /// <summary>
-    /// Connect to live TopStep data for real-time trading
+    /// Connect to live TopStep data stream
     /// </summary>
     private async Task ConnectLiveTopStepDataAsync(CancellationToken cancellationToken)
     {
+        _logger.LogInformation("[DATA-INTEGRATION] Connecting to live TopStep data stream");
+        
         try
         {
-            _logger.LogInformation("[DATA-INTEGRATION] Connecting to live TopStep data");
-            
-            // Check for TopStep environment configuration
-            // Phase 6C: Auth Health Check - Support both API key and JWT tokens
-            var topstepApiKey = Environment.GetEnvironmentVariable("TOPSTEP_API_KEY");
-            var topstepJwtToken = Environment.GetEnvironmentVariable("TOPSTEP_JWT_TOKEN");
-            var topstepAccessToken = Environment.GetEnvironmentVariable("TOPSTEPX_ACCESS_TOKEN");
-            var topstepBaseUrl = Environment.GetEnvironmentVariable("TOPSTEP_BASE_URL") ?? "https://api.topstepx.com";
-            var signalRUrl = Environment.GetEnvironmentVariable("TOPSTEP_SIGNALR_URL") ?? "https://rtc.topstepx.com/hubs/market";
-            
-            // Accept any valid authentication method
-            var hasApiKey = !string.IsNullOrEmpty(topstepApiKey);
-            var hasJwtToken = !string.IsNullOrEmpty(topstepJwtToken);
-            var hasAccessToken = !string.IsNullOrEmpty(topstepAccessToken);
-            var hasValidAuth = hasApiKey || hasJwtToken || hasAccessToken;
-            var canConnectToApi = true; // Would test actual connection in production
-            
-            // Simulate checking connection endpoints
-            await Task.Delay(500, cancellationToken).ConfigureAwait(false);
-            
-            _isLiveDataConnected = hasValidAuth && canConnectToApi;
-            _lastLiveDataReceived = DateTime.UtcNow;
-            
-            _dataFlowEvents.Add(new DataFlowEvent
+            if (_topstepXAdapter != null)
             {
-                Timestamp = DateTime.UtcNow,
-                EventType = "Live TopStep Data Connected",
-                Source = "TopStepX API",
-                Details = $"Connected to TopStep live data - API Key: {hasApiKey}, JWT: {hasJwtToken}, Access Token: {hasAccessToken}, URL: {topstepBaseUrl}",
-                Success = _isLiveDataConnected
-            });
-            
-            if (_isLiveDataConnected)
-            {
-                _logger.LogInformation("[DATA-INTEGRATION] ✅ Live TopStep data connection established");
+                // Check if adapter is connected
+                var isConnected = await _topstepXAdapter.IsConnectedAsync().ConfigureAwait(false);
+                
+                if (isConnected)
+                {
+                    _isLiveDataConnected = true;
+                    _logger.LogInformation("✅ [DATA-INTEGRATION] Live TopStep data connected");
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ [DATA-INTEGRATION] TopstepX adapter not connected - attempting initialization");
+                    
+                    // Try to initialize if not already done
+                    try
+                    {
+                        await _topstepXAdapter.InitializeAsync(cancellationToken).ConfigureAwait(false);
+                        _isLiveDataConnected = true;
+                        _logger.LogInformation("✅ [DATA-INTEGRATION] TopstepX adapter initialized and connected");
+                    }
+                    catch (Exception initEx)
+                    {
+                        _logger.LogError(initEx, "[DATA-INTEGRATION] Failed to initialize TopstepX adapter");
+                    }
+                }
             }
             else
             {
-                _logger.LogWarning("[DATA-INTEGRATION] ⚠️ Live TopStep data connection incomplete - Valid auth: {HasValidAuth} (API Key: {HasApiKey}, JWT: {HasJwt}, Access Token: {HasAccessToken})", 
-                    hasValidAuth, hasApiKey, hasJwtToken, hasAccessToken);
+                _logger.LogWarning("⚠️ [DATA-INTEGRATION] TopstepX adapter not available");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[DATA-INTEGRATION] Failed to connect live TopStep data");
-            _isLiveDataConnected = false;
+            _logger.LogError(ex, "[DATA-INTEGRATION] Error connecting to live TopStep data");
         }
     }
 
