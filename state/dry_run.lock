@@ -1,6 +1,6 @@
 DRY_RUN MODE ENFORCED
 =====================
-Timestamp: 2025-10-14 01:12:15 UTC
+Timestamp: 2025-10-14 03:33:31 UTC
 Reason: Periodic check
-Process ID: 17896
-Kill File: C:\Users\kevin\trading-bot-c-\trading-bot-c--1\state/kill.txt
+Process ID: 17397
+Kill File: /home/runner/work/QBot/QBot/state/kill.txt

@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -780,6 +781,35 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
         }
     }
 
+    /// <summary>
+    /// Find an executable in the system PATH
+    /// </summary>
+    private static string? FindExecutableInPath(string executableName)
+    {
+        var pathVar = Environment.GetEnvironmentVariable("PATH");
+        if (string.IsNullOrEmpty(pathVar))
+            return null;
+        
+        var paths = pathVar.Split(RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? ';' : ':');
+        
+        foreach (var path in paths)
+        {
+            var fullPath = Path.Combine(path.Trim(), executableName);
+            if (File.Exists(fullPath))
+                return fullPath;
+            
+            // Try with .exe on Windows
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                var exePath = fullPath + ".exe";
+                if (File.Exists(exePath))
+                    return exePath;
+            }
+        }
+        
+        return null;
+    }
+
     private async Task<(bool Success, JsonElement? Data, string? Error)> ExecutePythonCommandAsync(
         string command, 
         CancellationToken cancellationToken)
@@ -813,6 +843,18 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
 
             var pythonExecutable = Environment.GetEnvironmentVariable("PYTHON_EXECUTABLE") ?? "python";
             var isWsl = pythonExecutable.Equals("wsl", StringComparison.OrdinalIgnoreCase);
+            
+            // Validate WSL is only used on Windows
+            if (isWsl && !RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                _logger.LogError("❌ [ExecutePython] PYTHON_EXECUTABLE=wsl is only valid on Windows. Current OS: {OS}",
+                    RuntimeInformation.OSDescription);
+                _logger.LogInformation("💡 [ExecutePython] Hint: On Linux, use PYTHON_EXECUTABLE=python3 or leave unset");
+                throw new PlatformNotSupportedException(
+                    "WSL mode (PYTHON_EXECUTABLE=wsl) is only supported on Windows. " +
+                    $"Current platform: {RuntimeInformation.OSDescription}. " +
+                    "Use PYTHON_EXECUTABLE=python3 on Linux.");
+            }
             
             var processInfo = new ProcessStartInfo
             {
@@ -863,10 +905,47 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             }
             else
             {
-                // Native Windows Python
-                processInfo.FileName = pythonExecutable;
+                // Native Windows/Linux Python
+                // Resolve full Python path
+                var resolvedPythonPath = pythonExecutable;
+                if (!Path.IsPathRooted(pythonExecutable))
+                {
+                    // Try to find python3 in PATH
+                    var pythonInPath = FindExecutableInPath(pythonExecutable);
+                    if (pythonInPath != null)
+                    {
+                        resolvedPythonPath = pythonInPath;
+                        _logger.LogInformation("🐍 Resolved Python: {Path}", resolvedPythonPath);
+                    }
+                    else
+                    {
+                        // Try common locations
+                        var commonPaths = new[] { 
+                            "/usr/bin/python3", 
+                            "/usr/local/bin/python3",
+                            "C:\\Python312\\python.exe",
+                            "C:\\Python311\\python.exe",
+                            "C:\\Python310\\python.exe"
+                        };
+                        
+                        foreach (var path in commonPaths)
+                        {
+                            if (File.Exists(path))
+                            {
+                                resolvedPythonPath = path;
+                                _logger.LogInformation("🐍 Found Python at: {Path}", resolvedPythonPath);
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                processInfo.FileName = resolvedPythonPath;
                 processInfo.ArgumentList.Add(adapterPath);
                 processInfo.ArgumentList.Add(command);
+                
+                _logger.LogInformation("🐍 [Native] Starting Python process: {Python} {Args}", 
+                    resolvedPythonPath, string.Join(" ", processInfo.ArgumentList));
                 
                 // Set environment variables for non-WSL Python processes
                 if (!string.IsNullOrEmpty(apiKey))
