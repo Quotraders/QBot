@@ -17,7 +17,6 @@ using TradingBot.UnifiedOrchestrator.Services;
 using IModelRegistry = TradingBot.UnifiedOrchestrator.Interfaces.IModelRegistry;
 using IModelRouterFactory = TradingBot.UnifiedOrchestrator.Interfaces.IModelRouterFactory;
 using Quote = TradingBot.Abstractions.Quote;
-using System.Security.Cryptography;
 
 namespace TradingBot.UnifiedOrchestrator.Promotion;
 
@@ -415,7 +414,7 @@ internal class ShadowTester : IShadowTester
         };
     }
 
-    private async Task<ShadowDecision> GetModelDecisionAsync(InferenceSession model, TradingContext context, CancellationToken cancellationToken)
+    private Task<ShadowDecision> GetModelDecisionAsync(InferenceSession model, TradingContext context, CancellationToken cancellationToken)
     {
         var stopwatch = Stopwatch.StartNew();
         
@@ -440,14 +439,14 @@ internal class ShadowTester : IShadowTester
                 // Parse model outputs to get action, size, confidence
                 var (action, size, confidence) = ParseModelOutput(output);
                 
-                return new ShadowDecision
+                return Task.FromResult(new ShadowDecision
                 {
                     Action = action,
                     Size = size,
                     Confidence = confidence,
                     Timestamp = context.Timestamp,
                     InferenceTimeMs = (decimal)stopwatch.ElapsedMilliseconds
-                };
+                });
             }
         }
         catch (Exception ex)
@@ -458,7 +457,7 @@ internal class ShadowTester : IShadowTester
         stopwatch.Stop();
         
         // Fallback to simple rule-based decision
-        return CreateFallbackDecision(context, stopwatch.ElapsedMilliseconds);
+        return Task.FromResult(CreateFallbackDecision(context, stopwatch.ElapsedMilliseconds));
     }
 
     private static float[] ExtractFeatures(TradingContext context)
@@ -594,7 +593,6 @@ internal class ShadowTester : IShadowTester
     {
         var returns = new List<decimal>();
         decimal position = 0;
-        decimal entryPrice = 0;
 
         for (int i = 0; i < decisions.Count; i++)
         {

@@ -494,7 +494,7 @@ internal class TrainingBrain : ITrainingBrain
         return $"v{DateTime.UtcNow:yyyyMMdd_HHmmss}_{algorithm}_{Guid.NewGuid().ToString("N")[..8]}";
     }
 
-    private async Task<int> CountActualDataSamples(TrainingConfig config)
+    private Task<int> CountActualDataSamples(TrainingConfig config)
     {
         try
         {
@@ -519,7 +519,7 @@ internal class TrainingBrain : ITrainingBrain
             var adjustedSamples = (int)(totalSamples * marketDaysRatio * marketHoursRatio);
             
             _logger.LogDebug("[TRAINING] Data samples calculated: {Samples:N0} ({DataSource} frequency)", adjustedSamples, config.DataSource);
-            return Math.Max(100, adjustedSamples); // Minimum 100 samples for training
+            return Task.FromResult(Math.Max(100, adjustedSamples)); // Minimum 100 samples for training
         }
         catch (Exception ex)
         {

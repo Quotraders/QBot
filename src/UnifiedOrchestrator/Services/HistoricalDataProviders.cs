@@ -29,14 +29,14 @@ internal sealed class FeaturesHistoricalProvider : IHistoricalDataProvider
         _featuresRoot = configuration.GetValue("Paths:FeaturesRoot", "datasets/features");
     }
     
-    public async Task<IAsyncEnumerable<Quote>> GetHistoricalQuotesAsync(
+    public Task<IAsyncEnumerable<Quote>> GetHistoricalQuotesAsync(
         string symbol, 
         DateTime startTime, 
         DateTime endTime, 
         CancellationToken cancellationToken = default)
     {
         // Remove substitute - return the actual implementation
-        return GetQuotesFromFeaturesAsync(symbol, startTime, endTime, cancellationToken);
+        return Task.FromResult(GetQuotesFromFeaturesAsync(symbol, startTime, endTime, cancellationToken));
     }
     
     private async IAsyncEnumerable<Quote> GetQuotesFromFeaturesAsync(
@@ -76,14 +76,14 @@ internal sealed class FeaturesHistoricalProvider : IHistoricalDataProvider
         }
     }
     
-    public async Task<bool> IsDataAvailableAsync(
+    public Task<bool> IsDataAvailableAsync(
         string symbol, 
         DateTime startTime, 
         DateTime endTime, 
         CancellationToken cancellationToken = default)
     {
         var featureFile = Path.Combine(_featuresRoot, $"{symbol.ToLowerInvariant()}_features.json");
-        return File.Exists(featureFile);
+        return Task.FromResult(File.Exists(featureFile));
     }
     
     public async Task<(DateTime EarliestData, DateTime LatestData)> GetDataRangeAsync(
@@ -146,13 +146,13 @@ internal sealed class LocalQuotesProvider : IHistoricalDataProvider
         _quotesRoot = configuration.GetValue("Paths:QuotesRoot", "datasets/quotes");
     }
     
-    public async Task<IAsyncEnumerable<Quote>> GetHistoricalQuotesAsync(
+    public Task<IAsyncEnumerable<Quote>> GetHistoricalQuotesAsync(
         string symbol, 
         DateTime startTime, 
         DateTime endTime, 
         CancellationToken cancellationToken = default)
     {
-        return GetQuotesFromLocalFilesAsync(symbol, startTime, endTime, cancellationToken);
+        return Task.FromResult(GetQuotesFromLocalFilesAsync(symbol, startTime, endTime, cancellationToken));
     }
     
     private async IAsyncEnumerable<Quote> GetQuotesFromLocalFilesAsync(
@@ -192,14 +192,14 @@ internal sealed class LocalQuotesProvider : IHistoricalDataProvider
         }
     }
     
-    public async Task<bool> IsDataAvailableAsync(
+    public Task<bool> IsDataAvailableAsync(
         string symbol, 
         DateTime startTime, 
         DateTime endTime, 
         CancellationToken cancellationToken = default)
     {
         var quoteFile = Path.Combine(_quotesRoot, $"{symbol.ToLowerInvariant()}_quotes.json");
-        return File.Exists(quoteFile);
+        return Task.FromResult(File.Exists(quoteFile));
     }
     
     public async Task<(DateTime EarliestData, DateTime LatestData)> GetDataRangeAsync(

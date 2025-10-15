@@ -200,12 +200,28 @@ namespace BotCore.Infra
                     var timeSinceTraining = DateTime.Now - latestBackup;
                     if (timeSinceTraining.TotalHours > 8) // Should train every 6 hours
                     {
+                        _consecutiveTrainingFailures++;
                         warnings.Add($"No training activity detected in {timeSinceTraining.TotalHours:F1} hours");
+                        
+                        if (_consecutiveTrainingFailures >= MaxConsecutiveFailures)
+                        {
+                            issues.Add($"Training has been inactive for {_consecutiveTrainingFailures} consecutive checks");
+                        }
+                    }
+                    else
+                    {
+                        _consecutiveTrainingFailures = 0;
                     }
                 }
                 else
                 {
+                    _consecutiveTrainingFailures++;
                     warnings.Add("No evidence of recent training activity");
+                    
+                    if (_consecutiveTrainingFailures >= MaxConsecutiveFailures)
+                    {
+                        issues.Add($"No training evidence found for {_consecutiveTrainingFailures} consecutive checks");
+                    }
                 }
             }
             catch (Exception ex)
