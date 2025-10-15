@@ -15,22 +15,31 @@ echo ""
 
 EXIT_CODE=0
 
-# Check for DOTNET_INSTALL_DIR environment variable
+# Check for DOTNET_INSTALL_DIR environment variable - it SHOULD be set to runner.temp
 echo "📋 Checking for DOTNET_INSTALL_DIR environment variable..."
 if grep -r "DOTNET_INSTALL_DIR" .github/workflows/*.yml 2>/dev/null; then
-    echo "❌ FOUND: DOTNET_INSTALL_DIR in workflow files (this is incorrect!)"
-    echo "   The setup-dotnet action should NOT use custom install directories."
-    EXIT_CODE=1
+    echo "✅ FOUND: DOTNET_INSTALL_DIR in workflow files"
+    echo "   Verifying it uses runner.temp (user-writable directory)..."
+    
+    if grep -r "DOTNET_INSTALL_DIR.*runner\.temp" .github/workflows/*.yml 2>/dev/null | grep -v "^#" > /dev/null; then
+        echo "✅ PASS: DOTNET_INSTALL_DIR uses runner.temp (correct pattern from PR #559)"
+    else
+        echo "❌ FAIL: DOTNET_INSTALL_DIR does not use runner.temp"
+        echo "   Must use: DOTNET_INSTALL_DIR: \${{ runner.temp }}/.dotnet"
+        EXIT_CODE=1
+    fi
 else
-    echo "✅ PASS: No DOTNET_INSTALL_DIR found in workflow files"
+    echo "⚠️ WARNING: No DOTNET_INSTALL_DIR found"
+    echo "   PR #559 configuration uses DOTNET_INSTALL_DIR: \${{ runner.temp }}/.dotnet"
+    echo "   This forces installation to user-writable temp directory."
 fi
 echo ""
 
-# Check for install-dir parameter
+# Check for install-dir parameter (should NOT be used)
 echo "📋 Checking for install-dir parameter in setup-dotnet..."
 if grep -A3 "uses: actions/setup-dotnet" .github/workflows/*.yml 2>/dev/null | grep "install-dir:" ; then
     echo "❌ FOUND: install-dir parameter in setup-dotnet (this is incorrect!)"
-    echo "   The setup-dotnet action should only specify dotnet-version."
+    echo "   Use DOTNET_INSTALL_DIR env var instead, not install-dir parameter."
     EXIT_CODE=1
 else
     echo "✅ PASS: No install-dir parameter found"
@@ -43,11 +52,11 @@ if grep -r "install-dotnet.ps1\|Install-Dotnet.ps1" .github/workflows/*.yml 2>/d
     echo "⚠️ FOUND: Manual install-dotnet.ps1 calls detected"
     echo "   Checking if they use user-writable directories..."
     
-    if grep -A5 -B5 "install-dotnet.ps1" .github/workflows/*.yml 2>/dev/null | grep -E "InstallDir.*USERPROFILE|InstallDir.*HOME"; then
+    if grep -A5 -B5 "install-dotnet.ps1" .github/workflows/*.yml 2>/dev/null | grep -E "InstallDir.*USERPROFILE|InstallDir.*HOME|InstallDir.*runner\.temp"; then
         echo "✅ Manual calls use user-writable directories (acceptable)"
     else
         echo "❌ Manual calls DO NOT use user-writable directories (this is incorrect!)"
-        echo "   Manual install-dotnet.ps1 must use -InstallDir \"\$env:USERPROFILE\\.dotnet\""
+        echo "   Manual install-dotnet.ps1 must use -InstallDir with user-writable path"
         EXIT_CODE=1
     fi
 else
@@ -55,8 +64,8 @@ else
 fi
 echo ""
 
-# Verify correct pattern usage in self-hosted workflows
-echo "📋 Verifying correct setup-dotnet pattern in self-hosted workflows..."
+# Verify correct pattern usage in self-hosted workflows (PR #559 pattern)
+echo "📋 Verifying PR #559 setup-dotnet pattern in self-hosted workflows..."
 SELFHOSTED_WORKFLOWS=(
     ".github/workflows/bot-launch-diagnostics.yml"
     ".github/workflows/selfhosted-bot-run.yml"
@@ -67,20 +76,15 @@ for workflow in "${SELFHOSTED_WORKFLOWS[@]}"; do
     if [[ -f "$workflow" ]]; then
         echo "  Checking $workflow..."
         
-        # Extract setup-dotnet configuration
-        if grep -A5 "uses: actions/setup-dotnet@v4" "$workflow" | grep -q "dotnet-version:"; then
-            # Check that ONLY dotnet-version is specified (no env block with DOTNET_INSTALL_DIR)
-            if grep -B2 "uses: actions/setup-dotnet@v4" "$workflow" | grep -q "DOTNET_INSTALL_DIR"; then
-                echo "    ❌ INCORRECT: Has DOTNET_INSTALL_DIR"
-                EXIT_CODE=1
-            elif grep -A5 "uses: actions/setup-dotnet@v4" "$workflow" | grep -q "install-dir:"; then
-                echo "    ❌ INCORRECT: Has install-dir parameter"
-                EXIT_CODE=1
-            else
-                echo "    ✅ CORRECT: Uses simple setup-dotnet with dotnet-version only"
-            fi
+        # Check for the PR #559 pattern: DOTNET_INSTALL_DIR with runner.temp
+        if grep -A6 "uses: actions/setup-dotnet@v4" "$workflow" | grep -q "DOTNET_INSTALL_DIR.*runner\.temp"; then
+            echo "    ✅ CORRECT: Uses PR #559 pattern (DOTNET_INSTALL_DIR with runner.temp)"
+        elif grep -A3 "uses: actions/setup-dotnet@v4" "$workflow" | grep -q "dotnet-version:"; then
+            echo "    ⚠️ WARNING: Missing DOTNET_INSTALL_DIR environment variable"
+            echo "       PR #559 working configuration uses: DOTNET_INSTALL_DIR: \${{ runner.temp }}/.dotnet"
+            EXIT_CODE=1
         else
-            echo "    ⚠️ WARNING: setup-dotnet found but no dotnet-version specified"
+            echo "    ❌ INCORRECT: setup-dotnet configuration not found or malformed"
             EXIT_CODE=1
         fi
     else
@@ -94,31 +98,31 @@ echo "=================================================="
 if [ $EXIT_CODE -eq 0 ]; then
     echo "✅ ALL CHECKS PASSED"
     echo ""
-    echo "All workflows use the correct .NET SDK installation pattern:"
-    echo "  - No DOTNET_INSTALL_DIR environment variables"
+    echo "All workflows use the PR #559 working .NET SDK installation pattern:"
+    echo "  - DOTNET_INSTALL_DIR set to \${{ runner.temp }}/.dotnet"
     echo "  - No install-dir parameters"
-    echo "  - No manual install-dotnet.ps1 calls (or they use user directories)"
-    echo "  - Self-hosted workflows use simple setup-dotnet@v4 with dotnet-version only"
+    echo "  - No manual install-dotnet.ps1 calls to system directories"
     echo ""
-    echo "This configuration allows the setup-dotnet action to install .NET SDK"
-    echo "to its default user-writable cache directory, avoiding permission errors"
-    echo "on non-elevated self-hosted runners."
+    echo "This configuration forces .NET SDK installation to the runner's temp"
+    echo "directory, bypassing permission errors on non-elevated self-hosted runners."
 else
     echo "❌ VERIFICATION FAILED"
     echo ""
-    echo "Some workflows have incorrect .NET SDK installation configuration."
+    echo "Some workflows do not match the PR #559 working configuration."
     echo "Please fix the issues listed above."
     echo ""
-    echo "CORRECT PATTERN:"
+    echo "CORRECT PATTERN (from PR #559):"
     echo "  - name: \"🔧 Setup .NET SDK\""
     echo "    uses: actions/setup-dotnet@v4"
+    echo "    env:"
+    echo "      DOTNET_INSTALL_DIR: \${{ runner.temp }}/.dotnet"
     echo "    with:"
     echo "      dotnet-version: '8.0.x'"
     echo ""
     echo "DO NOT USE:"
-    echo "  - DOTNET_INSTALL_DIR environment variable"
-    echo "  - install-dir parameter"
+    echo "  - install-dir parameter (use DOTNET_INSTALL_DIR env var instead)"
     echo "  - Manual install-dotnet.ps1 calls to C:\\Program Files\\dotnet"
+    echo "  - setup-dotnet without DOTNET_INSTALL_DIR on self-hosted runners"
 fi
 echo "=================================================="
 
