@@ -140,20 +140,31 @@ internal class TradingBrainAdapter : ITradingBrainAdapter
             // Note: Support and Resistance may not exist on Levels - using calculated values
         };
         
-        var bars = new List<global::BotCore.Models.Bar>
+        // Use historical bars from context metadata if available, otherwise create single bar
+        List<global::BotCore.Models.Bar> bars;
+        if (context.Metadata != null && context.Metadata.TryGetValue("HistoricalBars", out var historicalBarsObj) && historicalBarsObj is List<global::BotCore.Models.Bar> historicalBars)
         {
-            new global::BotCore.Models.Bar
+            bars = historicalBars;
+            _logger.LogDebug("[ADAPTER] Using {Count} historical bars for decision", bars.Count);
+        }
+        else
+        {
+            bars = new List<global::BotCore.Models.Bar>
             {
-                Start = context.Timestamp,
-                Ts = ((DateTimeOffset)context.Timestamp).ToUnixTimeMilliseconds(),
-                Symbol = symbol,
-                Open = context.CurrentPrice,
-                High = context.CurrentPrice,
-                Low = context.CurrentPrice,
-                Close = context.CurrentPrice,
-                Volume = 1000
-            }
-        };
+                new global::BotCore.Models.Bar
+                {
+                    Start = context.Timestamp,
+                    Ts = ((DateTimeOffset)context.Timestamp).ToUnixTimeMilliseconds(),
+                    Symbol = symbol,
+                    Open = context.CurrentPrice,
+                    High = context.CurrentPrice,
+                    Low = context.CurrentPrice,
+                    Close = context.CurrentPrice,
+                    Volume = 1000
+                }
+            };
+            _logger.LogWarning("[ADAPTER] No historical bars in context, using single bar (ATR calculation may fail)");
+        }
         
         var riskEngine = new RiskEngine();
         

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using TradingBot.UnifiedOrchestrator.Interfaces;
+using TradingBot.UnifiedOrchestrator.Models;
 using BotCore.Services;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
@@ -31,6 +32,10 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     private int _totalBarsReceived;
     private int _historicalBarsReceived;
     private int _liveBarsReceived;
+    
+    // Bar buffering for ATR calculation (need at least 14 bars for ATR)
+    private readonly Dictionary<string, List<BarEventData>> _barBuffer = new();
+    private readonly int _requiredBarsForTrading = 20; // 14 for ATR + 6 buffer
     
     // Trading instruments
     private readonly string[] _tradingInstruments = new[] { "ES", "NQ" };
@@ -70,8 +75,86 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
             _lastLiveDataReceived = DateTime.UtcNow;
             _isLiveDataConnected = true;
             
-            _logger.LogDebug("[DATA-INTEGRATION] Live bar: {Instrument} @ {Timestamp} - C={Close:F2} V={Volume}",
-                barEvent.Instrument, barEvent.Timestamp, barEvent.Close, barEvent.Volume);
+            // Buffer bars for ATR calculation
+            if (!_barBuffer.ContainsKey(barEvent.Instrument))
+            {
+                _barBuffer[barEvent.Instrument] = new List<BarEventData>();
+            }
+            
+            _barBuffer[barEvent.Instrument].Add(barEvent);
+            
+            // Keep only the most recent bars needed for technical analysis
+            if (_barBuffer[barEvent.Instrument].Count > 100)
+            {
+                _barBuffer[barEvent.Instrument].RemoveAt(0);
+            }
+            
+            var barCount = _barBuffer[barEvent.Instrument].Count;
+            
+            _logger.LogDebug("[DATA-INTEGRATION] Live bar: {Instrument} @ {Timestamp} - C={Close:F2} V={Volume} (Buffer: {Count} bars)",
+                barEvent.Instrument, barEvent.Timestamp, barEvent.Close, barEvent.Volume, barCount);
+            
+            // Once we have enough bars, feed them to the brain for real trading decisions
+            if (barCount >= _requiredBarsForTrading)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var historicalBars = _barBuffer[barEvent.Instrument].TakeLast(50).ToArray();
+                        _logger.LogInformation("[DATA-INTEGRATION] 📈 Feeding {Count} bars to brain for {Instrument} (Latest: ${Price:F2})",
+                            historicalBars.Length, barEvent.Instrument, barEvent.Close);
+                        
+                        // Convert BarEventData to Bar objects for the brain
+                        var bars = historicalBars.Select(b => new global::BotCore.Models.Bar
+                        {
+                            Start = b.Timestamp,
+                            Ts = ((DateTimeOffset)b.Timestamp).ToUnixTimeMilliseconds(),
+                            Symbol = b.Instrument,
+                            Open = b.Open,
+                            High = b.High,
+                            Low = b.Low,
+                            Close = b.Close,
+                            Volume = (int)Math.Min(b.Volume, int.MaxValue)
+                        }).ToList();
+                        
+                        // Create trading context with full bar history
+                        var context = new TradingContext
+                        {
+                            Symbol = barEvent.Instrument,
+                            Timestamp = barEvent.Timestamp,
+                            CurrentPrice = barEvent.Close,
+                            Price = barEvent.Close,
+                            Open = barEvent.Open,
+                            High = barEvent.High,
+                            Low = barEvent.Low,
+                            Close = barEvent.Close,
+                            Volume = barEvent.Volume,
+                            IsMarketOpen = true,
+                            IsBacktest = false,
+                            // Store bars in metadata so adapter can use them
+                            Metadata = new Dictionary<string, object>
+                            {
+                                ["HistoricalBars"] = bars
+                            }
+                        };
+                        
+                        // Make trading decision with real bar data
+                        var decision = await _brainAdapter.DecideAsync(context);
+                        _logger.LogInformation("[DATA-INTEGRATION] 🧠 Brain decision for {Instrument}: {Action} (Confidence: {Confidence:F2})",
+                            barEvent.Instrument, decision.Action, decision.Confidence);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "[DATA-INTEGRATION] Error feeding bars to brain");
+                    }
+                });
+            }
+            else
+            {
+                _logger.LogInformation("[DATA-INTEGRATION] 📊 Accumulating bars for {Instrument}: {Current}/{Required} (need {More} more)",
+                    barEvent.Instrument, barCount, _requiredBarsForTrading, _requiredBarsForTrading - barCount);
+            }
             
             // Record data flow event
             _dataFlowEvents.Add(new DataFlowEvent
@@ -79,7 +162,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
                 Timestamp = DateTime.UtcNow,
                 EventType = "LiveBar",
                 Source = $"TopstepX-{barEvent.Instrument}",
-                Details = $"Bar: C={barEvent.Close:F2} V={barEvent.Volume}",
+                Details = $"Bar: C={barEvent.Close:F2} V={barEvent.Volume}, Buffer: {barCount} bars",
                 Success = true
             });
             
@@ -143,9 +226,6 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
                     // Process historical data for training
                     await ProcessHistoricalDataBatch().ConfigureAwait(false);
                     _lastHistoricalDataSync = DateTime.UtcNow;
-                    
-                    // Feed historical data to the trading brain for training
-                    await FeedHistoricalDataToBrain(cancellationToken).ConfigureAwait(false);
                 }
                 
                 // Wait before next historical data processing cycle
@@ -176,12 +256,9 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
             {
                 if (_isLiveDataConnected)
                 {
-                    // Process live market data
+                    // Process live market data (this will accumulate bars and feed to brain when ready)
                     await ProcessLiveMarketData(cancellationToken).ConfigureAwait(false);
                     _lastLiveDataReceived = DateTime.UtcNow;
-                    
-                    // Feed live data to the trading brain for inference
-                    await FeedLiveDataToBrain(cancellationToken).ConfigureAwait(false);
                 }
                 
                 // Process live data more frequently
@@ -686,46 +763,6 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     /// <summary>
     /// Feed historical data to the trading brain for training
     /// </summary>
-    private async Task FeedHistoricalDataToBrain(CancellationToken cancellationToken)
-    {
-        await Task.Yield(); // Ensure async behavior
-        
-        try
-        {
-            // Feed historical data to brain for training via brain adapter
-            var historicalData = await LoadRecentHistoricalDataAsync().ConfigureAwait(false);
-            
-            if (historicalData.Any())
-            {
-                _logger.LogDebug("[BRAIN-INTEGRATION] Feeding {Count} historical data points to brain", historicalData.Count);
-                
-                // Use the brain adapter to process historical data for training
-                foreach (var dataPoint in historicalData.Take(10)) // Limit batch size for performance
-                {
-                    var context = CreateTradingContextFromHistoricalData(dataPoint);
-                    
-                    // This feeds the data to the brain for pattern learning
-                    await _brainAdapter.DecideAsync(context, cancellationToken).ConfigureAwait(false);
-                }
-                
-                _logger.LogInformation("[BRAIN-INTEGRATION] Successfully fed {Count} historical data points to brain", historicalData.Count);
-            }
-            
-            _dataFlowEvents.Add(new DataFlowEvent
-            {
-                Timestamp = DateTime.UtcNow,
-                EventType = "Historical Data Fed to Brain",
-                Source = "TradingBrainAdapter",
-                Details = $"Successfully fed {historicalData.Count} historical data points to trading brain for training",
-                Success = true
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[DATA-INTEGRATION] Failed to feed historical data to brain");
-        }
-    }
-    
     /// <summary>
     /// Process live market data for real-time inference - REAL implementation
     /// </summary>
@@ -735,22 +772,52 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
         
         try
         {
-            await Task.Delay(10, cancellationToken).ConfigureAwait(false); // Minimal delay for async compliance
+            // LIVE TRADING: Get actual prices from TopstepX
+            if (_topstepXAdapter != null && _topstepXAdapter.IsConnected)
+            {
+                // Poll live prices for ES
+                try
+                {
+                    var esPrice = await _topstepXAdapter.GetPriceAsync("ES", cancellationToken).ConfigureAwait(false);
+                    if (esPrice > 0)
+                    {
+                        _logger.LogInformation("[DATA-INTEGRATION] 📊 Live ES price: ${Price:F2}", esPrice);
+                        
+                        // Create synthetic bar event from current price
+                        var barEvent = new BarEventData(
+                            Type: "live_poll",
+                            Instrument: "ES",
+                            Timestamp: DateTime.UtcNow,
+                            Open: esPrice,
+                            High: esPrice,
+                            Low: esPrice,
+                            Close: esPrice,
+                            Volume: 1 // Minimal volume for synthetic bar
+                        );
+                        
+                        // Feed to brain via bar event handler
+                        OnBarEventReceived(barEvent);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[DATA-INTEGRATION] Failed to get ES price from TopstepX");
+                }
+            }
+            else
+            {
+                _logger.LogWarning("[DATA-INTEGRATION] TopstepX adapter not connected - cannot get live prices");
+            }
             
-            _logger.LogInformation("[DATA-INTEGRATION] Processing REAL live market data for inference");
-            
-            // Note: In a real implementation, this would integrate with the TopstepX client
-            // that is registered in the DI container. For now, we'll simulate the connection.
-            
-            _logger.LogInformation("[DATA-INTEGRATION] Would connect to live TopstepX market data feeds");
+            await Task.Delay(10, cancellationToken).ConfigureAwait(false);
             
             // Process real market data
             _dataFlowEvents.Add(new DataFlowEvent
             {
                 Timestamp = DateTime.UtcNow,
-                EventType = "REAL Live Market Data Processing Ready", 
+                EventType = "REAL Live Market Data Processing", 
                 Source = "TopstepXMarketDataProcessor",
-                Details = "Ready to connect to live TopstepX market data feeds for ES and NQ",
+                Details = "Polling live prices from TopstepX for ES",
                 Success = true
             });
         }
@@ -772,44 +839,6 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
     /// <summary>
     /// Feed live data to the trading brain for inference
     /// </summary>
-    private async Task FeedLiveDataToBrain(CancellationToken cancellationToken)
-    {
-        await Task.Yield(); // Ensure async behavior
-        
-        try
-        {
-            // Feed live data to brain for real-time inference
-            var liveData = await GetLatestLiveDataAsync().ConfigureAwait(false);
-            
-            if (liveData != null)
-            {
-                _logger.LogDebug("[BRAIN-INTEGRATION] Feeding live data to brain for inference");
-                
-                // Create trading context from live data
-                var context = CreateTradingContextFromLiveData(liveData);
-                
-                // Use the brain adapter to make real-time trading decisions
-                var decision = await _brainAdapter.DecideAsync(context, cancellationToken).ConfigureAwait(false);
-                
-                _logger.LogInformation("[BRAIN-INTEGRATION] Brain made decision: {Action} with confidence {Confidence:F2}", 
-                    decision.Action, decision.Confidence);
-            }
-            
-            _dataFlowEvents.Add(new DataFlowEvent
-            {
-                Timestamp = DateTime.UtcNow,
-                EventType = "Live Data Fed to Brain",
-                Source = "TradingBrainAdapter",
-                Details = "Live data successfully fed to trading brain for real-time inference",
-                Success = true
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[DATA-INTEGRATION] Failed to feed live data to brain");
-        }
-    }
-    
     /// <summary>
     /// Monitor data flow health and performance
     /// </summary>
@@ -829,137 +858,4 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
         }
     }
 
-    /// <summary>
-    /// Load recent historical data for brain training
-    /// </summary>
-    private async Task<List<MarketDataPoint>> LoadRecentHistoricalDataAsync()
-    {
-        await Task.Yield();
-        
-        try
-        {
-            // In production, this would load from actual historical data storage
-            // For now, create sample data points
-            var data = new List<MarketDataPoint>();
-            var baseTime = DateTime.UtcNow.AddDays(-1);
-            
-            for (int i = 0; i < 5; i++)
-            {
-                data.Add(new MarketDataPoint
-                {
-                    Symbol = "ES",
-                    Timestamp = baseTime.AddMinutes(i * 15),
-                    Open = 4500m + i,
-                    High = 4505m + i,
-                    Low = 4495m + i,
-                    Close = 4502m + i,
-                    Volume = 10000 + i * 100
-                });
-            }
-            
-            return data;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[DATA-INTEGRATION] Failed to load historical data");
-            return new List<MarketDataPoint>();
-        }
-    }
-
-    /// <summary>
-    /// Get latest live market data
-    /// </summary>
-    private async Task<LiveDataPoint?> GetLatestLiveDataAsync()
-    {
-        await Task.Yield();
-        
-        try
-        {
-            // In production, this would get real-time data from TopstepX
-            return new LiveDataPoint
-            {
-                Symbol = "ES",
-                Timestamp = DateTime.UtcNow,
-                Price = 4500m,
-                Volume = 1000,
-                Bid = 4499.75m,
-                Ask = 4500.25m
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[DATA-INTEGRATION] Failed to get live data");
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// Create trading context from historical data
-    /// </summary>
-    private TradingBot.UnifiedOrchestrator.Models.TradingContext CreateTradingContextFromHistoricalData(MarketDataPoint dataPoint)
-    {
-        return new TradingBot.UnifiedOrchestrator.Models.TradingContext
-        {
-            Symbol = dataPoint.Symbol,
-            Timestamp = dataPoint.Timestamp,
-            CurrentPrice = dataPoint.Close,
-            Price = dataPoint.Close,
-            Open = dataPoint.Open,
-            High = dataPoint.High,
-            Low = dataPoint.Low,
-            Close = dataPoint.Close,
-            Volume = dataPoint.Volume,
-            IsMarketOpen = true,
-            Source = "Historical"
-        };
-    }
-
-    /// <summary>
-    /// Create trading context from live data
-    /// </summary>
-    private TradingBot.UnifiedOrchestrator.Models.TradingContext CreateTradingContextFromLiveData(LiveDataPoint dataPoint)
-    {
-        return new TradingBot.UnifiedOrchestrator.Models.TradingContext
-        {
-            Symbol = dataPoint.Symbol,
-            Timestamp = dataPoint.Timestamp,
-            CurrentPrice = dataPoint.Price,
-            Price = dataPoint.Price,
-            Open = dataPoint.Price,
-            High = dataPoint.Price,
-            Low = dataPoint.Price,
-            Close = dataPoint.Price,
-            Volume = dataPoint.Volume,
-            Spread = dataPoint.Ask - dataPoint.Bid,
-            IsMarketOpen = true,
-            Source = "Live"
-        };
-    }
-}
-
-/// <summary>
-/// Market data point for brain integration
-/// </summary>
-internal class MarketDataPoint
-{
-    public string Symbol { get; set; } = string.Empty;
-    public DateTime Timestamp { get; set; }
-    public decimal Open { get; set; }
-    public decimal High { get; set; }
-    public decimal Low { get; set; }
-    public decimal Close { get; set; }
-    public long Volume { get; set; }
-}
-
-/// <summary>
-/// Live data point for real-time inference
-/// </summary>
-internal class LiveDataPoint
-{
-    public string Symbol { get; set; } = string.Empty;
-    public DateTime Timestamp { get; set; }
-    public decimal Price { get; set; }
-    public long Volume { get; set; }
-    public decimal Bid { get; set; }
-    public decimal Ask { get; set; }
 }

@@ -894,10 +894,27 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 CreateNoWindow = true
             };
             
+            // CRITICAL: Copy parent environment variables first, or Python gets EMPTY environment!
+            foreach (System.Collections.DictionaryEntry envVar in Environment.GetEnvironmentVariables())
+            {
+                var key = envVar.Key?.ToString();
+                var value = envVar.Value?.ToString();
+                if (!string.IsNullOrEmpty(key) && value != null)
+                {
+                    processInfo.Environment[key] = value;
+                }
+            }
+            
             // Get environment variables for credentials and retry policy
             var apiKey = Environment.GetEnvironmentVariable("TOPSTEPX_API_KEY");
             var username = Environment.GetEnvironmentVariable("TOPSTEPX_USERNAME");
             var accountId = Environment.GetEnvironmentVariable("TOPSTEPX_ACCOUNT_ID");
+            
+            _logger.LogInformation("[ENV-DEBUG] Parent has TOPSTEPX_API_KEY: {HasKey}, Username: {Username}", 
+                !string.IsNullOrEmpty(apiKey), username);
+            _logger.LogInformation("[ENV-DEBUG] ProcessInfo.Environment count: {Count}, has API key: {HasInProc}", 
+                processInfo.Environment.Count,
+                processInfo.Environment.ContainsKey("TOPSTEPX_API_KEY"));
             var maxRetries = Environment.GetEnvironmentVariable("ADAPTER_MAX_RETRIES") ?? "3";
             var baseDelay = Environment.GetEnvironmentVariable("ADAPTER_BASE_DELAY") ?? "1.0";
             var maxDelay = Environment.GetEnvironmentVariable("ADAPTER_MAX_DELAY") ?? "8.0";
@@ -1347,6 +1364,17 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+            
+            // CRITICAL: Copy parent environment variables first, or Python gets EMPTY environment!
+            foreach (System.Collections.DictionaryEntry envVar in Environment.GetEnvironmentVariables())
+            {
+                var key = envVar.Key?.ToString();
+                var value = envVar.Value?.ToString();
+                if (!string.IsNullOrEmpty(key) && value != null)
+                {
+                    processInfo.Environment[key] = value;
+                }
+            }
             
             // Get environment variables for credentials
             var apiKey = Environment.GetEnvironmentVariable("TOPSTEPX_API_KEY");
