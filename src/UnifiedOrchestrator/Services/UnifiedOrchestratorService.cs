@@ -346,7 +346,7 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
             DateTime.UtcNow));
     }
 
-    public async Task<bool> ExecuteEmergencyShutdownAsync(CancellationToken cancellationToken = default)
+    public Task<bool> ExecuteEmergencyShutdownAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -355,7 +355,7 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
             if (!_enableEmergencyStop)
             {
                 _logger.LogWarning("⚠️ Emergency stop disabled by configuration - shutdown skipped");
-                return false;
+                return Task.FromResult(false);
             }
             
             // Disconnect from TopstepX
@@ -374,12 +374,12 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
             }
             
             _logger.LogInformation("✅ Emergency shutdown completed");
-            return true;
+            return Task.FromResult(true);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ Emergency shutdown failed");
-            return false;
+            return Task.FromResult(false);
         }
     }
 

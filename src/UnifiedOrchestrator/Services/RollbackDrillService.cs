@@ -11,7 +11,6 @@ using TradingBot.UnifiedOrchestrator.Interfaces;
 using TradingBot.UnifiedOrchestrator.Models;
 using AbstractionsTradingDecision = TradingBot.Abstractions.TradingDecision;
 using InterfacesTradingDecision = TradingBot.UnifiedOrchestrator.Interfaces.TradingDecision;
-using System.Security.Cryptography;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 

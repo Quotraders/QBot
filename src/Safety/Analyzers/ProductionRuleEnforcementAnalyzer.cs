@@ -913,7 +913,7 @@ namespace TradingBot.Safety.Analyzers
         
         private static bool HasObsoleteOrGeneratedCodeAttribute(MethodDeclarationSyntax method)
         {
-            if (method.AttributeLists == null)
+            if (method.AttributeLists.Count == 0)
                 return false;
                 
             foreach (var attributeList in method.AttributeLists)

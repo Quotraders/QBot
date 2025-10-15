@@ -223,7 +223,7 @@ internal class ProductionVerificationService : IHostedService
     /// <summary>
     /// Verify API clients have real implementations with proper error handling
     /// </summary>
-    private async Task VerifyApiClientsAsync()
+    private Task VerifyApiClientsAsync()
     {
         _logger.LogInformation("🌐 [API-VERIFICATION] Verifying API client implementations...");
 
@@ -255,6 +255,8 @@ internal class ProductionVerificationService : IHostedService
         {
             _logger.LogError(ex, "❌ [API-VERIFICATION] API client verification failed");
         }
+        
+        return Task.CompletedTask;
     }
 
     /// <summary>

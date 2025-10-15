@@ -59,7 +59,7 @@ namespace TradingBot.UnifiedOrchestrator.Health
         /// <summary>
         /// Readiness check - verifies system is ready to accept trading requests
         /// </summary>
-        public async Task<IResult> ReadyAsync()
+        public Task<IResult> ReadyAsync()
         {
             try
             {
@@ -80,12 +80,12 @@ namespace TradingBot.UnifiedOrchestrator.Health
                     timestamp = DateTime.UtcNow
                 };
 
-                return allReady ? Results.Ok(response) : Results.StatusCode(503);
+                return Task.FromResult(allReady ? Results.Ok(response) : Results.StatusCode(503));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Readiness check failed");
-                return Results.StatusCode(500);
+                return Task.FromResult(Results.StatusCode(500));
             }
         }
 
@@ -195,22 +195,22 @@ namespace TradingBot.UnifiedOrchestrator.Health
             return GetUptime().TotalSeconds;
         }
 
-        private async Task<object> GetTradingMetricsAsync()
+        private Task<object> GetTradingMetricsAsync()
         {
             try
             {
                 // Basic trading metrics - would be expanded in production
-                return new
+                return Task.FromResult<object>(new
                 {
                     positions_count = 0, // Would get from position tracker
                     daily_pnl = 0.0m,   // Would get from P&L tracker
                     orders_today = 0,    // Would get from order tracker
                     last_decision_time = DateTime.UtcNow // Would get from decision engine
-                };
+                });
             }
             catch
             {
-                return new { error = "Unable to retrieve trading metrics" };
+                return Task.FromResult<object>(new { error = "Unable to retrieve trading metrics" });
             }
         }
     }

@@ -38,8 +38,8 @@ namespace TradingBot.Tests.ProductionEnforcement
         // Hardcoded assignment
         public void ConfigureStrategy()
         {
-            var riskFactor = 2.5; // PRE011: Numeric literal in business logic
-            var positionSize = 0.25; // PRE011: Numeric literal in business logic
+            _ = 2.5; // PRE011: Numeric literal in business logic
+            _ = 0.25; // PRE011: Numeric literal in business logic
         }
     }
 }

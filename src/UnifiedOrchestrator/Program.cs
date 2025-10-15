@@ -246,7 +246,7 @@ internal static class Program
     /// <summary>
     /// Run production demonstration to generate all runtime artifacts requested in PR review
     /// </summary>
-    private static async Task RunProductionDemonstrationAsync(string[] args)
+    private static Task RunProductionDemonstrationAsync(string[] args)
     {
         Console.WriteLine(@"
 🚀 PRODUCTION READINESS DEMONSTRATION
@@ -279,6 +279,7 @@ Artifacts will be saved to: artifacts/production-demo/
         {
             Console.WriteLine($"Error in production demonstration: {ex.Message}");
             Environment.Exit(1);
+            return Task.CompletedTask;
         }
     }
     
@@ -2104,7 +2105,7 @@ Please check the configuration and ensure all required services are registered.
     /// Validates service registration and configuration files on startup
     /// Implements comprehensive dependency injection validation and configuration file verification
     /// </summary>
-    private static async Task ValidateStartupServicesAsync(IServiceProvider serviceProvider)
+    private static Task ValidateStartupServicesAsync(IServiceProvider serviceProvider)
     {
         using var scope = serviceProvider.CreateScope();
         var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
@@ -2137,6 +2138,7 @@ Please check the configuration and ensure all required services are registered.
             */
             
             logger.LogInformation("✅ All startup validations completed successfully");
+            return Task.CompletedTask;
         }
         catch (Exception ex)
         {
