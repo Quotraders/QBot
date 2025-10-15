@@ -604,7 +604,7 @@ internal class ShadowTester : IShadowTester
             if (decision.Action == "BUY" && position == 0)
             {
                 position = decision.Size;
-                entryPrice = 1m; // Normalized
+                // entryPrice tracking not needed for this simple simulation
             }
             else if (decision.Action == "SELL" && position > 0)
             {

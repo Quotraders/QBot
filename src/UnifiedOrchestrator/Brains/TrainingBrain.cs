@@ -524,7 +524,7 @@ internal class TrainingBrain : ITrainingBrain
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to calculate actual data samples, using default");
-            return 1000; // Safe fallback
+            return Task.FromResult(1000); // Safe fallback
         }
     }
 

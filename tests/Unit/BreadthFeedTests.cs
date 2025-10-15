@@ -215,6 +215,14 @@ namespace TradingBot.Tests.Unit
                 return _hasData ? _newHighsLowsRatio : 1.0m;
             }
 
+            public async Task<Dictionary<string, decimal>> GetSectorRotationDataAsync()
+            {
+                await Task.CompletedTask;
+                
+                // Return empty dictionary for test implementation
+                return new Dictionary<string, decimal>();
+            }
+
             public async Task UpdateMarketDataAsync(int advancing, int declining)
             {
                 await Task.CompletedTask;

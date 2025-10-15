@@ -735,7 +735,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[HISTORICAL-DATA] Cannot load real historical data for {Symbol}", config.Symbol);
-            return new List<HistoricalDataPoint>();
+            return Task.FromResult(new List<HistoricalDataPoint>());
         }
     }
 
@@ -1363,12 +1363,12 @@ internal class EnhancedBacktestLearningService : BackgroundService
             // return ConvertToBotCoreBars(historicalBars);
             
             _logger.LogWarning("[UNIFIED-BACKTEST] Historical bars service not available for {Symbol}. Unified backtesting will be skipped.", config.Symbol);
-            return bars;
+            return Task.FromResult(bars);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[UNIFIED-BACKTEST] Cannot load real historical bars for {Symbol}", config.Symbol);
-            return new List<Bar>();
+            return Task.FromResult(new List<Bar>());
         }
     }
 
