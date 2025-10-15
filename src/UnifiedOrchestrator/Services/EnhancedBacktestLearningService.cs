@@ -714,7 +714,8 @@ internal class EnhancedBacktestLearningService : BackgroundService
     /// <summary>
     /// Load REAL historical data for backtesting - NO SYNTHETIC GENERATION ALLOWED
     /// </summary>
-    private Task<List<HistoricalDataPoint>> LoadRealHistoricalDataAsync(BacktestConfig config)
+#pragma warning disable CS1998 // Async method lacks 'await' - awaiting future async API integration
+    private async Task<List<HistoricalDataPoint>> LoadRealHistoricalDataAsync(BacktestConfig config)
     {
         try
         {
@@ -730,14 +731,15 @@ internal class EnhancedBacktestLearningService : BackgroundService
             // return ConvertToHistoricalDataPoints(historicalData);
             
             _logger.LogWarning("[HISTORICAL-DATA] Historical data service not available for {Symbol}. Backtesting will be skipped.", config.Symbol);
-            return Task.FromResult(dataPoints);
+            return dataPoints;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[HISTORICAL-DATA] Cannot load real historical data for {Symbol}", config.Symbol);
-            return Task.FromResult(new List<HistoricalDataPoint>());
+            return new List<HistoricalDataPoint>();
         }
     }
+#pragma warning restore CS1998
 
     /// <summary>
     /// Update backtest state based on trading decision
@@ -1347,7 +1349,8 @@ internal class EnhancedBacktestLearningService : BackgroundService
     /// <summary>
     /// Load REAL historical bars from actual market data - NO SYNTHETIC GENERATION ALLOWED
     /// </summary>
-    private Task<List<Bar>> LoadRealHistoricalBarsAsync(UnifiedBacktestConfig config)
+#pragma warning disable CS1998 // Async method lacks 'await' - awaiting future async API integration
+    private async Task<List<Bar>> LoadRealHistoricalBarsAsync(UnifiedBacktestConfig config)
     {
         try
         {
@@ -1363,12 +1366,12 @@ internal class EnhancedBacktestLearningService : BackgroundService
             // return ConvertToBotCoreBars(historicalBars);
             
             _logger.LogWarning("[UNIFIED-BACKTEST] Historical bars service not available for {Symbol}. Unified backtesting will be skipped.", config.Symbol);
-            return Task.FromResult(bars);
+            return bars;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[UNIFIED-BACKTEST] Cannot load real historical bars for {Symbol}", config.Symbol);
-            return Task.FromResult(new List<Bar>());
+            return new List<Bar>();
         }
     }
 

@@ -414,7 +414,8 @@ internal class ShadowTester : IShadowTester
         };
     }
 
-    private Task<ShadowDecision> GetModelDecisionAsync(InferenceSession model, TradingContext context, CancellationToken cancellationToken)
+#pragma warning disable CS1998 // Async method lacks 'await' - synchronous ONNX inference, kept async for interface compatibility
+    private async Task<ShadowDecision> GetModelDecisionAsync(InferenceSession model, TradingContext context, CancellationToken cancellationToken)
     {
         var stopwatch = Stopwatch.StartNew();
         
@@ -439,14 +440,14 @@ internal class ShadowTester : IShadowTester
                 // Parse model outputs to get action, size, confidence
                 var (action, size, confidence) = ParseModelOutput(output);
                 
-                return Task.FromResult(new ShadowDecision
+                return new ShadowDecision
                 {
                     Action = action,
                     Size = size,
                     Confidence = confidence,
                     Timestamp = context.Timestamp,
                     InferenceTimeMs = (decimal)stopwatch.ElapsedMilliseconds
-                });
+                };
             }
         }
         catch (Exception ex)
@@ -457,8 +458,9 @@ internal class ShadowTester : IShadowTester
         stopwatch.Stop();
         
         // Fallback to simple rule-based decision
-        return Task.FromResult(CreateFallbackDecision(context, stopwatch.ElapsedMilliseconds));
+        return CreateFallbackDecision(context, stopwatch.ElapsedMilliseconds);
     }
+#pragma warning restore CS1998
 
     private static float[] ExtractFeatures(TradingContext context)
     {
@@ -604,7 +606,6 @@ internal class ShadowTester : IShadowTester
             if (decision.Action == "BUY" && position == 0)
             {
                 position = decision.Size;
-                // entryPrice tracking not needed for this simple simulation
             }
             else if (decision.Action == "SELL" && position > 0)
             {

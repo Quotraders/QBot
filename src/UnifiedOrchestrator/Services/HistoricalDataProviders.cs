@@ -29,15 +29,17 @@ internal sealed class FeaturesHistoricalProvider : IHistoricalDataProvider
         _featuresRoot = configuration.GetValue("Paths:FeaturesRoot", "datasets/features");
     }
     
-    public Task<IAsyncEnumerable<Quote>> GetHistoricalQuotesAsync(
+#pragma warning disable CS1998 // Async method lacks 'await' - returns IAsyncEnumerable which is inherently async
+    public async Task<IAsyncEnumerable<Quote>> GetHistoricalQuotesAsync(
         string symbol, 
         DateTime startTime, 
         DateTime endTime, 
         CancellationToken cancellationToken = default)
     {
         // Remove substitute - return the actual implementation
-        return Task.FromResult(GetQuotesFromFeaturesAsync(symbol, startTime, endTime, cancellationToken));
+        return GetQuotesFromFeaturesAsync(symbol, startTime, endTime, cancellationToken);
     }
+#pragma warning restore CS1998
     
     private async IAsyncEnumerable<Quote> GetQuotesFromFeaturesAsync(
         string symbol, 
@@ -76,15 +78,17 @@ internal sealed class FeaturesHistoricalProvider : IHistoricalDataProvider
         }
     }
     
-    public Task<bool> IsDataAvailableAsync(
+#pragma warning disable CS1998 // Async method lacks 'await' - synchronous file check, kept async for interface compatibility
+    public async Task<bool> IsDataAvailableAsync(
         string symbol, 
         DateTime startTime, 
         DateTime endTime, 
         CancellationToken cancellationToken = default)
     {
         var featureFile = Path.Combine(_featuresRoot, $"{symbol.ToLowerInvariant()}_features.json");
-        return Task.FromResult(File.Exists(featureFile));
+        return File.Exists(featureFile);
     }
+#pragma warning restore CS1998
     
     public async Task<(DateTime EarliestData, DateTime LatestData)> GetDataRangeAsync(
         string symbol, 
@@ -146,14 +150,16 @@ internal sealed class LocalQuotesProvider : IHistoricalDataProvider
         _quotesRoot = configuration.GetValue("Paths:QuotesRoot", "datasets/quotes");
     }
     
-    public Task<IAsyncEnumerable<Quote>> GetHistoricalQuotesAsync(
+#pragma warning disable CS1998 // Async method lacks 'await' - returns IAsyncEnumerable which is inherently async
+    public async Task<IAsyncEnumerable<Quote>> GetHistoricalQuotesAsync(
         string symbol, 
         DateTime startTime, 
         DateTime endTime, 
         CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(GetQuotesFromLocalFilesAsync(symbol, startTime, endTime, cancellationToken));
+        return GetQuotesFromLocalFilesAsync(symbol, startTime, endTime, cancellationToken);
     }
+#pragma warning restore CS1998
     
     private async IAsyncEnumerable<Quote> GetQuotesFromLocalFilesAsync(
         string symbol, 
@@ -192,15 +198,17 @@ internal sealed class LocalQuotesProvider : IHistoricalDataProvider
         }
     }
     
-    public Task<bool> IsDataAvailableAsync(
+#pragma warning disable CS1998 // Async method lacks 'await' - synchronous file check, kept async for interface compatibility
+    public async Task<bool> IsDataAvailableAsync(
         string symbol, 
         DateTime startTime, 
         DateTime endTime, 
         CancellationToken cancellationToken = default)
     {
         var quoteFile = Path.Combine(_quotesRoot, $"{symbol.ToLowerInvariant()}_quotes.json");
-        return Task.FromResult(File.Exists(quoteFile));
+        return File.Exists(quoteFile);
     }
+#pragma warning restore CS1998
     
     public async Task<(DateTime EarliestData, DateTime LatestData)> GetDataRangeAsync(
         string symbol, 
