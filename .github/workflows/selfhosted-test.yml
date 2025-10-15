@@ -38,7 +38,7 @@ jobs:
           Write-Output "Runner Name: ${{ runner.name }}"
           Write-Output "Runner OS: ${{ runner.os }}"
           Write-Output "Runner Architecture: ${{ runner.arch }}"
-          Write-Output "Runner Workspace: ${{ runner.workspace }}"
+          Write-Output "Workspace: ${{ github.workspace }}"
           Write-Output ""
           Write-Output "Machine Identity:"
           Write-Output "  Hostname: $env:COMPUTERNAME"
