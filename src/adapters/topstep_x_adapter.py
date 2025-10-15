@@ -12,6 +12,7 @@ import logging
 import os
 import sys
 import time
+import threading
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 from contextlib import asynccontextmanager
@@ -1664,6 +1665,234 @@ class TopstepXAdapter:
         await self.disconnect()
 
 
+# ============================================================================
+# HTTP SERVER MODE - Flask REST API for .NET Integration
+# ============================================================================
+
+def create_flask_app(adapter: TopstepXAdapter) -> 'Flask':
+    """Create Flask app with REST API endpoints for .NET integration."""
+    from flask import Flask, jsonify, request
+    from flask_cors import CORS
+    
+    app = Flask(__name__)
+    CORS(app)  # Enable CORS for all routes
+    
+    # Global event loop for async operations
+    loop = asyncio.new_event_loop()
+    
+    def run_async(coro):
+        """Run async coroutine in background event loop."""
+        future = asyncio.run_coroutine_threadsafe(coro, loop)
+        return future.result(timeout=30.0)
+    
+    @app.route('/health', methods=['GET'])
+    def health():
+        """Health check endpoint - returns adapter status."""
+        try:
+            if not adapter._is_initialized:
+                return jsonify({
+                    'status': 'initializing',
+                    'initialized': False,
+                    'message': 'Adapter is initializing...'
+                }), 503
+            
+            health_data = run_async(adapter.get_health_score())
+            return jsonify({
+                'status': 'healthy',
+                'initialized': True,
+                'health_score': health_data.get('health_score', 0),
+                'details': health_data
+            }), 200
+        except Exception as e:
+            return jsonify({
+                'status': 'unhealthy',
+                'error': str(e)
+            }), 500
+    
+    @app.route('/price/<symbol>', methods=['GET'])
+    def get_price(symbol: str):
+        """Get current price for symbol."""
+        try:
+            price = run_async(adapter.get_price(symbol))
+            return jsonify({
+                'success': True,
+                'symbol': symbol,
+                'price': float(price),
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            }), 200
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 400
+    
+    @app.route('/order', methods=['POST'])
+    def place_order():
+        """Place a bracket order."""
+        try:
+            data = request.get_json()
+            result = run_async(adapter.place_order(
+                symbol=data['symbol'],
+                size=data['size'],
+                stop_loss=float(data['stop_loss']),
+                take_profit=float(data['take_profit']),
+                max_risk_percent=data.get('max_risk_percent', 0.01)
+            ))
+            return jsonify(result), 200
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 400
+    
+    @app.route('/positions', methods=['GET'])
+    def get_positions():
+        """Get all positions."""
+        try:
+            positions = run_async(adapter.get_positions())
+            return jsonify({
+                'success': True,
+                'positions': positions,
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            }), 200
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 400
+    
+    @app.route('/events', methods=['GET'])
+    def get_events():
+        """Get new WebSocket events (fills and bars)."""
+        try:
+            # Get both fill and bar events
+            fill_events = run_async(adapter.get_fill_events())
+            bar_events = run_async(adapter.get_bar_events())
+            
+            return jsonify({
+                'success': True,
+                'fills': fill_events.get('fills', []),
+                'bars': bar_events.get('bars', []),
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            }), 200
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 400
+    
+    @app.route('/close_position', methods=['POST'])
+    def close_position():
+        """Close a position."""
+        try:
+            data = request.get_json()
+            result = run_async(adapter.close_position(
+                symbol=data['symbol'],
+                quantity=data.get('quantity')
+            ))
+            return jsonify(result), 200
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 400
+    
+    @app.route('/modify_stop', methods=['POST'])
+    def modify_stop():
+        """Modify stop loss."""
+        try:
+            data = request.get_json()
+            result = run_async(adapter.modify_stop_loss(
+                symbol=data['symbol'],
+                stop_price=float(data['stop_price'])
+            ))
+            return jsonify(result), 200
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 400
+    
+    @app.route('/modify_take_profit', methods=['POST'])
+    def modify_take_profit():
+        """Modify take profit."""
+        try:
+            data = request.get_json()
+            result = run_async(adapter.modify_take_profit(
+                symbol=data['symbol'],
+                take_profit_price=float(data['take_profit_price'])
+            ))
+            return jsonify(result), 200
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 400
+    
+    @app.route('/cancel_order', methods=['POST'])
+    def cancel_order():
+        """Cancel an order."""
+        try:
+            data = request.get_json()
+            result = run_async(adapter.cancel_order(data['order_id']))
+            return jsonify(result), 200
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 400
+    
+    @app.route('/portfolio', methods=['GET'])
+    def get_portfolio():
+        """Get portfolio status."""
+        try:
+            result = run_async(adapter.get_portfolio_status())
+            return jsonify({
+                'success': True,
+                'portfolio': result
+            }), 200
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 400
+    
+    return app, loop
+
+
+async def run_http_server():
+    """Run Flask HTTP server with WebSocket events in background."""
+    print("🌐 Starting HTTP server mode...")
+    
+    # Initialize adapter
+    adapter = TopstepXAdapter(["ES", "NQ"])
+    await adapter.initialize()
+    print("✅ Adapter initialized successfully")
+    
+    # Create Flask app and event loop
+    app, loop = create_flask_app(adapter)
+    
+    # Start async event loop in background thread
+    def run_event_loop():
+        asyncio.set_event_loop(loop)
+        loop.run_forever()
+    
+    loop_thread = threading.Thread(target=run_event_loop, daemon=True)
+    loop_thread.start()
+    print("✅ Background event loop started")
+    
+    # Get server configuration from environment
+    host = os.getenv('ADAPTER_HTTP_HOST', 'localhost')
+    port = int(os.getenv('ADAPTER_HTTP_PORT', '8765'))
+    
+    print(f"🚀 Starting Flask server on {host}:{port}")
+    print(f"   Health endpoint: http://{host}:{port}/health")
+    print(f"   Price endpoint: http://{host}:{port}/price/{{symbol}}")
+    
+    # Run Flask server (blocking)
+    app.run(host=host, port=port, debug=False, threaded=True)
+
+
 # Standalone test function for validation
 async def test_adapter_functionality():
     """Test adapter functionality for CI validation."""
@@ -1713,6 +1942,12 @@ if __name__ == "__main__":
     import sys
     import json
     import asyncio
+    
+    # Check for HTTP server mode
+    if len(sys.argv) > 1 and sys.argv[1] == "serve":
+        # HTTP SERVER MODE: Flask REST API for .NET integration
+        asyncio.run(run_http_server())
+        sys.exit(0)
     
     # Check for persistent/streaming mode
     if len(sys.argv) > 1 and sys.argv[1] == "stream":

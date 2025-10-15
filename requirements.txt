@@ -16,6 +16,10 @@ polars>=1.31.0
 rich>=14.1.0
 signalrcore>=0.9.5
 
+# HTTP API Server for .NET integration
+flask>=3.0.0
+flask-cors>=4.0.0
+
 # ML/RL Dependencies for Backtest Validation and Model Training
 # Note: numpy version must be compatible with numba and project-x-py
 numpy>=2.3.2
