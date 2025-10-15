@@ -42,6 +42,8 @@ jobs:
 
       - name: "🔧 Setup .NET SDK"
         uses: actions/setup-dotnet@v4
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/.dotnet
         with:
           dotnet-version: '8.0.x'
 
@@ -296,6 +298,11 @@ jobs:
             $ProcessInfo.UseShellExecute = $false
             $ProcessInfo.CreateNoWindow = $true
             $ProcessInfo.WorkingDirectory = (Get-Location)
+            
+            # Copy environment variables to the new process
+            foreach ($envVar in [Environment]::GetEnvironmentVariables().GetEnumerator()) {
+              $ProcessInfo.Environment[$envVar.Name] = $envVar.Value
+            }
             
             $Process = New-Object System.Diagnostics.Process
             $Process.StartInfo = $ProcessInfo
