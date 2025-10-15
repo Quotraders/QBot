@@ -1756,9 +1756,10 @@ def create_flask_app(adapter: TopstepXAdapter) -> 'Flask':
                 'timestamp': datetime.now(timezone.utc).isoformat()
             }), 200
         except Exception as e:
+            logging.exception("Exception occurred in get_positions API handler")
             return jsonify({
                 'success': False,
-                'error': str(e)
+                'error': 'An internal error occurred. Please contact support.'
             }), 400
     
     @app.route('/events', methods=['GET'])
