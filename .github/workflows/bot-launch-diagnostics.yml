@@ -299,6 +299,11 @@ jobs:
             $ProcessInfo.CreateNoWindow = $true
             $ProcessInfo.WorkingDirectory = (Get-Location)
             
+            # Copy environment variables to the new process
+            foreach ($envVar in [Environment]::GetEnvironmentVariables().GetEnumerator()) {
+              $ProcessInfo.Environment[$envVar.Name] = $envVar.Value
+            }
+            
             $Process = New-Object System.Diagnostics.Process
             $Process.StartInfo = $ProcessInfo
             
