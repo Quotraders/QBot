@@ -1704,9 +1704,10 @@ def create_flask_app(adapter: TopstepXAdapter) -> 'Flask':
                 'details': health_data
             }), 200
         except Exception as e:
+            logging.exception("Exception in /health endpoint")
             return jsonify({
                 'status': 'unhealthy',
-                'error': str(e)
+                'error': 'Internal server error'
             }), 500
     
     @app.route('/price/<symbol>', methods=['GET'])
