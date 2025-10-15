@@ -178,22 +178,17 @@ public sealed class ComponentDiscoveryService
             // Critical file paths the bot depends on
             var fileDependencies = new[]
             {
-                new { Path = "artifacts/current/parameters/bundle.json", Name = "Parameter Bundle", RefreshHours = FourHourRefresh },
-                new { Path = "datasets/economic_calendar/calendar.json", Name = "Economic Calendar", RefreshHours = DailyRefresh },
-                new { Path = "models/champion/rl_model.onnx", Name = "Champion RL Model", RefreshHours = WeeklyRefresh },
-                new { Path = "models/champion/strategy_selection.onnx", Name = "Strategy Selection Model", RefreshHours = WeeklyRefresh },
-                new { Path = "kill.txt", Name = "Emergency Stop File", RefreshHours = NoRefreshRequired }, // Check existence only
-                new { Path = ".env", Name = "Environment Configuration", RefreshHours = NoRefreshRequired },
-                new { Path = "state/runtime-overrides.json", Name = "Runtime Overrides", RefreshHours = HourlyRefresh }
+                new { Path = "artifacts/current/parameters/bundle.json", Name = "Parameter Bundle", RefreshHours = FourHourRefresh, IsCritical = false },
+                new { Path = "datasets/economic_calendar/calendar.json", Name = "Economic Calendar", RefreshHours = DailyRefresh, IsCritical = false },
+                new { Path = "models/champion/rl_model.onnx", Name = "Champion RL Model", RefreshHours = WeeklyRefresh, IsCritical = false },
+                new { Path = "models/champion/strategy_selection.onnx", Name = "Strategy Selection Model", RefreshHours = WeeklyRefresh, IsCritical = false },
+                new { Path = "kill.txt", Name = "Emergency Stop File", RefreshHours = NoRefreshRequired, IsCritical = true }, // Check existence only - critical safety feature
+                new { Path = ".env", Name = "Environment Configuration", RefreshHours = NoRefreshRequired, IsCritical = true },
+                new { Path = "state/runtime-overrides.json", Name = "Runtime Overrides", RefreshHours = HourlyRefresh, IsCritical = false }
             };
 
             foreach (var file in fileDependencies)
             {
-                const double epsilon = 0.0001; // S1244: Tolerance for floating point comparison
-                var isCritical = Math.Abs(file.RefreshHours - NoRefreshRequired) < epsilon || 
-                                 file.Name.Contains("Model", StringComparison.OrdinalIgnoreCase) || 
-                                 file.Name.Contains("Parameter", StringComparison.OrdinalIgnoreCase);
-                
                 components.Add(new DiscoveredComponent
                 {
                     Name = file.Name,
@@ -203,7 +198,7 @@ public sealed class ComponentDiscoveryService
                     Metadata = new Dictionary<string, object>
                     {
                         ["ExpectedPath"] = file.Path,
-                        ["IsCritical"] = isCritical
+                        ["IsCritical"] = file.IsCritical
                     }
                 });
                 

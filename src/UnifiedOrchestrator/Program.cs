@@ -65,9 +65,13 @@ internal static class Program
         void Dir(string p) { if (!Directory.Exists(p)) Directory.CreateDirectory(p); }
         Dir("state"); Dir("state/backtests"); Dir("state/learning");
         Dir("datasets"); Dir("datasets/features"); Dir("datasets/quotes");
+        Dir("datasets/economic_calendar"); // For economic calendar health check
         Dir("reports"); Dir("artifacts"); Dir("artifacts/models"); Dir("artifacts/temp"); 
         Dir("artifacts/current"); Dir("artifacts/previous"); Dir("artifacts/stage");
+        Dir("artifacts/current/parameters"); // For parameter bundle health check
         Dir("model_registry/models"); Dir("config/calendar"); Dir("manifests");
+        Dir("models/champion"); // For champion model health checks
+        Dir("logs"); // For TradingLogger
         
         var overrides = "state/runtime-overrides.json";
         if (!File.Exists(overrides)) File.WriteAllText(overrides, "{}");
@@ -79,6 +83,14 @@ internal static class Program
             "{ \"name\":\"Exhaustion\",\"bands\":{\"bearish\":0.25,\"bullish\":0.75,\"hysteresis\":0.08},\"pacing\":0.8,\"tilt\":0.0,\"limits\":{\"spreadTicksMax\":3,\"latencyMsMax\":200},\"bracket\":{\"mode\":\"Auto\"} }");
         var hol = "config/calendar/holiday-cme.json";
         if (!File.Exists(hol)) File.WriteAllText(hol, "2025-01-01\n2025-07-04\n2025-12-25\n");
+        
+        // Create initial files for health checks to prevent excessive logging
+        var paramBundle = "artifacts/current/parameters/bundle.json";
+        if (!File.Exists(paramBundle)) File.WriteAllText(paramBundle, 
+            "{ \"version\": \"1.0.0\", \"timestamp\": \"" + DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ") + "\", \"parameters\": {} }");
+        
+        var economicCal = "datasets/economic_calendar/calendar.json";
+        if (!File.Exists(economicCal)) File.WriteAllText(economicCal, "[]");
         
         // Create sample manifest.json if it doesn't exist
         var manifestPath = "manifests/manifest.json";
