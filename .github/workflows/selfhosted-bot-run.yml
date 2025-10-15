@@ -27,6 +27,11 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: "🔧 Setup .NET SDK"
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
       - name: "🔧 Setup .NET Environment"
         shell: pwsh
         run: |
@@ -39,6 +44,9 @@ jobs:
           try {
             $DotnetVersion = dotnet --version
             Write-Output "✅ .NET SDK Version: $DotnetVersion"
+            Write-Output ""
+            Write-Output "📋 .NET SDK Information:"
+            dotnet --info
           } catch {
             Write-Output "❌ .NET SDK not found"
             Write-Output "Error: $($_.Exception.Message)"

@@ -40,6 +40,11 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: "🔧 Setup .NET SDK"
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
       - name: "🔍 Pre-Launch Environment Validation"
         id: env_validation
         shell: pwsh
@@ -71,8 +76,13 @@ jobs:
           try {
             $DotnetVersion = dotnet --version
             Write-Output "  ✅ .NET SDK: $DotnetVersion"
+            Write-Output ""
+            Write-Output "📋 .NET SDK Information:"
+            dotnet --info
           } catch {
             Write-Output "  ❌ .NET SDK: Not found"
+            Write-Output "  Error: $($_.Exception.Message)"
+            exit 1
           }
           Write-Output ""
           
