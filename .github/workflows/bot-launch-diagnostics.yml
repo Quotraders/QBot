@@ -42,8 +42,6 @@ jobs:
 
       - name: "🔧 Setup .NET SDK"
         uses: actions/setup-dotnet@v4
-        env:
-          DOTNET_INSTALL_DIR: ${{ runner.temp }}/.dotnet
         with:
           dotnet-version: '8.0.x'
 
