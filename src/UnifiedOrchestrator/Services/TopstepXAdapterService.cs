@@ -62,7 +62,6 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
     private Task? _stdoutReaderTask;
     private readonly CancellationTokenSource _processCts = new();
     private readonly ConcurrentDictionary<string, TaskCompletionSource<JsonElement>> _pendingResponses = new();
-    private int _commandIdCounter;
     
     // PHASE 2: Fill event subscription infrastructure
     private readonly CancellationTokenSource _fillEventCts = new();
@@ -823,7 +822,9 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
 
     string TradingBot.Abstractions.ITopstepXAdapterService.ConnectionHealth => $"{_connectionHealth:F1}%";
 
+#pragma warning disable CS0067 // Event is never used - required by ITopstepXAdapterService interface
     public event EventHandler<TradingBot.Abstractions.StatusChangedEventArgs>? StatusChanged;
+#pragma warning restore CS0067
 
     private async Task ValidatePythonSDKAsync(CancellationToken cancellationToken)
     {

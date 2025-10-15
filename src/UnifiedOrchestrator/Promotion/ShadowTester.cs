@@ -17,7 +17,6 @@ using TradingBot.UnifiedOrchestrator.Services;
 using IModelRegistry = TradingBot.UnifiedOrchestrator.Interfaces.IModelRegistry;
 using IModelRouterFactory = TradingBot.UnifiedOrchestrator.Interfaces.IModelRouterFactory;
 using Quote = TradingBot.Abstractions.Quote;
-using System.Security.Cryptography;
 
 namespace TradingBot.UnifiedOrchestrator.Promotion;
 
@@ -415,6 +414,7 @@ internal class ShadowTester : IShadowTester
         };
     }
 
+#pragma warning disable CS1998 // Async method lacks 'await' - synchronous ONNX inference, kept async for interface compatibility
     private async Task<ShadowDecision> GetModelDecisionAsync(InferenceSession model, TradingContext context, CancellationToken cancellationToken)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -460,6 +460,7 @@ internal class ShadowTester : IShadowTester
         // Fallback to simple rule-based decision
         return CreateFallbackDecision(context, stopwatch.ElapsedMilliseconds);
     }
+#pragma warning restore CS1998
 
     private static float[] ExtractFeatures(TradingContext context)
     {
@@ -594,7 +595,6 @@ internal class ShadowTester : IShadowTester
     {
         var returns = new List<decimal>();
         decimal position = 0;
-        decimal entryPrice = 0;
 
         for (int i = 0; i < decisions.Count; i++)
         {
@@ -606,7 +606,6 @@ internal class ShadowTester : IShadowTester
             if (decision.Action == "BUY" && position == 0)
             {
                 position = decision.Size;
-                entryPrice = 1m; // Normalized
             }
             else if (decision.Action == "SELL" && position > 0)
             {

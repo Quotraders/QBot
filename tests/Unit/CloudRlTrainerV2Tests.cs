@@ -12,6 +12,7 @@ using Moq;
 using Xunit;
 using TradingBot.Abstractions;
 using CloudTrainer;
+using BotCore.Services;
 
 namespace TradingBot.Unit.Tests;
 
@@ -23,7 +24,7 @@ public class CloudRlTrainerV2IntegrationTests : IDisposable
 {
     private readonly string _tempDir;
     private readonly Mock<ILogger<CloudRlTrainerV2>> _loggerMock;
-    private readonly Mock<ILogger<BotCore.Services.SafeHoldDecisionPolicy>> _neutralBandLoggerMock;
+    private readonly Mock<ILogger<SafeHoldDecisionPolicy>> _neutralBandLoggerMock;
     private readonly Mock<IConfiguration> _configMock;
     private readonly Mock<IConfigurationSection> _neutralBandSectionMock;
     private readonly CloudRlTrainerOptions _options;
@@ -38,7 +39,7 @@ public class CloudRlTrainerV2IntegrationTests : IDisposable
         Directory.CreateDirectory(Path.Combine(_tempDir, "artifacts", "previous"));
 
         _loggerMock = new Mock<ILogger<CloudRlTrainerV2>>();
-        _neutralBandLoggerMock = new Mock<ILogger<BotCore.Services.SafeHoldDecisionPolicy>>();
+        _neutralBandLoggerMock = new Mock<ILogger<SafeHoldDecisionPolicy>>();
         _configMock = new Mock<IConfiguration>();
         _neutralBandSectionMock = new Mock<IConfigurationSection>();
         
@@ -216,7 +217,7 @@ public class CloudRlTrainerV2IntegrationTests : IDisposable
     public async Task NeutralBandLatticesIntegration_WithRealServices_ShouldUseDynamicThresholds()
     {
         // Arrange - Create real services with proper integration
-        var neutralBandService = new BotCore.Services.SafeHoldDecisionPolicy(
+        var neutralBandService = new SafeHoldDecisionPolicy(
             _neutralBandLoggerMock.Object, 
             _configMock.Object);
             
@@ -512,9 +513,9 @@ internal class TestModelHotSwapper : IModelHotSwapper
 
 internal class TestPerformanceStore : IPerformanceStore
 {
-    public Task<ModelPerformance?> GetPerformanceAsync(string modelId, CancellationToken cancellationToken)
+    public Task<CloudTrainer.ModelPerformance?> GetPerformanceAsync(string modelId, CancellationToken cancellationToken)
     {
-        return Task.FromResult<ModelPerformance?>(new ModelPerformance
+        return Task.FromResult<CloudTrainer.ModelPerformance?>(new CloudTrainer.ModelPerformance
         {
             Accuracy = 0.75,
             SharpeRatio = 1.2,
@@ -524,8 +525,24 @@ internal class TestPerformanceStore : IPerformanceStore
         });
     }
 
-    public Task SavePerformanceAsync(string modelId, ModelPerformance performance, CancellationToken cancellationToken)
+    public Task SavePerformanceAsync(string modelId, CloudTrainer.ModelPerformance performance, CancellationToken cancellationToken)
     {
         return Task.CompletedTask;
+    }
+
+    public Task<List<CloudTrainer.ModelPerformance>> GetTopPerformersAsync(int count, CancellationToken cancellationToken)
+    {
+        var performers = new List<CloudTrainer.ModelPerformance>
+        {
+            new CloudTrainer.ModelPerformance
+            {
+                Accuracy = 0.75,
+                SharpeRatio = 1.2,
+                MaxDrawdown = -0.05,
+                TotalTrades = 100,
+                LastEvaluated = DateTimeOffset.UtcNow
+            }
+        };
+        return Task.FromResult(performers);
     }
 }

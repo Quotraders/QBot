@@ -229,14 +229,14 @@ internal class TopstepXAdapterMonitor
         }
     }
 
-    public async Task PerformReconciliationAsync()
+    public Task PerformReconciliationAsync()
     {
         try
         {
             if (_topstepXAdapter == null)
             {
                 _logger.LogWarning("⚠️ [TOPSTEPX-RECONCILIATION] TopstepX adapter not available");
-                return;
+                return Task.CompletedTask;
             }
 
             // Reconciliation now handled internally by TopstepX adapter
@@ -249,12 +249,14 @@ internal class TopstepXAdapterMonitor
         {
             _logger.LogError(ex, "❌ [TOPSTEPX-RECONCILIATION] Reconciliation failed");
         }
+        
+        return Task.CompletedTask;
     }
 
     /// <summary>
     /// Reconciles positions between TopstepX SDK events and REST API data
     /// </summary>
-    private async Task PerformPositionReconciliationAsync()
+    private Task PerformPositionReconciliationAsync()
     {
         try
         {
@@ -264,23 +266,24 @@ internal class TopstepXAdapterMonitor
             if (_serviceProvider == null)
             {
                 _logger.LogWarning("⚠️ [POSITION-RECONCILIATION] Service provider not available");
-                return;
+                return Task.CompletedTask;
             }
             
             // Legacy account service removed - now handled by TopstepX SDK adapter
             _logger.LogInformation("Position reconciliation now handled by TopstepX SDK adapter");
-            return;
+            return Task.CompletedTask;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ [POSITION-RECONCILIATION] Position reconciliation failed");
+            return Task.CompletedTask;
         }
     }
 
     /// <summary>
     /// Reconciles orders between TopstepX SDK events and REST API data
     /// </summary>
-    private async Task PerformOrderReconciliationAsync()
+    private Task PerformOrderReconciliationAsync()
     {
         try
         {
@@ -290,16 +293,17 @@ internal class TopstepXAdapterMonitor
             if (_serviceProvider == null)
             {
                 _logger.LogWarning("⚠️ [ORDER-RECONCILIATION] Service provider not available");
-                return;
+                return Task.CompletedTask;
             }
             
             // Legacy order service removed - now handled by TopstepX SDK adapter
             _logger.LogInformation("Order reconciliation now handled by TopstepX SDK adapter");
-            return;
+            return Task.CompletedTask;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ [ORDER-RECONCILIATION] Order reconciliation failed");
+            return Task.CompletedTask;
         }
     }
 

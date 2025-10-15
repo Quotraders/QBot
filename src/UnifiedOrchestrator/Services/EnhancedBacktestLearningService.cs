@@ -714,6 +714,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
     /// <summary>
     /// Load REAL historical data for backtesting - NO SYNTHETIC GENERATION ALLOWED
     /// </summary>
+#pragma warning disable CS1998 // Async method lacks 'await' - awaiting future async API integration
     private async Task<List<HistoricalDataPoint>> LoadRealHistoricalDataAsync(BacktestConfig config)
     {
         try
@@ -738,6 +739,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
             return new List<HistoricalDataPoint>();
         }
     }
+#pragma warning restore CS1998
 
     /// <summary>
     /// Update backtest state based on trading decision
@@ -1336,9 +1338,6 @@ internal class EnhancedBacktestLearningService : BackgroundService
             // Log that no real bars data was available
             _logger.LogWarning("[UNIFIED-BACKTEST] No TopstepX historical bars available for {Symbol}", config.Symbol);
             return new List<Bar>();
-            
-            // Return empty list instead of generating synthetic data
-            return new List<Bar>();
         }
         catch (Exception ex)
         {
@@ -1350,6 +1349,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
     /// <summary>
     /// Load REAL historical bars from actual market data - NO SYNTHETIC GENERATION ALLOWED
     /// </summary>
+#pragma warning disable CS1998 // Async method lacks 'await' - awaiting future async API integration
     private async Task<List<Bar>> LoadRealHistoricalBarsAsync(UnifiedBacktestConfig config)
     {
         try
