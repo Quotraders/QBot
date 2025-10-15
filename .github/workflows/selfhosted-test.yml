@@ -23,6 +23,12 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: "🔧 Setup .NET SDK"
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+          dotnet-install-dir: ${{ runner.temp }}/.dotnet
+
       - name: "🖥️ Print Runner Identity"
         shell: pwsh
         run: |
