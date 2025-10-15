@@ -14,16 +14,54 @@ Comprehensive audit of all self-hosted GitHub Actions workflows confirms that th
 2. `.github/workflows/selfhosted-bot-run.yml` - Self-Hosted Bot Run  
 3. `.github/workflows/selfhosted-test.yml` - Self-Hosted Runner Test
 
-## Critical Finding: .NET SDK Installation ✅ CORRECT
+## Critical Finding: .NET SDK Installation ✅ FIXED
 
 ### Problem Statement Issue
 
 The workflow was reported as failing because `actions/setup-dotnet@v4` was trying to install .NET into `C:\Program Files\dotnet`, which requires Administrator rights.
 
-### Audit Result
+### Root Cause
 
-**All three self-hosted workflows are correctly configured** with ONLY the `dotnet-version` parameter:
+When .NET SDK is already installed system-wide at `C:\Program Files\dotnet`, the `actions/setup-dotnet@v4` action attempts to update it in place, even without an explicit `install-dir` parameter. This causes permission errors on self-hosted runners not running with administrator privileges.
 
+### Solution Applied
+
+Added `DOTNET_INSTALL_DIR` environment variable to all setup-dotnet steps to force installation to a user-writable location:
+
+```yaml
+- name: "🔧 Setup .NET SDK"
+  uses: actions/setup-dotnet@v4
+  env:
+    DOTNET_INSTALL_DIR: ${{ runner.temp }}/.dotnet
+  with:
+    dotnet-version: '8.0.x'
+```
+
+### Why This Configuration Is Correct
+
+1. **DOTNET_INSTALL_DIR environment variable**: Forces the action to install to the specified directory
+2. **Uses runner.temp**: Automatically points to a user-writable temporary directory
+3. **No admin rights required**: The temp directory is always writable by the runner user
+4. **Bypasses system install**: Ignores any existing system-wide .NET installation
+5. **Latest action version**: Using `@v4` (current major version)
+6. **Version pattern**: Using `8.0.x` for latest .NET 8 patch version
+
+### Confirmation
+
+The .NET SDK installation configuration **has been fixed** to use `DOTNET_INSTALL_DIR` environment variable, ensuring .NET installs to `${{ runner.temp }}/.dotnet` and will not encounter permission errors on non-elevated self-hosted runners.
+
+## Changes Made 🔧
+
+### Issue #1: .NET SDK Permission Errors
+
+**Files Modified**: 
+- `.github/workflows/bot-launch-diagnostics.yml`
+- `.github/workflows/selfhosted-bot-run.yml`
+- `.github/workflows/selfhosted-test.yml`
+
+**Change**: Added `DOTNET_INSTALL_DIR` environment variable to setup-dotnet steps
+
+**Before**:
 ```yaml
 - name: "🔧 Setup .NET SDK"
   uses: actions/setup-dotnet@v4
@@ -31,25 +69,21 @@ The workflow was reported as failing because `actions/setup-dotnet@v4` was tryin
     dotnet-version: '8.0.x'
 ```
 
-**No `install-dir` parameter is present** in any workflow file.
+**After**:
+```yaml
+- name: "🔧 Setup .NET SDK"
+  uses: actions/setup-dotnet@v4
+  env:
+    DOTNET_INSTALL_DIR: ${{ runner.temp }}/.dotnet
+  with:
+    dotnet-version: '8.0.x'
+```
 
-### Why This Configuration Is Correct
+**Impact**: Forces .NET SDK installation to user-writable temp directory, bypassing system-wide installation attempts that require admin rights.
 
-1. **No install-dir parameter**: The action automatically selects a user-writable location
-2. **User profile installation**: .NET SDK installs to `%USERPROFILE%\.dotnet` on Windows
-3. **No admin rights required**: User profile directory is always writable by the runner user
-4. **Latest action version**: Using `@v4` (current major version)
-5. **Version pattern**: Using `8.0.x` for latest .NET 8 patch version
+### Issue #2: Invalid Context Property Reference
 
-### Confirmation
-
-The .NET SDK installation configuration is **production-ready** and will not encounter permission errors on non-elevated self-hosted runners.
-
-## Fixed Issue: Invalid Context Property 🔧
-
-### Issue Identified
-
-File: `.github/workflows/selfhosted-test.yml`, Line 41
+**File**: `.github/workflows/selfhosted-test.yml`, Line 41
 
 **Error**: `property "workspace" is not defined in object type {arch, debug, environment, name, os, temp, tool_cache}`
 
@@ -216,11 +250,12 @@ All workflows comply with production safety requirements:
 
 ### Summary
 
-**All self-hosted workflows are correctly configured** and production-ready. The .NET SDK installation permission issue mentioned in the problem statement has been confirmed as **already resolved** across all workflow files.
+**All self-hosted workflows have been fixed** and are production-ready. The .NET SDK installation permission issue has been resolved by adding the `DOTNET_INSTALL_DIR` environment variable to force user-writable installation paths.
 
 ### Changes Made
 
-1. ✅ Fixed invalid context property: `runner.workspace` → `github.workspace` in selfhosted-test.yml
+1. ✅ Fixed .NET SDK permission errors by adding `DOTNET_INSTALL_DIR` environment variable to all three workflows
+2. ✅ Fixed invalid context property: `runner.workspace` → `github.workspace` in selfhosted-test.yml
 
 ### Verification
 
