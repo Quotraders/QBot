@@ -583,6 +583,13 @@ Please check the configuration and ensure all required services are registered.
         // Register UnifiedDecisionRouter before AutonomousDecisionEngine (dependency order)
         services.AddSingleton<global::BotCore.Services.UnifiedDecisionRouter>();
         
+        // Register PaperTradingTracker for DRY_RUN mode simulation (must be before AutonomousDecisionEngine)
+        services.AddSingleton<global::BotCore.Services.PaperTradingTracker>();
+        services.AddHostedService<global::BotCore.Services.PaperTradingTracker>(provider => 
+            provider.GetRequiredService<global::BotCore.Services.PaperTradingTracker>());
+        
+        Console.WriteLine("📊 [PAPER-TRADING] Registered paper trading tracker - tracks REAL price movements in DRY_RUN mode");
+        
         // Register the main autonomous decision engine as hosted service
         services.AddSingleton<AutonomousDecisionEngine>();
         services.AddHostedService<AutonomousDecisionEngine>(provider => 
@@ -869,7 +876,8 @@ Please check the configuration and ensure all required services are registered.
         services.AddHostedService<ExecutionMetricsReportingService>();
         
         // TopstepX Integration Test Service for validation
-        services.AddHostedService<TopstepXIntegrationTestService>();
+        // DISABLED: Test service shuts down bot after connectivity tests
+        // services.AddHostedService<TopstepXIntegrationTestService>();
 
         // Configure AppOptions for Safety components
         var appOptions = new AppOptions

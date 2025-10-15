@@ -1037,6 +1037,31 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
         processInfo.Environment["ADAPTER_HTTP_HOST"] = _config.AdapterHttpHost;
         processInfo.Environment["ADAPTER_HTTP_PORT"] = _config.AdapterHttpPort.ToString();
         
+        // Set UTF-8 encoding to support Unicode characters (emojis) in Python output
+        processInfo.Environment["PYTHONIOENCODING"] = "utf-8";
+        
+        // Explicitly pass TopstepX credentials to Python subprocess
+        // DotNetEnv loads .env into Process.Environment, but subprocess needs explicit assignment
+        var apiKey = Environment.GetEnvironmentVariable("PROJECT_X_API_KEY") ?? Environment.GetEnvironmentVariable("TOPSTEPX_API_KEY");
+        var username = Environment.GetEnvironmentVariable("PROJECT_X_USERNAME") ?? Environment.GetEnvironmentVariable("TOPSTEPX_USERNAME");
+        var accountId = Environment.GetEnvironmentVariable("PROJECT_X_ACCOUNT_ID") ?? Environment.GetEnvironmentVariable("TOPSTEPX_ACCOUNT_ID");
+        
+        if (!string.IsNullOrEmpty(apiKey))
+        {
+            processInfo.Environment["PROJECT_X_API_KEY"] = apiKey;
+            processInfo.Environment["TOPSTEPX_API_KEY"] = apiKey; // Python script checks both
+        }
+        if (!string.IsNullOrEmpty(username))
+        {
+            processInfo.Environment["PROJECT_X_USERNAME"] = username;
+            processInfo.Environment["TOPSTEPX_USERNAME"] = username; // Python script checks both
+        }
+        if (!string.IsNullOrEmpty(accountId))
+        {
+            processInfo.Environment["PROJECT_X_ACCOUNT_ID"] = accountId;
+            processInfo.Environment["TOPSTEPX_ACCOUNT_ID"] = accountId; // Python script checks both
+        }
+        
         if (isWsl)
         {
             var wslAdapterPath = adapterPath.Replace("\\", "/").Replace("C:", "/mnt/c").Replace("c:", "/mnt/c");
@@ -1070,7 +1095,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             _pythonProcess = process;
         }
         
-        // Start background task to log server output
+        // Start background task to log server stdout
         _ = Task.Run(async () =>
         {
             try
@@ -1080,13 +1105,33 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                     var line = await process.StandardOutput.ReadLineAsync().ConfigureAwait(false);
                     if (line != null)
                     {
-                        _logger.LogInformation("[HTTP-SERVER] {Line}", line);
+                        _logger.LogInformation("[HTTP-STDOUT] {Line}", line);
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "[HTTP-SERVER] Error reading server output");
+                _logger.LogWarning(ex, "[HTTP-STDOUT] Error reading server stdout");
+            }
+        });
+        
+        // Start background task to log server stderr
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                while (!process.HasExited)
+                {
+                    var line = await process.StandardError.ReadLineAsync().ConfigureAwait(false);
+                    if (line != null)
+                    {
+                        _logger.LogError("[HTTP-STDERR] {Line}", line);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[HTTP-STDERR] Error reading server stderr");
             }
         });
         

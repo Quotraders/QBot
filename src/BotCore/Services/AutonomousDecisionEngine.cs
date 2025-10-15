@@ -81,6 +81,9 @@ public class AutonomousDecisionEngine : BackgroundService
     private readonly AutonomousPerformanceTracker _performanceTracker;
     private readonly MarketConditionAnalyzer _marketAnalyzer;
     
+    // Paper trading tracker for DRY_RUN mode
+    private readonly PaperTradingTracker? _paperTradingTracker;
+    
     // Autonomous state management
     private readonly Dictionary<string, AutonomousStrategyMetrics> _strategyMetrics = new();
     private readonly Queue<AutonomousTradeOutcome> _recentTrades = new();
@@ -191,7 +194,8 @@ public class AutonomousDecisionEngine : BackgroundService
         IMarketHours marketHours,
         IRiskManager riskManager,
         IOptions<AutonomousConfig> config,
-        ITopstepXAdapterService? topstepXAdapter = null)
+        ITopstepXAdapterService? topstepXAdapter = null,
+        PaperTradingTracker? paperTradingTracker = null)
     {
         ArgumentNullException.ThrowIfNull(config);
         ArgumentNullException.ThrowIfNull(unifiedBrain);
@@ -203,12 +207,20 @@ public class AutonomousDecisionEngine : BackgroundService
         _marketHours = marketHours;
         _config = config.Value;
         _topstepXAdapter = topstepXAdapter;
+        _paperTradingTracker = paperTradingTracker;
         
         _complianceManager = new TopStepComplianceManager(logger, config);
         _performanceTracker = new AutonomousPerformanceTracker(
             _serviceProvider.GetRequiredService<ILogger<AutonomousPerformanceTracker>>());
         _marketAnalyzer = new MarketConditionAnalyzer(
             _serviceProvider.GetRequiredService<ILogger<MarketConditionAnalyzer>>());
+        
+        // Subscribe to simulated trade completions for learning in DRY_RUN mode
+        if (_paperTradingTracker != null)
+        {
+            _paperTradingTracker.SimulatedTradeCompleted += OnSimulatedTradeCompleted;
+            _logger.LogInformation("📚 [AUTONOMOUS-ENGINE] Subscribed to paper trading events for learning");
+        }
         
         InitializeAutonomousStrategyMetrics();
         
@@ -828,7 +840,37 @@ public class AutonomousDecisionEngine : BackgroundService
                 };
             }
             
-            // Place real order via TopstepX adapter
+            // Check if we're in DRY_RUN mode
+            var isDryRun = ProductionKillSwitchService.IsDryRunMode();
+            
+            if (isDryRun && _paperTradingTracker != null)
+            {
+                // PAPER TRADING: Track simulated trade with real market data
+                var tradeId = Guid.NewGuid().ToString();
+                
+                _paperTradingTracker.OpenSimulatedTrade(
+                    tradeId,
+                    opportunity.Symbol,
+                    opportunity.Direction,
+                    contractSize,
+                    currentPrice,
+                    stopLoss,
+                    takeProfit,
+                    opportunity.Strategy);
+                
+                _logger.LogInformation("📊 [DRY-RUN] Simulated trade opened - will track REAL price movements for fills");
+                
+                return new TradeExecutionResult
+                {
+                    Success = true,
+                    OrderId = tradeId,
+                    ExecutedSize = contractSize,
+                    ExecutedPrice = currentPrice,
+                    Timestamp = DateTime.UtcNow
+                };
+            }
+            
+            // LIVE TRADING: Place real order via TopstepX adapter
             var orderResult = await _topstepXAdapter.PlaceOrderAsync(
                 opportunity.Symbol,
                 orderSize,
@@ -904,6 +946,98 @@ public class AutonomousDecisionEngine : BackgroundService
         
         _logger.LogDebug("📚 [AUTONOMOUS-ENGINE] Trade recorded for learning: {Strategy} {Direction} {Symbol}", 
             opportunity.Strategy, opportunity.Direction, opportunity.Symbol);
+    }
+    
+    /// <summary>
+    /// Handle simulated trade completion from paper trading tracker
+    /// Learn from simulated outcomes just like real trades
+    /// </summary>
+    private void OnSimulatedTradeCompleted(object? sender, SimulatedTradeResult simulatedResult)
+    {
+        try
+        {
+            // Convert simulated trade to learning format
+            var tradeOutcome = new AutonomousTradeOutcome
+            {
+                Strategy = simulatedResult.Strategy,
+                Symbol = simulatedResult.Symbol,
+                Direction = simulatedResult.Direction,
+                EntryTime = simulatedResult.EntryTime,
+                EntryPrice = simulatedResult.EntryPrice,
+                Size = simulatedResult.Size,
+                Confidence = 0.5m, // Default confidence for simulated trades
+                AutonomousMarketRegime = _currentAutonomousMarketRegime,
+                ExitTime = simulatedResult.ExitTime,
+                ExitPrice = simulatedResult.ExitPrice,
+                PnL = simulatedResult.RealizedPnL
+            };
+            
+            var isWin = tradeOutcome.IsWin;
+            
+            lock (_stateLock)
+            {
+                _recentTrades.Enqueue(tradeOutcome);
+                
+                // Update win/loss streaks based on simulated outcomes
+                if (isWin)
+                {
+                    _consecutiveWins++;
+                    _consecutiveLosses = 0;
+                }
+                else
+                {
+                    _consecutiveLosses++;
+                    _consecutiveWins = 0;
+                }
+                
+                // Update daily P&L tracking
+                _todayPnL += tradeOutcome.PnL;
+                
+                // Keep only recent trades for learning
+                while (_recentTrades.Count > MaxRecentTradesCount)
+                {
+                    _recentTrades.Dequeue();
+                }
+                
+                // Update strategy metrics based on simulated outcome
+                if (_strategyMetrics.TryGetValue(tradeOutcome.Strategy, out var metrics))
+                {
+                    metrics.TotalTrades++;
+                    if (isWin)
+                    {
+                        metrics.WinningTrades++;
+                        metrics.TotalProfit += tradeOutcome.PnL;
+                    }
+                    else
+                    {
+                        metrics.LosingTrades++;
+                        metrics.TotalLoss += Math.Abs(tradeOutcome.PnL);
+                    }
+                }
+            }
+            
+            var emoji = isWin ? "✅" : "❌";
+            var winRate = _strategyMetrics[tradeOutcome.Strategy].TotalTrades > 0
+                ? _strategyMetrics[tradeOutcome.Strategy].WinningTrades / (decimal)_strategyMetrics[tradeOutcome.Strategy].TotalTrades
+                : 0m;
+            
+            _logger.LogInformation(
+                "{Emoji} [LEARNING] Simulated trade learned: {Strategy} {Direction} {Symbol} | P&L: ${PnL:F2} | Win Streak: {Wins} | Loss Streak: {Losses}",
+                emoji, tradeOutcome.Strategy, tradeOutcome.Direction, tradeOutcome.Symbol, 
+                tradeOutcome.PnL, _consecutiveWins, _consecutiveLosses);
+            
+            _logger.LogInformation(
+                "📊 [LEARNING] Today's P&L: ${DailyPnL:F2} | Strategy {Strategy} Stats: {Wins}W/{Losses}L ({WinRate:P0})",
+                _todayPnL, 
+                tradeOutcome.Strategy,
+                _strategyMetrics[tradeOutcome.Strategy].WinningTrades,
+                _strategyMetrics[tradeOutcome.Strategy].LosingTrades,
+                winRate);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ [LEARNING] Error processing simulated trade completion");
+        }
     }
     
     private async Task ManageExistingPositionsAsync(CancellationToken cancellationToken)

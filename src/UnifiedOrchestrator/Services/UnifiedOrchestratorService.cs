@@ -193,7 +193,7 @@ internal class UnifiedOrchestratorService : BackgroundService, IUnifiedOrchestra
     /// </summary>
     private async Task TestInstrumentConnectivityAsync(CancellationToken cancellationToken)
     {
-        var instruments = new[] { "MNQ", "ES" };
+        var instruments = new[] { "ES", "NQ" };
         
         foreach (var instrument in instruments)
         {
