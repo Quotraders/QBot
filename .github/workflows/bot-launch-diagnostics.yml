@@ -42,8 +42,6 @@ jobs:
 
       - name: "🔧 Setup .NET SDK"
         uses: actions/setup-dotnet@v4
-        env:
-          DOTNET_INSTALL_DIR: ${{ runner.temp }}/.dotnet
         with:
           dotnet-version: '8.0.x'
 
@@ -258,6 +256,16 @@ jobs:
           Write-Output "⚠️ DRY_RUN mode: ENABLED (safety mode - overrides .env)"
           Write-Output ""
           
+          # Find dotnet executable
+          $DotnetPath = (Get-Command dotnet -ErrorAction SilentlyContinue).Source
+          if (-not $DotnetPath) {
+            Write-Output "❌ ERROR: dotnet command not found in PATH"
+            Write-Output "PATH: $env:PATH"
+            exit 1
+          }
+          Write-Output "✅ Using dotnet: $DotnetPath"
+          Write-Output ""
+          
           # Prepare bot launch
           Write-Output "🎯 Bot configuration:"
           Write-Output "  Runtime: ${{ github.event.inputs.runtime_minutes || '5' }} minutes"
@@ -281,8 +289,8 @@ jobs:
           try {
             # Launch bot with output capture
             $ProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
-            $ProcessInfo.FileName = "dotnet"
-            $ProcessInfo.Arguments = "run --project src/UnifiedOrchestrator/UnifiedOrchestrator.csproj --no-build"
+            $ProcessInfo.FileName = $DotnetPath
+            $ProcessInfo.Arguments = "run --project src/UnifiedOrchestrator/UnifiedOrchestrator.csproj --no-build -c Release"
             $ProcessInfo.RedirectStandardOutput = $true
             $ProcessInfo.RedirectStandardError = $true
             $ProcessInfo.UseShellExecute = $false
