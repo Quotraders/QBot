@@ -345,20 +345,22 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 result = await SendHttpRequestAsync("GET", "/health", cancellationToken: cancellationToken).ConfigureAwait(false);
                 
                 // Parse HTTP response (different structure)
-                var healthScore = result.TryGetProperty("health_score", out var scoreElement) ? scoreElement.GetInt32() : 
-                                  (result.TryGetProperty("details", out var detailsElement) && 
-                                   detailsElement.TryGetProperty("health_score", out var detailScoreElement) ? 
-                                   detailScoreElement.GetInt32() : 0);
-                var status = result.TryGetProperty("status", out var statusElement) ? statusElement.GetString()! : "unknown";
-                var initialized = result.TryGetProperty("initialized", out var initElement) && initElement.GetBoolean();
+                var httpHealthScore = result.TryGetProperty("health_score", out var httpScoreElement) ? httpScoreElement.GetInt32() : 
+                                      (result.TryGetProperty("details", out var detailsElement) && 
+                                       detailsElement.TryGetProperty("health_score", out var detailScoreElement) ? 
+                                       detailScoreElement.GetInt32() : 0);
+                var httpStatus = result.TryGetProperty("status", out var httpStatusElement) ? httpStatusElement.GetString()! : "unknown";
+                var httpInitialized = result.TryGetProperty("initialized", out var httpInitElement) && httpInitElement.GetBoolean();
+                
+                _connectionHealth = httpHealthScore;
                 
                 return new HealthScoreResult(
-                    healthScore,
-                    status,
+                    httpHealthScore,
+                    httpStatus,
                     new Dictionary<string, object>(),
                     new Dictionary<string, object>(),
                     DateTime.UtcNow,
-                    initialized
+                    httpInitialized
                 );
             }
             else if (_pythonProcess != null && !_pythonProcess.HasExited)
@@ -445,9 +447,9 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 result = await SendHttpRequestAsync("GET", "/portfolio", cancellationToken: cancellationToken).ConfigureAwait(false);
                 
                 // Extract portfolio from HTTP response  
-                if (result.TryGetProperty("portfolio", out var portfolioElement))
+                if (result.TryGetProperty("portfolio", out var httpPortfolioElement))
                 {
-                    result = portfolioElement;
+                    result = httpPortfolioElement;
                 }
             }
             else
