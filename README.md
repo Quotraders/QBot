@@ -32,6 +32,29 @@
 
 ## 🎯 **How to Run the Production System**
 
+### 🚀 **Quick Start (Recommended)**
+
+Use the provided runner script for the best experience:
+
+```bash
+# Check SDK installation and run with verification
+./run-bot.sh --check-sdk
+
+# Run with log file output
+./run-bot.sh --with-logs
+
+# Standard run
+./run-bot.sh
+```
+
+The runner script will:
+- ✅ Check if TopstepX SDK (`project-x-py`) is installed
+- ✅ Verify environment variables are set
+- ✅ Show helpful error messages and installation instructions
+- ✅ Build and launch the bot with proper logging
+
+### 📝 **Alternative: Manual Launch**
+
 ```bash
 # Start the fully autonomous enhanced learning system
 cd src/UnifiedOrchestrator
@@ -42,6 +65,28 @@ dotnet run
 # Model promotion enabled by default (PROMOTE_TUNER=1)
 # Live trading remains manual (LIVE_ORDERS=0)
 ```
+
+### 🔧 **Required Setup**
+
+Before running the bot, ensure you have:
+
+1. **TopstepX SDK installed** (for live data and WebSocket connections):
+   ```bash
+   pip install 'project-x-py[all]'
+   ```
+
+2. **Environment variables set** (in `.env` file or system environment):
+   ```bash
+   TOPSTEPX_API_KEY=your_api_key_here
+   TOPSTEPX_USERNAME=your_username@email.com
+   ```
+
+3. **Dependencies restored**:
+   ```bash
+   dotnet restore
+   ```
+
+**Note:** If the SDK is not installed, the bot will run in **degraded mode** without live WebSocket connections or historical data. You'll see clear warning messages in the logs.
 
 ### ⚡ **What Happens at Launch**
 1. **Bootstrap**: Creates all required directories and sample configurations

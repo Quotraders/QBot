@@ -96,6 +96,13 @@ cmd_test_unit() {
 
 cmd_run() {
     log_info "Running UnifiedOrchestrator (main application)..."
+    log_info "Note: Logs will show WebSocket and Historical Data status"
+    log_info ""
+    log_info "Expected startup messages:"
+    log_info "  ✅ If SDK available: Connection to TopstepX established"
+    log_info "  ⚠️  If SDK missing: Running in degraded mode (install project-x-py)"
+    log_info "  ℹ️  Historical data: Requires SDK for real data"
+    log_info ""
     dotnet run --project src/UnifiedOrchestrator/UnifiedOrchestrator.csproj
 }
 

@@ -795,15 +795,26 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             {
                 _logger.LogError("❌ [SDK-VALIDATION] project-x-py SDK not found or validation failed");
                 _logger.LogError("   Error: {Error}", result.Error ?? "Unknown error");
+                _logger.LogWarning("⚠️  [SDK-VALIDATION] TopstepX SDK not available - bot will run in degraded mode");
+                _logger.LogWarning("📝 [SDK-VALIDATION] To enable full functionality:");
+                _logger.LogWarning("   1. Install Python SDK: pip install 'project-x-py[all]'");
+                _logger.LogWarning("   2. Ensure TOPSTEPX_API_KEY and TOPSTEPX_USERNAME are set");
+                _logger.LogWarning("   3. Restart the application");
                 throw new InvalidOperationException(
                     "project-x-py SDK not found. Install with: pip install 'project-x-py[all]'");
             }
             
             _logger.LogInformation("✅ [SDK-VALIDATION] Python SDK validated successfully");
         }
+        catch (Exception ex) when (ex is InvalidOperationException)
+        {
+            // Re-throw InvalidOperationException as it contains specific SDK errors
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ [SDK-VALIDATION] Python SDK validation failed");
+            _logger.LogError(ex, "❌ [SDK-VALIDATION] Python SDK validation failed with unexpected error");
+            _logger.LogWarning("⚠️  [SDK-VALIDATION] Continuing in degraded mode without TopstepX connection");
             throw new InvalidOperationException("Failed to validate Python SDK installation", ex);
         }
     }
