@@ -1721,10 +1721,9 @@ def create_flask_app(adapter: TopstepXAdapter) -> 'Flask':
                 'timestamp': datetime.now(timezone.utc).isoformat()
             }), 200
         except Exception as e:
-            logging.exception(e)
             return jsonify({
                 'success': False,
-                'error': 'An internal error has occurred.'
+                'error': str(e)
             }), 400
     
     @app.route('/order', methods=['POST'])
@@ -1739,12 +1738,11 @@ def create_flask_app(adapter: TopstepXAdapter) -> 'Flask':
                 take_profit=float(data['take_profit']),
                 max_risk_percent=data.get('max_risk_percent', 0.01)
             ))
-            logging.exception(e)
             return jsonify(result), 200
         except Exception as e:
             return jsonify({
                 'success': False,
-                'error': 'An internal error has occurred.'
+                'error': str(e)
             }), 400
     
     @app.route('/positions', methods=['GET'])
@@ -1754,14 +1752,13 @@ def create_flask_app(adapter: TopstepXAdapter) -> 'Flask':
             positions = run_async(adapter.get_positions())
             return jsonify({
                 'success': True,
-            logging.exception(e)
                 'positions': positions,
                 'timestamp': datetime.now(timezone.utc).isoformat()
             }), 200
         except Exception as e:
             return jsonify({
                 'success': False,
-                'error': 'An internal error has occurred.'
+                'error': str(e)
             }), 400
     
     @app.route('/events', methods=['GET'])
@@ -1773,7 +1770,6 @@ def create_flask_app(adapter: TopstepXAdapter) -> 'Flask':
             bar_events = run_async(adapter.get_bar_events())
             
             return jsonify({
-            logging.exception(e)
                 'success': True,
                 'fills': fill_events.get('fills', []),
                 'bars': bar_events.get('bars', []),
@@ -1782,13 +1778,12 @@ def create_flask_app(adapter: TopstepXAdapter) -> 'Flask':
         except Exception as e:
             return jsonify({
                 'success': False,
-                'error': 'An internal error has occurred.'
+                'error': str(e)
             }), 400
     
     @app.route('/close_position', methods=['POST'])
     def close_position():
         """Close a position."""
-            logging.exception(e)
         try:
             data = request.get_json()
             result = run_async(adapter.close_position(
@@ -1799,11 +1794,10 @@ def create_flask_app(adapter: TopstepXAdapter) -> 'Flask':
         except Exception as e:
             return jsonify({
                 'success': False,
-                'error': 'An internal error has occurred.'
+                'error': str(e)
             }), 400
     
     @app.route('/modify_stop', methods=['POST'])
-            logging.exception(e)
     def modify_stop():
         """Modify stop loss."""
         try:
@@ -1816,7 +1810,7 @@ def create_flask_app(adapter: TopstepXAdapter) -> 'Flask':
         except Exception as e:
             return jsonify({
                 'success': False,
-                'error': 'An internal error has occurred.'
+                'error': str(e)
             }), 400
     
     @app.route('/modify_take_profit', methods=['POST'])
