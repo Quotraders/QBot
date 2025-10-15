@@ -570,34 +570,48 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             
             _logger.LogInformation("[MODIFY-STOP] Modifying stop loss: {Symbol} stop=${StopPrice:F2}", symbol, stopPrice);
 
-            var command = new
+            var parameters = new
             {
-                action = "modify_stop_loss",
                 symbol,
                 stop_price = stopPrice
             };
 
-            var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
+            JsonElement result;
             
-            if (result.Success && result.Data.HasValue)
+            if (_useHttpMode)
             {
-                var success = result.Data.Value.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
-                
-                if (success)
+                result = await SendHttpRequestAsync("POST", "/modify_stop", parameters, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                var command = new
                 {
-                    _logger.LogInformation("✅ Stop loss modified successfully: {Symbol} stop=${StopPrice:F2}", symbol, stopPrice);
-                }
-                else
+                    action = "modify_stop_loss",
+                    symbol,
+                    stop_price = stopPrice
+                };
+                var cmdResult = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
+                if (!cmdResult.Success || !cmdResult.Data.HasValue)
                 {
-                    var error = result.Data.Value.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : "Unknown error";
-                    _logger.LogError("❌ Stop loss modification failed: {Error}", error);
+                    _logger.LogError("❌ Invalid response from Python adapter for modify stop loss");
+                    return false;
                 }
-                
-                return success;
+                result = cmdResult.Data.Value;
             }
             
-            _logger.LogError("❌ Invalid response from Python adapter for modify stop loss");
-            return false;
+            var success = result.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
+            
+            if (success)
+            {
+                _logger.LogInformation("✅ Stop loss modified successfully: {Symbol} stop=${StopPrice:F2}", symbol, stopPrice);
+            }
+            else
+            {
+                var error = result.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : "Unknown error";
+                _logger.LogError("❌ Stop loss modification failed: {Error}", error);
+            }
+            
+            return success;
         }
         catch (Exception ex)
         {
@@ -623,34 +637,48 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             
             _logger.LogInformation("[MODIFY-TARGET] Modifying take profit: {Symbol} target=${TargetPrice:F2}", symbol, takeProfitPrice);
 
-            var command = new
+            var parameters = new
             {
-                action = "modify_take_profit",
                 symbol,
                 take_profit_price = takeProfitPrice
             };
 
-            var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
+            JsonElement result;
             
-            if (result.Success && result.Data.HasValue)
+            if (_useHttpMode)
             {
-                var success = result.Data.Value.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
-                
-                if (success)
+                result = await SendHttpRequestAsync("POST", "/modify_take_profit", parameters, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                var command = new
                 {
-                    _logger.LogInformation("✅ Take profit modified successfully: {Symbol} target=${TargetPrice:F2}", symbol, takeProfitPrice);
-                }
-                else
+                    action = "modify_take_profit",
+                    symbol,
+                    take_profit_price = takeProfitPrice
+                };
+                var cmdResult = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
+                if (!cmdResult.Success || !cmdResult.Data.HasValue)
                 {
-                    var error = result.Data.Value.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : "Unknown error";
-                    _logger.LogError("❌ Take profit modification failed: {Error}", error);
+                    _logger.LogError("❌ Invalid response from Python adapter for modify take profit");
+                    return false;
                 }
-                
-                return success;
+                result = cmdResult.Data.Value;
             }
             
-            _logger.LogError("❌ Invalid response from Python adapter for modify take profit");
-            return false;
+            var success = result.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
+            
+            if (success)
+            {
+                _logger.LogInformation("✅ Take profit modified successfully: {Symbol} target=${TargetPrice:F2}", symbol, takeProfitPrice);
+            }
+            else
+            {
+                var error = result.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : "Unknown error";
+                _logger.LogError("❌ Take profit modification failed: {Error}", error);
+            }
+            
+            return success;
         }
         catch (Exception ex)
         {
@@ -673,33 +701,46 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
         {
             _logger.LogInformation("[CANCEL] Cancelling order: {OrderId}", orderId);
 
-            var command = new
+            var parameters = new
             {
-                action = "cancel_order",
                 order_id = orderId
             };
 
-            var result = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
+            JsonElement result;
             
-            if (result.Success && result.Data.HasValue)
+            if (_useHttpMode)
             {
-                var success = result.Data.Value.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
-                
-                if (success)
+                result = await SendHttpRequestAsync("POST", "/cancel_order", parameters, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                var command = new
                 {
-                    _logger.LogInformation("✅ Order cancelled successfully: {OrderId}", orderId);
-                }
-                else
+                    action = "cancel_order",
+                    order_id = orderId
+                };
+                var cmdResult = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
+                if (!cmdResult.Success || !cmdResult.Data.HasValue)
                 {
-                    var error = result.Data.Value.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : "Unknown error";
-                    _logger.LogError("❌ Order cancellation failed: {Error}", error);
+                    _logger.LogError("❌ Invalid response from Python adapter for cancel order");
+                    return false;
                 }
-                
-                return success;
+                result = cmdResult.Data.Value;
             }
             
-            _logger.LogError("❌ Invalid response from Python adapter for cancel order");
-            return false;
+            var success = result.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
+            
+            if (success)
+            {
+                _logger.LogInformation("✅ Order cancelled successfully: {OrderId}", orderId);
+            }
+            else
+            {
+                var error = result.TryGetProperty("error", out var errorElement) ? errorElement.GetString() : "Unknown error";
+                _logger.LogError("❌ Order cancellation failed: {Error}", error);
+            }
+            
+            return success;
         }
         catch (Exception ex)
         {

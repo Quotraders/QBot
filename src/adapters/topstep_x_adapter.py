@@ -1756,10 +1756,9 @@ def create_flask_app(adapter: TopstepXAdapter) -> 'Flask':
                 'timestamp': datetime.now(timezone.utc).isoformat()
             }), 200
         except Exception as e:
-            logging.exception("Exception occurred in get_positions API handler")
             return jsonify({
                 'success': False,
-                'error': 'An internal error occurred. Please contact support.'
+                'error': str(e)
             }), 400
     
     @app.route('/events', methods=['GET'])
@@ -1806,6 +1805,22 @@ def create_flask_app(adapter: TopstepXAdapter) -> 'Flask':
             result = run_async(adapter.modify_stop_loss(
                 symbol=data['symbol'],
                 stop_price=float(data['stop_price'])
+            ))
+            return jsonify(result), 200
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 400
+    
+    @app.route('/modify_take_profit', methods=['POST'])
+    def modify_take_profit():
+        """Modify take profit."""
+        try:
+            data = request.get_json()
+            result = run_async(adapter.modify_take_profit(
+                symbol=data['symbol'],
+                take_profit_price=float(data['take_profit_price'])
             ))
             return jsonify(result), 200
         except Exception as e:
