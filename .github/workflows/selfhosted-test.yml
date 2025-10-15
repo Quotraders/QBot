@@ -25,6 +25,8 @@ jobs:
 
       - name: "🔧 Setup .NET SDK"
         uses: actions/setup-dotnet@v4
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/.dotnet
         with:
           dotnet-version: '8.0.x'
 
@@ -38,7 +40,7 @@ jobs:
           Write-Output "Runner Name: ${{ runner.name }}"
           Write-Output "Runner OS: ${{ runner.os }}"
           Write-Output "Runner Architecture: ${{ runner.arch }}"
-          Write-Output "Runner Workspace: ${{ runner.workspace }}"
+          Write-Output "Workspace: ${{ github.workspace }}"
           Write-Output ""
           Write-Output "Machine Identity:"
           Write-Output "  Hostname: $env:COMPUTERNAME"
