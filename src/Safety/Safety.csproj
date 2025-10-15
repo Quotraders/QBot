@@ -23,8 +23,7 @@
     <PackageReference Include="System.Security.Cryptography.Algorithms" Version="4.3.1" />
     <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="9.0.0" />
 
-    <!-- Analyzer packages for custom analyzers -->
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" PrivateAssets="all" />
+    <!-- Analyzer packages for custom analyzers - version now managed in Directory.Build.props -->
   </ItemGroup>
 
   <ItemGroup>

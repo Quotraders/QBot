@@ -43,12 +43,18 @@
 
   <ItemGroup>
     <!-- Production-focused analyzer packages - Full strict enforcement restored -->
+    <!-- Updated to align all Microsoft.CodeAnalysis.* packages to version 4.8.0 -->
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4" PrivateAssets="all" />
     <PackageReference Include="SecurityCodeScan.VS2019" Version="5.6.7" PrivateAssets="all" />
     <PackageReference Include="AsyncFixer" Version="1.6.0" PrivateAssets="all" />
     <PackageReference Include="SonarAnalyzer.CSharp" Version="9.32.0.97167" PrivateAssets="all" />
+    <!-- Explicit version to align all Microsoft.CodeAnalysis.* packages to 4.8.0 -->
+    <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.8.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.8.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="4.8.0" PrivateAssets="all" />
   </ItemGroup>
 
   <!-- PRODUCTION ENFORCEMENT: Business Logic Validation Targets -->

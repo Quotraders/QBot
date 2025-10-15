@@ -7,7 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using TradingBot.Abstractions;
 using TradingBot.UnifiedOrchestrator.Models;
-using System.Security.Cryptography;
 
 namespace TradingBot.UnifiedOrchestrator.Services;
 

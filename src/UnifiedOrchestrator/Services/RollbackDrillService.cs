@@ -7,13 +7,9 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using System.Security.Cryptography;
 using TradingBot.UnifiedOrchestrator.Interfaces;
-using System.Security.Cryptography;
 using TradingBot.UnifiedOrchestrator.Models;
-using System.Security.Cryptography;
 using AbstractionsTradingDecision = TradingBot.Abstractions.TradingDecision;
-using System.Security.Cryptography;
 using InterfacesTradingDecision = TradingBot.UnifiedOrchestrator.Interfaces.TradingDecision;
 using System.Security.Cryptography;
 
