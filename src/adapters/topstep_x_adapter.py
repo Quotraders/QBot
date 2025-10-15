@@ -154,17 +154,25 @@ class TopstepXAdapter:
             RuntimeError: If required credentials are not found in environment
         """
         # Validate credentials are available immediately - fail hard if not
-        api_key = os.getenv('TOPSTEPX_API_KEY')
-        username = os.getenv('TOPSTEPX_USERNAME')
+        # SDK v3.5.9+ uses PROJECT_X_* format, but we also support TOPSTEPX_* for backward compatibility
+        api_key = os.getenv('PROJECT_X_API_KEY') or os.getenv('TOPSTEPX_API_KEY')
+        username = os.getenv('PROJECT_X_USERNAME') or os.getenv('TOPSTEPX_USERNAME')
+        
+        # Set PROJECT_X_* variables if they don't exist (SDK v3.5.9+ requirement)
+        if api_key and not os.getenv('PROJECT_X_API_KEY'):
+            os.environ['PROJECT_X_API_KEY'] = api_key
+        if username and not os.getenv('PROJECT_X_USERNAME'):
+            os.environ['PROJECT_X_USERNAME'] = username
         
         if not api_key or not username:
             raise RuntimeError(
                 "Missing required ProjectX credentials in environment. "
-                "Set TOPSTEPX_API_KEY and TOPSTEPX_USERNAME environment variables."
+                "Set PROJECT_X_API_KEY and PROJECT_X_USERNAME (or TOPSTEPX_API_KEY and TOPSTEPX_USERNAME) environment variables."
             )
         
         self.instruments = instruments
-        self.suite: Optional[TradingSuite] = None
+        self.suites: Dict[str, Optional[TradingSuite]] = {inst: None for inst in instruments}  # One suite per instrument (SDK v3.5.9+)
+        self.suite: Optional[TradingSuite] = None  # Primary suite for backward compatibility
         self._is_initialized = False
         self._connection_health = 0.0
         self._last_health_check: Optional[datetime] = None
@@ -489,14 +497,19 @@ class TopstepXAdapter:
         async def _initialize_suite():
             self.logger.info(f"Initializing TradingSuite with instruments: {self.instruments}")
             
-            # Initialize with real TopstepX SDK only
-            self.logger.info("Initializing production TopstepX SDK...")
-            suite = await TradingSuite.create(
-                instruments=self.instruments,
-                timeframes=["5min"]
-            )
+            # SDK v3.5.9+ requires separate suite instance per instrument
+            self.logger.info("Initializing production TopstepX SDK (v3.5.9+ multi-suite mode)...")
+            
+            for instrument in self.instruments:
+                self.logger.info(f"Creating suite for {instrument}...")
+                suite = await TradingSuite.from_env(instrument=instrument)
+                self.suites[instrument] = suite
+                self.logger.info(f"✅ {instrument} suite created")
+            
+            # Set primary suite to first instrument for backward compatibility
+            self.suite = self.suites[self.instruments[0]]
             self.logger.info("✅ TopstepX SDK initialized successfully")
-            return suite
+            return self.suite
         
         # Initialize suite with retry policy
         self.suite = await self.retry_policy.execute_with_retry(
@@ -1616,14 +1629,18 @@ class TopstepXAdapter:
             
     async def _cleanup_resources(self) -> None:
         """Internal cleanup of resources."""
-        if self.suite:
-            try:
-                await self.suite.disconnect()
-            except Exception as e:
-                self.logger.warning(f"Error disconnecting suite: {e}")
-            finally:
-                self.suite = None
-                
+        # Disconnect all suite instances (SDK v3.5.9+ multi-suite mode)
+        for instrument, suite in self.suites.items():
+            if suite:
+                try:
+                    await suite.disconnect()
+                    self.logger.info(f"Disconnected {instrument} suite")
+                except Exception as e:
+                    self.logger.warning(f"Error disconnecting {instrument} suite: {e}")
+                finally:
+                    self.suites[instrument] = None
+        
+        self.suite = None
         self._is_initialized = False
         self._connection_health = 0.0
 
