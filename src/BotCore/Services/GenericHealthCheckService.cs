@@ -189,6 +189,34 @@ public sealed class GenericHealthCheckService
                     });
             }
 
+            // Special case: kill.txt should be HEALTHY when it does NOT exist (normal operation)
+            if (component.Name == "Emergency Stop File" && component.FilePath == "kill.txt")
+            {
+                if (!File.Exists(component.FilePath))
+                {
+                    return HealthCheckResult.Healthy(
+                        "Emergency stop not active (file does not exist)",
+                        new Dictionary<string, object>
+                        {
+                            ["FileName"] = component.Name,
+                            ["ExpectedPath"] = component.FilePath,
+                            ["Status"] = "Normal - kill switch not triggered"
+                        });
+                }
+                else
+                {
+                    // Kill switch is active - this is CRITICAL
+                    return HealthCheckResult.Unhealthy(
+                        "KILL SWITCH ACTIVE - Emergency stop file exists",
+                        new Dictionary<string, object>
+                        {
+                            ["FileName"] = component.Name,
+                            ["ExpectedPath"] = component.FilePath,
+                            ["Status"] = "EMERGENCY - Manual intervention required"
+                        });
+                }
+            }
+
             // Check if file exists
             if (!File.Exists(component.FilePath))
             {

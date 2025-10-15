@@ -162,11 +162,25 @@ public sealed class ComponentHealthMonitoringService : BackgroundService
             metricsStr = " (" + string.Join(", ", healthResult.Metrics.Take(MaxMetricsToDisplay).Select(kvp => $"{kvp.Key}={kvp.Value}")) + ")";
         }
 
-        _logger.LogWarning("❌ {ComponentName}: {Status} - {Description}{Metrics}", component.Name, healthResult.Status, healthResult.Description, metricsStr);
+        // Check if component is critical - only log at WARNING level for critical components
+        var isCritical = component.Metadata.TryGetValue("IsCritical", out var criticalValue) && 
+                        criticalValue is bool critical && critical;
 
-        // If Ollama is available and enabled, generate a plain English explanation
+        if (isCritical)
+        {
+            _logger.LogWarning("❌ {ComponentName}: {Status} - {Description}{Metrics}", 
+                component.Name, healthResult.Status, healthResult.Description, metricsStr);
+        }
+        else
+        {
+            // Log at DEBUG level for non-critical components (optional ML models, etc.)
+            _logger.LogDebug("⚠️ {ComponentName}: {Status} - {Description}{Metrics} (optional component)", 
+                component.Name, healthResult.Status, healthResult.Description, metricsStr);
+        }
+
+        // If Ollama is available and enabled, generate a plain English explanation (only for critical failures)
         var selfAwarenessEnabled = Environment.GetEnvironmentVariable("BOT_SELF_AWARENESS_ENABLED")?.ToUpperInvariant() == "TRUE";
-        if (_ollamaClient != null && selfAwarenessEnabled)
+        if (_ollamaClient != null && selfAwarenessEnabled && isCritical)
         {
             try
             {

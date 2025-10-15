@@ -75,9 +75,15 @@ public sealed class OllamaClient : IDisposable
 
             return responseObject?.Response ?? string.Empty;
         }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            // Ollama service not available - log at debug level (expected in many deployments)
+            _logger.LogDebug("🤖 [OLLAMA] Service not available at {Url} - this is expected if Ollama is not installed", _ollamaBaseUrl);
+            return string.Empty;
+        }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "❌ [OLLAMA] HTTP error during AI request");
+            _logger.LogWarning(ex, "⚠️ [OLLAMA] HTTP error during AI request - service may be unavailable");
             return string.Empty;
         }
         catch (TaskCanceledException ex)
