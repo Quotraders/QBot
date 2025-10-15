@@ -8,6 +8,11 @@ jobs:
         with: { fetch-depth: 0 }
       - uses: actions/setup-dotnet@v4
         with: { dotnet-version: '8.0.x' }
+      - name: Verify .NET Installation Config
+        run: |
+          echo "Verifying .NET SDK installation configuration in workflows..."
+          chmod +x verify-dotnet-installation-config.sh
+          ./verify-dotnet-installation-config.sh
       - name: Audit
         run: |
           set -euo pipefail
