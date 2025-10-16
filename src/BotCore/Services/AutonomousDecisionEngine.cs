@@ -185,10 +185,6 @@ public class AutonomousDecisionEngine : BackgroundService
     private const int DailyReportHour = 17;                     // Daily report at 5 PM ET
     private const int DailyReportMinuteThreshold = 5;           // Report within first 5 minutes of hour
     
-    // Fallback pricing constants
-    private const decimal ESFallbackPrice = 4500m;              // Fallback price for ES contracts
-    private const decimal NQFallbackPrice = 15000m;             // Fallback price for NQ contracts
-    
     public AutonomousDecisionEngine(
         ILogger<AutonomousDecisionEngine> logger,
         IServiceProvider serviceProvider,
@@ -1435,28 +1431,35 @@ public class AutonomousDecisionEngine : BackgroundService
     
     /// <summary>
     /// Get real market price from TopstepX market data services
+    /// PRODUCTION REQUIREMENT: Always use REAL live data from TopstepX - NO fallback/simulation prices
     /// </summary>
     private async Task<decimal?> GetRealMarketPriceAsync(string symbol, CancellationToken cancellationToken)
     {
-        await Task.CompletedTask.ConfigureAwait(false);
-        
         try
         {
-            // Use TopstepX adapter service (project-x-py SDK integration)
+            // Use TopstepX adapter service to get REAL live market data
             var topstepXAdapter = _serviceProvider.GetService<ITopstepXAdapterService>();
             if (topstepXAdapter != null && topstepXAdapter.IsConnected)
             {
-                _logger.LogDebug("💰 [AUTONOMOUS-ENGINE] TopstepX adapter connected, using fallback price for {Symbol}", symbol);
-                // Use fallback price since GetPriceAsync is not available in the interface
-                return symbol == "ES" ? ESFallbackPrice : NQFallbackPrice; // Realistic ES/NQ prices
+                // Get REAL live price from TopstepX - NO simulation/fallback prices
+                var realPrice = await topstepXAdapter.GetPriceAsync(symbol, cancellationToken).ConfigureAwait(false);
+                
+                if (realPrice > 0)
+                {
+                    _logger.LogDebug("💰 [REAL-DATA] Retrieved live {Symbol} price from TopstepX: ${Price:F2}", symbol, realPrice);
+                    return realPrice;
+                }
+                
+                _logger.LogWarning("⚠️ [REAL-DATA] TopstepX returned invalid price for {Symbol}: {Price}", symbol, realPrice);
+                return null;
             }
             
-            _logger.LogWarning("⚠️ [AUTONOMOUS-ENGINE] TopstepX adapter not available or not connected for {Symbol}", symbol);
+            _logger.LogWarning("⚠️ [REAL-DATA] TopstepX adapter not available or not connected for {Symbol}", symbol);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ [AUTONOMOUS-ENGINE] Failed to retrieve real market price for {Symbol}", symbol);
+            _logger.LogError(ex, "❌ [REAL-DATA] Failed to retrieve real market price for {Symbol}", symbol);
             return null;
         }
     }
