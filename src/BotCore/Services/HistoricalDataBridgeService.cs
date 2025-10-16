@@ -308,82 +308,50 @@ namespace BotCore.Services
         #region Private Helper Methods
 
         /// <summary>
-        /// Try to get historical bars using the SDK adapter (preferred method)
+        /// Try to get historical bars using the HTTP adapter (preferred method)
         /// </summary>
         private async Task<List<BotCore.Models.Bar>> TryGetSdkAdapterBarsAsync(string contractId, int barCount)
         {
             try
             {
-                _logger.LogDebug("[HISTORICAL-BRIDGE] Attempting to get historical data via SDK adapter for {ContractId}", contractId);
-
-                // Call Python SDK bridge to get historical bars
-                // BaseDirectory is src/BotCore/bin/Debug/net8.0, go up 5 levels to workspace root, then into src/UnifiedOrchestrator/python
-                _logger.LogInformation("[HISTORICAL-BRIDGE] BaseDirectory: {BaseDir}", AppDomain.CurrentDomain.BaseDirectory);
-                var pythonScript = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "..", "src", "UnifiedOrchestrator", "python", "sdk_bridge.py");
-                pythonScript = Path.GetFullPath(pythonScript); // Normalize the path
-                _logger.LogInformation("[HISTORICAL-BRIDGE] Resolved python script path: {Path}", pythonScript);
-                
-                if (!File.Exists(pythonScript))
-                {
-                    _logger.LogWarning("[HISTORICAL-BRIDGE] SDK bridge script not found at {Path}", pythonScript);
-                    return new List<BotCore.Models.Bar>();
-                }
+                _logger.LogInformation("[HISTORICAL-BRIDGE] ✅ Using HTTP adapter for historical data");
 
                 // Map contract ID to symbol (CON.F.US.EP.Z25 -> ES, CON.F.US.ENQ.Z25 -> NQ)
                 var symbol = contractId.Contains("EP") ? "ES" : contractId.Contains("ENQ") ? "NQ" : contractId;
                 
-                // Create JSON input for sdk_bridge.py
-                var jsonInput = $"{{\"symbol\":\"{symbol}\",\"days\":1,\"timeframe_minutes\":5}}";
-                _logger.LogInformation("[HISTORICAL-BRIDGE] JSON input: {JsonInput}", jsonInput);
+                // Call the HTTP adapter endpoint (localhost:8765/historical/{symbol})
+                var adapterUrl = $"http://localhost:8765/historical/{symbol}?timeframe=5&limit={barCount}";
+                _logger.LogInformation("[HISTORICAL-BRIDGE] Calling HTTP adapter: {Url}", adapterUrl);
 
-                var startInfo = new ProcessStartInfo
-                {
-                    FileName = Environment.GetEnvironmentVariable("PYTHON_EXECUTABLE") ?? "python",
-                    // Use ArgumentList instead of Arguments to avoid escaping issues
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                };
-                startInfo.ArgumentList.Add(pythonScript);
-                startInfo.ArgumentList.Add(jsonInput);
-
-                using var process = Process.Start(startInfo);
-                if (process == null)
-                {
-                    _logger.LogError("[HISTORICAL-BRIDGE] Failed to start SDK bridge process");
-                    return new List<BotCore.Models.Bar>();
-                }
-
-                var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
-                var error = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
-                await process.WaitForExitAsync().ConfigureAwait(false);
-
-                if (process.ExitCode != 0)
-                {
-                    _logger.LogWarning("[HISTORICAL-BRIDGE] SDK bridge failed with exit code {ExitCode}: {Error}", process.ExitCode, error);
-                    return new List<BotCore.Models.Bar>();
-                }
-
-                if (string.IsNullOrWhiteSpace(output))
-                {
-                    _logger.LogWarning("[HISTORICAL-BRIDGE] SDK bridge returned empty output");
-                    return new List<BotCore.Models.Bar>();
-                }
-
-                // Parse JSON response from SDK bridge
-                var response = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(output);
+                var response = await _httpClient.GetAsync(adapterUrl).ConfigureAwait(false);
                 
-                if (!response.TryGetProperty("success", out var successProp) || !successProp.GetBoolean())
+                if (!response.IsSuccessStatusCode)
                 {
-                    var errorMsg = response.TryGetProperty("error", out var errProp) ? errProp.GetString() : "Unknown error";
-                    _logger.LogWarning("[HISTORICAL-BRIDGE] SDK bridge returned error: {Error}", errorMsg);
+                    _logger.LogWarning("[HISTORICAL-BRIDGE] HTTP adapter returned status: {StatusCode}", response.StatusCode);
                     return new List<BotCore.Models.Bar>();
                 }
 
-                if (!response.TryGetProperty("bars", out var barsArray))
+                var jsonResponse = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                
+                if (string.IsNullOrWhiteSpace(jsonResponse))
                 {
-                    _logger.LogWarning("[HISTORICAL-BRIDGE] SDK bridge response missing 'bars' property");
+                    _logger.LogWarning("[HISTORICAL-BRIDGE] HTTP adapter returned empty response");
+                    return new List<BotCore.Models.Bar>();
+                }
+
+                // Parse JSON response from HTTP adapter
+                var data = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(jsonResponse);
+                
+                if (!data.TryGetProperty("success", out var successProp) || !successProp.GetBoolean())
+                {
+                    var errorMsg = data.TryGetProperty("error", out var errProp) ? errProp.GetString() : "Unknown error";
+                    _logger.LogWarning("[HISTORICAL-BRIDGE] HTTP adapter returned error: {Error}", errorMsg);
+                    return new List<BotCore.Models.Bar>();
+                }
+
+                if (!data.TryGetProperty("bars", out var barsArray))
+                {
+                    _logger.LogWarning("[HISTORICAL-BRIDGE] HTTP adapter response missing 'bars' property");
                     return new List<BotCore.Models.Bar>();
                 }
 
