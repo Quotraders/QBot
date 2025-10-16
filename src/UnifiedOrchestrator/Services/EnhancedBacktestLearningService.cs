@@ -189,9 +189,20 @@ internal class EnhancedBacktestLearningService : BackgroundService
             var tradesWithResults = results.Where(r => r.TotalTrades > 0).ToList();
             var avgSharpe = tradesWithResults.Any() ? tradesWithResults.Average(r => r.SharpeRatio) : 0m;
             
-            _logger.LogInformation("[UNIFIED-BACKTEST] ✅ Completed unified backtest learning session - processed {Count} backtests across ALL 4 STRATEGIES: S2,S3,S6,S11 | Total trades: {Trades} | Avg Sharpe: {Sharpe:F2} | Rolling window: {Days} days", 
-                results.Length, totalTrades, avgSharpe, 
-                scheduling.LearningIntensity == "INTENSIVE" ? 90 : scheduling.LearningIntensity == "LIGHT" ? 30 : 45);
+            // Calculate comprehensive metrics
+            var totalWinningTrades = results.Sum(r => r.WinningTrades);
+            var totalLosingTrades = results.Sum(r => r.LosingTrades);
+            var overallWinRate = totalTrades > 0 ? (decimal)totalWinningTrades / totalTrades : 0;
+            var totalPnL = results.Sum(r => r.NetPnL);
+            var lookbackDays = scheduling.LearningIntensity == "INTENSIVE" ? 90 : scheduling.LearningIntensity == "LIGHT" ? 30 : 45;
+            
+            _logger.LogInformation(
+                "[UNIFIED-BACKTEST] ✅ Completed unified backtest learning session - processed {Count} backtests across ALL 4 STRATEGIES: S2,S3,S6,S11\n" +
+                "  📊 Total Trades: {Trades} | Winning: {WinTrades} | Losing: {LoseTrades}\n" +
+                "  📈 Win Rate: {WinRate:P1} | Total P&L: ${PnL:F2}\n" +
+                "  📉 Avg Sharpe: {Sharpe:F2} | Rolling window: {Days} days", 
+                results.Length, totalTrades, totalWinningTrades, totalLosingTrades,
+                overallWinRate, totalPnL, avgSharpe, lookbackDays);
         }
         catch (Exception ex)
         {
@@ -213,10 +224,13 @@ internal class EnhancedBacktestLearningService : BackgroundService
         var esContractId = Environment.GetEnvironmentVariable("TOPSTEPX_EVAL_ES_ID") ?? "demo-es-contract";
         var nqContractId = Environment.GetEnvironmentVariable("TOPSTEPX_EVAL_NQ_ID") ?? "demo-nq-contract";
         
-        // Define backtesting period (last 30 days for intensive, 7 for light)
+        // Define backtesting period (last 90 days for intensive, 30 for light, 45 for default)
         var endDate = DateTime.UtcNow.Date;
-        var lookbackDays = scheduling.LearningIntensity == "INTENSIVE" ? 30 : 7;
+        var lookbackDays = scheduling.LearningIntensity == "INTENSIVE" ? 90 : scheduling.LearningIntensity == "LIGHT" ? 30 : 45;
         var startDate = endDate.AddDays(-lookbackDays);
+        
+        _logger.LogInformation("[STRATEGY-EXECUTION] Backtesting period: {Days} days ({StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd})", 
+            lookbackDays, startDate, endDate);
         
         var getJwt = new Func<Task<string>>(async () => 
         {
@@ -493,12 +507,38 @@ internal class EnhancedBacktestLearningService : BackgroundService
             
             try
             {
-                // Create market environment identical to live trading
+                // CRITICAL FIX: Seed BarAggregator with historical bars so PatternEngine can access them
+                // This ensures patterns and supply/demand analysis work during backtesting
+                var barAggregators = _serviceProvider.GetServices<global::BotCore.Market.BarAggregator>();
+                foreach (var aggregator in barAggregators)
+                {
+                    // Convert BotCore.Models.Bar to BotCore.Market.Bar for aggregator
+                    var marketBars = historicalBars.Select(b => new global::BotCore.Market.Bar(
+                        Start: b.Start,
+                        End: b.Start.AddMinutes(5), // Assume 5-minute bars
+                        Open: b.Open,
+                        High: b.High,
+                        Low: b.Low,
+                        Close: b.Close,
+                        Volume: b.Volume
+                    )).ToList();
+                    
+                    aggregator.Seed(replayContext.Symbol, marketBars);
+                }
+                
+                // Process historical data using SAME UnifiedTradingBrain as live trading
                 var env = new Env
                 {
                     atr = CalculateATR(historicalBars, 14),
                     volz = CalculateVolZ(historicalBars)
                 };
+                
+                // Log price dynamics to verify bars are changing
+                if (i % 50 == 0 || i < 5) // Log first 5 bars and every 50th bar
+                {
+                    _logger.LogDebug("[UNIFIED-BACKTEST] Bar {Index}/{Total}: Time={Time:HH:mm}, O={Open:F2}, H={High:F2}, L={Low:F2}, C={Close:F2}, V={Volume}, ATR={Atr:F2}",
+                        i, dailyBars.Count, currentBar.Start, currentBar.Open, currentBar.High, currentBar.Low, currentBar.Close, currentBar.Volume, env.atr);
+                }
                 
                 var levels = new Levels(); // Initialize as needed
                 var riskEngine = new global::BotCore.Risk.RiskEngine();

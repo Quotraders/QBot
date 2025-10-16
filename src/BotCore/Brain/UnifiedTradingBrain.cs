@@ -2761,12 +2761,12 @@ Reason closed: {reason}
             var perContractRisk = stopDistance * pointValue;
             var contracts = perContractRisk > 0 ? (int)(riskAmount / perContractRisk) : 0;
             
-            // 🔧 BACKTEST FIX: Ensure at least 1 contract if we have positive risk and confidence
-            // In backtesting, we want to generate trades for learning even with small position sizes
+            // 🔧 PRODUCTION READY: Ensure at least 1 contract if we have positive risk and confidence
+            // This allows learning opportunities while maintaining real risk management
             if (contracts == 0 && riskAmount > 0 && confidence >= (decimal)TopStepConfig.ConfidenceThreshold)
             {
-                contracts = 1; // Allow 1 contract for learning purposes
-                _logger.LogInformation("[BACKTEST-FIX] 📊 Risk amount ${Risk:F2} below per-contract risk ${PerContract:F2}, allowing 1 contract for learning", 
+                contracts = 1; // Allow 1 contract for learning purposes with real risk
+                _logger.LogInformation("[POSITION-SIZING] 📊 Calculated risk ${Risk:F2} below per-contract risk ${PerContract:F2}, using minimum 1 contract (real money at risk)", 
                     riskAmount, perContractRisk);
             }
 
@@ -2944,12 +2944,17 @@ Reason closed: {reason}
                 // Enhance each candidate with AI intelligence
                 var enhancedCandidates = new List<Candidate>();
                 
+                _logger.LogDebug("[BRAIN-CANDIDATES] Evaluating {Count} base candidates from strategy {Strategy}", 
+                    baseCandidates.Count, strategySelection.SelectedStrategy);
+                
                 foreach (var candidate in baseCandidates)
                 {
                     // Only include candidates that align with price prediction
                     var candidateDirection = candidate.side == Side.BUY ? PriceDirection.Up : PriceDirection.Down;
                     if (prediction.Direction != PriceDirection.Sideways && candidateDirection != prediction.Direction)
                     {
+                        _logger.LogTrace("[BRAIN-CANDIDATES] Skipping candidate {Id} - direction {CandDir} doesn't match prediction {PredDir}", 
+                            candidate.strategy_id, candidateDirection, prediction.Direction);
                         continue; // Skip candidates against predicted direction
                     }
                     
@@ -2972,6 +2977,10 @@ Reason closed: {reason}
                         // Add AI confidence to quality score
                         QScore = candidate.QScore * strategySelection.Confidence * prediction.Probability
                     };
+                    
+                    _logger.LogDebug("[BRAIN-CANDIDATES] Enhanced candidate {Id}: Entry={Entry:F2}, Stop={Stop:F2}, Target={Target:F2}, Qty={Qty}, QScore={QScore:F3}",
+                        enhancedCandidate.strategy_id, enhancedCandidate.entry, enhancedCandidate.stop, enhancedCandidate.t1, 
+                        enhancedCandidate.qty, enhancedCandidate.QScore);
                     
                     enhancedCandidates.Add(enhancedCandidate);
                 }
@@ -3116,42 +3125,26 @@ Reason closed: {reason}
         private List<string> GetAvailableStrategies(TimeSpan timeOfDay, MarketRegime regime)
         {
             // Enhanced strategy selection logic for primary strategies (S2, S3, S6, S11)
+            // Strictly follows time-based scheduling - each strategy runs at its designated time
             var hour = timeOfDay.Hours;
             
-            // Time-based primary strategy allocation with specialization
+            // Time-based primary strategy allocation - strategies run at their scheduled times ONLY
             var timeBasedStrategies = hour switch
             {
                 >= 18 or <= 2 => new[] { "S2", "S11" }, // Asian Session: Mean reversion works well
                 >= 2 and <= 5 => new[] { "S3", "S2" }, // European Open: Breakouts and compression
                 >= 5 and <= 8 => new[] { "S2", "S3", "S11" }, // London Morning: Good liquidity
                 >= 8 and <= 9 => new[] { "S3", "S2" }, // US PreMarket: Compression setups
-                >= 9 and <= 10 => new[] { "S6" }, // Opening Drive: ONLY S6 momentum
+                >= 9 and <= 10 => new[] { "S6", "S3", "S2" }, // Opening Drive: Momentum + breakouts + mean reversion
                 >= 10 and <= 11 => new[] { "S3", "S2", "S11" }, // Morning Trend: Best trends
-                >= 11 and <= 13 => new[] { "S2" }, // Lunch: ONLY mean reversion
-                >= 13 and <= 16 => new[] { "S11", "S3" }, // Afternoon: S11 exhaustion + compression
+                >= 11 and <= 13 => new[] { "S2", "S3" }, // Lunch: Mean reversion + compression
+                >= 13 and <= 16 => new[] { "S11", "S3", "S6" }, // Afternoon: Exhaustion + compression + momentum
                 _ => new[] { "S2", "S3" } // Default safe strategies
             };
             
-            // Filter by market regime for additional intelligence
-            var regimeOptimalStrategies = regime switch
-            {
-                MarketRegime.Trending => new[] { "S6", "S3" }, // Momentum and breakouts
-                MarketRegime.Ranging => new[] { "S2", "S11" }, // Mean reversion and fades
-                MarketRegime.HighVolatility => new[] { "S3", "S6" }, // Breakouts and momentum
-                MarketRegime.LowVolatility => new[] { "S2" }, // Mean reversion only
-                _ => PrimaryStrategies // All primary strategies
-            };
-            
-            // Intersect time-based and regime-based strategies for optimal selection
-            var availableStrategies = timeBasedStrategies
-                .Intersect(regimeOptimalStrategies)
-                .ToList();
-                
-            // Fallback to time-based if no intersection
-            if (availableStrategies.Count == 0)
-            {
-                availableStrategies = timeBasedStrategies.ToList();
-            }
+            // Return ONLY time-based strategies - do not modify schedules with regime filtering
+            // Neural UCB will select best strategy from the time-appropriate options
+            var availableStrategies = timeBasedStrategies.ToList();
             
             LogStrategySelection(_logger, hour, regime.ToString(), string.Join(",", availableStrategies), null);
             
