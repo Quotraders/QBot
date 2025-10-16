@@ -1115,13 +1115,13 @@ public class AutonomousDecisionEngine : BackgroundService
         // Market conditions (0-3)
         state[0] = (double)_currentAutonomousMarketRegime / 10.0; // Normalize regime
         state[1] = tradeOutcome.Direction == "Buy" ? 1.0 : -1.0;   // Direction
-        state[2] = (double)(tradeOutcome.EntryPrice / 5000.0);     // Normalized price
+        state[2] = (double)tradeOutcome.EntryPrice / 5000.0;       // Normalized price
         state[3] = (double)tradeOutcome.Size / 5.0;                 // Normalized size
         
         // Performance metrics (4-7)
         state[4] = (double)_consecutiveWins / 10.0;                 // Win streak
         state[5] = (double)_consecutiveLosses / 10.0;               // Loss streak
-        state[6] = (double)(_todayPnL / 1000.0);                    // Daily P&L normalized
+        state[6] = (double)_todayPnL / 1000.0;                      // Daily P&L normalized
         state[7] = (double)tradeOutcome.Confidence;                 // Trade confidence
         
         // Strategy performance (8-11)
@@ -1129,16 +1129,16 @@ public class AutonomousDecisionEngine : BackgroundService
         {
             var totalTrades = metrics.WinningTrades + metrics.LosingTrades;
             state[8] = totalTrades > 0 ? (double)metrics.WinningTrades / totalTrades : 0.5; // Win rate
-            state[9] = (double)(metrics.TotalProfit / 5000.0);       // Total profit normalized
-            state[10] = (double)(metrics.TotalLoss / 5000.0);        // Total loss normalized
+            state[9] = (double)metrics.TotalProfit / 5000.0;         // Total profit normalized
+            state[10] = (double)metrics.TotalLoss / 5000.0;          // Total loss normalized
             state[11] = (double)totalTrades / 100.0;                 // Trade count normalized
         }
         
         // Risk metrics (12-15)
         state[12] = (double)_currentRiskPerTrade;                   // Current risk per trade
-        state[13] = (double)(_currentAccountBalance / 100000.0);    // Account balance normalized
-        state[14] = 0.0; // Volatility (placeholder)
-        state[15] = 0.0; // Time of day (placeholder)
+        state[13] = (double)_currentAccountBalance / 100000.0;      // Account balance normalized
+        state[14] = 0.0; // Volatility (future enhancement)
+        state[15] = 0.0; // Time of day (future enhancement)
         
         return state;
     }
@@ -1173,7 +1173,7 @@ public class AutonomousDecisionEngine : BackgroundService
         
         // Update with post-trade info
         state[3] = 0.0; // No position after trade closes
-        state[6] = (double)(_todayPnL / 1000.0); // Updated daily P&L
+        state[6] = (double)_todayPnL / 1000.0; // Updated daily P&L
         
         return state;
     }
