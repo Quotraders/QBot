@@ -608,30 +608,20 @@ public class AutonomousDecisionEngine : BackgroundService
             // Calculate technical indicators for decision making
             var technicalIndicators = new Dictionary<string, double>
             {
-                ["RSI"] = 50.0, // Neutral RSI when no data available
-                ["MACD"] = 0.0, // No signal when no data available  
-                ["BollingerPosition"] = 0.5, // Middle of bands when no data available
-                ["ATR"] = 0.0, // No volatility measure when no data available
-                ["VolumeMA"] = 0.0 // No volume data when unavailable
+                ["RSI"] = 50.0, // Neutral RSI
+                ["MACD"] = 0.0, // No signal
+                ["BollingerPosition"] = 0.5, // Middle of bands
+                ["ATR"] = 0.0, // No volatility measure
+                ["VolumeMA"] = 0.0 // No volume data
             };
             
-            // Try to get real market data, use defaults if unavailable
-            double currentPrice = 4500.0; // Default ES price
-            double currentVolume = 1000.0; // Default volume
-            
-            try
-            {
-                // Attempt to get current market data
-                var priceDecimal = await GetCurrentMarketPriceAsync("ES", cancellationToken).ConfigureAwait(false);
-                var volumeLong = await GetCurrentVolumeAsync("ES", cancellationToken).ConfigureAwait(false);
-                currentPrice = (double)priceDecimal;
-                currentVolume = (double)volumeLong;
-                technicalIndicators = await CalculateTechnicalIndicatorsAsync("ES", cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Using fallback market data: {Error}", ex.Message);
-            }
+            // PRODUCTION REQUIREMENT: Must have real market data - NO fallback/simulation data
+            // Get REAL current market data from TopstepX
+            var priceDecimal = await GetCurrentMarketPriceAsync("ES", cancellationToken).ConfigureAwait(false);
+            var volumeLong = await GetCurrentVolumeAsync("ES", cancellationToken).ConfigureAwait(false);
+            var currentPrice = (double)priceDecimal;
+            var currentVolume = (double)volumeLong;
+            technicalIndicators = await CalculateTechnicalIndicatorsAsync("ES", cancellationToken).ConfigureAwait(false);
             
             var marketContext = new TradingBot.Abstractions.MarketContext
             {
@@ -668,7 +658,7 @@ public class AutonomousDecisionEngine : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "⚠️ [AUTONOMOUS-ENGINE] Error identifying opportunity");
+            _logger.LogWarning(ex, "⚠️ [AUTONOMOUS-ENGINE] Error identifying opportunity - cannot trade without real data");
         }
         
         return null;
@@ -710,8 +700,15 @@ public class AutonomousDecisionEngine : BackgroundService
         // Calculate contract size based on position size in dollars
         // ES: $50 per point, NQ: $20 per point
         var multiplier = symbol == "ES" ? 50m : 20m;
-        var price = entryPrice ?? (symbol == "ES" ? 4500m : 15000m); // Default prices if not provided
         
+        // PRODUCTION REQUIREMENT: Must have real entry price - NO fallback/simulation prices
+        if (!entryPrice.HasValue || entryPrice.Value <= 0)
+        {
+            _logger.LogError("❌ [POSITION-SIZING] Cannot calculate contract size without real entry price for {Symbol}", symbol);
+            return 0; // Return 0 to prevent trading without real data
+        }
+        
+        var price = entryPrice.Value;
         var contractValue = price * multiplier;
         var contractCount = (int)Math.Floor(positionSize / contractValue);
         
@@ -1581,20 +1578,18 @@ public class AutonomousDecisionEngine : BackgroundService
     
     /// <summary>
     /// Get real historical bars from TopstepX adapter service (SDK integration)
+    /// PRODUCTION REQUIREMENT: Always use REAL live data from TopstepX - NO fallback/simulation prices
     /// </summary>
     private async Task<List<Bar>?> GetRealHistoricalBarsAsync(string symbol, int count, CancellationToken cancellationToken)
     {
-        await Task.CompletedTask.ConfigureAwait(false);
-        
         try
         {
             // Use TopstepX adapter service for current price data
             var topstepXAdapter = _serviceProvider.GetService<ITopstepXAdapterService>();
             if (topstepXAdapter != null && topstepXAdapter.IsConnected)
             {
-                _logger.LogDebug("📊 [AUTONOMOUS-ENGINE] TopstepX adapter connected, using fallback price for {Symbol}", symbol);
-                // Use fallback price since GetPriceAsync is not available in the interface
-                var currentPrice = symbol == "ES" ? 4500.0 : 15000.0;
+                // Get REAL current price from TopstepX - NO simulation/fallback prices
+                var currentPrice = await topstepXAdapter.GetPriceAsync(symbol, cancellationToken).ConfigureAwait(false);
                 if (currentPrice > 0)
                 {
                     // Create a single current bar from real price data (SDK provides current pricing)
@@ -1603,24 +1598,27 @@ public class AutonomousDecisionEngine : BackgroundService
                         Symbol = symbol,
                         Start = DateTime.UtcNow,
                         Ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                        Open = (decimal)currentPrice,
-                        High = (decimal)currentPrice,
-                        Low = (decimal)currentPrice,
-                        Close = (decimal)currentPrice,
+                        Open = currentPrice,
+                        High = currentPrice,
+                        Low = currentPrice,
+                        Close = currentPrice,
                         Volume = 0 // Real volume would come from order book
                     };
                     
-                    _logger.LogInformation("✅ [AUTONOMOUS-ENGINE] Created real bar from current price {Price} for {Symbol}", currentPrice, symbol);
+                    _logger.LogDebug("✅ [REAL-DATA] Created bar from live TopstepX price ${Price:F2} for {Symbol}", currentPrice, symbol);
                     return new List<Bar> { currentBar };
                 }
+                
+                _logger.LogWarning("⚠️ [REAL-DATA] TopstepX returned invalid price for {Symbol}", symbol);
+                return null;
             }
             
-            _logger.LogWarning("⚠️ [AUTONOMOUS-ENGINE] No TopstepX SDK adapter available for {Symbol}", symbol);
+            _logger.LogWarning("⚠️ [REAL-DATA] TopstepX adapter not available or not connected for {Symbol}", symbol);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ [AUTONOMOUS-ENGINE] Failed to retrieve real historical data for {Symbol}", symbol);
+            _logger.LogError(ex, "❌ [REAL-DATA] Failed to retrieve real historical data for {Symbol}", symbol);
             return null;
         }
     }
