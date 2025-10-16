@@ -2789,10 +2789,7 @@ Reason closed: {reason}
                     var state = CreateCVaRStateVector(context, strategy, prediction);
                     
                     // Get action from trained CVaR-PPO model
-                    // For backtesting, force exploration to generate more trades
-                    // Check if we're in backtest mode via environment variable
-                    var isBacktest = Environment.GetEnvironmentVariable("BACKTEST_MODE")?.ToUpperInvariant() == "TRUE";
-                    var actionResult = await _cvarPPO.GetActionAsync(state, deterministic: false, forceExploration: isBacktest, cancellationToken).ConfigureAwait(false);
+                    var actionResult = await _cvarPPO.GetActionAsync(state, deterministic: false, cancellationToken).ConfigureAwait(false);
                     
                     // 🎓 SAVE STATE/ACTION FOR EXPERIENCE REPLAY (live + historical learning)
                     _lastCVaRState = state;
@@ -3128,24 +3125,28 @@ Reason closed: {reason}
         private List<string> GetAvailableStrategies(TimeSpan timeOfDay, MarketRegime regime)
         {
             // Enhanced strategy selection logic for primary strategies (S2, S3, S6, S11)
+            // LEARNING MODE: Always make all 4 primary strategies available for both live and historical trading
+            // This ensures the bot can learn which strategy works best in each condition
+            // Neural UCB will select the optimal one based on learned performance
+            
             var hour = timeOfDay.Hours;
             
-            // Time-based primary strategy allocation with specialization
-            var timeBasedStrategies = hour switch
+            // Time-based strategy preferences (used for weighting, not filtering)
+            var timePreferredStrategies = hour switch
             {
                 >= 18 or <= 2 => new[] { "S2", "S11" }, // Asian Session: Mean reversion works well
                 >= 2 and <= 5 => new[] { "S3", "S2" }, // European Open: Breakouts and compression
                 >= 5 and <= 8 => new[] { "S2", "S3", "S11" }, // London Morning: Good liquidity
                 >= 8 and <= 9 => new[] { "S3", "S2" }, // US PreMarket: Compression setups
-                >= 9 and <= 10 => new[] { "S6" }, // Opening Drive: ONLY S6 momentum
+                >= 9 and <= 10 => new[] { "S6", "S3" }, // Opening Drive: Momentum + breakouts
                 >= 10 and <= 11 => new[] { "S3", "S2", "S11" }, // Morning Trend: Best trends
-                >= 11 and <= 13 => new[] { "S2" }, // Lunch: ONLY mean reversion
-                >= 13 and <= 16 => new[] { "S11", "S3" }, // Afternoon: S11 exhaustion + compression
+                >= 11 and <= 13 => new[] { "S2", "S3" }, // Lunch: Mean reversion + compression
+                >= 13 and <= 16 => new[] { "S11", "S3", "S6" }, // Afternoon: Exhaustion + compression + momentum
                 _ => new[] { "S2", "S3" } // Default safe strategies
             };
             
-            // Filter by market regime for additional intelligence
-            var regimeOptimalStrategies = regime switch
+            // Regime-based strategy preferences (used for weighting, not filtering)
+            var regimePreferredStrategies = regime switch
             {
                 MarketRegime.Trending => new[] { "S6", "S3" }, // Momentum and breakouts
                 MarketRegime.Ranging => new[] { "S2", "S11" }, // Mean reversion and fades
@@ -3154,18 +3155,16 @@ Reason closed: {reason}
                 _ => PrimaryStrategies // All primary strategies
             };
             
-            // Intersect time-based and regime-based strategies for optimal selection
-            var availableStrategies = timeBasedStrategies
-                .Intersect(regimeOptimalStrategies)
-                .ToList();
-                
-            // Fallback to time-based if no intersection
-            if (availableStrategies.Count == 0)
-            {
-                availableStrategies = timeBasedStrategies.ToList();
-            }
+            // CRITICAL FIX: Always return all 4 primary strategies for learning
+            // The Neural UCB bandit will learn which ones perform best in each condition
+            // This allows the bot to discover patterns we might not have coded explicitly
+            var availableStrategies = PrimaryStrategies.ToList();
             
-            LogStrategySelection(_logger, hour, regime.ToString(), string.Join(",", availableStrategies), null);
+            LogStrategySelection(_logger, hour, regime.ToString(), 
+                $"All strategies available: {string.Join(",", availableStrategies)} | " +
+                $"Time-preferred: {string.Join(",", timePreferredStrategies)} | " +
+                $"Regime-preferred: {string.Join(",", regimePreferredStrategies)}", 
+                null);
             
             return availableStrategies;
         }

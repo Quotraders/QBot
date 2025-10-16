@@ -384,10 +384,6 @@ internal static class LogMessages
         LoggerMessage.Define<double, double, double, double>(LogLevel.Debug, new EventId(3014, nameof(CVaRPPOActionSelected)),
             "[CVAR_PPO] Action selected: {Action} (prob: {Prob:F3}, value: {Value:F3}, cvar: {CVaR:F3})");
 
-    private static readonly Action<ILogger, double, double, double, double, Exception?> _cvarPpoActionSelectedExploration =
-        LoggerMessage.Define<double, double, double, double>(LogLevel.Debug, new EventId(3028, nameof(CVaRPPOActionSelectedExploration)),
-            "[CVAR_PPO-EXPLORE] Action selected with forced exploration: {Action} (prob: {Prob:F3}, value: {Value:F3}, cvar: {CVaR:F3})");
-
     private static readonly Action<ILogger, Exception?> _cvarPpoUpdateParametersError =
         LoggerMessage.Define(LogLevel.Error, new EventId(3015, nameof(CVaRPPOUpdateParametersError)),
             "[CVAR_PPO] Error updating network parameters");
@@ -651,7 +647,6 @@ internal static class LogMessages
     public static void CVaRPPOActionSelectionOperationError(ILogger logger, Exception ex) => _cvarPpoActionSelectionOperationError(logger, ex);
     public static void CVaRPPOActionSelectionMemoryError(ILogger logger, Exception ex) => _cvarPpoActionSelectionMemoryError(logger, ex);
     public static void CVaRPPOActionSelected(ILogger logger, double action, double prob, double value, double cvar) => _cvarPpoActionSelected(logger, action, prob, value, cvar, null);
-    public static void CVaRPPOActionSelectedExploration(ILogger logger, double action, double prob, double value, double cvar) => _cvarPpoActionSelectedExploration(logger, action, prob, value, cvar, null);
     public static void CVaRPPOUpdateParametersError(ILogger logger, Exception ex) => _cvarPpoUpdateParametersError(logger, ex);
     public static void CVaRPPOUpdateParametersArgumentError(ILogger logger, Exception ex) => _cvarPpoUpdateParametersArgumentError(logger, ex);
     public static void CVaRPPOUpdateParametersOperationError(ILogger logger, Exception ex) => _cvarPpoUpdateParametersOperationError(logger, ex);

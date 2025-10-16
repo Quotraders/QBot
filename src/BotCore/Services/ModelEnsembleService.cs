@@ -228,7 +228,7 @@ public class ModelEnsembleService : IDisposable
                 
                 try
                 {
-                    var action = await cvarAgent.GetActionAsync(state, deterministic, forceExploration: false, cancellationToken).ConfigureAwait(false);
+                    var action = await cvarAgent.GetActionAsync(state, deterministic, cancellationToken).ConfigureAwait(false);
                     if (action != null)
                     {
                         actions.Add(action);
