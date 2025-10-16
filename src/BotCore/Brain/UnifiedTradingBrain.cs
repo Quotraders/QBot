@@ -2789,7 +2789,10 @@ Reason closed: {reason}
                     var state = CreateCVaRStateVector(context, strategy, prediction);
                     
                     // Get action from trained CVaR-PPO model
-                    var actionResult = await _cvarPPO.GetActionAsync(state, deterministic: false, cancellationToken).ConfigureAwait(false);
+                    // For backtesting, force exploration to generate more trades
+                    // Check if we're in backtest mode via environment variable
+                    var isBacktest = Environment.GetEnvironmentVariable("BACKTEST_MODE")?.ToUpperInvariant() == "TRUE";
+                    var actionResult = await _cvarPPO.GetActionAsync(state, deterministic: false, forceExploration: isBacktest, cancellationToken).ConfigureAwait(false);
                     
                     // 🎓 SAVE STATE/ACTION FOR EXPERIENCE REPLAY (live + historical learning)
                     _lastCVaRState = state;

@@ -189,9 +189,20 @@ internal class EnhancedBacktestLearningService : BackgroundService
             var tradesWithResults = results.Where(r => r.TotalTrades > 0).ToList();
             var avgSharpe = tradesWithResults.Any() ? tradesWithResults.Average(r => r.SharpeRatio) : 0m;
             
-            _logger.LogInformation("[UNIFIED-BACKTEST] ✅ Completed unified backtest learning session - processed {Count} backtests across ALL 4 STRATEGIES: S2,S3,S6,S11 | Total trades: {Trades} | Avg Sharpe: {Sharpe:F2} | Rolling window: {Days} days", 
-                results.Length, totalTrades, avgSharpe, 
-                scheduling.LearningIntensity == "INTENSIVE" ? 90 : scheduling.LearningIntensity == "LIGHT" ? 30 : 45);
+            // Calculate comprehensive metrics
+            var totalWinningTrades = results.Sum(r => r.WinningTrades);
+            var totalLosingTrades = results.Sum(r => r.LosingTrades);
+            var overallWinRate = totalTrades > 0 ? (decimal)totalWinningTrades / totalTrades : 0;
+            var totalPnL = results.Sum(r => r.NetPnL);
+            var lookbackDays = scheduling.LearningIntensity == "INTENSIVE" ? 90 : scheduling.LearningIntensity == "LIGHT" ? 30 : 45;
+            
+            _logger.LogInformation(
+                "[UNIFIED-BACKTEST] ✅ Completed unified backtest learning session - processed {Count} backtests across ALL 4 STRATEGIES: S2,S3,S6,S11\n" +
+                "  📊 Total Trades: {Trades} | Winning: {WinTrades} | Losing: {LoseTrades}\n" +
+                "  📈 Win Rate: {WinRate:P1} | Total P&L: ${PnL:F2}\n" +
+                "  📉 Avg Sharpe: {Sharpe:F2} | Rolling window: {Days} days", 
+                results.Length, totalTrades, totalWinningTrades, totalLosingTrades,
+                overallWinRate, totalPnL, avgSharpe, lookbackDays);
         }
         catch (Exception ex)
         {
@@ -213,10 +224,13 @@ internal class EnhancedBacktestLearningService : BackgroundService
         var esContractId = Environment.GetEnvironmentVariable("TOPSTEPX_EVAL_ES_ID") ?? "demo-es-contract";
         var nqContractId = Environment.GetEnvironmentVariable("TOPSTEPX_EVAL_NQ_ID") ?? "demo-nq-contract";
         
-        // Define backtesting period (last 30 days for intensive, 7 for light)
+        // Define backtesting period (last 90 days for intensive, 30 for light, 45 for default)
         var endDate = DateTime.UtcNow.Date;
-        var lookbackDays = scheduling.LearningIntensity == "INTENSIVE" ? 30 : 7;
+        var lookbackDays = scheduling.LearningIntensity == "INTENSIVE" ? 90 : scheduling.LearningIntensity == "LIGHT" ? 30 : 45;
         var startDate = endDate.AddDays(-lookbackDays);
+        
+        _logger.LogInformation("[STRATEGY-EXECUTION] Backtesting period: {Days} days ({StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd})", 
+            lookbackDays, startDate, endDate);
         
         var getJwt = new Func<Task<string>>(async () => 
         {

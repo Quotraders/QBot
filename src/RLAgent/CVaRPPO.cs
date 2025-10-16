@@ -254,7 +254,11 @@ public class CVaRPPO : IDisposable
     /// <summary>
     /// Get action from policy network
     /// </summary>
-    public Task<ActionResult> GetActionAsync(double[] state, bool deterministic = false, CancellationToken cancellationToken = default)
+    /// <param name="state">Current state vector</param>
+    /// <param name="deterministic">If true, select highest probability action; if false, sample from distribution</param>
+    /// <param name="forceExploration">If true (for backtesting), boost exploration by amplifying non-hold actions</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    public Task<ActionResult> GetActionAsync(double[] state, bool deterministic = false, bool forceExploration = false, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(state);
         
@@ -271,6 +275,30 @@ public class CVaRPPO : IDisposable
             // Sample action or take most probable
             int action;
             double[] actionProbs = SoftmaxActivation(policyOutput);
+            
+            // BACKTEST FIX: Force exploration by boosting non-hold actions
+            if (forceExploration)
+            {
+                // Reduce "hold" (action 0) probability and redistribute to other actions
+                // This ensures CVaR makes actual trading decisions during backtesting
+                const double holdPenalty = 0.3; // Reduce hold probability by 30%
+                var holdProb = actionProbs[0];
+                actionProbs[0] = Math.Max(0.1, holdProb * holdPenalty); // Keep minimum 10% for hold
+                
+                // Redistribute the reduced hold probability to trading actions
+                var redistributedProb = (holdProb - actionProbs[0]) / (actionProbs.Length - 1);
+                for (int i = 1; i < actionProbs.Length; i++)
+                {
+                    actionProbs[i] += redistributedProb;
+                }
+                
+                // Renormalize to ensure probabilities sum to 1.0
+                var sum = actionProbs.Sum();
+                for (int i = 0; i < actionProbs.Length; i++)
+                {
+                    actionProbs[i] /= sum;
+                }
+            }
             
             if (deterministic)
             {
@@ -304,7 +332,14 @@ public class CVaRPPO : IDisposable
                 Timestamp = DateTime.UtcNow
             };
 
-            LogMessages.CVaRPPOActionSelected(_logger, action, actionProb, valueEstimate, cvarEstimate);
+            if (forceExploration)
+            {
+                LogMessages.CVaRPPOActionSelectedExploration(_logger, action, actionProb, valueEstimate, cvarEstimate);
+            }
+            else
+            {
+                LogMessages.CVaRPPOActionSelected(_logger, action, actionProb, valueEstimate, cvarEstimate);
+            }
 
             return Task.FromResult(result);
         }
