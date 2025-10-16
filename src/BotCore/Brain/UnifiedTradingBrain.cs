@@ -2976,10 +2976,10 @@ Reason closed: {reason}
                 CurrentPrice = latestBar.Close,
                 Volume = latestBar.Volume,
                 Atr = env.atr,
-                Volatility = Math.Abs(latestBar.High - latestBar.Low) / latestBar.Close,
+                Volatility = latestBar.Close > 0 ? Math.Abs(latestBar.High - latestBar.Low) / latestBar.Close : 0,
                 TimeOfDay = DateTime.Now.TimeOfDay,
                 DayOfWeek = DateTime.Now.DayOfWeek,
-                VolumeRatio = bars.Count > 10 ? (decimal)(latestBar.Volume / bars.TakeLast(10).Average(b => b.Volume)) : 1m,
+                VolumeRatio = CalculateVolumeRatio(bars, latestBar),
                 PriceChange = bars.Count > 1 ? latestBar.Close - bars[^2].Close : 0m,
                 RSI = CalculateRSI(bars, 14),
                 TrendStrength = CalculateTrendStrength(bars),
@@ -2991,6 +2991,18 @@ Reason closed: {reason}
             };
             
             return context;
+        }
+
+        private static decimal CalculateVolumeRatio(IList<Bar> bars, Bar latestBar)
+        {
+            if (bars.Count <= 10) return 1m;
+            
+            var avgVolume = bars.TakeLast(10).Average(b => b.Volume);
+            
+            // Prevent division by zero when average volume is zero
+            if (avgVolume == 0) return 1m;
+            
+            return (decimal)(latestBar.Volume / avgVolume);
         }
 
         private List<string> GetAvailableStrategies(TimeSpan timeOfDay, MarketRegime regime)
@@ -3137,7 +3149,12 @@ Reason closed: {reason}
             
             var recent = bars.TakeLast(TopStepConfig.MinBarsPeriod).ToList();
             var slope = (recent[recent.Count - 1].Close - recent[0].Close) / recent.Count;
-            return Math.Abs(slope) / (recent.Average(b => Math.Abs(b.High - b.Low)));
+            var avgRange = recent.Average(b => Math.Abs(b.High - b.Low));
+            
+            // Prevent division by zero when all bars have same High/Low (e.g., live polls)
+            if (avgRange == 0) return 0;
+            
+            return Math.Abs(slope) / avgRange;
         }
 
         private static decimal CalculateVolatilityRank(IList<Bar> bars)
@@ -3156,7 +3173,12 @@ Reason closed: {reason}
             if (bars.Count < 5) return 0;
             
             var recent = bars.TakeLast(5).ToList();
-            return (recent[recent.Count - 1].Close - recent[0].Close) / recent[0].Close;
+            var firstClose = recent[0].Close;
+            
+            // Prevent division by zero when first bar has zero close price
+            if (firstClose == 0) return 0;
+            
+            return (recent[recent.Count - 1].Close - firstClose) / firstClose;
         }
 
         private async Task UpdateUnifiedLearningAsync(CancellationToken cancellationToken)

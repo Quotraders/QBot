@@ -101,12 +101,33 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
                 {
                     try
                     {
-                        var historicalBars = _barBuffer[barEvent.Instrument].TakeLast(50).ToArray();
-                        _logger.LogInformation("[DATA-INTEGRATION] 📈 Feeding {Count} bars to brain for {Instrument} (Latest: ${Price:F2})",
-                            historicalBars.Length, barEvent.Instrument, barEvent.Close);
+                        // Get seeded historical bars from the bridge (277 bars for each symbol)
+                        List<global::BotCore.Models.Bar> allBars = new();
                         
-                        // Convert BarEventData to Bar objects for the brain
-                        var bars = historicalBars.Select(b => new global::BotCore.Models.Bar
+                        if (_historicalDataBridge != null)
+                        {
+                            try
+                            {
+                                // Get the full historical dataset (277 bars) that was seeded
+                                var contractId = barEvent.Instrument == "ES" ? "CON.F.US.EP.Z25" : "CON.F.US.ENQ.Z25";
+                                var seededHistoricalBars = await _historicalDataBridge.GetRecentHistoricalBarsAsync(contractId, 277).ConfigureAwait(false);
+                                
+                                if (seededHistoricalBars != null && seededHistoricalBars.Count > 0)
+                                {
+                                    allBars.AddRange(seededHistoricalBars);
+                                    _logger.LogInformation("[DATA-INTEGRATION] � Retrieved {Count} seeded historical bars for {Instrument}",
+                                        seededHistoricalBars.Count, barEvent.Instrument);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "[DATA-INTEGRATION] Could not retrieve seeded historical bars, using live buffer only");
+                            }
+                        }
+                        
+                        // Convert live accumulated bars from buffer to Bar objects
+                        var liveBufferBars = _barBuffer[barEvent.Instrument].TakeLast(50).ToArray();
+                        var liveBars = liveBufferBars.Select(b => new global::BotCore.Models.Bar
                         {
                             Start = b.Timestamp,
                             Ts = ((DateTimeOffset)b.Timestamp).ToUnixTimeMilliseconds(),
@@ -117,6 +138,14 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
                             Close = b.Close,
                             Volume = (int)Math.Min(b.Volume, int.MaxValue)
                         }).ToList();
+                        
+                        // Append live bars to historical bars for complete dataset
+                        allBars.AddRange(liveBars);
+                        
+                        _logger.LogInformation("[DATA-INTEGRATION] 📈 Feeding {Total} bars to brain for {Instrument} ({Historical} historical + {Live} live, Latest: ${Price:F2})",
+                            allBars.Count, barEvent.Instrument, allBars.Count - liveBars.Count, liveBars.Count, barEvent.Close);
+                        
+                        var bars = allBars;
                         
                         // Create trading context with full bar history
                         var context = new TradingContext
@@ -803,6 +832,35 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
                 {
                     _logger.LogWarning(ex, "[DATA-INTEGRATION] Failed to get ES price from TopstepX");
                 }
+                
+                // Poll live prices for NQ
+                try
+                {
+                    var nqPrice = await _topstepXAdapter.GetPriceAsync("NQ", cancellationToken).ConfigureAwait(false);
+                    if (nqPrice > 0)
+                    {
+                        _logger.LogInformation("[DATA-INTEGRATION] 📊 Live NQ price: ${Price:F2}", nqPrice);
+                        
+                        // Create synthetic bar event from current price
+                        var barEvent = new BarEventData(
+                            Type: "live_poll",
+                            Instrument: "NQ",
+                            Timestamp: DateTime.UtcNow,
+                            Open: nqPrice,
+                            High: nqPrice,
+                            Low: nqPrice,
+                            Close: nqPrice,
+                            Volume: 1 // Minimal volume for synthetic bar
+                        );
+                        
+                        // Feed to brain via bar event handler
+                        OnBarEventReceived(barEvent);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[DATA-INTEGRATION] Failed to get NQ price from TopstepX");
+                }
             }
             else
             {
@@ -817,7 +875,7 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
                 Timestamp = DateTime.UtcNow,
                 EventType = "REAL Live Market Data Processing", 
                 Source = "TopstepXMarketDataProcessor",
-                Details = "Polling live prices from TopstepX for ES",
+                Details = "Polling live prices from TopstepX for ES and NQ",
                 Success = true
             });
         }

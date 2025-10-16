@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -12,6 +13,7 @@ using System.Net.Http.Json;
 using System.IO;
 using System.Diagnostics;
 using System.Globalization;
+using Microsoft.Extensions.Hosting;
 
 namespace BotCore.Services
 {
@@ -25,6 +27,8 @@ namespace BotCore.Services
         Task<bool> SeedTradingSystemAsync(string[] contractIds);
         Task<List<BotCore.Models.Bar>> GetRecentHistoricalBarsAsync(string contractId, int barCount = 20);
         Task<bool> ValidateHistoricalDataAsync(string contractId);
+        bool IsSeeded { get; }
+        int TotalBarsLoaded { get; }
     }
 
     /// <summary>
@@ -40,7 +44,7 @@ namespace BotCore.Services
         void ConsumeHistoricalBars(string contractId, IEnumerable<BotCore.Models.Bar> bars);
     }
 
-    public class HistoricalDataBridgeService : IHistoricalDataBridgeService
+    public class HistoricalDataBridgeService : BackgroundService, IHistoricalDataBridgeService
     {
         // Base price constants for major futures contracts
         private const decimal EsFuturesBasePrice = 5800m;
@@ -54,6 +58,23 @@ namespace BotCore.Services
         private readonly TradingReadinessConfiguration _config;
         private readonly HttpClient _httpClient;
         private readonly IHistoricalBarConsumer? _barConsumer;
+        
+        private bool _isSeeded = false;
+        private int _totalBarsLoaded = 0;
+        private readonly object _seedLock = new object();
+        private string[]? _contractsToSeed;
+
+        public bool IsSeeded
+        {
+            get { lock (_seedLock) { return _isSeeded; } }
+            private set { lock (_seedLock) { _isSeeded = value; } }
+        }
+
+        public int TotalBarsLoaded
+        {
+            get { lock (_seedLock) { return _totalBarsLoaded; } }
+            private set { lock (_seedLock) { _totalBarsLoaded = value; } }
+        }
 
         public HistoricalDataBridgeService(
             ILogger<HistoricalDataBridgeService> logger,
@@ -68,12 +89,59 @@ namespace BotCore.Services
             _barConsumer = barConsumer;
         }
 
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            // Continuous background retry for historical data loading
+            _logger.LogInformation("[HISTORICAL-BRIDGE] Background retry service started");
+            
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                try
+                {
+                    if (!IsSeeded && _contractsToSeed != null)
+                    {
+                        _logger.LogInformation("[HISTORICAL-BRIDGE] ⏳ Retrying historical data load (not yet seeded)...");
+                        var success = await SeedTradingSystemAsync(_contractsToSeed).ConfigureAwait(false);
+                        
+                        if (success)
+                        {
+                            _logger.LogInformation("[HISTORICAL-BRIDGE] ✅ Historical data successfully loaded on retry!");
+                        }
+                        else
+                        {
+                            _logger.LogWarning("[HISTORICAL-BRIDGE] ⚠️ Retry failed, will try again in 30 seconds");
+                        }
+                    }
+                    
+                    await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Normal shutdown
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[HISTORICAL-BRIDGE] Error in background retry service");
+                    await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken).ConfigureAwait(false);
+                }
+            }
+            
+            _logger.LogInformation("[HISTORICAL-BRIDGE] Background retry service stopped");
+        }
+
         /// <summary>
         /// Seed the trading system with historical data for fast warm-up
         /// </summary>
         public async Task<bool> SeedTradingSystemAsync(string[] contractIds)
         {
             ArgumentNullException.ThrowIfNull(contractIds);
+            
+            // Store contracts for background retry if initial attempt fails
+            if (_contractsToSeed == null)
+            {
+                _contractsToSeed = contractIds;
+            }
             
             if (!_config.EnableHistoricalSeeding)
             {
@@ -132,8 +200,20 @@ namespace BotCore.Services
             }
 
             var success = successCount > 0;
-            _logger.LogInformation("[HISTORICAL-BRIDGE] Seeding complete: {SuccessCount}/{TotalCount} contracts, {TotalBars} bars available", 
-                successCount, contractIds.Length, totalSeeded);
+            
+            // Update seeding status
+            if (success)
+            {
+                IsSeeded = true;
+                TotalBarsLoaded = totalSeeded;
+                _logger.LogInformation("[HISTORICAL-BRIDGE] ✅ SEEDED! {SuccessCount}/{TotalCount} contracts, {TotalBars} bars loaded", 
+                    successCount, contractIds.Length, totalSeeded);
+            }
+            else
+            {
+                _logger.LogWarning("[HISTORICAL-BRIDGE] ⚠️ Seeding FAILED: 0/{TotalCount} contracts loaded - will retry in background", 
+                    contractIds.Length);
+            }
 
             return success;
         }
@@ -237,22 +317,36 @@ namespace BotCore.Services
                 _logger.LogDebug("[HISTORICAL-BRIDGE] Attempting to get historical data via SDK adapter for {ContractId}", contractId);
 
                 // Call Python SDK bridge to get historical bars
-                var pythonScript = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "python", "sdk_bridge.py");
+                // BaseDirectory is src/BotCore/bin/Debug/net8.0, go up 5 levels to workspace root, then into src/UnifiedOrchestrator/python
+                _logger.LogInformation("[HISTORICAL-BRIDGE] BaseDirectory: {BaseDir}", AppDomain.CurrentDomain.BaseDirectory);
+                var pythonScript = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "..", "src", "UnifiedOrchestrator", "python", "sdk_bridge.py");
+                pythonScript = Path.GetFullPath(pythonScript); // Normalize the path
+                _logger.LogInformation("[HISTORICAL-BRIDGE] Resolved python script path: {Path}", pythonScript);
+                
                 if (!File.Exists(pythonScript))
                 {
                     _logger.LogWarning("[HISTORICAL-BRIDGE] SDK bridge script not found at {Path}", pythonScript);
                     return new List<BotCore.Models.Bar>();
                 }
 
+                // Map contract ID to symbol (CON.F.US.EP.Z25 -> ES, CON.F.US.ENQ.Z25 -> NQ)
+                var symbol = contractId.Contains("EP") ? "ES" : contractId.Contains("ENQ") ? "NQ" : contractId;
+                
+                // Create JSON input for sdk_bridge.py
+                var jsonInput = $"{{\"symbol\":\"{symbol}\",\"days\":1,\"timeframe_minutes\":5}}";
+                _logger.LogInformation("[HISTORICAL-BRIDGE] JSON input: {JsonInput}", jsonInput);
+
                 var startInfo = new ProcessStartInfo
                 {
-                    FileName = Environment.GetEnvironmentVariable("PYTHON_EXECUTABLE") ?? "python3",
-                    Arguments = $"\"{pythonScript}\" get_historical_bars \"{contractId}\" \"1m\" {Math.Max(barCount, 100)}",
+                    FileName = Environment.GetEnvironmentVariable("PYTHON_EXECUTABLE") ?? "python",
+                    // Use ArgumentList instead of Arguments to avoid escaping issues
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     CreateNoWindow = true
                 };
+                startInfo.ArgumentList.Add(pythonScript);
+                startInfo.ArgumentList.Add(jsonInput);
 
                 using var process = Process.Start(startInfo);
                 if (process == null)
@@ -278,27 +372,39 @@ namespace BotCore.Services
                 }
 
                 // Parse JSON response from SDK bridge
-                var barData = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object>>>(output);
+                var response = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(output);
+                
+                if (!response.TryGetProperty("success", out var successProp) || !successProp.GetBoolean())
+                {
+                    var errorMsg = response.TryGetProperty("error", out var errProp) ? errProp.GetString() : "Unknown error";
+                    _logger.LogWarning("[HISTORICAL-BRIDGE] SDK bridge returned error: {Error}", errorMsg);
+                    return new List<BotCore.Models.Bar>();
+                }
+
+                if (!response.TryGetProperty("bars", out var barsArray))
+                {
+                    _logger.LogWarning("[HISTORICAL-BRIDGE] SDK bridge response missing 'bars' property");
+                    return new List<BotCore.Models.Bar>();
+                }
+
                 var bars = new List<BotCore.Models.Bar>();
 
-                if (barData != null)
-                {
-                    foreach (var bar in barData)
+                foreach (var barElement in barsArray.EnumerateArray())
                 {
                     try
                     {
                         var botBar = new BotCore.Models.Bar
                         {
-                            Symbol = contractId, // Use contractId as Symbol since ContractId doesn't exist
-                            Open = Convert.ToDecimal(bar["open"], System.Globalization.CultureInfo.InvariantCulture),
-                            High = Convert.ToDecimal(bar["high"], System.Globalization.CultureInfo.InvariantCulture),
-                            Low = Convert.ToDecimal(bar["low"], System.Globalization.CultureInfo.InvariantCulture),
-                            Close = Convert.ToDecimal(bar["close"], System.Globalization.CultureInfo.InvariantCulture),
-                            Volume = Convert.ToInt32(bar.GetValueOrDefault("volume", 0), System.Globalization.CultureInfo.InvariantCulture), // Convert to int
-                            Ts = DateTime.TryParse(bar["timestamp"].ToString(), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var ts) ? 
-                                ((DateTimeOffset)ts).ToUnixTimeMilliseconds() : // Convert DateTime to long
+                            Symbol = contractId,
+                            Open = barElement.GetProperty("open").GetDecimal(),
+                            High = barElement.GetProperty("high").GetDecimal(),
+                            Low = barElement.GetProperty("low").GetDecimal(),
+                            Close = barElement.GetProperty("close").GetDecimal(),
+                            Volume = barElement.GetProperty("volume").GetInt32(),
+                            Ts = DateTime.TryParse(barElement.GetProperty("timestamp").GetString(), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var ts) ? 
+                                ((DateTimeOffset)ts).ToUnixTimeMilliseconds() :
                                 ((DateTimeOffset)DateTime.UtcNow).ToUnixTimeMilliseconds(),
-                            Start = DateTime.TryParse(bar["timestamp"]?.ToString(), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var startTime) ? startTime : DateTime.UtcNow
+                            Start = DateTime.TryParse(barElement.GetProperty("timestamp").GetString(), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var startTime) ? startTime : DateTime.UtcNow
                         };
                         bars.Add(botBar);
                     }
@@ -307,7 +413,6 @@ namespace BotCore.Services
                         _logger.LogWarning(ex, "[HISTORICAL-BRIDGE] Failed to parse bar data");
                     }
                 }
-                } // Close the null check
 
                 _logger.LogInformation("[HISTORICAL-BRIDGE] Retrieved {Count} bars via SDK adapter for {ContractId}", bars.Count, contractId);
                 return bars;

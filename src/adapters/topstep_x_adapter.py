@@ -190,6 +190,11 @@ class TopstepXAdapter:
         self._bar_events_queue: deque = deque(maxlen=100)  # Keep last 100 bars
         self._bar_events_lock = asyncio.Lock()
         
+        # REAL-TIME PRICE CACHE: Since WebSocket may not connect, poll and cache prices
+        self._price_cache: Dict[str, float] = {}  # {symbol: last_price}
+        self._price_cache_lock = asyncio.Lock()
+        self._price_refresh_task: Optional[asyncio.Task] = None  # Background refresh task
+        
         # Configure production logging
         self.logger = logging.getLogger(f"TopstepXAdapter-{'-'.join(instruments)}")
         if not self.logger.handlers:
@@ -552,6 +557,15 @@ class TopstepXAdapter:
                 topstepx_instrument = self._map_symbol_to_topstepx(instrument)
                 self.logger.info(f"Using TopstepX instrument code: {topstepx_instrument}")
                 suite = await TradingSuite.from_env(instrument=topstepx_instrument)
+                
+                # CRITICAL: Initialize WebSocket connection for real-time data streaming
+                self.logger.info(f"🔌 Initializing WebSocket connection for {instrument}...")
+                if hasattr(suite, '_initialize'):
+                    await suite._initialize()
+                    self.logger.info(f"✅ WebSocket connection initialized for {instrument}")
+                else:
+                    self.logger.warning(f"⚠️ Suite does not have _initialize method - WebSocket may not connect")
+                
                 self.suites[instrument] = suite
                 self.logger.info(f"✅ {instrument} suite created")
             
@@ -659,9 +673,36 @@ class TopstepXAdapter:
             })
             # Don't raise - allow adapter to continue and retry connection
         
-        self._is_initialized = True
+        # CRITICAL: Do NOT set initialized=True until price cache is populated!
+        # C# checks health endpoint and will immediately query /price/<symbol>
         self._connection_health = 100.0  # All instruments connected successfully
         self._last_health_check = datetime.now(timezone.utc)
+        
+        # CRITICAL: Populate price cache BEFORE marking as initialized
+        # This ensures prices are available immediately when C# queries
+        self.logger.info("📊 Populating initial price cache...")
+        for instrument in self.instruments:
+            try:
+                suite = self._get_suite(instrument)
+                price = await suite[instrument].data.get_current_price()
+                async with self._price_cache_lock:
+                    self._price_cache[instrument] = float(price)
+                self.logger.info(f"✅ {instrument} initial price: ${price:.2f}")
+            except Exception as e:
+                self.logger.warning(f"⚠️ Failed to get initial price for {instrument}: {e}")
+                # Set a fallback price to avoid failures
+                async with self._price_cache_lock:
+                    self._price_cache[instrument] = 0.0
+        
+        # Start background price refresh task for real-time updates
+        # This polls get_current_price() every second and caches results
+        # since WebSocket may not be available on practice accounts
+        # NOTE: Don't start task here - it will be started in the Flask event loop
+        # self._price_refresh_task = asyncio.create_task(self._continuous_price_refresh())
+        self.logger.info("🔄 Price refresh task will be started by Flask event loop")
+        
+        # NOW mark as initialized (C# can safely query prices)
+        self._is_initialized = True
         
         self.logger.info(f"🚀 TopstepX SDK adapter initialized successfully (Health: 100%)")
         self._emit_telemetry("initialization_completed", {
@@ -673,44 +714,104 @@ class TopstepXAdapter:
     @requires_initialization
     async def get_price(self, symbol: str) -> float:
         """
-        Get current market price for instrument with retry policy and fail-closed behavior.
+        Get current market price for instrument (returns cached real-time value).
+        
+        Price cache is continuously updated every 1 second by background task,
+        ensuring real-time price action even without WebSocket connectivity.
         
         Args:
             symbol: Instrument symbol (e.g., 'MNQ', 'ES')
             
         Returns:
-            Current market price
+            Current market price (cached, updated every 1 second)
             
         Raises:
-            RuntimeError: If price retrieval fails after retries
+            RuntimeError: If price not available in cache
             ValueError: If symbol not configured
         """
         self._validate_symbol(symbol)
         
-        async def _get_price_operation():
-            suite = self._get_suite(symbol)
-            # Use subscript notation as required by TopstepX SDK v3.5.9+
-            price = await suite[symbol].data.get_current_price()
-            self.logger.debug(f"[PRICE] {symbol}: ${price:.2f}")
+        # Return from real-time cache (updated every 1 second by background task)
+        async with self._price_cache_lock:
+            price = self._price_cache.get(symbol)
+            
+            if price is None or price <= 0:
+                # Price not yet in cache - fetch directly as fallback
+                self.logger.warning(f"⚠️ {symbol} price not in cache, fetching directly...")
+                suite = self._get_suite(symbol)
+                price = await suite[symbol].data.get_current_price()
+                self._price_cache[symbol] = float(price)
+            
+            self.logger.debug(f"[PRICE] {symbol}: ${price:.2f} (from cache)")
             return float(price)
+
+    async def _continuous_price_refresh(self):
+        """
+        Background task to continuously refresh price cache.
         
-        # Use retry policy for price retrieval - fail closed if unable to get price
-        try:
-            price = await self.retry_policy.execute_with_retry(
-                _get_price_operation, f"get_price_{symbol}", self.logger
-            )
-            self._emit_telemetry("price_retrieved", {"symbol": symbol, "price": price})
-            return price
-        except Exception as e:
-            # Price retrieval failure is critical for trading - fail closed
-            error_msg = f"FAIL-CLOSED: Price retrieval failed for {symbol} after retries"
-            self.logger.error(error_msg)
-            self._emit_telemetry("price_retrieval_failed", {
-                "symbol": symbol,
-                "error": str(e),
-                "severity": "critical"
-            })
-            raise RuntimeError(error_msg) from e
+        Since WebSocket real-time streaming may not be available on practice accounts,
+        this task polls get_current_price() every second for all instruments and
+        caches the results. The get_price() method then returns cached values instantly.
+        
+        This ensures real-time price action even without WebSocket connectivity.
+        """
+        self.logger.info("🔄 [PRICE-REFRESH] Starting continuous price refresh loop")
+        
+        refresh_count = 0  # Track iterations for heartbeat logging
+        
+        while True:
+            try:
+                refresh_count += 1
+                
+                # Log EVERY iteration for debugging (will show task is running)
+                if refresh_count % 10 == 0:
+                    self.logger.info(f"🔄 [PRICE-REFRESH] Loop iteration #{refresh_count}")
+                
+                for symbol in self.instruments:
+                    try:
+                        # Get fresh price from SDK using LATEST BAR instead of get_current_price()
+                        # This may bypass SDK caching and give us real-time tick data
+                        suite = self._get_suite(symbol)
+                        
+                        # Try get_bars(limit=1, partial=True) for latest tick
+                        # Falls back to get_current_price() if bars unavailable
+                        try:
+                            bars = await suite[symbol].data.get_bars(limit=1, partial=True)
+                            if bars and len(bars) > 0:
+                                price = float(bars[-1].close)  # Use latest bar's close price
+                            else:
+                                # Fallback to get_current_price() if no bars
+                                price = await suite[symbol].data.get_current_price()
+                        except Exception as bars_err:
+                            # If get_bars() fails, fallback to get_current_price()
+                            self.logger.debug(f"get_bars failed for {symbol}, using get_current_price(): {bars_err}")
+                            price = await suite[symbol].data.get_current_price()
+                        
+                        # Update cache with thread-safe lock
+                        async with self._price_cache_lock:
+                            old_price = self._price_cache.get(symbol, 0)
+                            self._price_cache[symbol] = float(price)
+                            
+                            # Log price changes for visibility
+                            if old_price > 0 and abs(price - old_price) > 0.01:
+                                self.logger.info(f"💹 {symbol} price updated: ${old_price:.2f} → ${price:.2f}")
+                            
+                            # Heartbeat: Log every 30 iterations (30 seconds) even if no change
+                            elif refresh_count % 30 == 0:
+                                self.logger.info(f"🔄 [HEARTBEAT] {symbol} price stable: ${price:.2f} (refresh #{refresh_count})")
+                    
+                    except Exception as e:
+                        self.logger.warning(f"⚠️ [PRICE-REFRESH] Failed to refresh {symbol} price: {e}")
+                
+                # Poll every 1 second for real-time updates
+                await asyncio.sleep(1.0)
+                
+            except asyncio.CancelledError:
+                self.logger.info("🛑 [PRICE-REFRESH] Price refresh task cancelled")
+                break
+            except Exception as e:
+                self.logger.error(f"❌ [PRICE-REFRESH] Unexpected error: {e}", exc_info=True)
+                await asyncio.sleep(5.0)  # Back off on errors
 
     @requires_initialization
     async def fetch_historical_bars(
@@ -1880,6 +1981,7 @@ def create_flask_app(adapter: TopstepXAdapter) -> 'Flask':
     @app.route('/price/<symbol>', methods=['GET'])
     def get_price(symbol: str):
         """Get current price for symbol."""
+        print(f"🚨 [FLASK-ENTRY] Route /price/{symbol} called!", flush=True)
         try:
             price = run_async(adapter.get_price(symbol))
             return jsonify({
@@ -2091,6 +2193,13 @@ async def run_http_server():
     # Start async event loop in background thread
     def run_event_loop():
         asyncio.set_event_loop(loop)
+        
+        # Schedule the background price refresh task in THIS loop
+        async def start_background_tasks():
+            adapter._price_refresh_task = asyncio.create_task(adapter._continuous_price_refresh())
+            print("✅ Background price refresh task started in Flask event loop")
+        
+        loop.create_task(start_background_tasks())
         loop.run_forever()
     
     loop_thread = threading.Thread(target=run_event_loop, daemon=True)

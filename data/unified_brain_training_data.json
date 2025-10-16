@@ -1,0 +1,5698 @@
+[
+  {
+    "features": {
+      "price": 6701.5,
+      "volume": 808,
+      "volatility": 0.0003730508095202566589569499,
+      "atr": 3.0413530129877857015359246571,
+      "rsi": 83.13253012048192771084337349,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.5802855466458,
+      "price_change": 1.75,
+      "trend_strength": 0.2142857142857142857142857143,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": 0.001083019008850879486126153,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:27.6142881Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6701.5,
+      "volume": 808,
+      "volatility": 0.0003730508095202566589569499,
+      "atr": 3.0413530129877857015359246571,
+      "rsi": 83.13253012048192771084337349,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.5802855466458,
+      "price_change": 1.75,
+      "trend_strength": 0.2142857142857142857142857143,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": 0.001083019008850879486126153,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:27.6143535Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6704.5,
+      "volume": 1354,
+      "volatility": 0.0006339026027295100305764785,
+      "atr": 3.1276849406315152942833586101,
+      "rsi": 82.27848101265822784810126582,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 2.37086324636666,
+      "price_change": 3.0,
+      "trend_strength": 0.3529411764705882352941176471,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.75,
+      "momentum": 0.0013815764907957133788880176,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:27.9699148Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6704.5,
+      "volume": 1354,
+      "volatility": 0.0006339026027295100305764785,
+      "atr": 3.1276849406315152942833586101,
+      "rsi": 82.27848101265822784810126582,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 2.37086324636666,
+      "price_change": 3.0,
+      "trend_strength": 0.3529411764705882352941176471,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.75,
+      "momentum": 0.0013815764907957133788880176,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:27.9941273Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6703.5,
+      "volume": 490,
+      "volatility": 0.0004102334601327664652793317,
+      "atr": 3.1007074448721213446916901379,
+      "rsi": 76,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.845410628019324,
+      "price_change": -1.0,
+      "trend_strength": 0.3142857142857142857142857143,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.45,
+      "momentum": 0.0010826955385476946051894717,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:28.0239947Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6703.5,
+      "volume": 490,
+      "volatility": 0.0004102334601327664652793317,
+      "atr": 3.1007074448721213446916901379,
+      "rsi": 76,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.845410628019324,
+      "price_change": -1.0,
+      "trend_strength": 0.3142857142857142857142857143,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.45,
+      "momentum": 0.0010826955385476946051894717,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:28.0361855Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6702.5,
+      "volume": 401,
+      "volatility": 0.0002983961208504289444237225,
+      "atr": 3.0220854845241126772137122709,
+      "rsi": 68.115942028985507246376811595,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.694011768778124,
+      "price_change": -1.0,
+      "trend_strength": 0.3663366336633663366336633663,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.15,
+      "momentum": 0.000410463076980484346430837,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility"
+    ],
+    "timestamp": "2025-10-16T00:43:28.0795103Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6702.5,
+      "volume": 401,
+      "volatility": 0.0002983961208504289444237225,
+      "atr": 3.0220854845241126772137122709,
+      "rsi": 68.115942028985507246376811595,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.694011768778124,
+      "price_change": -1.0,
+      "trend_strength": 0.3663366336633663366336633663,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.15,
+      "momentum": 0.000410463076980484346430837,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility"
+    ],
+    "timestamp": "2025-10-16T00:43:28.0879406Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6698.5,
+      "volume": 695,
+      "volatility": 0.0007091139807419571545868478,
+      "atr": 3.1455079499152474859841613944,
+      "rsi": 54.216867469879518072289156626,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.14046603216278,
+      "price_change": -4.0,
+      "trend_strength": 0.1545454545454545454545454545,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.85,
+      "momentum": -0.0004476609714243079907483399,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.1155822Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6698.5,
+      "volume": 695,
+      "volatility": 0.0007091139807419571545868478,
+      "atr": 3.1455079499152474859841613944,
+      "rsi": 54.216867469879518072289156626,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.14046603216278,
+      "price_change": -4.0,
+      "trend_strength": 0.1545454545454545454545454545,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.85,
+      "momentum": -0.0004476609714243079907483399,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.1205296Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6699.5,
+      "volume": 389,
+      "volatility": 0.0004104783939099932830808269,
+      "atr": 3.1172573820641583798424355805,
+      "rsi": 57.647058823529411764705882353,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.630981346309814,
+      "price_change": 1.0,
+      "trend_strength": 0.1891891891891891891891891892,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.45,
+      "momentum": -0.0007457677679170706242076217,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.1443198Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6699.5,
+      "volume": 389,
+      "volatility": 0.0004104783939099932830808269,
+      "atr": 3.1172573820641583798424355805,
+      "rsi": 57.647058823529411764705882353,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.630981346309814,
+      "price_change": 1.0,
+      "trend_strength": 0.1891891891891891891891891892,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.45,
+      "momentum": -0.0007457677679170706242076217,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.1531443Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6697.75,
+      "volume": 321,
+      "volatility": 0.0002986077414056959426673137,
+      "atr": 3.0374532833452899241394044676,
+      "rsi": 55.056179775280898876404494382,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.512043388100176,
+      "price_change": -1.75,
+      "trend_strength": 0.0869565217391304347826086957,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.15,
+      "momentum": -0.0008577608711866935183113299,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.1809966Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6697.75,
+      "volume": 321,
+      "volatility": 0.0002986077414056959426673137,
+      "atr": 3.0374532833452899241394044676,
+      "rsi": 55.056179775280898876404494382,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.512043388100176,
+      "price_change": -1.75,
+      "trend_strength": 0.0869565217391304347826086957,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.15,
+      "momentum": -0.0008577608711866935183113299,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.1932875Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6698.0,
+      "volume": 331,
+      "volatility": 0.0002612720214989549119140042,
+      "atr": 2.9454923345349120724151612914,
+      "rsi": 56.179775280898876404494382023,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.53404323975476,
+      "price_change": 0.25,
+      "trend_strength": 0.0603448275862068965517241379,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.1,
+      "momentum": -0.0006713912719134651249533756,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.2128413Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6698.0,
+      "volume": 331,
+      "volatility": 0.0002612720214989549119140042,
+      "atr": 2.9454923345349120724151612914,
+      "rsi": 56.179775280898876404494382023,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.53404323975476,
+      "price_change": 0.25,
+      "trend_strength": 0.0603448275862068965517241379,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.1,
+      "momentum": -0.0006713912719134651249533756,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.2278035Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6697.0,
+      "volume": 611,
+      "volatility": 0.0004479617739286247573540391,
+      "atr": 2.9493857392109897815283640563,
+      "rsi": 58.823529411764705882352941177,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.94057881773399,
+      "price_change": -1.0,
+      "trend_strength": 0.0909090909090909090909090909,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.65,
+      "momentum": -0.0002239307307606180488168993,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.2491102Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6697.0,
+      "volume": 611,
+      "volatility": 0.0004479617739286247573540391,
+      "atr": 2.9493857392109897815283640563,
+      "rsi": 58.823529411764705882352941177,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.94057881773399,
+      "price_change": -1.0,
+      "trend_strength": 0.0909090909090909090909090909,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.65,
+      "momentum": -0.0002239307307606180488168993,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.2572374Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6695.75,
+      "volume": 295,
+      "volatility": 0.0002240227009670313258410186,
+      "atr": 2.8458581864102047971334809094,
+      "rsi": 53.488372093023255813953488372,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.517998244073749,
+      "price_change": -1.25,
+      "trend_strength": 0.211009174311926605504587156,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.05,
+      "momentum": -0.0005597432644227181132920367,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.2814081Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6695.75,
+      "volume": 295,
+      "volatility": 0.0002240227009670313258410186,
+      "atr": 2.8458581864102047971334809094,
+      "rsi": 53.488372093023255813953488372,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.517998244073749,
+      "price_change": -1.25,
+      "trend_strength": 0.211009174311926605504587156,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.05,
+      "momentum": -0.0005597432644227181132920367,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.2926543Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6698.0,
+      "volume": 439,
+      "volatility": 0.000373245744998507017020006,
+      "atr": 2.8211540302380473116239465587,
+      "rsi": 57.894736842105263157894736842,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.824258355238453,
+      "price_change": 2.25,
+      "trend_strength": 0.2385321100917431192660550459,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.4,
+      "momentum": 0.0000373259676757119928334142,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.3174738Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6696.5,
+      "volume": 266,
+      "volatility": 0.0002613305458075113865452102,
+      "atr": 2.7625001709353296465079503759,
+      "rsi": 52.5773195876288659793814433,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.627654554034922,
+      "price_change": -1.5,
+      "trend_strength": 0.2828282828282828282828282828,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.15,
+      "momentum": -0.0002239474469991042102120036,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.4116174Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6698.0,
+      "volume": 439,
+      "volatility": 0.000373245744998507017020006,
+      "atr": 2.8211540302380473116239465587,
+      "rsi": 57.894736842105263157894736842,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.824258355238453,
+      "price_change": 2.25,
+      "trend_strength": 0.2385321100917431192660550459,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.4,
+      "momentum": 0.0000373259676757119928334142,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.411625Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6693.0,
+      "volume": 945,
+      "volatility": 0.000747049155834453907067085,
+      "atr": 2.9223215872970918146145253491,
+      "rsi": 43.925233644859813084112149532,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 2.01363733219689,
+      "price_change": -3.5,
+      "trend_strength": 0.3518518518518518518518518519,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.95,
+      "momentum": -0.0005972823652381663431387188,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume"
+    ],
+    "timestamp": "2025-10-16T00:43:28.4708209Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6696.5,
+      "volume": 266,
+      "volatility": 0.0002613305458075113865452102,
+      "atr": 2.7625001709353296465079503759,
+      "rsi": 52.5773195876288659793814433,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.627654554034922,
+      "price_change": -1.5,
+      "trend_strength": 0.2828282828282828282828282828,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.15,
+      "momentum": -0.0002239474469991042102120036,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.5831142Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6696.0,
+      "volume": 547,
+      "volatility": 0.0005600358422939068100358423,
+      "atr": 2.9814414739187281135706306813,
+      "rsi": 42.857142857142857142857142857,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.1303988427361,
+      "price_change": 3.0,
+      "trend_strength": 0.0869565217391304347826086957,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.75,
+      "momentum": 0.0000373371168278385543068364,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.6025558Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6693.0,
+      "volume": 945,
+      "volatility": 0.000747049155834453907067085,
+      "atr": 2.9223215872970918146145253491,
+      "rsi": 43.925233644859813084112149532,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 2.01363733219689,
+      "price_change": -3.5,
+      "trend_strength": 0.3518518518518518518518518519,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.95,
+      "momentum": -0.0005972823652381663431387188,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume"
+    ],
+    "timestamp": "2025-10-16T00:43:28.6151496Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6700.5,
+      "volume": 602,
+      "volatility": 0.0007089023207223341541675994,
+      "atr": 3.1077670829245332483155856326,
+      "rsi": 48.275862068965517241379310344,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.26843657817109,
+      "price_change": 4.5,
+      "trend_strength": 0.0347826086956521739130434783,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.85,
+      "momentum": 0.000373245744998507017020006,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.6429339Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6696.0,
+      "volume": 547,
+      "volatility": 0.0005600358422939068100358423,
+      "atr": 2.9814414739187281135706306813,
+      "rsi": 42.857142857142857142857142857,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.1303988427361,
+      "price_change": 3.0,
+      "trend_strength": 0.0869565217391304347826086957,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.75,
+      "momentum": 0.0000373371168278385543068364,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.6503306Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6700.25,
+      "volume": 333,
+      "volatility": 0.0002611842841685011753292788,
+      "atr": 3.0107837198584951591501866589,
+      "rsi": 41.904761904761904761904761905,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.71002132196162,
+      "price_change": -0.25,
+      "trend_strength": 0.0900900900900900900900900901,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.15,
+      "momentum": 0.000559994026730381542596879,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.7032418Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6700.5,
+      "volume": 602,
+      "volatility": 0.0007089023207223341541675994,
+      "atr": 3.1077670829245332483155856326,
+      "rsi": 48.275862068965517241379310344,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.26843657817109,
+      "price_change": 4.5,
+      "trend_strength": 0.0347826086956521739130434783,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.85,
+      "momentum": 0.000373245744998507017020006,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.7028626Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6698.5,
+      "volume": 281,
+      "volatility": 0.0003732178846010300813614988,
+      "atr": 2.9742991684400312192108876119,
+      "rsi": 40.740740740740740740740740741,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.604301075268817,
+      "price_change": -1.75,
+      "trend_strength": 0.017699115044247787610619469,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.4,
+      "momentum": 0.0008217540714178992977737935,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.76119Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6700.25,
+      "volume": 333,
+      "volatility": 0.0002611842841685011753292788,
+      "atr": 3.0107837198584951591501866589,
+      "rsi": 41.904761904761904761904761905,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.71002132196162,
+      "price_change": -0.25,
+      "trend_strength": 0.0900900900900900900900900901,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.15,
+      "momentum": 0.000559994026730381542596879,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.7636197Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6698.5,
+      "volume": 281,
+      "volatility": 0.0003732178846010300813614988,
+      "atr": 2.9742991684400312192108876119,
+      "rsi": 40.740740740740740740740740741,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.604301075268817,
+      "price_change": -1.75,
+      "trend_strength": 0.017699115044247787610619469,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.4,
+      "momentum": 0.0008217540714178992977737935,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.8207516Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6697.0,
+      "volume": 315,
+      "volatility": 0.0004479617739286247573540391,
+      "atr": 2.9761349421228861321243956396,
+      "rsi": 40.000000000000000000000000001,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.6797583081571,
+      "price_change": -1.5,
+      "trend_strength": 0,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.6,
+      "momentum": 0.0001493428912783751493428913,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.8207512Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6697.0,
+      "volume": 315,
+      "volatility": 0.0004479617739286247573540391,
+      "atr": 2.9761349421228861321243956396,
+      "rsi": 40.000000000000000000000000001,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.6797583081571,
+      "price_change": -1.5,
+      "trend_strength": 0,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.6,
+      "momentum": 0.0001493428912783751493428913,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.8557433Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6696.5,
+      "volume": 569,
+      "volatility": 0.000373329351153587695064586,
+      "atr": 2.9599824462569656941155102368,
+      "rsi": 45.833333333333333333333333335,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.23911149825784,
+      "price_change": -0.5,
+      "trend_strength": 0.0258620689655172413793103448,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": -0.0005969703753451234982463995,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.8649345Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6696.5,
+      "volume": 569,
+      "volatility": 0.000373329351153587695064586,
+      "atr": 2.9599824462569656941155102368,
+      "rsi": 45.833333333333333333333333335,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.23911149825784,
+      "price_change": -0.5,
+      "trend_strength": 0.0258620689655172413793103448,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": -0.0005969703753451234982463995,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.909696Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6695.5,
+      "volume": 486,
+      "volatility": 0.0005227391531625718766335599,
+      "atr": 2.9985551286671824302501166484,
+      "rsi": 41.666666666666666666666666667,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.01609868283504,
+      "price_change": -1.0,
+      "trend_strength": 0.0806451612903225806451612903,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.7,
+      "momentum": -0.0007089287713145031901794709,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.9099973Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6697.0,
+      "volume": 333,
+      "volatility": 0.0004106316261012393609078692,
+      "atr": 2.9808011909052408280893940306,
+      "rsi": 48.421052631578947368421052632,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.711994868505452,
+      "price_change": 1.5,
+      "trend_strength": 0.016,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.45,
+      "momentum": -0.0002239307307606180488168993,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.9498622Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6695.5,
+      "volume": 486,
+      "volatility": 0.0005227391531625718766335599,
+      "atr": 2.9985551286671824302501166484,
+      "rsi": 41.666666666666666666666666667,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.01609868283504,
+      "price_change": -1.0,
+      "trend_strength": 0.0806451612903225806451612903,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.7,
+      "momentum": -0.0007089287713145031901794709,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.9530624Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6711.5,
+      "volume": 399,
+      "volatility": 0.000223496982790732325113611,
+      "atr": 2.5005985428584178361057042558,
+      "rsi": 70.454545454545454545454545454,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.436686001970012,
+      "price_change": 1.25,
+      "trend_strength": 0.2393162393162393162393162393,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.1,
+      "momentum": -0.0002234470430507969611202145,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:28.9911554Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6697.0,
+      "volume": 333,
+      "volatility": 0.0004106316261012393609078692,
+      "atr": 2.9808011909052408280893940306,
+      "rsi": 48.421052631578947368421052632,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.711994868505452,
+      "price_change": 1.5,
+      "trend_strength": 0.016,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.45,
+      "momentum": -0.0002239307307606180488168993,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:28.9954867Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6711.5,
+      "volume": 399,
+      "volatility": 0.000223496982790732325113611,
+      "atr": 2.5005985428584178361057042558,
+      "rsi": 70.454545454545454545454545454,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.436686001970012,
+      "price_change": 1.25,
+      "trend_strength": 0.2393162393162393162393162393,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.1,
+      "momentum": -0.0002234470430507969611202145,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:29.0338115Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6711.75,
+      "volume": 301,
+      "volatility": 0.0002234886579506090065929154,
+      "atr": 2.4291272183685308478124396661,
+      "rsi": 69.047619047619047619047619048,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.332046332046332,
+      "price_change": 0.25,
+      "trend_strength": 0.2327586206896551724137931034,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.1,
+      "momentum": -0.000521201742302967127061539,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.0500156Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6711.75,
+      "volume": 301,
+      "volatility": 0.0002234886579506090065929154,
+      "atr": 2.4291272183685308478124396661,
+      "rsi": 69.047619047619047619047619048,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.332046332046332,
+      "price_change": 0.25,
+      "trend_strength": 0.2327586206896551724137931034,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.1,
+      "momentum": -0.000521201742302967127061539,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.0829964Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6712.0,
+      "volume": 529,
+      "volatility": 0.0002979737783075089392133492,
+      "atr": 2.3984752741993500729686939756,
+      "rsi": 71.084337349397590361445783132,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.568450462067483,
+      "price_change": 0.25,
+      "trend_strength": 0.0172413793103448275862068966,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.4,
+      "momentum": -0.0000372453350217885209877463,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:29.0957131Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6712.0,
+      "volume": 529,
+      "volatility": 0.0002979737783075089392133492,
+      "atr": 2.3984752741993500729686939756,
+      "rsi": 71.084337349397590361445783132,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.568450462067483,
+      "price_change": 0.25,
+      "trend_strength": 0.0172413793103448275862068966,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.4,
+      "momentum": -0.0000372453350217885209877463,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:29.1542974Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6709.0,
+      "volume": 587,
+      "volatility": 0.0005589506632881204352362498,
+      "atr": 2.4950127546136822106137872631,
+      "rsi": 60.43956043956043956043956044,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.936502871729419,
+      "price_change": -3.0,
+      "trend_strength": 0.0873786407766990291262135922,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.8,
+      "momentum": -0.0001862821802466376066465482,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.1620082Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6709.0,
+      "volume": 587,
+      "volatility": 0.0005589506632881204352362498,
+      "atr": 2.4950127546136822106137872631,
+      "rsi": 60.43956043956043956043956044,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.936502871729419,
+      "price_change": -3.0,
+      "trend_strength": 0.0873786407766990291262135922,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.8,
+      "momentum": -0.0001862821802466376066465482,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.2110602Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6710.25,
+      "volume": 359,
+      "volatility": 0.000409820796542602734622406,
+      "atr": 2.513226129284133481284231030,
+      "rsi": 60.869565217391304347826086957,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.636411983690835,
+      "price_change": 1.25,
+      "trend_strength": 0.0373831775700934579439252336,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.6,
+      "momentum": -0.0001862474856589436042613425,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.2494936Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6710.25,
+      "volume": 359,
+      "volatility": 0.000409820796542602734622406,
+      "atr": 2.513226129284133481284231030,
+      "rsi": 60.869565217391304347826086957,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.636411983690835,
+      "price_change": 1.25,
+      "trend_strength": 0.0373831775700934579439252336,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.6,
+      "momentum": -0.0001862474856589436042613425,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.3014496Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6708.25,
+      "volume": 677,
+      "volatility": 0.0004099429806581448216748034,
+      "atr": 2.5301385486209810897639288136,
+      "rsi": 57.731958762886597938144329897,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.21565810738014,
+      "price_change": -2.00,
+      "trend_strength": 0.1743119266055045871559633028,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.55,
+      "momentum": -0.000521473535218087682050136,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.3113318Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6708.25,
+      "volume": 677,
+      "volatility": 0.0004099429806581448216748034,
+      "atr": 2.5301385486209810897639288136,
+      "rsi": 57.731958762886597938144329897,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.21565810738014,
+      "price_change": -2.00,
+      "trend_strength": 0.1743119266055045871559633028,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.55,
+      "momentum": -0.000521473535218087682050136,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.3555196Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6708.75,
+      "volume": 354,
+      "volatility": 0.0002608533631451462642071921,
+      "atr": 2.4744143665766252976379338984,
+      "rsi": 57.731958762886597938144329897,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.653377630121816,
+      "price_change": 0.50,
+      "trend_strength": 0.25,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.15,
+      "momentum": -0.0004842073897497020262216925,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.3699289Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6708.75,
+      "volume": 354,
+      "volatility": 0.0002608533631451462642071921,
+      "atr": 2.4744143665766252976379338984,
+      "rsi": 57.731958762886597938144329897,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.653377630121816,
+      "price_change": 0.50,
+      "trend_strength": 0.25,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.15,
+      "momentum": -0.0004842073897497020262216925,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.4095772Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6710.75,
+      "volume": 555,
+      "volatility": 0.0004470439220653429199418843,
+      "atr": 2.5119561975354377763780814771,
+      "rsi": 48.101265822784810126582278481,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.11200160288519,
+      "price_change": 2.00,
+      "trend_strength": 0.0571428571428571428571428571,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.7,
+      "momentum": 0.0002608436428677895364435832,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.4221659Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6710.75,
+      "volume": 555,
+      "volatility": 0.0004470439220653429199418843,
+      "atr": 2.5119561975354377763780814771,
+      "rsi": 48.101265822784810126582278481,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.11200160288519,
+      "price_change": 2.00,
+      "trend_strength": 0.0571428571428571428571428571,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.7,
+      "momentum": 0.0002608436428677895364435832,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.4560151Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6709.75,
+      "volume": 809,
+      "volatility": 0.0007451842468050225418234659,
+      "atr": 2.6896736119971922209225042287,
+      "rsi": 46.341463414634146341463414633,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.60293243510997,
+      "price_change": -1.00,
+      "trend_strength": 0.0183486238532110091743119266,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.9,
+      "momentum": -0.0000745128720986550426586193,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.4659354Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6709.75,
+      "volume": 809,
+      "volatility": 0.0007451842468050225418234659,
+      "atr": 2.6896736119971922209225042287,
+      "rsi": 46.341463414634146341463414633,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.60293243510997,
+      "price_change": -1.00,
+      "trend_strength": 0.0183486238532110091743119266,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.9,
+      "momentum": -0.0000745128720986550426586193,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.5582699Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6711.0,
+      "volume": 528,
+      "volatility": 0.0004097749962747727611384294,
+      "atr": 2.6939826397116784908566110695,
+      "rsi": 49.425287356321839080459770116,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.0357002746175,
+      "price_change": 1.25,
+      "trend_strength": 0.0186915887850467289719626168,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.45,
+      "momentum": 0.0004099429806581448216748034,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.5622955Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6711.5,
+      "volume": 895,
+      "volatility": 0.0004469939655814646502272219,
+      "atr": 2.7158410225894157415097102789,
+      "rsi": 46.341463414634146341463414633,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.59992849481587,
+      "price_change": 0.5,
+      "trend_strength": 0.0088495575221238938053097345,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.6,
+      "momentum": 0.0004099124277995155580398733,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.6324235Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6711.0,
+      "volume": 528,
+      "volatility": 0.0004097749962747727611384294,
+      "atr": 2.6939826397116784908566110695,
+      "rsi": 49.425287356321839080459770116,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.0357002746175,
+      "price_change": 1.25,
+      "trend_strength": 0.0186915887850467289719626168,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.45,
+      "momentum": 0.0004099429806581448216748034,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.6363465Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6710.25,
+      "volume": 1279,
+      "volatility": 0.0004470772325919302559517157,
+      "atr": 2.7361380924044574742590166876,
+      "rsi": 37.179487179487179487179487181,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.94613511868533,
+      "price_change": -1.25,
+      "trend_strength": 0.0588235294117647058823529412,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.55,
+      "momentum": -0.000074507320344223819990314,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.7048523Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6711.5,
+      "volume": 895,
+      "volatility": 0.0004469939655814646502272219,
+      "atr": 2.7158410225894157415097102789,
+      "rsi": 46.341463414634146341463414633,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.59992849481587,
+      "price_change": 0.5,
+      "trend_strength": 0.0088495575221238938053097345,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.6,
+      "momentum": 0.0004099124277995155580398733,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.7089866Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6713.75,
+      "volume": 1505,
+      "volatility": 0.0005957922174641593744181717,
+      "atr": 2.8442710858041390832405154956,
+      "rsi": 53.750000000000000000000000001,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.99390567037626,
+      "price_change": 3.50,
+      "trend_strength": 0.1496062992125984251968503937,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.8,
+      "momentum": 0.0005961473974440180334587727,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.8060707Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6710.25,
+      "volume": 1279,
+      "volatility": 0.0004470772325919302559517157,
+      "atr": 2.7361380924044574742590166876,
+      "rsi": 37.179487179487179487179487181,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.94613511868533,
+      "price_change": -1.25,
+      "trend_strength": 0.0588235294117647058823529412,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.55,
+      "momentum": -0.000074507320344223819990314,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.8055715Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6713.75,
+      "volume": 1505,
+      "volatility": 0.0005957922174641593744181717,
+      "atr": 2.8442710858041390832405154956,
+      "rsi": 53.750000000000000000000000001,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.99390567037626,
+      "price_change": 3.50,
+      "trend_strength": 0.1496062992125984251968503937,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.8,
+      "momentum": 0.0005961473974440180334587727,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.8981273Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6713.5,
+      "volume": 1179,
+      "volatility": 0.0003351456021449318537275639,
+      "atr": 2.8018231511038434344376215316,
+      "rsi": 58.904109589041095890410958904,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.44840294840295,
+      "price_change": -0.25,
+      "trend_strength": 0.1074380165289256198347107438,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.25,
+      "momentum": 0.0003725227238861570555803904,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:29.9054787Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6713.0,
+      "volume": 891,
+      "volatility": 0.0002606882168925964546402503,
+      "atr": 2.7266929260249974748349342794,
+      "rsi": 54.285714285714285714285714286,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.02744464944649,
+      "price_change": -0.5,
+      "trend_strength": 0.1623931623931623931623931624,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.1,
+      "momentum": 0.000223496982790732325113611,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:30.0614229Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6713.5,
+      "volume": 1179,
+      "volatility": 0.0003351456021449318537275639,
+      "atr": 2.8018231511038434344376215316,
+      "rsi": 58.904109589041095890410958904,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.44840294840295,
+      "price_change": -0.25,
+      "trend_strength": 0.1074380165289256198347107438,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.25,
+      "momentum": 0.0003725227238861570555803904,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:30.0756232Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6712.25,
+      "volume": 514,
+      "volatility": 0.0002234720101307311259264777,
+      "atr": 2.6390720027374976552038675451,
+      "rsi": 51.388888888888888888888888888,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.604066282759431,
+      "price_change": -0.75,
+      "trend_strength": 0.125,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0,
+      "momentum": 0.0002980514883946201706344771,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:30.1972241Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6713.0,
+      "volume": 891,
+      "volatility": 0.0002606882168925964546402503,
+      "atr": 2.7266929260249974748349342794,
+      "rsi": 54.285714285714285714285714286,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.02744464944649,
+      "price_change": -0.5,
+      "trend_strength": 0.1623931623931623931623931624,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.1,
+      "momentum": 0.000223496982790732325113611,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:30.2421423Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6715.25,
+      "volume": 1182,
+      "volatility": 0.0006701165258181005919362645,
+      "atr": 2.7719954311133906798321627204,
+      "rsi": 57.831325301204819277108433734,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.26593124129806,
+      "price_change": 3.00,
+      "trend_strength": 0.1463414634146341463414634146,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.9,
+      "momentum": 0.0002234220815490597654068144,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:30.2993412Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6712.25,
+      "volume": 514,
+      "volatility": 0.0002234720101307311259264777,
+      "atr": 2.6390720027374976552038675451,
+      "rsi": 51.388888888888888888888888888,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.604066282759431,
+      "price_change": -0.75,
+      "trend_strength": 0.125,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0,
+      "momentum": 0.0002980514883946201706344771,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:30.3524024Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6714.25,
+      "volume": 1538,
+      "volatility": 0.0003351081654689652604535131,
+      "atr": 2.7525671860338627741298653832,
+      "rsi": 64,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.49031007751938,
+      "price_change": -1.00,
+      "trend_strength": 0.15,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": 0.0001117152007149772845758546,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:30.3993381Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6715.25,
+      "volume": 1182,
+      "volatility": 0.0006701165258181005919362645,
+      "atr": 2.7719954311133906798321627204,
+      "rsi": 57.831325301204819277108433734,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.26593124129806,
+      "price_change": 3.00,
+      "trend_strength": 0.1463414634146341463414634146,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.9,
+      "momentum": 0.0002234220815490597654068144,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:30.442865Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6714.0,
+      "volume": 1320,
+      "volatility": 0.0003723562704795948763777182,
+      "atr": 2.7345266727457297188348749987,
+      "rsi": 60.563380281690140845070422535,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.21872403286862,
+      "price_change": -0.25,
+      "trend_strength": 0.1090909090909090909090909091,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.4,
+      "momentum": 0.000148964695367197974080143,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:30.4730294Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6714.25,
+      "volume": 1538,
+      "volatility": 0.0003351081654689652604535131,
+      "atr": 2.7525671860338627741298653832,
+      "rsi": 64,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.49031007751938,
+      "price_change": -1.00,
+      "trend_strength": 0.15,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": 0.0001117152007149772845758546,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:30.5263138Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6715.75,
+      "volume": 2103,
+      "volatility": 0.0008189703309384655474072144,
+      "atr": 2.9320604818353204532038124988,
+      "rsi": 71.428571428571428571428571429,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.69514750926971,
+      "price_change": 1.75,
+      "trend_strength": 0.1404958677685950413223140496,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.95,
+      "momentum": 0.000521434690305039293828448,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:30.5868538Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6714.0,
+      "volume": 1320,
+      "volatility": 0.0003723562704795948763777182,
+      "atr": 2.7345266727457297188348749987,
+      "rsi": 60.563380281690140845070422535,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.21872403286862,
+      "price_change": -0.25,
+      "trend_strength": 0.1090909090909090909090909091,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.4,
+      "momentum": 0.000148964695367197974080143,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:30.6575198Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6716.5,
+      "volume": 1905,
+      "volatility": 0.0006327700439216854016228691,
+      "atr": 3.0261990188470832779749687489,
+      "rsi": 71.830985915492957746478873239,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.41994633273703,
+      "price_change": 0.75,
+      "trend_strength": 0.1984126984126984126984126984,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.8,
+      "momentum": 0.0001861434793939168310934068,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:30.7133634Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6715.75,
+      "volume": 2103,
+      "volatility": 0.0008189703309384655474072144,
+      "atr": 2.9320604818353204532038124988,
+      "rsi": 71.428571428571428571428571429,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.69514750926971,
+      "price_change": 1.75,
+      "trend_strength": 0.1404958677685950413223140496,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.95,
+      "momentum": 0.000521434690305039293828448,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:30.7302696Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6713.5,
+      "volume": 1113,
+      "volatility": 0.0006330528040515379459298429,
+      "atr": 3.1136133746437201866910424097,
+      "rsi": 57.333333333333333333333333333,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.84,
+      "price_change": -3.0,
+      "trend_strength": 0.0076335877862595419847328244,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.75,
+      "momentum": -0.000111702721822988420151171,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:30.8194758Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6716.5,
+      "volume": 1905,
+      "volatility": 0.0006327700439216854016228691,
+      "atr": 3.0261990188470832779749687489,
+      "rsi": 71.830985915492957746478873239,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.41994633273703,
+      "price_change": 0.75,
+      "trend_strength": 0.1984126984126984126984126984,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.8,
+      "momentum": 0.0001861434793939168310934068,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:30.8685548Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6712.25,
+      "volume": 692,
+      "volatility": 0.0002234720101307311259264777,
+      "atr": 2.9983552764548830304988250947,
+      "rsi": 56.578947368421052631578947368,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.556404277558897,
+      "price_change": -1.25,
+      "trend_strength": 0.0413223140495867768595041322,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0,
+      "momentum": -0.0002606493893357164134644027,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:30.9453183Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6713.5,
+      "volume": 1113,
+      "volatility": 0.0006330528040515379459298429,
+      "atr": 3.1136133746437201866910424097,
+      "rsi": 57.333333333333333333333333333,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.84,
+      "price_change": -3.0,
+      "trend_strength": 0.0076335877862595419847328244,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.75,
+      "momentum": -0.000111702721822988420151171,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:30.9923292Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6710.75,
+      "volume": 1744,
+      "volatility": 0.0003725366017211190999515702,
+      "atr": 2.9627584709938199568917661594,
+      "rsi": 49.350649350649350649350649352,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.34133210275342,
+      "price_change": -1.50,
+      "trend_strength": 0.0737704918032786885245901639,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": -0.0007445184826713323158247403,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.0117052Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6712.25,
+      "volume": 692,
+      "volatility": 0.0002234720101307311259264777,
+      "atr": 2.9983552764548830304988250947,
+      "rsi": 56.578947368421052631578947368,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.556404277558897,
+      "price_change": -1.25,
+      "trend_strength": 0.0413223140495867768595041322,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0,
+      "momentum": -0.0002606493893357164134644027,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.072787Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6713.0,
+      "volume": 910,
+      "volatility": 0.0005213764337851929092805005,
+      "atr": 3.0011328659228328171137828623,
+      "rsi": 53.57142857142857142857142857,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.698871054450503,
+      "price_change": 2.25,
+      "trend_strength": 0.0232558139534883720930232558,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.65,
+      "momentum": -0.0005211047420531526836894216,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.0810345Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6710.75,
+      "volume": 1744,
+      "volatility": 0.0003725366017211190999515702,
+      "atr": 2.9627584709938199568917661594,
+      "rsi": 49.350649350649350649350649352,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.34133210275342,
+      "price_change": -1.50,
+      "trend_strength": 0.0737704918032786885245901639,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": -0.0007445184826713323158247403,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.1470776Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6711.25,
+      "volume": 653,
+      "volatility": 0.0005215123859191655801825293,
+      "atr": 3.0367662326426304730342269436,
+      "rsi": 52.325581395348837209302325582,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.496200607902736,
+      "price_change": -1.75,
+      "trend_strength": 0.1167883211678832116788321168,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.6,
+      "momentum": -0.0003351456021449318537275639,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.1826593Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6713.0,
+      "volume": 910,
+      "volatility": 0.0005213764337851929092805005,
+      "atr": 3.0011328659228328171137828623,
+      "rsi": 53.57142857142857142857142857,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.698871054450503,
+      "price_change": 2.25,
+      "trend_strength": 0.0232558139534883720930232558,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.65,
+      "momentum": -0.0005211047420531526836894216,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.2142855Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6712.0,
+      "volume": 766,
+      "volatility": 0.0005214541120381406436233611,
+      "atr": 3.0698543588824425821032107334,
+      "rsi": 45.333333333333333333333333333,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.601067168863779,
+      "price_change": 0.75,
+      "trend_strength": 0.0676691729323308270676691729,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.55,
+      "momentum": -0.0000372453350217885209877463,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.2463934Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6711.25,
+      "volume": 653,
+      "volatility": 0.0005215123859191655801825293,
+      "atr": 3.0367662326426304730342269436,
+      "rsi": 52.325581395348837209302325582,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.496200607902736,
+      "price_change": -1.75,
+      "trend_strength": 0.1167883211678832116788321168,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.6,
+      "momentum": -0.0003351456021449318537275639,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.2830191Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6713.25,
+      "volume": 679,
+      "volatility": 0.0003723978698841842624660187,
+      "atr": 3.0291504761051252548101242524,
+      "rsi": 49.367088607594936708860759494,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.57130837189735,
+      "price_change": 1.25,
+      "trend_strength": 0.0223880597014925373134328358,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.25,
+      "momentum": 0.0003725366017211190999515702,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.3379411Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6712.0,
+      "volume": 766,
+      "volatility": 0.0005214541120381406436233611,
+      "atr": 3.0698543588824425821032107334,
+      "rsi": 45.333333333333333333333333333,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.601067168863779,
+      "price_change": 0.75,
+      "trend_strength": 0.0676691729323308270676691729,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.55,
+      "momentum": -0.0000372453350217885209877463,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.3713133Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6715.0,
+      "volume": 975,
+      "volatility": 0.0005584512285927029039463887,
+      "atr": 3.0806397278119020223236868058,
+      "rsi": 54.761904761904761904761904762,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.844887348353553,
+      "price_change": 1.75,
+      "trend_strength": 0.0215827338129496402877697842,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.7,
+      "momentum": 0.000297929390734395948160286,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.3981326Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6713.25,
+      "volume": 679,
+      "volatility": 0.0003723978698841842624660187,
+      "atr": 3.0291504761051252548101242524,
+      "rsi": 49.367088607594936708860759494,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.57130837189735,
+      "price_change": 1.25,
+      "trend_strength": 0.0223880597014925373134328358,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.25,
+      "momentum": 0.0003725366017211190999515702,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.4440167Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6718.75,
+      "volume": 1660,
+      "volatility": 0.0007441860465116279069767442,
+      "atr": 3.2177368901110518778719948911,
+      "rsi": 63.541666666666666666666666667,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.49589979273678,
+      "price_change": 3.75,
+      "trend_strength": 0.0656934306569343065693430657,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.9,
+      "momentum": 0.0011175265412553548146768486,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.4831702Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6715.0,
+      "volume": 975,
+      "volatility": 0.0005584512285927029039463887,
+      "atr": 3.0806397278119020223236868058,
+      "rsi": 54.761904761904761904761904762,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.844887348353553,
+      "price_change": 1.75,
+      "trend_strength": 0.0215827338129496402877697842,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.7,
+      "momentum": 0.000297929390734395948160286,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.5294958Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6719.0,
+      "volume": 1364,
+      "volatility": 0.0002976633427593391873790743,
+      "atr": 3.1307556836745481723097095417,
+      "rsi": 58.823529411764705882352941177,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.29215611974233,
+      "price_change": 0.25,
+      "trend_strength": 0.171875,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.15,
+      "momentum": 0.0010429082240762812872467223,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.5691785Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6718.75,
+      "volume": 1660,
+      "volatility": 0.0007441860465116279069767442,
+      "atr": 3.2177368901110518778719948911,
+      "rsi": 63.541666666666666666666666667,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.49589979273678,
+      "price_change": 3.75,
+      "trend_strength": 0.0656934306569343065693430657,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.9,
+      "momentum": 0.0011175265412553548146768486,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.6028922Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6718.5,
+      "volume": 885,
+      "volatility": 0.0002604748083649624172062216,
+      "atr": 3.0321302776977947314304445744,
+      "rsi": 60.240963855421686746987951808,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.856893880712626,
+      "price_change": -0.5,
+      "trend_strength": 0.2118644067796610169491525424,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.1,
+      "momentum": 0.0007820355267567869511786393,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.6545506Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6718.0,
+      "volume": 1840,
+      "volatility": 0.0006698422149449240845489729,
+      "atr": 3.1369781150050951077568413905,
+      "rsi": 59.523809523809523809523809524,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.60334611362844,
+      "price_change": -0.5,
+      "trend_strength": 0.2230769230769230769230769231,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.8,
+      "momentum": 0.0004467609828741623231571109,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.7077657Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6719.0,
+      "volume": 1364,
+      "volatility": 0.0002976633427593391873790743,
+      "atr": 3.1307556836745481723097095417,
+      "rsi": 58.823529411764705882352941177,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.29215611974233,
+      "price_change": 0.25,
+      "trend_strength": 0.171875,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.15,
+      "momentum": 0.0010429082240762812872467223,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.7233085Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6717.75,
+      "volume": 1602,
+      "volatility": 0.000595437460459231141379182,
+      "atr": 3.1986225353618740286313527197,
+      "rsi": 55.128205128205128205128205129,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.4134462678666,
+      "price_change": -0.25,
+      "trend_strength": 0.1397058823529411764705882353,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.65,
+      "momentum": -0.0001488372093023255813953488,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.8610394Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6718.5,
+      "volume": 885,
+      "volatility": 0.0002604748083649624172062216,
+      "atr": 3.0321302776977947314304445744,
+      "rsi": 60.240963855421686746987951808,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.856893880712626,
+      "price_change": -0.5,
+      "trend_strength": 0.2118644067796610169491525424,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.1,
+      "momentum": 0.0007820355267567869511786393,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.8772004Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6718.5,
+      "volume": 1051,
+      "volatility": 0.0004465282429113641437820942,
+      "atr": 3.1844352114074544551576846683,
+      "rsi": 55.128205128205128205128205129,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.915904139433551,
+      "price_change": 0.75,
+      "trend_strength": 0.2164179104477611940298507463,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.4,
+      "momentum": -0.0000744158356898347968447686,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.9247565Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6718.0,
+      "volume": 1840,
+      "volatility": 0.0006698422149449240845489729,
+      "atr": 3.1369781150050951077568413905,
+      "rsi": 59.523809523809523809523809524,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.60334611362844,
+      "price_change": -0.5,
+      "trend_strength": 0.2230769230769230769230769231,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.8,
+      "momentum": 0.0004467609828741623231571109,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.9673169Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6715.25,
+      "volume": 1049,
+      "volatility": 0.0006701165258181005919362645,
+      "atr": 3.2784041248783505655035643349,
+      "rsi": 54.430379746835443037974683543,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.883666076994356,
+      "price_change": -3.25,
+      "trend_strength": 0.0942028985507246376811594203,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.75,
+      "momentum": -0.0004837389298206444890972687,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:31.9936329Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6717.75,
+      "volume": 1602,
+      "volatility": 0.000595437460459231141379182,
+      "atr": 3.1986225353618740286313527197,
+      "rsi": 55.128205128205128205128205129,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.4134462678666,
+      "price_change": -0.25,
+      "trend_strength": 0.1397058823529411764705882353,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.65,
+      "momentum": -0.0001488372093023255813953488,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:32.0396841Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6717.75,
+      "volume": 1441,
+      "volatility": 0.000595437460459231141379182,
+      "atr": 3.329946687387039810824738311,
+      "rsi": 63.095238095238095238095238095,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.14857325043839,
+      "price_change": 2.50,
+      "trend_strength": 0.1285714285714285714285714286,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.6,
+      "momentum": -0.0000372134563858291158082763,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:32.0798877Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6718.5,
+      "volume": 1051,
+      "volatility": 0.0004465282429113641437820942,
+      "atr": 3.1844352114074544551576846683,
+      "rsi": 55.128205128205128205128205129,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.915904139433551,
+      "price_change": 0.75,
+      "trend_strength": 0.2164179104477611940298507463,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.4,
+      "momentum": -0.0000744158356898347968447686,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:32.108937Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6717.5,
+      "volume": 741,
+      "volatility": 0.000260513583922590249348716,
+      "atr": 3.2170933525736798243372570031,
+      "rsi": 67.088607594936708860759493671,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.587722081218274,
+      "price_change": -0.25,
+      "trend_strength": 0.072992700729927007299270073,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.05,
+      "momentum": -0.0000372148412787019463361989,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:32.1583949Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6715.25,
+      "volume": 1049,
+      "volatility": 0.0006701165258181005919362645,
+      "atr": 3.2784041248783505655035643349,
+      "rsi": 54.430379746835443037974683543,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.883666076994356,
+      "price_change": -3.25,
+      "trend_strength": 0.0942028985507246376811594203,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.75,
+      "momentum": -0.0004837389298206444890972687,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:32.1812407Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6715.5,
+      "volume": 1390,
+      "volatility": 0.0004467277194549921822649095,
+      "atr": 3.2015866845327026940274529314,
+      "rsi": 56.410256410256410256410256411,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.0673423942256,
+      "price_change": -2.0,
+      "trend_strength": 0.0970149253731343283582089552,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": -0.0004465282429113641437820942,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:32.2306237Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6717.75,
+      "volume": 1441,
+      "volatility": 0.000595437460459231141379182,
+      "atr": 3.329946687387039810824738311,
+      "rsi": 63.095238095238095238095238095,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.14857325043839,
+      "price_change": 2.50,
+      "trend_strength": 0.1285714285714285714285714286,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.6,
+      "momentum": -0.0000372134563858291158082763,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:32.2508751Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6717.75,
+      "volume": 520,
+      "volatility": 0.0003721484127870194633619888,
+      "atr": 3.1514733499232239301683491506,
+      "rsi": 66.25,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.437599932676934,
+      "price_change": 2.25,
+      "trend_strength": 0.0403225806451612903225806452,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.2,
+      "momentum": 0.0003722869587878336621868136,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:32.2978646Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6717.5,
+      "volume": 741,
+      "volatility": 0.000260513583922590249348716,
+      "atr": 3.2170933525736798243372570031,
+      "rsi": 67.088607594936708860759493671,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.587722081218274,
+      "price_change": -0.25,
+      "trend_strength": 0.072992700729927007299270073,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.05,
+      "momentum": -0.0000372148412787019463361989,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:32.3447299Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6717.25,
+      "volume": 471,
+      "volatility": 0.0002233056682422122148200528,
+      "atr": 3.0335109677858507922991813541,
+      "rsi": 63.291139240506329113924050633,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.428571428571429,
+      "price_change": -0.50,
+      "trend_strength": 0.0409836065573770491803278689,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0,
+      "momentum": -0.0000744296825574038926723978,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:32.3858301Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6715.5,
+      "volume": 1390,
+      "volatility": 0.0004467277194549921822649095,
+      "atr": 3.2015866845327026940274529314,
+      "rsi": 56.410256410256410256410256411,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.0673423942256,
+      "price_change": -2.0,
+      "trend_strength": 0.0970149253731343283582089552,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": -0.0004465282429113641437820942,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:32.4067174Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6724.75,
+      "volume": 3490,
+      "volatility": 0.0013383397152310494813933603,
+      "atr": 3.4596887558011471642778112574,
+      "rsi": 72.115384615384615384615384616,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 2.56712026480324,
+      "price_change": 7.50,
+      "trend_strength": 0.1788079470198675496688741722,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.95,
+      "momentum": 0.0010792705619650167473018236,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:32.5330919Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6717.75,
+      "volume": 520,
+      "volatility": 0.0003721484127870194633619888,
+      "atr": 3.1514733499232239301683491506,
+      "rsi": 66.25,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.437599932676934,
+      "price_change": 2.25,
+      "trend_strength": 0.0403225806451612903225806452,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.2,
+      "momentum": 0.0003722869587878336621868136,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:32.5532661Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6717.25,
+      "volume": 471,
+      "volatility": 0.0002233056682422122148200528,
+      "atr": 3.0335109677858507922991813541,
+      "rsi": 63.291139240506329113924050633,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.428571428571429,
+      "price_change": -0.50,
+      "trend_strength": 0.0409836065573770491803278689,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0,
+      "momentum": -0.0000744296825574038926723978,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:32.6034561Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6727.0,
+      "volume": 1900,
+      "volatility": 0.0004459640255686041325999703,
+      "atr": 3.426853844672493795400824739,
+      "rsi": 72.641509433962264150943396227,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.39143170999634,
+      "price_change": 2.25,
+      "trend_strength": 0.255172413793103448275862069,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.35,
+      "momentum": 0.0017124562579108033653488199,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:32.604638Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6724.75,
+      "volume": 3490,
+      "volatility": 0.0013383397152310494813933603,
+      "atr": 3.4596887558011471642778112574,
+      "rsi": 72.115384615384615384615384616,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 2.56712026480324,
+      "price_change": 7.50,
+      "trend_strength": 0.1788079470198675496688741722,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.95,
+      "momentum": 0.0010792705619650167473018236,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:32.6578392Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6730.25,
+      "volume": 2870,
+      "volatility": 0.0007429144534006909104416626,
+      "atr": 3.5392214271958870957293372576,
+      "rsi": 72.115384615384615384615384616,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.92320578972057,
+      "price_change": 3.25,
+      "trend_strength": 0.315436241610738255033557047,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.85,
+      "momentum": 0.0018607420639350973168099438,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:32.6587254Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6727.0,
+      "volume": 1900,
+      "volatility": 0.0004459640255686041325999703,
+      "atr": 3.426853844672493795400824739,
+      "rsi": 72.641509433962264150943396227,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.39143170999634,
+      "price_change": 2.25,
+      "trend_strength": 0.255172413793103448275862069,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.35,
+      "momentum": 0.0017124562579108033653488199,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:32.7131827Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.25,
+      "volume": 1686,
+      "volatility": 0.000780524066158706560118937,
+      "atr": 3.6614198966818951603200988821,
+      "rsi": 62.184873949579831932773109243,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.08368684920941,
+      "price_change": -4.00,
+      "trend_strength": 0.2784810126582278481012658228,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.9,
+      "momentum": 0.0013398340094532732889203171,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:32.7242613Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6730.25,
+      "volume": 2870,
+      "volatility": 0.0007429144534006909104416626,
+      "atr": 3.5392214271958870957293372576,
+      "rsi": 72.115384615384615384615384616,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.92320578972057,
+      "price_change": 3.25,
+      "trend_strength": 0.315436241610738255033557047,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.85,
+      "momentum": 0.0018607420639350973168099438,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:32.7939331Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6722.5,
+      "volume": 1043,
+      "volatility": 0.0007437709185570844179992562,
+      "atr": 3.7570327612046169345829489619,
+      "rsi": 56.06060606060606060606060606,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.67065329218107,
+      "price_change": -3.75,
+      "trend_strength": 0.11875,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.75,
+      "momentum": -0.0003345849288077623703483401,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:32.8269897Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.25,
+      "volume": 1686,
+      "volatility": 0.000780524066158706560118937,
+      "atr": 3.6614198966818951603200988821,
+      "rsi": 62.184873949579831932773109243,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.08368684920941,
+      "price_change": -4.00,
+      "trend_strength": 0.2784810126582278481012658228,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.9,
+      "momentum": 0.0013398340094532732889203171,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:32.8662314Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6722.25,
+      "volume": 882,
+      "volatility": 0.0002231395738034140354791922,
+      "atr": 3.5958161354042871535413097504,
+      "rsi": 56.488549618320610687022900763,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.58827452811312,
+      "price_change": -0.25,
+      "trend_strength": 0.1266666666666666666666666667,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0,
+      "momentum": -0.0007061097071502898766166196,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:32.8828601Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6722.5,
+      "volume": 1043,
+      "volatility": 0.0007437709185570844179992562,
+      "atr": 3.7570327612046169345829489619,
+      "rsi": 56.06060606060606060606060606,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.67065329218107,
+      "price_change": -3.75,
+      "trend_strength": 0.11875,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.75,
+      "momentum": -0.0003345849288077623703483401,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:32.9316126Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.75,
+      "volume": 1414,
+      "volatility": 0.000929126249674805812613818,
+      "atr": 3.7854006971611237854312161968,
+      "rsi": 62.162162162162162162162162163,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.902591599642538,
+      "price_change": 4.50,
+      "trend_strength": 0.2678571428571428571428571429,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.9,
+      "momentum": -0.0005200401173804836373091638,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:32.9440259Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.25,
+      "volume": 844,
+      "volatility": 0.0004088459394164653410146813,
+      "atr": 3.711443504506757800757557897,
+      "rsi": 60.544217687074829931972789116,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.558201058201058,
+      "price_change": -0.50,
+      "trend_strength": 0.2035928143712574850299401198,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": 0,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.0175094Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6722.25,
+      "volume": 882,
+      "volatility": 0.0002231395738034140354791922,
+      "atr": 3.5958161354042871535413097504,
+      "rsi": 56.488549618320610687022900763,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.58827452811312,
+      "price_change": -0.25,
+      "trend_strength": 0.1266666666666666666666666667,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0,
+      "momentum": -0.0007061097071502898766166196,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.0223266Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.75,
+      "volume": 1414,
+      "volatility": 0.000929126249674805812613818,
+      "atr": 3.7854006971611237854312161968,
+      "rsi": 62.162162162162162162162162163,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.902591599642538,
+      "price_change": 4.50,
+      "trend_strength": 0.2678571428571428571428571429,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.9,
+      "momentum": -0.0005200401173804836373091638,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.0999605Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6724.75,
+      "volume": 911,
+      "volatility": 0.0004461132384103498271311201,
+      "atr": 3.6606261113277036721320180472,
+      "rsi": 63.571428571428571428571428572,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.587325124105474,
+      "price_change": -1.50,
+      "trend_strength": 0.1775147928994082840236686391,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.35,
+      "momentum": 0.0003346969133506879880996653,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.097863Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.25,
+      "volume": 844,
+      "volatility": 0.0004088459394164653410146813,
+      "atr": 3.711443504506757800757557897,
+      "rsi": 60.544217687074829931972789116,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.558201058201058,
+      "price_change": -0.50,
+      "trend_strength": 0.2035928143712574850299401198,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": 0,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.1884552Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.25,
+      "volume": 632,
+      "volatility": 0.0004831815647649135848355324,
+      "atr": 3.6312956748042962669797310439,
+      "rsi": 62.5,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.40326697294538,
+      "price_change": 1.50,
+      "trend_strength": 0.0340909090909090909090909091,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.5,
+      "momentum": 0.000595038863475770761277846,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.1931107Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6724.75,
+      "volume": 911,
+      "volatility": 0.0004461132384103498271311201,
+      "atr": 3.6606261113277036721320180472,
+      "rsi": 63.571428571428571428571428572,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.587325124105474,
+      "price_change": -1.50,
+      "trend_strength": 0.1775147928994082840236686391,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.35,
+      "momentum": 0.0003346969133506879880996653,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.2672919Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6728.0,
+      "volume": 734,
+      "volatility": 0.0004087395957193816884661118,
+      "atr": 3.5683459837468465336240359694,
+      "rsi": 64.788732394366197183098591549,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.568287395478476,
+      "price_change": 1.75,
+      "trend_strength": 0.0264900662251655629139072848,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.2,
+      "momentum": 0.0001858252499349611625227636,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.2871927Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.25,
+      "volume": 632,
+      "volatility": 0.0004831815647649135848355324,
+      "atr": 3.6312956748042962669797310439,
+      "rsi": 62.5,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.40326697294538,
+      "price_change": 1.50,
+      "trend_strength": 0.0340909090909090909090909091,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.5,
+      "momentum": 0.000595038863475770761277846,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.3497677Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6728.5,
+      "volume": 1089,
+      "volatility": 0.0002972430705209184810879096,
+      "atr": 3.4563212706220717812223191144,
+      "rsi": 69.117647058823529411764705882,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.899628252788104,
+      "price_change": 0.5,
+      "trend_strength": 0.0476190476190476190476190476,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.15,
+      "momentum": 0.0003345103140680170971938301,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.3666605Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.5,
+      "volume": 822,
+      "volatility": 0.0004088307440719542109566639,
+      "atr": 3.4058697512919237968492963205,
+      "rsi": 62.962962962962962962962962963,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.817341155414139,
+      "price_change": -2.0,
+      "trend_strength": 0.0072463768115942028985507246,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.25,
+      "momentum": 0.0002602327224060373991598201,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.4942131Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6728.0,
+      "volume": 734,
+      "volatility": 0.0004087395957193816884661118,
+      "atr": 3.5683459837468465336240359694,
+      "rsi": 64.788732394366197183098591549,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.568287395478476,
+      "price_change": 1.75,
+      "trend_strength": 0.0264900662251655629139072848,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.2,
+      "momentum": 0.0001858252499349611625227636,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.4910626Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.0,
+      "volume": 726,
+      "volatility": 0.0004088611358905738923580137,
+      "atr": 3.3590219119139292399314894404,
+      "rsi": 62.962962962962962962962962963,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.798065296251511,
+      "price_change": -0.5,
+      "trend_strength": 0.109375,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.25,
+      "momentum": -0.0000371678126742241219104256,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.6341641Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6728.5,
+      "volume": 1089,
+      "volatility": 0.0002972430705209184810879096,
+      "atr": 3.4563212706220717812223191144,
+      "rsi": 69.117647058823529411764705882,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.899628252788104,
+      "price_change": 0.5,
+      "trend_strength": 0.0476190476190476190476190476,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.15,
+      "momentum": 0.0003345103140680170971938301,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.6514832Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.0,
+      "volume": 660,
+      "volatility": 0.0002601843592030924769550996,
+      "atr": 3.2440917753486485799363830518,
+      "rsi": 52.380952380952380952380952381,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.757401882028919,
+      "price_change": 0.0,
+      "trend_strength": 0.1304347826086956521739130435,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.1,
+      "momentum": -0.0002972651605231866825208086,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.7141886Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.5,
+      "volume": 822,
+      "volatility": 0.0004088307440719542109566639,
+      "atr": 3.4058697512919237968492963205,
+      "rsi": 62.962962962962962962962962963,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.817341155414139,
+      "price_change": -2.0,
+      "trend_strength": 0.0072463768115942028985507246,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.25,
+      "momentum": 0.0002602327224060373991598201,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.7193012Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.25,
+      "volume": 814,
+      "volatility": 0.0004088459394164653410146813,
+      "atr": 3.2087995056808879670837842624,
+      "rsi": 48.453608247422680412371134021,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.94147582697201,
+      "price_change": 0.25,
+      "trend_strength": 0.0166666666666666666666666667,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": -0.0003343984543360332912238983,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.7702345Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.0,
+      "volume": 726,
+      "volatility": 0.0004088611358905738923580137,
+      "atr": 3.3590219119139292399314894404,
+      "rsi": 62.962962962962962962962962963,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.798065296251511,
+      "price_change": -0.5,
+      "trend_strength": 0.109375,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.25,
+      "momentum": -0.0000371678126742241219104256,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.7742072Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.5,
+      "volume": 765,
+      "volatility": 0.000222998587675611387794544,
+      "atr": 3.0867423981322531122920853865,
+      "rsi": 41.176470588235294117647058824,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.956608728273102,
+      "price_change": 0.25,
+      "trend_strength": 0.0099009900990099009900990099,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0,
+      "momentum": 0,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.8224143Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.0,
+      "volume": 660,
+      "volatility": 0.0002601843592030924769550996,
+      "atr": 3.2440917753486485799363830518,
+      "rsi": 52.380952380952380952380952381,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.757401882028919,
+      "price_change": 0.0,
+      "trend_strength": 0.1304347826086956521739130435,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.1,
+      "momentum": -0.0002972651605231866825208086,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.8352774Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.5,
+      "volume": 305,
+      "volatility": 0.000222998587675611387794544,
+      "atr": 2.9734036554085207471283650017,
+      "rsi": 50.724637681159420289855072464,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.408956824886028,
+      "price_change": 0.0,
+      "trend_strength": 0.0729166666666666666666666667,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0,
+      "momentum": 0.000074338388343740707701457,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.894756Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.25,
+      "volume": 814,
+      "volatility": 0.0004088459394164653410146813,
+      "atr": 3.2087995056808879670837842624,
+      "rsi": 48.453608247422680412371134021,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.94147582697201,
+      "price_change": 0.25,
+      "trend_strength": 0.0166666666666666666666666667,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": -0.0003343984543360332912238983,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.927865Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6724.75,
+      "volume": 710,
+      "volatility": 0.0003717610320086248559426001,
+      "atr": 2.9395891085936264080477675016,
+      "rsi": 57.377049180327868852459016394,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.978365715860548,
+      "price_change": -1.75,
+      "trend_strength": 0.0638297872340425531914893617,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": -0.0001858459708593517692536426,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.9587949Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.5,
+      "volume": 765,
+      "volatility": 0.000222998587675611387794544,
+      "atr": 3.0867423981322531122920853865,
+      "rsi": 41.176470588235294117647058824,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.956608728273102,
+      "price_change": 0.25,
+      "trend_strength": 0.0099009900990099009900990099,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0,
+      "momentum": 0,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.9842647Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6725.0,
+      "volume": 1085,
+      "volatility": 0.000297397769516728624535316,
+      "atr": 2.8724756008369388074729269658,
+      "rsi": 59.016393442622950819672131148,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.40726329442283,
+      "price_change": 0.25,
+      "trend_strength": 0.1348314606741573033707865169,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.2,
+      "momentum": -0.0001858390633711206095521279,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:33.9970172Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.5,
+      "volume": 305,
+      "volatility": 0.000222998587675611387794544,
+      "atr": 2.9734036554085207471283650017,
+      "rsi": 50.724637681159420289855072464,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.408956824886028,
+      "price_change": 0.0,
+      "trend_strength": 0.0729166666666666666666666667,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0,
+      "momentum": 0.000074338388343740707701457,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.0162944Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.25,
+      "volume": 818,
+      "volatility": 0.000260174688719568853372979,
+      "atr": 2.7922987722057288926534321825,
+      "rsi": 47.916666666666666666666666667,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.04952527585322,
+      "price_change": 1.25,
+      "trend_strength": 0.1058823529411764705882352941,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.15,
+      "momentum": -0.000037166431279268564632424,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.0319031Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6724.75,
+      "volume": 710,
+      "volatility": 0.0003717610320086248559426001,
+      "atr": 2.9395891085936264080477675016,
+      "rsi": 57.377049180327868852459016394,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.978365715860548,
+      "price_change": -1.75,
+      "trend_strength": 0.0638297872340425531914893617,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": -0.0001858459708593517692536426,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.0623943Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6729.75,
+      "volume": 1348,
+      "volatility": 0.0005943757197518481370036034,
+      "atr": 2.8785631456196054003210441694,
+      "rsi": 61.666666666666666666666666667,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.67391034397119,
+      "price_change": 3.50,
+      "trend_strength": 0.1397849462365591397849462366,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.75,
+      "momentum": 0.0004831636066304913402215119,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.1454698Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6725.0,
+      "volume": 1085,
+      "volatility": 0.000297397769516728624535316,
+      "atr": 2.8724756008369388074729269658,
+      "rsi": 59.016393442622950819672131148,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.40726329442283,
+      "price_change": 0.25,
+      "trend_strength": 0.1348314606741573033707865169,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.2,
+      "momentum": -0.0001858390633711206095521279,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.1493649Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.25,
+      "volume": 818,
+      "volatility": 0.000260174688719568853372979,
+      "atr": 2.7922987722057288926534321825,
+      "rsi": 47.916666666666666666666666667,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.04952527585322,
+      "price_change": 1.25,
+      "trend_strength": 0.1058823529411764705882352941,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.15,
+      "momentum": -0.000037166431279268564632424,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.2672603Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6729.75,
+      "volume": 944,
+      "volatility": 0.0003714848248449050856272521,
+      "atr": 2.8515229209324907288695410144,
+      "rsi": 68.518518518518518518518518518,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.15474006116208,
+      "price_change": 0.00,
+      "trend_strength": 0.1630434782608695652173913043,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.35,
+      "momentum": 0.0007435220640172497118852002,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.2796485Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6729.75,
+      "volume": 1348,
+      "volatility": 0.0005943757197518481370036034,
+      "atr": 2.8785631456196054003210441694,
+      "rsi": 61.666666666666666666666666667,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.67391034397119,
+      "price_change": 3.50,
+      "trend_strength": 0.1397849462365591397849462366,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.75,
+      "momentum": 0.0004831636066304913402215119,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.3245069Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6728.75,
+      "volume": 923,
+      "volatility": 0.0004086940367824633104216979,
+      "atr": 2.8442712837230271053788595134,
+      "rsi": 59.615384615384615384615384616,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.10248447204969,
+      "price_change": -1.00,
+      "trend_strength": 0.1195652173913043478260869565,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.45,
+      "momentum": 0.0005576208178438661710037175,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.3248191Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6727.5,
+      "volume": 1480,
+      "volatility": 0.0004087699739873652917131178,
+      "atr": 2.8375376205999537407089409767,
+      "rsi": 48.000000000000000000000000001,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.61009573542211,
+      "price_change": -1.25,
+      "trend_strength": 0.0520833333333333333333333333,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.45,
+      "momentum": 0.0001858390633711206095521279,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.3560003Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6729.75,
+      "volume": 944,
+      "volatility": 0.0003714848248449050856272521,
+      "atr": 2.8515229209324907288695410144,
+      "rsi": 68.518518518518518518518518518,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.15474006116208,
+      "price_change": 0.00,
+      "trend_strength": 0.1630434782608695652173913043,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.35,
+      "momentum": 0.0007435220640172497118852002,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.3600725Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6729.0,
+      "volume": 1126,
+      "volatility": 0.0004086788527270025263783623,
+      "atr": 2.8312849334142427592297309069,
+      "rsi": 51.851851851851851851851851851,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.18476430976431,
+      "price_change": 1.5,
+      "trend_strength": 0.1041666666666666666666666667,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.4,
+      "momentum": -0.0001114454474534715256881756,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.4025498Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6728.75,
+      "volume": 923,
+      "volatility": 0.0004086940367824633104216979,
+      "atr": 2.8442712837230271053788595134,
+      "rsi": 59.615384615384615384615384616,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.10248447204969,
+      "price_change": -1.00,
+      "trend_strength": 0.1195652173913043478260869565,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.45,
+      "momentum": 0.0005576208178438661710037175,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.4053891Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6728.5,
+      "volume": 991,
+      "volatility": 0.0004458646057813777216318645,
+      "atr": 2.8433360095989397049990358421,
+      "rsi": 58.333333333333333333333333333,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.01849948612539,
+      "price_change": -0.5,
+      "trend_strength": 0.0784313725490196078431372549,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.8,
+      "momentum": -0.0001857424124224525428136261,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.4587688Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6727.5,
+      "volume": 1480,
+      "volatility": 0.0004087699739873652917131178,
+      "atr": 2.8375376205999537407089409767,
+      "rsi": 48.000000000000000000000000001,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.61009573542211,
+      "price_change": -1.25,
+      "trend_strength": 0.0520833333333333333333333333,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.45,
+      "momentum": 0.0001858390633711206095521279,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.4594589Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.5,
+      "volume": 1346,
+      "volatility": 0.0005203300379097599048539359,
+      "atr": 2.8902405803418725832133904248,
+      "rsi": 51.851851851851851851851851851,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.24965184291152,
+      "price_change": -2.0,
+      "trend_strength": 0.0636363636363636363636363636,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.9,
+      "momentum": -0.0003343860300947427085268438,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.5150509Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6729.0,
+      "volume": 1126,
+      "volatility": 0.0004086788527270025263783623,
+      "atr": 2.8312849334142427592297309069,
+      "rsi": 51.851851851851851851851851851,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.18476430976431,
+      "price_change": 1.5,
+      "trend_strength": 0.1041666666666666666666666667,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.4,
+      "momentum": -0.0001114454474534715256881756,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.5228299Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6725.5,
+      "volume": 1127,
+      "volatility": 0.0002602037023269645379525686,
+      "atr": 2.8087948246031673986981482516,
+      "rsi": 48.275862068965517241379310344,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.0073292813729,
+      "price_change": -1.0,
+      "trend_strength": 0.0186915887850467289719626168,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.1,
+      "momentum": -0.000297287253808992939427722,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.5639867Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6728.5,
+      "volume": 991,
+      "volatility": 0.0004458646057813777216318645,
+      "atr": 2.8433360095989397049990358421,
+      "rsi": 58.333333333333333333333333333,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.01849948612539,
+      "price_change": -0.5,
+      "trend_strength": 0.0784313725490196078431372549,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.8,
+      "momentum": -0.0001857424124224525428136261,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.5729188Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6727.0,
+      "volume": 2159,
+      "volatility": 0.0006689460383529061988999554,
+      "atr": 2.9295951942743697273625662336,
+      "rsi": 52.380952380952380952380952381,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.76072418854999,
+      "price_change": 1.5,
+      "trend_strength": 0.0256410256410256410256410256,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.95,
+      "momentum": -0.0002972209838014563828206271,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.6082045Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.5,
+      "volume": 1346,
+      "volatility": 0.0005203300379097599048539359,
+      "atr": 2.8902405803418725832133904248,
+      "rsi": 51.851851851851851851851851851,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.24965184291152,
+      "price_change": -2.0,
+      "trend_strength": 0.0636363636363636363636363636,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.9,
+      "momentum": -0.0003343860300947427085268438,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.6219616Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.25,
+      "volume": 2362,
+      "volatility": 0.0004460137520906894629251069,
+      "atr": 2.9346241089690576039795257884,
+      "rsi": 49.230769230769230769230769231,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.71085035491815,
+      "price_change": -0.75,
+      "trend_strength": 0.1147540983606557377049180328,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.75,
+      "momentum": -0.0003343984543360332912238983,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.6675208Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6725.5,
+      "volume": 1127,
+      "volatility": 0.0002602037023269645379525686,
+      "atr": 2.8087948246031673986981482516,
+      "rsi": 48.275862068965517241379310344,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.0073292813729,
+      "price_change": -1.0,
+      "trend_strength": 0.0186915887850467289719626168,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.1,
+      "momentum": -0.000297287253808992939427722,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.6930767Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6728.5,
+      "volume": 1412,
+      "volatility": 0.000371553838151148101359887,
+      "atr": 2.9035795297569820608381310892,
+      "rsi": 55.405405405405405405405405405,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.01802451333814,
+      "price_change": 2.25,
+      "trend_strength": 0.0431034482758620689655172414,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": 0.000297331450234148517059392,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.7413085Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6727.0,
+      "volume": 2159,
+      "volatility": 0.0006689460383529061988999554,
+      "atr": 2.9295951942743697273625662336,
+      "rsi": 52.380952380952380952380952381,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.76072418854999,
+      "price_change": 1.5,
+      "trend_strength": 0.0256410256410256410256410256,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.95,
+      "momentum": -0.0002972209838014563828206271,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.7627159Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6729.75,
+      "volume": 1191,
+      "volatility": 0.0003343363423604145770645269,
+      "atr": 2.8568952776314833422068360114,
+      "rsi": 63.888888888888888888888888888,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.843663667918113,
+      "price_change": 1.25,
+      "trend_strength": 0.0347826086956521739130434783,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": 0.0006319232770797710207419523,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.7945627Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6726.25,
+      "volume": 2362,
+      "volatility": 0.0004460137520906894629251069,
+      "atr": 2.9346241089690576039795257884,
+      "rsi": 49.230769230769230769230769231,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.71085035491815,
+      "price_change": -0.75,
+      "trend_strength": 0.1147540983606557377049180328,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.75,
+      "momentum": -0.0003343984543360332912238983,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.8257233Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6729.25,
+      "volume": 913,
+      "volatility": 0.0002972099416725489467622692,
+      "atr": 2.7956884720863773891920620106,
+      "rsi": 61.643835616438356164383561643,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.647196427305593,
+      "price_change": -0.50,
+      "trend_strength": 0.0625,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.25,
+      "momentum": 0.0003344730191764530994499777,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.8762973Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6728.5,
+      "volume": 1412,
+      "volatility": 0.000371553838151148101359887,
+      "atr": 2.9035795297569820608381310892,
+      "rsi": 55.405405405405405405405405405,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.01802451333814,
+      "price_change": 2.25,
+      "trend_strength": 0.0431034482758620689655172414,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": 0.000297331450234148517059392,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.899699Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6730.25,
+      "volume": 1311,
+      "volatility": 0.0003343115040303109096987482,
+      "atr": 2.7567107240802075756783432956,
+      "rsi": 61.111111111111111111111111111,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.940594059405941,
+      "price_change": 1.00,
+      "trend_strength": 0.0454545454545454545454545455,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": 0.0005946850027875859505668091,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:34.9592103Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6729.75,
+      "volume": 1191,
+      "volatility": 0.0003343363423604145770645269,
+      "atr": 2.8568952776314833422068360114,
+      "rsi": 63.888888888888888888888888888,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.843663667918113,
+      "price_change": 1.25,
+      "trend_strength": 0.0347826086956521739130434783,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": 0.0006319232770797710207419523,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:35.0007145Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6729.0,
+      "volume": 1377,
+      "volatility": 0.0003343736067766384306732055,
+      "atr": 2.7205171009316213202727473459,
+      "rsi": 47.619047619047619047619047619,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.970470082458242,
+      "price_change": -1.25,
+      "trend_strength": 0.0185185185185185185185185185,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": 0.0000743107676302296202719774,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:35.0228214Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6729.25,
+      "volume": 913,
+      "volatility": 0.0002972099416725489467622692,
+      "atr": 2.7956884720863773891920620106,
+      "rsi": 61.643835616438356164383561643,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.647196427305593,
+      "price_change": -0.50,
+      "trend_strength": 0.0625,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.25,
+      "momentum": 0.0003344730191764530994499777,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:35.2605916Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6731.75,
+      "volume": 2326,
+      "volatility": 0.0007427489137297136702937572,
+      "atr": 2.8833373080079340831104082498,
+      "rsi": 55.405405405405405405405405405,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.49832517392425,
+      "price_change": 2.75,
+      "trend_strength": 0.1810344827586206896551724138,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.95,
+      "momentum": 0.0002971878598759240685018017,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:35.2841098Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6730.25,
+      "volume": 1311,
+      "volatility": 0.0003343115040303109096987482,
+      "atr": 2.7567107240802075756783432956,
+      "rsi": 61.111111111111111111111111111,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.940594059405941,
+      "price_change": 1.00,
+      "trend_strength": 0.0454545454545454545454545455,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": 0.0005946850027875859505668091,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:35.3261511Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6736.75,
+      "volume": 2425,
+      "volatility": 0.0007793075295951311834341485,
+      "atr": 3.0523846431502245057453790891,
+      "rsi": 67.777777777777777777777777778,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.46057941335903,
+      "price_change": 5.00,
+      "trend_strength": 0.3658536585365853658536585366,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.95,
+      "momentum": 0.0011145372812720585503585095,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility"
+    ],
+    "timestamp": "2025-10-16T00:43:35.3837293Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6729.0,
+      "volume": 1377,
+      "volatility": 0.0003343736067766384306732055,
+      "atr": 2.7205171009316213202727473459,
+      "rsi": 47.619047619047619047619047619,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 0.970470082458242,
+      "price_change": -1.25,
+      "trend_strength": 0.0185185185185185185185185185,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.3,
+      "momentum": 0.0000743107676302296202719774,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:35.4117358Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6731.75,
+      "volume": 2326,
+      "volatility": 0.0007427489137297136702937572,
+      "atr": 2.8833373080079340831104082498,
+      "rsi": 55.405405405405405405405405405,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.49832517392425,
+      "price_change": 2.75,
+      "trend_strength": 0.1810344827586206896551724138,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.95,
+      "momentum": 0.0002971878598759240685018017,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "ranging"
+    ],
+    "timestamp": "2025-10-16T00:43:35.4739944Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6738.25,
+      "volume": 3637,
+      "volatility": 0.0004081178347493785478425407,
+      "atr": 3.0307857400680656124778520113,
+      "rsi": 73.626373626373626373626373627,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.90289331868362,
+      "price_change": 1.50,
+      "trend_strength": 0.3543307086614173228346456693,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.45,
+      "momentum": 0.0011886631254411054567066602,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:35.4623899Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6736.75,
+      "volume": 2425,
+      "volatility": 0.0007793075295951311834341485,
+      "atr": 3.0523846431502245057453790891,
+      "rsi": 67.777777777777777777777777778,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.46057941335903,
+      "price_change": 5.00,
+      "trend_strength": 0.3658536585365853658536585366,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.95,
+      "momentum": 0.0011145372812720585503585095,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility"
+    ],
+    "timestamp": "2025-10-16T00:43:35.5191167Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  },
+  {
+    "features": {
+      "price": 6740.25,
+      "volume": 3587,
+      "volatility": 0.0004450873483921219539334594,
+      "atr": 3.0285867586346323544437197248,
+      "rsi": 74.193548387096774193548387097,
+      "hour": 20,
+      "day_of_week": 3,
+      "volume_ratio": 1.74626357042014,
+      "price_change": 2.00,
+      "trend_strength": 0.462809917355371900826446281,
+      "support_distance": 0,
+      "resistance_distance": 0,
+      "volatility_rank": 0.6,
+      "momentum": 0.0016718680338831921533660276,
+      "regime": 0
+    },
+    "strategy": "S2",
+    "reward": 0,
+    "pnl": 0,
+    "market_conditions": [
+      "low_volatility",
+      "high_volume",
+      "overbought"
+    ],
+    "timestamp": "2025-10-16T00:43:35.5431859Z",
+    "strategy_specialization": "VWAP Mean Reversion"
+  }
+]

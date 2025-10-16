@@ -1163,8 +1163,11 @@ Please check the configuration and ensure all required services are registered.
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.ITradingBrainAdapter, TradingBot.UnifiedOrchestrator.Brains.TradingBrainAdapter>();
         
         // Register Unified Data Integration Service for historical + live data (PRIMARY IMPLEMENTATION)
-        services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IUnifiedDataIntegrationService, TradingBot.UnifiedOrchestrator.Services.UnifiedDataIntegrationService>();
-        services.AddHostedService<TradingBot.UnifiedOrchestrator.Services.UnifiedDataIntegrationService>();
+        services.AddSingleton<TradingBot.UnifiedOrchestrator.Services.UnifiedDataIntegrationService>();
+        services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IUnifiedDataIntegrationService>(
+            provider => provider.GetRequiredService<TradingBot.UnifiedOrchestrator.Services.UnifiedDataIntegrationService>());
+        services.AddHostedService(provider => 
+            provider.GetRequiredService<TradingBot.UnifiedOrchestrator.Services.UnifiedDataIntegrationService>());
         
         // Register Production Readiness Validation Service for complete runtime proof
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IProductionReadinessValidationService, TradingBot.UnifiedOrchestrator.Services.ProductionReadinessValidationService>();
