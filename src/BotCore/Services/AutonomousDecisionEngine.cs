@@ -84,6 +84,9 @@ public class AutonomousDecisionEngine : BackgroundService
     // Paper trading tracker for DRY_RUN mode
     private readonly PaperTradingTracker? _paperTradingTracker;
     
+    // CVaR-PPO for learning from paper trades
+    private readonly TradingBot.RLAgent.CVaRPPO? _cvarPPO;
+    
     // Autonomous state management
     private readonly Dictionary<string, AutonomousStrategyMetrics> _strategyMetrics = new();
     private readonly Queue<AutonomousTradeOutcome> _recentTrades = new();
@@ -195,7 +198,8 @@ public class AutonomousDecisionEngine : BackgroundService
         IRiskManager riskManager,
         IOptions<AutonomousConfig> config,
         ITopstepXAdapterService? topstepXAdapter = null,
-        PaperTradingTracker? paperTradingTracker = null)
+        PaperTradingTracker? paperTradingTracker = null,
+        TradingBot.RLAgent.CVaRPPO? cvarPPO = null)
     {
         ArgumentNullException.ThrowIfNull(config);
         ArgumentNullException.ThrowIfNull(unifiedBrain);
@@ -208,6 +212,7 @@ public class AutonomousDecisionEngine : BackgroundService
         _config = config.Value;
         _topstepXAdapter = topstepXAdapter;
         _paperTradingTracker = paperTradingTracker;
+        _cvarPPO = cvarPPO;
         
         _complianceManager = new TopStepComplianceManager(logger, config);
         _performanceTracker = new AutonomousPerformanceTracker(
@@ -220,6 +225,12 @@ public class AutonomousDecisionEngine : BackgroundService
         {
             _paperTradingTracker.SimulatedTradeCompleted += OnSimulatedTradeCompleted;
             _logger.LogInformation("📚 [AUTONOMOUS-ENGINE] Subscribed to paper trading events for learning");
+        }
+        
+        // Log CVaR-PPO availability
+        if (_cvarPPO != null)
+        {
+            _logger.LogInformation("🎓 [AUTONOMOUS-ENGINE] CVaR-PPO agent injected - experiences will be generated from paper trades");
         }
         
         InitializeAutonomousStrategyMetrics();
@@ -1033,11 +1044,138 @@ public class AutonomousDecisionEngine : BackgroundService
                 _strategyMetrics[tradeOutcome.Strategy].WinningTrades,
                 _strategyMetrics[tradeOutcome.Strategy].LosingTrades,
                 winRate);
+            
+            // FIX: Generate CVaR-PPO experience from paper trade outcome
+            GenerateCVaRPPOExperienceFromTrade(tradeOutcome);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ [LEARNING] Error processing simulated trade completion");
         }
+    }
+    
+    /// <summary>
+    /// FIX: Generate CVaR-PPO learning experience from paper trade outcome
+    /// This allows the bot to learn from simulated trades in DRY_RUN mode
+    /// </summary>
+    private void GenerateCVaRPPOExperienceFromTrade(AutonomousTradeOutcome tradeOutcome)
+    {
+        if (_cvarPPO == null)
+        {
+            _logger.LogDebug("⚠️ [CVAR-LEARN] CVaR-PPO not available - skipping experience generation");
+            return;
+        }
+        
+        try
+        {
+            // Create state vector from trade entry conditions
+            var state = CreateStateVectorFromTrade(tradeOutcome);
+            
+            // Determine action based on position size
+            // 0 = no position, 1 = small, 2 = medium, 3 = large
+            var action = DetermineActionFromSize(tradeOutcome.Size);
+            
+            // Calculate reward from P&L (normalized by account balance)
+            var reward = CalculateRewardFromPnL(tradeOutcome.PnL);
+            
+            // Create next state (post-trade)
+            var nextState = CreatePostTradeState(tradeOutcome);
+            
+            // Create experience
+            var experience = new TradingBot.RLAgent.Experience
+            {
+                State = state.ToList(),
+                Action = action,
+                Reward = (double)reward,
+                NextState = nextState.ToList(),
+                Done = true, // Position is closed
+                LogProbability = 0, // Will be recalculated during training
+                ValueEstimate = 0,  // Will be calculated by value network
+                Return = 0          // Will be calculated during advantage estimation
+            };
+            
+            // Add experience to CVaR-PPO buffer
+            _cvarPPO.AddExperience(experience);
+            
+            _logger.LogInformation(
+                "🎓 [CVAR-LEARN] Experience added from paper trade | Action={Action}, Reward={Reward:F4}, Buffer={BufferSize}",
+                action, reward, _cvarPPO.ExperienceBufferSize);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ [CVAR-LEARN] Failed to generate CVaR-PPO experience from trade");
+        }
+    }
+    
+    private double[] CreateStateVectorFromTrade(AutonomousTradeOutcome tradeOutcome)
+    {
+        // Create a 16-dimensional state vector matching CVaRPPO config
+        var state = new double[16];
+        
+        // Market conditions (0-3)
+        state[0] = (double)_currentAutonomousMarketRegime / 10.0; // Normalize regime
+        state[1] = tradeOutcome.Direction == "Buy" ? 1.0 : -1.0;   // Direction
+        state[2] = (double)(tradeOutcome.EntryPrice / 5000.0);     // Normalized price
+        state[3] = (double)tradeOutcome.Size / 5.0;                 // Normalized size
+        
+        // Performance metrics (4-7)
+        state[4] = (double)_consecutiveWins / 10.0;                 // Win streak
+        state[5] = (double)_consecutiveLosses / 10.0;               // Loss streak
+        state[6] = (double)(_todayPnL / 1000.0);                    // Daily P&L normalized
+        state[7] = (double)tradeOutcome.Confidence;                 // Trade confidence
+        
+        // Strategy performance (8-11)
+        if (_strategyMetrics.TryGetValue(tradeOutcome.Strategy, out var metrics))
+        {
+            var totalTrades = metrics.WinningTrades + metrics.LosingTrades;
+            state[8] = totalTrades > 0 ? (double)metrics.WinningTrades / totalTrades : 0.5; // Win rate
+            state[9] = (double)(metrics.TotalProfit / 5000.0);       // Total profit normalized
+            state[10] = (double)(metrics.TotalLoss / 5000.0);        // Total loss normalized
+            state[11] = (double)totalTrades / 100.0;                 // Trade count normalized
+        }
+        
+        // Risk metrics (12-15)
+        state[12] = (double)_currentRiskPerTrade;                   // Current risk per trade
+        state[13] = (double)(_currentAccountBalance / 100000.0);    // Account balance normalized
+        state[14] = 0.0; // Volatility (placeholder)
+        state[15] = 0.0; // Time of day (placeholder)
+        
+        return state;
+    }
+    
+    private int DetermineActionFromSize(int size)
+    {
+        // Map position size to action
+        return size switch
+        {
+            0 => 0,      // No position
+            1 => 1,      // Small (1 contract)
+            <= 2 => 2,   // Medium (2 contracts)
+            _ => 3       // Large (3+ contracts)
+        };
+    }
+    
+    private decimal CalculateRewardFromPnL(decimal pnl)
+    {
+        // Normalize P&L to reward in range [-1, 1]
+        // $100 profit/loss = ±0.1 reward
+        // $1000 profit/loss = ±1.0 reward
+        var normalizedReward = pnl / 1000m;
+        
+        // Clip to [-1, 1] range
+        return Math.Max(-1m, Math.Min(1m, normalizedReward));
+    }
+    
+    private double[] CreatePostTradeState(AutonomousTradeOutcome tradeOutcome)
+    {
+        // Create post-trade state (similar to entry state but updated)
+        var state = CreateStateVectorFromTrade(tradeOutcome);
+        
+        // Update with post-trade info
+        state[3] = 0.0; // No position after trade closes
+        state[6] = (double)(_todayPnL / 1000.0); // Updated daily P&L
+        
+        return state;
     }
     
     private async Task ManageExistingPositionsAsync(CancellationToken cancellationToken)
@@ -1049,6 +1187,13 @@ public class AutonomousDecisionEngine : BackgroundService
         
         try
         {
+            // FIX: Update paper trading tracker with current market prices
+            // This allows simulated trades to be filled based on real price movements
+            if (_paperTradingTracker != null)
+            {
+                await UpdatePaperTradingPricesAsync(cancellationToken).ConfigureAwait(false);
+            }
+            
             // Get all open positions from the position tracker
             var openPositions = await GetOpenPositionsAsync(cancellationToken).ConfigureAwait(false);
             
@@ -1064,6 +1209,39 @@ public class AutonomousDecisionEngine : BackgroundService
         // - Scale into winning positions with additional contracts
         
         await Task.CompletedTask.ConfigureAwait(false);
+    }
+    
+    /// <summary>
+    /// FIX: Feed current market prices to PaperTradingTracker so simulated trades can be filled
+    /// </summary>
+    private async Task UpdatePaperTradingPricesAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Get prices for all actively traded symbols
+            var symbols = new[] { "ES", "MNQ" };
+            
+            foreach (var symbol in symbols)
+            {
+                try
+                {
+                    var currentPrice = await GetRealMarketPriceAsync(symbol, cancellationToken).ConfigureAwait(false);
+                    if (currentPrice.HasValue && currentPrice.Value > 0)
+                    {
+                        _paperTradingTracker?.UpdateMarketPrice(symbol, currentPrice.Value);
+                        _logger.LogDebug("📊 [PAPER-TRADE-FEED] Updated {Symbol} price: ${Price:F2}", symbol, currentPrice.Value);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "⚠️ [PAPER-TRADE-FEED] Could not get price for {Symbol}", symbol);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "⚠️ [PAPER-TRADE-FEED] Error updating paper trading prices");
+        }
     }
     
     private async Task UpdatePerformanceAndLearningAsync(CancellationToken cancellationToken)
