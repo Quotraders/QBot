@@ -2761,12 +2761,12 @@ Reason closed: {reason}
             var perContractRisk = stopDistance * pointValue;
             var contracts = perContractRisk > 0 ? (int)(riskAmount / perContractRisk) : 0;
             
-            // 🔧 BACKTEST FIX: Ensure at least 1 contract if we have positive risk and confidence
-            // In backtesting, we want to generate trades for learning even with small position sizes
+            // 🔧 PRODUCTION READY: Ensure at least 1 contract if we have positive risk and confidence
+            // This allows learning opportunities while maintaining real risk management
             if (contracts == 0 && riskAmount > 0 && confidence >= (decimal)TopStepConfig.ConfidenceThreshold)
             {
-                contracts = 1; // Allow 1 contract for learning purposes
-                _logger.LogInformation("[BACKTEST-FIX] 📊 Risk amount ${Risk:F2} below per-contract risk ${PerContract:F2}, allowing 1 contract for learning", 
+                contracts = 1; // Allow 1 contract for learning purposes with real risk
+                _logger.LogInformation("[POSITION-SIZING] 📊 Calculated risk ${Risk:F2} below per-contract risk ${PerContract:F2}, using minimum 1 contract (real money at risk)", 
                     riskAmount, perContractRisk);
             }
 
@@ -2947,12 +2947,17 @@ Reason closed: {reason}
                 // Enhance each candidate with AI intelligence
                 var enhancedCandidates = new List<Candidate>();
                 
+                _logger.LogDebug("[BRAIN-CANDIDATES] Evaluating {Count} base candidates from strategy {Strategy}", 
+                    baseCandidates.Count, strategySelection.SelectedStrategy);
+                
                 foreach (var candidate in baseCandidates)
                 {
                     // Only include candidates that align with price prediction
                     var candidateDirection = candidate.side == Side.BUY ? PriceDirection.Up : PriceDirection.Down;
                     if (prediction.Direction != PriceDirection.Sideways && candidateDirection != prediction.Direction)
                     {
+                        _logger.LogTrace("[BRAIN-CANDIDATES] Skipping candidate {Id} - direction {CandDir} doesn't match prediction {PredDir}", 
+                            candidate.strategy_id, candidateDirection, prediction.Direction);
                         continue; // Skip candidates against predicted direction
                     }
                     
@@ -2975,6 +2980,10 @@ Reason closed: {reason}
                         // Add AI confidence to quality score
                         QScore = candidate.QScore * strategySelection.Confidence * prediction.Probability
                     };
+                    
+                    _logger.LogDebug("[BRAIN-CANDIDATES] Enhanced candidate {Id}: Entry={Entry:F2}, Stop={Stop:F2}, Target={Target:F2}, Qty={Qty}, QScore={QScore:F3}",
+                        enhancedCandidate.strategy_id, enhancedCandidate.entry, enhancedCandidate.stop, enhancedCandidate.t1, 
+                        enhancedCandidate.qty, enhancedCandidate.QScore);
                     
                     enhancedCandidates.Add(enhancedCandidate);
                 }

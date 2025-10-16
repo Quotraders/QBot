@@ -507,12 +507,19 @@ internal class EnhancedBacktestLearningService : BackgroundService
             
             try
             {
-                // Create market environment identical to live trading
+                // Process historical data using SAME UnifiedTradingBrain as live trading
                 var env = new Env
                 {
                     atr = CalculateATR(historicalBars, 14),
                     volz = CalculateVolZ(historicalBars)
                 };
+                
+                // Log price dynamics to verify bars are changing
+                if (i % 50 == 0 || i < 5) // Log first 5 bars and every 50th bar
+                {
+                    _logger.LogDebug("[UNIFIED-BACKTEST] Bar {Index}/{Total}: Time={Time:HH:mm}, O={Open:F2}, H={High:F2}, L={Low:F2}, C={Close:F2}, V={Volume}, ATR={Atr:F2}",
+                        i, dailyBars.Count, currentBar.Start, currentBar.Open, currentBar.High, currentBar.Low, currentBar.Close, currentBar.Volume, env.atr);
+                }
                 
                 var levels = new Levels(); // Initialize as needed
                 var riskEngine = new global::BotCore.Risk.RiskEngine();
