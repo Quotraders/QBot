@@ -84,6 +84,9 @@ public class AutonomousDecisionEngine : BackgroundService
     // Paper trading tracker for DRY_RUN mode
     private readonly PaperTradingTracker? _paperTradingTracker;
     
+    // CVaR-PPO for learning from paper trades
+    private readonly TradingBot.RLAgent.CVaRPPO? _cvarPPO;
+    
     // Autonomous state management
     private readonly Dictionary<string, AutonomousStrategyMetrics> _strategyMetrics = new();
     private readonly Queue<AutonomousTradeOutcome> _recentTrades = new();
@@ -182,10 +185,6 @@ public class AutonomousDecisionEngine : BackgroundService
     private const int DailyReportHour = 17;                     // Daily report at 5 PM ET
     private const int DailyReportMinuteThreshold = 5;           // Report within first 5 minutes of hour
     
-    // Fallback pricing constants
-    private const decimal ESFallbackPrice = 4500m;              // Fallback price for ES contracts
-    private const decimal NQFallbackPrice = 15000m;             // Fallback price for NQ contracts
-    
     public AutonomousDecisionEngine(
         ILogger<AutonomousDecisionEngine> logger,
         IServiceProvider serviceProvider,
@@ -195,7 +194,8 @@ public class AutonomousDecisionEngine : BackgroundService
         IRiskManager riskManager,
         IOptions<AutonomousConfig> config,
         ITopstepXAdapterService? topstepXAdapter = null,
-        PaperTradingTracker? paperTradingTracker = null)
+        PaperTradingTracker? paperTradingTracker = null,
+        TradingBot.RLAgent.CVaRPPO? cvarPPO = null)
     {
         ArgumentNullException.ThrowIfNull(config);
         ArgumentNullException.ThrowIfNull(unifiedBrain);
@@ -208,6 +208,7 @@ public class AutonomousDecisionEngine : BackgroundService
         _config = config.Value;
         _topstepXAdapter = topstepXAdapter;
         _paperTradingTracker = paperTradingTracker;
+        _cvarPPO = cvarPPO;
         
         _complianceManager = new TopStepComplianceManager(logger, config);
         _performanceTracker = new AutonomousPerformanceTracker(
@@ -220,6 +221,12 @@ public class AutonomousDecisionEngine : BackgroundService
         {
             _paperTradingTracker.SimulatedTradeCompleted += OnSimulatedTradeCompleted;
             _logger.LogInformation("📚 [AUTONOMOUS-ENGINE] Subscribed to paper trading events for learning");
+        }
+        
+        // Log CVaR-PPO availability
+        if (_cvarPPO != null)
+        {
+            _logger.LogInformation("🎓 [AUTONOMOUS-ENGINE] CVaR-PPO agent injected - experiences will be generated from paper trades");
         }
         
         InitializeAutonomousStrategyMetrics();
@@ -601,30 +608,20 @@ public class AutonomousDecisionEngine : BackgroundService
             // Calculate technical indicators for decision making
             var technicalIndicators = new Dictionary<string, double>
             {
-                ["RSI"] = 50.0, // Neutral RSI when no data available
-                ["MACD"] = 0.0, // No signal when no data available  
-                ["BollingerPosition"] = 0.5, // Middle of bands when no data available
-                ["ATR"] = 0.0, // No volatility measure when no data available
-                ["VolumeMA"] = 0.0 // No volume data when unavailable
+                ["RSI"] = 50.0, // Neutral RSI
+                ["MACD"] = 0.0, // No signal
+                ["BollingerPosition"] = 0.5, // Middle of bands
+                ["ATR"] = 0.0, // No volatility measure
+                ["VolumeMA"] = 0.0 // No volume data
             };
             
-            // Try to get real market data, use defaults if unavailable
-            double currentPrice = 4500.0; // Default ES price
-            double currentVolume = 1000.0; // Default volume
-            
-            try
-            {
-                // Attempt to get current market data
-                var priceDecimal = await GetCurrentMarketPriceAsync("ES", cancellationToken).ConfigureAwait(false);
-                var volumeLong = await GetCurrentVolumeAsync("ES", cancellationToken).ConfigureAwait(false);
-                currentPrice = (double)priceDecimal;
-                currentVolume = (double)volumeLong;
-                technicalIndicators = await CalculateTechnicalIndicatorsAsync("ES", cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Using fallback market data: {Error}", ex.Message);
-            }
+            // PRODUCTION REQUIREMENT: Must have real market data - NO fallback/simulation data
+            // Get REAL current market data from TopstepX
+            var priceDecimal = await GetCurrentMarketPriceAsync("ES", cancellationToken).ConfigureAwait(false);
+            var volumeLong = await GetCurrentVolumeAsync("ES", cancellationToken).ConfigureAwait(false);
+            var currentPrice = (double)priceDecimal;
+            var currentVolume = (double)volumeLong;
+            technicalIndicators = await CalculateTechnicalIndicatorsAsync("ES", cancellationToken).ConfigureAwait(false);
             
             var marketContext = new TradingBot.Abstractions.MarketContext
             {
@@ -661,7 +658,7 @@ public class AutonomousDecisionEngine : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "⚠️ [AUTONOMOUS-ENGINE] Error identifying opportunity");
+            _logger.LogWarning(ex, "⚠️ [AUTONOMOUS-ENGINE] Error identifying opportunity - cannot trade without real data");
         }
         
         return null;
@@ -703,8 +700,15 @@ public class AutonomousDecisionEngine : BackgroundService
         // Calculate contract size based on position size in dollars
         // ES: $50 per point, NQ: $20 per point
         var multiplier = symbol == "ES" ? 50m : 20m;
-        var price = entryPrice ?? (symbol == "ES" ? 4500m : 15000m); // Default prices if not provided
         
+        // PRODUCTION REQUIREMENT: Must have real entry price - NO fallback/simulation prices
+        if (!entryPrice.HasValue || entryPrice.Value <= 0)
+        {
+            _logger.LogError("❌ [POSITION-SIZING] Cannot calculate contract size without real entry price for {Symbol}", symbol);
+            return 0; // Return 0 to prevent trading without real data
+        }
+        
+        var price = entryPrice.Value;
         var contractValue = price * multiplier;
         var contractCount = (int)Math.Floor(positionSize / contractValue);
         
@@ -1033,11 +1037,138 @@ public class AutonomousDecisionEngine : BackgroundService
                 _strategyMetrics[tradeOutcome.Strategy].WinningTrades,
                 _strategyMetrics[tradeOutcome.Strategy].LosingTrades,
                 winRate);
+            
+            // FIX: Generate CVaR-PPO experience from paper trade outcome
+            GenerateCVaRPPOExperienceFromTrade(tradeOutcome);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ [LEARNING] Error processing simulated trade completion");
         }
+    }
+    
+    /// <summary>
+    /// FIX: Generate CVaR-PPO learning experience from paper trade outcome
+    /// This allows the bot to learn from simulated trades in DRY_RUN mode
+    /// </summary>
+    private void GenerateCVaRPPOExperienceFromTrade(AutonomousTradeOutcome tradeOutcome)
+    {
+        if (_cvarPPO == null)
+        {
+            _logger.LogDebug("⚠️ [CVAR-LEARN] CVaR-PPO not available - skipping experience generation");
+            return;
+        }
+        
+        try
+        {
+            // Create state vector from trade entry conditions
+            var state = CreateStateVectorFromTrade(tradeOutcome);
+            
+            // Determine action based on position size
+            // 0 = no position, 1 = small, 2 = medium, 3 = large
+            var action = DetermineActionFromSize(tradeOutcome.Size);
+            
+            // Calculate reward from P&L (normalized by account balance)
+            var reward = CalculateRewardFromPnL(tradeOutcome.PnL);
+            
+            // Create next state (post-trade)
+            var nextState = CreatePostTradeState(tradeOutcome);
+            
+            // Create experience
+            var experience = new TradingBot.RLAgent.Experience
+            {
+                State = state.ToList(),
+                Action = action,
+                Reward = (double)reward,
+                NextState = nextState.ToList(),
+                Done = true, // Position is closed
+                LogProbability = 0, // Will be recalculated during training
+                ValueEstimate = 0,  // Will be calculated by value network
+                Return = 0          // Will be calculated during advantage estimation
+            };
+            
+            // Add experience to CVaR-PPO buffer
+            _cvarPPO.AddExperience(experience);
+            
+            _logger.LogInformation(
+                "🎓 [CVAR-LEARN] Experience added from paper trade | Action={Action}, Reward={Reward:F4}, Buffer={BufferSize}",
+                action, reward, _cvarPPO.ExperienceBufferSize);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ [CVAR-LEARN] Failed to generate CVaR-PPO experience from trade");
+        }
+    }
+    
+    private double[] CreateStateVectorFromTrade(AutonomousTradeOutcome tradeOutcome)
+    {
+        // Create a 16-dimensional state vector matching CVaRPPO config
+        var state = new double[16];
+        
+        // Market conditions (0-3)
+        state[0] = (double)_currentAutonomousMarketRegime / 10.0; // Normalize regime
+        state[1] = tradeOutcome.Direction == "Buy" ? 1.0 : -1.0;   // Direction
+        state[2] = (double)tradeOutcome.EntryPrice / 5000.0;       // Normalized price
+        state[3] = (double)tradeOutcome.Size / 5.0;                 // Normalized size
+        
+        // Performance metrics (4-7)
+        state[4] = (double)_consecutiveWins / 10.0;                 // Win streak
+        state[5] = (double)_consecutiveLosses / 10.0;               // Loss streak
+        state[6] = (double)_todayPnL / 1000.0;                      // Daily P&L normalized
+        state[7] = (double)tradeOutcome.Confidence;                 // Trade confidence
+        
+        // Strategy performance (8-11)
+        if (_strategyMetrics.TryGetValue(tradeOutcome.Strategy, out var metrics))
+        {
+            var totalTrades = metrics.WinningTrades + metrics.LosingTrades;
+            state[8] = totalTrades > 0 ? (double)metrics.WinningTrades / totalTrades : 0.5; // Win rate
+            state[9] = (double)metrics.TotalProfit / 5000.0;         // Total profit normalized
+            state[10] = (double)metrics.TotalLoss / 5000.0;          // Total loss normalized
+            state[11] = (double)totalTrades / 100.0;                 // Trade count normalized
+        }
+        
+        // Risk metrics (12-15)
+        state[12] = (double)_currentRiskPerTrade;                   // Current risk per trade
+        state[13] = (double)_currentAccountBalance / 100000.0;      // Account balance normalized
+        state[14] = 0.0; // Volatility (future enhancement)
+        state[15] = 0.0; // Time of day (future enhancement)
+        
+        return state;
+    }
+    
+    private int DetermineActionFromSize(int size)
+    {
+        // Map position size to action
+        return size switch
+        {
+            0 => 0,      // No position
+            1 => 1,      // Small (1 contract)
+            <= 2 => 2,   // Medium (2 contracts)
+            _ => 3       // Large (3+ contracts)
+        };
+    }
+    
+    private decimal CalculateRewardFromPnL(decimal pnl)
+    {
+        // Normalize P&L to reward in range [-1, 1]
+        // $100 profit/loss = ±0.1 reward
+        // $1000 profit/loss = ±1.0 reward
+        var normalizedReward = pnl / 1000m;
+        
+        // Clip to [-1, 1] range
+        return Math.Max(-1m, Math.Min(1m, normalizedReward));
+    }
+    
+    private double[] CreatePostTradeState(AutonomousTradeOutcome tradeOutcome)
+    {
+        // Create post-trade state (similar to entry state but updated)
+        var state = CreateStateVectorFromTrade(tradeOutcome);
+        
+        // Update with post-trade info
+        state[3] = 0.0; // No position after trade closes
+        state[6] = (double)_todayPnL / 1000.0; // Updated daily P&L
+        
+        return state;
     }
     
     private async Task ManageExistingPositionsAsync(CancellationToken cancellationToken)
@@ -1049,6 +1180,13 @@ public class AutonomousDecisionEngine : BackgroundService
         
         try
         {
+            // FIX: Update paper trading tracker with current market prices
+            // This allows simulated trades to be filled based on real price movements
+            if (_paperTradingTracker != null)
+            {
+                await UpdatePaperTradingPricesAsync(cancellationToken).ConfigureAwait(false);
+            }
+            
             // Get all open positions from the position tracker
             var openPositions = await GetOpenPositionsAsync(cancellationToken).ConfigureAwait(false);
             
@@ -1064,6 +1202,39 @@ public class AutonomousDecisionEngine : BackgroundService
         // - Scale into winning positions with additional contracts
         
         await Task.CompletedTask.ConfigureAwait(false);
+    }
+    
+    /// <summary>
+    /// FIX: Feed current market prices to PaperTradingTracker so simulated trades can be filled
+    /// </summary>
+    private async Task UpdatePaperTradingPricesAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Get prices for all actively traded symbols
+            var symbols = new[] { "ES", "MNQ" };
+            
+            foreach (var symbol in symbols)
+            {
+                try
+                {
+                    var currentPrice = await GetRealMarketPriceAsync(symbol, cancellationToken).ConfigureAwait(false);
+                    if (currentPrice.HasValue && currentPrice.Value > 0)
+                    {
+                        _paperTradingTracker?.UpdateMarketPrice(symbol, currentPrice.Value);
+                        _logger.LogDebug("📊 [PAPER-TRADE-FEED] Updated {Symbol} price: ${Price:F2}", symbol, currentPrice.Value);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "⚠️ [PAPER-TRADE-FEED] Could not get price for {Symbol}", symbol);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "⚠️ [PAPER-TRADE-FEED] Error updating paper trading prices");
+        }
     }
     
     private async Task UpdatePerformanceAndLearningAsync(CancellationToken cancellationToken)
@@ -1257,28 +1428,35 @@ public class AutonomousDecisionEngine : BackgroundService
     
     /// <summary>
     /// Get real market price from TopstepX market data services
+    /// PRODUCTION REQUIREMENT: Always use REAL live data from TopstepX - NO fallback/simulation prices
     /// </summary>
     private async Task<decimal?> GetRealMarketPriceAsync(string symbol, CancellationToken cancellationToken)
     {
-        await Task.CompletedTask.ConfigureAwait(false);
-        
         try
         {
-            // Use TopstepX adapter service (project-x-py SDK integration)
+            // Use TopstepX adapter service to get REAL live market data
             var topstepXAdapter = _serviceProvider.GetService<ITopstepXAdapterService>();
             if (topstepXAdapter != null && topstepXAdapter.IsConnected)
             {
-                _logger.LogDebug("💰 [AUTONOMOUS-ENGINE] TopstepX adapter connected, using fallback price for {Symbol}", symbol);
-                // Use fallback price since GetPriceAsync is not available in the interface
-                return symbol == "ES" ? ESFallbackPrice : NQFallbackPrice; // Realistic ES/NQ prices
+                // Get REAL live price from TopstepX - NO simulation/fallback prices
+                var realPrice = await topstepXAdapter.GetPriceAsync(symbol, cancellationToken).ConfigureAwait(false);
+                
+                if (realPrice > 0)
+                {
+                    _logger.LogDebug("💰 [REAL-DATA] Retrieved live {Symbol} price from TopstepX: ${Price:F2}", symbol, realPrice);
+                    return realPrice;
+                }
+                
+                _logger.LogWarning("⚠️ [REAL-DATA] TopstepX returned invalid price for {Symbol}: {Price}", symbol, realPrice);
+                return null;
             }
             
-            _logger.LogWarning("⚠️ [AUTONOMOUS-ENGINE] TopstepX adapter not available or not connected for {Symbol}", symbol);
+            _logger.LogWarning("⚠️ [REAL-DATA] TopstepX adapter not available or not connected for {Symbol}", symbol);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ [AUTONOMOUS-ENGINE] Failed to retrieve real market price for {Symbol}", symbol);
+            _logger.LogError(ex, "❌ [REAL-DATA] Failed to retrieve real market price for {Symbol}", symbol);
             return null;
         }
     }
@@ -1400,20 +1578,18 @@ public class AutonomousDecisionEngine : BackgroundService
     
     /// <summary>
     /// Get real historical bars from TopstepX adapter service (SDK integration)
+    /// PRODUCTION REQUIREMENT: Always use REAL live data from TopstepX - NO fallback/simulation prices
     /// </summary>
     private async Task<List<Bar>?> GetRealHistoricalBarsAsync(string symbol, int count, CancellationToken cancellationToken)
     {
-        await Task.CompletedTask.ConfigureAwait(false);
-        
         try
         {
             // Use TopstepX adapter service for current price data
             var topstepXAdapter = _serviceProvider.GetService<ITopstepXAdapterService>();
             if (topstepXAdapter != null && topstepXAdapter.IsConnected)
             {
-                _logger.LogDebug("📊 [AUTONOMOUS-ENGINE] TopstepX adapter connected, using fallback price for {Symbol}", symbol);
-                // Use fallback price since GetPriceAsync is not available in the interface
-                var currentPrice = symbol == "ES" ? 4500.0 : 15000.0;
+                // Get REAL current price from TopstepX - NO simulation/fallback prices
+                var currentPrice = await topstepXAdapter.GetPriceAsync(symbol, cancellationToken).ConfigureAwait(false);
                 if (currentPrice > 0)
                 {
                     // Create a single current bar from real price data (SDK provides current pricing)
@@ -1422,24 +1598,27 @@ public class AutonomousDecisionEngine : BackgroundService
                         Symbol = symbol,
                         Start = DateTime.UtcNow,
                         Ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                        Open = (decimal)currentPrice,
-                        High = (decimal)currentPrice,
-                        Low = (decimal)currentPrice,
-                        Close = (decimal)currentPrice,
+                        Open = currentPrice,
+                        High = currentPrice,
+                        Low = currentPrice,
+                        Close = currentPrice,
                         Volume = 0 // Real volume would come from order book
                     };
                     
-                    _logger.LogInformation("✅ [AUTONOMOUS-ENGINE] Created real bar from current price {Price} for {Symbol}", currentPrice, symbol);
+                    _logger.LogDebug("✅ [REAL-DATA] Created bar from live TopstepX price ${Price:F2} for {Symbol}", currentPrice, symbol);
                     return new List<Bar> { currentBar };
                 }
+                
+                _logger.LogWarning("⚠️ [REAL-DATA] TopstepX returned invalid price for {Symbol}", symbol);
+                return null;
             }
             
-            _logger.LogWarning("⚠️ [AUTONOMOUS-ENGINE] No TopstepX SDK adapter available for {Symbol}", symbol);
+            _logger.LogWarning("⚠️ [REAL-DATA] TopstepX adapter not available or not connected for {Symbol}", symbol);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ [AUTONOMOUS-ENGINE] Failed to retrieve real historical data for {Symbol}", symbol);
+            _logger.LogError(ex, "❌ [REAL-DATA] Failed to retrieve real historical data for {Symbol}", symbol);
             return null;
         }
     }
