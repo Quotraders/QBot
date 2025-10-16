@@ -347,6 +347,11 @@ public class CVaRPPO : IDisposable
     }
 
     /// <summary>
+    /// Get current experience buffer size for monitoring learning progress
+    /// </summary>
+    public int ExperienceBufferSize => _experienceBuffer.Count;
+
+    /// <summary>
     /// Save model checkpoint with versioning
     /// </summary>
     public async Task<string> SaveModelAsync(string? customVersion = null, CancellationToken cancellationToken = default)

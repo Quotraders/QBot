@@ -40,6 +40,18 @@ jobs:
       fail-fast: false
       
     steps:
+
+      
+      - name: "🔧 Enable Long Paths"
+
+      
+        run: git config --global core.longpaths true
+
+      
+        
+
+      
+      - name:steps:
     - name: Checkout code
       uses: actions/checkout@v4
       

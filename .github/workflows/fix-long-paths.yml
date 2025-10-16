@@ -1,0 +1,13 @@
+name: 🔧 Fix Long Paths
+
+on:
+  workflow_call:
+
+jobs:
+  enable-long-paths:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable Git Long Paths
+        run: |
+          git config --global core.longpaths true
+          echo "✅ Long paths enabled"

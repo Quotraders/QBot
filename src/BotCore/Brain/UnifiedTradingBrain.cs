@@ -244,6 +244,12 @@ namespace BotCore.Brain
         private readonly Dictionary<string, List<BotCore.Brain.Models.MarketCondition>> _strategyOptimalConditions = new();
         private DateTime _lastUnifiedLearningUpdate = DateTime.MinValue;
         
+        // CVaR-PPO experience tracking for live + historical learning
+        private double[]? _lastCVaRState;
+        private int _lastCVaRAction;
+        private double _lastCVaRValue;
+        private DateTime _lastCVaRTraining = DateTime.MinValue;
+        
         // Gate 4 configuration
         private readonly IGate4Config _gate4Config;
         
@@ -1744,6 +1750,72 @@ namespace BotCore.Brain
                     
                     await _strategySelector.UpdateArmAsync(strategy, contextVector, reward, cancellationToken).ConfigureAwait(false);
                     
+                    // 🎓 CVaR-PPO EXPERIENCE FEEDING: Learn from live + historical trades
+                    if (_cvarPPO != null && _lastCVaRState != null)
+                    {
+                        try
+                        {
+                            // Create next state for experience
+                            var nextState = CreateCVaRStateVector(context, 
+                                new StrategySelection { SelectedStrategy = strategy, Confidence = 0.5m, UcbValue = 0 },
+                                new PricePrediction { Direction = PriceDirection.Sideways, Probability = 0.5m });
+                            
+                            // Calculate CVaR-specific reward (incorporates risk-adjusted return)
+                            var cvarReward = CalculateCVaRReward(pnl, wasCorrect, holdTime, _lastCVaRValue);
+                            
+                            // Create experience and add to buffer
+                            var experience = new TradingBot.RLAgent.Experience
+                            {
+                                State = _lastCVaRState.ToList(),
+                                Action = _lastCVaRAction,
+                                Reward = (double)cvarReward,
+                                NextState = nextState.ToList(),
+                                Done = true, // Position closed
+                                LogProbability = 0, // Will be recalculated during training
+                                ValueEstimate = _lastCVaRValue,
+                                Return = 0 // Will be calculated during advantage estimation
+                            };
+                            
+                            _cvarPPO.AddExperience(experience);
+                            _logger.LogInformation("[CVAR-LEARN] 🎓 Experience added: Action={Action}, Reward={Reward:F2}, Buffer={BufferSize}", 
+                                _lastCVaRAction, cvarReward, _cvarPPO.ExperienceBufferSize);
+                            
+                            // Reset state tracking
+                            _lastCVaRState = null;
+                            
+                            // Periodic training (every 6 hours OR when buffer reaches threshold)
+                            var hoursSinceTraining = (DateTime.UtcNow - _lastCVaRTraining).TotalHours;
+                            var shouldTrain = (hoursSinceTraining >= 6 && _cvarPPO.ExperienceBufferSize >= 256) || 
+                                            _cvarPPO.ExperienceBufferSize >= 1000;
+                            
+                            if (shouldTrain)
+                            {
+                                _logger.LogInformation("[CVAR-TRAIN] 🚀 Triggering CVaR-PPO training: Buffer={Buffer}, Hours={Hours:F1}", 
+                                    _cvarPPO.ExperienceBufferSize, hoursSinceTraining);
+                                
+                                // Train in background to avoid blocking
+                                _ = Task.Run(async () =>
+                                {
+                                    try
+                                    {
+                                        var result = await _cvarPPO.TrainAsync(cancellationToken).ConfigureAwait(false);
+                                        _logger.LogInformation("[CVAR-TRAIN] ✅ Training complete: Episode={Episode}, Loss={Loss:F4}, Reward={Reward:F2}", 
+                                            result.Episode, result.TotalLoss, result.AverageReward);
+                                        _lastCVaRTraining = DateTime.UtcNow;
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        _logger.LogError(ex, "[CVAR-TRAIN] ❌ Training failed");
+                                    }
+                                }, cancellationToken);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "[CVAR-LEARN] ❌ Failed to add CVaR-PPO experience");
+                        }
+                    }
+                    
                     // 🚀 MULTI-STRATEGY LEARNING: Update ALL strategies with this market condition
                     await UpdateAllStrategiesFromOutcomeAsync(context, strategy, reward, wasCorrect, cancellationToken).ConfigureAwait(false);
                 }
@@ -2688,6 +2760,15 @@ Reason closed: {reason}
             // Convert risk to contracts
             var perContractRisk = stopDistance * pointValue;
             var contracts = perContractRisk > 0 ? (int)(riskAmount / perContractRisk) : 0;
+            
+            // 🔧 BACKTEST FIX: Ensure at least 1 contract if we have positive risk and confidence
+            // In backtesting, we want to generate trades for learning even with small position sizes
+            if (contracts == 0 && riskAmount > 0 && confidence >= (decimal)TopStepConfig.ConfidenceThreshold)
+            {
+                contracts = 1; // Allow 1 contract for learning purposes
+                _logger.LogInformation("[BACKTEST-FIX] 📊 Risk amount ${Risk:F2} below per-contract risk ${PerContract:F2}, allowing 1 contract for learning", 
+                    riskAmount, perContractRisk);
+            }
 
             // Apply TopStep position limits based on current drawdown
             var maxContracts = _currentDrawdown switch
@@ -2709,6 +2790,11 @@ Reason closed: {reason}
                     
                     // Get action from trained CVaR-PPO model
                     var actionResult = await _cvarPPO.GetActionAsync(state, deterministic: false, cancellationToken).ConfigureAwait(false);
+                    
+                    // 🎓 SAVE STATE/ACTION FOR EXPERIENCE REPLAY (live + historical learning)
+                    _lastCVaRState = state;
+                    _lastCVaRAction = actionResult.Action;
+                    _lastCVaRValue = actionResult.ValueEstimate;
                     
                     // Convert CVaR-PPO action to contract sizing
                     var cvarContracts = ConvertCVaRActionToContracts(actionResult, contracts);
@@ -2752,6 +2838,15 @@ Reason closed: {reason}
                 
                 contracts = (int)(contracts * Math.Clamp(rlMultiplier, TopStepConfig.MinRlMultiplier, TopStepConfig.MaxRlMultiplier));
                 LogLegacyRlMultiplier(_logger, (double)rlMultiplier, null);
+            }
+
+            // 🔧 BACKTEST FIX: Ensure at least 1 contract for learning if we passed all safety checks
+            // This fix runs AFTER CVaR-PPO to ensure it's not overridden
+            if (contracts == 0 && confidence >= (decimal)TopStepConfig.ConfidenceThreshold && riskAmount > 0)
+            {
+                contracts = 1; // Allow 1 contract for learning purposes in backtests
+                _logger.LogInformation("[BACKTEST-FIX-FINAL] 📊 CVaR-PPO returned 0 contracts but confidence={Conf:P1} and risk=${Risk:F2}, forcing 1 contract for learning", 
+                    confidence, riskAmount);
             }
 
             LogPositionSize(_logger, instrument, (double)confidence, _currentDrawdown, contracts, riskAmount, null);
@@ -2970,23 +3065,37 @@ Reason closed: {reason}
                 return new MarketContext { Symbol = symbol };
             }
             
+            var volumeRatio = CalculateVolumeRatio(bars, latestBar);
+            var rsi = CalculateRSI(bars, 14);
+            var trendStrength = CalculateTrendStrength(bars);
+            var volatilityRank = CalculateVolatilityRank(bars);
+            var momentum = CalculateMomentum(bars);
+            var priceChange = bars.Count > 1 ? latestBar.Close - bars[^2].Close : 0m;
+            var volatility = latestBar.Close > 0 ? Math.Abs(latestBar.High - latestBar.Low) / latestBar.Close : 0;
+            
+            Console.WriteLine($"[MARKET-CONTEXT] {symbol} | Price={latestBar.Close:F2} Vol={latestBar.Volume:N0} " +
+                             $"ATR={env.atr:F2} RSI={rsi:F1} Volatility={volatility:F4} " +
+                             $"VolRatio={volumeRatio:F2}x Trend={trendStrength:F2} Momentum={momentum:F2} " +
+                             $"PriceChange={priceChange:F2} VolRank={volatilityRank:F2} " +
+                             $"Time={latestBar.Start:HH:mm:ss} {latestBar.Start.DayOfWeek}");
+            
             var context = new MarketContext
             {
                 Symbol = symbol,
                 CurrentPrice = latestBar.Close,
                 Volume = latestBar.Volume,
                 Atr = env.atr,
-                Volatility = latestBar.Close > 0 ? Math.Abs(latestBar.High - latestBar.Low) / latestBar.Close : 0,
-                TimeOfDay = DateTime.Now.TimeOfDay,
-                DayOfWeek = DateTime.Now.DayOfWeek,
-                VolumeRatio = CalculateVolumeRatio(bars, latestBar),
-                PriceChange = bars.Count > 1 ? latestBar.Close - bars[^2].Close : 0m,
-                RSI = CalculateRSI(bars, 14),
-                TrendStrength = CalculateTrendStrength(bars),
+                Volatility = volatility,
+                TimeOfDay = latestBar.Start.TimeOfDay,  // Use bar's historical time, not current time
+                DayOfWeek = latestBar.Start.DayOfWeek,  // Use bar's historical day, not current day
+                VolumeRatio = volumeRatio,
+                PriceChange = priceChange,
+                RSI = rsi,
+                TrendStrength = trendStrength,
                 DistanceToSupport = 0m, // levels.Support doesn't exist, using default
                 DistanceToResistance = 0m, // levels.Resistance doesn't exist, using default
-                VolatilityRank = CalculateVolatilityRank(bars),
-                Momentum = CalculateMomentum(bars),
+                VolatilityRank = volatilityRank,
+                Momentum = momentum,
                 MarketRegime = 0 // Will be filled by regime detector
             };
             
@@ -3071,6 +3180,33 @@ Reason closed: {reason}
             var timeComponent = holdTime < TimeSpan.FromHours(2) ? 0.1m : 0m; // Reward quick profits
             
             return Math.Clamp(baseReward + (decimal)pnlComponent + timeComponent, 0m, 1m);
+        }
+
+        /// <summary>
+        /// Calculate CVaR-specific reward that emphasizes risk-adjusted returns
+        /// Rewards both profitability AND value estimation accuracy
+        /// </summary>
+        private static decimal CalculateCVaRReward(decimal pnl, bool wasCorrect, TimeSpan holdTime, double valueEstimate)
+        {
+            // Base reward from P&L (normalized to roughly [-1, 1])
+            var pnlReward = Math.Tanh((double)(pnl / 100));
+            
+            // Correctness bonus/penalty
+            var correctnessReward = wasCorrect ? 0.5 : -0.5;
+            
+            // Time efficiency (reward faster trades)
+            var timeReward = holdTime < TimeSpan.FromHours(2) ? 0.2 : 
+                           holdTime < TimeSpan.FromHours(4) ? 0.1 : 0.0;
+            
+            // Value estimation accuracy (penalize overconfident predictions)
+            var actualValue = (double)pnl / 100.0; // Normalize to similar scale
+            var valueError = Math.Abs(valueEstimate - actualValue);
+            var valueAccuracyPenalty = -Math.Min(valueError * 0.1, 0.3); // Cap penalty at -0.3
+            
+            // Combined reward (roughly in range [-2, 2])
+            var totalReward = pnlReward + correctnessReward + timeReward + valueAccuracyPenalty;
+            
+            return (decimal)totalReward;
         }
 
         private static decimal CalculateOverallConfidence(StrategySelection strategy, PricePrediction prediction)

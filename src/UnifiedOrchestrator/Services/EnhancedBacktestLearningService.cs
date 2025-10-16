@@ -131,8 +131,12 @@ internal class EnhancedBacktestLearningService : BackgroundService
         UnifiedSchedulingRecommendation scheduling, 
         CancellationToken cancellationToken)
     {
-        _logger.LogInformation("[UNIFIED-BACKTEST] Starting unified backtest learning session with {Intensity} intensity on strategies: {Strategies}", 
-            scheduling.LearningIntensity, string.Join(",", scheduling.RecommendedStrategies));
+        // 🔥 CRITICAL FIX: ALWAYS backtest ALL 4 primary strategies regardless of time/regime
+        // Backtesting is about learning, not live execution - we need data from all strategies
+        var allStrategies = new[] { "S2", "S3", "S6", "S11" };
+        
+        _logger.LogInformation("[UNIFIED-BACKTEST] Starting unified backtest learning session with {Intensity} intensity on ALL PRIMARY STRATEGIES: {Strategies} (overriding time-based filter)", 
+            scheduling.LearningIntensity, string.Join(",", allStrategies));
         
         try
         {
@@ -141,7 +145,18 @@ internal class EnhancedBacktestLearningService : BackgroundService
             await RunActualStrategyImplementationsAsync(scheduling, cancellationToken).ConfigureAwait(false);
             
             // ALSO run unified brain learning (for cross-strategy intelligence)
-            var backtestConfigs = GenerateUnifiedBacktestConfigs(scheduling);
+            // Override scheduling strategies with ALL strategies for comprehensive learning
+            var modifiedScheduling = new UnifiedSchedulingRecommendation
+            {
+                IsMarketOpen = scheduling.IsMarketOpen,
+                LearningIntensity = scheduling.LearningIntensity,
+                HistoricalLearningIntervalMinutes = scheduling.HistoricalLearningIntervalMinutes,
+                LiveTradingActive = scheduling.LiveTradingActive,
+                RecommendedStrategies = allStrategies, // 🔥 OVERRIDE: Always backtest all strategies
+                Reasoning = scheduling.Reasoning + " | Backtesting ALL strategies for comprehensive learning"
+            };
+            
+            var backtestConfigs = GenerateUnifiedBacktestConfigs(modifiedScheduling);
             
             var parallelJobs = scheduling.LearningIntensity switch
             {
@@ -170,8 +185,13 @@ internal class EnhancedBacktestLearningService : BackgroundService
             // Feed results back to UnifiedTradingBrain for continuous learning
             await FeedResultsToUnifiedBrainAsync(results, cancellationToken).ConfigureAwait(false);
             
-            _logger.LogInformation("[UNIFIED-BACKTEST] Completed unified backtest learning session - processed {Count} backtests across {Strategies} strategies", 
-                results.Length, string.Join(",", scheduling.RecommendedStrategies));
+            var totalTrades = results.Sum(r => r.TotalTrades);
+            var tradesWithResults = results.Where(r => r.TotalTrades > 0).ToList();
+            var avgSharpe = tradesWithResults.Any() ? tradesWithResults.Average(r => r.SharpeRatio) : 0m;
+            
+            _logger.LogInformation("[UNIFIED-BACKTEST] ✅ Completed unified backtest learning session - processed {Count} backtests across ALL 4 STRATEGIES: S2,S3,S6,S11 | Total trades: {Trades} | Avg Sharpe: {Sharpe:F2} | Rolling window: {Days} days", 
+                results.Length, totalTrades, avgSharpe, 
+                scheduling.LearningIntensity == "INTENSIVE" ? 90 : scheduling.LearningIntensity == "LIGHT" ? 30 : 45);
         }
         catch (Exception ex)
         {
@@ -248,15 +268,25 @@ internal class EnhancedBacktestLearningService : BackgroundService
         var configs = new List<UnifiedBacktestConfig>();
         var endDate = DateTime.UtcNow.Date;
         
-        // Configuration based on learning intensity
+        // Configuration based on learning intensity - ROLLING WINDOW APPROACH
+        // Models continuously learn from most recent N days, automatically adapting to market changes
         var (lookbackDays, symbols) = scheduling.LearningIntensity switch
         {
-            "INTENSIVE" => (30, new[] { "ES", "NQ" }), // 30 days lookback, both symbols
-            "LIGHT" => (7, new[] { "ES" }),            // 7 days lookback, ES only during market hours
-            _ => (14, new[] { "ES" })                  // 14 days default
+            "INTENSIVE" => (90, new[] { "ES", "NQ" }), // 90 days rolling window - optimal for ML pattern recognition
+            "LIGHT" => (30, new[] { "ES", "NQ" }),     // 🔥 FIX: Include NQ in LIGHT mode too!
+            _ => (45, new[] { "ES", "NQ" })            // 🔥 FIX: Include NQ in default too!
         };
         
         var startDate = endDate.AddDays(-lookbackDays);
+        
+        // 🔥 LOG ROLLING WINDOW CONFIGURATION
+        _logger.LogInformation("[ROLLING-WINDOW] 📊 Generated {Count} backtest configs: {Days}-day rolling window ({StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd}) for strategies [{Strategies}] on symbols [{Symbols}]",
+            scheduling.RecommendedStrategies.Count * symbols.Length,
+            lookbackDays,
+            startDate,
+            endDate,
+            string.Join(", ", scheduling.RecommendedStrategies),
+            string.Join(", ", symbols));
         
         foreach (var strategy in scheduling.RecommendedStrategies)
         {
@@ -275,6 +305,9 @@ internal class EnhancedBacktestLearningService : BackgroundService
                 });
             }
         }
+        
+        _logger.LogInformation("[ROLLING-WINDOW] 📊 Generated {Count} backtest configs: {Days}-day rolling window ({Start:yyyy-MM-dd} to {End:yyyy-MM-dd}) for strategies [{Strategies}]", 
+            configs.Count, lookbackDays, startDate, endDate, string.Join(", ", scheduling.RecommendedStrategies));
         
         return configs;
     }
@@ -319,10 +352,32 @@ internal class EnhancedBacktestLearningService : BackgroundService
             var historicalBars = await LoadHistoricalBarsAsync(config, cancellationToken).ConfigureAwait(false);
             if (!historicalBars.Any())
             {
-                throw new InvalidOperationException($"No historical data found for {config.Symbol} in period {config.StartDate} to {config.EndDate}");
+                _logger.LogWarning("[UNIFIED-BACKTEST] ⚠️ NO HISTORICAL DATA available for {Symbol} in period {Start:yyyy-MM-dd} to {End:yyyy-MM-dd} - TopstepX connection issue. Backtest will return 0 trades.", 
+                    config.Symbol, config.StartDate, config.EndDate);
+                
+                // Return empty result instead of throwing - allows bot to continue
+                return new UnifiedBacktestResult
+                {
+                    BacktestId = backtestId,
+                    StartTime = config.StartDate,
+                    EndTime = config.EndDate,
+                    Symbol = config.Symbol,
+                    Strategy = config.Strategy,
+                    TotalTrades = 0,
+                    WinningTrades = 0,
+                    LosingTrades = 0,
+                    TotalReturn = 0,
+                    NetPnL = 0,
+                    SharpeRatio = 0,
+                    SortinoRatio = 0,
+                    MaxDrawdown = 0,
+                    WinRate = 0,
+                    Decisions = new List<UnifiedHistoricalDecision>(),
+                    Metadata = new Dictionary<string, object> { { "NoDataReason", "TopstepX historical data unavailable" } }
+                };
             }
 
-            _logger.LogInformation("[UNIFIED-BACKTEST] Loaded {DataPoints} historical bars for {Symbol} {Strategy} from {Start} to {End}",
+            _logger.LogInformation("[UNIFIED-BACKTEST] ✅ Loaded {DataPoints} historical bars for {Symbol} {Strategy} from {Start:yyyy-MM-dd} to {End:yyyy-MM-dd}",
                 historicalBars.Count, config.Symbol, config.Strategy, config.StartDate, config.EndDate);
 
             // Initialize backtest state
@@ -1275,8 +1330,8 @@ internal class EnhancedBacktestLearningService : BackgroundService
         
         try
         {
-            _logger.LogInformation("[UNIFIED-BACKTEST] Loading historical bars from TopstepX API for {Symbol} from {StartDate} to {EndDate}", 
-                config.Symbol, config.StartDate, config.EndDate);
+            _logger.LogInformation("[UNIFIED-BACKTEST] 🔍 Loading historical bars from TopstepX for {Symbol} from {StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd} ({Days} days)", 
+                config.Symbol, config.StartDate, config.EndDate, (config.EndDate - config.StartDate).Days);
                 
             // Use bridge service to get real TopstepX data
             var bridgeService = _serviceProvider.GetService<IHistoricalDataBridgeService>();
@@ -1286,6 +1341,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
                     Environment.GetEnvironmentVariable("TOPSTEPX_EVAL_ES_ID") ?? "default-es" :
                     Environment.GetEnvironmentVariable("TOPSTEPX_EVAL_NQ_ID") ?? "default-nq";
                 
+                _logger.LogInformation("[UNIFIED-BACKTEST] Attempting to fetch 2000 bars from TopstepX bridge for contract {Contract}...", contractId);
                 var bars = await bridgeService.GetRecentHistoricalBarsAsync(contractId, 2000).ConfigureAwait(false);
                 
                 if (bars.Any())
@@ -1295,10 +1351,18 @@ internal class EnhancedBacktestLearningService : BackgroundService
                         bar.Start.Date >= config.StartDate.Date && 
                         bar.Start.Date <= config.EndDate.Date).ToList();
                     
-                    _logger.LogInformation("[UNIFIED-BACKTEST] Loaded {Count} historical bars from TopstepX API (filtered from {Total})", 
+                    _logger.LogInformation("[UNIFIED-BACKTEST] ✅ SUCCESS! Loaded {Count} historical bars from TopstepX (filtered from {Total} total bars)", 
                         filteredBars.Count, bars.Count);
                     return filteredBars;
                 }
+                else
+                {
+                    _logger.LogWarning("[UNIFIED-BACKTEST] ⚠️ TopstepX bridge returned 0 bars - connection issue or no data available");
+                }
+            }
+            else
+            {
+                _logger.LogWarning("[UNIFIED-BACKTEST] ⚠️ HistoricalDataBridgeService not available in service provider");
             }
             
             // Fallback: Try TopstepXHistoricalDataProvider

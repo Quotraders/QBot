@@ -32,7 +32,10 @@ jobs:
     timeout-minutes: 8
     
     steps:
-      - name: "📥 Checkout Repository"
+      - name: "� Enable Long Paths"
+        run: git config --global core.longpaths true
+        
+      - name: "�📥 Checkout Repository"
         uses: actions/checkout@v4
         with:
           fetch-depth: 1

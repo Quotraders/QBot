@@ -35,6 +35,18 @@ jobs:
     timeout-minutes: 40  # Covers max runtime (30min) + startup/shutdown buffer
     
     steps:
+
+    
+      - name: "🔧 Enable Long Paths"
+
+    
+        run: git config --global core.longpaths true
+
+    
+        
+
+    
+      - name:steps:
       - name: "📥 Checkout Repository"
         uses: actions/checkout@v4
         with:
