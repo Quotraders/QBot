@@ -32,10 +32,10 @@ public sealed class OllamaClient : IDisposable
         _ollamaBaseUrl = configuration["OLLAMA_BASE_URL"] ?? "http://localhost:11434";
         _modelName = configuration["OLLAMA_MODEL"] ?? "gemma2:2b";
 
-        // Create HTTP client with timeout
+        // Create HTTP client with extended timeout for AI model inference (90 seconds to handle slower models)
         _httpClient = new HttpClient
         {
-            Timeout = TimeSpan.FromSeconds(30)
+            Timeout = TimeSpan.FromSeconds(90)
         };
 
         _logger.LogInformation("🤖 [OLLAMA] Initialized with URL: {Url}, Model: {Model}", 
