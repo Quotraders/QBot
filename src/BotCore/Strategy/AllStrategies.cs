@@ -1081,29 +1081,10 @@ namespace BotCore.Strategy
             ArgumentNullException.ThrowIfNull(env);
             ArgumentNullException.ThrowIfNull(bars);
             
-            // Use the full-stack S6 implementation via bridge
-            try
-            {
-                return S6S11Bridge.GetS6Candidates(symbol, env, levels, bars, risk, null!, null!, null!);
-            }
-            catch (InvalidOperationException ex)
-            {
-                // Fallback to original simple implementation if full-stack fails
-                Console.WriteLine($"[S6] Invalid operation in full-stack, using fallback: {ex.Message}");
-                return CreateS6Fallback(symbol, env, bars, risk);
-            }
-            catch (ArgumentException ex)
-            {
-                // Fallback to original simple implementation if arguments are invalid
-                Console.WriteLine($"[S6] Invalid arguments in full-stack, using fallback: {ex.Message}");
-                return CreateS6Fallback(symbol, env, bars, risk);
-            }
-            catch (NotSupportedException ex)
-            {
-                // Fallback to original simple implementation if operation not supported
-                Console.WriteLine($"[S6] Unsupported operation in full-stack, using fallback: {ex.Message}");
-                return CreateS6Fallback(symbol, env, bars, risk);
-            }
+            // S6 bridge requires full dependency injection - use fallback implementation directly
+            // Full-stack integration requires IOrderService, ILogger, and IServiceProvider from DI container
+            // which are not available at this level in the call stack
+            return CreateS6Fallback(symbol, env, bars, risk);
         }
 
         private static List<Candidate> CreateS6Fallback(string symbol, Env env, IList<Bar> bars, RiskEngine risk)
@@ -1130,29 +1111,10 @@ namespace BotCore.Strategy
             ArgumentNullException.ThrowIfNull(env);
             ArgumentNullException.ThrowIfNull(bars);
             
-            // Use the full-stack S11 implementation via bridge
-            try
-            {
-                return S6S11Bridge.GetS11Candidates(symbol, env, levels, bars, risk, null!, null!, null!);
-            }
-            catch (InvalidOperationException ex)
-            {
-                // Fallback to original simple implementation if full-stack fails
-                Console.WriteLine($"[S11] Invalid operation in full-stack, using fallback: {ex.Message}");
-                return CreateS11Fallback(symbol, env, bars, risk);
-            }
-            catch (ArgumentException ex)
-            {
-                // Fallback to original simple implementation if arguments are invalid
-                Console.WriteLine($"[S11] Invalid arguments in full-stack, using fallback: {ex.Message}");
-                return CreateS11Fallback(symbol, env, bars, risk);
-            }
-            catch (NotSupportedException ex)
-            {
-                // Fallback to original simple implementation if operation not supported
-                Console.WriteLine($"[S11] Unsupported operation in full-stack, using fallback: {ex.Message}");
-                return CreateS11Fallback(symbol, env, bars, risk);
-            }
+            // S11 bridge requires full dependency injection - use fallback implementation directly
+            // Full-stack integration requires IOrderService, ILogger, and IServiceProvider from DI container
+            // which are not available at this level in the call stack
+            return CreateS11Fallback(symbol, env, bars, risk);
         }
 
         private static List<Candidate> CreateS11Fallback(string symbol, Env env, IList<Bar> bars, RiskEngine risk)
