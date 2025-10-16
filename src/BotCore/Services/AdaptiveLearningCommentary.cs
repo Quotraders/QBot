@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 
 namespace BotCore.Services;
 
@@ -16,15 +17,18 @@ public sealed class AdaptiveLearningCommentary
     private readonly ILogger<AdaptiveLearningCommentary> _logger;
     private readonly ParameterChangeTracker _changeTracker;
     private readonly OllamaClient? _ollamaClient;
+    private readonly bool _isEnabled;
 
     public AdaptiveLearningCommentary(
         ILogger<AdaptiveLearningCommentary> logger,
         ParameterChangeTracker changeTracker,
+        IConfiguration configuration,
         OllamaClient? ollamaClient = null)
     {
         _logger = logger;
         _changeTracker = changeTracker;
         _ollamaClient = ollamaClient;
+        _isEnabled = configuration["OLLAMA_LEARNING_COMMENTARY_ENABLED"]?.Equals("true", StringComparison.OrdinalIgnoreCase) ?? true;
     }
 
     /// <summary>
@@ -32,7 +36,8 @@ public sealed class AdaptiveLearningCommentary
     /// </summary>
     public async Task<string> ExplainRecentAdaptationsAsync(int lookbackMinutes = 60)
     {
-        if (_ollamaClient == null)
+        // Skip learning commentary if disabled or Ollama not available
+        if (!_isEnabled || _ollamaClient == null)
         {
             return string.Empty;
         }
@@ -67,7 +72,8 @@ public sealed class AdaptiveLearningCommentary
 
 Explain these adaptations in 2-3 sentences. What am I learning? Speak as ME (the bot).";
 
-            var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+            // Pass isTradeCommentary: false so this works in DRY_RUN mode
+            var response = await _ollamaClient.AskAsync(prompt, isTradeCommentary: false).ConfigureAwait(false);
             return response;
         }
         catch (Exception ex)

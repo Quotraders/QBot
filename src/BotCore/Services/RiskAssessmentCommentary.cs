@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using BotCore.Patterns;
 using Zones;
 
@@ -21,17 +22,20 @@ public sealed class RiskAssessmentCommentary
     private readonly IZoneService _zoneService;
     private readonly PatternEngine _patternEngine;
     private readonly OllamaClient? _ollamaClient;
+    private readonly bool _isEnabled;
 
     public RiskAssessmentCommentary(
         ILogger<RiskAssessmentCommentary> logger,
         IZoneService zoneService,
         PatternEngine patternEngine,
+        IConfiguration configuration,
         OllamaClient? ollamaClient = null)
     {
         _logger = logger;
         _zoneService = zoneService;
         _patternEngine = patternEngine;
         _ollamaClient = ollamaClient;
+        _isEnabled = configuration["OLLAMA_RISK_COMMENTARY_ENABLED"]?.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false;
     }
 
     /// <summary>
@@ -43,7 +47,8 @@ public sealed class RiskAssessmentCommentary
         decimal atr,
         CancellationToken cancellationToken = default)
     {
-        if (_ollamaClient == null)
+        // Skip risk commentary if disabled (DRY_RUN mode) or Ollama not available
+        if (!_isEnabled || _ollamaClient == null)
         {
             return string.Empty;
         }

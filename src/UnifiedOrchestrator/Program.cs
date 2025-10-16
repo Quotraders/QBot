@@ -425,15 +425,8 @@ Please check the configuration and ensure all required services are registered.
 
     private static IHostBuilder CreateHostBuilder(string[] args) =>
         Host.CreateDefaultBuilder(args)
-            .ConfigureWebHostDefaults(webBuilder =>
-            {
-                webBuilder.UseUrls("http://localhost:5000");
-                webBuilder.Configure(app =>
-                {
-                    // Minimal web host configuration - just needs to start
-                    app.UseRouting();
-                });
-            })
+            // Web host disabled - trading bot runs as pure console application
+            // Re-enable .ConfigureWebHostDefaults() when dashboard/API endpoints are needed
             .ConfigureLogging(logging =>
             {
                 logging.ClearProviders();
@@ -886,12 +879,12 @@ Please check the configuration and ensure all required services are registered.
             ApiBase = Environment.GetEnvironmentVariable("TOPSTEPX_API_BASE") ?? TopstepXApiBaseUrl,
             AuthToken = "",  // Legacy JWT removed - SDK handles authentication
             AccountId = Environment.GetEnvironmentVariable("TOPSTEPX_ACCOUNT_ID") ?? "",
-            EnableDryRunMode = Environment.GetEnvironmentVariable("ENABLE_DRY_RUN") != "false",
+            EnableDryRunMode = configuration.GetValue<bool>("DRY_RUN", defaultValue: true), // Single source
             EnableAutoExecution = Environment.GetEnvironmentVariable("ENABLE_AUTO_EXECUTION") == "true",
             MaxDailyLoss = decimal.Parse(Environment.GetEnvironmentVariable("MAX_DAILY_LOSS") ?? "-1000"),
             MaxPositionSize = int.Parse(Environment.GetEnvironmentVariable("MAX_POSITION_SIZE") ?? "5"),
             DrawdownLimit = decimal.Parse(Environment.GetEnvironmentVariable("DRAWDOWN_LIMIT") ?? "-2000"),
-            KillFile = Environment.GetEnvironmentVariable("KILL_FILE") ?? Path.Combine(Directory.GetCurrentDirectory(), "kill.txt")
+            KillFile = Path.Combine(Directory.GetCurrentDirectory(), "state", "kill.txt")
         };
         services.AddSingleton<IOptions<AppOptions>>(provider => Options.Create(appOptions));
 
@@ -969,12 +962,21 @@ Please check the configuration and ensure all required services are registered.
         // AI/ML TRADING BRAIN REGISTRATION - DUAL ML APPROACH WITH UCB
         // ================================================================================
         
-        // Register OllamaClient - AI conversation service for bot explanations (optional)
-        var ollamaEnabled = configuration["OLLAMA_ENABLED"]?.Equals("true", StringComparison.OrdinalIgnoreCase) ?? true;
-        if (ollamaEnabled)
+        // Register OllamaClient - Always register for DI (services check OLLAMA_*_ENABLED flags internally)
+        services.AddSingleton<global::BotCore.Services.OllamaClient>();
+        var ollamaTradeCommentary = configuration["OLLAMA_TRADE_COMMENTARY_ENABLED"]?.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false;
+        var ollamaLearningCommentary = configuration["OLLAMA_LEARNING_COMMENTARY_ENABLED"]?.Equals("true", StringComparison.OrdinalIgnoreCase) ?? true;
+        if (ollamaTradeCommentary && ollamaLearningCommentary)
         {
-            services.AddSingleton<global::BotCore.Services.OllamaClient>();
-            Console.WriteLine("🗣️ [OLLAMA] Bot voice enabled - conversational AI features active");
+            Console.WriteLine("🗣️ [OLLAMA] Bot voice FULLY enabled - all AI commentary active");
+        }
+        else if (ollamaLearningCommentary)
+        {
+            Console.WriteLine("� [OLLAMA] Trade commentary disabled - learning commentary only");
+        }
+        else if (ollamaTradeCommentary)
+        {
+            Console.WriteLine("🗣️ [OLLAMA] Trade commentary enabled - learning commentary disabled");
         }
         else
         {
@@ -983,6 +985,7 @@ Please check the configuration and ensure all required services are registered.
         
         // Register Intelligence Services - LLM-powered market intelligence
         var intelligenceEnabled = configuration["INTELLIGENCE_SYNTHESIS_ENABLED"]?.Equals("true", StringComparison.OrdinalIgnoreCase) ?? true;
+        var ollamaEnabled = ollamaTradeCommentary || ollamaLearningCommentary;
         if (intelligenceEnabled && ollamaEnabled)
         {
             services.AddSingleton<global::BotCore.Intelligence.MarketDataReader>();
@@ -1310,7 +1313,7 @@ Please check the configuration and ensure all required services are registered.
                 MarketHubUrl = topstepXConfig["MarketHubUrl"] ?? Environment.GetEnvironmentVariable("RTC_MARKET_HUB") ?? "https://rtc.topstepx.com/hubs/market",
                 AccountId = Environment.GetEnvironmentVariable("TOPSTEPX_ACCOUNT_ID") ?? "",
                 ApiToken = "",  // Legacy JWT removed - SDK handles authentication
-                EnableDryRunMode = Environment.GetEnvironmentVariable("ENABLE_DRY_RUN") != "false",
+                EnableDryRunMode = configuration.GetValue<bool>("DRY_RUN", defaultValue: true), // Single source
                 EnableAutoExecution = Environment.GetEnvironmentVariable("ENABLE_AUTO_EXECUTION") == "true",
                 MaxDailyLoss = decimal.Parse(Environment.GetEnvironmentVariable("DAILY_LOSS_CAP_R") ?? "-1000"),
                 MaxPositionSize = decimal.Parse(Environment.GetEnvironmentVariable("MAX_POSITION_SIZE") ?? "5")
@@ -2318,9 +2321,9 @@ internal class AdvancedSystemInitializationService : IHostedService
             // Check for disabled critical features
             var configuration = _serviceProvider.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
             
-            var dryRun = configuration["ENABLE_DRY_RUN"]?.ToLowerInvariant() == "true" || 
-                        configuration["ENABLE_DRY_RUN"] == "1" ||
-                        configuration["TRADING_MODE"]?.ToUpperInvariant() == "DRY_RUN";
+            // Check DRY_RUN mode (single authoritative flag)
+            var dryRun = configuration.GetValue<bool>("DRY_RUN", defaultValue: true);
+            
             if (dryRun)
             {
                 await botAlerts.AlertFeatureDisabledAsync(

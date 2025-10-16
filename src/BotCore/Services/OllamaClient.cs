@@ -19,6 +19,7 @@ public sealed class OllamaClient : IDisposable
     private readonly HttpClient _httpClient;
     private readonly string _ollamaBaseUrl;
     private readonly string _modelName;
+    private readonly bool _tradeCommentaryEnabled;
     private bool _disposed;
     private bool _serviceUnavailableLogged;
 
@@ -31,6 +32,7 @@ public sealed class OllamaClient : IDisposable
         // Read configuration with defaults
         _ollamaBaseUrl = configuration["OLLAMA_BASE_URL"] ?? "http://localhost:11434";
         _modelName = configuration["OLLAMA_MODEL"] ?? "gemma2:2b";
+        _tradeCommentaryEnabled = configuration["OLLAMA_TRADE_COMMENTARY_ENABLED"]?.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false;
 
         // Create HTTP client with extended timeout for AI model inference (90 seconds to handle slower models)
         _httpClient = new HttpClient
@@ -38,17 +40,25 @@ public sealed class OllamaClient : IDisposable
             Timeout = TimeSpan.FromSeconds(90)
         };
 
-        _logger.LogInformation("🤖 [OLLAMA] Initialized with URL: {Url}, Model: {Model}", 
-            _ollamaBaseUrl, _modelName);
+        var commentaryStatus = _tradeCommentaryEnabled ? "ENABLED" : "DISABLED";
+        _logger.LogInformation("🤖 [OLLAMA] Initialized with URL: {Url}, Model: {Model}, Trade Commentary: {Status}", 
+            _ollamaBaseUrl, _modelName, commentaryStatus);
     }
 
     /// <summary>
     /// Ask Ollama AI a question and get a response
     /// </summary>
     /// <param name="prompt">The prompt/question to send to the AI</param>
-    /// <returns>The AI's response text, or empty string on error</returns>
-    public async Task<string> AskAsync(string prompt)
+    /// <param name="isTradeCommentary">True if this is trade commentary (BOT-THINKING, BOT-COMMENTARY, BOT-REFLECTION), false for learning commentary</param>
+    /// <returns>The AI's response text, or empty string on error or if disabled</returns>
+    public async Task<string> AskAsync(string prompt, bool isTradeCommentary = true)
     {
+        // Skip trade commentary if disabled (DRY_RUN mode)
+        if (isTradeCommentary && !_tradeCommentaryEnabled)
+        {
+            return string.Empty;
+        }
+        
         try
         {
             // Create JSON request object

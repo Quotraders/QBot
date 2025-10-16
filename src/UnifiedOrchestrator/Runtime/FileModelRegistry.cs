@@ -75,6 +75,12 @@ internal class FileModelRegistry : IModelRegistry
                 var tempArtifactPath = finalArtifactPath + ".tmp";
                 
                 File.Copy(model.ArtifactPath, tempArtifactPath, true);
+                
+                // Delete target if exists, then move (atomic operation)
+                if (File.Exists(finalArtifactPath))
+                {
+                    File.Delete(finalArtifactPath);
+                }
                 File.Move(tempArtifactPath, finalArtifactPath);
                 
                 model.ArtifactPath = finalArtifactPath;
@@ -92,6 +98,12 @@ internal class FileModelRegistry : IModelRegistry
             });
             
             await File.WriteAllTextAsync(tempMetadataPath, json, cancellationToken).ConfigureAwait(false);
+            
+            // Delete target if exists, then move (atomic operation)
+            if (File.Exists(modelMetadataPath))
+            {
+                File.Delete(modelMetadataPath);
+            }
             File.Move(tempMetadataPath, modelMetadataPath);
             
             _logger.LogInformation("Registered model {Algorithm} version {VersionId} with hash {Hash}", 

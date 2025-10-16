@@ -1640,8 +1640,12 @@ internal class EnhancedBacktestLearningService : BackgroundService
     /// </summary>
     private async Task<string> GenerateSelfImprovementSuggestionsAsync(UnifiedBacktestResult[] results, CancellationToken cancellationToken)
     {
-        if (_ollamaClient == null || !results.Any())
-            return string.Empty;
+        // Ollama disabled for backtests - only use for live trading
+        return string.Empty;
+        
+        // ORIGINAL CODE KEPT FOR REFERENCE (disabled)
+        // if (_ollamaClient == null || !results.Any())
+        //     return string.Empty;
 
         try
         {
@@ -1704,36 +1708,7 @@ Based on this, what should I change about my own code or parameters to improve? 
                 result.TotalTrades > 0 ? (decimal)result.WinningTrades / result.TotalTrades : 0);
         }
         
-        // Generate self-improvement suggestions if enabled and AI is available
-        if (_ollamaClient != null && results.Any())
-        {
-            var selfImprovementEnabled = _configuration.GetValue<bool>("SELF_IMPROVEMENT_ENABLED", false);
-            if (selfImprovementEnabled)
-            {
-                try
-                {
-                    var suggestions = await GenerateSelfImprovementSuggestionsAsync(results, cancellationToken).ConfigureAwait(false);
-                    if (!string.IsNullOrEmpty(suggestions))
-                    {
-                        _logger.LogInformation("🧠 [BOT-SELF-IMPROVEMENT] {Suggestions}", suggestions);
-                        
-                        // Save suggestions to artifacts file
-                        var artifactsDir = Path.Combine(Directory.GetCurrentDirectory(), "artifacts");
-                        Directory.CreateDirectory(artifactsDir);
-                        var suggestionsPath = Path.Combine(artifactsDir, "bot_suggestions.txt");
-                        await File.AppendAllTextAsync(suggestionsPath, 
-                            $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] {suggestions}\n\n", 
-                            cancellationToken).ConfigureAwait(false);
-                        
-                        _logger.LogInformation("💾 [BOT-SELF-IMPROVEMENT] Suggestions saved to {Path}", suggestionsPath);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "❌ [BOT-SELF-IMPROVEMENT] Failed to generate self-improvement suggestions");
-                }
-            }
-        }
+        // Ollama disabled for backtests - only use for live trading
     }
 
     /// <summary>
