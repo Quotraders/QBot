@@ -147,7 +147,20 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
                         
                         var bars = allBars;
                         
-                        // Create trading context with full bar history
+                        // Calculate technical indicators from historical bars
+                        decimal? atr = null;
+                        decimal? rsi = null;
+                        if (bars.Count >= 14)
+                        {
+                            atr = CalculateATR(bars, 14);
+                            _logger.LogInformation("[DATA-INTEGRATION] 📊 Calculated ATR from {Count} bars: {ATR:F2}", bars.Count, atr);
+                        }
+                        if (bars.Count >= 14)
+                        {
+                            rsi = CalculateRSI(bars, 14);
+                        }
+                        
+                        // Create trading context with full bar history AND calculated indicators
                         var context = new TradingContext
                         {
                             Symbol = barEvent.Instrument,
@@ -164,7 +177,9 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
                             // Store bars in metadata so adapter can use them
                             Metadata = new Dictionary<string, object>
                             {
-                                ["HistoricalBars"] = bars
+                                ["HistoricalBars"] = bars,
+                                ["ATR"] = atr ?? 0m,
+                                ["RSI"] = rsi ?? 50m
                             }
                         };
                         
@@ -914,6 +929,71 @@ internal class UnifiedDataIntegrationService : BackgroundService, IUnifiedDataIn
         {
             _logger.LogWarning("[DATA-INTEGRATION] ⚠️ Data flow health degraded - Success rate: {SuccessRate:P2}", successRate);
         }
+    }
+
+    /// <summary>
+    /// Calculate Average True Range (ATR) from historical bars
+    /// </summary>
+    private static decimal CalculateATR(List<global::BotCore.Models.Bar> bars, int period = 14)
+    {
+        if (bars == null || bars.Count < period + 1)
+            return 0m;
+
+        var trueRanges = new List<decimal>();
+        for (int i = 1; i < bars.Count; i++)
+        {
+            var high = bars[i].High;
+            var low = bars[i].Low;
+            var prevClose = bars[i - 1].Close;
+            
+            var tr = Math.Max(
+                high - low,
+                Math.Max(
+                    Math.Abs(high - prevClose),
+                    Math.Abs(low - prevClose)
+                )
+            );
+            trueRanges.Add(tr);
+        }
+
+        // Take the average of the last 'period' true ranges
+        return trueRanges.Skip(Math.Max(0, trueRanges.Count - period)).Average();
+    }
+
+    /// <summary>
+    /// Calculate Relative Strength Index (RSI) from historical bars
+    /// </summary>
+    private static decimal CalculateRSI(List<global::BotCore.Models.Bar> bars, int period = 14)
+    {
+        if (bars == null || bars.Count < period + 1)
+            return 50m;
+
+        var gains = new List<decimal>();
+        var losses = new List<decimal>();
+
+        for (int i = 1; i < bars.Count; i++)
+        {
+            var change = bars[i].Close - bars[i - 1].Close;
+            if (change > 0)
+            {
+                gains.Add(change);
+                losses.Add(0);
+            }
+            else
+            {
+                gains.Add(0);
+                losses.Add(Math.Abs(change));
+            }
+        }
+
+        var avgGain = gains.Skip(Math.Max(0, gains.Count - period)).Average();
+        var avgLoss = losses.Skip(Math.Max(0, losses.Count - period)).Average();
+
+        if (avgLoss == 0m)
+            return 100m;
+
+        var rs = avgGain / avgLoss;
+        return 100m - (100m / (1m + rs));
     }
 
 }

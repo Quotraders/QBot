@@ -2840,12 +2840,11 @@ Reason closed: {reason}
                 LogLegacyRlMultiplier(_logger, (double)rlMultiplier, null);
             }
 
-            // 🔧 BACKTEST FIX: Ensure at least 1 contract for learning if we passed all safety checks
-            // This fix runs AFTER CVaR-PPO to ensure it's not overridden
-            if (contracts == 0 && confidence >= (decimal)TopStepConfig.ConfidenceThreshold && riskAmount > 0)
+            // ✅ RESPECT CVaR-PPO DECISION: If CVaR-PPO returns 0 contracts, don't force trades
+            // The model learned to be conservative - trust it. Only trade on actual signals.
+            if (contracts == 0)
             {
-                contracts = 1; // Allow 1 contract for learning purposes in backtests
-                _logger.LogInformation("[BACKTEST-FIX-FINAL] 📊 CVaR-PPO returned 0 contracts but confidence={Conf:P1} and risk=${Risk:F2}, forcing 1 contract for learning", 
+                _logger.LogInformation("[CVAR-PPO] ⏸️ No trade: CVaR-PPO returned 0 contracts (confidence={Conf:P1}, risk=${Risk:F2})", 
                     confidence, riskAmount);
             }
 

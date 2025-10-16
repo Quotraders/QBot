@@ -128,11 +128,27 @@ internal class TradingBrainAdapter : ITradingBrainAdapter
         // Convert TradingContext to UnifiedTradingBrain inputs
         var symbol = context.Symbol ?? "ES";
         
-        // Create mock objects for UnifiedTradingBrain (these would come from real data in production)
+        // Extract ATR and RSI from metadata (calculated from historical bars)
+        decimal? atr = null;
+        decimal? rsi = null;
+        if (context.Metadata != null)
+        {
+            if (context.Metadata.TryGetValue("ATR", out var atrObj) && atrObj is decimal atrValue)
+            {
+                atr = atrValue;
+                _logger.LogDebug("[ADAPTER] ✅ Using calculated ATR: {ATR:F2}", atr);
+            }
+            if (context.Metadata.TryGetValue("RSI", out var rsiObj) && rsiObj is decimal rsiValue)
+            {
+                rsi = rsiValue;
+            }
+        }
+        
+        // Create env object with REAL calculated indicators
         var env = new Env 
         { 
-            Symbol = symbol
-            // Note: CurrentPrice and Timestamp may not exist on Env - using context data directly
+            Symbol = symbol,
+            atr = atr  // ✅ Now populated from real historical data
         };
         
         var levels = new Levels
