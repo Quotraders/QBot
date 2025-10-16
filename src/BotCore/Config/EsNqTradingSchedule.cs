@@ -11,7 +11,7 @@ namespace BotCore.Config
     /// </summary>
     public static class EsNqTradingSchedule
     {
-        // ES & NQ FUTURES TRADING HOURS (23/5 - Sunday 5PM to Friday 4PM CT)
+        // ES & NQ FUTURES TRADING HOURS (23/5 - Sunday 5PM to Friday 4PM ET)
         public static readonly IReadOnlyDictionary<string, TradingSession> Sessions = new Dictionary<string, TradingSession>
         {
             // ============================================
@@ -19,8 +19,8 @@ namespace BotCore.Config
             // ============================================
             ["AsianSession"] = new TradingSession
             {
-                Start = new TimeSpan(18, 0, 0), // 6:00 PM CT (7PM ET)
-                End = new TimeSpan(23, 59, 0),  // 11:59 PM CT
+                Start = new TimeSpan(18, 0, 0), // 6:00 PM ET (7PM ET)
+                End = new TimeSpan(23, 59, 0),  // 11:59 PM ET
                 Instruments = new[] { "NQ", "ES" },
                 PrimaryInstrument = "NQ", // Tech-heavy Asian trading
                 Strategies = new Dictionary<string, string[]>
@@ -39,8 +39,8 @@ namespace BotCore.Config
 
             ["EuropeanPreOpen"] = new TradingSession
             {
-                Start = new TimeSpan(0, 0, 0),   // 12:00 AM CT (1AM ET)
-                End = new TimeSpan(2, 0, 0),     // 2:00 AM CT (3AM ET)
+                Start = new TimeSpan(0, 0, 0),   // 12:00 AM ET (1AM ET)
+                End = new TimeSpan(2, 0, 0),     // 2:00 AM ET (3AM ET)
                 Instruments = new[] { "ES", "NQ" },
                 PrimaryInstrument = "ES",
                 Strategies = new Dictionary<string, string[]>
@@ -59,8 +59,8 @@ namespace BotCore.Config
 
             ["EuropeanOpen"] = new TradingSession
             {
-                Start = new TimeSpan(2, 0, 0),   // 2:00 AM CT (3AM ET, 8AM London)
-                End = new TimeSpan(5, 0, 0),     // 5:00 AM CT
+                Start = new TimeSpan(2, 0, 0),   // 2:00 AM ET (3AM ET, 8AM London)
+                End = new TimeSpan(5, 0, 0),     // 5:00 AM ET
                 Instruments = new[] { "ES", "NQ" },
                 PrimaryInstrument = "ES",
                 Strategies = new Dictionary<string, string[]>
@@ -79,8 +79,8 @@ namespace BotCore.Config
 
             ["LondonMorning"] = new TradingSession
             {
-                Start = new TimeSpan(5, 0, 0),   // 5:00 AM CT
-                End = new TimeSpan(8, 30, 0),    // 8:30 AM CT
+                Start = new TimeSpan(5, 0, 0),   // 5:00 AM ET
+                End = new TimeSpan(8, 30, 0),    // 8:30 AM ET
                 Instruments = new[] { "ES", "NQ" },
                 PrimaryInstrument = "ES",
                 Strategies = new Dictionary<string, string[]>
@@ -102,8 +102,8 @@ namespace BotCore.Config
             // ============================================
             ["USPreMarket"] = new TradingSession
             {
-                Start = new TimeSpan(8, 30, 0),  // 8:30 AM CT (9:30 AM ET)
-                End = new TimeSpan(9, 28, 0),    // 9:28 AM CT
+                Start = new TimeSpan(8, 30, 0),  // 8:30 AM ET - Pre-market positioning
+                End = new TimeSpan(9, 30, 0),    // 9:30 AM ET - Regular trading hours start
                 Instruments = new[] { "ES", "NQ" },
                 PrimaryInstrument = "BOTH",
                 Strategies = new Dictionary<string, string[]>
@@ -122,11 +122,13 @@ namespace BotCore.Config
 
             // ============================================
             // OPENING DRIVE (HIGHEST OPPORTUNITY)
+            // Classic 9:30-10:00 ET window for opening momentum
+            // NO NEW ENTRIES AFTER 10:00 AM ET
             // ============================================
             ["OpeningDrive"] = new TradingSession
             {
-                Start = new TimeSpan(9, 28, 0),  // 9:28 AM CT
-                End = new TimeSpan(10, 0, 0),    // 10:00 AM CT
+                Start = new TimeSpan(9, 30, 0),  // 9:30 AM ET - RTH open
+                End = new TimeSpan(10, 0, 0),    // 10:00 AM ET - No new entries after
                 Instruments = new[] { "ES", "NQ" },
                 PrimaryInstrument = "BOTH",
                 Strategies = new Dictionary<string, string[]>
@@ -139,7 +141,7 @@ namespace BotCore.Config
                     ["ES"] = 1.2, // Increase size for high probability
                     ["NQ"] = 1.2
                 },
-                Description = "CRITICAL: Opening Drive Window",
+                Description = "CRITICAL: Opening Drive 9:30-10:00 ET (No new entries after 10:00)",
                 IsActive = true
             },
 
@@ -148,8 +150,8 @@ namespace BotCore.Config
             // ============================================
             ["MorningTrend"] = new TradingSession
             {
-                Start = new TimeSpan(10, 0, 0),  // 10:00 AM CT
-                End = new TimeSpan(11, 30, 0),   // 11:30 AM CT
+                Start = new TimeSpan(10, 0, 0),  // 10:00 AM ET
+                End = new TimeSpan(11, 30, 0),   // 11:30 AM ET
                 Instruments = new[] { "ES", "NQ" },
                 PrimaryInstrument = "NQ", // Tech often leads
                 Strategies = new Dictionary<string, string[]>
@@ -171,8 +173,8 @@ namespace BotCore.Config
             // ============================================
             ["LunchChop"] = new TradingSession
             {
-                Start = new TimeSpan(11, 30, 0), // 11:30 AM CT
-                End = new TimeSpan(13, 30, 0),   // 1:30 PM CT
+                Start = new TimeSpan(11, 30, 0), // 11:30 AM ET
+                End = new TimeSpan(13, 30, 0),   // 1:30 PM ET
                 Instruments = new[] { "ES", "NQ" },
                 PrimaryInstrument = "ES",
                 Strategies = new Dictionary<string, string[]>
@@ -190,25 +192,27 @@ namespace BotCore.Config
             },
 
             // ============================================
-            // AFTERNOON TREND (ADR EXHAUSTION TIME)
+            // AFTERNOON TREND (ADR / IB EXHAUSTION FADE)
+            // Optimal window for exhaustion fades based on Initial Balance (9:30-10:30 ET)
+            // NO NEW ENTRIES AFTER 15:50 ET to avoid end-of-day risk
             // ============================================
             ["AfternoonTrend"] = new TradingSession
             {
-                Start = new TimeSpan(13, 30, 0), // 1:30 PM CT
-                End = new TimeSpan(14, 30, 0),   // 2:30 PM CT
+                Start = new TimeSpan(14, 0, 0),  // 2:00 PM ET - Exhaustion patterns emerge
+                End = new TimeSpan(15, 50, 0),   // 3:50 PM ET - No new entries after
                 Instruments = new[] { "ES", "NQ" },
                 PrimaryInstrument = "BOTH",
                 Strategies = new Dictionary<string, string[]>
                 {
-                    ["ES"] = new[] { "S11", "S3", "S2" }, // ADR exhaustion prime time
-                    ["NQ"] = new[] { "S11", "S3", "S2" }
+                    ["ES"] = new[] { "S11", "S3", "S6" }, // ADR exhaustion prime time
+                    ["NQ"] = new[] { "S11", "S3", "S6" }
                 },
                 PositionSizeMultiplier = new Dictionary<string, double>
                 {
                     ["ES"] = 1.0,
                     ["NQ"] = 1.0
                 },
-                Description = "Afternoon - ADR exhaustion setups",
+                Description = "Afternoon 14:00-15:50 ET - ADR/IB exhaustion fades (No new entries after 15:50)",
                 IsActive = true
             },
 
@@ -217,8 +221,8 @@ namespace BotCore.Config
             // ============================================
             ["PowerHour"] = new TradingSession
             {
-                Start = new TimeSpan(14, 30, 0), // 2:30 PM CT
-                End = new TimeSpan(15, 0, 0),    // 3:00 PM CT
+                Start = new TimeSpan(14, 30, 0), // 2:30 PM ET
+                End = new TimeSpan(15, 0, 0),    // 3:00 PM ET
                 Instruments = new[] { "ES", "NQ" },
                 PrimaryInstrument = "BOTH",
                 Strategies = new Dictionary<string, string[]>
@@ -237,8 +241,8 @@ namespace BotCore.Config
 
             ["MarketClose"] = new TradingSession
             {
-                Start = new TimeSpan(15, 0, 0),  // 3:00 PM CT
-                End = new TimeSpan(16, 0, 0),    // 4:00 PM CT (Market close)
+                Start = new TimeSpan(15, 0, 0),  // 3:00 PM ET
+                End = new TimeSpan(16, 0, 0),    // 4:00 PM ET (Market close)
                 Instruments = new[] { "ES", "NQ" },
                 PrimaryInstrument = "ES",
                 Strategies = new Dictionary<string, string[]>
@@ -260,8 +264,8 @@ namespace BotCore.Config
             // ============================================
             ["AfterHours"] = new TradingSession
             {
-                Start = new TimeSpan(16, 0, 0),  // 4:00 PM CT
-                End = new TimeSpan(18, 0, 0),    // 6:00 PM CT
+                Start = new TimeSpan(16, 0, 0),  // 4:00 PM ET
+                End = new TimeSpan(18, 0, 0),    // 6:00 PM ET
                 Instruments = new[] { "ES", "NQ" },
                 PrimaryInstrument = "NQ", // Tech earnings often AH
                 Strategies = new Dictionary<string, string[]>
