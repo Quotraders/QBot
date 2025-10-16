@@ -3125,11 +3125,10 @@ Reason closed: {reason}
         private List<string> GetAvailableStrategies(TimeSpan timeOfDay, MarketRegime regime)
         {
             // Enhanced strategy selection logic for primary strategies (S2, S3, S6, S11)
-            // Maintains time-based scheduling while allowing multiple strategies to compete
+            // Strictly follows time-based scheduling - each strategy runs at its designated time
             var hour = timeOfDay.Hours;
             
-            // Time-based primary strategy allocation - strategies appropriate for each time period
-            // Multiple strategies allowed per period so Neural UCB can learn optimal selection
+            // Time-based primary strategy allocation - strategies run at their scheduled times ONLY
             var timeBasedStrategies = hour switch
             {
                 >= 18 or <= 2 => new[] { "S2", "S11" }, // Asian Session: Mean reversion works well
@@ -3143,28 +3142,9 @@ Reason closed: {reason}
                 _ => new[] { "S2", "S3" } // Default safe strategies
             };
             
-            // Filter by market regime for additional intelligence
-            var regimeOptimalStrategies = regime switch
-            {
-                MarketRegime.Trending => new[] { "S6", "S3" }, // Momentum and breakouts
-                MarketRegime.Ranging => new[] { "S2", "S11" }, // Mean reversion and fades
-                MarketRegime.HighVolatility => new[] { "S3", "S6" }, // Breakouts and momentum
-                MarketRegime.LowVolatility => new[] { "S2" }, // Mean reversion only
-                _ => PrimaryStrategies // All primary strategies
-            };
-            
-            // Use UNION instead of INTERSECT to expand options, not restrict them
-            // This allows time-appropriate strategies PLUS regime-appropriate strategies
-            var availableStrategies = timeBasedStrategies
-                .Union(regimeOptimalStrategies)
-                .Distinct()
-                .ToList();
-                
-            // Ensure we always have at least the time-based strategies
-            if (availableStrategies.Count == 0)
-            {
-                availableStrategies = timeBasedStrategies.ToList();
-            }
+            // Return ONLY time-based strategies - do not modify schedules with regime filtering
+            // Neural UCB will select best strategy from the time-appropriate options
+            var availableStrategies = timeBasedStrategies.ToList();
             
             LogStrategySelection(_logger, hour, regime.ToString(), string.Join(",", availableStrategies), null);
             

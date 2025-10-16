@@ -507,6 +507,25 @@ internal class EnhancedBacktestLearningService : BackgroundService
             
             try
             {
+                // CRITICAL FIX: Seed BarAggregator with historical bars so PatternEngine can access them
+                // This ensures patterns and supply/demand analysis work during backtesting
+                var barAggregators = _serviceProvider.GetServices<global::BotCore.Market.BarAggregator>();
+                foreach (var aggregator in barAggregators)
+                {
+                    // Convert BotCore.Models.Bar to BotCore.Market.Bar for aggregator
+                    var marketBars = historicalBars.Select(b => new global::BotCore.Market.Bar(
+                        Start: b.Start,
+                        End: b.Start.AddMinutes(5), // Assume 5-minute bars
+                        Open: b.Open,
+                        High: b.High,
+                        Low: b.Low,
+                        Close: b.Close,
+                        Volume: b.Volume
+                    )).ToList();
+                    
+                    aggregator.Seed(replayContext.Symbol, marketBars);
+                }
+                
                 // Process historical data using SAME UnifiedTradingBrain as live trading
                 var env = new Env
                 {
