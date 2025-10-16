@@ -2840,12 +2840,26 @@ Reason closed: {reason}
                 LogLegacyRlMultiplier(_logger, (double)rlMultiplier, null);
             }
 
-            // ✅ RESPECT CVaR-PPO DECISION: If CVaR-PPO returns 0 contracts, don't force trades
-            // The model learned to be conservative - trust it. Only trade on actual signals.
-            if (contracts == 0)
+            // ✅ BOOTSTRAP MODE: If CVaR-PPO is too conservative (negative value), allow small trades on good setups
+            // This lets the model learn from REAL market fills, building positive experiences
+            if (contracts == 0 && confidence >= 0.52m)
             {
-                _logger.LogInformation("[CVAR-PPO] ⏸️ No trade: CVaR-PPO returned 0 contracts (confidence={Conf:P1}, risk=${Risk:F2})", 
-                    confidence, riskAmount);
+                // Check if CVaR-PPO would have traded but value estimate killed it
+                var wouldHaveTraded = _lastCVaRAction > 0; // Action 1-5 = want to trade
+                var hasNegativeValue = _lastCVaRValue < 0; // But expected loss
+                
+                if (wouldHaveTraded && hasNegativeValue)
+                {
+                    // Override with 1 contract bootstrap trade to build real experience
+                    contracts = 1;
+                    _logger.LogInformation("[BOOTSTRAP] 🌱 Taking 1-contract learning trade: Action={Action}, Value={Value:F3}, Confidence={Conf:P1}", 
+                        _lastCVaRAction, _lastCVaRValue, confidence);
+                }
+                else
+                {
+                    _logger.LogInformation("[CVAR-PPO] ⏸️ No trade: CVaR-PPO returned 0 contracts (confidence={Conf:P1}, risk=${Risk:F2})", 
+                        confidence, riskAmount);
+                }
             }
 
             LogPositionSize(_logger, instrument, (double)confidence, _currentDrawdown, contracts, riskAmount, null);

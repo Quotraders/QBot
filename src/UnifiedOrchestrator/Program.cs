@@ -1086,6 +1086,9 @@ Please check the configuration and ensure all required services are registered.
         // Register Model Registry for versioned, immutable artifacts
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IModelRegistry, TradingBot.UnifiedOrchestrator.Runtime.FileModelRegistry>();
         
+        // Register Auto-Bootstrap Service for automatic model registration on first startup
+        services.AddHostedService<ModelRegistryBootstrapService>();
+        
         // Register Atomic Model Router Factory for lock-free champion access
         services.AddSingleton<TradingBot.UnifiedOrchestrator.Interfaces.IModelRouterFactory, TradingBot.UnifiedOrchestrator.Runtime.ModelRouterFactory>();
         

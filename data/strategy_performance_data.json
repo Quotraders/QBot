@@ -1,22 +1,31 @@
 {
-  "S2": {
-    "win_rate": 0.4437869822485207100591715976,
-    "total_trades": 169,
-    "total_pnl": 1821.75,
+  "S6": {
+    "win_rate": 0.6666666666666666666666666667,
+    "total_trades": 21,
+    "total_pnl": -826.25,
+    "avg_hold_time": 10,
+    "optimal_conditions": [
+      "opening_drive"
+    ]
+  },
+  "S3": {
+    "win_rate": 0.7916666666666666666666666667,
+    "total_trades": 24,
+    "total_pnl": -1041,
     "avg_hold_time": 10,
     "optimal_conditions": []
   },
-  "S6": {
-    "win_rate": 0.55,
-    "total_trades": 24,
-    "total_pnl": -287,
+  "S2": {
+    "win_rate": 0.5595238095238095238095238095,
+    "total_trades": 84,
+    "total_pnl": -946.75,
     "avg_hold_time": 10,
     "optimal_conditions": []
   },
   "S11": {
-    "win_rate": 1,
-    "total_trades": 9,
-    "total_pnl": 84.75,
+    "win_rate": 0.4861111111111111111111111111,
+    "total_trades": 72,
+    "total_pnl": 759.25,
     "avg_hold_time": 10,
     "optimal_conditions": []
   }

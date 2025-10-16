@@ -1,0 +1,10 @@
+{
+  "ShadowTesting": {
+    "Enabled": true,
+    "MinTrades": 50,
+    "MinSessions": 5,
+    "ConfidenceThreshold": 0.65,
+    "CollectMetrics": true,
+    "CompareToChampion": true
+  }
+}
