@@ -3125,28 +3125,26 @@ Reason closed: {reason}
         private List<string> GetAvailableStrategies(TimeSpan timeOfDay, MarketRegime regime)
         {
             // Enhanced strategy selection logic for primary strategies (S2, S3, S6, S11)
-            // LEARNING MODE: Always make all 4 primary strategies available for both live and historical trading
-            // This ensures the bot can learn which strategy works best in each condition
-            // Neural UCB will select the optimal one based on learned performance
-            
+            // Maintains time-based scheduling while allowing multiple strategies to compete
             var hour = timeOfDay.Hours;
             
-            // Time-based strategy preferences (used for weighting, not filtering)
-            var timePreferredStrategies = hour switch
+            // Time-based primary strategy allocation - strategies appropriate for each time period
+            // Multiple strategies allowed per period so Neural UCB can learn optimal selection
+            var timeBasedStrategies = hour switch
             {
                 >= 18 or <= 2 => new[] { "S2", "S11" }, // Asian Session: Mean reversion works well
                 >= 2 and <= 5 => new[] { "S3", "S2" }, // European Open: Breakouts and compression
                 >= 5 and <= 8 => new[] { "S2", "S3", "S11" }, // London Morning: Good liquidity
                 >= 8 and <= 9 => new[] { "S3", "S2" }, // US PreMarket: Compression setups
-                >= 9 and <= 10 => new[] { "S6", "S3" }, // Opening Drive: Momentum + breakouts
+                >= 9 and <= 10 => new[] { "S6", "S3", "S2" }, // Opening Drive: Momentum + breakouts + mean reversion
                 >= 10 and <= 11 => new[] { "S3", "S2", "S11" }, // Morning Trend: Best trends
                 >= 11 and <= 13 => new[] { "S2", "S3" }, // Lunch: Mean reversion + compression
                 >= 13 and <= 16 => new[] { "S11", "S3", "S6" }, // Afternoon: Exhaustion + compression + momentum
                 _ => new[] { "S2", "S3" } // Default safe strategies
             };
             
-            // Regime-based strategy preferences (used for weighting, not filtering)
-            var regimePreferredStrategies = regime switch
+            // Filter by market regime for additional intelligence
+            var regimeOptimalStrategies = regime switch
             {
                 MarketRegime.Trending => new[] { "S6", "S3" }, // Momentum and breakouts
                 MarketRegime.Ranging => new[] { "S2", "S11" }, // Mean reversion and fades
@@ -3155,16 +3153,20 @@ Reason closed: {reason}
                 _ => PrimaryStrategies // All primary strategies
             };
             
-            // CRITICAL FIX: Always return all 4 primary strategies for learning
-            // The Neural UCB bandit will learn which ones perform best in each condition
-            // This allows the bot to discover patterns we might not have coded explicitly
-            var availableStrategies = PrimaryStrategies.ToList();
+            // Use UNION instead of INTERSECT to expand options, not restrict them
+            // This allows time-appropriate strategies PLUS regime-appropriate strategies
+            var availableStrategies = timeBasedStrategies
+                .Union(regimeOptimalStrategies)
+                .Distinct()
+                .ToList();
+                
+            // Ensure we always have at least the time-based strategies
+            if (availableStrategies.Count == 0)
+            {
+                availableStrategies = timeBasedStrategies.ToList();
+            }
             
-            LogStrategySelection(_logger, hour, regime.ToString(), 
-                $"All strategies available: {string.Join(",", availableStrategies)} | " +
-                $"Time-preferred: {string.Join(",", timePreferredStrategies)} | " +
-                $"Regime-preferred: {string.Join(",", regimePreferredStrategies)}", 
-                null);
+            LogStrategySelection(_logger, hour, regime.ToString(), string.Join(",", availableStrategies), null);
             
             return availableStrategies;
         }
