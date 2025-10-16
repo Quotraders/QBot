@@ -40,19 +40,12 @@ jobs:
       fail-fast: false
       
     steps:
-
+      - name: Configure Git
+        run: |
+          git config --global core.longpaths true
+          git config --global core.symlinks false
       
-      - name: "🔧 Enable Long Paths"
-
-      
-        run: git config --global core.longpaths true
-
-      
-        
-
-      
-      - name:steps:
-    - name: Checkout code
+      - name: Checkout code
       uses: actions/checkout@v4
       
     - name: Setup .NET
@@ -149,7 +142,12 @@ jobs:
     if: always()
     
     steps:
-    - name: Download all artifacts
+      - name: Configure Git
+        run: |
+          git config --global core.longpaths true
+          git config --global core.symlinks false
+      
+      - name: Download all artifacts
       uses: actions/download-artifact@v4
       with:
         path: artifacts

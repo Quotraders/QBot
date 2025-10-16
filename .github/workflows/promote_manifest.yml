@@ -32,18 +32,11 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     
     steps:
-
-    
-      - name: "🔧 Enable Long Paths"
-
-    
-        run: git config --global core.longpaths true
-
-    
-        
-
-    
-      - name:steps:
+      - name: Configure Git
+        run: |
+          git config --global core.longpaths true
+          git config --global core.symlinks false
+      
       - name: "📥 Checkout Repository"
         uses: actions/checkout@v4
         with:

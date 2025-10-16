@@ -8,9 +8,11 @@ jobs:
   guard:
     runs-on: ubuntu-latest
     steps:
-      - name: "🔧 Enable Long Paths"
-        run: git config --global core.longpaths true
-        
+      - name: Configure Git
+        run: |
+          git config --global core.longpaths true
+          git config --global core.symlinks false
+      
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
       - name: Posture checks

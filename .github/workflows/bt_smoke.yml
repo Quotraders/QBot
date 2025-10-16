@@ -27,19 +27,12 @@ jobs:
       fail-fast: true
       
     steps:
-
+      - name: Configure Git
+        run: |
+          git config --global core.longpaths true
+          git config --global core.symlinks false
       
-      - name: "🔧 Enable Long Paths"
-
-      
-        run: git config --global core.longpaths true
-
-      
-        
-
-      
-      - name:steps:
-    - name: Checkout code
+      - name: Checkout code
       uses: actions/checkout@v4
       
     - name: Setup .NET
@@ -158,7 +151,12 @@ jobs:
     if: always()
     
     steps:
-    - name: Generate health report
+      - name: Configure Git
+        run: |
+          git config --global core.longpaths true
+          git config --global core.symlinks false
+      
+      - name: Generate health report
       run: |
         echo "📋 UnifiedOrchestrator Health Summary"
         echo "===================================="

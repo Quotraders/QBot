@@ -16,18 +16,11 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-
-    
-      - name: "🔧 Enable Long Paths"
-
-    
-        run: git config --global core.longpaths true
-
-    
-        
-
-    
-      - name:steps:
+      - name: Configure Git
+        run: |
+          git config --global core.longpaths true
+          git config --global core.symlinks false
+      
       - name: Checkout code
         uses: actions/checkout@v4
         with:

@@ -25,20 +25,12 @@ jobs:
     name: "Continuous Integration"
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    
     steps:
-
-    
-      - name: "🔧 Enable Long Paths"
-
-    
-        run: git config --global core.longpaths true
-
-    
-        
-
-    
-      - name:steps:
+      - name: "🔧 Configure Git for Windows Compatibility"
+        run: |
+          git config --global core.longpaths true
+          git config --global core.symlinks false
+          
       - name: "📥 Checkout Repository"
         uses: actions/checkout@v4
         with:
