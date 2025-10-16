@@ -20,7 +20,7 @@ internal class ExecutionMetricsReportingService : IHostedService, IDisposable
     private bool _disposed;
     
     // Symbols to monitor
-    private readonly string[] _monitoredSymbols = { "ES", "MNQ", "NQ" };
+    private readonly string[] _monitoredSymbols = { "ES", "NQ" };
     
     // Reporting interval: every hour
     private const int ReportingIntervalHours = 1;

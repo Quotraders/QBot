@@ -793,7 +793,7 @@ public class AutonomousDecisionEngine : BackgroundService
             // Round entry price to valid tick to ensure compliance
             currentPrice = PriceHelper.RoundToTick(currentPrice, opportunity.Symbol);
             
-            // Calculate tick size based on symbol (ES and MNQ both use 0.25 ticks)
+            // Calculate tick size based on symbol (ES and NQ both use 0.25 ticks)
             const decimal tickSize = 0.25m;
             const int stopTicks = 10;  // 10 ticks for stop loss
             const int targetTicks = 15; // 15 ticks for take profit
@@ -1211,8 +1211,8 @@ public class AutonomousDecisionEngine : BackgroundService
     {
         try
         {
-            // Get prices for all actively traded symbols
-            var symbols = new[] { "ES", "MNQ" };
+            // Get prices for all actively traded symbols (ES and NQ only per TopstepX adapter support)
+            var symbols = new[] { "ES", "NQ" };
             
             foreach (var symbol in symbols)
             {

@@ -261,6 +261,17 @@ public class NewsMonitorService : INewsMonitorService, IDisposable
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                
+                // Check for rate limit error (429 or 426 for free tier limit)
+                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests || 
+                    (int)response.StatusCode == 426 || 
+                    errorContent.Contains("rate limit", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogWarning("[NewsMonitor] ⚠️ NewsAPI rate limit reached (100 requests/24h on free tier). Consider upgrading to paid plan or disabling news monitoring with NEWS_ENABLED=false");
+                    _consecutiveFailures++;
+                    return;
+                }
+                
                 _logger.LogWarning("[NewsMonitor] NewsAPI request failed: {StatusCode} - {Error}", 
                     response.StatusCode, errorContent);
                 

@@ -20,6 +20,7 @@ public sealed class OllamaClient : IDisposable
     private readonly string _ollamaBaseUrl;
     private readonly string _modelName;
     private bool _disposed;
+    private bool _serviceUnavailableLogged;
 
     public OllamaClient(ILogger<OllamaClient> logger, IConfiguration configuration)
     {
@@ -31,10 +32,10 @@ public sealed class OllamaClient : IDisposable
         _ollamaBaseUrl = configuration["OLLAMA_BASE_URL"] ?? "http://localhost:11434";
         _modelName = configuration["OLLAMA_MODEL"] ?? "gemma2:2b";
 
-        // Create HTTP client with timeout
+        // Create HTTP client with extended timeout for AI model inference (90 seconds to handle slower models)
         _httpClient = new HttpClient
         {
-            Timeout = TimeSpan.FromSeconds(30)
+            Timeout = TimeSpan.FromSeconds(90)
         };
 
         _logger.LogInformation("🤖 [OLLAMA] Initialized with URL: {Url}, Model: {Model}", 
@@ -77,7 +78,17 @@ public sealed class OllamaClient : IDisposable
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "❌ [OLLAMA] HTTP error during AI request");
+            // Only log 404 errors once to avoid log flooding when service is unavailable
+            if (!_serviceUnavailableLogged && ex.Message.Contains("404"))
+            {
+                _logger.LogWarning("⚠️ [OLLAMA] Service unavailable (404 Not Found) - AI features disabled. Configure OLLAMA_BASE_URL if needed.");
+                _serviceUnavailableLogged = true;
+            }
+            else if (!ex.Message.Contains("404"))
+            {
+                // Log non-404 HTTP errors normally
+                _logger.LogError(ex, "❌ [OLLAMA] HTTP error during AI request");
+            }
             return string.Empty;
         }
         catch (TaskCanceledException ex)

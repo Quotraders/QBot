@@ -79,7 +79,7 @@ public class PatternEngine : IComponentHealth
         LoggerMessage.Define<string>(
             LogLevel.Warning,
             new EventId(6208, nameof(LogNoBarDataAvailable)),
-            "No bar data available for pattern analysis of {Symbol}");
+            "No bar data available for pattern analysis of symbol '{Symbol}'");
     
     private static readonly Action<ILogger, string, Exception> LogInvalidSymbolArgument =
         LoggerMessage.Define<string>(

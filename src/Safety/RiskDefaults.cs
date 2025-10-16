@@ -116,7 +116,7 @@ namespace TradingBot.Safety
             public static readonly decimal MaxRiskPercentPerOrder = 0.01m;
             public static readonly int MaxOrderRetries = 3;
             public static readonly TimeSpan OrderTimeout = TimeSpan.FromSeconds(30);
-            public static readonly string[] SupportedInstruments = { "ES", "MES", "NQ", "MNQ", "RTY", "YM" };
+            public static readonly string[] SupportedInstruments = { "ES", "NQ", "RTY", "YM" };
         }
 
         /// <summary>

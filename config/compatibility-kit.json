@@ -7,7 +7,7 @@
   },
   "PolicyConfig": {
     "BlockDevelopmentTrading": true,
-    "AuthorizedSymbols": ["ES", "NQ", "MES", "MNQ"],
+    "AuthorizedSymbols": ["ES", "NQ"],
     "EnforceTradingHours": false,
     "TradingStartHour": 14,
     "TradingEndHour": 21,

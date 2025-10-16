@@ -4,7 +4,7 @@ namespace BotCore.Helpers;
 
 /// <summary>
 /// Helper class for price rounding to ensure compliance with futures tick size rules.
-/// ES/MES and NQ/MNQ all use 0.25 tick sizes per TopstepX requirements.
+/// ES and NQ both use 0.25 tick sizes per TopstepX requirements.
 /// </summary>
 public static class PriceHelper
 {
@@ -14,15 +14,15 @@ public static class PriceHelper
     /// Round price to the nearest valid tick increment for the given symbol.
     /// </summary>
     /// <param name="price">The price to round</param>
-    /// <param name="symbol">The futures symbol (ES, MES, NQ, MNQ)</param>
+    /// <param name="symbol">The futures symbol (ES or NQ)</param>
     /// <returns>Rounded price that complies with tick size rules</returns>
     /// <exception cref="ArgumentException">Thrown when symbol is not supported</exception>
     public static decimal RoundToTick(decimal price, string symbol)
     {
-        // Validate supported symbols
-        if (symbol != "ES" && symbol != "MES" && symbol != "NQ" && symbol != "MNQ")
+        // Validate supported symbols (ES and NQ only)
+        if (symbol != "ES" && symbol != "NQ")
         {
-            throw new ArgumentException($"Unsupported symbol: {symbol}. Only ES, MES, NQ, and MNQ are supported.", nameof(symbol));
+            throw new ArgumentException($"Unsupported symbol: {symbol}. Only ES and NQ are supported.", nameof(symbol));
         }
 
         // All supported symbols use 0.25 tick size
