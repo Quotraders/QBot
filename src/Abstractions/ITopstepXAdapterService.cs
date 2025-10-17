@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -28,6 +29,20 @@ namespace TradingBot.Abstractions
         DateTime Timestamp);
 
     /// <summary>
+    /// Historical bar data for backtesting and learning
+    /// </summary>
+    public class HistoricalBar
+    {
+        public required string Symbol { get; init; }
+        public required DateTime Timestamp { get; init; }
+        public required decimal Open { get; init; }
+        public required decimal High { get; init; }
+        public required decimal Low { get; init; }
+        public required decimal Close { get; init; }
+        public required long Volume { get; init; }
+    }
+
+    /// <summary>
     /// Interface for TopstepX adapter service to avoid circular dependencies
     /// </summary>
     public interface ITopstepXAdapterService
@@ -50,5 +65,8 @@ namespace TradingBot.Abstractions
         Task<bool> ModifyStopLossAsync(string symbol, decimal stopPrice, CancellationToken cancellationToken = default);
         Task<bool> ModifyTakeProfitAsync(string symbol, decimal takeProfitPrice, CancellationToken cancellationToken = default);
         Task<bool> CancelOrderAsync(string orderId, CancellationToken cancellationToken = default);
+        
+        // Historical data for backtesting and learning - uses real TopstepX data
+        Task<List<HistoricalBar>> GetHistoricalBarsAsync(string symbol, int days = 1, int intervalMinutes = 5, CancellationToken cancellationToken = default);
     }
 }

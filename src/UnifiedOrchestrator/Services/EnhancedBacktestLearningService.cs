@@ -45,6 +45,9 @@ internal class EnhancedBacktestLearningService : BackgroundService
     // CRITICAL: Direct injection of UnifiedTradingBrain for identical intelligence
     private readonly UnifiedTradingBrain _unifiedBrain;
     
+    // CRITICAL: TopstepX adapter for real historical data
+    private readonly TradingBot.Abstractions.ITopstepXAdapterService _topstepXAdapter;
+    
     // AI-powered self-improvement capability
     private readonly OllamaClient? _ollamaClient;
     private readonly IConfiguration _configuration;
@@ -60,6 +63,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         HttpClient httpClient,
         UnifiedTradingBrain unifiedBrain,
         ITopstepAuth authService,
+        TradingBot.Abstractions.ITopstepXAdapterService topstepXAdapter,
         IConfiguration configuration,
         OllamaClient? ollamaClient = null)
     {
@@ -69,6 +73,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
         _httpClient = httpClient;
         _unifiedBrain = unifiedBrain;
         _authService = authService; // Same brain as live trading
+        _topstepXAdapter = topstepXAdapter;
         _configuration = configuration;
         _ollamaClient = ollamaClient;
         
@@ -194,7 +199,7 @@ internal class EnhancedBacktestLearningService : BackgroundService
             var totalLosingTrades = results.Sum(r => r.LosingTrades);
             var overallWinRate = totalTrades > 0 ? (decimal)totalWinningTrades / totalTrades : 0;
             var totalPnL = results.Sum(r => r.NetPnL);
-            var lookbackDays = scheduling.LearningIntensity == "INTENSIVE" ? 90 : scheduling.LearningIntensity == "LIGHT" ? 30 : 45;
+            var lookbackDays = 90; // FIXED: Always 90 days for comprehensive learning
             
             _logger.LogInformation(
                 "[UNIFIED-BACKTEST] ✅ Completed unified backtest learning session - processed {Count} backtests across ALL 4 STRATEGIES: S2,S3,S6,S11\n" +
@@ -224,12 +229,12 @@ internal class EnhancedBacktestLearningService : BackgroundService
         var esContractId = Environment.GetEnvironmentVariable("TOPSTEPX_EVAL_ES_ID") ?? "demo-es-contract";
         var nqContractId = Environment.GetEnvironmentVariable("TOPSTEPX_EVAL_NQ_ID") ?? "demo-nq-contract";
         
-        // Define backtesting period (last 90 days for intensive, 30 for light, 45 for default)
+        // Define backtesting period - ALWAYS use 90 days for comprehensive learning
         var endDate = DateTime.UtcNow.Date;
-        var lookbackDays = scheduling.LearningIntensity == "INTENSIVE" ? 90 : scheduling.LearningIntensity == "LIGHT" ? 30 : 45;
+        var lookbackDays = 90; // FIXED: Always 90 days as per requirements
         var startDate = endDate.AddDays(-lookbackDays);
         
-        _logger.LogInformation("[STRATEGY-EXECUTION] Backtesting period: {Days} days ({StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd})", 
+        _logger.LogInformation("[STRATEGY-EXECUTION] Backtesting period: {Days} days ({StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd}) - FIXED 90-day window for comprehensive historical learning", 
             lookbackDays, startDate, endDate);
         
         var getJwt = new Func<Task<string>>(async () => 
@@ -282,14 +287,10 @@ internal class EnhancedBacktestLearningService : BackgroundService
         var configs = new List<UnifiedBacktestConfig>();
         var endDate = DateTime.UtcNow.Date;
         
-        // Configuration based on learning intensity - ROLLING WINDOW APPROACH
-        // Models continuously learn from most recent N days, automatically adapting to market changes
-        var (lookbackDays, symbols) = scheduling.LearningIntensity switch
-        {
-            "INTENSIVE" => (90, new[] { "ES", "NQ" }), // 90 days rolling window - optimal for ML pattern recognition
-            "LIGHT" => (30, new[] { "ES", "NQ" }),     // 🔥 FIX: Include NQ in LIGHT mode too!
-            _ => (45, new[] { "ES", "NQ" })            // 🔥 FIX: Include NQ in default too!
-        };
+        // Configuration for 90-day rolling window - FIXED requirement
+        // Models continuously learn from most recent 90 days, automatically adapting to market changes
+        var lookbackDays = 90; // FIXED: Always 90 days for comprehensive historical learning
+        var symbols = new[] { "ES", "NQ" }; // Always both symbols
         
         var startDate = endDate.AddDays(-lookbackDays);
         
@@ -1362,18 +1363,56 @@ internal class EnhancedBacktestLearningService : BackgroundService
     /// Now generates 1-minute bars with full 24-hour coverage including overnight sessions
     /// </summary>
     /// <summary>
-    /// Load historical bars using TopstepX API instead of JSON files
+    /// Load historical bars using TopstepX adapter service for real market data
+    /// CRITICAL: Uses same TopstepX API as live trading for consistent data
     /// </summary>
     private async Task<List<Bar>> LoadHistoricalBarsAsync(UnifiedBacktestConfig config, CancellationToken cancellationToken)
     {
-        await Task.Yield(); // Ensure async behavior
-        
         try
         {
+            var daysDiff = (config.EndDate - config.StartDate).Days;
             _logger.LogInformation("[UNIFIED-BACKTEST] 🔍 Loading historical bars from TopstepX for {Symbol} from {StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd} ({Days} days)", 
-                config.Symbol, config.StartDate, config.EndDate, (config.EndDate - config.StartDate).Days);
+                config.Symbol, config.StartDate, config.EndDate, daysDiff);
+            
+            // PRIORITY 1: Use TopstepXAdapterService for real TopstepX data
+            try
+            {
+                _logger.LogInformation("[UNIFIED-BACKTEST] Fetching real TopstepX historical bars via adapter service...");
+                var historicalBars = await _topstepXAdapter.GetHistoricalBarsAsync(
+                    config.Symbol, 
+                    days: daysDiff > 0 ? daysDiff : 90,  // Use calculated days or default to 90
+                    intervalMinutes: 5,  // 5-minute bars for backtesting
+                    cancellationToken).ConfigureAwait(false);
                 
-            // Use bridge service to get real TopstepX data
+                if (historicalBars != null && historicalBars.Count > 0)
+                {
+                    // Convert HistoricalBar to Bar format
+                    var bars = historicalBars.Select(hb => new Bar
+                    {
+                        Start = hb.Timestamp,
+                        Ts = new DateTimeOffset(hb.Timestamp).ToUnixTimeMilliseconds(),
+                        Symbol = hb.Symbol,
+                        Open = hb.Open,
+                        High = hb.High,
+                        Low = hb.Low,
+                        Close = hb.Close,
+                        Volume = (int)hb.Volume
+                    }).ToList();
+                    
+                    _logger.LogInformation("[UNIFIED-BACKTEST] ✅ SUCCESS! Loaded {Count} historical bars from TopstepX adapter service", bars.Count);
+                    return bars;
+                }
+                else
+                {
+                    _logger.LogWarning("[UNIFIED-BACKTEST] ⚠️ TopstepX adapter returned no bars");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[UNIFIED-BACKTEST] Failed to fetch from TopstepX adapter, trying fallback methods");
+            }
+                
+            // FALLBACK: Use bridge service to get real TopstepX data
             var bridgeService = _serviceProvider.GetService<IHistoricalDataBridgeService>();
             if (bridgeService != null)
             {

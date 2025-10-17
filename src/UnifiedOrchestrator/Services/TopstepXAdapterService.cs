@@ -45,17 +45,6 @@ internal record BarEventData(
     decimal Close,
     long Volume);
 
-internal record HistoricalBar
-{
-    public required string Symbol { get; init; }
-    public required DateTime Timestamp { get; init; }
-    public required decimal Open { get; init; }
-    public required decimal High { get; init; }
-    public required decimal Low { get; init; }
-    public required decimal Close { get; init; }
-    public required long Volume { get; init; }
-}
-
 internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapterService, IAsyncDisposable, IDisposable
 {
     private readonly ILogger<TopstepXAdapterService> _logger;
