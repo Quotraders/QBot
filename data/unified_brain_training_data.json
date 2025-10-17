@@ -24,7 +24,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.6655366Z",
+    "timestamp": "2025-10-17T16:05:12.6019365Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -54,7 +54,7 @@
       "trending",
       "oversold"
     ],
-    "timestamp": "2025-10-17T15:59:18.7447203Z",
+    "timestamp": "2025-10-17T16:05:12.6777674Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -82,7 +82,7 @@
       "low_volatility",
       "oversold"
     ],
-    "timestamp": "2025-10-17T15:59:18.7464037Z",
+    "timestamp": "2025-10-17T16:05:12.683338Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -110,7 +110,7 @@
       "low_volatility",
       "oversold"
     ],
-    "timestamp": "2025-10-17T15:59:18.7477061Z",
+    "timestamp": "2025-10-17T16:05:12.6846663Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -138,7 +138,7 @@
       "low_volatility",
       "oversold"
     ],
-    "timestamp": "2025-10-17T15:59:18.7488668Z",
+    "timestamp": "2025-10-17T16:05:12.6853308Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -165,7 +165,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:18.750334Z",
+    "timestamp": "2025-10-17T16:05:12.6867023Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -192,7 +192,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:18.7509845Z",
+    "timestamp": "2025-10-17T16:05:12.687359Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -219,7 +219,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:18.7516411Z",
+    "timestamp": "2025-10-17T16:05:12.6880007Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -247,7 +247,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.7523044Z",
+    "timestamp": "2025-10-17T16:05:12.6886801Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -275,7 +275,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.7529396Z",
+    "timestamp": "2025-10-17T16:05:12.6893021Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -302,7 +302,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:18.7536512Z",
+    "timestamp": "2025-10-17T16:05:12.6899305Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -330,7 +330,7 @@
       "low_volatility",
       "high_volume"
     ],
-    "timestamp": "2025-10-17T15:59:18.7542949Z",
+    "timestamp": "2025-10-17T16:05:12.6905266Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -358,7 +358,7 @@
       "low_volatility",
       "ranging"
     ],
-    "timestamp": "2025-10-17T15:59:18.7549792Z",
+    "timestamp": "2025-10-17T16:05:12.6913675Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -386,7 +386,7 @@
       "low_volatility",
       "ranging"
     ],
-    "timestamp": "2025-10-17T15:59:18.7556274Z",
+    "timestamp": "2025-10-17T16:05:12.6920069Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -414,7 +414,7 @@
       "low_volatility",
       "ranging"
     ],
-    "timestamp": "2025-10-17T15:59:18.7562744Z",
+    "timestamp": "2025-10-17T16:05:12.6926703Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -442,7 +442,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.7570402Z",
+    "timestamp": "2025-10-17T16:05:12.6933212Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -470,7 +470,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.7577091Z",
+    "timestamp": "2025-10-17T16:05:12.6940477Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -498,7 +498,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.7583728Z",
+    "timestamp": "2025-10-17T16:05:12.6948176Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -526,7 +526,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.7590025Z",
+    "timestamp": "2025-10-17T16:05:12.6957996Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -554,7 +554,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.7597004Z",
+    "timestamp": "2025-10-17T16:05:12.6964318Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -582,7 +582,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.7743543Z",
+    "timestamp": "2025-10-17T16:05:12.7112507Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -610,7 +610,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.7788676Z",
+    "timestamp": "2025-10-17T16:05:12.7157792Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -638,7 +638,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.780365Z",
+    "timestamp": "2025-10-17T16:05:12.7171721Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -667,7 +667,7 @@
       "high_volume",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.7860527Z",
+    "timestamp": "2025-10-17T16:05:12.7224345Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -694,7 +694,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:18.7874272Z",
+    "timestamp": "2025-10-17T16:05:12.7241612Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -722,7 +722,7 @@
       "low_volatility",
       "ranging"
     ],
-    "timestamp": "2025-10-17T15:59:18.7887804Z",
+    "timestamp": "2025-10-17T16:05:12.7256026Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -751,7 +751,7 @@
       "trending",
       "oversold"
     ],
-    "timestamp": "2025-10-17T15:59:18.7902604Z",
+    "timestamp": "2025-10-17T16:05:12.7271656Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -778,7 +778,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:18.7918777Z",
+    "timestamp": "2025-10-17T16:05:12.7288661Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -806,7 +806,7 @@
       "low_volatility",
       "ranging"
     ],
-    "timestamp": "2025-10-17T15:59:18.7932025Z",
+    "timestamp": "2025-10-17T16:05:12.7305922Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -833,7 +833,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:18.7948725Z",
+    "timestamp": "2025-10-17T16:05:12.732251Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -860,7 +860,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:18.796117Z",
+    "timestamp": "2025-10-17T16:05:12.7341431Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -887,7 +887,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:18.7977554Z",
+    "timestamp": "2025-10-17T16:05:12.7356615Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -915,7 +915,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.7993467Z",
+    "timestamp": "2025-10-17T16:05:12.7374124Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -942,7 +942,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:18.8009438Z",
+    "timestamp": "2025-10-17T16:05:12.7395628Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -970,7 +970,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.8025442Z",
+    "timestamp": "2025-10-17T16:05:12.741361Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -999,7 +999,7 @@
       "high_volume",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.8041324Z",
+    "timestamp": "2025-10-17T16:05:12.743199Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -1027,7 +1027,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.8056349Z",
+    "timestamp": "2025-10-17T16:05:12.7449073Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -1056,7 +1056,7 @@
       "trending",
       "overbought"
     ],
-    "timestamp": "2025-10-17T15:59:18.8071869Z",
+    "timestamp": "2025-10-17T16:05:12.7465941Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -1085,7 +1085,7 @@
       "trending",
       "overbought"
     ],
-    "timestamp": "2025-10-17T15:59:18.8087508Z",
+    "timestamp": "2025-10-17T16:05:12.748118Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -1115,7 +1115,7 @@
       "trending",
       "overbought"
     ],
-    "timestamp": "2025-10-17T15:59:18.8105178Z",
+    "timestamp": "2025-10-17T16:05:12.7495638Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -1143,7 +1143,7 @@
       "low_volatility",
       "overbought"
     ],
-    "timestamp": "2025-10-17T15:59:18.8118775Z",
+    "timestamp": "2025-10-17T16:05:12.7508973Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -1172,7 +1172,7 @@
       "trending",
       "overbought"
     ],
-    "timestamp": "2025-10-17T15:59:18.8143175Z",
+    "timestamp": "2025-10-17T16:05:12.7536089Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -1201,7 +1201,7 @@
       "trending",
       "overbought"
     ],
-    "timestamp": "2025-10-17T15:59:18.815705Z",
+    "timestamp": "2025-10-17T16:05:12.7556881Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -1231,7 +1231,7 @@
       "trending",
       "overbought"
     ],
-    "timestamp": "2025-10-17T15:59:18.8171169Z",
+    "timestamp": "2025-10-17T16:05:12.7576713Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -1260,7 +1260,7 @@
       "trending",
       "overbought"
     ],
-    "timestamp": "2025-10-17T15:59:18.8184544Z",
+    "timestamp": "2025-10-17T16:05:12.7596881Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -1288,7 +1288,7 @@
       "low_volatility",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:18.8197856Z",
+    "timestamp": "2025-10-17T16:05:12.7616152Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -1318,7 +1318,7 @@
       "ranging",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:18.8212948Z",
+    "timestamp": "2025-10-17T16:05:12.7632776Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -1347,7 +1347,7 @@
       "ranging",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:18.8229105Z",
+    "timestamp": "2025-10-17T16:05:12.7649157Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -1376,7 +1376,7 @@
       "ranging",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:18.8241011Z",
+    "timestamp": "2025-10-17T16:05:12.7663581Z",
     "strategy_specialization": "Momentum Strategy"
   },
   {
@@ -1404,7 +1404,7 @@
       "low_volatility",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:18.860969Z",
+    "timestamp": "2025-10-17T16:05:12.8049171Z",
     "strategy_specialization": "Momentum Strategy"
   },
   {
@@ -1433,7 +1433,7 @@
       "ranging",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:18.8630288Z",
+    "timestamp": "2025-10-17T16:05:12.8071672Z",
     "strategy_specialization": "Momentum Strategy"
   },
   {
@@ -1462,7 +1462,7 @@
       "ranging",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:18.8660533Z",
+    "timestamp": "2025-10-17T16:05:12.8102106Z",
     "strategy_specialization": "Momentum Strategy"
   },
   {
@@ -1491,7 +1491,7 @@
       "trending",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:18.8679831Z",
+    "timestamp": "2025-10-17T16:05:12.8126356Z",
     "strategy_specialization": "Momentum Strategy"
   },
   {
@@ -1520,7 +1520,7 @@
       "trending",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:18.8700806Z",
+    "timestamp": "2025-10-17T16:05:12.8145857Z",
     "strategy_specialization": "Momentum Strategy"
   },
   {
@@ -1549,7 +1549,7 @@
       "ranging",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:18.8722902Z",
+    "timestamp": "2025-10-17T16:05:12.8168631Z",
     "strategy_specialization": "Momentum Strategy"
   },
   {
@@ -1578,7 +1578,7 @@
       "ranging",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:18.8745065Z",
+    "timestamp": "2025-10-17T16:05:12.8192142Z",
     "strategy_specialization": "Momentum Strategy"
   },
   {
@@ -1607,7 +1607,7 @@
       "trending",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:18.8765708Z",
+    "timestamp": "2025-10-17T16:05:12.821627Z",
     "strategy_specialization": "Momentum Strategy"
   },
   {
@@ -1636,7 +1636,7 @@
       "trending",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:18.8790626Z",
+    "timestamp": "2025-10-17T16:05:12.8238609Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -1665,7 +1665,7 @@
       "trending",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:18.8811759Z",
+    "timestamp": "2025-10-17T16:05:12.8259199Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -1694,7 +1694,7 @@
       "trending",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:18.8831021Z",
+    "timestamp": "2025-10-17T16:05:12.8277712Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -1723,7 +1723,7 @@
       "trending",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:18.8847987Z",
+    "timestamp": "2025-10-17T16:05:12.8295926Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -1753,7 +1753,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:18.8950632Z",
+    "timestamp": "2025-10-17T16:05:12.8396811Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -1782,7 +1782,7 @@
       "trending",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:18.8969778Z",
+    "timestamp": "2025-10-17T16:05:12.8414131Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -1811,7 +1811,7 @@
       "trending",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:18.8988085Z",
+    "timestamp": "2025-10-17T16:05:12.8432072Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -1841,7 +1841,7 @@
       "trending",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:18.900509Z",
+    "timestamp": "2025-10-17T16:05:12.8455798Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -1870,7 +1870,7 @@
       "trending",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:18.9019227Z",
+    "timestamp": "2025-10-17T16:05:12.8470008Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -1899,7 +1899,7 @@
       "trending",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:18.9034146Z",
+    "timestamp": "2025-10-17T16:05:12.848248Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -1929,7 +1929,7 @@
       "trending",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:18.905228Z",
+    "timestamp": "2025-10-17T16:05:12.8497155Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -1958,7 +1958,7 @@
       "trending",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:18.9068023Z",
+    "timestamp": "2025-10-17T16:05:12.8509397Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -1987,7 +1987,7 @@
       "ranging",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:18.9083629Z",
+    "timestamp": "2025-10-17T16:05:12.8525276Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -2017,7 +2017,7 @@
       "trending",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:18.9097648Z",
+    "timestamp": "2025-10-17T16:05:12.8540164Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -2046,7 +2046,7 @@
       "trending",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:18.9112673Z",
+    "timestamp": "2025-10-17T16:05:12.8555949Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -2076,7 +2076,7 @@
       "ranging",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:18.9127519Z",
+    "timestamp": "2025-10-17T16:05:12.8570734Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -2105,7 +2105,7 @@
       "ranging",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:18.9141997Z",
+    "timestamp": "2025-10-17T16:05:12.8585915Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -2134,7 +2134,7 @@
       "ranging",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:18.9154211Z",
+    "timestamp": "2025-10-17T16:05:12.8600512Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -2163,7 +2163,7 @@
       "trending",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:18.9167482Z",
+    "timestamp": "2025-10-17T16:05:12.8616679Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -2193,7 +2193,7 @@
       "trending",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:18.9210869Z",
+    "timestamp": "2025-10-17T16:05:12.8651502Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -2222,7 +2222,7 @@
       "trending",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:18.9230868Z",
+    "timestamp": "2025-10-17T16:05:12.8671333Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -2251,7 +2251,7 @@
       "trending",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:18.9251441Z",
+    "timestamp": "2025-10-17T16:05:12.8691396Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -2280,7 +2280,7 @@
       "trending",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:18.9271599Z",
+    "timestamp": "2025-10-17T16:05:12.8712225Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -2309,7 +2309,7 @@
       "trending",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:18.9290586Z",
+    "timestamp": "2025-10-17T16:05:12.8731538Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -2339,7 +2339,7 @@
       "trending",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:18.9419934Z",
+    "timestamp": "2025-10-17T16:05:12.8752306Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -2368,7 +2368,7 @@
       "trending",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:18.9441741Z",
+    "timestamp": "2025-10-17T16:05:12.887853Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -2398,7 +2398,7 @@
       "trending",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:18.9460785Z",
+    "timestamp": "2025-10-17T16:05:12.8900405Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -2427,7 +2427,7 @@
       "trending",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:18.9478927Z",
+    "timestamp": "2025-10-17T16:05:12.8922564Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -2457,7 +2457,7 @@
       "overbought",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:18.9499462Z",
+    "timestamp": "2025-10-17T16:05:12.8948714Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -2487,7 +2487,7 @@
       "overbought",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:18.9520874Z",
+    "timestamp": "2025-10-17T16:05:12.8969056Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -2515,7 +2515,7 @@
       "low_volatility",
       "ranging"
     ],
-    "timestamp": "2025-10-17T15:59:18.9539957Z",
+    "timestamp": "2025-10-17T16:05:12.8990378Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -2542,7 +2542,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:18.9552454Z",
+    "timestamp": "2025-10-17T16:05:12.9006246Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -2570,7 +2570,7 @@
       "low_volatility",
       "ranging"
     ],
-    "timestamp": "2025-10-17T15:59:18.9565735Z",
+    "timestamp": "2025-10-17T16:05:12.9022745Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -2599,7 +2599,7 @@
       "high_volume",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.957906Z",
+    "timestamp": "2025-10-17T16:05:12.9038662Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -2627,7 +2627,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.9591441Z",
+    "timestamp": "2025-10-17T16:05:12.9057793Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -2655,7 +2655,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.9600591Z",
+    "timestamp": "2025-10-17T16:05:12.9069693Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -2683,7 +2683,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.9614316Z",
+    "timestamp": "2025-10-17T16:05:12.9082051Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -2711,7 +2711,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.9623073Z",
+    "timestamp": "2025-10-17T16:05:12.9094666Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -2740,7 +2740,7 @@
       "trending",
       "oversold"
     ],
-    "timestamp": "2025-10-17T15:59:18.9632295Z",
+    "timestamp": "2025-10-17T16:05:12.9109121Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -2769,7 +2769,7 @@
       "trending",
       "oversold"
     ],
-    "timestamp": "2025-10-17T15:59:18.9642156Z",
+    "timestamp": "2025-10-17T16:05:12.9127416Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -2798,7 +2798,7 @@
       "trending",
       "oversold"
     ],
-    "timestamp": "2025-10-17T15:59:18.9655746Z",
+    "timestamp": "2025-10-17T16:05:12.9138225Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -2827,7 +2827,7 @@
       "trending",
       "oversold"
     ],
-    "timestamp": "2025-10-17T15:59:18.9667435Z",
+    "timestamp": "2025-10-17T16:05:12.9149562Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -2855,7 +2855,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.9677272Z",
+    "timestamp": "2025-10-17T16:05:12.9160596Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -2883,7 +2883,7 @@
       "low_volatility",
       "ranging"
     ],
-    "timestamp": "2025-10-17T15:59:18.9689219Z",
+    "timestamp": "2025-10-17T16:05:12.917168Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -2911,7 +2911,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.9699418Z",
+    "timestamp": "2025-10-17T16:05:12.9186184Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -2940,7 +2940,7 @@
       "high_volume",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.9711604Z",
+    "timestamp": "2025-10-17T16:05:12.9204572Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -2968,7 +2968,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.9724735Z",
+    "timestamp": "2025-10-17T16:05:12.9219735Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -2996,7 +2996,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.9736536Z",
+    "timestamp": "2025-10-17T16:05:12.9234636Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -3023,7 +3023,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:18.9753005Z",
+    "timestamp": "2025-10-17T16:05:12.9249836Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -3050,7 +3050,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:18.976977Z",
+    "timestamp": "2025-10-17T16:05:12.9265609Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -3078,7 +3078,7 @@
       "low_volatility",
       "ranging"
     ],
-    "timestamp": "2025-10-17T15:59:18.9782964Z",
+    "timestamp": "2025-10-17T16:05:12.9282689Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3105,7 +3105,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:18.9799428Z",
+    "timestamp": "2025-10-17T16:05:12.930356Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3132,7 +3132,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:18.9816465Z",
+    "timestamp": "2025-10-17T16:05:12.9320003Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3159,7 +3159,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:18.9833401Z",
+    "timestamp": "2025-10-17T16:05:12.9338219Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3187,7 +3187,7 @@
       "low_volatility",
       "ranging"
     ],
-    "timestamp": "2025-10-17T15:59:18.9850254Z",
+    "timestamp": "2025-10-17T16:05:12.935602Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3216,7 +3216,7 @@
       "high_volume",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.9866879Z",
+    "timestamp": "2025-10-17T16:05:12.937216Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3244,7 +3244,7 @@
       "low_volatility",
       "high_volume"
     ],
-    "timestamp": "2025-10-17T15:59:18.9883454Z",
+    "timestamp": "2025-10-17T16:05:12.9389606Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3272,7 +3272,7 @@
       "low_volatility",
       "oversold"
     ],
-    "timestamp": "2025-10-17T15:59:18.9900278Z",
+    "timestamp": "2025-10-17T16:05:12.940868Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3299,7 +3299,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:18.991751Z",
+    "timestamp": "2025-10-17T16:05:12.9425409Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3326,7 +3326,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:18.9933823Z",
+    "timestamp": "2025-10-17T16:05:12.944295Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3354,7 +3354,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.995154Z",
+    "timestamp": "2025-10-17T16:05:12.9459827Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3382,7 +3382,7 @@
       "low_volatility",
       "trending"
     ],
-    "timestamp": "2025-10-17T15:59:18.9969051Z",
+    "timestamp": "2025-10-17T16:05:12.9477975Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3412,7 +3412,7 @@
       "trending",
       "oversold"
     ],
-    "timestamp": "2025-10-17T15:59:18.9985745Z",
+    "timestamp": "2025-10-17T16:05:12.9493665Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3442,7 +3442,7 @@
       "trending",
       "oversold"
     ],
-    "timestamp": "2025-10-17T15:59:18.9997082Z",
+    "timestamp": "2025-10-17T16:05:12.9511624Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3471,7 +3471,7 @@
       "trending",
       "oversold"
     ],
-    "timestamp": "2025-10-17T15:59:19.0008171Z",
+    "timestamp": "2025-10-17T16:05:12.9528332Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3499,7 +3499,7 @@
       "low_volatility",
       "oversold"
     ],
-    "timestamp": "2025-10-17T15:59:19.0019887Z",
+    "timestamp": "2025-10-17T16:05:12.9546648Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3527,7 +3527,7 @@
       "low_volatility",
       "oversold"
     ],
-    "timestamp": "2025-10-17T15:59:19.0033742Z",
+    "timestamp": "2025-10-17T16:05:12.9565513Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3556,7 +3556,7 @@
       "high_volume",
       "oversold"
     ],
-    "timestamp": "2025-10-17T15:59:19.0048391Z",
+    "timestamp": "2025-10-17T16:05:12.9583652Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3584,7 +3584,7 @@
       "low_volatility",
       "oversold"
     ],
-    "timestamp": "2025-10-17T15:59:19.00638Z",
+    "timestamp": "2025-10-17T16:05:12.9601365Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3611,7 +3611,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:19.0079774Z",
+    "timestamp": "2025-10-17T16:05:12.9617538Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3639,7 +3639,7 @@
       "low_volatility",
       "ranging"
     ],
-    "timestamp": "2025-10-17T15:59:19.0095855Z",
+    "timestamp": "2025-10-17T16:05:12.9633851Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3667,7 +3667,7 @@
       "low_volatility",
       "ranging"
     ],
-    "timestamp": "2025-10-17T15:59:19.0108655Z",
+    "timestamp": "2025-10-17T16:05:12.9651605Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3694,7 +3694,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:19.0124484Z",
+    "timestamp": "2025-10-17T16:05:12.9670042Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3721,7 +3721,7 @@
     "market_conditions": [
       "low_volatility"
     ],
-    "timestamp": "2025-10-17T15:59:19.0138304Z",
+    "timestamp": "2025-10-17T16:05:12.9687446Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -3750,7 +3750,7 @@
       "ranging",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:19.0150926Z",
+    "timestamp": "2025-10-17T16:05:12.9705316Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -3778,7 +3778,7 @@
       "low_volatility",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:19.0164032Z",
+    "timestamp": "2025-10-17T16:05:12.9720384Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -3806,7 +3806,7 @@
       "low_volatility",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:19.0178729Z",
+    "timestamp": "2025-10-17T16:05:12.9736542Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -3835,7 +3835,7 @@
       "high_volume",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:19.0191127Z",
+    "timestamp": "2025-10-17T16:05:12.9751088Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -3863,7 +3863,7 @@
       "low_volatility",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:19.0205162Z",
+    "timestamp": "2025-10-17T16:05:12.9763693Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -3893,7 +3893,7 @@
       "trending",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:19.0218203Z",
+    "timestamp": "2025-10-17T16:05:12.9779097Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -3922,7 +3922,7 @@
       "ranging",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:19.0232194Z",
+    "timestamp": "2025-10-17T16:05:12.979563Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -3951,7 +3951,7 @@
       "trending",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:19.024372Z",
+    "timestamp": "2025-10-17T16:05:12.9811039Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -3979,7 +3979,7 @@
       "low_volatility",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:19.0258183Z",
+    "timestamp": "2025-10-17T16:05:12.9826788Z",
     "strategy_specialization": "Momentum Strategy"
   },
   {
@@ -4007,7 +4007,7 @@
       "low_volatility",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:19.0274229Z",
+    "timestamp": "2025-10-17T16:05:12.9847491Z",
     "strategy_specialization": "Momentum Strategy"
   },
   {
@@ -4037,7 +4037,7 @@
       "trending",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:19.0289927Z",
+    "timestamp": "2025-10-17T16:05:12.9868145Z",
     "strategy_specialization": "Momentum Strategy"
   },
   {
@@ -4067,7 +4067,7 @@
       "trending",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:19.0309925Z",
+    "timestamp": "2025-10-17T16:05:12.9888065Z",
     "strategy_specialization": "Momentum Strategy"
   },
   {
@@ -4097,7 +4097,7 @@
       "oversold",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:19.0335364Z",
+    "timestamp": "2025-10-17T16:05:12.9908445Z",
     "strategy_specialization": "Momentum Strategy"
   },
   {
@@ -4127,7 +4127,7 @@
       "oversold",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:19.0351449Z",
+    "timestamp": "2025-10-17T16:05:12.992641Z",
     "strategy_specialization": "Momentum Strategy"
   },
   {
@@ -4158,7 +4158,7 @@
       "oversold",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:19.0366016Z",
+    "timestamp": "2025-10-17T16:05:12.994282Z",
     "strategy_specialization": "Momentum Strategy"
   },
   {
@@ -4189,7 +4189,7 @@
       "oversold",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:19.0381464Z",
+    "timestamp": "2025-10-17T16:05:12.9960187Z",
     "strategy_specialization": "Momentum Strategy"
   },
   {
@@ -4218,7 +4218,7 @@
       "oversold",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:19.0398047Z",
+    "timestamp": "2025-10-17T16:05:12.9976699Z",
     "strategy_specialization": "Momentum Strategy"
   },
   {
@@ -4248,7 +4248,7 @@
       "oversold",
       "opening_drive"
     ],
-    "timestamp": "2025-10-17T15:59:19.0416782Z",
+    "timestamp": "2025-10-17T16:05:12.9992811Z",
     "strategy_specialization": "Momentum Strategy"
   },
   {
@@ -4277,7 +4277,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0434863Z",
+    "timestamp": "2025-10-17T16:05:13.0014652Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -4306,7 +4306,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0451329Z",
+    "timestamp": "2025-10-17T16:05:13.0032416Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -4336,7 +4336,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0467461Z",
+    "timestamp": "2025-10-17T16:05:13.0048587Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -4366,7 +4366,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0480898Z",
+    "timestamp": "2025-10-17T16:05:13.0062346Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -4395,7 +4395,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0493845Z",
+    "timestamp": "2025-10-17T16:05:13.0077529Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -4425,7 +4425,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0508059Z",
+    "timestamp": "2025-10-17T16:05:13.0094541Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -4454,7 +4454,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0521413Z",
+    "timestamp": "2025-10-17T16:05:13.0108758Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -4482,7 +4482,7 @@
       "low_volatility",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.053641Z",
+    "timestamp": "2025-10-17T16:05:13.0124029Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -4511,7 +4511,7 @@
       "ranging",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0552192Z",
+    "timestamp": "2025-10-17T16:05:13.0140979Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -4541,7 +4541,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0566139Z",
+    "timestamp": "2025-10-17T16:05:13.0155281Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -4571,7 +4571,7 @@
       "ranging",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0583117Z",
+    "timestamp": "2025-10-17T16:05:13.0174823Z",
     "strategy_specialization": "Bollinger Compression"
   },
   {
@@ -4601,7 +4601,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0598946Z",
+    "timestamp": "2025-10-17T16:05:13.0192033Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -4630,7 +4630,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0610195Z",
+    "timestamp": "2025-10-17T16:05:13.0207422Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -4659,7 +4659,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0622536Z",
+    "timestamp": "2025-10-17T16:05:13.0222378Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -4688,7 +4688,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0639355Z",
+    "timestamp": "2025-10-17T16:05:13.0238604Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -4718,7 +4718,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0653845Z",
+    "timestamp": "2025-10-17T16:05:13.0254573Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -4747,7 +4747,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0667845Z",
+    "timestamp": "2025-10-17T16:05:13.0269632Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -4776,7 +4776,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0680425Z",
+    "timestamp": "2025-10-17T16:05:13.0286397Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -4806,7 +4806,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0694278Z",
+    "timestamp": "2025-10-17T16:05:13.0300387Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -4835,7 +4835,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0709454Z",
+    "timestamp": "2025-10-17T16:05:13.0316812Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -4864,7 +4864,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.072193Z",
+    "timestamp": "2025-10-17T16:05:13.0337952Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -4894,7 +4894,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0736278Z",
+    "timestamp": "2025-10-17T16:05:13.0351907Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -4924,7 +4924,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.07483Z",
+    "timestamp": "2025-10-17T16:05:13.0365444Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -4953,7 +4953,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0759705Z",
+    "timestamp": "2025-10-17T16:05:13.0380318Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -4983,7 +4983,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0771638Z",
+    "timestamp": "2025-10-17T16:05:13.0394602Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -5013,7 +5013,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0790542Z",
+    "timestamp": "2025-10-17T16:05:13.0409572Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -5042,7 +5042,7 @@
       "ranging",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0807274Z",
+    "timestamp": "2025-10-17T16:05:13.0425239Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -5071,7 +5071,7 @@
       "ranging",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0822463Z",
+    "timestamp": "2025-10-17T16:05:13.0438012Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -5101,7 +5101,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.086091Z",
+    "timestamp": "2025-10-17T16:05:13.0453552Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -5132,7 +5132,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0874193Z",
+    "timestamp": "2025-10-17T16:05:13.0493554Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -5162,7 +5162,7 @@
       "oversold",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0886519Z",
+    "timestamp": "2025-10-17T16:05:13.0506054Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -5191,7 +5191,7 @@
       "ranging",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0899516Z",
+    "timestamp": "2025-10-17T16:05:13.0519626Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -5220,7 +5220,7 @@
       "ranging",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.091372Z",
+    "timestamp": "2025-10-17T16:05:13.0533104Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -5250,7 +5250,7 @@
       "ranging",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0927878Z",
+    "timestamp": "2025-10-17T16:05:13.0547691Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -5279,7 +5279,7 @@
       "ranging",
       "lunch"
     ],
-    "timestamp": "2025-10-17T15:59:19.0942552Z",
+    "timestamp": "2025-10-17T16:05:13.0563393Z",
     "strategy_specialization": "VWAP Mean Reversion"
   },
   {
@@ -5309,7 +5309,7 @@
       "ranging",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:19.0957397Z",
+    "timestamp": "2025-10-17T16:05:13.0580424Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -5338,7 +5338,7 @@
       "ranging",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:19.097645Z",
+    "timestamp": "2025-10-17T16:05:13.0600292Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -5367,7 +5367,7 @@
       "ranging",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:19.0992131Z",
+    "timestamp": "2025-10-17T16:05:13.062168Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -5396,7 +5396,7 @@
       "ranging",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:19.1008844Z",
+    "timestamp": "2025-10-17T16:05:13.0642356Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -5425,7 +5425,7 @@
       "ranging",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:19.1027055Z",
+    "timestamp": "2025-10-17T16:05:13.066237Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -5454,7 +5454,7 @@
       "ranging",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:19.10455Z",
+    "timestamp": "2025-10-17T16:05:13.0683439Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -5483,7 +5483,7 @@
       "ranging",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:19.1062307Z",
+    "timestamp": "2025-10-17T16:05:13.0703523Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -5512,7 +5512,7 @@
       "ranging",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:19.1081143Z",
+    "timestamp": "2025-10-17T16:05:13.0722854Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -5541,7 +5541,7 @@
       "ranging",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:19.1099286Z",
+    "timestamp": "2025-10-17T16:05:13.0742465Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -5570,7 +5570,7 @@
       "ranging",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:19.1116679Z",
+    "timestamp": "2025-10-17T16:05:13.0759341Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -5599,7 +5599,7 @@
       "ranging",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:19.1134727Z",
+    "timestamp": "2025-10-17T16:05:13.0778273Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -5628,7 +5628,7 @@
       "ranging",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:19.1152397Z",
+    "timestamp": "2025-10-17T16:05:13.0800044Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -5658,7 +5658,7 @@
       "ranging",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:19.1180971Z",
+    "timestamp": "2025-10-17T16:05:13.0821698Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -5688,7 +5688,7 @@
       "ranging",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:19.1231487Z",
+    "timestamp": "2025-10-17T16:05:13.0844026Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -5717,7 +5717,7 @@
       "oversold",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:19.1251983Z",
+    "timestamp": "2025-10-17T16:05:13.0863732Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -5748,7 +5748,7 @@
       "oversold",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:19.1268924Z",
+    "timestamp": "2025-10-17T16:05:13.0883095Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -5777,7 +5777,7 @@
       "oversold",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:19.1285788Z",
+    "timestamp": "2025-10-17T16:05:13.0901038Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -5806,7 +5806,7 @@
       "oversold",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:19.1305498Z",
+    "timestamp": "2025-10-17T16:05:13.0917371Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   },
   {
@@ -5834,36 +5834,7 @@
       "low_volatility",
       "afternoon_fade"
     ],
-    "timestamp": "2025-10-17T15:59:19.1323461Z",
-    "strategy_specialization": "ADR Exhaustion Fade"
-  },
-  {
-    "features": {
-      "price": 6434.25,
-      "volume": 48,
-      "volatility": 0.0007770913470878501767882815,
-      "atr": 5.9801720577618960098669588793,
-      "rsi": 13.3004926108374384236453202,
-      "hour": 15,
-      "day_of_week": 2,
-      "volume_ratio": 1.35211267605634,
-      "price_change": -6.75,
-      "trend_strength": 0.4840764331210191082802547771,
-      "support_distance": 0,
-      "resistance_distance": 0,
-      "volatility_rank": 0.5,
-      "momentum": -0.0010091992392190350502658852,
-      "regime": 0
-    },
-    "strategy": "S11",
-    "reward": 0,
-    "pnl": 0,
-    "market_conditions": [
-      "low_volatility",
-      "oversold",
-      "afternoon_fade"
-    ],
-    "timestamp": "2025-10-17T15:59:19.1340988Z",
+    "timestamp": "2025-10-17T16:05:13.0938305Z",
     "strategy_specialization": "ADR Exhaustion Fade"
   }
 ]
