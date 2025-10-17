@@ -260,48 +260,20 @@ jobs:
           Write-Output "=================================================="
           Write-Output ""
           
-          # Run the bot and capture all output
+          # Run the bot with all output streaming directly to console
+          # This allows GitHub Actions to capture ALL logs (ML, RL, strategies, etc.)
+          Write-Output "🚀 Starting bot with live log streaming..."
+          Write-Output "📊 All logs will be visible in GitHub Actions console"
+          Write-Output ""
+          
           $DotnetPath = "C:\Program Files\dotnet\dotnet.exe"
-          $ProcessInfo = Start-Process -FilePath $DotnetPath `
-            -ArgumentList "run", "--project", "src/UnifiedOrchestrator/UnifiedOrchestrator.csproj", "--no-build", "-c", "Release" `
-            -NoNewWindow `
-            -PassThru `
-            -RedirectStandardOutput $LogFile `
-            -RedirectStandardError "$LogDir/bot-error-$Timestamp.log"
           
-          $BotPID = $ProcessInfo.Id
-          Write-Output "✅ Process started (PID: $BotPID)"
+          # Run directly WITHOUT redirection so all logs stream to GitHub Actions
+          & $DotnetPath run --project src/UnifiedOrchestrator/UnifiedOrchestrator.csproj --no-build -c Release
+          
+          $ExitCode = $LASTEXITCODE
           Write-Output ""
-          
-          # Wait for process to complete (no timeout - runs until stopped or crashes)
-          Write-Output "🚀 Bot is running continuously. Press Ctrl+C or cancel workflow to stop."
-          Write-Output "📊 Monitoring bot process..."
-          Write-Output ""
-          
-          $ExitCode = $null
-          $CheckInterval = 30
-          $Elapsed = 0
-          
-          # Monitor bot process indefinitely
-          while ($true) {
-            $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
-            if (-not $BotProcess) {
-              # Bot process exited (either cleanly or crashed)
-              $ExitCode = $ProcessInfo.ExitCode
-              Write-Output ""
-              Write-Output "⚠️ Bot process exited after $Elapsed seconds"
-              break
-            }
-            
-            Start-Sleep -Seconds $CheckInterval
-            $Elapsed += $CheckInterval
-            
-            # Show progress every 5 minutes
-            if (($Elapsed % 300) -eq 0) {
-              $Minutes = [math]::Floor($Elapsed / 60)
-              Write-Output "✅ Bot still running... (${Minutes} minutes elapsed)"
-            }
-          }
+          Write-Output "� Bot process exited with code: $ExitCode"
           
           # Cleanup: Stop Python adapter
           Write-Output ""
@@ -318,28 +290,12 @@ jobs:
           Write-Output "=================================================="
           Write-Output "Bot Execution Summary:"
           Write-Output "  Exit Code: $(if ($ExitCode) { $ExitCode } else { 0 })"
-          Write-Output "  Log File: $LogFile"
-          Write-Output "  Adapter Log: $AdapterLogFile"
-          Write-Output "=================================================="
-          
-          # Output last 100 lines of bot log
-          Write-Output ""
-          Write-Output "📋 Last 100 lines of bot output:"
-          Write-Output "=================================================="
-          Get-Content $LogFile -Tail 100
-          Write-Output "=================================================="
-          
-          # Output last 50 lines of adapter log
-          Write-Output ""
-          Write-Output "🐍 Last 50 lines of adapter output:"
-          Write-Output "=================================================="
-          Get-Content $AdapterLogFile -Tail 50 -ErrorAction SilentlyContinue
+          Write-Output "  All logs were streamed directly to GitHub Actions console above"
           Write-Output "=================================================="
           
           # Set outputs
           $ExitCodeValue = if ($ExitCode) { $ExitCode } else { 0 }
           "exit_code=$ExitCodeValue" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding UTF8
-          "log_file=$LogFile" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding UTF8
           
           if ($ExitCodeValue -eq 0) {
             Write-Output "✅ Bot executed successfully"
