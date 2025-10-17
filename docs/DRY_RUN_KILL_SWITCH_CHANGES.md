@@ -2,7 +2,7 @@
 
 ## Summary of Changes
 
-This document describes the simplification of the bot's trading mode configuration and kill switch behavior.
+This document describes the simplification of the bot's trading mode configuration and the automatic DRY_RUN enforcement based on TopStep compliance.
 
 ## Previous Behavior (Legacy)
 
@@ -14,10 +14,9 @@ This document describes the simplification of the bot's trading mode configurati
 - `ENABLE_DRY_RUN` (true/false)
 - Multiple conflicting settings that made it unclear what mode the bot was in
 
-### Automatic Kill Switch Activation:
-- Kill.txt was created automatically by canary monitoring on catastrophic failures
-- Kill switch would trigger on performance degradation
-- Made debugging difficult as the bot would shut down automatically
+### Manual Kill Switch Only:
+- Kill.txt had to be created manually
+- No automatic protection for TopStep compliance violations
 
 ## New Behavior (Simplified)
 
@@ -36,17 +35,24 @@ This document describes the simplification of the bot's trading mode configurati
 
 - Default: `DRY_RUN=1` (safe default - paper trading)
 
-### Manual Kill Switch Only:
-- Kill.txt is **NOT** created automatically
-- Kill switch is for **critical system failures only**
-  - Example: Database connection loss
-  - Example: API authentication failure
-  - Example: Memory/resource exhaustion
-  
-- Kill switch is **NOT** for performance degradation
-  - Catastrophic failures are logged with CRITICAL severity
-  - Manual intervention is required to create kill.txt
-  - Allows operators to investigate before forcing shutdown
+### Automatic DRY_RUN Enforcement for TopStep Compliance:
+The bot now **automatically switches to DRY_RUN=1 mode** when TopStep compliance limits are breached:
+
+- **Daily Loss Limit**: When daily P&L reaches -$1,000 (safe limit) or -$2,400 (hard limit)
+- **Drawdown Limit**: When drawdown reaches -$2,000 (safe limit) or -$2,500 (hard limit)
+- **Critical Threshold**: When approaching 90% of either limit
+
+When these limits are hit:
+- Bot automatically sets `DRY_RUN=1`
+- Continues running with **live market data**
+- Simulates trades (no real orders sent)
+- Logs CRITICAL messages for visibility
+- Protects TopStep account from violations
+
+### Manual Kill Switch:
+- Kill.txt can still be created manually for critical system failures
+- Used for database issues, API failures, or system crashes
+- Not for performance degradation or compliance violations
 
 ## Configuration
 
@@ -55,6 +61,12 @@ This document describes the simplification of the bot's trading mode configurati
 ```bash
 # Trading Mode - SINGLE FLAG
 DRY_RUN=1                    # 1=Paper trading, 0=Live trading
+
+# TopStep Compliance Limits (auto-enforces DRY_RUN when breached)
+TOPSTEP_DAILY_LOSS_LIMIT=-2400      # Hard daily loss limit
+TOPSTEP_SAFE_DAILY_LOSS_LIMIT=-1000 # Safe daily loss limit (auto DRY_RUN)
+TOPSTEP_DRAWDOWN_LIMIT=-2500        # Hard drawdown limit
+TOPSTEP_SAFE_DRAWDOWN_LIMIT=-2000   # Safe drawdown limit (auto DRY_RUN)
 
 # Connection Settings (unchanged)
 ENABLE_TOPSTEPX=1
@@ -80,7 +92,7 @@ The following variables are **REMOVED** (no longer needed):
 1. **`.env`** - Consolidated configuration to single DRY_RUN flag
 2. **`ProductionKillSwitchService.cs`** - Simplified to check only DRY_RUN variable
 3. **`LiveTradingGate.cs`** - Simplified DRY_RUN checking logic
-4. **`MasterDecisionOrchestrator.cs`** - Removed automatic kill.txt creation
+4. **`TopStepComplianceManager.cs`** - **NEW**: Added automatic DRY_RUN enforcement on compliance violations
 5. **`EmergencyStopSystem.cs`** - Updated documentation
 6. **`ConfigurationLocks.cs`** - Updated to check DRY_RUN instead of PAPER_MODE
 7. **`SystemHealthMonitor.cs`** - Updated to check DRY_RUN instead of PAPER_MODE
@@ -91,10 +103,15 @@ The following variables are **REMOVED** (no longer needed):
    - Returns `true` if `DRY_RUN=1` or unset (safe default)
    - Returns `false` if `DRY_RUN=0` or `DRY_RUN=false`
 
-2. **Catastrophic Failure Handling** - No longer creates kill.txt automatically
-   - Logs critical failure with severity CRITICAL
-   - Requires manual intervention to create kill.txt
-   - Allows investigation before forcing shutdown
+2. **TopStep Compliance Auto-Protection** - **NEW**
+   - Automatically sets `DRY_RUN=1` when daily loss or drawdown limits are breached
+   - Bot continues running with live data but simulates trades
+   - Protects account from TopStep violations
+   - Logs critical messages for visibility
+
+3. **Manual Kill Switch** - Available for true system failures
+   - Create `kill.txt` manually for database failures, API issues, etc.
+   - Not used for performance degradation or compliance violations
 
 ## Migration Guide
 
@@ -149,24 +166,81 @@ dotnet run --project src/UnifiedOrchestrator
 # Expected: Connects to live data, executes real trades
 ```
 
+### Verify TopStep Compliance Auto-Protection:
+
+```bash
+# Simulate daily loss approaching limit
+# Bot will automatically switch to DRY_RUN=1 when:
+# - Daily P&L reaches -$1,000 (safe limit)
+# - Daily P&L reaches -$2,160 (90% of hard limit)
+# - Daily P&L reaches -$2,400 (hard limit)
+
+# Simulate drawdown approaching limit
+# Bot will automatically switch to DRY_RUN=1 when:
+# - Drawdown reaches -$2,000 (safe limit)
+# - Drawdown reaches -$2,250 (90% of hard limit)
+# - Drawdown reaches -$2,500 (hard limit)
+
+# Monitor logs for:
+# 🚨 [TOPSTEP-COMPLIANCE] VIOLATION: Daily loss limit exceeded
+# 🛡️ [TOPSTEP-COMPLIANCE] DRY_RUN MODE ENFORCED
+# 💡 [TOPSTEP-COMPLIANCE] Bot switched to paper trading - continues with live data but simulates trades
+```
+
 ### Verify Kill Switch:
 
 ```bash
-# Kill switch should NOT be created automatically
-# Monitor logs for CRITICAL failures instead
-
-# Manual kill switch activation:
-echo "Testing kill switch" > kill.txt
-# Expected: Bot detects file and forces shutdown
+# Manual kill switch activation for system failures:
+echo "Database connection lost" > kill.txt
+# Expected: Bot detects file and switches to DRY_RUN mode
 ```
+
+## TopStep Compliance Auto-Protection
+
+### How It Works:
+
+1. **Continuous Monitoring**: Bot tracks daily P&L and drawdown in real-time
+2. **Threshold Detection**: Monitors safe limits, critical thresholds (90%), and hard limits
+3. **Automatic Enforcement**: When limits are breached:
+   - Sets `DRY_RUN=1` environment variable
+   - Bot continues running (doesn't shut down)
+   - Receives live market data from TopstepX
+   - Simulates all trades (no real orders sent)
+   - Logs CRITICAL messages for operator awareness
+
+4. **Recovery**: To resume live trading after a DRY_RUN enforcement:
+   - Review account status and determine cause
+   - Wait for daily reset (5 PM ET) if needed
+   - Manually set `DRY_RUN=0` to resume live trading
+   - Ensure compliance limits have reset
+
+### Protection Levels:
+
+| Threshold | Daily Loss | Drawdown | Action |
+|-----------|-----------|----------|--------|
+| Warning (80%) | -$800 | -$1,600 | Log warning, reduce position size |
+| Critical (90%) | -$900 | -$1,800 | **Auto DRY_RUN=1**, log critical |
+| Safe Limit | -$1,000 | -$2,000 | **Auto DRY_RUN=1**, stop live trades |
+| Hard Limit | -$2,400 | -$2,500 | **Auto DRY_RUN=1**, compliance violation |
+
+### Benefits:
+
+1. **Account Protection**: Prevents TopStep evaluation failures
+2. **Continuous Operation**: Bot keeps running with live data
+3. **No Manual Intervention**: Automatic protection activates instantly
+4. **Visibility**: Critical logs alert operators immediately
+5. **Easy Recovery**: Simple flag change to resume live trading
 
 ## Benefits
 
 1. **Simpler Configuration**: Single flag instead of 5 conflicting variables
 2. **Clearer Intent**: `DRY_RUN=1` clearly means "paper trading with live data"
-3. **Better Debugging**: Kill switch doesn't trigger automatically on performance issues
-4. **Manual Control**: Operators decide when to force shutdown
-5. **Live Data Testing**: Paper mode uses real market data for accurate testing
+3. **Automatic Account Protection**: TopStep compliance limits enforced automatically
+4. **No Manual Monitoring**: Bot protects itself from violations
+5. **Continuous Operation**: Switches to paper trading instead of shutting down
+6. **Live Data Testing**: Paper mode uses real market data for accurate testing
+7. **Safe Defaults**: Defaults to paper trading when unset
+8. **Easy Recovery**: Simple flag change to resume live trading after compliance issue
 
 ## Safety Considerations
 

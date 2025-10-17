@@ -124,13 +124,11 @@ public sealed class ProductionKillSwitchService : IHostedService, IKillSwitchWat
     {
         try
         {
-            // Force DRY_RUN environment variable
-            Environment.SetEnvironmentVariable("DRY_RUN", "true");
-            Environment.SetEnvironmentVariable("EXECUTE", "false");
-            Environment.SetEnvironmentVariable("AUTO_EXECUTE", "false");
+            // Force DRY_RUN=1 environment variable (paper trading with live data)
+            Environment.SetEnvironmentVariable("DRY_RUN", "1");
             
             _logger.LogCritical("🛡️ [KILL-SWITCH] DRY_RUN MODE ENFORCED - Detection: {Method}", detectionMethod);
-            _logger.LogCritical("🛡️ [KILL-SWITCH] All execution flags disabled for safety");
+            _logger.LogCritical("🛡️ [KILL-SWITCH] Bot switched to paper trading mode - continues with live data but simulates trades");
             
             // Create DRY_RUN marker file if enabled
             if (_config.CreateDryRunMarker)
