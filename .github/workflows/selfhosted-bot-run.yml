@@ -24,7 +24,7 @@ jobs:
   run-bot:
     name: "Run Trading Bot on Self-Hosted Runner"
     runs-on: [self-hosted, Windows, X64]
-    timeout-minutes: 5  # Timeout for debugging - agent can see logs after 5 min
+    timeout-minutes: 6  # Extended timeout to see more bot execution
     
     steps:
       - name: "📥 Checkout Repository"
