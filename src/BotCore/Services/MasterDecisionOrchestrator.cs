@@ -903,8 +903,10 @@ public class MasterDecisionOrchestrator : BackgroundService
 
         if (isCatastrophic)
         {
-            await CreateKillFileAsync(cancellationToken).ConfigureAwait(false);
-            _logger.LogError("🚨 [GATE-5] CATASTROPHIC FAILURE - kill.txt created, live trading stopped");
+            _logger.LogCritical("🚨 [GATE-5] CATASTROPHIC FAILURE DETECTED - Manual intervention required!");
+            _logger.LogCritical("🚨 [GATE-5] Win Rate: {WR:F2}%, Drawdown: ${DD:F2}", 
+                currentMetrics.WinRate * PercentageMultiplier, currentMetrics.MaxDrawdown);
+            _logger.LogCritical("🚨 [GATE-5] Create kill.txt manually if you want to stop live trading");
         }
 
         if (shouldRollback)
@@ -988,26 +990,6 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
         {
             _logger.LogError(ex, "❌ [SELF-ANALYSIS] Error during performance analysis");
             return string.Empty;
-        }
-    }
-
-    private async Task CreateKillFileAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            var killFilePath = Path.Combine(Directory.GetCurrentDirectory(), "kill.txt");
-            await File.WriteAllTextAsync(killFilePath, 
-                $"CATASTROPHIC FAILURE DETECTED - {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC\n" +
-                $"Canary monitoring triggered emergency stop\n" +
-                $"Win Rate: {CalculateCanaryMetrics().WinRate:F2}%\n" +
-                $"Drawdown: ${CalculateCanaryMetrics().MaxDrawdown:F2}\n",
-                cancellationToken).ConfigureAwait(false);
-            
-            _logger.LogCritical("🚨 [GATE-5] kill.txt created at {Path}", killFilePath);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to create kill.txt file");
         }
     }
 
@@ -1240,8 +1222,9 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
 
             if (isCatastrophic)
             {
-                _logger.LogCritical("💥 [ROLLBACK] CATASTROPHIC FAILURE DETECTED - Creating kill.txt");
-                await CreateKillFileAsync(cancellationToken).ConfigureAwait(false);
+                _logger.LogCritical("💥 [ROLLBACK] CATASTROPHIC FAILURE DETECTED - Manual intervention required!");
+                _logger.LogCritical("💥 [ROLLBACK] Win Rate: {WR:F2}%, Drawdown: ${DD:F2}", currentWinRate, currentDrawdown);
+                _logger.LogCritical("💥 [ROLLBACK] Create kill.txt manually if you want to force shutdown");
                 
                 await SendCriticalAlertAsync("CATASTROPHIC FAILURE", 
                     $"Win Rate: {currentWinRate:F2}%, Drawdown: ${currentDrawdown:F2}")
@@ -1257,7 +1240,7 @@ Analyze what I'm doing wrong and what I should do differently. Speak as ME (the 
             _logger.LogInformation("  ✓ High priority alert sent");
             if (isCatastrophic)
             {
-                _logger.LogInformation("  ✓ kill.txt created (catastrophic failure)");
+                _logger.LogInformation("  ✓ Catastrophic failure alert sent - manual intervention required");
             }
         }
         catch (IOException ex)

@@ -161,8 +161,8 @@ public sealed class ConfigurationLocks
         // Validate arming token requirement
         ValidateSetting(report, "REQUIRE_ARMING_TOKEN", "1", "Arming token must be required before enabling live flags");
         
-        // Validate paper mode is active for safety
-        ValidateSetting(report, "PAPER_MODE", "1", "Paper mode should be active for initial deployment");
+        // Validate DRY_RUN mode is active for safety during initial deployment
+        ValidateSetting(report, "DRY_RUN", "1", "DRY_RUN mode should be active for initial deployment (paper trading with live data)");
         
         // Validate critical system components are enabled
         ValidateSetting(report, "CRITICAL_SYSTEM_ENABLE", "1", "Critical system components must be enabled");
