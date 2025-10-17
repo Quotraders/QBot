@@ -169,6 +169,48 @@ jobs:
           Write-Output "⚠️ DRY_RUN mode: ${{ github.event.inputs.dry_run }}"
           Write-Output ""
           
+          # Start Python TopstepX Adapter
+          Write-Output "🐍 Starting Python TopstepX Adapter..."
+          $PythonAdapterPath = "src/adapters/topstep_x_adapter.py"
+          
+          if (-not (Test-Path $PythonAdapterPath)) {
+            Write-Output "❌ ERROR: Python adapter not found at $PythonAdapterPath"
+            exit 1
+          }
+          
+          $AdapterLogFile = "$LogDir/adapter-$Timestamp.log"
+          $AdapterProcess = Start-Process -FilePath "python" `
+            -ArgumentList $PythonAdapterPath `
+            -NoNewWindow `
+            -PassThru `
+            -RedirectStandardOutput $AdapterLogFile `
+            -RedirectStandardError "$LogDir/adapter-error-$Timestamp.log"
+          
+          $AdapterPID = $AdapterProcess.Id
+          Write-Output "✅ Python adapter started (PID: $AdapterPID)"
+          Write-Output "📝 Adapter logs: $AdapterLogFile"
+          Write-Output ""
+          
+          # Wait for adapter to initialize (check for port 8765 to be listening)
+          Write-Output "⏳ Waiting for adapter to initialize..."
+          $AdapterReady = $false
+          for ($i = 0; $i -lt 30; $i++) {
+            Start-Sleep -Seconds 1
+            $Connection = Test-NetConnection -ComputerName localhost -Port 8765 -InformationLevel Quiet -WarningAction SilentlyContinue
+            if ($Connection) {
+              $AdapterReady = $true
+              Write-Output "✅ Adapter ready on port 8765 (after $i seconds)"
+              break
+            }
+          }
+          
+          if (-not $AdapterReady) {
+            Write-Output "⚠️ WARNING: Adapter may not be ready after 30 seconds"
+            Write-Output "📋 Last 20 lines of adapter log:"
+            Get-Content $AdapterLogFile -Tail 20 -ErrorAction SilentlyContinue
+          }
+          Write-Output ""
+          
           # Create log capture directory
           $LogDir = "$env:TEMP/qbot-bot-run-logs"
           if (-not (Test-Path $LogDir)) {
@@ -241,18 +283,37 @@ jobs:
             $ExitCode = -1
           }
           
+          # Cleanup: Stop Python adapter
+          Write-Output ""
+          Write-Output "🧹 Cleaning up Python adapter..."
+          $AdapterProcess = Get-Process -Id $AdapterPID -ErrorAction SilentlyContinue
+          if ($AdapterProcess) {
+            Stop-Process -Id $AdapterPID -Force -ErrorAction SilentlyContinue
+            Write-Output "✅ Python adapter stopped"
+          } else {
+            Write-Output "⚠️ Python adapter already stopped"
+          }
+          
           Write-Output ""
           Write-Output "=================================================="
           Write-Output "Bot Execution Summary:"
           Write-Output "  Exit Code: $(if ($ExitCode) { $ExitCode } else { 0 })"
           Write-Output "  Log File: $LogFile"
+          Write-Output "  Adapter Log: $AdapterLogFile"
           Write-Output "=================================================="
           
-          # Output last 100 lines of log
+          # Output last 100 lines of bot log
           Write-Output ""
           Write-Output "📋 Last 100 lines of bot output:"
           Write-Output "=================================================="
           Get-Content $LogFile -Tail 100
+          Write-Output "=================================================="
+          
+          # Output last 50 lines of adapter log
+          Write-Output ""
+          Write-Output "🐍 Last 50 lines of adapter output:"
+          Write-Output "=================================================="
+          Get-Content $AdapterLogFile -Tail 50 -ErrorAction SilentlyContinue
           Write-Output "=================================================="
           
           # Set outputs
