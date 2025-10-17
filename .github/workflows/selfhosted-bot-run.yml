@@ -199,6 +199,14 @@ jobs:
           Write-Output "📝 Bot output will be captured to: $LogFile"
           Write-Output "📝 Bot errors will be captured to: $ErrorLogFile"
           Write-Output ""
+          
+          # Ensure dotnet is in PATH (self-hosted runner)
+          $DotnetPath = "C:\Program Files\dotnet"
+          if (Test-Path $DotnetPath) {
+            $env:PATH = "$DotnetPath;$env:PATH"
+            Write-Output "✅ Added .NET to PATH: $DotnetPath"
+          }
+          
           Write-Output "Starting bot execution..."
           Write-Output "=================================================="
           Write-Output ""
