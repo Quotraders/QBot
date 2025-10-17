@@ -42,7 +42,7 @@ env:
 jobs:
   launch-bot:
     name: "Launch Trading Bot with Full Diagnostics"
-    runs-on: self-hosted
+    runs-on: [self-hosted, windows, x64]
     timeout-minutes: 70  # Covers max runtime (60min) + startup/shutdown buffer
     
     steps:

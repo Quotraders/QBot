@@ -14,7 +14,7 @@ env:
 jobs:
   selfhosted-test:
     name: "Self-Hosted Runner Connectivity Test"
-    runs-on: self-hosted
+    runs-on: [self-hosted, windows, x64]
     timeout-minutes: 10
     
     steps:

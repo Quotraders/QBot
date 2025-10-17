@@ -23,6 +23,7 @@ trading-bot-c--1/
 artifacts/
 artifacts/*/
 models/
+model_registry/promotions/
 
 # Test fixtures and temp manifests (should be generated in temp dirs)
 test_manifest.json
