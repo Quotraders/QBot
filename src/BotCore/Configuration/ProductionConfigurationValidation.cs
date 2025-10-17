@@ -212,10 +212,8 @@ public class TopstepXConfiguration
     [Range(MIN_SIGNALR_RECONNECT_DELAY_MS, MAX_SIGNALR_RECONNECT_DELAY_MS)]
     public int SignalRReconnectDelayMs { get; set; } = DEFAULT_SIGNALR_RECONNECT_DELAY_MS;
     
-    // HTTP Adapter Configuration (for Python adapter communication)
-    public string AdapterMode { get; set; } = "http"; // "http" or "stdin" 
-    public string AdapterHttpHost { get; set; } = "localhost";
-    public int AdapterHttpPort { get; set; } = 8765;
+    // Adapter Configuration (for Python adapter communication)
+    public string AdapterMode { get; set; } = "persistent"; // "persistent" mode (stdin/stdout)
     public int AdapterStartupTimeoutSeconds { get; set; } = 30;
 }
 
