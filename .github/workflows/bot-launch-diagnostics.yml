@@ -214,6 +214,34 @@ jobs:
           Write-Output ""
           Write-Output "=================================================="
 
+      - name: "🔍 Verify Build Artifacts"
+        shell: pwsh
+        run: |
+          Write-Output "=================================================="
+          Write-Output "🔍 VERIFYING BUILD ARTIFACTS"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          $DllPath = "src/UnifiedOrchestrator/bin/Release/net8.0/UnifiedOrchestrator.dll"
+          
+          if (Test-Path $DllPath) {
+            $FileSize = (Get-Item $DllPath).Length
+            $FileSizeMB = [math]::Round($FileSize / 1MB, 2)
+            Write-Output "✅ UnifiedOrchestrator.dll found"
+            Write-Output "   Size: $FileSizeMB MB"
+            Write-Output "   Path: $DllPath"
+          } else {
+            Write-Output "❌ UnifiedOrchestrator.dll NOT FOUND"
+            Write-Output "   Expected path: $DllPath"
+            Write-Output ""
+            Write-Output "📁 Listing build output directory:"
+            Get-ChildItem "src/UnifiedOrchestrator/bin/Release/net8.0" -ErrorAction SilentlyContinue | Format-Table Name, Length
+            exit 1
+          }
+          
+          Write-Output ""
+          Write-Output "=================================================="
+
       - name: "🚀 Launch Bot with Full Diagnostics"
         id: bot_launch
         shell: pwsh
@@ -349,37 +377,118 @@ jobs:
             }
             
             # Register event handlers
-            Register-ObjectEvent -InputObject $Process -EventName OutputDataReceived -Action $OutputHandler | Out-Null
-            Register-ObjectEvent -InputObject $Process -EventName ErrorDataReceived -Action $ErrorHandler | Out-Null
+            $StdoutEvent = Register-ObjectEvent -InputObject $Process -EventName OutputDataReceived -Action $OutputHandler
+            $StderrEvent = Register-ObjectEvent -InputObject $Process -EventName ErrorDataReceived -Action $ErrorHandler
             
             # Start process
-            $Process.Start() | Out-Null
+            Write-Output "🔄 Starting process..."
+            $Started = $Process.Start()
+            if (-not $Started) {
+              Write-Output "❌ Failed to start process"
+              exit 1
+            }
+            
             $Process.BeginOutputReadLine()
             $Process.BeginErrorReadLine()
+            Write-Output "✅ Process started (PID: $($Process.Id))"
+            
+            # Give process a few seconds to initialize
+            Write-Output "⏳ Waiting for initialization..."
+            Start-Sleep -Seconds 5
+            
+            # Check if process crashed immediately
+            if ($Process.HasExited) {
+              $ExitCode = $Process.ExitCode
+              Write-Output ""
+              Write-Output "❌ Process exited immediately with code: $ExitCode"
+              Write-Output ""
+              Write-Output "This usually indicates a startup failure. Check the logs for errors."
+              
+              # Cleanup
+              $OutputBuilder.ToString() | Out-File -FilePath $ConsoleLogFile -Encoding utf8
+              $ErrorBuilder.ToString() | Out-File -FilePath $ErrorLogFile -Encoding utf8
+              
+              Unregister-Event -SourceIdentifier $StdoutEvent.Name -ErrorAction SilentlyContinue
+              Unregister-Event -SourceIdentifier $StderrEvent.Name -ErrorAction SilentlyContinue
+              Remove-Job -Name $StdoutEvent.Name -Force -ErrorAction SilentlyContinue
+              Remove-Job -Name $StderrEvent.Name -Force -ErrorAction SilentlyContinue
+              
+              # Show first 100 lines of output for debugging
+              Write-Output "📋 First 100 lines of output:"
+              Write-Output "=================================================="
+              Get-Content $ConsoleLogFile -Head 100 -ErrorAction SilentlyContinue
+              Write-Output "=================================================="
+              
+              # Also show errors
+              if (Test-Path $ErrorLogFile) {
+                Write-Output ""
+                Write-Output "📋 Error output:"
+                Write-Output "=================================================="
+                Get-Content $ErrorLogFile -ErrorAction SilentlyContinue
+                Write-Output "=================================================="
+              }
+              
+              exit 1
+            }
             
             Write-Output ""
             Write-Output "⏱️ Bot is running... (will run for ${{ github.event.inputs.runtime_minutes || '5' }} minutes)"
             Write-Output ""
             
-            # Wait for specified duration
+            # Wait for specified duration with periodic checks
             $RuntimeMinutes = [int]"${{ github.event.inputs.runtime_minutes || '5' }}"
             $TimeoutSeconds = $RuntimeMinutes * 60
-            $Process.WaitForExit($TimeoutSeconds * 1000)
+            $CheckIntervalSeconds = 10
+            $ElapsedSeconds = 0
+            
+            while ($ElapsedSeconds -lt $TimeoutSeconds -and -not $Process.HasExited) {
+              Start-Sleep -Seconds $CheckIntervalSeconds
+              $ElapsedSeconds += $CheckIntervalSeconds
+              
+              # Show progress every 30 seconds
+              if ($ElapsedSeconds % 30 -eq 0) {
+                $RemainingMinutes = [math]::Round(($TimeoutSeconds - $ElapsedSeconds) / 60, 1)
+                Write-Output "⏱️ Still running... ($RemainingMinutes minutes remaining)"
+              }
+            }
             
             $EndTime = Get-Date
             $ActualRuntime = ($EndTime - $StartTime).TotalSeconds
+            
+            # Cleanup event handlers
+            Write-Output "🧹 Cleaning up event handlers..."
+            Unregister-Event -SourceIdentifier $StdoutEvent.Name -ErrorAction SilentlyContinue
+            Unregister-Event -SourceIdentifier $StderrEvent.Name -ErrorAction SilentlyContinue
+            Remove-Job -Name $StdoutEvent.Name -Force -ErrorAction SilentlyContinue
+            Remove-Job -Name $StderrEvent.Name -Force -ErrorAction SilentlyContinue
             
             # Stop process if still running
             if (-not $Process.HasExited) {
               Write-Output ""
               Write-Output "⏱️ Runtime limit reached ($RuntimeMinutes minutes)"
               Write-Output "🛑 Stopping bot gracefully..."
-              $Process.Kill()
+              
+              # Try graceful shutdown first
+              try {
+                $Process.CloseMainWindow() | Out-Null
+                Start-Sleep -Seconds 5
+              } catch {
+                Write-Output "⚠️ Could not close main window gracefully"
+              }
+              
+              # Force kill if still running
+              if (-not $Process.HasExited) {
+                Write-Output "🔨 Force stopping process..."
+                $Process.Kill($true)  # Kill entire process tree
+                Start-Sleep -Seconds 2
+              }
+              
               $ExitCode = 0  # Timeout is expected, not an error
               $ExitReason = "timeout"
             } else {
               $ExitCode = $Process.ExitCode
               $ExitReason = "exited"
+              Write-Output "✅ Bot exited naturally with code: $ExitCode"
             }
             
             # Save all outputs
