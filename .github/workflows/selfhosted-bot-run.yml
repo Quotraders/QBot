@@ -186,8 +186,19 @@ jobs:
             exit 1
           }
           
+          # Find Python executable
+          $PythonExe = (Get-Command python -ErrorAction SilentlyContinue).Source
+          if (-not $PythonExe) {
+            $PythonExe = (Get-Command python3 -ErrorAction SilentlyContinue).Source
+          }
+          if (-not $PythonExe) {
+            Write-Output "❌ ERROR: Python executable not found in PATH"
+            exit 1
+          }
+          Write-Output "Using Python: $PythonExe"
+          
           $AdapterLogFile = "$LogDir/adapter-$Timestamp.log"
-          $AdapterProcess = Start-Process -FilePath "python" `
+          $AdapterProcess = Start-Process -FilePath $PythonExe `
             -ArgumentList $PythonAdapterPath `
             -NoNewWindow `
             -PassThru `
