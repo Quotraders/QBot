@@ -61,12 +61,13 @@ jobs:
           # Upgrade pip
           python -m pip install --upgrade pip
           
-          # Install project-x-py SDK with all dependencies
-          # Note: We only install the core SDK to avoid dependency conflicts
-          pip install 'project-x-py[all]>=3.5.0'
+          # Install project-x-py SDK WITHOUT uvloop (Windows doesn't support it)
+          # We exclude uvloop since it's a Linux/Mac-only dependency
+          pip install 'project-x-py>=3.5.0' --no-deps
+          pip install cachetools deprecated httpx[http2] lz4 msgpack-python numpy orjson plotly polars pydantic pytz pyyaml requests rich signalrcore
           
-          # Verify installation
-          python -c "import project_x_py; print('✅ project-x-py SDK installed successfully')"
+          # Verify installation (avoid emoji due to PowerShell encoding issues)
+          python -c "import project_x_py; print('[OK] project-x-py SDK installed successfully')"
           
           Write-Output ""
           Write-Output "✅ Python dependencies installed"
