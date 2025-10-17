@@ -507,21 +507,6 @@ class TopstepXAdapter:
         except Exception as e:
             self.logger.error(f"Error processing bar event: {e}", exc_info=True)
 
-    async def initialize(self) -> None:
-        """Setup structured logging for production use."""
-        logger = logging.getLogger(f"TopstepXAdapter.{id(self)}")
-        logger.setLevel(logging.INFO)
-        
-        if not logger.handlers:
-            handler = logging.StreamHandler()
-            formatter = logging.Formatter(
-                '[%(asctime)s] %(levelname)s [%(name)s] %(message)s'
-            )
-            handler.setFormatter(formatter)
-            logger.addHandler(handler)
-            
-        return logger
-        
     def _validate_configuration(self) -> None:
         """Validate SDK configuration and credentials."""
         # Validate instruments
