@@ -283,7 +283,6 @@ public class ModelEnsembleService : IDisposable
     public async Task LoadModelAsync(string modelName, string modelPath, ModelSource source, double weight = 1.0, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(modelName);
-        ArgumentNullException.ThrowIfNull(modelPath);
         
         try
         {
@@ -292,7 +291,7 @@ public class ModelEnsembleService : IDisposable
             object? model = null;
             
             // Load model based on type and source
-            if (modelPath.EndsWith(".onnx", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(modelPath) && modelPath.EndsWith(".onnx", StringComparison.OrdinalIgnoreCase))
             {
                 model = await _memoryManager.LoadModelAsync<object>(modelPath, "latest").ConfigureAwait(false);
             }
@@ -312,7 +311,7 @@ public class ModelEnsembleService : IDisposable
                     Microsoft.Extensions.Logging.Abstractions.NullLogger<CVaRPPO>.Instance, 
                     config,
                     runtimeMode,
-                    modelPath);
+                    string.IsNullOrEmpty(modelPath) ? "models/cvar_ppo" : modelPath);
                 // CVaRPPO initializes automatically in constructor
                 model = cvarAgent;
             }
@@ -326,7 +325,7 @@ public class ModelEnsembleService : IDisposable
                     Source = source,
                     Weight = CalculateModelWeight(source, weight),
                     LoadedAt = DateTime.UtcNow,
-                    Path = modelPath
+                    Path = modelPath ?? string.Empty
                 };
                 
                 _loadedModels[modelName] = loadedModel;

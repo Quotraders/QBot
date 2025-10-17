@@ -61,28 +61,43 @@ internal sealed class ModelRegistryBootstrapService : IHostedService
 
     private async Task RegisterComponent(string algorithm, string modelPath, CancellationToken cancellationToken)
     {
-        var model = new ModelVersion
+        try
         {
-            Algorithm = algorithm,
-            VersionId = "v1.0.0-bootstrap",
-            CreatedAt = DateTime.UtcNow,
-            ArtifactPath = File.Exists(modelPath) ? modelPath : string.Empty,
-            Sharpe = 0.0m,
-            WinRate = 0.0m,
-            MaxDrawdown = 0.0m,
-            IsPromoted = true,
-            PromotedAt = DateTime.UtcNow
-        };
+            // Check if model already exists
+            var existingModel = await _modelRegistry.GetModelAsync("v1.0.0-bootstrap", cancellationToken).ConfigureAwait(false);
+            if (existingModel != null && existingModel.Algorithm == algorithm)
+            {
+                _logger.LogDebug("  ⏭️ Skipping {Algorithm} - already registered", algorithm);
+                return;
+            }
 
-        await _modelRegistry.RegisterModelAsync(model, cancellationToken).ConfigureAwait(false);
-        await _modelRegistry.PromoteToChampionAsync(algorithm, model.VersionId, new PromotionRecord
+            var model = new ModelVersion
+            {
+                Algorithm = algorithm,
+                VersionId = "v1.0.0-bootstrap",
+                CreatedAt = DateTime.UtcNow,
+                ArtifactPath = File.Exists(modelPath) ? modelPath : string.Empty,
+                Sharpe = 0.0m,
+                WinRate = 0.0m,
+                MaxDrawdown = 0.0m,
+                IsPromoted = true,
+                PromotedAt = DateTime.UtcNow
+            };
+
+            await _modelRegistry.RegisterModelAsync(model, cancellationToken).ConfigureAwait(false);
+            await _modelRegistry.PromoteToChampionAsync(algorithm, model.VersionId, new PromotionRecord
+            {
+                Id = Guid.NewGuid().ToString(),
+                PromotedAt = DateTime.UtcNow,
+                Reason = "Bootstrap: Initial champion registration"
+            }, cancellationToken).ConfigureAwait(false);
+
+            _logger.LogInformation("  ✅ Registered {Algorithm} champion", algorithm);
+        }
+        catch (Exception ex)
         {
-            Id = Guid.NewGuid().ToString(),
-            PromotedAt = DateTime.UtcNow,
-            Reason = "Bootstrap: Initial champion registration"
-        }, cancellationToken).ConfigureAwait(false);
-
-        _logger.LogInformation("  ✅ Registered {Algorithm} champion", algorithm);
+            _logger.LogWarning(ex, "  ⚠️ Failed to register {Algorithm} champion (may already exist)", algorithm);
+        }
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;

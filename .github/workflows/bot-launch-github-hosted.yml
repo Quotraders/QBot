@@ -1,4 +1,4 @@
-name: "🚀 Bot Launch - GitHub Hosted"
+name: "🚀 Bot Launch - Self-Hosted Runner"
 
 on:
   workflow_dispatch:
@@ -42,7 +42,7 @@ env:
 jobs:
   launch-bot:
     name: "Launch Trading Bot with Full Diagnostics"
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 70  # Covers max runtime (60min) + startup/shutdown buffer
     
     steps:

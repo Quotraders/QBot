@@ -252,9 +252,9 @@ namespace BotCore.Services
                     return correlationBars;
                 }
 
-                // NO SYNTHETIC DATA - Fail if no real historical data available
-                _logger.LogError("[HISTORICAL-BRIDGE] NO real historical data available for {ContractId}. Cannot proceed without real data.", contractId);
-                throw new InvalidOperationException($"[HISTORICAL-BRIDGE] No real historical data available for {contractId}. Synthetic data generation removed.");
+                // NO SYNTHETIC DATA - Log warning but return empty list (don't throw exception)
+                _logger.LogWarning("[HISTORICAL-BRIDGE] NO real historical data available for {ContractId}. Bot will wait for live data.", contractId);
+                return new List<BotCore.Models.Bar>();
             }
             catch (InvalidOperationException ex)
             {
