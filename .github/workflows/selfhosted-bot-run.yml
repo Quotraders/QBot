@@ -24,7 +24,7 @@ env:
 jobs:
   run-bot:
     name: "Run Trading Bot"
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: ${{ fromJSON(github.event.inputs.timeout_minutes || '5') + 5 }}
     
     steps:
