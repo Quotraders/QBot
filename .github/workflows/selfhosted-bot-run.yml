@@ -1,6 +1,9 @@
 name: "🚀 Bot Execution Test"
 
 on:
+  push:
+    branches:
+      - 'copilot/fix-trading-bot-errors'
   workflow_dispatch:
     inputs:
       timeout_minutes:
