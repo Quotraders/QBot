@@ -169,6 +169,14 @@ jobs:
           Write-Output "⚠️ DRY_RUN mode: ${{ github.event.inputs.dry_run }}"
           Write-Output ""
           
+          # Create log capture directory BEFORE starting adapter
+          $LogDir = "$env:TEMP/qbot-bot-run-logs"
+          if (-not (Test-Path $LogDir)) {
+            New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+          }
+          
+          $Timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+          
           # Start Python TopstepX Adapter
           Write-Output "🐍 Starting Python TopstepX Adapter..."
           $PythonAdapterPath = "src/adapters/topstep_x_adapter.py"
@@ -211,13 +219,7 @@ jobs:
           }
           Write-Output ""
           
-          # Create log capture directory
-          $LogDir = "$env:TEMP/qbot-bot-run-logs"
-          if (-not (Test-Path $LogDir)) {
-            New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
-          }
-          
-          $Timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+          # Variables already defined above (before adapter startup)
           $LogFile = "$LogDir/bot-run-$Timestamp.log"
           
           Write-Output "📝 Bot output will be captured to: $LogFile"
