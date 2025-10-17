@@ -187,12 +187,38 @@ jobs:
           }
           
           # Find Python executable
+          $PythonExe = $null
+          
+          # Try to find Python in PATH first
           $PythonExe = (Get-Command python -ErrorAction SilentlyContinue).Source
           if (-not $PythonExe) {
             $PythonExe = (Get-Command python3 -ErrorAction SilentlyContinue).Source
           }
+          
+          # If not in PATH, try common installation locations
           if (-not $PythonExe) {
-            Write-Output "❌ ERROR: Python executable not found in PATH"
+            $CommonPaths = @(
+              "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe",
+              "$env:LOCALAPPDATA\Programs\Python\Python311\python.exe",
+              "$env:LOCALAPPDATA\Programs\Python\Python310\python.exe",
+              "C:\Python312\python.exe",
+              "C:\Python311\python.exe",
+              "C:\Python310\python.exe"
+            )
+            foreach ($Path in $CommonPaths) {
+              if (Test-Path $Path) {
+                $PythonExe = $Path
+                break
+              }
+            }
+          }
+          
+          if (-not $PythonExe) {
+            Write-Output "❌ ERROR: Python executable not found in PATH or common locations"
+            Write-Output "Checked locations:"
+            Write-Output "  - PATH (python, python3)"
+            Write-Output "  - $env:LOCALAPPDATA\Programs\Python\Python31x\python.exe"
+            Write-Output "  - C:\Python31x\python.exe"
             exit 1
           }
           Write-Output "Using Python: $PythonExe"
