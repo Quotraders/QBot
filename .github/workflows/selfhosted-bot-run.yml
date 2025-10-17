@@ -93,6 +93,27 @@ jobs:
           Write-Output ""
           Write-Output "=================================================="
 
+      - name: "🔍 Verify Build Output"
+        shell: pwsh
+        run: |
+          Write-Output "=================================================="
+          Write-Output "🔍 Verifying Build Output"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          $DllPath = "src/UnifiedOrchestrator/bin/Release/net8.0/UnifiedOrchestrator.dll"
+          
+          if (Test-Path $DllPath) {
+            Write-Output "✅ Build artifacts verified"
+            Write-Output "   UnifiedOrchestrator.dll: $((Get-Item $DllPath).Length / 1MB | ForEach-Object { '{0:N2}' -f $_ }) MB"
+          } else {
+            Write-Output "❌ Build artifacts NOT FOUND at: $DllPath"
+            exit 1
+          }
+          
+          Write-Output ""
+          Write-Output "=================================================="
+
       - name: "🚀 Run Trading Bot (with Error Capture)"
         id: bot_run
         shell: pwsh
@@ -162,19 +183,55 @@ jobs:
             Register-ObjectEvent -InputObject $Process -EventName OutputDataReceived -Action $OutputHandler | Out-Null
             Register-ObjectEvent -InputObject $Process -EventName ErrorDataReceived -Action $ErrorHandler | Out-Null
             
-            $Process.Start() | Out-Null
+            Write-Output "🔄 Starting process..."
+            $Started = $Process.Start()
+            if (-not $Started) {
+              Write-Output "❌ Failed to start process"
+              exit 1
+            }
+            
             $Process.BeginOutputReadLine()
             $Process.BeginErrorReadLine()
+            Write-Output "✅ Process started (PID: $($Process.Id))"
+            Write-Output ""
             
-            # Wait for process to exit or timeout (2 minutes)
+            # Wait for process to exit or timeout with periodic checks
             $TimeoutSeconds = 120
-            $Process.WaitForExit($TimeoutSeconds * 1000)
+            $CheckIntervalSeconds = 10
+            $ElapsedSeconds = 0
+            
+            Write-Output "⏱️ Waiting for bot to complete (timeout: $TimeoutSeconds seconds)..."
+            
+            while ($ElapsedSeconds -lt $TimeoutSeconds -and -not $Process.HasExited) {
+              Start-Sleep -Seconds $CheckIntervalSeconds
+              $ElapsedSeconds += $CheckIntervalSeconds
+              
+              # Show progress every 30 seconds
+              if ($ElapsedSeconds % 30 -eq 0) {
+                Write-Output "⏱️ Still running... ($ElapsedSeconds / $TimeoutSeconds seconds)"
+              }
+            }
             
             if (-not $Process.HasExited) {
               Write-Output ""
               Write-Output "⏱️ Bot execution timeout after $TimeoutSeconds seconds"
-              Write-Output "Stopping bot process..."
-              $Process.Kill()
+              Write-Output "🛑 Stopping bot process..."
+              
+              # Try graceful shutdown first
+              try {
+                $Process.CloseMainWindow() | Out-Null
+                Start-Sleep -Seconds 3
+              } catch {
+                Write-Output "⚠️ Could not close main window gracefully"
+              }
+              
+              # Force kill if still running
+              if (-not $Process.HasExited) {
+                Write-Output "🔨 Force stopping process..."
+                $Process.Kill($true)
+                Start-Sleep -Seconds 2
+              }
+              
               $ExitCode = -1
             } else {
               $ExitCode = $Process.ExitCode

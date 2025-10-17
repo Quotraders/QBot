@@ -4,6 +4,27 @@
 
 **⚠️ IMPORTANT: Only use `src/UnifiedOrchestrator` - all other entry points are disabled to prevent conflicts**
 
+---
+
+## 🤖 **NEW: Real-Time Debugging with GitHub Copilot**
+
+**Looking to launch your bot and have Copilot help you debug it in real-time?**
+
+📖 **[SOLUTION SUMMARY](SOLUTION_SUMMARY_COPILOT_DEBUGGING.md)** ← Complete overview of all options
+
+📖 **[Quick Start Guide](QUICK_START_COPILOT.md)** ← TL;DR version to get started fast
+
+📚 **[Complete Debugging Guide](COPILOT_REAL_TIME_DEBUGGING_GUIDE.md)** ← Comprehensive reference
+
+📝 **[Example Walkthrough](COPILOT_DEBUGGING_EXAMPLE.md)** ← Real-world scenarios
+
+**Quick commands:**
+- **Windows**: `.\quick-launch.ps1` or `.\launch-bot-diagnostic.ps1`
+- **VS Code**: Copy `.vscode-template/*` to `.vscode/`, then press `F5`
+- **GitHub Actions**: Use "🤖 Bot Launch Diagnostics" workflow
+
+---
+
 ### 🧠 **Enhanced Multi-Brain Architecture with Auto-Promotion**
 - **Primary Decision Engine**: EnhancedTradingBrainIntegration with UnifiedTradingBrain
 - **ML Algorithms**: Neural UCB (627 lines) + CVaR-PPO (1,026 lines) + LSTM
