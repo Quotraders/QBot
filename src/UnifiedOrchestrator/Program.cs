@@ -59,6 +59,31 @@ internal static class Program
     private const string TopstepXApiBaseUrl = "https://api.topstepx.com";
     private const string TopstepXUserAgent = "TopstepX-TradingBot/1.0";
 
+    /// <summary>
+    /// Helper method to safely parse boolean values from configuration that may be in 1/0 or true/false format
+    /// </summary>
+    private static bool GetBooleanValue(IConfiguration configuration, string key, bool defaultValue = true)
+    {
+        var value = configuration[key];
+        if (string.IsNullOrEmpty(value))
+        {
+            return defaultValue;
+        }
+        
+        // Handle numeric strings (1 = true, 0 = false)
+        if (value == "1") return true;
+        if (value == "0") return false;
+        
+        // Handle standard boolean strings
+        if (bool.TryParse(value, out var result))
+        {
+            return result;
+        }
+        
+        // Default fallback
+        return defaultValue;
+    }
+
     // Pre-host bootstrap function for idempotent setup
     private static void Bootstrap()
     {
@@ -324,7 +349,7 @@ This replaces individual SimpleBot/MinimalDemo/TradingBot smoke tests
             
             // Test 1: Configuration validation
             logger.LogInformation("🧪 [SMOKE] Test 1: Configuration validation");
-            var isDryRun = configuration.GetValue<bool>("DRY_RUN", true);
+            var isDryRun = GetBooleanValue(configuration, "DRY_RUN", true);
             if (!isDryRun)
             {
                 logger.LogWarning("🧪 [SMOKE] Warning: DRY_RUN is disabled - forcing DRY_RUN for smoke test");
@@ -879,7 +904,7 @@ Please check the configuration and ensure all required services are registered.
             ApiBase = Environment.GetEnvironmentVariable("TOPSTEPX_API_BASE") ?? TopstepXApiBaseUrl,
             AuthToken = "",  // Legacy JWT removed - SDK handles authentication
             AccountId = Environment.GetEnvironmentVariable("TOPSTEPX_ACCOUNT_ID") ?? "",
-            EnableDryRunMode = configuration.GetValue<bool>("DRY_RUN", defaultValue: true), // Single source
+            EnableDryRunMode = GetBooleanValue(configuration, "DRY_RUN", defaultValue: true), // Single source
             EnableAutoExecution = Environment.GetEnvironmentVariable("ENABLE_AUTO_EXECUTION") == "true",
             MaxDailyLoss = decimal.Parse(Environment.GetEnvironmentVariable("MAX_DAILY_LOSS") ?? "-1000"),
             MaxPositionSize = int.Parse(Environment.GetEnvironmentVariable("MAX_POSITION_SIZE") ?? "5"),
@@ -1313,7 +1338,7 @@ Please check the configuration and ensure all required services are registered.
                 MarketHubUrl = topstepXConfig["MarketHubUrl"] ?? Environment.GetEnvironmentVariable("RTC_MARKET_HUB") ?? "https://rtc.topstepx.com/hubs/market",
                 AccountId = Environment.GetEnvironmentVariable("TOPSTEPX_ACCOUNT_ID") ?? "",
                 ApiToken = "",  // Legacy JWT removed - SDK handles authentication
-                EnableDryRunMode = configuration.GetValue<bool>("DRY_RUN", defaultValue: true), // Single source
+                EnableDryRunMode = GetBooleanValue(configuration, "DRY_RUN", defaultValue: true), // Single source
                 EnableAutoExecution = Environment.GetEnvironmentVariable("ENABLE_AUTO_EXECUTION") == "true",
                 MaxDailyLoss = decimal.Parse(Environment.GetEnvironmentVariable("DAILY_LOSS_CAP_R") ?? "-1000"),
                 MaxPositionSize = decimal.Parse(Environment.GetEnvironmentVariable("MAX_POSITION_SIZE") ?? "5")
@@ -2322,7 +2347,10 @@ internal class AdvancedSystemInitializationService : IHostedService
             var configuration = _serviceProvider.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
             
             // Check DRY_RUN mode (single authoritative flag)
-            var dryRun = configuration.GetValue<bool>("DRY_RUN", defaultValue: true);
+            // Handle both 1/0 and true/false formats
+            var dryRunValue = configuration["DRY_RUN"];
+            var dryRun = string.IsNullOrEmpty(dryRunValue) ? true : 
+                        (dryRunValue == "1" || dryRunValue.Equals("true", StringComparison.OrdinalIgnoreCase));
             
             if (dryRun)
             {
