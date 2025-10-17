@@ -185,7 +185,8 @@ jobs:
           Write-Output ""
           
           # Run the bot and capture all output
-          $ProcessInfo = Start-Process -FilePath "dotnet" `
+          $DotnetPath = "C:\Program Files\dotnet\dotnet.exe"
+          $ProcessInfo = Start-Process -FilePath $DotnetPath `
             -ArgumentList "run", "--project", "src/UnifiedOrchestrator/UnifiedOrchestrator.csproj", "--no-build", "-c", "Release" `
             -NoNewWindow `
             -PassThru `
