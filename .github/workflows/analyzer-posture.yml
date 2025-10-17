@@ -2,6 +2,8 @@ name: Analyzer Posture Gate
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    branches:
+      - main  # Only run on PRs targeting main branch
 permissions:
   contents: read
 jobs:
