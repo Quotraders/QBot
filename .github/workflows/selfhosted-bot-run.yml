@@ -1,13 +1,8 @@
-name: "🚀 Bot Execution Test"
+name: "🚀 Bot Continuous Execution"
 
 on:
   workflow_dispatch:
     inputs:
-      timeout_minutes:
-        description: 'Bot execution timeout (minutes)'
-        required: false
-        default: '5'
-        type: string
       dry_run:
         description: 'Enable DRY_RUN mode (paper trading)'
         required: false
@@ -25,7 +20,7 @@ jobs:
   run-bot:
     name: "Run Trading Bot on Self-Hosted Runner"
     runs-on: [self-hosted, Windows, X64]
-    timeout-minutes: ${{ fromJSON(github.event.inputs.timeout_minutes || '5') }}
+    # No timeout - let bot run continuously
     
     steps:
       - name: "📥 Checkout Repository"
@@ -278,48 +273,34 @@ jobs:
           Write-Output "✅ Process started (PID: $BotPID)"
           Write-Output ""
           
-          # Wait for process to exit or timeout
-          $TimeoutSeconds = 120
-          $CheckInterval = 10
-          $Elapsed = 0
-          
-          Write-Output "⏱️ Waiting for bot to complete (timeout: $TimeoutSeconds seconds)..."
+          # Wait for process to complete (no timeout - runs until stopped or crashes)
+          Write-Output "🚀 Bot is running continuously. Press Ctrl+C or cancel workflow to stop."
+          Write-Output "📊 Monitoring bot process..."
+          Write-Output ""
           
           $ExitCode = $null
-          while ($Elapsed -lt $TimeoutSeconds) {
+          $CheckInterval = 30
+          $Elapsed = 0
+          
+          # Monitor bot process indefinitely
+          while ($true) {
             $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
             if (-not $BotProcess) {
+              # Bot process exited (either cleanly or crashed)
               $ExitCode = $ProcessInfo.ExitCode
+              Write-Output ""
+              Write-Output "⚠️ Bot process exited after $Elapsed seconds"
               break
             }
             
             Start-Sleep -Seconds $CheckInterval
             $Elapsed += $CheckInterval
             
-            # Show progress every 30 seconds
-            if (($Elapsed % 30) -eq 0) {
-              Write-Output "⏱️ Still running... ($Elapsed / $TimeoutSeconds seconds)"
+            # Show progress every 5 minutes
+            if (($Elapsed % 300) -eq 0) {
+              $Minutes = [math]::Floor($Elapsed / 60)
+              Write-Output "✅ Bot still running... (${Minutes} minutes elapsed)"
             }
-          }
-          
-          # Stop if timeout reached
-          $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
-          if ($BotProcess) {
-            Write-Output ""
-            Write-Output "⏱️ Bot execution timeout after $TimeoutSeconds seconds"
-            Write-Output "🛑 Stopping bot process..."
-            
-            Stop-Process -Id $BotPID -ErrorAction SilentlyContinue
-            Start-Sleep -Seconds 3
-            
-            $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
-            if ($BotProcess) {
-              Write-Output "🔨 Force stopping process..."
-              Stop-Process -Id $BotPID -Force -ErrorAction SilentlyContinue
-              Start-Sleep -Seconds 2
-            }
-            
-            $ExitCode = -1
           }
           
           # Cleanup: Stop Python adapter
