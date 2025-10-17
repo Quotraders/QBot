@@ -19,6 +19,12 @@ from typing import Dict, List, Optional, Any
 from contextlib import asynccontextmanager
 from collections import deque
 
+# Fix Windows console encoding for emoji support
+if sys.platform == 'win32':
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, errors='replace')
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, errors='replace')
+
 # Import the real project-x-py SDK - fail hard if not available
 try:
     import project_x_py
@@ -1994,10 +2000,37 @@ if __name__ == "__main__":
             try:
                 # Initialize adapter once
                 adapter = TopstepXAdapter(["ES", "NQ"])
-                await adapter.initialize()
                 
-                # Send initialization success
-                print(json.dumps({"type": "init", "success": True, "message": "Adapter initialized"}), flush=True)
+                # Try to initialize - but DON'T block on WebSocket
+                try:
+                    await asyncio.wait_for(adapter.initialize(), timeout=20.0)
+                    init_success = True
+                    init_error = None
+                except asyncio.TimeoutError:
+                    init_success = False
+                    init_error = "Initialization timeout (20s) - WebSocket may have hung"
+                    logger.warning(f"⚠️ {init_error}")
+                except Exception as e:
+                    init_success = False
+                    init_error = f"{type(e).__name__}: {str(e)}"
+                    logger.error(f"❌ Initialization failed: {init_error}")
+                
+                # ALWAYS send init marker - even if initialization failed!
+                # Bot can still work with REST API only (no WebSocket)
+                init_message = {
+                    "type": "init",
+                    "success": init_success,
+                    "message": "===ADAPTER_READY===",  # MUST be present!
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "instruments": adapter.instruments,
+                    "error": init_error
+                }
+                print(json.dumps(init_message), flush=True)
+                sys.stderr.write(f"===ADAPTER_READY===\n")  # MUST be on stderr!
+                sys.stderr.flush()
+                
+                if not init_success:
+                    logger.warning("⚠️ Adapter initialized with degraded functionality - REST API only")
                 
                 # Create async stdin reader
                 loop = asyncio.get_event_loop()
