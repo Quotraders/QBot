@@ -1067,7 +1067,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             
             // Wait for initialization message FIRST (before starting continuous reader)
             _logger.LogInformation("[PERSISTENT] Waiting for Python adapter initialization...");
-            var initTimeout = TimeSpan.FromSeconds(60); // Increased from 30s - TopstepX WebSocket connection takes 12-15s
+            var initTimeout = TimeSpan.FromSeconds(120); // Increased to 120s - TopstepX WebSocket can be slow on Windows with retries
             var initCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             initCts.CancelAfter(initTimeout);
             

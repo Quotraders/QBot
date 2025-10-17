@@ -561,14 +561,28 @@ class TopstepXAdapter:
                 # CRITICAL: Initialize WebSocket connection for real-time data streaming with timeout
                 self.logger.info(f"🔌 Initializing WebSocket connection for {instrument}...")
                 if hasattr(suite, '_initialize'):
-                    try:
-                        # Add timeout to prevent hanging - WebSocket should connect within 30 seconds
-                        await asyncio.wait_for(suite._initialize(), timeout=30.0)
-                        self.logger.info(f"✅ WebSocket connection initialized for {instrument}")
-                    except asyncio.TimeoutError:
-                        self.logger.warning(f"⚠️ WebSocket initialization timed out for {instrument} - will continue without WebSocket")
-                    except Exception as e:
-                        self.logger.warning(f"⚠️ WebSocket initialization failed for {instrument}: {e} - will continue without WebSocket")
+                    # Try initialization with retries and exponential backoff
+                    max_retries = 3
+                    for attempt in range(max_retries):
+                        try:
+                            # Increase timeout to 60s for slow connections (Windows can be slow)
+                            await asyncio.wait_for(suite._initialize(), timeout=60.0)
+                            self.logger.info(f"✅ WebSocket connection initialized for {instrument} on attempt {attempt + 1}")
+                            break
+                        except asyncio.TimeoutError:
+                            if attempt < max_retries - 1:
+                                retry_delay = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                                self.logger.warning(f"⚠️ WebSocket initialization timed out for {instrument} (attempt {attempt + 1}/{max_retries}), retrying in {retry_delay}s...")
+                                await asyncio.sleep(retry_delay)
+                            else:
+                                self.logger.error(f"❌ WebSocket initialization failed after {max_retries} attempts for {instrument} - will continue without WebSocket")
+                        except Exception as e:
+                            if attempt < max_retries - 1:
+                                retry_delay = 2 ** attempt
+                                self.logger.warning(f"⚠️ WebSocket initialization error for {instrument} (attempt {attempt + 1}/{max_retries}): {e}, retrying in {retry_delay}s...")
+                                await asyncio.sleep(retry_delay)
+                            else:
+                                self.logger.error(f"❌ WebSocket initialization failed after {max_retries} attempts for {instrument}: {e} - will continue without WebSocket")
                 else:
                     self.logger.warning(f"⚠️ Suite does not have _initialize method - WebSocket may not connect")
                 
@@ -637,10 +651,10 @@ class TopstepXAdapter:
                 # Access the suite for this instrument from our suites dictionary
                 suite = self.suites[instrument]
                 # Use subscript notation as required by TopstepX SDK v3.5.9+
-                # Add timeout to prevent hanging on connection tests
+                # Increase timeout to 30s for slow connections
                 current_price = await asyncio.wait_for(
                     suite[instrument].data.get_current_price(),
-                    timeout=10.0
+                    timeout=30.0
                 )
                 self.logger.info(f"✅ {instrument} connected - Current price: ${current_price:.2f}")
                 return current_price
@@ -662,8 +676,8 @@ class TopstepXAdapter:
             self.logger.warning(f"⚠️ No instruments connected yet - WebSocket may still be establishing connection")
         
             # Give WebSocket extra time to establish connection (SDK can be slow on Windows)
-        self.logger.info("⏳ Waiting 2 seconds for WebSocket connection to stabilize...")
-        await asyncio.sleep(2)
+        self.logger.info("⏳ Waiting 5 seconds for WebSocket connection to stabilize...")
+        await asyncio.sleep(5)
         
         # Test risk management system with retry policy
         async def _test_risk_management():
