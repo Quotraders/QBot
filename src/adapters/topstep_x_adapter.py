@@ -2100,69 +2100,69 @@ if __name__ == "__main__":
                                     adapter.get_portfolio_status(),
                                     timeout=10.0
                                 )
-                        
-                        elif action == "get_fill_events":
-                            result = await adapter.get_fill_events()
-                        
-                        elif action == "get_bar_events":
-                            result = await adapter.get_bar_events()
-                        
-                        elif action == "place_order":
-                            result = await adapter.place_order(
-                                cmd_data["symbol"],
-                                cmd_data["size"],
-                                cmd_data["stop_loss"],
-                                cmd_data["take_profit"],
-                                cmd_data.get("max_risk_percent", 0.01)
-                            )
-                        
-                        elif action == "get_positions":
-                            positions = await adapter.get_positions()
-                            result = {"success": True, "positions": positions}
-                        
-                        elif action == "close_position":
-                            result = await adapter.close_position(
-                                cmd_data["symbol"],
-                                cmd_data.get("quantity")
-                            )
-                        
-                        elif action == "modify_stop_loss":
-                            result = await adapter.modify_stop_loss(
-                                cmd_data["symbol"],
-                                float(cmd_data["stop_price"])
-                            )
-                        
-                        elif action == "modify_take_profit":
-                            result = await adapter.modify_take_profit(
-                                cmd_data["symbol"],
-                                float(cmd_data["take_profit_price"])
-                            )
-                        
-                        elif action == "cancel_order":
-                            result = await adapter.cancel_order(cmd_data["order_id"])
-                        
-                        elif action == "cancel_all_orders":
-                            result = await adapter.cancel_all_orders(cmd_data.get("symbol"))
-                        
-                        elif action == "fetch_historical_bars":
-                            # Parse dates if provided
-                            start_date = None
-                            end_date = None
-                            if "start_date" in cmd_data:
-                                start_date = datetime.fromisoformat(cmd_data["start_date"])
-                            if "end_date" in cmd_data:
-                                end_date = datetime.fromisoformat(cmd_data["end_date"])
                             
-                            result = await adapter.fetch_historical_bars(
-                                symbol=cmd_data["symbol"],
-                                timeframe=cmd_data.get("interval", cmd_data.get("timeframe", 5)),
-                                start_date=start_date,
-                                end_date=end_date,
-                                limit=cmd_data.get("limit", 1000)
-                            )
-                        
-                        else:
-                            result = {"success": False, "error": f"Unknown action: {action}"}
+                            elif action == "get_fill_events":
+                                result = await adapter.get_fill_events()
+                            
+                            elif action == "get_bar_events":
+                                result = await adapter.get_bar_events()
+                            
+                            elif action == "place_order":
+                                result = await adapter.place_order(
+                                    cmd_data["symbol"],
+                                    cmd_data["size"],
+                                    cmd_data["stop_loss"],
+                                    cmd_data["take_profit"],
+                                    cmd_data.get("max_risk_percent", 0.01)
+                                )
+                            
+                            elif action == "get_positions":
+                                positions = await adapter.get_positions()
+                                result = {"success": True, "positions": positions}
+                            
+                            elif action == "close_position":
+                                result = await adapter.close_position(
+                                    cmd_data["symbol"],
+                                    cmd_data.get("quantity")
+                                )
+                            
+                            elif action == "modify_stop_loss":
+                                result = await adapter.modify_stop_loss(
+                                    cmd_data["symbol"],
+                                    float(cmd_data["stop_price"])
+                                )
+                            
+                            elif action == "modify_take_profit":
+                                result = await adapter.modify_take_profit(
+                                    cmd_data["symbol"],
+                                    float(cmd_data["take_profit_price"])
+                                )
+                            
+                            elif action == "cancel_order":
+                                result = await adapter.cancel_order(cmd_data["order_id"])
+                            
+                            elif action == "cancel_all_orders":
+                                result = await adapter.cancel_all_orders(cmd_data.get("symbol"))
+                            
+                            elif action == "fetch_historical_bars":
+                                # Parse dates if provided
+                                start_date = None
+                                end_date = None
+                                if "start_date" in cmd_data:
+                                    start_date = datetime.fromisoformat(cmd_data["start_date"])
+                                if "end_date" in cmd_data:
+                                    end_date = datetime.fromisoformat(cmd_data["end_date"])
+                                
+                                result = await adapter.fetch_historical_bars(
+                                    symbol=cmd_data["symbol"],
+                                    timeframe=cmd_data.get("interval", cmd_data.get("timeframe", 5)),
+                                    start_date=start_date,
+                                    end_date=end_date,
+                                    limit=cmd_data.get("limit", 1000)
+                                )
+                            
+                            else:
+                                result = {"success": False, "error": f"Unknown action: {action}"}
                         
                             
                             # Send response
