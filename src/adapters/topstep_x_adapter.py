@@ -1139,8 +1139,11 @@ class TopstepXAdapter:
         """
             
         try:
-            # Get suite statistics
-            stats = await self.suite.get_stats()
+            # Get suite statistics with timeout
+            stats = await asyncio.wait_for(
+                self.suite.get_stats(),
+                timeout=5.0
+            )
             
             # Calculate connection health for each instrument
             instrument_health = {}
@@ -1187,9 +1190,15 @@ class TopstepXAdapter:
             # 2. Authentication validity check (lightweight API call)
             auth_valid = True
             try:
-                # Try getting stats as a lightweight auth check
-                test_stats = await self.suite.get_stats()
+                # Try getting stats as a lightweight auth check with timeout
+                test_stats = await asyncio.wait_for(
+                    self.suite.get_stats(),
+                    timeout=5.0
+                )
                 auth_valid = test_stats is not None
+            except asyncio.TimeoutError:
+                self.logger.warning(f"Auth validity check timed out")
+                auth_valid = False
             except Exception as e:
                 self.logger.warning(f"Auth validity check failed: {e}")
                 auth_valid = False
@@ -2070,17 +2079,27 @@ if __name__ == "__main__":
                             print(json.dumps({"type": "response", "action": "shutdown", "success": True}), flush=True)
                             break
                         
-                        # Process command and send response
+                        # Process command and send response with timeout
                         result = None
-                        if action == "get_price":
-                            price = await adapter.get_price(cmd_data["symbol"])
-                            result = {"success": True, "price": price}
-                        
-                        elif action == "get_health_score":
-                            result = await adapter.get_health_score()
-                        
-                        elif action == "get_portfolio_status":
-                            result = await adapter.get_portfolio_status()
+                        try:
+                            if action == "get_price":
+                                price = await asyncio.wait_for(
+                                    adapter.get_price(cmd_data["symbol"]),
+                                    timeout=10.0
+                                )
+                                result = {"success": True, "price": price}
+                            
+                            elif action == "get_health_score":
+                                result = await asyncio.wait_for(
+                                    adapter.get_health_score(),
+                                    timeout=10.0
+                                )
+                            
+                            elif action == "get_portfolio_status":
+                                result = await asyncio.wait_for(
+                                    adapter.get_portfolio_status(),
+                                    timeout=10.0
+                                )
                         
                         elif action == "get_fill_events":
                             result = await adapter.get_fill_events()
@@ -2145,9 +2164,14 @@ if __name__ == "__main__":
                         else:
                             result = {"success": False, "error": f"Unknown action: {action}"}
                         
-                        # Send response
-                        response = {"type": "response", "action": action, **result}
-                        print(json.dumps(response), flush=True)
+                            
+                            # Send response
+                            response = {"type": "response", "action": action, **result}
+                            print(json.dumps(response), flush=True)
+                        
+                        except asyncio.TimeoutError:
+                            error_response = {"type": "error", "action": action, "error": f"Command '{action}' timed out"}
+                            print(json.dumps(error_response), flush=True)
                     
                     except json.JSONDecodeError as e:
                         error_response = {"type": "error", "error": f"Invalid JSON: {str(e)}"}
