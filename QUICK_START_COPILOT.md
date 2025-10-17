@@ -26,9 +26,17 @@ dotnet run --project src/UnifiedOrchestrator/UnifiedOrchestrator.csproj
 ```
 
 ### VS Code (Any Platform)
-1. Open folder in VS Code: `code .`
-2. Press **F5** to launch with debugger
-3. Or use **Terminal → Run Task → run-orchestrator**
+1. **Copy VS Code templates** (one-time setup):
+   ```bash
+   # Windows
+   Copy-Item -Path .vscode-template/* -Destination .vscode/ -Force
+   
+   # Linux/macOS
+   cp -r .vscode-template/* .vscode/
+   ```
+2. Open folder in VS Code: `code .`
+3. Press **F5** to launch with debugger
+4. Or use **Terminal → Run Task → run-orchestrator**
 
 ---
 
@@ -200,9 +208,12 @@ The more context you provide (error messages, configuration, logs), the better C
 
 ## 🆘 Need More Help?
 
+- **Quick start**: [QUICK_START_COPILOT.md](QUICK_START_COPILOT.md)
+- **Example walkthrough**: [COPILOT_DEBUGGING_EXAMPLE.md](COPILOT_DEBUGGING_EXAMPLE.md)
 - **Comprehensive guide**: [COPILOT_REAL_TIME_DEBUGGING_GUIDE.md](COPILOT_REAL_TIME_DEBUGGING_GUIDE.md)
 - **Bot architecture**: See the guide's "Understanding Your Bot Architecture" section
 - **Troubleshooting**: See the guide's "Troubleshooting Common Issues" section
+- **VS Code setup**: See `.vscode-template/README.md`
 - **Ask Copilot**: Create a GitHub issue with logs and tag `@copilot`
 
 ---

@@ -682,6 +682,8 @@ Before asking Copilot for help, verify:
 
 ## 📚 Additional Resources
 
+- **[Quick Start Guide](QUICK_START_COPILOT.md)** - TL;DR version to get started fast
+- **[Example Walkthrough](COPILOT_DEBUGGING_EXAMPLE.md)** - Real-world debugging scenarios
 - **TopstepX API Docs**: https://docs.topstepx.com/
 - **project-x-py SDK**: https://github.com/topstepx/project-x-py
 - **Bot Architecture**: See `PRODUCTION_ARCHITECTURE.md`
