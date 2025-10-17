@@ -39,11 +39,12 @@ jobs:
       #   with:
       #     dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: "🐍 Setup Python Environment"
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
+      # Skip Python setup - self-hosted runner already has Python 3.11 installed
+      # - name: "🐍 Setup Python Environment"
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: '3.11'
+      #     cache: 'pip'
 
       - name: "📦 Install Python Dependencies"
         shell: pwsh
@@ -51,6 +52,10 @@ jobs:
           Write-Output "=================================================="
           Write-Output "📦 Installing Python Dependencies"
           Write-Output "=================================================="
+          Write-Output ""
+          
+          # Verify Python is available
+          python --version
           Write-Output ""
           
           # Upgrade pip
