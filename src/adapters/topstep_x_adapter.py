@@ -198,7 +198,8 @@ class TopstepXAdapter:
         # Configure production logging
         self.logger = logging.getLogger(f"TopstepXAdapter-{'-'.join(instruments)}")
         if not self.logger.handlers:
-            handler = logging.StreamHandler()
+            # Send logs to stderr to avoid interfering with stdout JSON communication
+            handler = logging.StreamHandler(sys.stderr)
             formatter = logging.Formatter(
                 '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
             )
@@ -507,7 +508,8 @@ class TopstepXAdapter:
         logger.setLevel(logging.INFO)
         
         if not logger.handlers:
-            handler = logging.StreamHandler()
+            # Send logs to stderr to avoid interfering with stdout JSON communication
+            handler = logging.StreamHandler(sys.stderr)
             formatter = logging.Formatter(
                 '[%(asctime)s] %(levelname)s [%(name)s] %(message)s'
             )
@@ -2056,6 +2058,25 @@ if __name__ == "__main__":
     
     # Check for persistent/streaming mode
     if len(sys.argv) > 1 and sys.argv[1] == "stream":
+        # Configure SDK logging to stderr BEFORE initializing adapter
+        # This ensures SDK's structured JSON logs don't interfere with stdout communication
+        sdk_logger = logging.getLogger('project_x_py')
+        sdk_logger.setLevel(logging.INFO)
+        # Remove any existing handlers to avoid duplication
+        sdk_logger.handlers.clear()
+        # Add stderr handler only
+        stderr_handler = logging.StreamHandler(sys.stderr)
+        stderr_handler.setFormatter(logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        ))
+        sdk_logger.addHandler(stderr_handler)
+        
+        # Also configure root logger to stderr
+        root_logger = logging.getLogger()
+        root_logger.handlers.clear()
+        root_logger.addHandler(stderr_handler)
+        root_logger.setLevel(logging.INFO)
+        
         # PERSISTENT MODE: Keep adapter alive and process commands via stdin/stdout
         async def persistent_mode():
             """Run adapter in persistent mode with stdin/stdout communication."""
