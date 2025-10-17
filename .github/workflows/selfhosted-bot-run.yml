@@ -1,6 +1,9 @@
 name: "🚀 Bot Execution Test"
 
 on:
+  push:
+    branches:
+      - 'copilot/fix-trading-bot-errors'
   workflow_dispatch:
     inputs:
       timeout_minutes:
@@ -62,8 +65,8 @@ jobs:
           # Create .env file from secrets
           @"
           # Trading Mode Configuration
-          DRY_RUN=${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
-          ENABLE_DRY_RUN=${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
+          DRY_RUN=${{ github.event.inputs.dry_run == 'true' && '1' || github.event.inputs.dry_run == 'false' && '0' || '1' }}
+          ENABLE_DRY_RUN=${{ github.event.inputs.dry_run == 'true' && '1' || github.event.inputs.dry_run == 'false' && '0' || '1' }}
           LIVE_ORDERS=0
           
           # TopstepX API Configuration
@@ -165,10 +168,19 @@ jobs:
             }
           }
           
-          # Override with DRY_RUN from input
-          $env:DRY_RUN = if ("${{ github.event.inputs.dry_run }}" -eq "true") { "1" } else { "0" }
-          $env:ENABLE_DRY_RUN = if ("${{ github.event.inputs.dry_run }}" -eq "true") { "1" } else { "0" }
-          Write-Output "⚠️ DRY_RUN mode: ${{ github.event.inputs.dry_run }}"
+          # Override with DRY_RUN from input (defaults to true for push events)
+          $dryRunInput = "${{ github.event.inputs.dry_run }}"
+          if ($dryRunInput -eq "") {
+            # Push event - default to DRY_RUN=1 (paper trading)
+            $env:DRY_RUN = "1"
+            $env:ENABLE_DRY_RUN = "1"
+            Write-Output "⚠️ DRY_RUN mode: true (default for auto-triggered workflow)"
+          } else {
+            # Manual dispatch - use input value
+            $env:DRY_RUN = if ($dryRunInput -eq "true") { "1" } else { "0" }
+            $env:ENABLE_DRY_RUN = if ($dryRunInput -eq "true") { "1" } else { "0" }
+            Write-Output "⚠️ DRY_RUN mode: $dryRunInput (from workflow input)"
+          }
           Write-Output ""
           
           # Set required Python/SDK environment variables
