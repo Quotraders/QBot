@@ -151,13 +151,8 @@ jobs:
         id: bot_run
         continue-on-error: true
         shell: pwsh
-        env:
-          TOPSTEPX_API_KEY: ${{ secrets.TOPSTEPX_API_KEY }}
-          TOPSTEPX_USERNAME: ${{ secrets.TOPSTEPX_USERNAME }}
-          TOPSTEPX_ACCOUNT_ID: ${{ secrets.TOPSTEPX_ACCOUNT_ID }}
-          TOPSTEPX_ACCOUNT_NAME: ${{ secrets.TOPSTEPX_ACCOUNT_NAME }}
-          PROJECT_X_API_KEY: ${{ secrets.TOPSTEPX_API_KEY }}
-          PROJECT_X_USERNAME: ${{ secrets.TOPSTEPX_USERNAME }}
+        # Note: Environment variables will be loaded from .env file (self-hosted runner)
+        # Do not define TOPSTEPX_* env vars here as they would override .env with empty values
         run: |
           Write-Output "=================================================="
           Write-Output "🚀 Starting Trading Bot"
