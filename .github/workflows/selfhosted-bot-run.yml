@@ -24,7 +24,7 @@ jobs:
   run-bot:
     name: "Run Trading Bot on Self-Hosted Runner"
     runs-on: [self-hosted, Windows, X64]
-    timeout-minutes: 6  # Extended timeout to see more bot execution
+    timeout-minutes: 7  # Extended timeout for full bot execution analysis
     
     steps:
       - name: "📥 Checkout Repository"
