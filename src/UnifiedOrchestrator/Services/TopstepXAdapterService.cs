@@ -78,12 +78,6 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
     
     // BAR EVENT STREAMING: Bar event callback for data integration
     public event EventHandler<BarEventData>? BarEventReceived;
-    
-    // HTTP MODE: HTTP client for REST API communication
-    private HttpClient? _httpClient;
-    private Task? _eventPollingTask;
-    private readonly CancellationTokenSource _httpPollingCts = new();
-    private bool _useHttpMode;
 
     public TopstepXAdapterService(
         ILogger<TopstepXAdapterService> logger,
@@ -148,27 +142,15 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
 
             try
             {
-                // Determine mode from configuration
-                _useHttpMode = _config.AdapterMode?.Equals("http", StringComparison.OrdinalIgnoreCase) ?? true;
+                _logger.LogInformation("🚀 Initializing TopstepX Python SDK adapter in PERSISTENT mode...");
                 
-                if (_useHttpMode)
-                {
-                    _logger.LogInformation("🚀 Initializing TopstepX Python SDK adapter in HTTP mode...");
-                    await InitializeHttpModeAsync(cancellationToken).ConfigureAwait(false);
-                    _logger.LogInformation("✅ TopstepX adapter initialized successfully in HTTP mode");
-                }
-                else
-                {
-                    _logger.LogInformation("🚀 Initializing TopstepX Python SDK adapter in PERSISTENT mode...");
-                    
-                    // Validate Python SDK is available
-                    await ValidatePythonSDKAsync(cancellationToken).ConfigureAwait(false);
+                // Validate Python SDK is available
+                await ValidatePythonSDKAsync(cancellationToken).ConfigureAwait(false);
 
-                    // Start persistent Python process
-                    await StartPersistentPythonProcessAsync(cancellationToken).ConfigureAwait(false);
-                    
-                    _logger.LogInformation("✅ TopstepX adapter initialized successfully in PERSISTENT mode - single Python process running");
-                }
+                // Start persistent Python process
+                await StartPersistentPythonProcessAsync(cancellationToken).ConfigureAwait(false);
+                
+                _logger.LogInformation("✅ TopstepX adapter initialized successfully in PERSISTENT mode - single Python process running");
                 
                 _isInitialized = true;
                 _connectionHealth = 100.0;
@@ -199,17 +181,8 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
 
         try
         {
-            JsonElement result;
-            
-            if (_useHttpMode)
-            {
-                result = await SendHttpRequestAsync("GET", $"/price/{symbol}", cancellationToken: cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                var parameters = new { symbol };
-                result = await SendPersistentCommandAsync("get_price", parameters, cancellationToken).ConfigureAwait(false);
-            }
+            var parameters = new { symbol };
+            var result = await SendPersistentCommandAsync("get_price", parameters, cancellationToken).ConfigureAwait(false);
             
             if (result.TryGetProperty("price", out var priceElement))
             {
@@ -277,16 +250,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 max_risk_percent = 0.01
             };
             
-            JsonElement result;
-            
-            if (_useHttpMode)
-            {
-                result = await SendHttpRequestAsync("POST", "/order", parameters, cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                result = await SendPersistentCommandAsync("place_order", parameters, cancellationToken).ConfigureAwait(false);
-            }
+            var result = await SendPersistentCommandAsync("place_order", parameters, cancellationToken).ConfigureAwait(false);
             
             var success = result.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
             var orderId = result.TryGetProperty("order_id", out var orderIdElement) ? orderIdElement.GetString() : null;
@@ -338,31 +302,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
         {
             JsonElement result;
             
-            if (_useHttpMode)
-            {
-                // HTTP mode - call /health endpoint
-                result = await SendHttpRequestAsync("GET", "/health", cancellationToken: cancellationToken).ConfigureAwait(false);
-                
-                // Parse HTTP response (different structure)
-                var httpHealthScore = result.TryGetProperty("health_score", out var httpScoreElement) ? httpScoreElement.GetInt32() : 
-                                      (result.TryGetProperty("details", out var detailsElement) && 
-                                       detailsElement.TryGetProperty("health_score", out var detailScoreElement) ? 
-                                       detailScoreElement.GetInt32() : 0);
-                var httpStatus = result.TryGetProperty("status", out var httpStatusElement) ? httpStatusElement.GetString()! : "unknown";
-                var httpInitialized = result.TryGetProperty("initialized", out var httpInitElement) && httpInitElement.GetBoolean();
-                
-                _connectionHealth = httpHealthScore;
-                
-                return new HealthScoreResult(
-                    httpHealthScore,
-                    httpStatus,
-                    new Dictionary<string, object>(),
-                    new Dictionary<string, object>(),
-                    DateTime.UtcNow,
-                    httpInitialized
-                );
-            }
-            else if (_pythonProcess != null && !_pythonProcess.HasExited)
+            if (_pythonProcess != null && !_pythonProcess.HasExited)
             {
                 // Use persistent process via stdin/stdout communication
                 result = await SendPersistentCommandAsync("get_health_score", cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -441,21 +381,8 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
         {
             JsonElement result;
             
-            if (_useHttpMode)
-            {
-                result = await SendHttpRequestAsync("GET", "/portfolio", cancellationToken: cancellationToken).ConfigureAwait(false);
-                
-                // Extract portfolio from HTTP response  
-                if (result.TryGetProperty("portfolio", out var httpPortfolioElement))
-                {
-                    result = httpPortfolioElement;
-                }
-            }
-            else
-            {
-                // FIX: Use persistent connection instead of spawning new ephemeral process
-                result = await SendPersistentCommandAsync("get_portfolio_status", cancellationToken: cancellationToken).ConfigureAwait(false);
-            }
+            // Use persistent connection
+            result = await SendPersistentCommandAsync("get_portfolio_status", cancellationToken: cancellationToken).ConfigureAwait(false);
             
             var portfolio = new Dictionary<string, object>();
             var positions = new Dictionary<string, PositionInfo>();
@@ -520,16 +447,7 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 quantity
             };
 
-            JsonElement result;
-            
-            if (_useHttpMode)
-            {
-                result = await SendHttpRequestAsync("POST", "/close_position", parameters, cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                result = await SendPersistentCommandAsync("close_position", parameters, cancellationToken).ConfigureAwait(false);
-            }
+            var result = await SendPersistentCommandAsync("close_position", parameters, cancellationToken).ConfigureAwait(false);
             
             var success = result.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
             
@@ -575,28 +493,19 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 stop_price = stopPrice
             };
 
-            JsonElement result;
-            
-            if (_useHttpMode)
+            var command = new
             {
-                result = await SendHttpRequestAsync("POST", "/modify_stop", parameters, cancellationToken).ConfigureAwait(false);
-            }
-            else
+                action = "modify_stop_loss",
+                symbol,
+                stop_price = stopPrice
+            };
+            var cmdResult = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
+            if (!cmdResult.Success || !cmdResult.Data.HasValue)
             {
-                var command = new
-                {
-                    action = "modify_stop_loss",
-                    symbol,
-                    stop_price = stopPrice
-                };
-                var cmdResult = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
-                if (!cmdResult.Success || !cmdResult.Data.HasValue)
-                {
-                    _logger.LogError("❌ Invalid response from Python adapter for modify stop loss");
-                    return false;
-                }
-                result = cmdResult.Data.Value;
+                _logger.LogError("❌ Invalid response from Python adapter for modify stop loss");
+                return false;
             }
+            var result = cmdResult.Data.Value;
             
             var success = result.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
             
@@ -642,28 +551,19 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 take_profit_price = takeProfitPrice
             };
 
-            JsonElement result;
-            
-            if (_useHttpMode)
+            var command = new
             {
-                result = await SendHttpRequestAsync("POST", "/modify_take_profit", parameters, cancellationToken).ConfigureAwait(false);
-            }
-            else
+                action = "modify_take_profit",
+                symbol,
+                take_profit_price = takeProfitPrice
+            };
+            var cmdResult = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
+            if (!cmdResult.Success || !cmdResult.Data.HasValue)
             {
-                var command = new
-                {
-                    action = "modify_take_profit",
-                    symbol,
-                    take_profit_price = takeProfitPrice
-                };
-                var cmdResult = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
-                if (!cmdResult.Success || !cmdResult.Data.HasValue)
-                {
-                    _logger.LogError("❌ Invalid response from Python adapter for modify take profit");
-                    return false;
-                }
-                result = cmdResult.Data.Value;
+                _logger.LogError("❌ Invalid response from Python adapter for modify take profit");
+                return false;
             }
+            var result = cmdResult.Data.Value;
             
             var success = result.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
             
@@ -705,27 +605,18 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 order_id = orderId
             };
 
-            JsonElement result;
-            
-            if (_useHttpMode)
+            var command = new
             {
-                result = await SendHttpRequestAsync("POST", "/cancel_order", parameters, cancellationToken).ConfigureAwait(false);
-            }
-            else
+                action = "cancel_order",
+                order_id = orderId
+            };
+            var cmdResult = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
+            if (!cmdResult.Success || !cmdResult.Data.HasValue)
             {
-                var command = new
-                {
-                    action = "cancel_order",
-                    order_id = orderId
-                };
-                var cmdResult = await ExecutePythonCommandAsync(JsonSerializer.Serialize(command), cancellationToken).ConfigureAwait(false);
-                if (!cmdResult.Success || !cmdResult.Data.HasValue)
-                {
-                    _logger.LogError("❌ Invalid response from Python adapter for cancel order");
-                    return false;
-                }
-                result = cmdResult.Data.Value;
+                _logger.LogError("❌ Invalid response from Python adapter for cancel order");
+                return false;
             }
+            var result = cmdResult.Data.Value;
             
             var success = result.TryGetProperty("success", out var successElement) && successElement.GetBoolean();
             
@@ -947,370 +838,6 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
     // HTTP MODE MANAGEMENT
     // ========================================================================
     
-    /// <summary>
-    /// Initialize HTTP mode - start Python server and create HTTP client
-    /// </summary>
-    private async Task InitializeHttpModeAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            // Create HTTP client
-            _httpClient = new HttpClient
-            {
-                BaseAddress = new Uri($"http://{_config.AdapterHttpHost}:{_config.AdapterHttpPort}"),
-                Timeout = TimeSpan.FromSeconds(30)
-            };
-            
-            _logger.LogInformation("[HTTP] HTTP client created: {BaseAddress}", _httpClient.BaseAddress);
-            
-            // Start Python HTTP server process
-            await StartPythonHttpServerAsync(cancellationToken).ConfigureAwait(false);
-            
-            // Wait for Python server to be ready
-            await WaitForPythonServerReadyAsync(cancellationToken).ConfigureAwait(false);
-            
-            // Start event polling task
-            _eventPollingTask = Task.Run(async () => await PollEventsAsync(_httpPollingCts.Token).ConfigureAwait(false), _httpPollingCts.Token);
-            
-            _logger.LogInformation("✅ [HTTP] HTTP mode initialized successfully");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "❌ [HTTP] Failed to initialize HTTP mode");
-            await CleanupHttpModeAsync().ConfigureAwait(false);
-            throw;
-        }
-    }
-    
-    /// <summary>
-    /// Start Python HTTP server process
-    /// </summary>
-    private async Task StartPythonHttpServerAsync(CancellationToken cancellationToken)
-    {
-        // Find workspace root
-        var currentDir = AppContext.BaseDirectory;
-        string? workspaceRoot = null;
-        
-        while (currentDir != null)
-        {
-            if (Directory.Exists(Path.Combine(currentDir, ".git")))
-            {
-                workspaceRoot = currentDir;
-                break;
-            }
-            currentDir = Directory.GetParent(currentDir)?.FullName;
-        }
-        
-        if (workspaceRoot == null)
-        {
-            workspaceRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
-        }
-        
-        var adapterPath = Path.Combine(workspaceRoot, "src", "adapters", "topstep_x_adapter.py");
-        if (!File.Exists(adapterPath))
-        {
-            throw new FileNotFoundException($"TopstepX adapter not found at {adapterPath}");
-        }
-
-        var pythonExecutable = Environment.GetEnvironmentVariable("PYTHON_EXECUTABLE") ?? "python";
-        var isWsl = pythonExecutable.Equals("wsl", StringComparison.OrdinalIgnoreCase);
-        
-        var processInfo = new ProcessStartInfo
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        
-        // Copy environment variables
-        foreach (System.Collections.DictionaryEntry envVar in Environment.GetEnvironmentVariables())
-        {
-            var key = envVar.Key?.ToString();
-            var value = envVar.Value?.ToString();
-            if (!string.IsNullOrEmpty(key) && value != null)
-            {
-                processInfo.Environment[key] = value;
-            }
-        }
-        
-        // Set HTTP server configuration
-        processInfo.Environment["ADAPTER_HTTP_HOST"] = _config.AdapterHttpHost;
-        processInfo.Environment["ADAPTER_HTTP_PORT"] = _config.AdapterHttpPort.ToString();
-        
-        // Set UTF-8 encoding to support Unicode characters (emojis) in Python output
-        processInfo.Environment["PYTHONIOENCODING"] = "utf-8";
-        
-        // Explicitly pass TopstepX credentials to Python subprocess
-        // DotNetEnv loads .env into Process.Environment, but subprocess needs explicit assignment
-        var apiKey = Environment.GetEnvironmentVariable("PROJECT_X_API_KEY") ?? Environment.GetEnvironmentVariable("TOPSTEPX_API_KEY");
-        var username = Environment.GetEnvironmentVariable("PROJECT_X_USERNAME") ?? Environment.GetEnvironmentVariable("TOPSTEPX_USERNAME");
-        var accountId = Environment.GetEnvironmentVariable("PROJECT_X_ACCOUNT_ID") ?? Environment.GetEnvironmentVariable("TOPSTEPX_ACCOUNT_ID");
-        
-        if (!string.IsNullOrEmpty(apiKey))
-        {
-            processInfo.Environment["PROJECT_X_API_KEY"] = apiKey;
-            processInfo.Environment["TOPSTEPX_API_KEY"] = apiKey; // Python script checks both
-        }
-        if (!string.IsNullOrEmpty(username))
-        {
-            processInfo.Environment["PROJECT_X_USERNAME"] = username;
-            processInfo.Environment["TOPSTEPX_USERNAME"] = username; // Python script checks both
-        }
-        if (!string.IsNullOrEmpty(accountId))
-        {
-            processInfo.Environment["PROJECT_X_ACCOUNT_ID"] = accountId;
-            processInfo.Environment["TOPSTEPX_ACCOUNT_ID"] = accountId; // Python script checks both
-        }
-        
-        if (isWsl)
-        {
-            var wslAdapterPath = adapterPath.Replace("\\", "/").Replace("C:", "/mnt/c").Replace("c:", "/mnt/c");
-            var bashCommand = $"python3 {wslAdapterPath} serve";
-            
-            processInfo.FileName = "wsl";
-            processInfo.ArgumentList.Add("-d");
-            processInfo.ArgumentList.Add("Ubuntu-24.04");
-            processInfo.ArgumentList.Add("-e");
-            processInfo.ArgumentList.Add("bash");
-            processInfo.ArgumentList.Add("-c");
-            processInfo.ArgumentList.Add(bashCommand);
-        }
-        else
-        {
-            processInfo.FileName = pythonExecutable;
-            processInfo.Arguments = $"\"{adapterPath}\" serve";
-        }
-        
-        _logger.LogInformation("[HTTP] Starting Python HTTP server: {FileName} {Arguments}", 
-            processInfo.FileName, processInfo.Arguments);
-        
-        var process = Process.Start(processInfo);
-        if (process == null)
-        {
-            throw new InvalidOperationException("Failed to start Python HTTP server");
-        }
-        
-        lock (_processLock)
-        {
-            _pythonProcess = process;
-        }
-        
-        // Start background task to log server stdout
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                while (!process.HasExited)
-                {
-                    var line = await process.StandardOutput.ReadLineAsync().ConfigureAwait(false);
-                    if (line != null)
-                    {
-                        _logger.LogInformation("[HTTP-STDOUT] {Line}", line);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "[HTTP-STDOUT] Error reading server stdout");
-            }
-        });
-        
-        // Start background task to log server stderr
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                while (!process.HasExited)
-                {
-                    var line = await process.StandardError.ReadLineAsync().ConfigureAwait(false);
-                    if (line != null)
-                    {
-                        _logger.LogError("[HTTP-STDERR] {Line}", line);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "[HTTP-STDERR] Error reading server stderr");
-            }
-        });
-        
-        _logger.LogInformation("✅ [HTTP] Python HTTP server process started (PID: {ProcessId})", process.Id);
-        await Task.Delay(2000, cancellationToken).ConfigureAwait(false); // Give server time to start
-    }
-    
-    /// <summary>
-    /// Wait for Python HTTP server to be ready
-    /// </summary>
-    private async Task WaitForPythonServerReadyAsync(CancellationToken cancellationToken)
-    {
-        var timeout = TimeSpan.FromSeconds(_config.AdapterStartupTimeoutSeconds);
-        var startTime = DateTime.UtcNow;
-        
-        _logger.LogInformation("[HTTP] Waiting for Python server to be ready (timeout: {Timeout}s)...", timeout.TotalSeconds);
-        
-        while (DateTime.UtcNow - startTime < timeout)
-        {
-            try
-            {
-                var response = await _httpClient!.GetAsync("/health", cancellationToken).ConfigureAwait(false);
-                if (response.IsSuccessStatusCode)
-                {
-                    var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                    _logger.LogInformation("✅ [HTTP] Python server is ready: {Content}", content);
-                    return;
-                }
-            }
-            catch (HttpRequestException)
-            {
-                // Server not ready yet, continue waiting
-            }
-            catch (TaskCanceledException)
-            {
-                // Timeout on individual request, continue waiting
-            }
-            
-            await Task.Delay(500, cancellationToken).ConfigureAwait(false);
-        }
-        
-        throw new TimeoutException($"Python HTTP server did not become ready within {timeout.TotalSeconds} seconds");
-    }
-    
-    /// <summary>
-    /// Poll for events from Python HTTP server
-    /// </summary>
-    private async Task PollEventsAsync(CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("[HTTP] Starting event polling task");
-        
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            try
-            {
-                var response = await _httpClient!.GetAsync("/events", cancellationToken).ConfigureAwait(false);
-                if (response.IsSuccessStatusCode)
-                {
-                    var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                    var eventsData = JsonSerializer.Deserialize<JsonElement>(content);
-                    
-                    // Process fill events
-                    if (eventsData.TryGetProperty("fills", out var fillsElement))
-                    {
-                        foreach (var fillEvent in fillsElement.EnumerateArray())
-                        {
-                            var parsedFill = ParseFillEventFromMessage(fillEvent);
-                            if (parsedFill != null)
-                            {
-                                _fillEventQueue.Enqueue(parsedFill);
-                                FillEventReceived?.Invoke(this, parsedFill);
-                            }
-                        }
-                    }
-                    
-                    // Process bar events
-                    if (eventsData.TryGetProperty("bars", out var barsElement))
-                    {
-                        foreach (var barEvent in barsElement.EnumerateArray())
-                        {
-                            var parsedBar = ParseBarEventFromMessage(barEvent);
-                            if (parsedBar != null)
-                            {
-                                _barEventQueue.Enqueue(parsedBar);
-                                BarEventReceived?.Invoke(this, parsedBar);
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
-            {
-                _logger.LogWarning(ex, "[HTTP] Error polling events");
-            }
-            
-            await Task.Delay(100, cancellationToken).ConfigureAwait(false); // Poll every 100ms
-        }
-        
-        _logger.LogInformation("[HTTP] Event polling task stopped");
-    }
-    
-    /// <summary>
-    /// Send HTTP request to Python adapter
-    /// </summary>
-    private async Task<JsonElement> SendHttpRequestAsync(string method, string endpoint, object? body = null, CancellationToken cancellationToken = default)
-    {
-        if (_httpClient == null)
-        {
-            throw new InvalidOperationException("HTTP client not initialized");
-        }
-        
-        HttpResponseMessage response;
-        
-        if (method == "GET")
-        {
-            response = await _httpClient.GetAsync(endpoint, cancellationToken).ConfigureAwait(false);
-        }
-        else if (method == "POST")
-        {
-            var json = body != null ? JsonSerializer.Serialize(body) : "{}";
-            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-            response = await _httpClient.PostAsync(endpoint, content, cancellationToken).ConfigureAwait(false);
-        }
-        else
-        {
-            throw new ArgumentException($"Unsupported HTTP method: {method}");
-        }
-        
-        response.EnsureSuccessStatusCode();
-        var responseContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        return JsonSerializer.Deserialize<JsonElement>(responseContent);
-    }
-    
-    /// <summary>
-    /// Cleanup HTTP mode resources
-    /// </summary>
-    private async Task CleanupHttpModeAsync()
-    {
-        _httpPollingCts.Cancel();
-        
-        if (_eventPollingTask != null)
-        {
-            try
-            {
-                await _eventPollingTask.ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected when cancelling
-            }
-        }
-        
-        _httpClient?.Dispose();
-        _httpClient = null;
-        
-        // Stop Python process
-        Process? process;
-        lock (_processLock)
-        {
-            process = _pythonProcess;
-            _pythonProcess = null;
-        }
-        
-        if (process != null && !process.HasExited)
-        {
-            try
-            {
-                process.Kill();
-                process.Dispose();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "[HTTP] Error stopping Python server process");
-            }
-        }
-    }
-
-    // ========================================================================
     // PERSISTENT PROCESS MANAGEMENT
     // ========================================================================
     
@@ -2305,20 +1832,12 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
                 // Stop Python process and cleanup resources
                 _processCts.Cancel();
                 
-                if (_useHttpMode)
+                // Cleanup stdin/stdout mode
+                if (_stdoutReaderTask != null)
                 {
-                    // Cleanup HTTP mode
-                    await CleanupHttpModeAsync().ConfigureAwait(false);
+                    await _stdoutReaderTask.ConfigureAwait(false);
                 }
-                else
-                {
-                    // Cleanup stdin/stdout mode
-                    if (_stdoutReaderTask != null)
-                    {
-                        await _stdoutReaderTask.ConfigureAwait(false);
-                    }
-                    await StopPersistentPythonProcessAsync().ConfigureAwait(false);
-                }
+                await StopPersistentPythonProcessAsync().ConfigureAwait(false);
                 
                 _processCts.Dispose();
                 
