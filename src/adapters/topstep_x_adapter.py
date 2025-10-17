@@ -2079,6 +2079,23 @@ if __name__ == "__main__":
                         elif action == "cancel_all_orders":
                             result = await adapter.cancel_all_orders(cmd_data.get("symbol"))
                         
+                        elif action == "fetch_historical_bars":
+                            # Parse dates if provided
+                            start_date = None
+                            end_date = None
+                            if "start_date" in cmd_data:
+                                start_date = datetime.fromisoformat(cmd_data["start_date"])
+                            if "end_date" in cmd_data:
+                                end_date = datetime.fromisoformat(cmd_data["end_date"])
+                            
+                            result = await adapter.fetch_historical_bars(
+                                symbol=cmd_data["symbol"],
+                                timeframe=cmd_data.get("interval", cmd_data.get("timeframe", 5)),
+                                start_date=start_date,
+                                end_date=end_date,
+                                limit=cmd_data.get("limit", 1000)
+                            )
+                        
                         else:
                             result = {"success": False, "error": f"Unknown action: {action}"}
                         

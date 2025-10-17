@@ -45,6 +45,17 @@ internal record BarEventData(
     decimal Close,
     long Volume);
 
+internal record HistoricalBar
+{
+    public required string Symbol { get; init; }
+    public required DateTime Timestamp { get; init; }
+    public required decimal Open { get; init; }
+    public required decimal High { get; init; }
+    public required decimal Low { get; init; }
+    public required decimal Close { get; init; }
+    public required long Volume { get; init; }
+}
+
 internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapterService, IAsyncDisposable, IDisposable
 {
     private readonly ILogger<TopstepXAdapterService> _logger;
@@ -636,6 +647,75 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
         {
             _logger.LogError(ex, "Error cancelling order {OrderId}", orderId);
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Fetch historical bar data from TopstepX for backtesting and learning
+    /// </summary>
+    public async Task<List<HistoricalBar>> GetHistoricalBarsAsync(
+        string symbol, 
+        int days = 1, 
+        int intervalMinutes = 5,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_isInitialized)
+        {
+            throw new InvalidOperationException("Adapter not initialized. Call InitializeAsync first.");
+        }
+
+        try
+        {
+            _logger.LogInformation("[HISTORICAL] Fetching historical bars: {Symbol}, {Days} days, {Interval}min intervals", 
+                symbol, days, intervalMinutes);
+
+            // Calculate start and end dates
+            var endDate = DateTime.UtcNow;
+            var startDate = endDate.AddDays(-days);
+
+            var parameters = new
+            {
+                symbol,
+                timeframe = intervalMinutes,
+                start_date = startDate.ToString("o"),  // ISO 8601 format
+                end_date = endDate.ToString("o"),
+                limit = 10000  // Allow large result sets for backtesting
+            };
+
+            var result = await SendPersistentCommandAsync("fetch_historical_bars", parameters, cancellationToken).ConfigureAwait(false);
+            
+            var bars = new List<HistoricalBar>();
+            
+            if (result.TryGetProperty("bars", out var barsElement) && barsElement.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var barElement in barsElement.EnumerateArray())
+                {
+                    var bar = new HistoricalBar
+                    {
+                        Symbol = symbol,
+                        Timestamp = barElement.TryGetProperty("timestamp", out var ts) ? DateTime.Parse(ts.GetString()!) : DateTime.UtcNow,
+                        Open = barElement.TryGetProperty("open", out var o) ? (decimal)o.GetDouble() : 0m,
+                        High = barElement.TryGetProperty("high", out var h) ? (decimal)h.GetDouble() : 0m,
+                        Low = barElement.TryGetProperty("low", out var l) ? (decimal)l.GetDouble() : 0m,
+                        Close = barElement.TryGetProperty("close", out var c) ? (decimal)c.GetDouble() : 0m,
+                        Volume = barElement.TryGetProperty("volume", out var v) ? v.GetInt64() : 0
+                    };
+                    bars.Add(bar);
+                }
+                
+                _logger.LogInformation("✅ [HISTORICAL] Fetched {Count} bars for {Symbol} from TopstepX", bars.Count, symbol);
+            }
+            else
+            {
+                _logger.LogWarning("⚠️ [HISTORICAL] No bars data in response for {Symbol}", symbol);
+            }
+            
+            return bars;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ [HISTORICAL] Error fetching historical bars for {Symbol}", symbol);
+            throw;
         }
     }
 
