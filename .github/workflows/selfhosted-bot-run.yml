@@ -60,8 +60,13 @@ jobs:
           dotnet --info
           Write-Output ""
           
-          # Create .env file from secrets
-          @"
+          # Check if .env already exists (self-hosted runner)
+          if (Test-Path .env) {
+            Write-Output "✅ Using existing .env file (self-hosted runner)"
+          } else {
+            Write-Output "⚠️ No .env file found - creating from secrets"
+            # Create .env file from secrets
+            @"
           # Trading Mode Configuration
           DRY_RUN=${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
           ENABLE_DRY_RUN=${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
@@ -75,14 +80,14 @@ jobs:
           TOPSTEPX_ACCOUNT_ID=${TOPSTEPX_ACCOUNT_ID}
           TOPSTEPX_ACCOUNT_NAME=${TOPSTEPX_ACCOUNT_NAME}
           "@ | Out-File -FilePath .env -Encoding UTF8
-          
-          Write-Output "✅ Environment configuration created"
-          Write-Output ""
-          
-          # Validate credentials
-          if ([string]::IsNullOrEmpty($env:TOPSTEPX_API_KEY) -or [string]::IsNullOrEmpty($env:TOPSTEPX_USERNAME) -or [string]::IsNullOrEmpty($env:TOPSTEPX_ACCOUNT_ID)) {
-            Write-Output "❌ ERROR: Required TopstepX credentials are missing!"
-            exit 1
+            
+            Write-Output "✅ Environment configuration created"
+            
+            # Validate credentials only if we created from secrets
+            if ([string]::IsNullOrEmpty($env:TOPSTEPX_API_KEY) -or [string]::IsNullOrEmpty($env:TOPSTEPX_USERNAME) -or [string]::IsNullOrEmpty($env:TOPSTEPX_ACCOUNT_ID)) {
+              Write-Output "❌ ERROR: Required TopstepX credentials are missing!"
+              exit 1
+            }
           }
           
           Write-Output "📦 Restoring NuGet packages..."
