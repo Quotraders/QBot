@@ -9,14 +9,10 @@ on:
         default: true
         type: boolean
   push:
-    branches:
-      - 'fix/**'
-      - 'feature/**'
-      - 'bugfix/**'
+    branches-ignore:
+      - 'main'  # Run on ALL branches except main (agent can test every commit)
   pull_request:
     types: [opened, synchronize, reopened]
-    branches:
-      - main
 
 permissions:
   contents: read
