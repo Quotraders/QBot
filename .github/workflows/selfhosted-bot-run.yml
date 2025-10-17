@@ -24,7 +24,7 @@ env:
 jobs:
   run-bot:
     name: "Run Trading Bot"
-    runs-on: self-hosted
+    runs-on: [self-hosted, windows, x64]
     timeout-minutes: 15  # Covers max runtime + startup/shutdown buffer
     
     steps:

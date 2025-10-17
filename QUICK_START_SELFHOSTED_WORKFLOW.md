@@ -6,10 +6,12 @@ The self-hosted bot workflow (`selfhosted-bot-run.yml`) allows you to test the t
 
 ### Prerequisites
 
-1. **Self-Hosted Runner Setup**
+1. **Self-Hosted Windows Runner Setup**
    - Follow: [SELF_HOSTED_RUNNER_SETUP.md](SELF_HOSTED_RUNNER_SETUP.md)
    - Runner must be registered with your repository
+   - Runner must have labels: `[self-hosted, windows, x64]`
    - Runner must have .NET 8.0 SDK installed
+   - **Important**: Workflows now specifically target Windows runners to ensure they use your local setup with Python SDK
 
 2. **TopstepX Credentials** (GitHub Secrets)
    - Go to: Settings → Secrets and variables → Actions
@@ -132,11 +134,21 @@ The workflow runs for **15 minutes** by default, which includes:
 
 **Problem**: Workflow shows "Waiting for a runner to pick up this job..."
 
-**Solution**: 
-- Check that your self-hosted runner is online
+**Solutions**: 
+- Check that your self-hosted Windows runner is online
 - Go to: Settings → Actions → Runners
-- Runner should show as "Idle" (green)
+- Runner should show as "Idle" (green) with labels `[self-hosted, windows, x64]`
 - Restart runner if needed
+- **Note**: Workflows now specifically require Windows runners to ensure Python SDK access
+
+#### Workflow Runs on Wrong Runner
+
+**Problem**: Workflow runs on GitHub's hosted runner instead of your self-hosted Windows runner
+
+**Solution**: 
+- Verify your runner has ALL required labels: `[self-hosted, windows, x64]`
+- Workflows are now configured to only run on Windows self-hosted runners
+- Check runner configuration in Settings → Actions → Runners
 
 #### Build Fails on macOS
 
@@ -208,18 +220,27 @@ After successful test run:
 
 ### Platform-Specific Notes
 
+**Current Configuration**: Workflows are configured for **Windows x64 self-hosted runners only**
+
+#### Windows Runners (Recommended)
+- ✅ **Primary platform** for self-hosted workflows
+- ✅ Runner labels: `[self-hosted, windows, x64]`
+- ✅ Best support for Python SDK (project-x-py)
+- ✅ Direct access to TopstepX adapter on localhost:8765
+- Uses PowerShell for script execution
+
 #### Linux Runners (Ubuntu/Debian)
-- ✅ Fully supported
-- Uses `stat -c%s` for file size checks
+- ⚠️ Not targeted by current workflow configuration
+- Would use `stat -c%s` for file size checks
+- To enable: Change `runs-on: [self-hosted, windows, x64]` to `runs-on: [self-hosted, linux, x64]`
 
 #### macOS Runners
-- ✅ Fully supported (as of commit c677496)
-- Uses `stat -f%z` fallback for file size checks
+- ⚠️ Not targeted by current workflow configuration
+- Would use `stat -f%z` fallback for file size checks
+- To enable: Change `runs-on: [self-hosted, windows, x64]` to `runs-on: [self-hosted, macos, x64]`
 
-#### Windows Runners (WSL/Git Bash)
-- ⚠️ May need additional configuration
-- Ensure Git Bash or WSL is available
-- Test with a short timeout first
+**Why Windows-specific?**
+The workflows now explicitly target Windows runners to ensure they run on YOUR local machine with Python SDK installed, rather than GitHub's hosted Ubuntu runners.
 
 ### Related Documentation
 

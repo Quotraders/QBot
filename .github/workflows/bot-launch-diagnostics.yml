@@ -37,7 +37,7 @@ env:
 jobs:
   bot-launch-diagnostics:
     name: "Launch Bot with Full Diagnostics Capture"
-    runs-on: self-hosted
+    runs-on: [self-hosted, windows, x64]
     timeout-minutes: 40  # Covers max runtime (30min) + startup/shutdown buffer
     
     steps:
