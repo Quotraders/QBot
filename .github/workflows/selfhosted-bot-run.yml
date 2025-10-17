@@ -8,6 +8,15 @@ on:
         required: false
         default: true
         type: boolean
+  push:
+    branches:
+      - 'fix/**'
+      - 'feature/**'
+      - 'bugfix/**'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
 
 permissions:
   contents: read
