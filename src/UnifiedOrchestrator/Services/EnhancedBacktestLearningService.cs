@@ -1680,53 +1680,53 @@ internal class EnhancedBacktestLearningService : BackgroundService
     private async Task<string> GenerateSelfImprovementSuggestionsAsync(UnifiedBacktestResult[] results, CancellationToken cancellationToken)
     {
         // Ollama disabled for backtests - only use for live trading
-        return string.Empty;
+        return await Task.FromResult(string.Empty);
         
         // ORIGINAL CODE KEPT FOR REFERENCE (disabled)
         // if (_ollamaClient == null || !results.Any())
         //     return string.Empty;
 
-        try
-        {
-            // Aggregate results for analysis
-            var totalTrades = results.Sum(r => r.TotalTrades);
-            var avgWinRate = results.Any(r => r.TotalTrades > 0) 
-                ? results.Where(r => r.TotalTrades > 0).Average(r => r.WinRate) 
-                : 0;
-            var totalPnL = results.Sum(r => r.NetPnL);
-            var bestResult = results.OrderByDescending(r => r.SharpeRatio).FirstOrDefault();
-            var worstResult = results.OrderBy(r => r.SharpeRatio).FirstOrDefault();
-            var avgSharpe = results.Any() ? results.Average(r => r.SharpeRatio) : 0;
+        // try
+        // {
+        //     // Aggregate results for analysis
+        //     var totalTrades = results.Sum(r => r.TotalTrades);
+        //     var avgWinRate = results.Any(r => r.TotalTrades > 0) 
+        //         ? results.Where(r => r.TotalTrades > 0).Average(r => r.WinRate) 
+        //         : 0;
+        //     var totalPnL = results.Sum(r => r.NetPnL);
+        //     var bestResult = results.OrderByDescending(r => r.SharpeRatio).FirstOrDefault();
+        //     var worstResult = results.OrderBy(r => r.SharpeRatio).FirstOrDefault();
+        //     var avgSharpe = results.Any() ? results.Average(r => r.SharpeRatio) : 0;
 
-            // Identify problem patterns
-            var losingPatterns = string.Join(", ", results
-                .Where(r => r.NetPnL < 0)
-                .Select(r => $"{r.Strategy} on {r.Symbol} (Sharpe: {r.SharpeRatio:F2})"));
-            
-            if (string.IsNullOrEmpty(losingPatterns))
-                losingPatterns = "None - all strategies profitable";
-
-            // Build self-analysis prompt
-            var prompt = $@"I am a trading bot. I just analyzed my historical performance:
-
-Total trades: {totalTrades}
-Win rate: {avgWinRate:P1}
-Total P&L: ${totalPnL:F2}
-Average Sharpe Ratio: {avgSharpe:F2}
-Best performing strategy: {bestResult?.Strategy ?? "N/A"} on {bestResult?.Symbol ?? "N/A"} (Sharpe: {bestResult?.SharpeRatio ?? 0:F2})
-Worst performing strategy: {worstResult?.Strategy ?? "N/A"} on {worstResult?.Symbol ?? "N/A"} (Sharpe: {worstResult?.SharpeRatio ?? 0:F2})
-Problem patterns: {losingPatterns}
-
-Based on this, what should I change about my own code or parameters to improve? Be specific - suggest exact parameter values or code logic changes. Speak as ME (the bot) analyzing myself.";
-
-            var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
-            return response;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "❌ [BOT-SELF-IMPROVEMENT] Error generating self-improvement suggestions");
-            return string.Empty;
-        }
+        //     // Identify problem patterns
+        //     var losingPatterns = string.Join(", ", results
+        //         .Where(r => r.NetPnL < 0)
+        //         .Select(r => $"{r.Strategy} on {r.Symbol} (Sharpe: {r.SharpeRatio:F2})"));
+        //     
+        //     if (string.IsNullOrEmpty(losingPatterns))
+        //         losingPatterns = "None - all strategies profitable";
+        //
+        //     // Build self-analysis prompt
+        //     var prompt = $@"I am a trading bot. I just analyzed my historical performance:
+        //
+        // Total trades: {totalTrades}
+        // Win rate: {avgWinRate:P1}
+        // Total P&L: ${totalPnL:F2}
+        // Average Sharpe Ratio: {avgSharpe:F2}
+        // Best performing strategy: {bestResult?.Strategy ?? "N/A"} on {bestResult?.Symbol ?? "N/A"} (Sharpe: {bestResult?.SharpeRatio ?? 0:F2})
+        // Worst performing strategy: {worstResult?.Strategy ?? "N/A"} on {worstResult?.Symbol ?? "N/A"} (Sharpe: {worstResult?.SharpeRatio ?? 0:F2})
+        // Problem patterns: {losingPatterns}
+        //
+        // Based on this, what should I change about my own code or parameters to improve? Be specific - suggest exact parameter values or code logic changes. Speak as ME (the bot) analyzing myself.";
+        //
+        //     var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
+        //     return response;
+        // }
+        // catch (Exception ex)
+        // {
+        //     _logger.LogError(ex, "❌ [BOT-SELF-IMPROVEMENT] Error generating self-improvement suggestions");
+        //     return string.Empty;
+        // }
     }
 
     /// <summary>
