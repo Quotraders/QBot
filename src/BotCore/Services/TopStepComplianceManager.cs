@@ -30,6 +30,9 @@ public class TopStepComplianceManager
     private readonly decimal TopStepDrawdownLimit;
     private readonly decimal SafeDrawdownLimit;
     
+    // Auto DRY_RUN enforcement toggle
+    private readonly bool EnableAutoDryRunOnCompliance;
+    
     // Compliance threshold percentages
     private const decimal WarningThresholdPercent = 0.8m;  // 80% threshold for warning
     private const decimal CriticalThresholdPercent = 0.9m; // 90% threshold for critical
@@ -61,6 +64,12 @@ public class TopStepComplianceManager
         
         _logger = logger;
         
+        // Read auto DRY_RUN toggle (defaults to true for safety)
+        var autoDryRunSetting = Environment.GetEnvironmentVariable("ENABLE_AUTO_DRYRUN_ON_COMPLIANCE");
+        EnableAutoDryRunOnCompliance = string.IsNullOrEmpty(autoDryRunSetting) || 
+                                       autoDryRunSetting.Equals("true", StringComparison.OrdinalIgnoreCase) ||
+                                       autoDryRunSetting == "1";
+        
         // Read TopStep compliance limits from environment variables (with defaults)
         TopStepDailyLossLimit = decimal.Parse(
             Environment.GetEnvironmentVariable("TOPSTEP_DAILY_LOSS_LIMIT") ?? "-2400",
@@ -81,13 +90,13 @@ public class TopStepComplianceManager
             Environment.GetEnvironmentVariable("TOPSTEP_MINIMUM_TRADING_DAYS") ?? "5",
             CultureInfo.InvariantCulture);
         
-        _logger.LogInformation("🛡️ [TOPSTEP-COMPLIANCE] Initialized with safety limits: Daily=${DailyLimit}, Drawdown=${DrawdownLimit}, ProfitTarget=${ProfitTarget}, MinDays={MinDays}",
-            SafeDailyLossLimit, SafeDrawdownLimit, ProfitTargetAmount, MinimumTradingDays);
+        _logger.LogInformation("🛡️ [TOPSTEP-COMPLIANCE] Initialized with safety limits: Daily=${DailyLimit}, Drawdown=${DrawdownLimit}, ProfitTarget=${ProfitTarget}, MinDays={MinDays}, AutoDryRun={AutoDryRun}",
+            SafeDailyLossLimit, SafeDrawdownLimit, ProfitTargetAmount, MinimumTradingDays, EnableAutoDryRunOnCompliance);
     }
     
     /// <summary>
     /// Check if trading is allowed based on current compliance status
-    /// Automatically switches to DRY_RUN mode if limits are breached
+    /// Automatically switches to DRY_RUN mode if limits are breached (when enabled)
     /// </summary>
     public async Task<bool> CanTradeAsync(decimal currentPnL, decimal accountBalance, CancellationToken cancellationToken = default)
     {
@@ -98,25 +107,31 @@ public class TopStepComplianceManager
             // Update account state
             UpdateAccountState(currentPnL, accountBalance);
             
-            // Check daily loss limit - enforce DRY_RUN if breached
+            // Check daily loss limit - enforce DRY_RUN if breached and auto-enforcement is enabled
             if (_todayPnL <= SafeDailyLossLimit)
             {
                 _logger.LogWarning("🚫 [TOPSTEP-COMPLIANCE] Daily loss limit reached: ${PnL} <= ${Limit}",
                     _todayPnL, SafeDailyLossLimit);
                 
-                // Automatically switch to DRY_RUN mode
-                EnforceDryRunMode("TopStep safe daily loss limit reached");
+                // Automatically switch to DRY_RUN mode if enabled
+                if (EnableAutoDryRunOnCompliance)
+                {
+                    EnforceDryRunMode("TopStep safe daily loss limit reached");
+                }
                 return false;
             }
             
-            // Check total drawdown limit - enforce DRY_RUN if breached
+            // Check total drawdown limit - enforce DRY_RUN if breached and auto-enforcement is enabled
             if (_currentDrawdown <= SafeDrawdownLimit)
             {
                 _logger.LogWarning("🚫 [TOPSTEP-COMPLIANCE] Drawdown limit reached: ${Drawdown} <= ${Limit}",
                     _currentDrawdown, SafeDrawdownLimit);
                 
-                // Automatically switch to DRY_RUN mode
-                EnforceDryRunMode("TopStep safe drawdown limit reached");
+                // Automatically switch to DRY_RUN mode if enabled
+                if (EnableAutoDryRunOnCompliance)
+                {
+                    EnforceDryRunMode("TopStep safe drawdown limit reached");
+                }
                 return false;
             }
             
@@ -342,14 +357,17 @@ public class TopStepComplianceManager
     
     private Task CheckComplianceViolationsAsync()
     {
-        // Check for hard violations - automatically switch to DRY_RUN mode
+        // Check for hard violations - automatically switch to DRY_RUN mode if enabled
         if (_todayPnL <= TopStepDailyLossLimit)
         {
             _logger.LogCritical("🚨 [TOPSTEP-COMPLIANCE] VIOLATION: Daily loss limit exceeded: ${PnL} <= ${Limit}",
                 _todayPnL, TopStepDailyLossLimit);
             
-            // Automatically enforce DRY_RUN mode to protect account
-            EnforceDryRunMode("TopStep daily loss limit exceeded");
+            // Automatically enforce DRY_RUN mode if enabled
+            if (EnableAutoDryRunOnCompliance)
+            {
+                EnforceDryRunMode("TopStep daily loss limit exceeded");
+            }
         }
         
         if (_currentDrawdown <= TopStepDrawdownLimit)
@@ -357,18 +375,24 @@ public class TopStepComplianceManager
             _logger.LogCritical("🚨 [TOPSTEP-COMPLIANCE] VIOLATION: Drawdown limit exceeded: ${Drawdown} <= ${Limit}",
                 _currentDrawdown, TopStepDrawdownLimit);
             
-            // Automatically enforce DRY_RUN mode to protect account
-            EnforceDryRunMode("TopStep drawdown limit exceeded");
+            // Automatically enforce DRY_RUN mode if enabled
+            if (EnableAutoDryRunOnCompliance)
+            {
+                EnforceDryRunMode("TopStep drawdown limit exceeded");
+            }
         }
         
-        // Check for approaching violations (critical threshold) - also switch to DRY_RUN as safety measure
+        // Check for approaching violations (critical threshold) - also switch to DRY_RUN if enabled
         if (_todayPnL <= TopStepDailyLossLimit * CriticalThresholdPercent)
         {
             _logger.LogError("🔴 [TOPSTEP-COMPLIANCE] CRITICAL: Approaching daily loss limit: ${PnL}",
                 _todayPnL);
             
-            // Switch to DRY_RUN mode before hitting hard limit
-            EnforceDryRunMode("Approaching TopStep daily loss limit (90% threshold)");
+            // Switch to DRY_RUN mode before hitting hard limit if enabled
+            if (EnableAutoDryRunOnCompliance)
+            {
+                EnforceDryRunMode("Approaching TopStep daily loss limit (90% threshold)");
+            }
         }
         
         if (_currentDrawdown <= TopStepDrawdownLimit * CriticalThresholdPercent)
@@ -376,8 +400,11 @@ public class TopStepComplianceManager
             _logger.LogError("🔴 [TOPSTEP-COMPLIANCE] CRITICAL: Approaching drawdown limit: ${Drawdown}",
                 _currentDrawdown);
             
-            // Switch to DRY_RUN mode before hitting hard limit
-            EnforceDryRunMode("Approaching TopStep drawdown limit (90% threshold)");
+            // Switch to DRY_RUN mode before hitting hard limit if enabled
+            if (EnableAutoDryRunOnCompliance)
+            {
+                EnforceDryRunMode("Approaching TopStep drawdown limit (90% threshold)");
+            }
         }
 
         return Task.CompletedTask;
@@ -397,6 +424,7 @@ public class TopStepComplianceManager
             _logger.LogCritical("🛡️ [TOPSTEP-COMPLIANCE] DRY_RUN MODE ENFORCED - Reason: {Reason}", reason);
             _logger.LogCritical("🛡️ [TOPSTEP-COMPLIANCE] Bot switched to paper trading - continues with live data but simulates trades");
             _logger.LogInformation("💡 [TOPSTEP-COMPLIANCE] To resume live trading: Review account status, reset if needed, and set DRY_RUN=0");
+            _logger.LogInformation("💡 [TOPSTEP-COMPLIANCE] To disable auto DRY_RUN enforcement: Set ENABLE_AUTO_DRYRUN_ON_COMPLIANCE=false");
         }
         catch (Exception ex)
         {
@@ -432,7 +460,14 @@ public class TopStepComplianceManager
         
         if (!status.IsCompliant)
         {
-            recommendations.Add("COMPLIANCE VIOLATION: Bot automatically switched to DRY_RUN mode (paper trading with live data)");
+            if (EnableAutoDryRunOnCompliance)
+            {
+                recommendations.Add("COMPLIANCE VIOLATION: Bot automatically switched to DRY_RUN mode (paper trading with live data)");
+            }
+            else
+            {
+                recommendations.Add("COMPLIANCE VIOLATION: Manual intervention required (auto DRY_RUN is disabled)");
+            }
             recommendations.Add("Review account status and resolve issues before resuming live trading");
             return recommendations;
         }
@@ -440,13 +475,19 @@ public class TopStepComplianceManager
         if (status.DailyLossRemaining < DailyLossWarningThreshold)
         {
             recommendations.Add("Reduce position size - approaching daily loss limit");
-            recommendations.Add("Bot will automatically switch to DRY_RUN mode if limit is reached");
+            if (EnableAutoDryRunOnCompliance)
+            {
+                recommendations.Add("Bot will automatically switch to DRY_RUN mode if limit is reached");
+            }
         }
         
         if (status.DrawdownRemaining < DrawdownWarningThreshold)
         {
             recommendations.Add("Consider defensive trading - approaching drawdown limit");
-            recommendations.Add("Bot will automatically switch to DRY_RUN mode if limit is reached");
+            if (EnableAutoDryRunOnCompliance)
+            {
+                recommendations.Add("Bot will automatically switch to DRY_RUN mode if limit is reached");
+            }
         }
         
         if (status.DaysUntilMinimum > 0)

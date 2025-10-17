@@ -2,32 +2,38 @@
 
 ## Summary
 
-Successfully implemented automatic DRY_RUN enforcement based on TopStep compliance limits as requested in the user feedback.
+Successfully implemented automatic DRY_RUN enforcement based on TopStep compliance limits as requested in the user feedback, with a configurable toggle to enable/disable the feature.
 
 ## What Changed
 
 ### User Request:
-> "kill switch should also follow topstep compliance with win rate and pnl daily loss and turn bot into dry run automatically thats it but it when it goes into dry run it should still be trading real data but simulate trades on real data same way it its thats it"
+> "kill switch should happen automatically and shutdown bot on critical system failure and if topstep compliance is broken like pnl win rate and stuff thats coded but it should just put bot in dry mode auto and have a toggle to turn it on and off thats it"
 
 ### Implementation:
 
-1. **TopStepComplianceManager.cs** - Added automatic DRY_RUN enforcement:
-   - When daily loss reaches -$1,000 (safe) or -$2,400 (hard limit)
-   - When drawdown reaches -$2,000 (safe) or -$2,500 (hard limit)
-   - When approaching 90% of either limit (critical threshold)
+1. **TopStepComplianceManager.cs** - Added configurable automatic DRY_RUN enforcement:
+   - New toggle: `ENABLE_AUTO_DRYRUN_ON_COMPLIANCE` (defaults to true)
+   - When enabled and daily loss reaches -$1,000 (safe) or -$2,400 (hard limit)
+   - When enabled and drawdown reaches -$2,000 (safe) or -$2,500 (hard limit)
+   - When enabled and approaching 90% of either limit (critical threshold)
    - Bot automatically sets `DRY_RUN=1` to switch to paper trading
    - Continues running with live TopstepX data but simulates trades
    - Logs CRITICAL messages for operator awareness
+   - When disabled, only logs warnings without auto-enforcement
 
 2. **ProductionKillSwitchService.cs** - Updated enforcement logic:
    - Simplified to only set `DRY_RUN=1` (not multiple flags)
    - Clearer logging: "Bot switched to paper trading mode - continues with live data but simulates trades"
 
-3. **Documentation** - Updated `docs/DRY_RUN_KILL_SWITCH_CHANGES.md`:
-   - Added TopStep Compliance Auto-Protection section
-   - Protection levels table showing all thresholds
-   - Testing instructions for compliance scenarios
-   - Recovery procedures
+3. **.env** - Added configuration toggle:
+   - New variable: `ENABLE_AUTO_DRYRUN_ON_COMPLIANCE=true`
+   - Defaults to true (enabled) for safety
+   - Can be set to false to disable automatic enforcement
+
+4. **Documentation** - Updated all documentation:
+   - Added toggle configuration instructions
+   - Explained enabled vs disabled behavior
+   - Updated testing and recovery procedures
 
 ## How It Works
 

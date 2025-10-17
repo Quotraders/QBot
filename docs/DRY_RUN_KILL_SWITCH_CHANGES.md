@@ -36,18 +36,25 @@ This document describes the simplification of the bot's trading mode configurati
 - Default: `DRY_RUN=1` (safe default - paper trading)
 
 ### Automatic DRY_RUN Enforcement for TopStep Compliance:
-The bot now **automatically switches to DRY_RUN=1 mode** when TopStep compliance limits are breached:
+The bot can **automatically switch to DRY_RUN=1 mode** when TopStep compliance limits are breached (configurable):
 
 - **Daily Loss Limit**: When daily P&L reaches -$1,000 (safe limit) or -$2,400 (hard limit)
 - **Drawdown Limit**: When drawdown reaches -$2,000 (safe limit) or -$2,500 (hard limit)
 - **Critical Threshold**: When approaching 90% of either limit
 
-When these limits are hit:
+**Toggle Control**: Set `ENABLE_AUTO_DRYRUN_ON_COMPLIANCE=true` to enable (default) or `false` to disable
+
+When these limits are hit and auto-enforcement is enabled:
 - Bot automatically sets `DRY_RUN=1`
 - Continues running with **live market data**
 - Simulates trades (no real orders sent)
 - Logs CRITICAL messages for visibility
 - Protects TopStep account from violations
+
+When auto-enforcement is disabled:
+- Bot still logs CRITICAL warnings
+- Manual intervention required to switch to DRY_RUN mode
+- Allows experienced traders full control
 
 ### Manual Kill Switch:
 - Kill.txt can still be created manually for critical system failures
@@ -62,11 +69,12 @@ When these limits are hit:
 # Trading Mode - SINGLE FLAG
 DRY_RUN=1                    # 1=Paper trading, 0=Live trading
 
-# TopStep Compliance Limits (auto-enforces DRY_RUN when breached)
-TOPSTEP_DAILY_LOSS_LIMIT=-2400      # Hard daily loss limit
-TOPSTEP_SAFE_DAILY_LOSS_LIMIT=-1000 # Safe daily loss limit (auto DRY_RUN)
-TOPSTEP_DRAWDOWN_LIMIT=-2500        # Hard drawdown limit
-TOPSTEP_SAFE_DRAWDOWN_LIMIT=-2000   # Safe drawdown limit (auto DRY_RUN)
+# TopStep Compliance Limits (auto-enforces DRY_RUN when breached, if enabled)
+ENABLE_AUTO_DRYRUN_ON_COMPLIANCE=true  # Toggle: true=auto DRY_RUN, false=manual only
+TOPSTEP_DAILY_LOSS_LIMIT=-2400         # Hard daily loss limit
+TOPSTEP_SAFE_DAILY_LOSS_LIMIT=-1000    # Safe daily loss limit (auto DRY_RUN if enabled)
+TOPSTEP_DRAWDOWN_LIMIT=-2500           # Hard drawdown limit
+TOPSTEP_SAFE_DRAWDOWN_LIMIT=-2000      # Safe drawdown limit (auto DRY_RUN if enabled)
 
 # Connection Settings (unchanged)
 ENABLE_TOPSTEPX=1
