@@ -143,6 +143,13 @@ jobs:
         id: bot_run
         continue-on-error: true
         shell: pwsh
+        env:
+          TOPSTEPX_API_KEY: ${{ secrets.TOPSTEPX_API_KEY }}
+          TOPSTEPX_USERNAME: ${{ secrets.TOPSTEPX_USERNAME }}
+          TOPSTEPX_ACCOUNT_ID: ${{ secrets.TOPSTEPX_ACCOUNT_ID }}
+          TOPSTEPX_ACCOUNT_NAME: ${{ secrets.TOPSTEPX_ACCOUNT_NAME }}
+          PROJECT_X_API_KEY: ${{ secrets.TOPSTEPX_API_KEY }}
+          PROJECT_X_USERNAME: ${{ secrets.TOPSTEPX_USERNAME }}
         run: |
           Write-Output "=================================================="
           Write-Output "🚀 Starting Trading Bot"
@@ -160,7 +167,34 @@ jobs:
           
           # Override with DRY_RUN from input
           $env:DRY_RUN = if ("${{ github.event.inputs.dry_run }}" -eq "true") { "1" } else { "0" }
+          $env:ENABLE_DRY_RUN = if ("${{ github.event.inputs.dry_run }}" -eq "true") { "1" } else { "0" }
           Write-Output "⚠️ DRY_RUN mode: ${{ github.event.inputs.dry_run }}"
+          Write-Output ""
+          
+          # Set required Python/SDK environment variables
+          $env:PYTHON_EXECUTABLE = "python"
+          $env:ADAPTER_MAX_RETRIES = "3"
+          $env:ADAPTER_BASE_DELAY = "1.0"
+          $env:ADAPTER_MAX_DELAY = "8.0"
+          $env:ADAPTER_TIMEOUT = "30.0"
+          
+          # Verify Python and project-x-py SDK are available
+          Write-Output "🐍 Checking Python environment..."
+          try {
+            $pythonVersion = python --version 2>&1
+            Write-Output "✅ Python: $pythonVersion"
+          } catch {
+            Write-Output "⚠️ WARNING: Python not found - bot may run in degraded mode"
+          }
+          
+          # Check if project-x-py is installed
+          $sdkCheck = python -c "import project_x_py; print('SDK OK')" 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            Write-Output "✅ project-x-py SDK is installed"
+          } else {
+            Write-Output "⚠️ WARNING: project-x-py SDK not found - bot will run without live data"
+            Write-Output "   To install: pip install 'project-x-py[all]'"
+          }
           Write-Output ""
           
           # Create log capture directory
@@ -171,8 +205,10 @@ jobs:
           
           $Timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
           $LogFile = "$LogDir/bot-run-$Timestamp.log"
+          $ErrorLogFile = "$LogDir/bot-error-$Timestamp.log"
           
           Write-Output "📝 Bot output will be captured to: $LogFile"
+          Write-Output "📝 Bot errors will be captured to: $ErrorLogFile"
           Write-Output ""
           Write-Output "Starting bot execution..."
           Write-Output "=================================================="
@@ -184,18 +220,18 @@ jobs:
             -NoNewWindow `
             -PassThru `
             -RedirectStandardOutput $LogFile `
-            -RedirectStandardError "$LogDir/bot-error-$Timestamp.log"
+            -RedirectStandardError $ErrorLogFile
           
           $BotPID = $ProcessInfo.Id
           Write-Output "✅ Process started (PID: $BotPID)"
           Write-Output ""
           
           # Wait for process to exit or timeout
-          $TimeoutSeconds = 120
+          $TimeoutSeconds = 420  # 7 minutes as requested
           $CheckInterval = 10
           $Elapsed = 0
           
-          Write-Output "⏱️ Waiting for bot to complete (timeout: $TimeoutSeconds seconds)..."
+          Write-Output "⏱️ Waiting for bot to complete (timeout: $TimeoutSeconds seconds = 7 minutes)..."
           
           $ExitCode = $null
           while ($Elapsed -lt $TimeoutSeconds) {
@@ -208,9 +244,16 @@ jobs:
             Start-Sleep -Seconds $CheckInterval
             $Elapsed += $CheckInterval
             
-            # Show progress every 30 seconds
-            if (($Elapsed % 30) -eq 0) {
-              Write-Output "⏱️ Still running... ($Elapsed / $TimeoutSeconds seconds)"
+            # Show progress every 60 seconds
+            if (($Elapsed % 60) -eq 0) {
+              Write-Output "⏱️ Still running... ($Elapsed / $TimeoutSeconds seconds - $([Math]::Round($Elapsed/60, 1)) minutes)"
+              
+              # Output last 20 lines every 60 seconds for monitoring
+              if (Test-Path $LogFile) {
+                Write-Output "--- Recent bot output (last 20 lines) ---"
+                Get-Content $LogFile -Tail 20 | ForEach-Object { Write-Output $_ }
+                Write-Output "--- End recent output ---"
+              }
             }
           }
           
@@ -218,11 +261,12 @@ jobs:
           $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
           if ($BotProcess) {
             Write-Output ""
-            Write-Output "⏱️ Bot execution timeout after $TimeoutSeconds seconds"
-            Write-Output "🛑 Stopping bot process..."
+            Write-Output "⏱️ Bot execution timeout after $TimeoutSeconds seconds (7 minutes)"
+            Write-Output "🛑 Stopping bot process gracefully..."
             
+            # Try graceful shutdown first (SIGTERM equivalent)
             Stop-Process -Id $BotPID -ErrorAction SilentlyContinue
-            Start-Sleep -Seconds 3
+            Start-Sleep -Seconds 5
             
             $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
             if ($BotProcess) {
@@ -231,6 +275,12 @@ jobs:
               Start-Sleep -Seconds 2
             }
             
+            # Check for Python child processes and clean them up
+            Write-Output "🧹 Cleaning up any orphaned Python processes..."
+            Get-Process python* -ErrorAction SilentlyContinue | Where-Object {
+              $_.StartTime -gt (Get-Date).AddMinutes(-10)
+            } | Stop-Process -Force -ErrorAction SilentlyContinue
+            
             $ExitCode = -1
           }
           
@@ -238,14 +288,32 @@ jobs:
           Write-Output "=================================================="
           Write-Output "Bot Execution Summary:"
           Write-Output "  Exit Code: $(if ($ExitCode) { $ExitCode } else { 0 })"
+          Write-Output "  Duration: $([Math]::Round($Elapsed/60, 1)) minutes"
           Write-Output "  Log File: $LogFile"
+          Write-Output "  Error Log: $ErrorLogFile"
           Write-Output "=================================================="
           
-          # Output last 100 lines of log
+          # Output last 150 lines of log for analysis
           Write-Output ""
-          Write-Output "📋 Last 100 lines of bot output:"
+          Write-Output "📋 Last 150 lines of bot output:"
           Write-Output "=================================================="
-          Get-Content $LogFile -Tail 100
+          if (Test-Path $LogFile) {
+            Get-Content $LogFile -Tail 150
+          }
+          Write-Output "=================================================="
+          
+          # Output error log if it exists and has content
+          Write-Output ""
+          Write-Output "❌ Error log (if any):"
+          Write-Output "=================================================="
+          if (Test-Path $ErrorLogFile) {
+            $errorContent = Get-Content $ErrorLogFile -Raw
+            if ($errorContent -and $errorContent.Trim().Length -gt 0) {
+              Write-Output $errorContent
+            } else {
+              Write-Output "(No errors logged)"
+            }
+          }
           Write-Output "=================================================="
           
           # Set outputs
@@ -253,12 +321,17 @@ jobs:
           "exit_code=$ExitCodeValue" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding UTF8
           "log_file=$LogFile" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding UTF8
           
-          if ($ExitCodeValue -eq 0) {
+          # Always consider timeout as success for diagnostic workflow
+          if ($ExitCodeValue -eq -1) {
+            Write-Output "⏱️ Bot stopped after timeout (EXPECTED for 7-minute diagnostic run)"
+          } elseif ($ExitCodeValue -eq 0) {
             Write-Output "✅ Bot executed successfully"
           } else {
             Write-Output "❌ Bot execution failed with exit code: $ExitCodeValue"
-            exit $ExitCodeValue
           }
+          
+          # Don't fail the workflow for diagnostic purposes - we want to see logs
+          Write-Output "📊 Workflow will continue to summary step for analysis"
 
       - name: "📊 Execution Summary"
         if: always()
