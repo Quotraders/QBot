@@ -10,13 +10,17 @@
 
 **Looking to launch your bot and have Copilot help you debug it in real-time?**
 
-📖 **[Quick Start: Launch Bot with Copilot Help](QUICK_START_COPILOT.md)** ← Start here!
+📖 **[SOLUTION SUMMARY](SOLUTION_SUMMARY_COPILOT_DEBUGGING.md)** ← Complete overview of all options
 
-📚 **[Complete Guide: Real-Time Debugging Options](COPILOT_REAL_TIME_DEBUGGING_GUIDE.md)** ← Comprehensive guide
+📖 **[Quick Start Guide](QUICK_START_COPILOT.md)** ← TL;DR version to get started fast
+
+📚 **[Complete Debugging Guide](COPILOT_REAL_TIME_DEBUGGING_GUIDE.md)** ← Comprehensive reference
+
+📝 **[Example Walkthrough](COPILOT_DEBUGGING_EXAMPLE.md)** ← Real-world scenarios
 
 **Quick commands:**
 - **Windows**: `.\quick-launch.ps1` or `.\launch-bot-diagnostic.ps1`
-- **VS Code**: Press `F5` to launch with debugger
+- **VS Code**: Copy `.vscode-template/*` to `.vscode/`, then press `F5`
 - **GitHub Actions**: Use "🤖 Bot Launch Diagnostics" workflow
 
 ---
