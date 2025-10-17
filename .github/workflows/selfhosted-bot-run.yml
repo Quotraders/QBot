@@ -11,8 +11,7 @@ on:
   push:
     branches-ignore:
       - 'main'  # Run on ALL branches except main (agent can test every commit)
-  pull_request:
-    types: [opened, synchronize, reopened]
+  # Removed pull_request trigger to avoid duplicate runs (push already covers it)
 
 permissions:
   contents: read
