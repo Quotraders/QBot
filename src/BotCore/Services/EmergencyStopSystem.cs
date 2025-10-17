@@ -15,7 +15,8 @@ namespace BotCore.Services
 {
     /// <summary>
     /// Emergency Stop System - Critical Safety Component
-    /// Monitors kill file and provides emergency shutdown capabilities
+    /// Monitors for critical system failures only
+    /// Kill switch is MANUAL or triggered by true system failures (not performance degradation)
     /// Integrates with ProductionKillSwitchService for coordinated shutdown
     /// </summary>
     public class EmergencyStopSystem : BackgroundService

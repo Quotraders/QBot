@@ -826,20 +826,20 @@ public class SystemHealthMonitor
         try
         {
             var mode = Environment.GetEnvironmentVariable("BOT_MODE") ?? "paper";
-            var paperMode = Environment.GetEnvironmentVariable("PAPER_MODE") ?? "0";
+            var dryRun = Environment.GetEnvironmentVariable("DRY_RUN") ?? "1";
             var shadowMode = Environment.GetEnvironmentVariable("SHADOW_MODE") ?? "0";
 
             // Validate mode consistency
             var issues = new List<string>();
 
-            if (mode.ToLower() == "live" && paperMode == "1")
+            if (mode.ToLower() == "live" && dryRun == "1")
             {
-                issues.Add("Conflicting modes: BOT_MODE=live but PAPER_MODE=1");
+                issues.Add("Conflicting modes: BOT_MODE=live but DRY_RUN=1 (using paper trading)");
             }
 
-            if (paperMode == "1" && shadowMode == "1")
+            if (dryRun == "1" && shadowMode == "1")
             {
-                issues.Add("Conflicting modes: Both PAPER_MODE and SHADOW_MODE enabled");
+                issues.Add("Conflicting modes: Both DRY_RUN and SHADOW_MODE enabled");
             }
 
             // Test order routing logic with simulated order

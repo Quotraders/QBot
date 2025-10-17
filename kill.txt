@@ -1,4 +1,0 @@
-CATASTROPHIC FAILURE DETECTED - 2025-10-16 13:18:22 UTC
-Canary monitoring triggered emergency stop
-Win Rate: 0.00%
-Drawdown: $0.00

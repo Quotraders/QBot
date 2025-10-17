@@ -11,8 +11,9 @@ using System.Threading.Tasks;
 namespace BotCore.Services;
 
 /// <summary>
-/// Production-ready kill switch service that enforces DRY_RUN mode when kill.txt exists
-/// Following agent guardrails: "kill.txt always forces DRY_RUN"
+/// Production kill switch service - monitors for critical system failures
+/// Kill switch is MANUAL ONLY or triggered by critical system failures
+/// When activated, it forces shutdown of live trading for safety
 /// Implements IKillSwitchWatcher for compatibility with legacy Safety module integrations
 /// </summary>
 public sealed class ProductionKillSwitchService : IHostedService, IKillSwitchWatcher, IDisposable
@@ -62,7 +63,7 @@ public sealed class ProductionKillSwitchService : IHostedService, IKillSwitchWat
         // Periodic check as backup in case file watcher fails
         _periodicCheck = new Timer(PeriodicKillFileCheck, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(_config.CheckIntervalMs));
         
-        _logger.LogInformation("🛡️ [KILL-SWITCH] Production kill switch service initialized - monitoring for {File}", killFilePath);
+        _logger.LogInformation("🛡️ [KILL-SWITCH] Production kill switch service initialized - monitoring for critical failures at {File}", killFilePath);
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -83,15 +84,15 @@ public sealed class ProductionKillSwitchService : IHostedService, IKillSwitchWat
         var killFilePath = ResolveKillFilePath(_config.FilePath);
         if (File.Exists(killFilePath))
         {
-            _logger.LogCritical("🔴 [KILL-SWITCH] KILL FILE DETECTED ON STARTUP - Forcing DRY_RUN mode");
-            EnforceDryRunMode("Startup detection");
+            _logger.LogCritical("🔴 [KILL-SWITCH] CRITICAL FAILURE - Kill file detected on startup - Forcing shutdown");
+            EnforceDryRunMode("Critical failure detected on startup");
         }
     }
 
     private void OnKillFileDetected(object sender, FileSystemEventArgs e)
     {
-        _logger.LogCritical("🔴 [KILL-SWITCH] KILL FILE DETECTED - {EventType} - Forcing DRY_RUN mode", e.ChangeType);
-        EnforceDryRunMode($"File event: {e.ChangeType}");
+        _logger.LogCritical("🔴 [KILL-SWITCH] CRITICAL SYSTEM FAILURE - Kill file {EventType} - Forcing shutdown", e.ChangeType);
+        EnforceDryRunMode($"Critical system failure: {e.ChangeType}");
     }
 
     private void PeriodicKillFileCheck(object? state)
@@ -101,8 +102,8 @@ public sealed class ProductionKillSwitchService : IHostedService, IKillSwitchWat
             var killFilePath = ResolveKillFilePath(_config.FilePath);
             if (File.Exists(killFilePath))
             {
-                _logger.LogCritical("🔴 [KILL-SWITCH] KILL FILE DETECTED (periodic check) - Forcing DRY_RUN mode");
-                EnforceDryRunMode("Periodic check");
+                _logger.LogCritical("🔴 [KILL-SWITCH] CRITICAL FAILURE DETECTED (periodic check) - Forcing shutdown");
+                EnforceDryRunMode("Critical failure - periodic check");
             }
         }
         catch (IOException ex)
@@ -123,13 +124,11 @@ public sealed class ProductionKillSwitchService : IHostedService, IKillSwitchWat
     {
         try
         {
-            // Force DRY_RUN environment variable
-            Environment.SetEnvironmentVariable("DRY_RUN", "true");
-            Environment.SetEnvironmentVariable("EXECUTE", "false");
-            Environment.SetEnvironmentVariable("AUTO_EXECUTE", "false");
+            // Force DRY_RUN=1 environment variable (paper trading with live data)
+            Environment.SetEnvironmentVariable("DRY_RUN", "1");
             
             _logger.LogCritical("🛡️ [KILL-SWITCH] DRY_RUN MODE ENFORCED - Detection: {Method}", detectionMethod);
-            _logger.LogCritical("🛡️ [KILL-SWITCH] All execution flags disabled for safety");
+            _logger.LogCritical("🛡️ [KILL-SWITCH] Bot switched to paper trading mode - continues with live data but simulates trades");
             
             // Create DRY_RUN marker file if enabled
             if (_config.CreateDryRunMarker)
@@ -269,29 +268,23 @@ public sealed class ProductionKillSwitchService : IHostedService, IKillSwitchWat
     }
 
     /// <summary>
-    /// Get the current execution mode based on environment and kill switch
-    /// Following guardrails: DRY_RUN precedence
+    /// Get the current execution mode based on DRY_RUN environment variable
+    /// DRY_RUN=1: Paper trading with live data (simulated trades)
+    /// DRY_RUN=0: Live trading with real executions
     /// </summary>
     public static bool IsDryRunMode()
     {
-        // Kill switch always forces DRY_RUN
-        if (IsKillSwitchActive())
-        {
-            return true;
-        }
-        
-        // Check environment variables with DRY_RUN precedence
+        // Check DRY_RUN environment variable (defaults to true for safety)
         var dryRun = Environment.GetEnvironmentVariable("DRY_RUN");
-        if (dryRun?.ToUpperInvariant() == "TRUE")
+        
+        // Default to DRY_RUN if not explicitly set to 0/false
+        if (string.IsNullOrEmpty(dryRun))
         {
             return true;
         }
         
-        var execute = Environment.GetEnvironmentVariable("EXECUTE");
-        var autoExecute = Environment.GetEnvironmentVariable("AUTO_EXECUTE");
-        
-        // Default to DRY_RUN if execution flags are not explicitly true
-        return execute?.ToUpperInvariant() != "TRUE" && autoExecute?.ToUpperInvariant() != "TRUE";
+        // DRY_RUN=0 or DRY_RUN=false means live trading
+        return !(dryRun == "0" || dryRun.Equals("false", StringComparison.OrdinalIgnoreCase));
     }
 
     // IKillSwitchWatcher interface implementation

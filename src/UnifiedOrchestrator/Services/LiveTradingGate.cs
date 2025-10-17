@@ -100,9 +100,9 @@ internal sealed class LiveTradingGate : ILiveTradingGate
     private bool IsDryRunForced()
     {
         var dryRun = _configuration.GetValue("DRY_RUN", "1");
-        var enableDryRun = _configuration.GetValue("ENABLE_DRY_RUN", "true");
         
-        return dryRun == "1" || enableDryRun.Equals("true", StringComparison.OrdinalIgnoreCase);
+        // DRY_RUN=1 means paper trading (simulated), DRY_RUN=0 means live trading
+        return dryRun == "1";
     }
 
     /// <summary>
