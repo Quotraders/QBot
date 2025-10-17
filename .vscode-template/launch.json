@@ -1,0 +1,69 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch UnifiedOrchestrator (Debug)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-orchestrator",
+      "program": "${workspaceFolder}/src/UnifiedOrchestrator/bin/Debug/net8.0/UnifiedOrchestrator.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "env": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "envFile": "${workspaceFolder}/.env",
+      "justMyCode": false,
+      "enableStepFiltering": false,
+      "logging": {
+        "moduleLoad": false
+      }
+    },
+    {
+      "name": "Launch UnifiedOrchestrator (Release)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-orchestrator-release",
+      "program": "${workspaceFolder}/src/UnifiedOrchestrator/bin/Release/net8.0/UnifiedOrchestrator.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "env": {
+        "DOTNET_ENVIRONMENT": "Production",
+        "ASPNETCORE_ENVIRONMENT": "Production"
+      },
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "Launch UnifiedOrchestrator (Verbose Logging)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-orchestrator",
+      "program": "${workspaceFolder}/src/UnifiedOrchestrator/bin/Debug/net8.0/UnifiedOrchestrator.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "env": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "Logging__LogLevel__Default": "Debug",
+        "Logging__LogLevel__Microsoft": "Information",
+        "Logging__LogLevel__TradingBot": "Trace",
+        "Logging__LogLevel__BotCore": "Debug"
+      },
+      "envFile": "${workspaceFolder}/.env",
+      "justMyCode": false
+    },
+    {
+      "name": "Attach to UnifiedOrchestrator",
+      "type": "coreclr",
+      "request": "attach",
+      "processName": "UnifiedOrchestrator"
+    }
+  ]
+}

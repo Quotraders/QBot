@@ -4,6 +4,52 @@
 
 **⚠️ IMPORTANT: Only use `src/UnifiedOrchestrator` - all other entry points are disabled to prevent conflicts**
 
+---
+
+## 🤖 **NEW: Launch Bot with GitHub Actions (No Local Setup Required!)**
+
+**Want to run the bot without any local installation? Use GitHub-hosted workflows!**
+
+🚀 **[Quick Start: GitHub Workflows](QUICK_START_GITHUB_WORKFLOWS.md)** ← Launch in 3 steps
+
+📚 **[Complete Workflow Guide](.github/workflows/README-GITHUB-HOSTED-WORKFLOWS.md)** ← Full documentation
+
+**Available Workflows:**
+- **Bot Launch - GitHub Hosted**: Primary workflow with configurable runtime (1-60 min)
+- **Bot Launch Diagnostics**: Advanced diagnostics with detailed logging
+- **Bot Execution Test**: Quick 5-minute test run
+
+**Features:**
+- ✅ No self-hosted runner needed - runs on GitHub infrastructure
+- ✅ Full TopstepX API connectivity
+- ✅ Real-time log viewing in GitHub Actions
+- ✅ Downloadable artifacts (logs, metrics, system info)
+- ✅ DRY_RUN mode for safe paper trading
+- ✅ Complete environment setup automated
+
+**Requirements:** Set TopstepX credentials as GitHub secrets (see Quick Start guide)
+
+---
+
+## 🤖 **Real-Time Debugging with GitHub Copilot**
+
+**Looking to launch your bot and have Copilot help you debug it in real-time?**
+
+📖 **[SOLUTION SUMMARY](SOLUTION_SUMMARY_COPILOT_DEBUGGING.md)** ← Complete overview of all options
+
+📖 **[Quick Start Guide](QUICK_START_COPILOT.md)** ← TL;DR version to get started fast
+
+📚 **[Complete Debugging Guide](COPILOT_REAL_TIME_DEBUGGING_GUIDE.md)** ← Comprehensive reference
+
+📝 **[Example Walkthrough](COPILOT_DEBUGGING_EXAMPLE.md)** ← Real-world scenarios
+
+**Quick commands:**
+- **GitHub Actions**: Use "🚀 Bot Launch - GitHub Hosted" workflow (recommended)
+- **Windows**: `.\quick-launch.ps1` or `.\launch-bot-diagnostic.ps1`
+- **VS Code**: Copy `.vscode-template/*` to `.vscode/`, then press `F5`
+
+---
+
 ### 🧠 **Enhanced Multi-Brain Architecture with Auto-Promotion**
 - **Primary Decision Engine**: EnhancedTradingBrainIntegration with UnifiedTradingBrain
 - **ML Algorithms**: Neural UCB (627 lines) + CVaR-PPO (1,026 lines) + LSTM

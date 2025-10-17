@@ -106,8 +106,9 @@ internal class FileModelRegistry : IModelRegistry
             }
             File.Move(tempMetadataPath, modelMetadataPath);
             
+            var hashPreview = string.IsNullOrEmpty(model.ArtifactHash) ? "none" : model.ArtifactHash[..Math.Min(8, model.ArtifactHash.Length)];
             _logger.LogInformation("Registered model {Algorithm} version {VersionId} with hash {Hash}", 
-                model.Algorithm, model.VersionId, model.ArtifactHash[..8]);
+                model.Algorithm, model.VersionId, hashPreview);
             
             return model.VersionId;
         }

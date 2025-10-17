@@ -1,0 +1,508 @@
+name: "🚀 Bot Launch - Self-Hosted Runner"
+
+on:
+  workflow_dispatch:
+    inputs:
+      runtime_minutes:
+        description: 'Bot runtime duration (minutes)'
+        required: false
+        default: '5'
+        type: choice
+        options:
+          - '1'
+          - '5'
+          - '10'
+          - '15'
+          - '30'
+          - '60'
+      log_level:
+        description: 'Logging level'
+        required: false
+        default: 'Information'
+        type: choice
+        options:
+          - 'Debug'
+          - 'Information'
+          - 'Warning'
+          - 'Error'
+      dry_run:
+        description: 'Enable DRY_RUN mode (paper trading)'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  actions: write
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  ARTIFACTS_DIR: 'bot-logs'
+
+jobs:
+  launch-bot:
+    name: "Launch Trading Bot with Full Diagnostics"
+    runs-on: [self-hosted, windows, x64]
+    timeout-minutes: 70  # Covers max runtime (60min) + startup/shutdown buffer
+    
+    steps:
+      - name: "📥 Checkout Repository"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: "🔧 Setup .NET SDK"
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: "🔍 System Information"
+        shell: pwsh
+        run: |
+          Write-Output "=================================================="
+          Write-Output "🔍 SYSTEM INFORMATION"
+          Write-Output "=================================================="
+          Write-Output ""
+          Write-Output "🖥️ System Details:"
+          Write-Output "  OS: ${{ runner.os }}"
+          Write-Output "  Architecture: ${{ runner.arch }}"
+          Write-Output "  Runner: Self-hosted Windows"
+          Write-Output "  Workflow: ${{ github.workflow }}"
+          Write-Output "  Run ID: ${{ github.run_id }}"
+          Write-Output ""
+          Write-Output "⚙️ .NET Environment:"
+          dotnet --version
+          dotnet --info
+          Write-Output ""
+          Write-Output "=================================================="
+
+      - name: "📋 Load Environment Configuration"
+        shell: pwsh
+        env:
+          TOPSTEPX_API_KEY: ${{ secrets.TOPSTEPX_API_KEY }}
+          TOPSTEPX_USERNAME: ${{ secrets.TOPSTEPX_USERNAME }}
+          TOPSTEPX_ACCOUNT_ID: ${{ secrets.TOPSTEPX_ACCOUNT_ID }}
+          TOPSTEPX_ACCOUNT_NAME: ${{ secrets.TOPSTEPX_ACCOUNT_NAME }}
+        run: |
+          Write-Output "=================================================="
+          Write-Output "📋 LOADING ENVIRONMENT CONFIGURATION"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          # Create .env file from secrets
+          @'
+          # ===================================
+          # GITHUB CLOUD LEARNING & RL
+          # ===================================
+          CLOUD_PROVIDER=github
+          RL_ENABLED=1
+          GITHUB_CLOUD_LEARNING=1
+          
+          # ===================================
+          # AUTO-LEARNING & PROMOTION CONFIG
+          # ===================================
+          AUTO_PROMOTION_ENABLED=1
+          AUTO_LEARNING_ENABLED=1
+          CHALLENGER_AUTO_APPROVE=1
+          REQUIRE_MANUAL_PROMOTION=0
+          MIN_SHADOW_TEST_TRADES=50
+          MIN_SHADOW_TEST_SESSIONS=5
+          PROMOTION_CONFIDENCE_THRESHOLD=0.65
+          ROLLBACK_ON_PERFORMANCE_DECLINE=1
+          
+          # ===================================
+          # TRADING MODE CONFIGURATION
+          # ===================================
+          DRY_RUN=${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
+          ENABLE_DRY_RUN=${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
+          LIVE_ORDERS=0
+          INSTANT_ALLOW_LIVE=0
+          
+          # ===================================
+          # TOPSTEPX API CONFIGURATION
+          # ===================================
+          ENABLE_TOPSTEPX=1
+          TOPSTEPX_API_BASE=https://api.topstepx.com
+          TOPSTEPX_RTC_BASE=https://rtc.topstepx.com
+          TOPSTEPX_ADAPTER_MODE=persistent
+          TOPSTEPX_API_KEY=${TOPSTEPX_API_KEY}
+          TOPSTEPX_USERNAME=${TOPSTEPX_USERNAME}
+          TOPSTEPX_ACCOUNT_ID=${TOPSTEPX_ACCOUNT_ID}
+          TOPSTEPX_ACCOUNT_NAME=${TOPSTEPX_ACCOUNT_NAME}
+          TOPSTEPX_EVAL_ES_ID=CON.F.US.EP.Z25
+          TOPSTEPX_EVAL_NQ_ID=CON.F.US.ENQ.Z25
+          FORCE_TOPSTEPX_CONNECTION=true
+          
+          # ===================================
+          # LOGGING CONFIGURATION
+          # ===================================
+          LOG_LEVEL=${{ github.event.inputs.log_level }}
+          LOGGING__LOGLEVEL__DEFAULT=${{ github.event.inputs.log_level }}
+          LOGGING__LOGLEVEL__SYSTEM=Information
+          LOGGING__LOGLEVEL__MICROSOFT=Warning
+          
+          # ===================================
+          # ENHANCED LEARNING CONFIGURATION
+          # ===================================
+          ENHANCED_LEARNING_ENABLED=1
+          MODEL_REGISTRY_ENABLED=1
+          CANARY_WATCHDOG_ENABLED=1
+          ADAPTIVE_INTELLIGENCE_ENABLED=1
+          PROMOTE_TUNER=1
+          
+          # ===================================
+          # WORKFLOW RUNTIME CONFIGURATION
+          # ===================================
+          WORKFLOW_RUNTIME_MINUTES=${{ github.event.inputs.runtime_minutes }}
+          '@ | Out-File -FilePath .env -Encoding UTF8
+          
+          Write-Output "✅ Environment configuration created"
+          Write-Output ""
+          
+          # Validate required credentials are set
+          if ([string]::IsNullOrEmpty($env:TOPSTEPX_API_KEY) -or [string]::IsNullOrEmpty($env:TOPSTEPX_USERNAME) -or [string]::IsNullOrEmpty($env:TOPSTEPX_ACCOUNT_ID)) {
+            Write-Output "❌ ERROR: Required TopstepX credentials are missing!"
+            Write-Output ""
+            Write-Output "Please ensure the following secrets are set in GitHub repository settings:"
+            Write-Output "  - TOPSTEPX_API_KEY"
+            Write-Output "  - TOPSTEPX_USERNAME"
+            Write-Output "  - TOPSTEPX_ACCOUNT_ID"
+            Write-Output "  - TOPSTEPX_ACCOUNT_NAME (optional)"
+            Write-Output ""
+            exit 1
+          }
+          
+          Write-Output "✅ TopstepX credentials validated"
+          Write-Output ""
+          Write-Output "📊 Configuration Summary:"
+          Write-Output "  DRY_RUN: ${{ github.event.inputs.dry_run }}"
+          Write-Output "  Runtime: ${{ github.event.inputs.runtime_minutes }} minutes"
+          Write-Output "  Log Level: ${{ github.event.inputs.log_level }}"
+          Write-Output "  TopstepX: Enabled"
+          Write-Output ""
+          Write-Output "=================================================="
+
+      - name: "📦 Restore NuGet Packages"
+        shell: pwsh
+        run: |
+          Write-Output "=================================================="
+          Write-Output "📦 RESTORING NUGET PACKAGES"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          dotnet restore TopstepX.Bot.sln --verbosity minimal
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Output "❌ NuGet restore failed"
+            exit 1
+          }
+          
+          Write-Output ""
+          Write-Output "✅ NuGet restore completed successfully"
+          Write-Output ""
+          Write-Output "=================================================="
+
+      - name: "🏗️ Build Trading Bot"
+        shell: pwsh
+        run: |
+          Write-Output "=================================================="
+          Write-Output "🏗️ BUILDING TRADING BOT"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          dotnet build src/UnifiedOrchestrator/UnifiedOrchestrator.csproj `
+            -c Release `
+            --no-restore `
+            -v minimal
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Output "❌ Build failed"
+            exit 1
+          }
+          
+          Write-Output ""
+          Write-Output "✅ Build completed successfully"
+          Write-Output ""
+          Write-Output "=================================================="
+
+      - name: "🔍 Verify Build Artifacts"
+        shell: pwsh
+        run: |
+          Write-Output "=================================================="
+          Write-Output "🔍 VERIFYING BUILD ARTIFACTS"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          $DllPath = "src/UnifiedOrchestrator/bin/Release/net8.0/UnifiedOrchestrator.dll"
+          
+          if (Test-Path $DllPath) {
+            $FileSize = (Get-Item $DllPath).Length
+            $FileSizeMB = [math]::Round($FileSize / 1MB, 2)
+            Write-Output "✅ UnifiedOrchestrator.dll found"
+            Write-Output "   Size: $FileSizeMB MB"
+            Write-Output "   Path: $DllPath"
+          } else {
+            Write-Output "❌ UnifiedOrchestrator.dll NOT FOUND"
+            Write-Output "   Expected path: $DllPath"
+            Write-Output ""
+            Write-Output "📁 Build output directory:"
+            Get-ChildItem "src/UnifiedOrchestrator/bin/Release/net8.0/" -ErrorAction SilentlyContinue | Format-Table
+            exit 1
+          }
+          
+          Write-Output ""
+          Write-Output "=================================================="
+
+      - name: "🚀 Launch Trading Bot"
+        id: bot_launch
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Write-Output "=================================================="
+          Write-Output "🚀 LAUNCHING TRADING BOT"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          # Create logs directory
+          $ArtifactsDir = "${{ env.ARTIFACTS_DIR }}"
+          if (-not (Test-Path $ArtifactsDir)) {
+            New-Item -ItemType Directory -Path $ArtifactsDir -Force | Out-Null
+          }
+          
+          $Timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+          $LogFile = "$ArtifactsDir/bot-console-$Timestamp.log"
+          
+          Write-Output "📝 Logs will be saved to: $LogFile"
+          Write-Output ""
+          
+          Write-Output "🎯 Bot Configuration:"
+          Write-Output "  Runtime: ${{ github.event.inputs.runtime_minutes }} minutes"
+          Write-Output "  Log Level: ${{ github.event.inputs.log_level }}"
+          Write-Output "  DRY_RUN: ${{ github.event.inputs.dry_run }}"
+          Write-Output ""
+          Write-Output "=================================================="
+          Write-Output ""
+          Write-Output "🤖 STARTING BOT..."
+          Write-Output ""
+          
+          # Start bot in background and capture output
+          $ProcessInfo = Start-Process -FilePath "dotnet" `
+            -ArgumentList "run", "--project", "src/UnifiedOrchestrator/UnifiedOrchestrator.csproj", "--no-build", "-c", "Release" `
+            -NoNewWindow `
+            -PassThru `
+            -RedirectStandardOutput $LogFile `
+            -RedirectStandardError "$ArtifactsDir/bot-error-$Timestamp.log"
+          
+          $BotPID = $ProcessInfo.Id
+          Write-Output "✅ Bot started (PID: $BotPID)"
+          Write-Output ""
+          
+          # Wait for bot to initialize
+          Write-Output "⏳ Waiting for initialization (10 seconds)..."
+          Start-Sleep -Seconds 10
+          
+          # Check if process is still running
+          $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
+          if (-not $BotProcess) {
+            Write-Output ""
+            Write-Output "❌ Bot process exited during initialization!"
+            Write-Output ""
+            Write-Output "📋 Last 100 lines of output:"
+            Write-Output "=================================================="
+            Get-Content $LogFile -Tail 100
+            Write-Output "=================================================="
+            exit 1
+          }
+          
+          Write-Output "✅ Bot is running"
+          Write-Output ""
+          
+          # Calculate timeout
+          $RuntimeMinutes = [int]"${{ github.event.inputs.runtime_minutes }}"
+          $TimeoutSeconds = $RuntimeMinutes * 60
+          $CheckInterval = 10
+          $Elapsed = 0
+          
+          Write-Output "⏱️ Bot will run for $RuntimeMinutes minutes..."
+          Write-Output ""
+          
+          # Monitor bot execution
+          while ($Elapsed -lt $TimeoutSeconds) {
+            # Check if process is still running
+            $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
+            if (-not $BotProcess) {
+              $ExitCode = $ProcessInfo.ExitCode
+              Write-Output ""
+              Write-Output "⚠️ Bot process exited (exit code: $ExitCode)"
+              
+              # Save exit code to output
+              "exit_code=$ExitCode" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding UTF8
+              "exit_reason=exited" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding UTF8
+              
+              break
+            }
+            
+            # Wait and update progress
+            Start-Sleep -Seconds $CheckInterval
+            $Elapsed += $CheckInterval
+            
+            # Show progress every 30 seconds
+            if (($Elapsed % 30) -eq 0) {
+              $RemainingMinutes = [math]::Round(($TimeoutSeconds - $Elapsed) / 60, 1)
+              Write-Output "⏱️ Still running... ($RemainingMinutes minutes remaining)"
+            }
+          }
+          
+          # Stop bot if still running
+          $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
+          if ($BotProcess) {
+            Write-Output ""
+            Write-Output "⏱️ Runtime limit reached ($RuntimeMinutes minutes)"
+            Write-Output "🛑 Stopping bot gracefully..."
+            
+            # Try graceful shutdown
+            Stop-Process -Id $BotPID -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 5
+            
+            # Force kill if still running
+            $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
+            if ($BotProcess) {
+              Write-Output "🔨 Force stopping..."
+              Stop-Process -Id $BotPID -Force -ErrorAction SilentlyContinue
+              Start-Sleep -Seconds 2
+            }
+            
+            "exit_code=0" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding UTF8
+            "exit_reason=timeout" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding UTF8
+            
+            Write-Output "✅ Bot stopped"
+          }
+          
+          Write-Output ""
+          Write-Output "=================================================="
+          Write-Output "📊 BOT EXECUTION SUMMARY"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          # Show last 200 lines of log
+          Write-Output "📋 Last 200 lines of output:"
+          Write-Output "=================================================="
+          Get-Content $LogFile -Tail 200
+          Write-Output "=================================================="
+          Write-Output ""
+
+      - name: "📦 Package Logs and Artifacts"
+        if: always()
+        shell: pwsh
+        run: |
+          Write-Output "=================================================="
+          Write-Output "📦 PACKAGING LOGS AND ARTIFACTS"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          $ArtifactsDir = "${{ env.ARTIFACTS_DIR }}"
+          
+          # List all captured files
+          if (Test-Path $ArtifactsDir) {
+            Write-Output "📁 Captured artifacts:"
+            Get-ChildItem $ArtifactsDir | Format-Table Name, Length, LastWriteTime
+            Write-Output ""
+            
+            # Create summary file
+            $SummaryContent = @"
+          Bot Launch Execution Summary
+          ================================================
+          Workflow: ${{ github.workflow }}
+          Run ID: ${{ github.run_id }}
+          Run Number: ${{ github.run_number }}
+          Triggered By: ${{ github.actor }}
+          Timestamp: $(Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ" -AsUTC)
+          
+          Configuration:
+          - Runtime: ${{ github.event.inputs.runtime_minutes }} minutes
+          - Log Level: ${{ github.event.inputs.log_level }}
+          - DRY_RUN: ${{ github.event.inputs.dry_run }}
+          
+          Execution Results:
+          - Exit Code: ${{ steps.bot_launch.outputs.exit_code || 'N/A' }}
+          - Exit Reason: ${{ steps.bot_launch.outputs.exit_reason || 'N/A' }}
+          
+          Runner Information:
+          - Type: Self-hosted Windows
+          - OS: ${{ runner.os }}
+          - Architecture: ${{ runner.arch }}
+          ================================================
+          "@
+            
+            $SummaryContent | Out-File -FilePath "$ArtifactsDir/execution-summary.txt" -Encoding UTF8
+            
+            Write-Output "✅ Execution summary created"
+          } else {
+            Write-Output "⚠️ Artifacts directory not found"
+            New-Item -ItemType Directory -Path $ArtifactsDir -Force | Out-Null
+            "Workflow failed during early stage" | Out-File -FilePath "$ArtifactsDir/failure-note.txt" -Encoding UTF8
+          }
+          
+          Write-Output ""
+          Write-Output "=================================================="
+
+      - name: "⬆️ Upload Logs and Artifacts"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bot-logs-run-${{ github.run_number }}
+          path: ${{ env.ARTIFACTS_DIR }}
+          retention-days: 30
+          compression-level: 6
+
+      - name: "📊 Final Report"
+        if: always()
+        shell: pwsh
+        run: |
+          Write-Output ""
+          Write-Output "=================================================="
+          Write-Output "📊 BOT LAUNCH - FINAL REPORT"
+          Write-Output "=================================================="
+          Write-Output ""
+          Write-Output "🤖 Execution Summary:"
+          Write-Output "  Workflow: ${{ github.workflow }}"
+          Write-Output "  Run ID: ${{ github.run_id }}"
+          Write-Output "  Run Number: ${{ github.run_number }}"
+          Write-Output "  Triggered By: ${{ github.actor }}"
+          Write-Output ""
+          Write-Output "📊 Results:"
+          Write-Output "  Exit Code: ${{ steps.bot_launch.outputs.exit_code || 'N/A' }}"
+          Write-Output "  Exit Reason: ${{ steps.bot_launch.outputs.exit_reason || 'N/A' }}"
+          Write-Output ""
+          Write-Output "📦 Artifacts:"
+          Write-Output "  Name: bot-logs-run-${{ github.run_number }}"
+          Write-Output "  Location: GitHub Actions Artifacts"
+          Write-Output "  Retention: 30 days"
+          Write-Output "  Access: Actions → This run → Artifacts section"
+          Write-Output ""
+          
+          $ExitCode = "${{ steps.bot_launch.outputs.exit_code }}"
+          $ExitReason = "${{ steps.bot_launch.outputs.exit_reason }}"
+          
+          if ($ExitReason -eq "timeout") {
+            Write-Output "✅ Status: SUCCESS (Completed scheduled runtime)"
+            Write-Output ""
+            Write-Output "The bot ran for the configured duration and was stopped gracefully."
+          } elseif ($ExitCode -eq "0") {
+            Write-Output "✅ Status: SUCCESS"
+          } else {
+            Write-Output "⚠️ Status: COMPLETED WITH ISSUES"
+            Write-Output ""
+            Write-Output "The bot may have encountered errors. Review the artifacts for details."
+          }
+          
+          Write-Output ""
+          Write-Output "💡 Next Steps:"
+          Write-Output "  1. Download artifacts from this workflow run"
+          Write-Output "  2. Review bot-console-*.log for complete output"
+          Write-Output "  3. Check execution-summary.txt for configuration details"
+          Write-Output "  4. Investigate any errors or unexpected behavior"
+          Write-Output ""
+          Write-Output "=================================================="
+          Write-Output "✅ WORKFLOW COMPLETE"
+          Write-Output "=================================================="

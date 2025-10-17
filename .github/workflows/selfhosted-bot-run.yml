@@ -1,4 +1,4 @@
-name: "🚀 Self-Hosted Bot Execution Test"
+name: "🚀 Bot Execution Test"
 
 on:
   workflow_dispatch:
@@ -8,25 +8,26 @@ on:
         required: false
         default: '5'
         type: string
+      dry_run:
+        description: 'Enable DRY_RUN mode (paper trading)'
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
 
 env:
   TOPSTEPX_API_BASE: "https://api.topstepx.com"
+  DOTNET_VERSION: '8.0.x'
 
 jobs:
   run-bot:
-    name: "Run Trading Bot on Self-Hosted Runner"
-    runs-on: self-hosted
-    timeout-minutes: ${{ fromJSON(github.event.inputs.timeout_minutes || '5') }}
+    name: "Run Trading Bot"
+    runs-on: [self-hosted, windows, x64]
+    timeout-minutes: 15  # Covers max runtime + startup/shutdown buffer
     
     steps:
-      - name: Configure Git
-        run: |
-          git config --global core.longpaths true
-          git config --global core.symlinks false
-      
       - name: "📥 Checkout Repository"
         uses: actions/checkout@v4
         with:
@@ -34,13 +35,16 @@ jobs:
 
       - name: "🔧 Setup .NET SDK"
         uses: actions/setup-dotnet@v4
-        env:
-          DOTNET_INSTALL_DIR: ${{ runner.temp }}/.dotnet
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: "🔧 Setup .NET Environment"
         shell: pwsh
+        env:
+          TOPSTEPX_API_KEY: ${{ secrets.TOPSTEPX_API_KEY }}
+          TOPSTEPX_USERNAME: ${{ secrets.TOPSTEPX_USERNAME }}
+          TOPSTEPX_ACCOUNT_ID: ${{ secrets.TOPSTEPX_ACCOUNT_ID }}
+          TOPSTEPX_ACCOUNT_NAME: ${{ secrets.TOPSTEPX_ACCOUNT_NAME }}
         run: |
           Write-Output "=================================================="
           Write-Output "🔧 .NET Environment Setup"
@@ -48,19 +52,38 @@ jobs:
           Write-Output ""
           
           # Check .NET installation
-          try {
-            $DotnetVersion = dotnet --version
-            Write-Output "✅ .NET SDK Version: $DotnetVersion"
-            Write-Output ""
-            Write-Output "📋 .NET SDK Information:"
-            dotnet --info
-          } catch {
-            Write-Output "❌ .NET SDK not found"
-            Write-Output "Error: $($_.Exception.Message)"
+          $DotnetVersion = dotnet --version
+          Write-Output "✅ .NET SDK Version: $DotnetVersion"
+          Write-Output ""
+          Write-Output "📋 .NET SDK Information:"
+          dotnet --info
+          Write-Output ""
+          
+          # Create .env file from secrets
+          @"
+          # Trading Mode Configuration
+          DRY_RUN=${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
+          ENABLE_DRY_RUN=${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
+          LIVE_ORDERS=0
+          
+          # TopstepX API Configuration
+          ENABLE_TOPSTEPX=1
+          TOPSTEPX_API_BASE=${TOPSTEPX_API_BASE}
+          TOPSTEPX_API_KEY=${TOPSTEPX_API_KEY}
+          TOPSTEPX_USERNAME=${TOPSTEPX_USERNAME}
+          TOPSTEPX_ACCOUNT_ID=${TOPSTEPX_ACCOUNT_ID}
+          TOPSTEPX_ACCOUNT_NAME=${TOPSTEPX_ACCOUNT_NAME}
+          "@ | Out-File -FilePath .env -Encoding UTF8
+          
+          Write-Output "✅ Environment configuration created"
+          Write-Output ""
+          
+          # Validate credentials
+          if ([string]::IsNullOrEmpty($env:TOPSTEPX_API_KEY) -or [string]::IsNullOrEmpty($env:TOPSTEPX_USERNAME) -or [string]::IsNullOrEmpty($env:TOPSTEPX_ACCOUNT_ID)) {
+            Write-Output "❌ ERROR: Required TopstepX credentials are missing!"
             exit 1
           }
           
-          Write-Output ""
           Write-Output "📦 Restoring NuGet packages..."
           dotnet restore TopstepX.Bot.sln
           
@@ -93,27 +116,61 @@ jobs:
           Write-Output ""
           Write-Output "=================================================="
 
-      - name: "🚀 Run Trading Bot (with Error Capture)"
-        id: bot_run
+      - name: "🔍 Verify Build Output"
         shell: pwsh
+        run: |
+          Write-Output "=================================================="
+          Write-Output "🔍 Verifying Build Output"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          $DllPath = "src/UnifiedOrchestrator/bin/Release/net8.0/UnifiedOrchestrator.dll"
+          
+          if (Test-Path $DllPath) {
+            $FileSize = (Get-Item $DllPath).Length
+            $FileSizeMB = [math]::Round($FileSize / 1MB, 2)
+            Write-Output "✅ Build artifacts verified"
+            Write-Output "   UnifiedOrchestrator.dll: $FileSizeMB MB"
+          } else {
+            Write-Output "❌ Build artifacts NOT FOUND at: $DllPath"
+            exit 1
+          }
+          
+          Write-Output ""
+          Write-Output "=================================================="
+
+      - name: "🚀 Run Trading Bot"
+        id: bot_run
         continue-on-error: true
+        shell: pwsh
         run: |
           Write-Output "=================================================="
           Write-Output "🚀 Starting Trading Bot"
           Write-Output "=================================================="
           Write-Output ""
           
-          # Set DRY_RUN mode for safety
-          $env:DRY_RUN = "true"
-          Write-Output "⚠️ DRY_RUN mode enabled (safety mode)"
+          # Load environment variables
+          if (Test-Path ".env") {
+            Get-Content .env | ForEach-Object {
+              if ($_ -match '^([^#][^=]+)=(.*)$') {
+                [Environment]::SetEnvironmentVariable($matches[1], $matches[2])
+              }
+            }
+          }
+          
+          # Override with DRY_RUN from input
+          $env:DRY_RUN = if ("${{ github.event.inputs.dry_run }}" -eq "true") { "1" } else { "0" }
+          Write-Output "⚠️ DRY_RUN mode: ${{ github.event.inputs.dry_run }}"
           Write-Output ""
           
           # Create log capture directory
-          $LogDir = "$env:TEMP\qbot-bot-run-logs"
-          New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+          $LogDir = "$env:TEMP/qbot-bot-run-logs"
+          if (-not (Test-Path $LogDir)) {
+            New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+          }
           
-          $Timestamp = (Get-Date).ToString("yyyy-MM-dd_HH-mm-ss")
-          $LogFile = "$LogDir\bot-run-$Timestamp.log"
+          $Timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+          $LogFile = "$LogDir/bot-run-$Timestamp.log"
           
           Write-Output "📝 Bot output will be captured to: $LogFile"
           Write-Output ""
@@ -122,103 +179,85 @@ jobs:
           Write-Output ""
           
           # Run the bot and capture all output
-          try {
-            # Use Start-Process to capture output
-            $ProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
-            $ProcessInfo.FileName = "dotnet"
-            $ProcessInfo.Arguments = "run --project src/UnifiedOrchestrator/UnifiedOrchestrator.csproj"
-            $ProcessInfo.RedirectStandardOutput = $true
-            $ProcessInfo.RedirectStandardError = $true
-            $ProcessInfo.UseShellExecute = $false
-            $ProcessInfo.CreateNoWindow = $true
-            $ProcessInfo.WorkingDirectory = (Get-Location)
-            
-            # Copy environment variables to the new process
-            foreach ($envVar in [Environment]::GetEnvironmentVariables().GetEnumerator()) {
-              $ProcessInfo.Environment[$envVar.Name] = $envVar.Value
+          $ProcessInfo = Start-Process -FilePath "dotnet" `
+            -ArgumentList "run", "--project", "src/UnifiedOrchestrator/UnifiedOrchestrator.csproj", "--no-build", "-c", "Release" `
+            -NoNewWindow `
+            -PassThru `
+            -RedirectStandardOutput $LogFile `
+            -RedirectStandardError "$LogDir/bot-error-$Timestamp.log"
+          
+          $BotPID = $ProcessInfo.Id
+          Write-Output "✅ Process started (PID: $BotPID)"
+          Write-Output ""
+          
+          # Wait for process to exit or timeout
+          $TimeoutSeconds = 120
+          $CheckInterval = 10
+          $Elapsed = 0
+          
+          Write-Output "⏱️ Waiting for bot to complete (timeout: $TimeoutSeconds seconds)..."
+          
+          $ExitCode = $null
+          while ($Elapsed -lt $TimeoutSeconds) {
+            $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
+            if (-not $BotProcess) {
+              $ExitCode = $ProcessInfo.ExitCode
+              break
             }
             
-            $Process = New-Object System.Diagnostics.Process
-            $Process.StartInfo = $ProcessInfo
+            Start-Sleep -Seconds $CheckInterval
+            $Elapsed += $CheckInterval
             
-            # Event handlers for output
-            $OutputBuilder = New-Object System.Text.StringBuilder
-            $ErrorBuilder = New-Object System.Text.StringBuilder
-            
-            $OutputHandler = {
-              if (-not [string]::IsNullOrEmpty($EventArgs.Data)) {
-                $OutputBuilder.AppendLine($EventArgs.Data)
-                Write-Output $EventArgs.Data
-              }
+            # Show progress every 30 seconds
+            if (($Elapsed % 30) -eq 0) {
+              Write-Output "⏱️ Still running... ($Elapsed / $TimeoutSeconds seconds)"
             }
-            
-            $ErrorHandler = {
-              if (-not [string]::IsNullOrEmpty($EventArgs.Data)) {
-                $ErrorBuilder.AppendLine($EventArgs.Data)
-                Write-Output "STDERR: $($EventArgs.Data)"
-              }
-            }
-            
-            Register-ObjectEvent -InputObject $Process -EventName OutputDataReceived -Action $OutputHandler | Out-Null
-            Register-ObjectEvent -InputObject $Process -EventName ErrorDataReceived -Action $ErrorHandler | Out-Null
-            
-            $Process.Start() | Out-Null
-            $Process.BeginOutputReadLine()
-            $Process.BeginErrorReadLine()
-            
-            # Wait for process to exit or timeout (2 minutes)
-            $TimeoutSeconds = 120
-            $Process.WaitForExit($TimeoutSeconds * 1000)
-            
-            if (-not $Process.HasExited) {
-              Write-Output ""
-              Write-Output "⏱️ Bot execution timeout after $TimeoutSeconds seconds"
-              Write-Output "Stopping bot process..."
-              $Process.Kill()
-              $ExitCode = -1
-            } else {
-              $ExitCode = $Process.ExitCode
-            }
-            
-            # Save logs
-            $OutputBuilder.ToString() | Out-File -FilePath $LogFile -Encoding utf8
-            
+          }
+          
+          # Stop if timeout reached
+          $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
+          if ($BotProcess) {
             Write-Output ""
-            Write-Output "=================================================="
-            Write-Output "Bot Execution Summary:"
-            Write-Output "  Exit Code: $ExitCode"
-            Write-Output "  Log File: $LogFile"
-            Write-Output "=================================================="
+            Write-Output "⏱️ Bot execution timeout after $TimeoutSeconds seconds"
+            Write-Output "🛑 Stopping bot process..."
             
-            # Output last 100 lines of log for GitHub Actions
-            Write-Output ""
-            Write-Output "📋 Last 100 lines of bot output:"
-            Write-Output "=================================================="
-            Get-Content $LogFile -Tail 100
-            Write-Output "=================================================="
+            Stop-Process -Id $BotPID -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 3
             
-            # Set outputs
-            "exit_code=$ExitCode" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-            "log_file=$LogFile" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-            
-            if ($ExitCode -eq 0) {
-              Write-Output "✅ Bot executed successfully"
-            } else {
-              Write-Output "❌ Bot execution failed with exit code: $ExitCode"
-              exit $ExitCode
+            $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
+            if ($BotProcess) {
+              Write-Output "🔨 Force stopping process..."
+              Stop-Process -Id $BotPID -Force -ErrorAction SilentlyContinue
+              Start-Sleep -Seconds 2
             }
             
-          } catch {
-            Write-Output ""
-            Write-Output "❌ Critical error during bot execution:"
-            Write-Output "Error: $($_.Exception.Message)"
-            Write-Output "Stack Trace: $($_.Exception.StackTrace)"
-            
-            # Save error to log
-            "CRITICAL ERROR: $($_.Exception.Message)" | Out-File -FilePath $LogFile -Append -Encoding utf8
-            $_.Exception.StackTrace | Out-File -FilePath $LogFile -Append -Encoding utf8
-            
-            exit 1
+            $ExitCode = -1
+          }
+          
+          Write-Output ""
+          Write-Output "=================================================="
+          Write-Output "Bot Execution Summary:"
+          Write-Output "  Exit Code: $(if ($ExitCode) { $ExitCode } else { 0 })"
+          Write-Output "  Log File: $LogFile"
+          Write-Output "=================================================="
+          
+          # Output last 100 lines of log
+          Write-Output ""
+          Write-Output "📋 Last 100 lines of bot output:"
+          Write-Output "=================================================="
+          Get-Content $LogFile -Tail 100
+          Write-Output "=================================================="
+          
+          # Set outputs
+          $ExitCodeValue = if ($ExitCode) { $ExitCode } else { 0 }
+          "exit_code=$ExitCodeValue" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding UTF8
+          "log_file=$LogFile" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding UTF8
+          
+          if ($ExitCodeValue -eq 0) {
+            Write-Output "✅ Bot executed successfully"
+          } else {
+            Write-Output "❌ Bot execution failed with exit code: $ExitCodeValue"
+            exit $ExitCodeValue
           }
 
       - name: "📊 Execution Summary"
@@ -249,31 +288,3 @@ jobs:
           Write-Output "📝 Log Location: $LogFile"
           Write-Output ""
           Write-Output "=================================================="
-          
-          # Check for specific error patterns in the log
-          if (Test-Path $LogFile) {
-            Write-Output ""
-            Write-Output "🔍 Error Analysis:"
-            Write-Output "=================================================="
-            
-            $LogContent = Get-Content $LogFile -Raw
-            
-            # Check for common error patterns
-            $ErrorPatterns = @{
-              "NullReferenceException" = "Null reference error detected"
-              "InvalidOperationException" = "Invalid operation error detected"
-              "ArgumentException" = "Argument error detected"
-              "TradingBotParameterProvider" = "Parameter provider error detected"
-              "ML parameter provider" = "ML initialization mentioned"
-              "CRITICAL ERROR" = "Critical error detected"
-              "exit code 1" = "Process exited with error"
-            }
-            
-            foreach ($Pattern in $ErrorPatterns.Keys) {
-              if ($LogContent -match $Pattern) {
-                Write-Output "  ⚠️ $($ErrorPatterns[$Pattern]): '$Pattern' found in logs"
-              }
-            }
-            
-            Write-Output "=================================================="
-          }

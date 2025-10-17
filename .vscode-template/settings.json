@@ -1,0 +1,59 @@
+{
+  // Editor Settings
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit"
+  },
+
+  // C# Settings
+  "csharp.semanticHighlighting.enabled": true,
+  "dotnet.defaultSolution": "TopstepX.Bot.sln",
+  
+  // GitHub Copilot Settings
+  "github.copilot.enable": {
+    "*": true,
+    "plaintext": true,
+    "markdown": true,
+    "csharp": true
+  },
+  "github.copilot.editor.enableAutoCompletions": true,
+
+  // File Exclusions (to improve Copilot performance)
+  "files.exclude": {
+    "**/bin": true,
+    "**/obj": true,
+    "**/node_modules": true,
+    "**/.git": true
+  },
+  
+  "search.exclude": {
+    "**/bin": true,
+    "**/obj": true,
+    "**/node_modules": true,
+    "**/logs": true,
+    "**/artifacts": true,
+    "**/state": true,
+    "**/datasets": true,
+    "**/model_registry": true
+  },
+
+  // Terminal Settings
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.env.windows": {
+    "ASPNETCORE_ENVIRONMENT": "Development"
+  },
+
+  // Python Settings (for TopstepX adapter)
+  "python.defaultInterpreterPath": "${env:PYTHON_EXECUTABLE}",
+  
+  // File Associations
+  "files.associations": {
+    "*.csproj": "xml",
+    "*.props": "xml",
+    ".env": "properties",
+    ".env.*": "properties"
+  },
+
+  // Recommended Extensions Alert
+  "extensions.ignoreRecommendations": false
+}
