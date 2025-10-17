@@ -558,11 +558,17 @@ class TopstepXAdapter:
                 self.logger.info(f"Using TopstepX instrument code: {topstepx_instrument}")
                 suite = await TradingSuite.from_env(instrument=topstepx_instrument)
                 
-                # CRITICAL: Initialize WebSocket connection for real-time data streaming
+                # CRITICAL: Initialize WebSocket connection for real-time data streaming with timeout
                 self.logger.info(f"🔌 Initializing WebSocket connection for {instrument}...")
                 if hasattr(suite, '_initialize'):
-                    await suite._initialize()
-                    self.logger.info(f"✅ WebSocket connection initialized for {instrument}")
+                    try:
+                        # Add timeout to prevent hanging - WebSocket should connect within 30 seconds
+                        await asyncio.wait_for(suite._initialize(), timeout=30.0)
+                        self.logger.info(f"✅ WebSocket connection initialized for {instrument}")
+                    except asyncio.TimeoutError:
+                        self.logger.warning(f"⚠️ WebSocket initialization timed out for {instrument} - will continue without WebSocket")
+                    except Exception as e:
+                        self.logger.warning(f"⚠️ WebSocket initialization failed for {instrument}: {e} - will continue without WebSocket")
                 else:
                     self.logger.warning(f"⚠️ Suite does not have _initialize method - WebSocket may not connect")
                 
@@ -631,7 +637,11 @@ class TopstepXAdapter:
                 # Access the suite for this instrument from our suites dictionary
                 suite = self.suites[instrument]
                 # Use subscript notation as required by TopstepX SDK v3.5.9+
-                current_price = await suite[instrument].data.get_current_price()
+                # Add timeout to prevent hanging on connection tests
+                current_price = await asyncio.wait_for(
+                    suite[instrument].data.get_current_price(),
+                    timeout=10.0
+                )
                 self.logger.info(f"✅ {instrument} connected - Current price: ${current_price:.2f}")
                 return current_price
             
@@ -640,6 +650,8 @@ class TopstepXAdapter:
                     _test_instrument_connection, f"{instrument}_connection_test", self.logger
                 )
                 connection_successes.append(instrument)
+            except asyncio.TimeoutError:
+                self.logger.warning(f"⚠️ {instrument} connection test timed out (may connect later)")
             except Exception as e:
                 self.logger.warning(f"⚠️ {instrument} connection test failed (may connect later): {e}")
         
@@ -650,12 +662,16 @@ class TopstepXAdapter:
             self.logger.warning(f"⚠️ No instruments connected yet - WebSocket may still be establishing connection")
         
             # Give WebSocket extra time to establish connection (SDK can be slow on Windows)
-        self.logger.info("⏳ Waiting 5 seconds for WebSocket connection to stabilize...")
-        await asyncio.sleep(5)
+        self.logger.info("⏳ Waiting 2 seconds for WebSocket connection to stabilize...")
+        await asyncio.sleep(2)
         
         # Test risk management system with retry policy
         async def _test_risk_management():
-            risk_stats = await self.suite.get_stats()
+            # Add timeout to prevent hanging
+            risk_stats = await asyncio.wait_for(
+                self.suite.get_stats(),
+                timeout=10.0
+            )
             self.logger.info(f"SDK connected successfully - Stats: {risk_stats}")
             return risk_stats
         
@@ -663,6 +679,13 @@ class TopstepXAdapter:
             await self.retry_policy.execute_with_retry(
                 _test_risk_management, "risk_management_test", self.logger
             )
+        except asyncio.TimeoutError:
+            self.logger.warning(f"⚠️ Initial risk management test timed out (WebSocket may still be connecting)")
+            self._emit_telemetry("initialization_warning", {
+                "reason": "risk_management_timeout",
+                "severity": "warning"
+            })
+            # Don't raise - allow adapter to continue and retry connection
         except Exception as e:
             # Log but don't fail - WebSocket might connect later
             self.logger.warning(f"⚠️ Initial risk management test failed (WebSocket may still be connecting): {e}")
@@ -684,10 +707,19 @@ class TopstepXAdapter:
         for instrument in self.instruments:
             try:
                 suite = self._get_suite(instrument)
-                price = await suite[instrument].data.get_current_price()
+                # Add timeout to prevent hanging on price fetch
+                price = await asyncio.wait_for(
+                    suite[instrument].data.get_current_price(),
+                    timeout=10.0
+                )
                 async with self._price_cache_lock:
                     self._price_cache[instrument] = float(price)
                 self.logger.info(f"✅ {instrument} initial price: ${price:.2f}")
+            except asyncio.TimeoutError:
+                self.logger.warning(f"⚠️ Initial price fetch timed out for {instrument}")
+                # Set a fallback price to avoid failures
+                async with self._price_cache_lock:
+                    self._price_cache[instrument] = 0.0
             except Exception as e:
                 self.logger.warning(f"⚠️ Failed to get initial price for {instrument}: {e}")
                 # Set a fallback price to avoid failures
@@ -775,17 +807,31 @@ class TopstepXAdapter:
                         
                         # Try get_bars(limit=1, partial=True) for latest tick
                         # Falls back to get_current_price() if bars unavailable
+                        # Add timeout to prevent hanging on price fetch
                         try:
-                            bars = await suite[symbol].data.get_bars(limit=1, partial=True)
+                            bars = await asyncio.wait_for(
+                                suite[symbol].data.get_bars(limit=1, partial=True),
+                                timeout=5.0
+                            )
                             if bars and len(bars) > 0:
                                 price = float(bars[-1].close)  # Use latest bar's close price
                             else:
                                 # Fallback to get_current_price() if no bars
-                                price = await suite[symbol].data.get_current_price()
+                                price = await asyncio.wait_for(
+                                    suite[symbol].data.get_current_price(),
+                                    timeout=5.0
+                                )
+                        except asyncio.TimeoutError:
+                            # If timeout, skip this iteration
+                            self.logger.debug(f"Price fetch timed out for {symbol}, skipping this iteration")
+                            continue
                         except Exception as bars_err:
                             # If get_bars() fails, fallback to get_current_price()
                             self.logger.debug(f"get_bars failed for {symbol}, using get_current_price(): {bars_err}")
-                            price = await suite[symbol].data.get_current_price()
+                            price = await asyncio.wait_for(
+                                suite[symbol].data.get_current_price(),
+                                timeout=5.0
+                            )
                         
                         # Update cache with thread-safe lock
                         async with self._price_cache_lock:
