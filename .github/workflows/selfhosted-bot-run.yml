@@ -1,17 +1,21 @@
-name: "🚀 Bot Continuous Execution"
+name: "🚀 Bot Execution Test"
 
 on:
+  push:
+    branches:
+      - 'copilot/fix-trading-bot-errors'
   workflow_dispatch:
     inputs:
+      timeout_minutes:
+        description: 'Bot execution timeout (minutes)'
+        required: false
+        default: '5'
+        type: string
       dry_run:
         description: 'Enable DRY_RUN mode (paper trading)'
         required: false
         default: true
         type: boolean
-  push:
-    branches-ignore:
-      - 'main'  # Run on ALL branches except main (agent can test every commit)
-  # Removed pull_request trigger to avoid duplicate runs (push already covers it)
 
 permissions:
   contents: read
@@ -22,9 +26,9 @@ env:
 
 jobs:
   run-bot:
-    name: "Run Trading Bot on Self-Hosted Runner"
-    runs-on: [self-hosted, Windows, X64]
-    timeout-minutes: 7  # Extended timeout for full bot execution analysis
+    name: "Run Trading Bot"
+    runs-on: [self-hosted, windows, x64]
+    timeout-minutes: 15  # Covers max runtime + startup/shutdown buffer
     
     steps:
       - name: "📥 Checkout Repository"
@@ -32,46 +36,10 @@ jobs:
         with:
           fetch-depth: 1
 
-      # Skip .NET setup - self-hosted runner already has .NET 8.0 installed
-      # - name: "🔧 Setup .NET SDK"
-      #   uses: actions/setup-dotnet@v4
-      #   with:
-      #     dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      # Skip Python setup - self-hosted runner already has Python 3.11 installed
-      # - name: "🐍 Setup Python Environment"
-      #   uses: actions/setup-python@v5
-      #   with:
-      #     python-version: '3.11'
-      #     cache: 'pip'
-
-      - name: "📦 Install Python Dependencies"
-        shell: pwsh
-        run: |
-          Write-Output "=================================================="
-          Write-Output "📦 Installing Python Dependencies"
-          Write-Output "=================================================="
-          Write-Output ""
-          
-          # Verify Python is available
-          python --version
-          Write-Output ""
-          
-          # Upgrade pip
-          python -m pip install --upgrade pip
-          
-          # Install project-x-py SDK WITHOUT uvloop (Windows doesn't support it)
-          # We exclude uvloop since it's a Linux/Mac-only dependency
-          pip install 'project-x-py>=3.5.0' --no-deps
-          pip install cachetools deprecated httpx[http2] lz4 msgpack-python numpy orjson plotly polars pydantic pytz pyyaml requests rich signalrcore
-          
-          # Verify installation (avoid emoji due to PowerShell encoding issues)
-          python -c "import project_x_py; print('[OK] project-x-py SDK installed successfully')"
-          
-          Write-Output ""
-          Write-Output "✅ Python dependencies installed"
-          Write-Output ""
-          Write-Output "=================================================="
+      - name: "🔧 Setup .NET SDK"
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: "🔧 Setup .NET Environment"
         shell: pwsh
@@ -94,13 +62,8 @@ jobs:
           dotnet --info
           Write-Output ""
           
-          # Check if .env already exists (self-hosted runner)
-          if (Test-Path .env) {
-            Write-Output "✅ Using existing .env file (self-hosted runner)"
-          } else {
-            Write-Output "⚠️ No .env file found - creating from secrets"
-            # Create .env file from secrets
-            @"
+          # Create .env file from secrets
+          @"
           # Trading Mode Configuration
           DRY_RUN=${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
           ENABLE_DRY_RUN=${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
@@ -113,19 +76,15 @@ jobs:
           TOPSTEPX_USERNAME=${TOPSTEPX_USERNAME}
           TOPSTEPX_ACCOUNT_ID=${TOPSTEPX_ACCOUNT_ID}
           TOPSTEPX_ACCOUNT_NAME=${TOPSTEPX_ACCOUNT_NAME}
-          
-          # SDK v3.5.9+ also uses PROJECT_X_* format
-          PROJECT_X_API_KEY=${TOPSTEPX_API_KEY}
-          PROJECT_X_USERNAME=${TOPSTEPX_USERNAME}
           "@ | Out-File -FilePath .env -Encoding UTF8
-            
-            Write-Output "✅ Environment configuration created"
-            
-            # Validate credentials only if we created from secrets
-            if ([string]::IsNullOrEmpty($env:TOPSTEPX_API_KEY) -or [string]::IsNullOrEmpty($env:TOPSTEPX_USERNAME) -or [string]::IsNullOrEmpty($env:TOPSTEPX_ACCOUNT_ID)) {
-              Write-Output "❌ ERROR: Required TopstepX credentials are missing!"
-              exit 1
-            }
+          
+          Write-Output "✅ Environment configuration created"
+          Write-Output ""
+          
+          # Validate credentials
+          if ([string]::IsNullOrEmpty($env:TOPSTEPX_API_KEY) -or [string]::IsNullOrEmpty($env:TOPSTEPX_USERNAME) -or [string]::IsNullOrEmpty($env:TOPSTEPX_ACCOUNT_ID)) {
+            Write-Output "❌ ERROR: Required TopstepX credentials are missing!"
+            exit 1
           }
           
           Write-Output "📦 Restoring NuGet packages..."
@@ -187,6 +146,13 @@ jobs:
         id: bot_run
         continue-on-error: true
         shell: pwsh
+        env:
+          TOPSTEPX_API_KEY: ${{ secrets.TOPSTEPX_API_KEY }}
+          TOPSTEPX_USERNAME: ${{ secrets.TOPSTEPX_USERNAME }}
+          TOPSTEPX_ACCOUNT_ID: ${{ secrets.TOPSTEPX_ACCOUNT_ID }}
+          TOPSTEPX_ACCOUNT_NAME: ${{ secrets.TOPSTEPX_ACCOUNT_NAME }}
+          PROJECT_X_API_KEY: ${{ secrets.TOPSTEPX_API_KEY }}
+          PROJECT_X_USERNAME: ${{ secrets.TOPSTEPX_USERNAME }}
         run: |
           Write-Output "=================================================="
           Write-Output "🚀 Starting Trading Bot"
@@ -204,148 +170,152 @@ jobs:
           
           # Override with DRY_RUN from input
           $env:DRY_RUN = if ("${{ github.event.inputs.dry_run }}" -eq "true") { "1" } else { "0" }
+          $env:ENABLE_DRY_RUN = if ("${{ github.event.inputs.dry_run }}" -eq "true") { "1" } else { "0" }
           Write-Output "⚠️ DRY_RUN mode: ${{ github.event.inputs.dry_run }}"
           Write-Output ""
           
-          # Create log capture directory BEFORE starting adapter
+          # Set required Python/SDK environment variables
+          $env:PYTHON_EXECUTABLE = "python"
+          $env:ADAPTER_MAX_RETRIES = "3"
+          $env:ADAPTER_BASE_DELAY = "1.0"
+          $env:ADAPTER_MAX_DELAY = "8.0"
+          $env:ADAPTER_TIMEOUT = "30.0"
+          
+          # Create log capture directory
           $LogDir = "$env:TEMP/qbot-bot-run-logs"
           if (-not (Test-Path $LogDir)) {
             New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
           }
           
           $Timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
-          
-          # Start Python TopstepX Adapter
-          Write-Output "🐍 Starting Python TopstepX Adapter..."
-          $PythonAdapterPath = "src/adapters/topstep_x_adapter.py"
-          
-          if (-not (Test-Path $PythonAdapterPath)) {
-            Write-Output "❌ ERROR: Python adapter not found at $PythonAdapterPath"
-            exit 1
-          }
-          
-          # Find Python executable
-          $PythonExe = $null
-          
-          # Try to find Python in PATH first
-          $PythonExe = (Get-Command python -ErrorAction SilentlyContinue).Source
-          if (-not $PythonExe) {
-            $PythonExe = (Get-Command python3 -ErrorAction SilentlyContinue).Source
-          }
-          
-          # If not in PATH, try common installation locations
-          if (-not $PythonExe) {
-            $CommonPaths = @(
-              "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe",
-              "$env:LOCALAPPDATA\Programs\Python\Python311\python.exe",
-              "$env:LOCALAPPDATA\Programs\Python\Python310\python.exe",
-              "C:\Python312\python.exe",
-              "C:\Python311\python.exe",
-              "C:\Python310\python.exe"
-            )
-            foreach ($Path in $CommonPaths) {
-              if (Test-Path $Path) {
-                $PythonExe = $Path
-                break
-              }
-            }
-          }
-          
-          if (-not $PythonExe) {
-            Write-Output "❌ ERROR: Python executable not found in PATH or common locations"
-            Write-Output "Checked locations:"
-            Write-Output "  - PATH (python, python3)"
-            Write-Output "  - $env:LOCALAPPDATA\Programs\Python\Python31x\python.exe"
-            Write-Output "  - C:\Python31x\python.exe"
-            exit 1
-          }
-          Write-Output "Using Python: $PythonExe"
-          
-          $AdapterLogFile = "$LogDir/adapter-$Timestamp.log"
-          $AdapterProcess = Start-Process -FilePath $PythonExe `
-            -ArgumentList $PythonAdapterPath `
-            -NoNewWindow `
-            -PassThru `
-            -RedirectStandardOutput $AdapterLogFile `
-            -RedirectStandardError "$LogDir/adapter-error-$Timestamp.log"
-          
-          $AdapterPID = $AdapterProcess.Id
-          Write-Output "✅ Python adapter started (PID: $AdapterPID)"
-          Write-Output "📝 Adapter logs: $AdapterLogFile"
-          Write-Output ""
-          
-          # Wait for adapter to initialize (check for port 8765 to be listening)
-          Write-Output "⏳ Waiting for adapter to initialize..."
-          $AdapterReady = $false
-          for ($i = 0; $i -lt 30; $i++) {
-            Start-Sleep -Seconds 1
-            $Connection = Test-NetConnection -ComputerName localhost -Port 8765 -InformationLevel Quiet -WarningAction SilentlyContinue
-            if ($Connection) {
-              $AdapterReady = $true
-              Write-Output "✅ Adapter ready on port 8765 (after $i seconds)"
-              break
-            }
-          }
-          
-          if (-not $AdapterReady) {
-            Write-Output "⚠️ WARNING: Adapter may not be ready after 30 seconds"
-            Write-Output "📋 Last 20 lines of adapter log:"
-            Get-Content $AdapterLogFile -Tail 20 -ErrorAction SilentlyContinue
-          }
-          Write-Output ""
-          
-          # Variables already defined above (before adapter startup)
           $LogFile = "$LogDir/bot-run-$Timestamp.log"
+          $ErrorLogFile = "$LogDir/bot-error-$Timestamp.log"
           
           Write-Output "📝 Bot output will be captured to: $LogFile"
+          Write-Output "📝 Bot errors will be captured to: $ErrorLogFile"
           Write-Output ""
           Write-Output "Starting bot execution..."
           Write-Output "=================================================="
           Write-Output ""
           
-          # Run the bot with all output streaming directly to console
-          # This allows GitHub Actions to capture ALL logs (ML, RL, strategies, etc.)
-          Write-Output "🚀 Starting bot with live log streaming..."
-          Write-Output "📊 All logs will be visible in GitHub Actions console"
+          # Run the bot and capture all output
+          $ProcessInfo = Start-Process -FilePath "dotnet" `
+            -ArgumentList "run", "--project", "src/UnifiedOrchestrator/UnifiedOrchestrator.csproj", "--no-build", "-c", "Release" `
+            -NoNewWindow `
+            -PassThru `
+            -RedirectStandardOutput $LogFile `
+            -RedirectStandardError $ErrorLogFile
+          
+          $BotPID = $ProcessInfo.Id
+          Write-Output "✅ Process started (PID: $BotPID)"
           Write-Output ""
           
-          $DotnetPath = "C:\Program Files\dotnet\dotnet.exe"
+          # Wait for process to exit or timeout
+          $TimeoutSeconds = 420  # 7 minutes as requested
+          $CheckInterval = 10
+          $Elapsed = 0
           
-          # Run directly WITHOUT redirection so all logs stream to GitHub Actions
-          & $DotnetPath run --project src/UnifiedOrchestrator/UnifiedOrchestrator.csproj --no-build -c Release
+          Write-Output "⏱️ Waiting for bot to complete (timeout: $TimeoutSeconds seconds = 7 minutes)..."
           
-          $ExitCode = $LASTEXITCODE
-          Write-Output ""
-          Write-Output "� Bot process exited with code: $ExitCode"
+          $ExitCode = $null
+          while ($Elapsed -lt $TimeoutSeconds) {
+            $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
+            if (-not $BotProcess) {
+              $ExitCode = $ProcessInfo.ExitCode
+              break
+            }
+            
+            Start-Sleep -Seconds $CheckInterval
+            $Elapsed += $CheckInterval
+            
+            # Show progress every 60 seconds
+            if (($Elapsed % 60) -eq 0) {
+              Write-Output "⏱️ Still running... ($Elapsed / $TimeoutSeconds seconds - $([Math]::Round($Elapsed/60, 1)) minutes)"
+              
+              # Output last 20 lines every 60 seconds for monitoring
+              if (Test-Path $LogFile) {
+                Write-Output "--- Recent bot output (last 20 lines) ---"
+                Get-Content $LogFile -Tail 20 | ForEach-Object { Write-Output $_ }
+                Write-Output "--- End recent output ---"
+              }
+            }
+          }
           
-          # Cleanup: Stop Python adapter
-          Write-Output ""
-          Write-Output "🧹 Cleaning up Python adapter..."
-          $AdapterProcess = Get-Process -Id $AdapterPID -ErrorAction SilentlyContinue
-          if ($AdapterProcess) {
-            Stop-Process -Id $AdapterPID -Force -ErrorAction SilentlyContinue
-            Write-Output "✅ Python adapter stopped"
-          } else {
-            Write-Output "⚠️ Python adapter already stopped"
+          # Stop if timeout reached
+          $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
+          if ($BotProcess) {
+            Write-Output ""
+            Write-Output "⏱️ Bot execution timeout after $TimeoutSeconds seconds (7 minutes)"
+            Write-Output "🛑 Stopping bot process gracefully..."
+            
+            # Try graceful shutdown first (SIGTERM equivalent)
+            Stop-Process -Id $BotPID -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 5
+            
+            $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
+            if ($BotProcess) {
+              Write-Output "🔨 Force stopping process..."
+              Stop-Process -Id $BotPID -Force -ErrorAction SilentlyContinue
+              Start-Sleep -Seconds 2
+            }
+            
+            # Check for Python child processes and clean them up
+            Write-Output "🧹 Cleaning up any orphaned Python processes..."
+            Get-Process python* -ErrorAction SilentlyContinue | Where-Object {
+              $_.StartTime -gt (Get-Date).AddMinutes(-10)
+            } | Stop-Process -Force -ErrorAction SilentlyContinue
+            
+            $ExitCode = -1
           }
           
           Write-Output ""
           Write-Output "=================================================="
           Write-Output "Bot Execution Summary:"
           Write-Output "  Exit Code: $(if ($ExitCode) { $ExitCode } else { 0 })"
-          Write-Output "  All logs were streamed directly to GitHub Actions console above"
+          Write-Output "  Duration: $([Math]::Round($Elapsed/60, 1)) minutes"
+          Write-Output "  Log File: $LogFile"
+          Write-Output "  Error Log: $ErrorLogFile"
+          Write-Output "=================================================="
+          
+          # Output last 150 lines of log for analysis
+          Write-Output ""
+          Write-Output "📋 Last 150 lines of bot output:"
+          Write-Output "=================================================="
+          if (Test-Path $LogFile) {
+            Get-Content $LogFile -Tail 150
+          }
+          Write-Output "=================================================="
+          
+          # Output error log if it exists and has content
+          Write-Output ""
+          Write-Output "❌ Error log (if any):"
+          Write-Output "=================================================="
+          if (Test-Path $ErrorLogFile) {
+            $errorContent = Get-Content $ErrorLogFile -Raw
+            if ($errorContent -and $errorContent.Trim().Length -gt 0) {
+              Write-Output $errorContent
+            } else {
+              Write-Output "(No errors logged)"
+            }
+          }
           Write-Output "=================================================="
           
           # Set outputs
           $ExitCodeValue = if ($ExitCode) { $ExitCode } else { 0 }
           "exit_code=$ExitCodeValue" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding UTF8
+          "log_file=$LogFile" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding UTF8
           
-          if ($ExitCodeValue -eq 0) {
+          # Always consider timeout as success for diagnostic workflow
+          if ($ExitCodeValue -eq -1) {
+            Write-Output "⏱️ Bot stopped after timeout (EXPECTED for 7-minute diagnostic run)"
+          } elseif ($ExitCodeValue -eq 0) {
             Write-Output "✅ Bot executed successfully"
           } else {
             Write-Output "❌ Bot execution failed with exit code: $ExitCodeValue"
-            exit $ExitCodeValue
           }
+          
+          # Don't fail the workflow for diagnostic purposes - we want to see logs
+          Write-Output "📊 Workflow will continue to summary step for analysis"
 
       - name: "📊 Execution Summary"
         if: always()

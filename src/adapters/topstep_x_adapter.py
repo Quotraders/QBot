@@ -19,12 +19,6 @@ from typing import Dict, List, Optional, Any
 from contextlib import asynccontextmanager
 from collections import deque
 
-# Fix Windows console encoding for emoji support
-if sys.platform == 'win32':
-    import codecs
-    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, errors='replace')
-    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, errors='replace')
-
 # Import the real project-x-py SDK - fail hard if not available
 try:
     import project_x_py
@@ -204,7 +198,8 @@ class TopstepXAdapter:
         # Configure production logging
         self.logger = logging.getLogger(f"TopstepXAdapter-{'-'.join(instruments)}")
         if not self.logger.handlers:
-            handler = logging.StreamHandler()
+            # Send logs to stderr to avoid interfering with stdout JSON communication
+            handler = logging.StreamHandler(sys.stderr)
             formatter = logging.Formatter(
                 '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
             )
@@ -507,6 +502,22 @@ class TopstepXAdapter:
         except Exception as e:
             self.logger.error(f"Error processing bar event: {e}", exc_info=True)
 
+    async def initialize(self) -> None:
+        """Setup structured logging for production use."""
+        logger = logging.getLogger(f"TopstepXAdapter.{id(self)}")
+        logger.setLevel(logging.INFO)
+        
+        if not logger.handlers:
+            # Send logs to stderr to avoid interfering with stdout JSON communication
+            handler = logging.StreamHandler(sys.stderr)
+            formatter = logging.Formatter(
+                '[%(asctime)s] %(levelname)s [%(name)s] %(message)s'
+            )
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+            
+        return logger
+        
     def _validate_configuration(self) -> None:
         """Validate SDK configuration and credentials."""
         # Validate instruments
@@ -549,11 +560,31 @@ class TopstepXAdapter:
                 self.logger.info(f"Using TopstepX instrument code: {topstepx_instrument}")
                 suite = await TradingSuite.from_env(instrument=topstepx_instrument)
                 
-                # CRITICAL: Initialize WebSocket connection for real-time data streaming
+                # CRITICAL: Initialize WebSocket connection for real-time data streaming with timeout
                 self.logger.info(f"🔌 Initializing WebSocket connection for {instrument}...")
                 if hasattr(suite, '_initialize'):
-                    await suite._initialize()
-                    self.logger.info(f"✅ WebSocket connection initialized for {instrument}")
+                    # Try initialization with retries and exponential backoff
+                    max_retries = 3
+                    for attempt in range(max_retries):
+                        try:
+                            # Increase timeout to 60s for slow connections (Windows can be slow)
+                            await asyncio.wait_for(suite._initialize(), timeout=60.0)
+                            self.logger.info(f"✅ WebSocket connection initialized for {instrument} on attempt {attempt + 1}")
+                            break
+                        except asyncio.TimeoutError:
+                            if attempt < max_retries - 1:
+                                retry_delay = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                                self.logger.warning(f"⚠️ WebSocket initialization timed out for {instrument} (attempt {attempt + 1}/{max_retries}), retrying in {retry_delay}s...")
+                                await asyncio.sleep(retry_delay)
+                            else:
+                                self.logger.error(f"❌ WebSocket initialization failed after {max_retries} attempts for {instrument} - will continue without WebSocket")
+                        except Exception as e:
+                            if attempt < max_retries - 1:
+                                retry_delay = 2 ** attempt
+                                self.logger.warning(f"⚠️ WebSocket initialization error for {instrument} (attempt {attempt + 1}/{max_retries}): {e}, retrying in {retry_delay}s...")
+                                await asyncio.sleep(retry_delay)
+                            else:
+                                self.logger.error(f"❌ WebSocket initialization failed after {max_retries} attempts for {instrument}: {e} - will continue without WebSocket")
                 else:
                     self.logger.warning(f"⚠️ Suite does not have _initialize method - WebSocket may not connect")
                 
@@ -622,7 +653,11 @@ class TopstepXAdapter:
                 # Access the suite for this instrument from our suites dictionary
                 suite = self.suites[instrument]
                 # Use subscript notation as required by TopstepX SDK v3.5.9+
-                current_price = await suite[instrument].data.get_current_price()
+                # Increase timeout to 30s for slow connections
+                current_price = await asyncio.wait_for(
+                    suite[instrument].data.get_current_price(),
+                    timeout=30.0
+                )
                 self.logger.info(f"✅ {instrument} connected - Current price: ${current_price:.2f}")
                 return current_price
             
@@ -631,6 +666,8 @@ class TopstepXAdapter:
                     _test_instrument_connection, f"{instrument}_connection_test", self.logger
                 )
                 connection_successes.append(instrument)
+            except asyncio.TimeoutError:
+                self.logger.warning(f"⚠️ {instrument} connection test timed out (may connect later)")
             except Exception as e:
                 self.logger.warning(f"⚠️ {instrument} connection test failed (may connect later): {e}")
         
@@ -646,7 +683,11 @@ class TopstepXAdapter:
         
         # Test risk management system with retry policy
         async def _test_risk_management():
-            risk_stats = await self.suite.get_stats()
+            # Add timeout to prevent hanging
+            risk_stats = await asyncio.wait_for(
+                self.suite.get_stats(),
+                timeout=10.0
+            )
             self.logger.info(f"SDK connected successfully - Stats: {risk_stats}")
             return risk_stats
         
@@ -654,6 +695,13 @@ class TopstepXAdapter:
             await self.retry_policy.execute_with_retry(
                 _test_risk_management, "risk_management_test", self.logger
             )
+        except asyncio.TimeoutError:
+            self.logger.warning(f"⚠️ Initial risk management test timed out (WebSocket may still be connecting)")
+            self._emit_telemetry("initialization_warning", {
+                "reason": "risk_management_timeout",
+                "severity": "warning"
+            })
+            # Don't raise - allow adapter to continue and retry connection
         except Exception as e:
             # Log but don't fail - WebSocket might connect later
             self.logger.warning(f"⚠️ Initial risk management test failed (WebSocket may still be connecting): {e}")
@@ -675,10 +723,19 @@ class TopstepXAdapter:
         for instrument in self.instruments:
             try:
                 suite = self._get_suite(instrument)
-                price = await suite[instrument].data.get_current_price()
+                # Add timeout to prevent hanging on price fetch
+                price = await asyncio.wait_for(
+                    suite[instrument].data.get_current_price(),
+                    timeout=10.0
+                )
                 async with self._price_cache_lock:
                     self._price_cache[instrument] = float(price)
                 self.logger.info(f"✅ {instrument} initial price: ${price:.2f}")
+            except asyncio.TimeoutError:
+                self.logger.warning(f"⚠️ Initial price fetch timed out for {instrument}")
+                # Set a fallback price to avoid failures
+                async with self._price_cache_lock:
+                    self._price_cache[instrument] = 0.0
             except Exception as e:
                 self.logger.warning(f"⚠️ Failed to get initial price for {instrument}: {e}")
                 # Set a fallback price to avoid failures
@@ -766,17 +823,31 @@ class TopstepXAdapter:
                         
                         # Try get_bars(limit=1, partial=True) for latest tick
                         # Falls back to get_current_price() if bars unavailable
+                        # Add timeout to prevent hanging on price fetch
                         try:
-                            bars = await suite[symbol].data.get_bars(limit=1, partial=True)
+                            bars = await asyncio.wait_for(
+                                suite[symbol].data.get_bars(limit=1, partial=True),
+                                timeout=5.0
+                            )
                             if bars and len(bars) > 0:
                                 price = float(bars[-1].close)  # Use latest bar's close price
                             else:
                                 # Fallback to get_current_price() if no bars
-                                price = await suite[symbol].data.get_current_price()
+                                price = await asyncio.wait_for(
+                                    suite[symbol].data.get_current_price(),
+                                    timeout=5.0
+                                )
+                        except asyncio.TimeoutError:
+                            # If timeout, skip this iteration
+                            self.logger.debug(f"Price fetch timed out for {symbol}, skipping this iteration")
+                            continue
                         except Exception as bars_err:
                             # If get_bars() fails, fallback to get_current_price()
                             self.logger.debug(f"get_bars failed for {symbol}, using get_current_price(): {bars_err}")
-                            price = await suite[symbol].data.get_current_price()
+                            price = await asyncio.wait_for(
+                                suite[symbol].data.get_current_price(),
+                                timeout=5.0
+                            )
                         
                         # Update cache with thread-safe lock
                         async with self._price_cache_lock:
@@ -1084,8 +1155,11 @@ class TopstepXAdapter:
         """
             
         try:
-            # Get suite statistics
-            stats = await self.suite.get_stats()
+            # Get suite statistics with timeout
+            stats = await asyncio.wait_for(
+                self.suite.get_stats(),
+                timeout=5.0
+            )
             
             # Calculate connection health for each instrument
             instrument_health = {}
@@ -1132,9 +1206,15 @@ class TopstepXAdapter:
             # 2. Authentication validity check (lightweight API call)
             auth_valid = True
             try:
-                # Try getting stats as a lightweight auth check
-                test_stats = await self.suite.get_stats()
+                # Try getting stats as a lightweight auth check with timeout
+                test_stats = await asyncio.wait_for(
+                    self.suite.get_stats(),
+                    timeout=5.0
+                )
                 auth_valid = test_stats is not None
+            except asyncio.TimeoutError:
+                self.logger.warning(f"Auth validity check timed out")
+                auth_valid = False
             except Exception as e:
                 self.logger.warning(f"Auth validity check failed: {e}")
                 auth_valid = False
@@ -1978,6 +2058,25 @@ if __name__ == "__main__":
     
     # Check for persistent/streaming mode
     if len(sys.argv) > 1 and sys.argv[1] == "stream":
+        # Configure SDK logging to stderr BEFORE initializing adapter
+        # This ensures SDK's structured JSON logs don't interfere with stdout communication
+        sdk_logger = logging.getLogger('project_x_py')
+        sdk_logger.setLevel(logging.INFO)
+        # Remove any existing handlers to avoid duplication
+        sdk_logger.handlers.clear()
+        # Add stderr handler only
+        stderr_handler = logging.StreamHandler(sys.stderr)
+        stderr_handler.setFormatter(logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        ))
+        sdk_logger.addHandler(stderr_handler)
+        
+        # Also configure root logger to stderr
+        root_logger = logging.getLogger()
+        root_logger.handlers.clear()
+        root_logger.addHandler(stderr_handler)
+        root_logger.setLevel(logging.INFO)
+        
         # PERSISTENT MODE: Keep adapter alive and process commands via stdin/stdout
         async def persistent_mode():
             """Run adapter in persistent mode with stdin/stdout communication."""
@@ -1985,37 +2084,10 @@ if __name__ == "__main__":
             try:
                 # Initialize adapter once
                 adapter = TopstepXAdapter(["ES", "NQ"])
+                await adapter.initialize()
                 
-                # Try to initialize - but DON'T block on WebSocket
-                try:
-                    await asyncio.wait_for(adapter.initialize(), timeout=20.0)
-                    init_success = True
-                    init_error = None
-                except asyncio.TimeoutError:
-                    init_success = False
-                    init_error = "Initialization timeout (20s) - WebSocket may have hung"
-                    logger.warning(f"⚠️ {init_error}")
-                except Exception as e:
-                    init_success = False
-                    init_error = f"{type(e).__name__}: {str(e)}"
-                    logger.error(f"❌ Initialization failed: {init_error}")
-                
-                # ALWAYS send init marker - even if initialization failed!
-                # Bot can still work with REST API only (no WebSocket)
-                init_message = {
-                    "type": "init",
-                    "success": init_success,
-                    "message": "===ADAPTER_READY===",  # MUST be present!
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "instruments": adapter.instruments,
-                    "error": init_error
-                }
-                print(json.dumps(init_message), flush=True)
-                sys.stderr.write(f"===ADAPTER_READY===\n")  # MUST be on stderr!
-                sys.stderr.flush()
-                
-                if not init_success:
-                    logger.warning("⚠️ Adapter initialized with degraded functionality - REST API only")
+                # Send initialization success
+                print(json.dumps({"type": "init", "success": True, "message": "Adapter initialized"}), flush=True)
                 
                 # Create async stdin reader
                 loop = asyncio.get_event_loop()
@@ -2042,84 +2114,99 @@ if __name__ == "__main__":
                             print(json.dumps({"type": "response", "action": "shutdown", "success": True}), flush=True)
                             break
                         
-                        # Process command and send response
+                        # Process command and send response with timeout
                         result = None
-                        if action == "get_price":
-                            price = await adapter.get_price(cmd_data["symbol"])
-                            result = {"success": True, "price": price}
-                        
-                        elif action == "get_health_score":
-                            result = await adapter.get_health_score()
-                        
-                        elif action == "get_portfolio_status":
-                            result = await adapter.get_portfolio_status()
-                        
-                        elif action == "get_fill_events":
-                            result = await adapter.get_fill_events()
-                        
-                        elif action == "get_bar_events":
-                            result = await adapter.get_bar_events()
-                        
-                        elif action == "place_order":
-                            result = await adapter.place_order(
-                                cmd_data["symbol"],
-                                cmd_data["size"],
-                                cmd_data["stop_loss"],
-                                cmd_data["take_profit"],
-                                cmd_data.get("max_risk_percent", 0.01)
-                            )
-                        
-                        elif action == "get_positions":
-                            positions = await adapter.get_positions()
-                            result = {"success": True, "positions": positions}
-                        
-                        elif action == "close_position":
-                            result = await adapter.close_position(
-                                cmd_data["symbol"],
-                                cmd_data.get("quantity")
-                            )
-                        
-                        elif action == "modify_stop_loss":
-                            result = await adapter.modify_stop_loss(
-                                cmd_data["symbol"],
-                                float(cmd_data["stop_price"])
-                            )
-                        
-                        elif action == "modify_take_profit":
-                            result = await adapter.modify_take_profit(
-                                cmd_data["symbol"],
-                                float(cmd_data["take_profit_price"])
-                            )
-                        
-                        elif action == "cancel_order":
-                            result = await adapter.cancel_order(cmd_data["order_id"])
-                        
-                        elif action == "cancel_all_orders":
-                            result = await adapter.cancel_all_orders(cmd_data.get("symbol"))
-                        
-                        elif action == "fetch_historical_bars":
-                            # Parse dates if provided
-                            start_date = None
-                            end_date = None
-                            if "start_date" in cmd_data:
-                                start_date = datetime.fromisoformat(cmd_data["start_date"])
-                            if "end_date" in cmd_data:
-                                end_date = datetime.fromisoformat(cmd_data["end_date"])
+                        try:
+                            if action == "get_price":
+                                price = await asyncio.wait_for(
+                                    adapter.get_price(cmd_data["symbol"]),
+                                    timeout=10.0
+                                )
+                                result = {"success": True, "price": price}
                             
-                            result = await adapter.fetch_historical_bars(
-                                symbol=cmd_data["symbol"],
-                                timeframe=cmd_data.get("interval", cmd_data.get("timeframe", 5)),
-                                start_date=start_date,
-                                end_date=end_date,
-                                limit=cmd_data.get("limit", 1000)
-                            )
+                            elif action == "get_health_score":
+                                result = await asyncio.wait_for(
+                                    adapter.get_health_score(),
+                                    timeout=10.0
+                                )
+                            
+                            elif action == "get_portfolio_status":
+                                result = await asyncio.wait_for(
+                                    adapter.get_portfolio_status(),
+                                    timeout=10.0
+                                )
+                            
+                            elif action == "get_fill_events":
+                                result = await adapter.get_fill_events()
+                            
+                            elif action == "get_bar_events":
+                                result = await adapter.get_bar_events()
+                            
+                            elif action == "place_order":
+                                result = await adapter.place_order(
+                                    cmd_data["symbol"],
+                                    cmd_data["size"],
+                                    cmd_data["stop_loss"],
+                                    cmd_data["take_profit"],
+                                    cmd_data.get("max_risk_percent", 0.01)
+                                )
+                            
+                            elif action == "get_positions":
+                                positions = await adapter.get_positions()
+                                result = {"success": True, "positions": positions}
+                            
+                            elif action == "close_position":
+                                result = await adapter.close_position(
+                                    cmd_data["symbol"],
+                                    cmd_data.get("quantity")
+                                )
+                            
+                            elif action == "modify_stop_loss":
+                                result = await adapter.modify_stop_loss(
+                                    cmd_data["symbol"],
+                                    float(cmd_data["stop_price"])
+                                )
+                            
+                            elif action == "modify_take_profit":
+                                result = await adapter.modify_take_profit(
+                                    cmd_data["symbol"],
+                                    float(cmd_data["take_profit_price"])
+                                )
+                            
+                            elif action == "cancel_order":
+                                result = await adapter.cancel_order(cmd_data["order_id"])
+                            
+                            elif action == "cancel_all_orders":
+                                result = await adapter.cancel_all_orders(cmd_data.get("symbol"))
+                            
+                            elif action == "fetch_historical_bars":
+                                # Parse dates if provided
+                                start_date = None
+                                end_date = None
+                                if "start_date" in cmd_data:
+                                    start_date = datetime.fromisoformat(cmd_data["start_date"])
+                                if "end_date" in cmd_data:
+                                    end_date = datetime.fromisoformat(cmd_data["end_date"])
+                                
+                                result = await adapter.fetch_historical_bars(
+                                    symbol=cmd_data["symbol"],
+                                    timeframe=cmd_data.get("interval", cmd_data.get("timeframe", 5)),
+                                    start_date=start_date,
+                                    end_date=end_date,
+                                    limit=cmd_data.get("limit", 1000)
+                                )
+                            
+                            else:
+                                result = {"success": False, "error": f"Unknown action: {action}"}
                         
-                        else:
-                            result = {"success": False, "error": f"Unknown action: {action}"}
+                            
+                            # Send response
+                            response = {"type": "response", "action": action, **result}
+                            print(json.dumps(response), flush=True)
                         
-                        # Send response
-                        response = {"type": "response", "action": action, **result}
-                        print(json.dumps(response), flush=True)
+                        except asyncio.TimeoutError:
+                            error_response = {"type": "error", "action": action, "error": f"Command '{action}' timed out"}
+                            print(json.dumps(error_response), flush=True)
                     
                     except json.JSONDecodeError as e:
                         error_response = {"type": "error", "error": f"Invalid JSON: {str(e)}"}
