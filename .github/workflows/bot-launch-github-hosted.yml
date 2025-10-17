@@ -51,7 +51,41 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: "🔍 Check .NET Installation"
+        id: check_dotnet
+        shell: pwsh
+        run: |
+          Write-Output "=================================================="
+          Write-Output "🔍 CHECKING .NET INSTALLATION"
+          Write-Output "=================================================="
+          Write-Output ""
+          
+          try {
+            $DotnetVersion = dotnet --version
+            Write-Output "✅ .NET SDK already installed: $DotnetVersion"
+            Write-Output ""
+            
+            # Check if it's .NET 8.0 or higher
+            $Version = [version]$DotnetVersion.Split('-')[0]
+            if ($Version.Major -ge 8) {
+              Write-Output "✅ Version is compatible (.NET 8.0+)"
+              "needs_install=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding UTF8
+            } else {
+              Write-Output "⚠️ Version $DotnetVersion is older than .NET 8.0"
+              Write-Output "Will attempt to install .NET 8.0"
+              "needs_install=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding UTF8
+            }
+          } catch {
+            Write-Output "❌ .NET SDK not found"
+            Write-Output "Will attempt to install .NET 8.0"
+            "needs_install=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding UTF8
+          }
+          
+          Write-Output ""
+          Write-Output "=================================================="
+      
       - name: "🔧 Setup .NET SDK"
+        if: steps.check_dotnet.outputs.needs_install == 'true'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
