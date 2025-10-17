@@ -21,10 +21,11 @@ flask>=3.0.0
 flask-cors>=4.0.0
 
 # ML/RL Dependencies for Backtest Validation and Model Training
-# Note: numpy version must be compatible with numba and project-x-py
+# Note: numpy version must match project-x-py requirements (>=2.3.2)
+# pandas-ta is optional (only used as test fallback) and excluded due to numba conflict with numpy 2.3+
 numpy>=2.3.2
 pandas>=2.3.2
-pandas-ta>=0.3.14b0
+# pandas-ta>=0.3.14b0  # DISABLED: Requires numba which conflicts with numpy>=2.3
 yfinance>=0.2.28
 ta-lib>=0.4.28
 scikit-learn>=1.3.0
