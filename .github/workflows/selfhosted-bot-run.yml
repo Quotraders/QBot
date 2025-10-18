@@ -3,7 +3,10 @@ name: "🚀 Bot Execution Test"
 on:
   push:
     branches:
-      - 'copilot/fix-bot-code-errors'
+      - 'main'
+      - 'develop'
+      - 'copilot/**'
+      - 'fix/**'
   workflow_dispatch:
     inputs:
       timeout_minutes:
