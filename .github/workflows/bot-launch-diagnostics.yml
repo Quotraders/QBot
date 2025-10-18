@@ -351,16 +351,80 @@ jobs:
           # Capture startup timestamp
           $StartTime = Get-Date
           
-          # Launch bot with output capture
-          Write-Output "🔄 Starting process..."
-          $ProcessInfo = Start-Process -FilePath "dotnet" `
-            -ArgumentList "run", "--project", "src/UnifiedOrchestrator/UnifiedOrchestrator.csproj", "--no-build", "-c", "Release" `
-            -NoNewWindow `
-            -PassThru `
-            -RedirectStandardOutput $ConsoleLogFile `
-            -RedirectStandardError $ErrorLogFile
+          # Collect all environment variables to pass to the child process
+          Write-Output "📋 Preparing environment variables for bot process..."
+          $envVars = @{}
           
-          $BotPID = $ProcessInfo.Id
+          # Copy current environment variables
+          Get-ChildItem env: | ForEach-Object {
+            $envVars[$_.Name] = $_.Value
+          }
+          
+          # If .env file exists, merge those variables
+          if (Test-Path ".env") {
+            Get-Content .env | ForEach-Object {
+              if ($_ -match '^([^#][^=]+)=(.*)$') {
+                $key = $matches[1].Trim()
+                $value = $matches[2].Trim()
+                $envVars[$key] = $value
+              }
+            }
+          }
+          
+          # Ensure DRY_RUN overrides are applied
+          $envVars["DRY_RUN"] = if ("${{ github.event.inputs.dry_run }}" -eq "true") { "1" } else { "0" }
+          $envVars["ENABLE_DRY_RUN"] = if ("${{ github.event.inputs.dry_run }}" -eq "true") { "1" } else { "0" }
+          
+          Write-Output "✅ Environment prepared with $($envVars.Count) variables"
+          Write-Output ""
+          
+          # Launch bot with output capture and environment variables
+          Write-Output "🔄 Starting process..."
+          $psi = New-Object System.Diagnostics.ProcessStartInfo
+          $psi.FileName = "dotnet"
+          $psi.Arguments = "run --project src/UnifiedOrchestrator/UnifiedOrchestrator.csproj --no-build -c Release"
+          $psi.UseShellExecute = $false
+          $psi.RedirectStandardOutput = $true
+          $psi.RedirectStandardError = $true
+          $psi.CreateNoWindow = $true
+          
+          # Add all environment variables to the process
+          foreach ($key in $envVars.Keys) {
+            $psi.EnvironmentVariables[$key] = $envVars[$key]
+          }
+          
+          $process = New-Object System.Diagnostics.Process
+          $process.StartInfo = $psi
+          
+          # Setup output redirection
+          $outputWriter = [System.IO.StreamWriter]::new($ConsoleLogFile, $false, [System.Text.Encoding]::UTF8)
+          $errorWriter = [System.IO.StreamWriter]::new($ErrorLogFile, $false, [System.Text.Encoding]::UTF8)
+          
+          $outputHandler = {
+            param($sender, $e)
+            if ($e.Data -ne $null) {
+              $outputWriter.WriteLine($e.Data)
+              $outputWriter.Flush()
+            }
+          }
+          
+          $errorHandler = {
+            param($sender, $e)
+            if ($e.Data -ne $null) {
+              $errorWriter.WriteLine($e.Data)
+              $errorWriter.Flush()
+            }
+          }
+          
+          $process.add_OutputDataReceived($outputHandler)
+          $process.add_ErrorDataReceived($errorHandler)
+          
+          # Start the process
+          $process.Start() | Out-Null
+          $process.BeginOutputReadLine()
+          $process.BeginErrorReadLine()
+          
+          $BotPID = $process.Id
           Write-Output "✅ Process started (PID: $BotPID)"
           
           # Give process a few seconds to initialize
@@ -368,13 +432,20 @@ jobs:
           Start-Sleep -Seconds 5
           
           # Check if process crashed immediately
-          $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
-          if (-not $BotProcess) {
-            $ExitCode = $ProcessInfo.ExitCode
+          if ($process.HasExited) {
+            $ExitCode = $process.ExitCode
             Write-Output ""
             Write-Output "❌ Process exited immediately with code: $ExitCode"
             Write-Output ""
             Write-Output "This usually indicates a startup failure. Check the logs for errors."
+            
+            # Close writers before reading the file
+            try {
+              $outputWriter.Close()
+              $outputWriter.Dispose()
+              $errorWriter.Close()
+              $errorWriter.Dispose()
+            } catch { }
             
             # Show first 100 lines of output for debugging
             Write-Output "📋 First 100 lines of output:"
@@ -409,9 +480,8 @@ jobs:
           
           while ($ElapsedSeconds -lt $TimeoutSeconds) {
             # Check if process is still running
-            $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
-            if (-not $BotProcess) {
-              $ExitCode = $ProcessInfo.ExitCode
+            if ($process.HasExited) {
+              $ExitCode = $process.ExitCode
               Write-Output ""
               Write-Output "⚠️ Bot process exited (exit code: $ExitCode)"
               
@@ -438,21 +508,29 @@ jobs:
           $ActualRuntime = ($EndTime - $StartTime).TotalSeconds
           
           # Stop process if still running
-          $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
-          if ($BotProcess) {
+          if (-not $process.HasExited) {
+          # Stop process if still running
+          if (-not $process.HasExited) {
             Write-Output ""
             Write-Output "⏱️ Runtime limit reached ($RuntimeMinutes minutes)"
             Write-Output "🛑 Stopping bot gracefully..."
             
             # Try graceful shutdown first
-            Stop-Process -Id $BotPID -ErrorAction SilentlyContinue
+            try {
+              $process.Kill($false)  # Request graceful shutdown
+            } catch {
+              Write-Output "⚠️ Graceful shutdown failed, will force kill"
+            }
             Start-Sleep -Seconds 5
             
             # Force kill if still running
-            $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
-            if ($BotProcess) {
+            if (-not $process.HasExited) {
               Write-Output "🔨 Force stopping..."
-              Stop-Process -Id $BotPID -Force -ErrorAction SilentlyContinue
+              try {
+                $process.Kill($true)  # Force kill
+              } catch {
+                Write-Output "⚠️ Force kill failed: $($_.Exception.Message)"
+              }
               Start-Sleep -Seconds 2
             }
             
@@ -463,6 +541,16 @@ jobs:
             "exit_reason=timeout" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding UTF8
             
             Write-Output "✅ Bot stopped"
+          }
+          
+          # Clean up writers
+          try {
+            $outputWriter.Close()
+            $outputWriter.Dispose()
+            $errorWriter.Close()
+            $errorWriter.Dispose()
+          } catch {
+            Write-Output "⚠️ Error closing file writers: $($_.Exception.Message)"
           }
           
           # Create structured log
