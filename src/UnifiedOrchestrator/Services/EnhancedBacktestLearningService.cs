@@ -24,15 +24,33 @@ using Bar = global::BotCore.Models.Bar;
 namespace TradingBot.UnifiedOrchestrator.Services;
 
 /// <summary>
-/// Enhanced BacktestLearningService → UnifiedTradingBrain Integration
+/// ✅ UNIFIED LEARNING SYSTEM - Enhanced BacktestLearningService
 /// 
-/// CRITICAL REQUIREMENT: Uses SAME UnifiedTradingBrain for historical replay as live trading
-/// This ensures historical data pipeline uses identical intelligence as live trading:
+/// ARCHITECTURE: Single Brain for Both Historical and Live Trading
+/// ================================================================
+/// This service implements the UNIFIED learning system where the bot learns from:
+/// 1. Historical data (backtesting on 90-day rolling window)
+/// 2. Live trading results (real-time adaptation)
+/// 
+/// BOTH use the SAME UnifiedTradingBrain for ALL decisions:
+/// - Same decision-making logic: UnifiedTradingBrain.MakeIntelligentDecisionAsync (lines 548, 674)
+/// - Same learning feedback: UnifiedTradingBrain.LearnFromResultAsync (line 596)
 /// - Same data formatting and feature engineering
-/// - Same decision-making logic (UnifiedTradingBrain.MakeIntelligentDecisionAsync)
 /// - Same risk management and position sizing
 /// - Identical context and outputs for reproducible results
-/// - Same scheduling: Market Open: Light learning every 60 min, Market Closed: Intensive every 15 min
+/// 
+/// LEARNING SCHEDULE (Unified for both historical and live):
+/// - Market Open: Light learning every 60 minutes
+/// - Market Closed: Intensive learning every 15 minutes
+/// - Rolling 90-day historical window (always fresh data)
+/// 
+/// KEY INTEGRATION POINTS:
+/// - Line 46: Direct UnifiedTradingBrain injection
+/// - Line 548 & 674: Historical decisions via _unifiedBrain.MakeIntelligentDecisionAsync()
+/// - Line 596: Learning feedback via _unifiedBrain.LearnFromResultAsync()
+/// - Line 1221: Online learning service integration (IOnlineLearningSystem)
+/// 
+/// ⚠️ NO DUAL SYSTEMS: This is the ONLY learning path - no separate historical/live brains
 /// </summary>
 internal class EnhancedBacktestLearningService : BackgroundService
 {

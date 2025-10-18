@@ -18,8 +18,33 @@ using System.Diagnostics;
 namespace TradingBot.ML.HistoricalTrainer;
 
 /// <summary>
+/// ✅ UNIFIED LEARNING SYSTEM - Historical Training Component
+/// ==========================================================
 /// Historical training pipeline for ML models using walk-forward analysis
 /// Processes historical data to produce models deployable to /models/ directory
+/// 
+/// ROLE IN UNIFIED ARCHITECTURE:
+/// This is a MODEL TRAINING component, NOT a decision maker.
+/// It trains ML models on historical data that are then used by UnifiedTradingBrain.
+/// 
+/// INTEGRATION WITH UNIFIED BRAIN:
+/// - Trains models on 90-day rolling window of historical data
+/// - Produces model files deployed to /models/ directory
+/// - UnifiedTradingBrain loads these models for decision making
+/// - Models are trained on same features used in live trading
+/// 
+/// TRAINING PROCESS:
+/// 1. Load historical bars from TopstepX API (same source as live)
+/// 2. Build dataset with identical feature engineering as live
+/// 3. Walk-forward training with cross-validation
+/// 4. Deploy best model to registry for UnifiedTradingBrain to use
+/// 
+/// DATA FLOW:
+/// Historical Bars → Feature Engineering → Model Training → Model Registry → UnifiedTradingBrain
+/// (Same features as live trading)
+/// 
+/// ⚠️ This trains models, it doesn't make trading decisions
+/// ⚠️ UnifiedTradingBrain is the ONLY decision maker
 /// </summary>
 public class HistoricalTrainer
 {
