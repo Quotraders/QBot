@@ -304,8 +304,6 @@ jobs:
           
           # Stop if timeout reached
           if (-not $process.HasExited) {
-          # Stop if timeout reached
-          if (-not $process.HasExited) {
             Write-Output ""
             Write-Output "⏱️ Bot execution timeout after $TimeoutSeconds seconds (7 minutes)"
             Write-Output "🛑 Stopping bot process gracefully..."

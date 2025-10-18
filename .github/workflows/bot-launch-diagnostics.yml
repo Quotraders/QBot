@@ -509,8 +509,6 @@ jobs:
           
           # Stop process if still running
           if (-not $process.HasExited) {
-          # Stop process if still running
-          if (-not $process.HasExited) {
             Write-Output ""
             Write-Output "⏱️ Runtime limit reached ($RuntimeMinutes minutes)"
             Write-Output "🛑 Stopping bot gracefully..."
