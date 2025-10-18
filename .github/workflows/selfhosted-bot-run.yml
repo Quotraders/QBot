@@ -4,16 +4,9 @@ on:
   push:
     branches:
       - 'main'
-      - 'fix/**'
-      - 'feature/**'
+      - 'develop'
       - 'copilot/**'
-    # Trigger on any code or config changes
-    paths:
-      - 'src/**'
-      - 'config/**'
-      - 'strategies/**'
-      - '.env.example'
-      - '.github/workflows/selfhosted-bot-run.yml'
+      - 'fix/**'
   workflow_dispatch:
     inputs:
       timeout_minutes:
@@ -46,24 +39,25 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: "🔧 Setup .NET SDK"
-        if: false  # Skip on self-hosted runner (already installed)
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
       - name: "🔧 Setup .NET Environment"
         shell: pwsh
-        env:
-          TOPSTEPX_API_KEY: ${{ secrets.TOPSTEPX_API_KEY }}
-          TOPSTEPX_USERNAME: ${{ secrets.TOPSTEPX_USERNAME }}
-          TOPSTEPX_ACCOUNT_ID: ${{ secrets.TOPSTEPX_ACCOUNT_ID }}
-          TOPSTEPX_ACCOUNT_NAME: ${{ secrets.TOPSTEPX_ACCOUNT_NAME }}
         run: |
           Write-Output "=================================================="
           Write-Output "🔧 .NET Environment Setup"
           Write-Output "=================================================="
           Write-Output ""
+          
+          # Ensure .NET is in PATH for subsequent steps
+          $DotnetPath = "C:\Program Files\dotnet"
+          if (Test-Path $DotnetPath) {
+            $env:PATH = "$DotnetPath;$env:PATH"
+            # Add to GITHUB_PATH for persistence across steps
+            Add-Content $env:GITHUB_PATH "$DotnetPath"
+            Write-Output "✅ Added .NET to PATH: $DotnetPath"
+          } else {
+            Write-Output "⚠️ .NET installation not found at: $DotnetPath"
+            Write-Output "   Attempting to use dotnet from current PATH..."
+          }
           
           # Check .NET installation
           $DotnetVersion = dotnet --version
@@ -73,34 +67,16 @@ jobs:
           dotnet --info
           Write-Output ""
           
-          # Check if .env file exists (self-hosted runner with local credentials)
-          if (Test-Path .env) {
-            Write-Output "✅ Using existing .env file with local credentials"
+          # Check if .env file already exists (on self-hosted runner)
+          if (Test-Path ".env") {
+            Write-Output "✅ Found existing .env file - preserving it"
+            Write-Output "   This file contains the credentials needed for bot operation"
             Write-Output ""
           } else {
-            Write-Output "⚠️ No .env file found - creating minimal configuration"
-            # Create .env file from secrets (if available)
-            @"
-          # Trading Mode Configuration
-          DRY_RUN=${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
-          ENABLE_DRY_RUN=${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
-          LIVE_ORDERS=0
-          
-          # TopstepX API Configuration
-          ENABLE_TOPSTEPX=1
-          TOPSTEPX_API_BASE=${TOPSTEPX_API_BASE}
-          TOPSTEPX_API_KEY=${TOPSTEPX_API_KEY}
-          TOPSTEPX_USERNAME=${TOPSTEPX_USERNAME}
-          TOPSTEPX_ACCOUNT_ID=${TOPSTEPX_ACCOUNT_ID}
-          TOPSTEPX_ACCOUNT_NAME=${TOPSTEPX_ACCOUNT_NAME}
-          "@ | Out-File -FilePath .env -Encoding UTF8
-            Write-Output "✅ Environment configuration created"
+            Write-Output "⚠️ No .env file found - this may cause credential issues"
+            Write-Output "   On self-hosted runner, .env file should exist with credentials"
+            Write-Output ""
           }
-          Write-Output ""
-          
-          # Note: Credentials will be loaded from .env file by the bot at runtime
-          Write-Output "ℹ️ TopstepX credentials will be loaded from .env file"
-          Write-Output ""
           
           Write-Output "📦 Restoring NuGet packages..."
           dotnet restore TopstepX.Bot.sln
@@ -161,21 +137,25 @@ jobs:
         id: bot_run
         continue-on-error: true
         shell: pwsh
-        # Note: Environment variables will be loaded from .env file (self-hosted runner)
-        # Do not define TOPSTEPX_* env vars here as they would override .env with empty values
         run: |
           Write-Output "=================================================="
           Write-Output "🚀 Starting Trading Bot"
           Write-Output "=================================================="
           Write-Output ""
           
-          # Load environment variables
+          # Load environment variables from .env file if it exists
           if (Test-Path ".env") {
+            Write-Output "📋 Loading environment variables from .env file..."
             Get-Content .env | ForEach-Object {
               if ($_ -match '^([^#][^=]+)=(.*)$') {
-                [Environment]::SetEnvironmentVariable($matches[1], $matches[2])
+                $key = $matches[1].Trim()
+                $value = $matches[2].Trim()
+                [Environment]::SetEnvironmentVariable($key, $value)
               }
             }
+            Write-Output "✅ Environment variables loaded from .env"
+          } else {
+            Write-Output "⚠️ No .env file found - credentials must be set via environment"
           }
           
           # Override with DRY_RUN from input
@@ -204,27 +184,91 @@ jobs:
           Write-Output "📝 Bot output will be captured to: $LogFile"
           Write-Output "📝 Bot errors will be captured to: $ErrorLogFile"
           Write-Output ""
-          
-          # Ensure dotnet is in PATH (self-hosted runner)
-          $DotnetPath = "C:\Program Files\dotnet"
-          if (Test-Path $DotnetPath) {
-            $env:PATH = "$DotnetPath;$env:PATH"
-            Write-Output "✅ Added .NET to PATH: $DotnetPath"
-          }
-          
           Write-Output "Starting bot execution..."
           Write-Output "=================================================="
           Write-Output ""
           
-          # Run the bot and capture all output
-          $ProcessInfo = Start-Process -FilePath "dotnet" `
-            -ArgumentList "run", "--project", "src/UnifiedOrchestrator/UnifiedOrchestrator.csproj", "--no-build", "-c", "Release" `
-            -NoNewWindow `
-            -PassThru `
-            -RedirectStandardOutput $LogFile `
-            -RedirectStandardError $ErrorLogFile
+          # Collect all environment variables to pass to the child process
+          Write-Output "📋 Preparing environment variables for bot process..."
+          $envVars = @{}
           
-          $BotPID = $ProcessInfo.Id
+          # Copy current environment variables
+          Get-ChildItem env: | ForEach-Object {
+            $envVars[$_.Name] = $_.Value
+          }
+          
+          # If .env file exists, merge those variables
+          if (Test-Path ".env") {
+            Get-Content .env | ForEach-Object {
+              if ($_ -match '^([^#][^=]+)=(.*)$') {
+                $key = $matches[1].Trim()
+                $value = $matches[2].Trim()
+                $envVars[$key] = $value
+              }
+            }
+          }
+          
+          # Ensure DRY_RUN overrides are applied
+          $envVars["DRY_RUN"] = if ("${{ github.event.inputs.dry_run }}" -eq "true") { "1" } else { "0" }
+          $envVars["ENABLE_DRY_RUN"] = if ("${{ github.event.inputs.dry_run }}" -eq "true") { "1" } else { "0" }
+          
+          # Ensure Python/SDK variables are set
+          $envVars["PYTHON_EXECUTABLE"] = "python"
+          $envVars["ADAPTER_MAX_RETRIES"] = "3"
+          $envVars["ADAPTER_BASE_DELAY"] = "1.0"
+          $envVars["ADAPTER_MAX_DELAY"] = "8.0"
+          $envVars["ADAPTER_TIMEOUT"] = "30.0"
+          
+          Write-Output "✅ Environment prepared with $($envVars.Count) variables"
+          Write-Output ""
+          
+          # Run the bot and capture all output with environment variables
+          $psi = New-Object System.Diagnostics.ProcessStartInfo
+          $psi.FileName = "dotnet"
+          $psi.Arguments = "run --project src/UnifiedOrchestrator/UnifiedOrchestrator.csproj --no-build -c Release"
+          $psi.UseShellExecute = $false
+          $psi.RedirectStandardOutput = $true
+          $psi.RedirectStandardError = $true
+          $psi.CreateNoWindow = $true
+          
+          # Add all environment variables to the process
+          foreach ($key in $envVars.Keys) {
+            $psi.EnvironmentVariables[$key] = $envVars[$key]
+          }
+          
+          $process = New-Object System.Diagnostics.Process
+          $process.StartInfo = $psi
+          
+          # Setup output redirection
+          $outputWriter = [System.IO.StreamWriter]::new($LogFile, $false, [System.Text.Encoding]::UTF8)
+          $errorWriter = [System.IO.StreamWriter]::new($ErrorLogFile, $false, [System.Text.Encoding]::UTF8)
+          
+          $outputHandler = {
+            param($sender, $e)
+            if ($e.Data -ne $null) {
+              $outputWriter.WriteLine($e.Data)
+              $outputWriter.Flush()
+            }
+          }
+          
+          $errorHandler = {
+            param($sender, $e)
+            if ($e.Data -ne $null) {
+              $errorWriter.WriteLine($e.Data)
+              $errorWriter.Flush()
+            }
+          }
+          
+          $process.add_OutputDataReceived($outputHandler)
+          $process.add_ErrorDataReceived($errorHandler)
+          
+          # Start the process
+          $process.Start() | Out-Null
+          $process.BeginOutputReadLine()
+          $process.BeginErrorReadLine()
+          
+          $BotPID = $process.Id
+          $ProcessInfo = $process
           Write-Output "✅ Process started (PID: $BotPID)"
           Write-Output ""
           
@@ -237,9 +281,8 @@ jobs:
           
           $ExitCode = $null
           while ($Elapsed -lt $TimeoutSeconds) {
-            $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
-            if (-not $BotProcess) {
-              $ExitCode = $ProcessInfo.ExitCode
+            if ($process.HasExited) {
+              $ExitCode = $process.ExitCode
               break
             }
             
@@ -260,20 +303,26 @@ jobs:
           }
           
           # Stop if timeout reached
-          $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
-          if ($BotProcess) {
+          if (-not $process.HasExited) {
             Write-Output ""
             Write-Output "⏱️ Bot execution timeout after $TimeoutSeconds seconds (7 minutes)"
             Write-Output "🛑 Stopping bot process gracefully..."
             
             # Try graceful shutdown first (SIGTERM equivalent)
-            Stop-Process -Id $BotPID -ErrorAction SilentlyContinue
+            try {
+              $process.Kill($false)  # Request graceful shutdown
+            } catch {
+              Write-Output "⚠️ Graceful shutdown failed, will force kill"
+            }
             Start-Sleep -Seconds 5
             
-            $BotProcess = Get-Process -Id $BotPID -ErrorAction SilentlyContinue
-            if ($BotProcess) {
+            if (-not $process.HasExited) {
               Write-Output "🔨 Force stopping process..."
-              Stop-Process -Id $BotPID -Force -ErrorAction SilentlyContinue
+              try {
+                $process.Kill($true)  # Force kill
+              } catch {
+                Write-Output "⚠️ Force kill failed: $($_.Exception.Message)"
+              }
               Start-Sleep -Seconds 2
             }
             
@@ -284,6 +333,16 @@ jobs:
             } | Stop-Process -Force -ErrorAction SilentlyContinue
             
             $ExitCode = -1
+          }
+          
+          # Clean up writers
+          try {
+            $outputWriter.Close()
+            $outputWriter.Dispose()
+            $errorWriter.Close()
+            $errorWriter.Dispose()
+          } catch {
+            Write-Output "⚠️ Error closing file writers: $($_.Exception.Message)"
           }
           
           Write-Output ""

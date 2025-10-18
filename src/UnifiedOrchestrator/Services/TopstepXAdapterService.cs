@@ -979,6 +979,30 @@ internal class TopstepXAdapterService : TradingBot.Abstractions.ITopstepXAdapter
             var username = Environment.GetEnvironmentVariable("TOPSTEPX_USERNAME");
             var accountId = Environment.GetEnvironmentVariable("TOPSTEPX_ACCOUNT_ID");
             
+            // CRITICAL FIX: If credentials are empty, reload from .env file
+            // This handles the case where the workflow sets empty env vars that override the .env file
+            if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(accountId))
+            {
+                _logger.LogWarning("[ENV-FIX] Credentials are empty, reloading from .env file...");
+                
+                // Reload .env file to ensure we have credentials from file
+                TradingBot.UnifiedOrchestrator.Infrastructure.EnvironmentLoader.LoadEnvironmentFiles();
+                
+                // Re-read after loading
+                apiKey = Environment.GetEnvironmentVariable("TOPSTEPX_API_KEY");
+                username = Environment.GetEnvironmentVariable("TOPSTEPX_USERNAME");
+                accountId = Environment.GetEnvironmentVariable("TOPSTEPX_ACCOUNT_ID");
+                
+                if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(accountId))
+                {
+                    var msg = "TOPSTEPX credentials missing after .env reload. Ensure .env file exists with TOPSTEPX_API_KEY, TOPSTEPX_USERNAME, and TOPSTEPX_ACCOUNT_ID.";
+                    _logger.LogError("[ENV-FIX] {Message}", msg);
+                    throw new InvalidOperationException(msg);
+                }
+                
+                _logger.LogInformation("[ENV-FIX] ✅ Successfully loaded credentials from .env file");
+            }
+            
             _logger.LogInformation("[ENV-DEBUG] Parent has TOPSTEPX_API_KEY: {HasKey}, Username: {Username}", 
                 !string.IsNullOrEmpty(apiKey), username);
             _logger.LogInformation("[ENV-DEBUG] ProcessInfo.Environment count: {Count}, has API key: {HasInProc}", 
