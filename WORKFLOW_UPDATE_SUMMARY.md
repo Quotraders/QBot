@@ -1,6 +1,19 @@
 # Workflow Update Summary
 
-## Changes Made (Commit: 555b735)
+## Latest Changes (Commit: 3238990)
+
+### Multi-Branch Support Added
+The workflow now runs on multiple branches, not just the PR branch:
+- `main` - production branch (works after merge)
+- `develop` - development branch
+- `copilot/**` - all copilot branches
+- `fix/**` - all fix branches
+
+This ensures the workflow continues to work after merging to main.
+
+---
+
+## Initial Changes (Commit: 555b735)
 
 ### Problem Addressed
 User requested:
