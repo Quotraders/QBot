@@ -3,7 +3,10 @@ name: "🚀 Bot Execution Test"
 on:
   push:
     branches:
-      - 'copilot/fix-trading-bot-errors'
+      - 'main'
+      - 'develop'
+      - 'copilot/**'
+      - 'fix/**'
   workflow_dispatch:
     inputs:
       timeout_minutes:
@@ -43,11 +46,6 @@ jobs:
 
       - name: "🔧 Setup .NET Environment"
         shell: pwsh
-        env:
-          TOPSTEPX_API_KEY: ${{ secrets.TOPSTEPX_API_KEY }}
-          TOPSTEPX_USERNAME: ${{ secrets.TOPSTEPX_USERNAME }}
-          TOPSTEPX_ACCOUNT_ID: ${{ secrets.TOPSTEPX_ACCOUNT_ID }}
-          TOPSTEPX_ACCOUNT_NAME: ${{ secrets.TOPSTEPX_ACCOUNT_NAME }}
         run: |
           Write-Output "=================================================="
           Write-Output "🔧 .NET Environment Setup"
@@ -62,29 +60,15 @@ jobs:
           dotnet --info
           Write-Output ""
           
-          # Create .env file from secrets
-          @"
-          # Trading Mode Configuration
-          DRY_RUN=${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
-          ENABLE_DRY_RUN=${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
-          LIVE_ORDERS=0
-          
-          # TopstepX API Configuration
-          ENABLE_TOPSTEPX=1
-          TOPSTEPX_API_BASE=${TOPSTEPX_API_BASE}
-          TOPSTEPX_API_KEY=${TOPSTEPX_API_KEY}
-          TOPSTEPX_USERNAME=${TOPSTEPX_USERNAME}
-          TOPSTEPX_ACCOUNT_ID=${TOPSTEPX_ACCOUNT_ID}
-          TOPSTEPX_ACCOUNT_NAME=${TOPSTEPX_ACCOUNT_NAME}
-          "@ | Out-File -FilePath .env -Encoding UTF8
-          
-          Write-Output "✅ Environment configuration created"
-          Write-Output ""
-          
-          # Validate credentials
-          if ([string]::IsNullOrEmpty($env:TOPSTEPX_API_KEY) -or [string]::IsNullOrEmpty($env:TOPSTEPX_USERNAME) -or [string]::IsNullOrEmpty($env:TOPSTEPX_ACCOUNT_ID)) {
-            Write-Output "❌ ERROR: Required TopstepX credentials are missing!"
-            exit 1
+          # Check if .env file already exists (on self-hosted runner)
+          if (Test-Path ".env") {
+            Write-Output "✅ Found existing .env file - preserving it"
+            Write-Output "   This file contains the credentials needed for bot operation"
+            Write-Output ""
+          } else {
+            Write-Output "⚠️ No .env file found - this may cause credential issues"
+            Write-Output "   On self-hosted runner, .env file should exist with credentials"
+            Write-Output ""
           }
           
           Write-Output "📦 Restoring NuGet packages..."
@@ -146,26 +130,25 @@ jobs:
         id: bot_run
         continue-on-error: true
         shell: pwsh
-        env:
-          TOPSTEPX_API_KEY: ${{ secrets.TOPSTEPX_API_KEY }}
-          TOPSTEPX_USERNAME: ${{ secrets.TOPSTEPX_USERNAME }}
-          TOPSTEPX_ACCOUNT_ID: ${{ secrets.TOPSTEPX_ACCOUNT_ID }}
-          TOPSTEPX_ACCOUNT_NAME: ${{ secrets.TOPSTEPX_ACCOUNT_NAME }}
-          PROJECT_X_API_KEY: ${{ secrets.TOPSTEPX_API_KEY }}
-          PROJECT_X_USERNAME: ${{ secrets.TOPSTEPX_USERNAME }}
         run: |
           Write-Output "=================================================="
           Write-Output "🚀 Starting Trading Bot"
           Write-Output "=================================================="
           Write-Output ""
           
-          # Load environment variables
+          # Load environment variables from .env file if it exists
           if (Test-Path ".env") {
+            Write-Output "📋 Loading environment variables from .env file..."
             Get-Content .env | ForEach-Object {
               if ($_ -match '^([^#][^=]+)=(.*)$') {
-                [Environment]::SetEnvironmentVariable($matches[1], $matches[2])
+                $key = $matches[1].Trim()
+                $value = $matches[2].Trim()
+                [Environment]::SetEnvironmentVariable($key, $value)
               }
             }
+            Write-Output "✅ Environment variables loaded from .env"
+          } else {
+            Write-Output "⚠️ No .env file found - credentials must be set via environment"
           }
           
           # Override with DRY_RUN from input

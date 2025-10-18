@@ -170,10 +170,35 @@ class TopstepXAdapter:
             os.environ['PROJECT_X_USERNAME'] = username
         
         if not api_key or not username:
-            raise RuntimeError(
-                "Missing required ProjectX credentials in environment. "
-                "Set PROJECT_X_API_KEY and PROJECT_X_USERNAME (or TOPSTEPX_API_KEY and TOPSTEPX_USERNAME) environment variables."
+            # Provide detailed error message with troubleshooting steps
+            missing_vars = []
+            if not api_key:
+                missing_vars.append('PROJECT_X_API_KEY/TOPSTEPX_API_KEY')
+            if not username:
+                missing_vars.append('PROJECT_X_USERNAME/TOPSTEPX_USERNAME')
+            
+            error_msg = (
+                f"Missing required TopstepX credentials: {', '.join(missing_vars)}\n"
+                f"\n"
+                f"Troubleshooting:\n"
+                f"1. Verify .env file exists in repository root with credentials:\n"
+                f"   TOPSTEPX_API_KEY=your_api_key\n"
+                f"   TOPSTEPX_USERNAME=your_username\n"
+                f"   TOPSTEPX_ACCOUNT_ID=your_account_id\n"
+                f"\n"
+                f"2. Ensure environment variables are not being overridden with empty values\n"
+                f"   (check workflow configuration or parent process)\n"
+                f"\n"
+                f"3. Current environment variables:\n"
+                f"   PROJECT_X_API_KEY: {'SET' if os.getenv('PROJECT_X_API_KEY') else 'NOT SET'}\n"
+                f"   TOPSTEPX_API_KEY: {'SET' if os.getenv('TOPSTEPX_API_KEY') else 'NOT SET'}\n"
+                f"   PROJECT_X_USERNAME: {os.getenv('PROJECT_X_USERNAME', 'NOT SET')}\n"
+                f"   TOPSTEPX_USERNAME: {os.getenv('TOPSTEPX_USERNAME', 'NOT SET')}\n"
             )
+            
+            # Log to stderr for visibility
+            print(error_msg, file=sys.stderr)
+            raise RuntimeError(error_msg)
         
         self.instruments = instruments
         self.suites: Dict[str, Optional[TradingSuite]] = {inst: None for inst in instruments}  # One suite per instrument (SDK v3.5.9+)
