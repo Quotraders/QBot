@@ -583,7 +583,8 @@ class TopstepXAdapter:
                 # Map standard symbol to TopstepX instrument code
                 topstepx_instrument = self._map_symbol_to_topstepx(instrument)
                 self.logger.info(f"Using TopstepX instrument code: {topstepx_instrument}")
-                suite = await TradingSuite.from_env(instrument=topstepx_instrument)
+                # Load 90 days of historical data for comprehensive learning (matches EnhancedBacktestLearningService)
+                suite = await TradingSuite.from_env(instrument=topstepx_instrument, initial_days=90)
                 
                 # CRITICAL: Initialize WebSocket connection for real-time data streaming with timeout
                 self.logger.info(f"🔌 Initializing WebSocket connection for {instrument}...")
