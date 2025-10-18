@@ -47,6 +47,18 @@ jobs:
           Write-Output "=================================================="
           Write-Output ""
           
+          # Ensure .NET is in PATH for subsequent steps
+          $DotnetPath = "C:\Program Files\dotnet"
+          if (Test-Path $DotnetPath) {
+            $env:PATH = "$DotnetPath;$env:PATH"
+            # Add to GITHUB_PATH for persistence across steps
+            Add-Content $env:GITHUB_PATH "$DotnetPath"
+            Write-Output "✅ Added .NET to PATH: $DotnetPath"
+          } else {
+            Write-Output "⚠️ .NET installation not found at: $DotnetPath"
+            Write-Output "   Attempting to use dotnet from current PATH..."
+          }
+          
           # Check .NET installation
           $DotnetVersion = dotnet --version
           Write-Output "✅ .NET SDK Version: $DotnetVersion"
