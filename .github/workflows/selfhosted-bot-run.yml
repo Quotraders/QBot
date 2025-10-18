@@ -39,11 +39,6 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: "🔧 Setup .NET SDK"
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
       - name: "🔧 Setup .NET Environment"
         shell: pwsh
         run: |
@@ -51,6 +46,18 @@ jobs:
           Write-Output "🔧 .NET Environment Setup"
           Write-Output "=================================================="
           Write-Output ""
+          
+          # Ensure .NET is in PATH for subsequent steps
+          $DotnetPath = "C:\Program Files\dotnet"
+          if (Test-Path $DotnetPath) {
+            $env:PATH = "$DotnetPath;$env:PATH"
+            # Add to GITHUB_PATH for persistence across steps
+            Add-Content $env:GITHUB_PATH "$DotnetPath"
+            Write-Output "✅ Added .NET to PATH: $DotnetPath"
+          } else {
+            Write-Output "⚠️ .NET installation not found at: $DotnetPath"
+            Write-Output "   Attempting to use dotnet from current PATH..."
+          }
           
           # Check .NET installation
           $DotnetVersion = dotnet --version
