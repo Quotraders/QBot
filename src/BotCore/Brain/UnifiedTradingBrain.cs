@@ -138,16 +138,31 @@ namespace BotCore.Brain
         public const decimal ModerateRiskPositionReduction = 0.75m;  // Position reduction for moderate tail risk (25%)
     }
     /// <summary>
-    /// UNIFIED TRADING BRAIN - The ONE intelligence that controls all trading decisions
+    /// ✅ UNIFIED TRADING BRAIN - The SINGLE Intelligence for ALL Trading Decisions
+    /// ==============================================================================
     /// Enhanced to handle all 4 primary strategies (S2, S3, S6, S11) with unified scheduling
     /// 
+    /// UNIFIED ARCHITECTURE: Same Brain for Historical and Live Trading
+    /// ----------------------------------------------------------------
     /// This is the central AI brain that:
     /// 1. Handles S2 (VWAP Mean Reversion), S3 (Bollinger Compression), S6 (Momentum), S11 (Specialized)
     /// 2. Uses Neural UCB to select optimal strategy for each market condition
     /// 3. Uses LSTM to predict price movements and timing
     /// 4. Uses CVaR-PPO to optimize position sizes for all strategies
-    /// 5. Maintains identical intelligence for historical and live trading
+    /// 5. ⭐ CRITICAL: Maintains IDENTICAL intelligence for historical and live trading ⭐
     /// 6. Continuously learns from all trade outcomes to improve strategy selection
+    /// 
+    /// LEARNING FROM BOTH SOURCES (via LearnFromResultAsync - line 1734):
+    /// - Historical backtest results (90-day rolling window)
+    /// - Live trading results (real-time execution)
+    /// - Both feed into same Neural UCB and CVaR-PPO training
+    /// 
+    /// DECISION MAKING (via MakeIntelligentDecisionAsync):
+    /// - Used by EnhancedBacktestLearningService for historical decisions
+    /// - Used by live trading services for real-time decisions
+    /// - Guarantees consistent logic across historical and live contexts
+    /// 
+    /// ⚠️ NO DUAL SYSTEMS: This is the ONLY decision engine - no separate brains exist
     /// 
     /// KEY ENHANCEMENTS:
     /// - Multi-strategy learning: Every trade outcome teaches all strategies

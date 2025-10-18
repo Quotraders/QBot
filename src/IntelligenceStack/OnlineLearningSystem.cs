@@ -12,8 +12,32 @@ using System.Globalization;
 namespace TradingBot.IntelligenceStack;
 
 /// <summary>
+/// ✅ UNIFIED LEARNING SYSTEM - Online Learning Component
+/// ======================================================
 /// Online learning system with intraday weight updates and drift detection
 /// Implements adaptive learning rates and rollback capabilities
+/// 
+/// ROLE IN UNIFIED ARCHITECTURE:
+/// This is a COMPONENT of the unified learning system, NOT a separate brain.
+/// It provides weight updates and adaptation that feed into UnifiedTradingBrain.
+/// 
+/// INTEGRATION WITH UNIFIED BRAIN:
+/// - UnifiedTradingBrain makes ALL decisions (historical + live)
+/// - This system provides adaptive weight updates based on performance
+/// - Both historical and live results feed into same weight updates
+/// - Weights are used by UnifiedTradingBrain's Neural UCB for strategy selection
+/// 
+/// KEY METHODS:
+/// - UpdateWeightsAsync(): Update strategy weights based on regime performance
+/// - AdaptToPerformanceAsync(): Adapt model weights based on live/historical performance
+/// - DetectDriftAsync(): Detect feature drift for model retraining triggers
+/// - UpdateModelAsync(): Process trade records and update weights
+/// 
+/// DATA FLOW:
+/// Historical Backtest → TradeRecord → UpdateModelAsync() → Weight Updates → UnifiedTradingBrain
+/// Live Trading      → TradeRecord → UpdateModelAsync() → Weight Updates → UnifiedTradingBrain
+/// 
+/// ⚠️ This is NOT a decision maker - it's a weight optimizer for the unified brain
 /// </summary>
 public class OnlineLearningSystem : IOnlineLearningSystem
 {

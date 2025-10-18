@@ -24,15 +24,33 @@ using Bar = global::BotCore.Models.Bar;
 namespace TradingBot.UnifiedOrchestrator.Services;
 
 /// <summary>
-/// Enhanced BacktestLearningService → UnifiedTradingBrain Integration
+/// ✅ UNIFIED LEARNING SYSTEM - Enhanced BacktestLearningService
 /// 
-/// CRITICAL REQUIREMENT: Uses SAME UnifiedTradingBrain for historical replay as live trading
-/// This ensures historical data pipeline uses identical intelligence as live trading:
+/// ARCHITECTURE: Single Brain for Both Historical and Live Trading
+/// ================================================================
+/// This service implements the UNIFIED learning system where the bot learns from:
+/// 1. Historical data (backtesting on 90-day rolling window)
+/// 2. Live trading results (real-time adaptation)
+/// 
+/// BOTH use the SAME UnifiedTradingBrain for ALL decisions:
+/// - Same decision-making logic: UnifiedTradingBrain.MakeIntelligentDecisionAsync (lines 548, 674)
+/// - Same learning feedback: UnifiedTradingBrain.LearnFromResultAsync (line 596)
 /// - Same data formatting and feature engineering
-/// - Same decision-making logic (UnifiedTradingBrain.MakeIntelligentDecisionAsync)
 /// - Same risk management and position sizing
 /// - Identical context and outputs for reproducible results
-/// - Same scheduling: Market Open: Light learning every 60 min, Market Closed: Intensive every 15 min
+/// 
+/// LEARNING SCHEDULE (Unified for both historical and live):
+/// - Market Open: Light learning every 60 minutes
+/// - Market Closed: Intensive learning every 15 minutes
+/// - Rolling 90-day historical window (always fresh data)
+/// 
+/// KEY INTEGRATION POINTS:
+/// - Line 46: Direct UnifiedTradingBrain injection
+/// - Line 548 & 674: Historical decisions via _unifiedBrain.MakeIntelligentDecisionAsync()
+/// - Line 596: Learning feedback via _unifiedBrain.LearnFromResultAsync()
+/// - Line 1221: Online learning service integration (IOnlineLearningSystem)
+/// 
+/// ⚠️ NO DUAL SYSTEMS: This is the ONLY learning path - no separate historical/live brains
 /// </summary>
 internal class EnhancedBacktestLearningService : BackgroundService
 {
@@ -1677,56 +1695,13 @@ internal class EnhancedBacktestLearningService : BackgroundService
     /// <summary>
     /// Generate AI-powered self-improvement suggestions based on backtest results
     /// </summary>
-    private async Task<string> GenerateSelfImprovementSuggestionsAsync(UnifiedBacktestResult[] results, CancellationToken cancellationToken)
+    private Task<string> GenerateSelfImprovementSuggestionsAsync(UnifiedBacktestResult[] results, CancellationToken cancellationToken)
     {
         // Ollama disabled for backtests - only use for live trading
-        return string.Empty;
+        return Task.FromResult(string.Empty);
         
         // ORIGINAL CODE KEPT FOR REFERENCE (disabled)
-        // if (_ollamaClient == null || !results.Any())
-        //     return string.Empty;
-
-        try
-        {
-            // Aggregate results for analysis
-            var totalTrades = results.Sum(r => r.TotalTrades);
-            var avgWinRate = results.Any(r => r.TotalTrades > 0) 
-                ? results.Where(r => r.TotalTrades > 0).Average(r => r.WinRate) 
-                : 0;
-            var totalPnL = results.Sum(r => r.NetPnL);
-            var bestResult = results.OrderByDescending(r => r.SharpeRatio).FirstOrDefault();
-            var worstResult = results.OrderBy(r => r.SharpeRatio).FirstOrDefault();
-            var avgSharpe = results.Any() ? results.Average(r => r.SharpeRatio) : 0;
-
-            // Identify problem patterns
-            var losingPatterns = string.Join(", ", results
-                .Where(r => r.NetPnL < 0)
-                .Select(r => $"{r.Strategy} on {r.Symbol} (Sharpe: {r.SharpeRatio:F2})"));
-            
-            if (string.IsNullOrEmpty(losingPatterns))
-                losingPatterns = "None - all strategies profitable";
-
-            // Build self-analysis prompt
-            var prompt = $@"I am a trading bot. I just analyzed my historical performance:
-
-Total trades: {totalTrades}
-Win rate: {avgWinRate:P1}
-Total P&L: ${totalPnL:F2}
-Average Sharpe Ratio: {avgSharpe:F2}
-Best performing strategy: {bestResult?.Strategy ?? "N/A"} on {bestResult?.Symbol ?? "N/A"} (Sharpe: {bestResult?.SharpeRatio ?? 0:F2})
-Worst performing strategy: {worstResult?.Strategy ?? "N/A"} on {worstResult?.Symbol ?? "N/A"} (Sharpe: {worstResult?.SharpeRatio ?? 0:F2})
-Problem patterns: {losingPatterns}
-
-Based on this, what should I change about my own code or parameters to improve? Be specific - suggest exact parameter values or code logic changes. Speak as ME (the bot) analyzing myself.";
-
-            var response = await _ollamaClient.AskAsync(prompt).ConfigureAwait(false);
-            return response;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "❌ [BOT-SELF-IMPROVEMENT] Error generating self-improvement suggestions");
-            return string.Empty;
-        }
+        // Full implementation available if Ollama integration is enabled for backtests in the future
     }
 
     /// <summary>
