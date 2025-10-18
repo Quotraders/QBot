@@ -7,8 +7,12 @@ on:
       - 'fix/**'
       - 'feature/**'
       - 'copilot/**'
+    # Trigger on any code or config changes
     paths:
       - 'src/**'
+      - 'config/**'
+      - 'strategies/**'
+      - '.env.example'
       - '.github/workflows/selfhosted-bot-run.yml'
   workflow_dispatch:
     inputs:
