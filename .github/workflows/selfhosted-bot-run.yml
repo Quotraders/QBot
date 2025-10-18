@@ -39,11 +39,6 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: "🔧 Setup .NET SDK"
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
       - name: "🔧 Setup .NET Environment"
         shell: pwsh
         run: |
